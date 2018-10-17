@@ -66,9 +66,9 @@ class NamespaceMsg(Enum):
     int_bool = ('{tempfile}:11: error: Argument 1 has incompatible type '
                 '"int"; expected "bool"')
     to_bool_str = ('{tempfile}:10: error: Argument 1 to "af" has incompatible type '
-                '"bool"; expected "str"')
+                   '"bool"; expected "str"')
     to_int_bool = ('{tempfile}:11: error: Argument 1 to "bf" has incompatible type '
-                '"int"; expected "bool"')
+                   '"int"; expected "bool"')
 
 
 def create_ns_program_src(import_style: NSImportStyle) -> str:
@@ -84,7 +84,7 @@ class ExampleProg(object):
         self._temp_dir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
         self._full_fname = ''
 
-    def init(self) -> None:
+    def create(self) -> None:
         self._temp_dir = tempfile.TemporaryDirectory()
         self._full_fname = os.path.join(self._temp_dir.name, self._fname)
         with open(self._full_fname, 'w+') as f:
@@ -170,16 +170,16 @@ class TestPEP561(TestCase):
             self.fail('\n'.join(lines))
 
     def setUp(self) -> None:
-        self.simple_ep = ExampleProg(SIMPLE_PROGRAM)
-        self.from_ns_ep = ExampleProg(create_ns_program_src(NSImportStyle.from_import))
-        self.import_as_ns_ep = ExampleProg(create_ns_program_src(NSImportStyle.import_as))
-        self.regular_import_ns_ep = ExampleProg(create_ns_program_src(NSImportStyle.reg_import))
+        self.simple_prog = ExampleProg(SIMPLE_PROGRAM)
+        self.from_ns_prog = ExampleProg(create_ns_program_src(NSImportStyle.from_import))
+        self.import_as_ns_prog = ExampleProg(create_ns_program_src(NSImportStyle.import_as))
+        self.regular_import_ns_prog = ExampleProg(create_ns_program_src(NSImportStyle.reg_import))
 
     def tearDown(self) -> None:
-        self.simple_ep.cleanup()
-        self.from_ns_ep.cleanup()
-        self.import_as_ns_ep.cleanup()
-        self.regular_import_ns_ep.cleanup()
+        self.simple_prog.cleanup()
+        self.from_ns_prog.cleanup()
+        self.import_as_ns_prog.cleanup()
+        self.regular_import_ns_prog.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -187,105 +187,105 @@ class TestPEP561(TestCase):
         assert dirs
 
     def test_typedpkg_stub_package(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg-stubs', python_executable)
-            self.simple_ep.check_mypy_run(
+            self.simple_prog.check_mypy_run(
                 python_executable,
                 [SimpleMsg.msg_dne, SimpleMsg.msg_list],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
-            self.simple_ep.check_mypy_run(
+            self.simple_prog.check_mypy_run(
                 python_executable,
                 [SimpleMsg.msg_tuple],
                 venv_dir=venv_dir,
             )
 
     def test_stub_and_typed_pkg(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             self.install_package('typedpkg-stubs', python_executable)
-            self.simple_ep.check_mypy_run(
+            self.simple_prog.check_mypy_run(
                 python_executable,
                 [SimpleMsg.msg_list],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg_stubs_python2(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         python2 = try_find_python2_interpreter()
         if python2:
             with self.virtualenv(python2) as venv:
                 venv_dir, py2 = venv
                 self.install_package('typedpkg-stubs', py2)
-                self.simple_ep.check_mypy_run(
+                self.simple_prog.check_mypy_run(
                     py2,
                     [SimpleMsg.msg_dne, SimpleMsg.msg_list],
                     venv_dir=venv_dir,
                 )
 
     def test_typedpkg_python2(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         python2 = try_find_python2_interpreter()
         if python2:
             with self.virtualenv(python2) as venv:
                 venv_dir, py2 = venv
                 self.install_package('typedpkg', py2)
-                self.simple_ep.check_mypy_run(
+                self.simple_prog.check_mypy_run(
                     py2,
                     [SimpleMsg.msg_tuple],
                     venv_dir=venv_dir,
                 )
 
     def test_typedpkg_egg(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable, use_pip=False)
-            self.simple_ep.check_mypy_run(
+            self.simple_prog.check_mypy_run(
                 python_executable,
                 [SimpleMsg.msg_tuple],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg_editable(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable, editable=True)
-            self.simple_ep.check_mypy_run(
+            self.simple_prog.check_mypy_run(
                 python_executable,
                 [SimpleMsg.msg_tuple],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg_egg_editable(self) -> None:
-        self.simple_ep.init()
+        self.simple_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable, use_pip=False, editable=True)
-            self.simple_ep.check_mypy_run(
+            self.simple_prog.check_mypy_run(
                 python_executable,
                 [SimpleMsg.msg_tuple],
                 venv_dir=venv_dir,
             )
 
     def test_nested_and_namespace_from_import(self) -> None:
-        self.from_ns_ep.init()
+        self.from_ns_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             self.install_package('typedpkg_ns', python_executable)
-            self.from_ns_ep.check_mypy_run(
+            self.from_ns_prog.check_mypy_run(
                 python_executable,
                 [NamespaceMsg.cfm_beta,
                  NamespaceMsg.help_note,
@@ -295,12 +295,12 @@ class TestPEP561(TestCase):
             )
 
     def test_nested_and_namespace_import_as(self) -> None:
-        self.import_as_ns_ep.init()
+        self.import_as_ns_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             self.install_package('typedpkg_ns', python_executable)
-            self.import_as_ns_ep.check_mypy_run(
+            self.import_as_ns_prog.check_mypy_run(
                 python_executable,
                 [NamespaceMsg.cfm_beta,
                  NamespaceMsg.help_note,
@@ -310,12 +310,12 @@ class TestPEP561(TestCase):
             )
 
     def test_nested_and_namespace_regular_import(self) -> None:
-        self.regular_import_ns_ep.init()
+        self.regular_import_ns_prog.create()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             self.install_package('typedpkg_ns', python_executable)
-            self.regular_import_ns_ep.check_mypy_run(
+            self.regular_import_ns_prog.check_mypy_run(
                 python_executable,
                 [NamespaceMsg.cfm_beta,
                  NamespaceMsg.help_note,
