@@ -383,7 +383,18 @@ FUNCBASE_FLAGS = [
 ]  # type: Final
 
 
-class FuncBase(Node):
+class FuncBaseMeta(type):
+    def __instancecheck__(self, instance: object) -> bool:
+        if isinstance(instance, Decorator):
+            if instance.is_overload:
+                return issubclass(OverloadedFuncDef, self) and instance.is_callable
+            else:
+                return issubclass(FuncBase, self) and instance.is_callable
+        else:
+            return super().__instancecheck__(instance)
+
+
+class FuncBase(Node, metaclass=FuncBaseMeta):
     """Abstract base class for function-like nodes"""
 
     __slots__ = ('type',
@@ -657,6 +668,7 @@ class Decorator(SymbolNode, Statement):
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
+    is_callable = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
                  var: 'Var') -> None:
@@ -671,6 +683,23 @@ class Decorator(SymbolNode, Statement):
 
     def fullname(self) -> Bogus[str]:
         return self.func.fullname()
+
+    @property
+    def items(self) -> List[OverloadPart]:
+        assert isinstance(self.func, OverloadedFuncDef)
+        return self.func.items
+
+    @property
+    def is_property(self) -> bool:
+        return self.func.is_property
+
+    @property
+    def is_static(self) -> bool:
+        return self.func.is_static
+
+    @property
+    def is_class(self) -> bool:
+        return self.func.is_class
 
     @property
     def is_final(self) -> bool:

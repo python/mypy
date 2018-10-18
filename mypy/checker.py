@@ -3019,10 +3019,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                    callable_name=fullname)
         self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
-        e.var.type = sig
-        e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)
+        e.var.type = sig
+        e.var.is_ready = True
+        if isinstance(sig, CallableType):
+            if e.func.is_property:
+                assert isinstance(sig, CallableType)
+                e.is_callable = isinstance(sig.ret_type, CallableType)
+            else:
+                e.is_callable = True
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)
 

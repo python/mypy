@@ -2383,3 +2383,16 @@ def foo() -> None:
 
 def lol():
     x = foo()
+
+
+[case testNonCallableDecorator]
+def dec(func) -> int:
+    return 1
+
+@dec
+def f():
+    pass
+
+reveal_type(f)  # E: Revealed type is 'builtins.int'
+f()             # E: "int" not callable
+[out]

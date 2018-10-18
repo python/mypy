@@ -77,7 +77,7 @@ def analyze_member_access(name: str,
 
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)
-        if method:
+        if method and not method.is_class:
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
                 first_item = cast(Decorator, method.items[0])
@@ -87,7 +87,7 @@ def analyze_member_access(name: str,
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
             signature = freshen_function_type_vars(signature)
-            if name == '__new__':
+            if name == '__new__' or method.is_static:
                 # __new__ is special and behaves like a static method -- don't strip
                 # the first argument.
                 pass

@@ -5610,3 +5610,29 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [out]
+
+[case testDecoratedInit]
+from typing import Callable, Any
+def dec(func: Callable[[Any], None]) -> Callable[[Any], None]:
+    return func
+
+class A:
+    @dec
+    def __init__(self):
+        pass
+
+reveal_type(A())  # E: Revealed type is '__main__.A'
+[out]
+
+[case testAbstractInit]
+from abc import abstractmethod
+class A:
+    @abstractmethod
+    def __init__(self): ...
+
+class B(A):
+    def __init__(self):
+        pass
+
+reveal_type(B())  # E: Revealed type is '__main__.B'
+[out]

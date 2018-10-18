@@ -572,7 +572,10 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
             assert isinstance(dec, Decorator)
             if dec.var.is_settable_property or setattr_meth:
                 return {IS_SETTABLE}
-        return set()
+        if method.is_static or method.is_class:
+            return {IS_CLASS_OR_STATIC}
+        else:
+            return set()
     node = info.get(name)
     if not node:
         if setattr_meth:
@@ -604,7 +607,12 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     if typ is None:
         return AnyType(TypeOfAny.from_error)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
-    if isinstance(node, FuncBase) or isinstance(typ, FunctionLike) and not node.is_staticmethod:
+    need_bind = False
+    if isinstance(node, FuncBase):
+        need_bind = not node.is_static
+    elif isinstance(typ, FunctionLike):
+        need_bind = not node.is_staticmethod
+    if need_bind:
         assert isinstance(typ, FunctionLike)
         signature = bind_self(typ, subtype)
         if node.is_property:
