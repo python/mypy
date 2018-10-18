@@ -1146,7 +1146,6 @@ from typing import Callable
 def dec(f: Callable[[], None]) -> Callable[[], None]:
     pass
 [out]
-<m.f> -> m
 <mod.dec> -> <m.f>, m
 
 [case testLogicalDecoratorWithArgs]
@@ -1160,7 +1159,6 @@ from typing import Callable
 def dec(arg: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
     pass
 [out]
-<m.f> -> m
 <mod.dec> -> <m.f>, m
 
 [case testLogicalDecoratorMember]
@@ -1174,7 +1172,6 @@ from typing import Callable
 def dec(f: Callable[[], None]) -> Callable[[], None]:
     pass
 [out]
-<m.f> -> m
 <mod.dec> -> <m.f>, m
 <mod> -> m
 
