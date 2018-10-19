@@ -383,18 +383,7 @@ FUNCBASE_FLAGS = [
 ]  # type: Final
 
 
-class FuncBaseMeta(type):
-    def __instancecheck__(self, instance: object) -> bool:
-        if isinstance(instance, Decorator):
-            if instance.is_overload:
-                return issubclass(OverloadedFuncDef, self) and instance.is_callable
-            else:
-                return issubclass(FuncBase, self) and instance.is_callable
-        else:
-            return super().__instancecheck__(instance)
-
-
-class FuncBase(Node, metaclass=FuncBaseMeta):
+class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 
     __slots__ = ('type',
@@ -668,7 +657,7 @@ class Decorator(SymbolNode, Statement):
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
-    is_callable = False
+    callable_decorator = None  # type: Optional[CallableDecorator]
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
                  var: 'Var') -> None:
@@ -683,23 +672,6 @@ class Decorator(SymbolNode, Statement):
 
     def fullname(self) -> Bogus[str]:
         return self.func.fullname()
-
-    @property
-    def items(self) -> List[OverloadPart]:
-        assert isinstance(self.func, OverloadedFuncDef)
-        return self.func.items
-
-    @property
-    def is_property(self) -> bool:
-        return self.func.is_property
-
-    @property
-    def is_static(self) -> bool:
-        return self.func.is_static
-
-    @property
-    def is_class(self) -> bool:
-        return self.func.is_class
 
     @property
     def is_final(self) -> bool:
@@ -731,6 +703,28 @@ class Decorator(SymbolNode, Statement):
                         Var.deserialize(data['var']))
         dec.is_overload = data['is_overload']
         return dec
+
+
+class CallableDecorator(FuncItem):
+    """A wrapper around a Decorator that allows it to be treated as a callable function"""
+    def __init__(self, decorator: Decorator) -> None:
+        super().__init__(decorator.func.arguments, decorator.func.body,
+                         cast('mypy.types.CallableType', decorator.type))
+        self.is_final = decorator.is_final
+        self.is_class = decorator.func.is_class
+        self.is_property = decorator.func.is_property
+        self.is_static = decorator.func.is_static
+        self.is_overload = decorator.func.is_overload
+        self.is_generator = decorator.func.is_generator
+        self.is_async_generator = decorator.func.is_async_generator
+        self.is_awaitable_coroutine = decorator.func.is_awaitable_coroutine
+        self.expanded = decorator.func.expanded
+        self.info = decorator.info
+        self._name = decorator.func.name()
+        self._fullname = decorator.func._fullname
+
+    def name(self) -> str:
+        return self._name
 
 
 VAR_FLAGS = [
@@ -2337,11 +2331,7 @@ class TypeInfo(SymbolNode):
     def get_method(self, name: str) -> Optional[FuncBase]:
         for cls in self.mro:
             if name in cls.names:
-                node = cls.names[name].node
-                if isinstance(node, FuncBase):
-                    return node
-                else:
-                    return None
+                return get_callable(cls.names[name].node)
         return None
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
@@ -2964,3 +2954,13 @@ def is_class_var(expr: NameExpr) -> bool:
     if isinstance(expr.node, Var):
         return expr.node.is_classvar
     return False
+
+
+def get_callable(node: Optional[Node]) -> Optional[FuncBase]:
+    """Check if the passed node represents a callable function or funcion-like object"""
+    if isinstance(node, FuncBase):
+        return node
+    elif isinstance(node, Decorator):
+        return node.callable_decorator
+    else:
+        return None

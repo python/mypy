@@ -1,8 +1,8 @@
 from typing import List, Optional, Any
 
 from mypy.nodes import (
-    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, FuncBase,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var
+    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, FuncDef,
+    PassStmt, RefExpr, SymbolTableNode, Var, get_callable
 )
 from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
@@ -53,8 +53,9 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     callee_type = None
     # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
     callee_node = call.callee.node  # type: Any
-    if (isinstance(callee_node, (Var, FuncBase))
-            and callee_node.type):
+    if not isinstance(callee_node, Var):
+        callee_node = get_callable(callee_node)
+    if callee_node and callee_node.type:
         callee_node_type = callee_node.type
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.

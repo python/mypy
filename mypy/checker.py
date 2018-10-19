@@ -21,8 +21,8 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT,
+    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF, CallableDecorator,
+    CONTRAVARIANT, COVARIANT, INVARIANT, get_callable
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash
@@ -1619,11 +1619,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         first = base1[name]
         second = base2[name]
         first_type = first.type
-        if first_type is None and isinstance(first.node, FuncBase):
-            first_type = self.function_type(first.node)
+        if first_type is None:
+            method = get_callable(first.node)
+            if method:
+                first_type = self.function_type(method)
         second_type = second.type
-        if second_type is None and isinstance(second.node, FuncBase):
-            second_type = self.function_type(second.node)
+        if second_type is None:
+            method = get_callable(second.node)
+            if method:
+                second_type = self.function_type(method)
         # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
@@ -3026,9 +3030,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(sig, CallableType):
             if e.func.is_property:
                 assert isinstance(sig, CallableType)
-                e.is_callable = isinstance(sig.ret_type, CallableType)
+                if isinstance(sig.ret_type, CallableType):
+                    e.callable_decorator = CallableDecorator(e)
             else:
-                e.is_callable = True
+                e.callable_decorator = CallableDecorator(e)
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)
 

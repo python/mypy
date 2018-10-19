@@ -7,9 +7,9 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
-    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
-    is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
+    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, is_class_var,
+    TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
+    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, get_callable
 )
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument
@@ -405,9 +405,8 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
         if isinstance(converter, RefExpr) and converter.node:
-            if (isinstance(converter.node, FuncBase)
-                    and converter.node.type
-                    and isinstance(converter.node.type, FunctionLike)):
+            method = get_callable(converter.node)
+            if method and method.type and isinstance(method.type, FunctionLike):
                 return Converter(converter.node.fullname())
             elif isinstance(converter.node, TypeInfo):
                 return Converter(converter.node.fullname())

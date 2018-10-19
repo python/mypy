@@ -91,9 +91,9 @@ from mypy.nodes import (
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
+    TypeInfo, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
     LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
-    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
+    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods, get_callable
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -127,6 +127,7 @@ def get_dependencies_of_target(module_id: str,
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
     visitor.scope.enter_file(module_id)
+    method = get_callable(target)
     if isinstance(target, MypyFile):
         # Only get dependencies of the top-level of the module. Don't recurse into
         # functions.
@@ -134,10 +135,10 @@ def get_dependencies_of_target(module_id: str,
             # TODO: Recurse into top-level statements and class bodies but skip functions.
             if not isinstance(defn, (ClassDef, Decorator, FuncDef, OverloadedFuncDef)):
                 defn.accept(visitor)
-    elif isinstance(target, FuncBase) and target.info:
+    elif method and method.info:
         # It's a method.
         # TODO: Methods in nested classes.
-        visitor.scope.enter_class(target.info)
+        visitor.scope.enter_class(method.info)
         target.accept(visitor)
         visitor.scope.leave()
     else:
@@ -425,8 +426,10 @@ class DependencyVisitor(TraverserVisitor):
                 if isinstance(rvalue.callee.node, TypeInfo):
                     # use actual __init__ as a dependency source
                     init = rvalue.callee.node.get('__init__')
-                    if init and isinstance(init.node, FuncBase):
-                        fname = init.node.fullname()
+                    if init:
+                        method = get_callable(init.node)
+                        if method:
+                            fname = method.fullname()
                 else:
                     fname = rvalue.callee.fullname
                 if fname is None:
