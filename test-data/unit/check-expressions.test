@@ -1666,8 +1666,8 @@ it = [('x', 1)]
 d = dict(it, x=1)
 d() # E: "Dict[str, int]" not callable
 
-d2 = dict(it, x='') # E: Cannot infer type argument 2 of "dict"
-d2() # E: "Dict[Any, Any]" not callable
+d2 = dict(it, x='')
+d2() # E: "Dict[str, object]" not callable
 
 d3 = dict(it, x='') # type: Dict[str, int] # E: Argument "x" to "dict" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
@@ -1691,8 +1691,8 @@ d = dict(it, **kw)
 d() # E: "Dict[str, int]" not callable
 
 kw2 = {'x': ''}
-d2 = dict(it, **kw2) # E: Cannot infer type argument 2 of "dict"
-d2() # E: "Dict[Any, Any]" not callable
+d2 = dict(it, **kw2)
+d2() # E: "Dict[str, object]" not callable
 
 d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "**Dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
