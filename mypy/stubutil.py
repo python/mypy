@@ -117,8 +117,6 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
     # include brackets to allow type hints like List[int]
     test_str = r'%s(\([a-zA-Z0-9_=, :\.\[\]]*\))' % name
     m = re.match(test_str, docstr)
-    import pdb
-    pdb.set_trace()
     if m:
         return m.group(1)
     else:
