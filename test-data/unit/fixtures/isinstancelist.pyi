@@ -14,6 +14,7 @@ def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
 
 class int:
     def __add__(self, x: int) -> int: pass
+class float: pass
 class bool(int): pass
 class str:
     def __add__(self, x: str) -> str: pass

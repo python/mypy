@@ -3,13 +3,11 @@
 from typing import List, Dict, Optional
 from collections import defaultdict
 
-from mypy.types import Type, NoneTyp, AnyType, UninhabitedType, TypeVarId, TypeOfAny
+from mypy.types import Type, AnyType, UninhabitedType, TypeVarId, TypeOfAny
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
-
-from mypy import experiments
 
 
 def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],

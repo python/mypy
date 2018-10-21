@@ -17,10 +17,7 @@ from mypy.options import Options
 
 import dumpmodule
 
-if sys.version_info < (3, 4):
-    from singledispatch import singledispatch
-else:
-    from functools import singledispatch
+from functools import singledispatch
 
 # TODO: email.contentmanager has a symbol table with a None node.
 #       This seems like it should not be.

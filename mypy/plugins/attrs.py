@@ -9,13 +9,20 @@ from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
     is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF, JsonDict
+    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
+)
+from mypy.plugins.common import (
+    _get_argument, _get_bool_argument, _get_decorator_bool_argument
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
-    Overloaded, Instance
+    Overloaded, Instance, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 # The names of the different functions that create classes or arguments.
@@ -23,28 +30,38 @@ attr_class_makers = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}
+}  # type: Final
 attr_dataclass_makers = {
     'attr.dataclass',
-}
+}  # type: Final
 attr_attrib_makers = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
-}
+}  # type: Final
+
+
+class Converter:
+    """Holds information about a `converter=` argument"""
+
+    def __init__(self,
+                 name: Optional[str] = None,
+                 is_attr_converters_optional: bool = False) -> None:
+        self.name = name
+        self.is_attr_converters_optional = is_attr_converters_optional
 
 
 class Attribute:
     """The value of an attr.ib() call."""
 
     def __init__(self, name: str, info: TypeInfo,
-                 has_default: bool, init: bool, converter_name: Optional[str],
+                 has_default: bool, init: bool, converter: Converter,
                  context: Context) -> None:
         self.name = name
         self.info = info
         self.has_default = has_default
         self.init = init
-        self.converter_name = converter_name
+        self.converter = converter
         self.context = context
 
     def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Argument:
@@ -52,23 +69,51 @@ class Attribute:
         assert self.init
         init_type = self.info[self.name].type
 
-        if self.converter_name:
-            # When a converter is set the init_type is overriden by the first argument
+        if self.converter.name:
+            # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_qualified_stnode(ctx.api.modules, self.converter_name, True)
+            converter = lookup_qualified_stnode(ctx.api.modules, self.converter.name, True)
             if not converter:
                 # The converter may be a local variable. Check there too.
-                converter = ctx.api.lookup_qualified(self.converter_name, self.info, True)
+                converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
-            if (converter
-                    and converter.type
-                    and isinstance(converter.type, CallableType)
-                    and converter.type.arg_types):
-                init_type = ctx.api.anal_type(converter.type.arg_types[0])
-            else:
-                ctx.api.fail("Cannot determine type of converter function", self.context)
+            # Get the type of the converter.
+            converter_type = None
+            if converter and isinstance(converter.node, TypeInfo):
+                from mypy.checkmember import type_object_type  # To avoid import cycle.
+                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+            elif converter and isinstance(converter.node, OverloadedFuncDef):
+                converter_type = converter.node.type
+            elif converter and converter.type:
+                converter_type = converter.type
+
+            init_type = None
+            if isinstance(converter_type, CallableType) and converter_type.arg_types:
+                init_type = ctx.api.anal_type(converter_type.arg_types[0])
+            elif isinstance(converter_type, Overloaded):
+                types = []  # type: List[Type]
+                for item in converter_type.items():
+                    # Walk the overloads looking for methods that can accept one argument.
+                    num_arg_types = len(item.arg_types)
+                    if not num_arg_types:
+                        continue
+                    if num_arg_types > 1 and any(kind == ARG_POS for kind in item.arg_kinds[1:]):
+                        continue
+                    types.append(item.arg_types[0])
+                # Make a union of all the valid types.
+                if types:
+                    args = UnionType.make_simplified_union(types)
+                    init_type = ctx.api.anal_type(args)
+
+            if self.converter.is_attr_converters_optional and init_type:
+                # If the converter was attr.converter.optional(type) then add None to
+                # the allowed init_type.
+                init_type = UnionType.make_simplified_union([init_type, NoneTyp()])
+
+            if not init_type:
+                ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
-        elif self.converter_name == '':
+        elif self.converter.name == '':
             # This means we had a converter but it's not of a type we can infer.
             # Error was shown in _get_converter_name
             init_type = AnyType(TypeOfAny.from_error)
@@ -97,7 +142,8 @@ class Attribute:
             'name': self.name,
             'has_default': self.has_default,
             'init': self.init,
-            'converter_name': self.converter_name,
+            'converter_name': self.converter.name,
+            'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
             'context_line': self.context.line,
             'context_column': self.context.column,
         }
@@ -110,7 +156,7 @@ class Attribute:
             info,
             data['has_default'],
             data['init'],
-            data['converter_name'],
+            Converter(data['converter_name'], data['converter_is_attr_converters_optional']),
             Context(line=data['context_line'], column=data['context_column'])
         )
 
@@ -131,7 +177,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     info = ctx.cls.info
 
     init = _get_decorator_bool_argument(ctx, 'init', True)
-    frozen = _get_decorator_bool_argument(ctx, 'frozen', False)
+    frozen = _get_frozen(ctx)
     cmp = _get_decorator_bool_argument(ctx, 'cmp', True)
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
 
@@ -146,6 +192,12 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs)
 
+    # Save the attributes so that subclasses can reuse them.
+    ctx.cls.info.metadata['attrs'] = {
+        'attributes': [attr.serialize() for attr in attributes],
+        'frozen': frozen,
+    }
+
     adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
     if init:
         _add_init(ctx, attributes, adder)
@@ -153,6 +205,17 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         _add_cmp(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+
+
+def _get_frozen(ctx: 'mypy.plugin.ClassDefContext') -> bool:
+    """Return whether this class is frozen."""
+    if _get_decorator_bool_argument(ctx, 'frozen', False):
+        return True
+    # Subclasses of frozen classes are frozen so check that.
+    for super_info in ctx.cls.info.mro[1:-1]:
+        if 'attrs' in super_info.metadata and super_info.metadata['attrs']['frozen']:
+            return True
+    return False
 
 
 def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> List[Attribute]:
@@ -172,6 +235,14 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
         elif isinstance(stmt, Decorator):
             _cleanup_decorator(stmt, own_attrs)
 
+    for attribute in own_attrs.values():
+        # Even though these look like class level assignments we want them to look like
+        # instance level assignments.
+        if attribute.name in ctx.cls.info.names:
+            node = ctx.cls.info.names[attribute.name].node
+            assert isinstance(node, Var)
+            node.is_initialized_in_class = False
+
     # Traverse the MRO and collect attributes from the parents.
     taken_attr_names = set(own_attrs)
     super_attrs = []
@@ -186,18 +257,16 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
                     taken_attr_names.add(a.name)
     attributes = super_attrs + list(own_attrs.values())
 
-    # Save the attributes so that subclasses can reuse them.
-    ctx.cls.info.metadata['attrs'] = {'attributes': [attr.serialize() for attr in attributes]}
-
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
     for attribute in attributes:
-        if attribute.init and not attribute.has_default and last_default:
-            ctx.api.fail(
-                "Non-default attributes not allowed after default attributes.",
-                attribute.context)
-        last_default = attribute.has_default
+        if attribute.init:
+            if not attribute.has_default and last_default:
+                ctx.api.fail(
+                    "Non-default attributes not allowed after default attributes.",
+                    attribute.context)
+            last_default |= attribute.has_default
 
     return attributes
 
@@ -270,7 +339,7 @@ def _attribute_from_auto_attrib(ctx: 'mypy.plugin.ClassDefContext',
     """Return an Attribute for a new type assignment."""
     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
     has_rhs = not isinstance(rvalue, TempNode)
-    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, None, stmt)
+    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, Converter(), stmt)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
@@ -296,6 +365,12 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_bool_argument(ctx, rvalue, 'init', True)
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, 'default'))
+    attr_has_factory = bool(_get_argument(rvalue, 'factory'))
+
+    if attr_has_default and attr_has_factory:
+        ctx.api.fail("Can't pass both `default` and `factory`.", rvalue)
+    elif attr_has_factory:
+        attr_has_default = True
 
     # If the type isn't set through annotation but is passed through `type=` use that.
     type_arg = _get_argument(rvalue, 'type')
@@ -319,30 +394,42 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
-    converter_name = _get_converter_name(ctx, converter)
+    converter_info = _parse_converter(ctx, converter)
 
-    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_name, stmt)
+    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_info, stmt)
 
 
-def _get_converter_name(ctx: 'mypy.plugin.ClassDefContext',
-                        converter: Optional[Expression]) -> Optional[str]:
-    """Return the full name of the converter if it exists and is a simple function."""
+def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
+                     converter: Optional[Expression]) -> Converter:
+    """Return the Converter object from an Expression."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
-        if (isinstance(converter, RefExpr)
-                and converter.node
-                and isinstance(converter.node, FuncBase)
-                and converter.node.type
-                and isinstance(converter.node.type, CallableType)
-                and converter.node.type.arg_types):
-            return converter.node.fullname()
+        if isinstance(converter, RefExpr) and converter.node:
+            if (isinstance(converter.node, FuncBase)
+                    and converter.node.type
+                    and isinstance(converter.node.type, FunctionLike)):
+                return Converter(converter.node.fullname())
+            elif isinstance(converter.node, TypeInfo):
+                return Converter(converter.node.fullname())
+
+        if (isinstance(converter, CallExpr)
+                and isinstance(converter.callee, RefExpr)
+                and converter.callee.fullname == "attr.converters.optional"
+                and converter.args
+                and converter.args[0]):
+            # Special handling for attr.converters.optional(type)
+            # We extract the type and add make the init_args Optional in Attribute.argument
+            argument = _parse_converter(ctx, converter.args[0])
+            argument.is_attr_converters_optional = True
+            return argument
+
         # Signal that we have an unsupported converter.
         ctx.api.fail(
-            "Unsupported converter function, only named functions are currently supported",
+            "Unsupported converter, only named functions and types are currently supported",
             converter
         )
-        return ''
-    return None
+        return Converter('')
+    return Converter(None)
 
 
 def _parse_assignments(
@@ -375,7 +462,7 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef('AT', 'AT', 1, [], object_type)
+    tvd = TypeVarDef('AT', 'AT', -1, [], object_type)
     tvd_type = TypeVarType(tvd)
     args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
     for method in ['__lt__', '__le__', '__gt__', '__ge__']:
@@ -384,12 +471,20 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
 
 def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]) -> None:
     """Turn all the attributes into properties to simulate frozen classes."""
-    # TODO: Handle subclasses of frozen classes.
     for attribute in attributes:
-        node = ctx.cls.info.names[attribute.name].node
-        assert isinstance(node, Var)
-        node.is_initialized_in_class = False
-        node.is_property = True
+        if attribute.name in ctx.cls.info.names:
+            # This variable belongs to this class so we can modify it.
+            node = ctx.cls.info.names[attribute.name].node
+            assert isinstance(node, Var)
+            node.is_property = True
+        else:
+            # This variable belongs to a super class so create new Var so we
+            # can modify it.
+            var = Var(attribute.name, ctx.cls.info[attribute.name].type)
+            var.info = ctx.cls.info
+            var._fullname = '%s.%s' % (ctx.cls.info.fullname(), var.name())
+            ctx.cls.info.names[var.name()] = SymbolTableNode(MDEF, var)
+            var.is_property = True
 
 
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
@@ -400,74 +495,6 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
         [attribute.argument(ctx) for attribute in attributes if attribute.init],
         NoneTyp()
     )
-    for stmt in ctx.cls.defs.body:
-        # The type of classmethods will be wrong because it's based on the parent's __init__.
-        # Set it correctly.
-        if isinstance(stmt, Decorator) and stmt.func.is_class:
-            func_type = stmt.func.type
-            if isinstance(func_type, CallableType):
-                func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
-
-
-def _get_decorator_bool_argument(
-        ctx: 'mypy.plugin.ClassDefContext',
-        name: str,
-        default: bool) -> bool:
-    """Return the bool argument for the decorator.
-
-    This handles both @attr.s(...) and @attr.s
-    """
-    if isinstance(ctx.reason, CallExpr):
-        return _get_bool_argument(ctx, ctx.reason, name, default)
-    else:
-        return default
-
-
-def _get_bool_argument(ctx: 'mypy.plugin.ClassDefContext', expr: CallExpr,
-                       name: str, default: bool) -> bool:
-    """Return the boolean value for an argument to a call or the default if it's not found."""
-    attr_value = _get_argument(expr, name)
-    if attr_value:
-        ret = ctx.api.parse_bool(attr_value)
-        if ret is None:
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
-            return default
-        return ret
-    return default
-
-
-def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
-    """Return the expression for the specific argument."""
-    # To do this we use the CallableType of the callee to find the FormalArgument,
-    # then walk the actual CallExpr looking for the appropriate argument.
-    #
-    # Note: I'm not hard-coding the index so that in the future we can support other
-    # attrib and class makers.
-    callee_type = None
-    if (isinstance(call.callee, RefExpr)
-            and isinstance(call.callee.node, (Var, FuncBase))
-            and call.callee.node.type):
-        callee_node_type = call.callee.node.type
-        if isinstance(callee_node_type, Overloaded):
-            # We take the last overload.
-            callee_type = callee_node_type.items()[-1]
-        elif isinstance(callee_node_type, CallableType):
-            callee_type = callee_node_type
-
-    if not callee_type:
-        return None
-
-    argument = callee_type.argument_by_name(name)
-    if not argument:
-        return None
-    assert argument.name
-
-    for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-        if argument.pos is not None and not attr_name and i == argument.pos:
-            return attr_value
-        if attr_name == argument.name:
-            return attr_value
-    return None
 
 
 class MethodAdder:

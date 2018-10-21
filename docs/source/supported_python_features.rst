@@ -1,5 +1,5 @@
-Supported Python features and modules
-=====================================
+Supported Python features
+=========================
 
 A list of unsupported Python features is maintained in the mypy wiki:
 

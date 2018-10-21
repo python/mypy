@@ -4,25 +4,19 @@ cache:
 environment:
   matrix:
 
-    - PYTHON: "C:\\Python36-x64"
-      PYTHON_VERSION: "3.6.x"
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "64"
 
 install:
-    - "git config core.symlinks true"
-    - "git reset --hard"
-    - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
-    - "C:\\Python27\\python.exe -m pip install typing"
-    - "git submodule update --init typeshed"
-    - "cd typeshed && git config core.symlinks true && git reset --hard && cd .."
-    - "%PYTHON%\\python.exe -m pip install ."
+    - "git submodule update --init mypy/typeshed"
+    - "%PYTHON%\\python.exe -m pip install -U setuptools tox"
+    - "%PYTHON%\\python.exe -m tox -e py37 --notest"
 
 build: off
 
 test_script:
-    # Ignore lint and mypy self check (both run in Travis)
-    - "%PYTHON%\\python.exe runtests.py -x lint -x package -x pytest"
-    - "%PYTHON%\\python.exe runtests.py pytest -p -k -p \"not (PythonEvaluationSuite and python2)\""
+    - "%PYTHON%\\python.exe -m tox -e py37"
 
 skip_commits:
   files:
@@ -30,7 +24,6 @@ skip_commits:
     - '**/*.rst'
     - '**/*.md'
     - .gitignore
-    - .runtest_log.json
     - .travis.yml
     - CREDITS
     - LICENSE

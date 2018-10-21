@@ -3,7 +3,6 @@ from typing import Union, List
 from mypy.nodes import TypeInfo
 
 from mypy.erasetype import erase_typevars
-from mypy.sametypes import is_same_type
 from mypy.types import Instance, TypeVarType, TupleType, Type
 
 
@@ -12,7 +11,8 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
     tv = []  # type: List[Type]
-    for i in range(len(typ.type_vars)):
+    # TODO: why do we need to keep both typ.type_vars and typ.defn.type_vars?
+    for i in range(len(typ.defn.type_vars)):
         tv.append(TypeVarType(typ.defn.type_vars[i]))
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
@@ -21,4 +21,10 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 
 def has_no_typevars(typ: Type) -> bool:
-    return is_same_type(typ, erase_typevars(typ))
+    # We test if a type contains type variables by erasing all type variables
+    # and comparing the result to the original type. We use comparison by equality that
+    # in turn uses `__eq__` defined for types. Note: we can't use `is_same_type` because
+    # it is not safe with unresolved forward references, while this function may be called
+    # before forward references resolution patch pass. Note also that it is not safe to use
+    # `is` comparison because `erase_typevars` doesn't preserve type identity.
+    return typ == erase_typevars(typ)

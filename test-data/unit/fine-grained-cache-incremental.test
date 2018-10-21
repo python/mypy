@@ -1,0 +1,210 @@
+-- Test cases for building caches for fine-grained mode using incremental
+-- builds.
+--
+-- These tests are run only with the cache.
+--
+-- '# num_build_steps: N' specifies how many regular build steps (without the daemon)
+-- to do before switching to running using the daemon. Default is 1.
+
+
+-- Add file
+-- --------
+
+
+[case testIncrCacheBasic1]
+# num_build_steps: 2
+import a
+[file a.py]
+from b import x
+def f() -> int:
+    return 0
+[file b.py]
+x = 1
+[file a.py.2]
+from b import x
+def f() -> int:
+    return 0 + x
+[file b.py.3]
+x = 'hi'
+[out]
+==
+==
+a.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testIncrCacheBasic2]
+# num_build_steps: 2
+import a
+[file a.py]
+from b import x
+def f() -> int:
+    return 0+x
+[file b.py]
+x = 1
+[file b.py.2]
+from c import x
+[file c.py.2]
+x = 1
+[file c.py.3]
+x = 'hi'
+[out]
+==
+==
+a.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testIncrCacheProtocol1]
+# num_build_steps: 2
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+def f() -> None:
+    def g(x: P) -> None:
+        pass
+    g(b.C())
+[file c.py]
+[file c.py.2]
+# yo
+[file b.py]
+class C:
+    x: int
+[file b.py.3]
+class C:
+    x: str
+-- If we did a *full* reload (because the proto cache failed to load),
+-- nothing would show up as stale
+[stale2 b]
+[rechecked2 a, b]
+[out]
+==
+==
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "int", got "str"
+
+[case testIncrCacheProtocol2]
+# num_build_steps: 3
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+class Q(Protocol):
+    x: int
+def f() -> None:
+    def g(x: P) -> None:
+        pass
+    g(b.C())
+[file c.py]
+[file c.py.2]
+# uh
+[file c.py.3]
+from a import Q
+import b
+def f() -> None:
+    def g(x: Q) -> None:
+        pass
+    g(b.C())
+[file b.py]
+class C:
+    x: int
+[file b.py.4]
+class C:
+    x: str
+-- If we did a *full* reload (because the proto cache failed to load),
+-- nothing would show up as stale
+[stale3 b]
+[rechecked3 a, b, c]
+[out]
+==
+==
+==
+c.py:6: error: Argument 1 to "g" has incompatible type "C"; expected "Q"
+c.py:6: note: Following member(s) of "C" have conflicts:
+c.py:6: note:     x: expected "int", got "str"
+a.py:10: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:10: note: Following member(s) of "C" have conflicts:
+a.py:10: note:     x: expected "int", got "str"
+
+[case testIncrCacheProtocol3]
+# num_build_steps: 2
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+def f() -> None:
+    def g(x: P) -> None:
+        pass
+    g(b.C())
+[file c.py]
+[file c.py.2]
+# yo
+[file b.py]
+class C:
+    x: int
+[file b.py.3]
+class C:
+    x: int
+    y: int
+[file b.py.4]
+class C:
+    x: str
+    y: int
+-- If we did a *full* reload (because the proto cache failed to load),
+-- nothing would show up as stale
+[stale2 b]
+[rechecked2 b]
+[stale3 b]
+[rechecked3 a, b]
+[out]
+==
+==
+==
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "int", got "str"
+
+[case testIncrCacheBustedProtocol]
+[file a.py]
+[file b.py]
+-- This is a heinous hack, but we simulate having a invalid cache by clobbering
+-- the proto deps file with something with hash mismatches.
+[file ../.mypy_cache/3.6/@proto_deps.meta.json.2]
+{"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "00000000000000000000000000000000"}
+[file b.py.2]
+# uh
+-- A full reload shows up as nothing getting rechecked by fine-grained mode.
+-- If we did not do a full reload, b would be stale and checked in fine-grained mode
+[stale]
+[rechecked]
+[out]
+==
+
+[case testInvalidateCachePart]
+# cmd: mypy a1.py a2.py b.py p/__init__.py p/c.py
+[file a1.py]
+import p
+from b import x
+from p.c import C
+
+[file a2.py]
+import p
+from b import x
+from p.c import C
+
+[file b.py]
+x = 10
+
+[file p/__init__.py]
+[file p/c.py]
+class C: pass
+
+[delete ../.mypy_cache/3.6/b.meta.json.2]
+[delete ../.mypy_cache/3.6/p/c.meta.json.2]
+
+[out]
+==

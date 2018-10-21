@@ -1,0 +1,526 @@
+[case testDataclassesBasic]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
+Person('John', 32)
+Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesBasicInheritance]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Mammal:
+    age: int
+
+@dataclass
+class Person(Mammal):
+    name: str
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str) -> __main__.Person'
+Mammal(10)
+Person(32, 'John')
+Person(21, 'Jonh', None)  # E: Too many arguments for "Person"
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDeepInheritance]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+@dataclass
+class B(A):
+    b: int
+
+@dataclass
+class C(B):
+    c: int
+
+@dataclass
+class D(C):
+    d: int
+
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> __main__.A'
+reveal_type(B)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int) -> __main__.B'
+reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int, c: builtins.int) -> __main__.C'
+reveal_type(D)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int, c: builtins.int, d: builtins.int) -> __main__.D'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOverriding]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Mammal:
+    age: int
+
+@dataclass
+class Person(Mammal):
+    name: str
+    age: int
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
+Person('John', 32)
+Person('John', 21, None)  # E: Too many arguments for "Person"
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesFreezing]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Person:
+    name: str
+
+john = Person('John')
+john.name = 'Ben'  # E: Property "name" defined in "Person" is read-only
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesFields]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(default=0, init=False)
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str) -> __main__.Person'
+john = Person('John')
+john.age = 'invalid'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+john.age = 24
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesBadInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None" \
+                                 # N: Possible overload variant: \
+                                 # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ...) -> Any \
+                                 # N:     <2 more non-matching overloads not shown>
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesMultiInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(init=False)
+    friend_names: List[str] = field(init=True)
+    enemy_names: List[str]
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, friend_names: builtins.list[builtins.str], enemy_names: builtins.list[builtins.str]) -> __main__.Person'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesMultiInitDefaults]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(init=False)
+    friend_names: List[str] = field(init=True)
+    enemy_names: List[str]
+    nickname: Optional[str] = None
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, friend_names: builtins.list[builtins.str], enemy_names: builtins.list[builtins.str], nickname: Union[builtins.str, None] =) -> __main__.Person'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDefaults]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = 0
+
+reveal_type(Application)  # E: Revealed type is 'def (name: builtins.str =, rating: builtins.int =) -> __main__.Application'
+app = Application()
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDefaultFactories]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = field(default_factory=int)
+    rating_count: int = field()  # E: Attributes without a default cannot follow attributes with one
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDefaultFactoryTypeChecking]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = field(default_factory=str)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDefaultOrdering]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int  # E: Attributes without a default cannot follow attributes with one
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesClassmethods]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Application:
+    name: str
+
+    @classmethod
+    def parse(cls, request: str) -> "Application":
+        return cls(name='...')
+
+app = Application.parse('')
+
+[builtins fixtures/list.pyi]
+[builtins fixtures/classmethod.pyi]
+
+[case testDataclassesOverloadsAndClassmethods]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import overload, Union
+
+@dataclass
+class A:
+    a: int
+    b: str
+
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x: Union[int, str]) -> Union[int, str]:
+        reveal_type(cls)            # E: Revealed type is 'Type[__main__.A]'
+        reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
+        return x
+
+reveal_type(A.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(A.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testDataclassesClassVars]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import ClassVar
+
+@dataclass
+class Application:
+  name: str
+
+  COUNTER: ClassVar[int] = 0
+
+reveal_type(Application)  # E: Revealed type is 'def (name: builtins.str) -> __main__.Application'
+application = Application("example")
+application.COUNTER = 1  # E: Cannot assign to class variable "COUNTER" via instance
+Application.COUNTER = 1
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassEquality]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Application:
+  name: str
+  rating: int
+
+app1 = Application("example-1", 5)
+app2 = Application("example-2", 5)
+app1 == app2
+app1 != app2
+app1 == None  # E: Unsupported operand types for == ("Application" and "None")
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassCustomEquality]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Application:
+  name: str
+  rating: int
+
+  def __eq__(self, other: 'Application') -> bool:
+     ...
+
+app1 = Application("example-1", 5)
+app2 = Application("example-2", 5)
+app1 == app2
+app1 != app2  # E: Unsupported left operand type for != ("Application")
+app1 == None  # E: Unsupported operand types for == ("Application" and "None")
+
+class SpecializedApplication(Application):
+  ...
+
+app1 == SpecializedApplication("example-3", 5)
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassOrdering]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class Application:
+  name: str
+  rating: int
+
+app1 = Application('example-1', 5)
+app2 = Application('example-2', 5)
+app1 < app2
+app1 > app2
+app1 <= app2
+app1 >= app2
+app1 < 5  # E: Unsupported operand types for < ("Application" and "int")
+app1 > 5  # E: Unsupported operand types for > ("Application" and "int")
+app1 <= 5  # E: Unsupported operand types for <= ("Application" and "int")
+app1 >= 5  # E: Unsupported operand types for >= ("Application" and "int")
+
+class SpecializedApplication(Application):
+  ...
+
+app3 = SpecializedApplication('example-3', 5)
+app1 < app3
+app1 > app3
+app1 <= app3
+app1 >= app3
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassOrderingWithoutEquality]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass(eq=False, order=True)  # E: eq must be True if order is True
+class Application:
+   ...
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassOrderingWithCustomMethods]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class Application:
+  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom __lt__ method when order=True
+    ...
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassDefaultsInheritance]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass(order=True)
+class Application:
+  id: Optional[int]
+  name: str
+
+@dataclass
+class SpecializedApplication(Application):
+  rating: int = 0
+
+reveal_type(SpecializedApplication)  # E: Revealed type is 'def (id: Union[builtins.int, None], name: builtins.str, rating: builtins.int =) -> __main__.SpecializedApplication'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassGenerics]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Generic, List, Optional, TypeVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+  x: T
+  y: T
+  z: List[T]
+
+  def foo(self) -> List[T]:
+    return [self.x, self.y]
+
+  def bar(self) -> T:
+    return self.z[0]
+
+  def problem(self) -> T:
+    return self.z  # E: Incompatible return value type (got "List[T]", expected "T")
+
+reveal_type(A)  # E: Revealed type is 'def [T] (x: T`1, y: T`1, z: builtins.list[T`1]) -> __main__.A[T`1]'
+A(1, 2, ["a", "b"])  # E: Cannot infer type argument 1 of "A"
+a = A(1, 2, [1, 2])
+reveal_type(a)  # E: Revealed type is '__main__.A[builtins.int*]'
+reveal_type(a.x)  # E: Revealed type is 'builtins.int*'
+reveal_type(a.y)  # E: Revealed type is 'builtins.int*'
+reveal_type(a.z)  # E: Revealed type is 'builtins.list[builtins.int*]'
+s: str = a.bar()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassGenericsClassmethod]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+  x: T
+
+  @classmethod
+  def foo(cls) -> None:
+      reveal_type(cls)  # E: Revealed type is 'Type[__main__.A[T`1]]'
+      reveal_type(cls(1))  # E: Revealed type is '__main__.A[builtins.int*]'
+      reveal_type(cls('wooooo'))  # E: Revealed type is '__main__.A[builtins.str*]'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testDataclassesForwardRefs]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+  b: 'B'
+
+@dataclass
+class B:
+  x: int
+
+reveal_type(A)  # E: Revealed type is 'def (b: __main__.B) -> __main__.A'
+A(b=B(42))
+A(b=42)  # E: Argument "b" to "A" has incompatible type "int"; expected "B"
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesInitVars]
+from dataclasses import InitVar, dataclass
+
+@dataclass
+class Application:
+  name: str
+  database_name: InitVar[str]
+
+reveal_type(Application)  # E: Revealed type is 'def (name: builtins.str, database_name: builtins.str) -> __main__.Application'
+app = Application("example", 42)  # E: Argument 2 to "Application" has incompatible type "int"; expected "str"
+app = Application("example", "apps")
+app.name
+app.database_name  # E: "Application" has no attribute "database_name"
+
+
+@dataclass
+class SpecializedApplication(Application):
+  rating: int
+
+reveal_type(SpecializedApplication)  # E: Revealed type is 'def (name: builtins.str, database_name: builtins.str, rating: builtins.int) -> __main__.SpecializedApplication'
+app = SpecializedApplication("example", "apps", "five")  # E: Argument 3 to "SpecializedApplication" has incompatible type "str"; expected "int"
+app = SpecializedApplication("example", "apps", 5)
+app.name
+app.rating
+app.database_name  # E: "SpecializedApplication" has no attribute "database_name"
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassFactory]
+from typing import Type, TypeVar
+from dataclasses import dataclass
+
+T = TypeVar('T', bound='A')
+
+@dataclass
+class A:
+    @classmethod
+    def make(cls: Type[T]) -> T:
+        reveal_type(cls)  # E: Revealed type is 'Type[T`-1]'
+        reveal_type(cls())  # E: Revealed type is 'T`-1'
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testNoComplainFieldNone]
+# flags: --python-version 3.6
+# flags: --no-strict-optional
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Foo:
+    bar: Optional[int] = field(default=None)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoComplainFieldNoneStrict]
+# flags: --python-version 3.6
+# flags: --strict-optional
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Foo:
+    bar: Optional[int] = field(default=None)
+[builtins fixtures/list.pyi]
+[out]

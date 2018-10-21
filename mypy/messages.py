@@ -10,6 +10,7 @@ Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
 
+from collections import OrderedDict
 import re
 import difflib
 
@@ -23,83 +24,93 @@ from mypy.types import (
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
 )
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
 
-NO_RETURN_VALUE_EXPECTED = 'No return value expected'
-MISSING_RETURN_STATEMENT = 'Missing return statement'
-INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
-INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
-RETURN_VALUE_EXPECTED = 'Return value expected'
-NO_RETURN_EXPECTED = 'Return statement in function which does not return'
-INVALID_EXCEPTION = 'Exception must be derived from BaseException'
-INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
+NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final
+MISSING_RETURN_STATEMENT = 'Missing return statement'  # type: Final
+INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'  # type: Final
+INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'  # type: Final
+RETURN_VALUE_EXPECTED = 'Return value expected'  # type: Final
+NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # type: Final
+INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
+INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
-    'The return type of a generator function should be "Generator" or one of its supertypes'
+    'The return type of a generator function should be "Generator"' \
+    ' or one of its supertypes'  # type: Final
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
     'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
-    'supertypes'
+    'supertypes'  # type: Final
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
-    'The return type of a generator function must be None in its third type parameter in Python 2'
-YIELD_VALUE_EXPECTED = 'Yield value expected'
-INCOMPATIBLE_TYPES = 'Incompatible types'
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
-INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
-INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for "__aenter__"'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for "__aexit__"'
-INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
+    'The return type of a generator function must be None in' \
+    ' its third type parameter in Python 2'  # type: Final
+YIELD_VALUE_EXPECTED = 'Yield value expected'  # type: Final
+INCOMPATIBLE_TYPES = 'Incompatible types'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'  # type: Final
+INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'  # type: Final
+INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = \
+    'Incompatible types in "async with" for "__aenter__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = \
+    'Incompatible types in "async with" for "__aexit__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'  # type: Final
 
-INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'
-INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
-INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
-INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
-TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-ITERABLE_EXPECTED = 'Iterable expected'
-ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
-INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
-CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
-CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
-CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
-CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
-CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
+INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'  # type: Final
+INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'  # type: Final
+INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = \
+    'Incompatible types in string interpolation'  # type: Final
+MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'  # type: Final
+INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'  # type: Final
+TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
+INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
+CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
+CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'  # type: Final
+CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
+CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
+CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
 INCONSISTENT_ABSTRACT_OVERLOAD = \
-    'Overloaded method has both abstract and non-abstract variants'
+    'Overloaded method has both abstract and non-abstract variants'  # type: Final
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
-    'Read-only property cannot override read-write property'
-FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
-RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
-FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
-INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
-FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"
-ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"
-RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
-ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
+    'Read-only property cannot override read-write property'  # type: Final
+FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'  # type: Final
+RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = \
+    "Cannot use a contravariant type variable as return type"  # type: Final
+FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = \
+    "Cannot use a covariant type variable as a parameter"  # type: Final
+INCOMPATIBLE_IMPORT_OF = "Incompatible import of"  # type: Final
+FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"  # type: Final
+ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"  # type: Final
+RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"  # type: Final
+ARGUMENT_TYPE_EXPECTED = \
+    "Function is missing a type annotation for one or more arguments"  # type: Final
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
-    'Keyword argument only valid with "str" key type in call to "dict"'
-ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
+    'Keyword argument only valid with "str" key type in call to "dict"'  # type: Final
+ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'  # type: Final
 INVALID_TYPEDDICT_ARGS = \
-    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
+    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'  # type: Final
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
-    'Expected TypedDict key to be string literal'
-MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
-NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
-DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
-GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
-CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
-CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
-BARE_GENERIC = 'Missing type parameters for generic type'
-IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
-INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
-UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'
+    'Expected TypedDict key to be string literal'  # type: Final
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # type: Final
+DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
+    'Access to generic instance variables via class is ambiguous'  # type: Final
+CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'  # type: Final
+CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'  # type: Final
+BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
+IMPLICIT_GENERIC_ANY_BUILTIN = \
+    'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
+INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
+UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -108,7 +119,7 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_NAMED_OPT: "DefaultNamedArg",
     ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
-}
+}  # type: Final
 
 
 class MessageBuilder:
@@ -149,6 +160,11 @@ class MessageBuilder:
         new.disable_count = self.disable_count
         new.disable_type_names = self.disable_type_names
         return new
+
+    def clean_copy(self) -> 'MessageBuilder':
+        errors = self.errors.copy()
+        errors.error_info_map = OrderedDict()
+        return MessageBuilder(errors, self.modules)
 
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""
@@ -238,8 +254,8 @@ class MessageBuilder:
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = self.format_bare(itype.args[0])
                 return 'Tuple[{}, ...]'.format(item_type_str)
-            elif itype.type.fullname() in reverse_type_aliases:
-                alias = reverse_type_aliases[itype.type.fullname()]
+            elif itype.type.fullname() in reverse_builtin_aliases:
+                alias = reverse_builtin_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
                 items = [self.format_bare(arg) for arg in itype.args]
                 return '{}[{}]'.format(alias, ', '.join(items))
@@ -450,19 +466,30 @@ class MessageBuilder:
                 self.fail('{} not callable'.format(self.format(original_type)), context)
         else:
             # The non-special case: a missing ordinary attribute.
+            extra = ''
+            if member == '__iter__':
+                extra = ' (not iterable)'
+            elif member == '__aiter__':
+                extra = ' (not async iterable)'
             if not self.disable_type_names:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
+                    if member == '__aiter__' and matches == ['__iter__']:
+                        matches = []  # Avoid misleading suggestion
+                    if member == '__div__' and matches == ['__truediv__']:
+                        # TODO: Handle differences in division between Python 2 and 3 more cleanly
+                        matches = []
                     if matches:
-                        self.fail('{} has no attribute "{}"; maybe {}?'.format(
-                            self.format(original_type), member, pretty_or(matches)), context)
+                        self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
+                            self.format(original_type), member, pretty_or(matches), extra),
+                            context)
                         failed = True
                 if not failed:
-                    self.fail('{} has no attribute "{}"'.format(self.format(original_type),
-                                                                member), context)
+                    self.fail('{} has no attribute "{}"{}'.format(self.format(original_type),
+                                                                  member, extra), context)
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
@@ -470,8 +497,8 @@ class MessageBuilder:
                 if typ_format == '"object"' and \
                         any(type(item) == NoneTyp for item in original_type.items):
                     typ_format = '"None"'
-                self.fail('Item {} of {} has no attribute "{}"'.format(
-                    typ_format, self.format(original_type), member), context)
+                self.fail('Item {} of {} has no attribute "{}"{}'.format(
+                    typ_format, self.format(original_type), member, extra), context)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -639,7 +666,7 @@ class MessageBuilder:
             # For function calls with keyword arguments, display the argument name rather than the
             # number.
             arg_label = str(n)
-            if isinstance(context, CallExpr):
+            if isinstance(context, CallExpr) and len(context.arg_names) >= n:
                 arg_name = context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
@@ -696,7 +723,10 @@ class MessageBuilder:
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
-            self.note('{} defined here'.format(callable_name(callee)), callee.definition,
+            fname = callable_name(callee)
+            if not fname:  # an alias to function with a different name
+                fname = 'Called function'
+            self.note('{} defined here'.format(fname), callee.definition,
                       file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
@@ -735,14 +765,29 @@ class MessageBuilder:
             s = " '{}'".format(typ.source)
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
-    def no_variant_matches_arguments(self, overload: Overloaded, arg_types: List[Type],
+    def no_variant_matches_arguments(self,
+                                     plausible_targets: List[CallableType],
+                                     overload: Overloaded,
+                                     arg_types: List[Type],
                                      context: Context) -> None:
         name = callable_name(overload)
         if name:
-            self.fail('No overload variant of {} matches argument types {}'
-                      .format(name, arg_types), context)
+            name_str = ' of {}'.format(name)
         else:
-            self.fail('No overload variant matches argument types {}'.format(arg_types), context)
+            name_str = ''
+        arg_types_str = ', '.join(self.format(arg) for arg in arg_types)
+        num_args = len(arg_types)
+        if num_args == 0:
+            self.fail('All overload variants{} require at least one argument'.format(name_str),
+                      context)
+        elif num_args == 1:
+            self.fail('No overload variant{} matches argument type {}'
+                      .format(name_str, arg_types_str), context)
+        else:
+            self.fail('No overload variant{} matches argument types {}'
+                      .format(name_str, arg_types_str), context)
+
+        self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -764,6 +809,16 @@ class MessageBuilder:
                                          context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),
                   context)
+
+    def overload_signature_incompatible_with_supertype(
+            self, name: str, name_in_super: str, supertype: str,
+            overload: Overloaded, context: Context) -> None:
+        target = self.override_target(name, name_in_super, supertype)
+        self.fail('Signature of "{}" incompatible with {}'.format(
+            name, target), context)
+
+        note_template = 'Overload variants must be defined in the same order as they are in "{}"'
+        self.note(note_template.format(supertype), context)
 
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
@@ -805,6 +860,12 @@ class MessageBuilder:
         else:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
+
+    def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
+        kind = (' to Callable' if isinstance(item, CallableType) else
+                ' to Tuple' if isinstance(item, TupleType) else
+                ' to Union' if isinstance(item, UnionType) else '')
+        self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
@@ -903,6 +964,27 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
+    def final_cant_override_writable(self, name: str, ctx: Context) -> None:
+        self.fail('Cannot override writable attribute "{}" with a final one'.format(name), ctx)
+
+    def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
+        self.fail('Cannot override final attribute "{}"'
+                  ' (previously declared in base class "{}")'.format(name, base_name), ctx)
+
+    def cant_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
+        """Warn about a prohibited assignment to a final attribute.
+
+        Pass `attr_assign=True` if the assignment assigns to an attribute.
+        """
+        kind = "attribute" if attr_assign else "name"
+        self.fail('Cannot assign to final {} "{}"'.format(kind, name), ctx)
+
+    def protocol_members_cant_be_final(self, ctx: Context) -> None:
+        self.fail("Protocol member cannot be final", ctx)
+
+    def final_without_value(self, ctx: Context) -> None:
+        self.fail("Final name must be initialized with a value", ctx)
+
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
@@ -918,18 +1000,48 @@ class MessageBuilder:
                                                     self.format(typ)),
                   context)
 
-    def overloaded_signatures_overlap(self, index1: int, index2: int,
-                                      context: Context) -> None:
+    def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
+        self.fail(
+            'Overload does not consistently use the "@{}" '.format(decorator)
+            + 'decorator on all function signatures.',
+            context)
+
+    def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
-    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
-        self.fail('Overloaded function implementation does not accept all possible arguments '
-                  'of signature {}'.format(index1), context)
+    def overloaded_signatures_partial_overlap(self, index1: int, index2: int,
+                                              context: Context) -> None:
+        self.fail('Overloaded function signatures {} and {} '.format(index1, index2)
+                  + 'are partially overlapping: the two signatures may return '
+                  + 'incompatible types given certain calls', context)
 
-    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+    def overloaded_signature_will_never_match(self, index1: int, index2: int,
+                                              context: Context) -> None:
+        self.fail(
+            'Overloaded function signature {index2} will never be matched: '
+            'signature {index1}\'s parameter type(s) are the same or broader'.format(
+                index1=index1,
+                index2=index2),
+            context)
+
+    def overloaded_signatures_typevar_specific(self, index: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot satisfy signature {} '.format(index) +
+                  'due to inconsistencies in how they use type variables', context)
+
+    def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
+        self.fail('Overloaded function implementation does not accept all possible arguments '
+                  'of signature {}'.format(index), context)
+
+    def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot produce return type '
-                  'of signature {}'.format(index1), context)
+                  'of signature {}'.format(index), context)
+
+    def warn_both_operands_are_from_unions(self, context: Context) -> None:
+        self.note('Both left and right operands are unions', context)
+
+    def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
+        self.note('{} operand is of type {}'.format(side, self.format(original)), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
@@ -958,8 +1070,22 @@ class MessageBuilder:
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
 
+    def invalid_signature_for_special_method(
+            self, func_type: Type, context: Context, method_name: str) -> None:
+        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
+
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
+
+    def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
+        # To ensure that the output is predictable on Python < 3.6,
+        # use an ordered dictionary sorted by variable name
+        sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
+        self.fail("Revealed local types are:", context)
+        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
+        # for indentation
+        for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
+            self.fail(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
@@ -1176,9 +1302,45 @@ class MessageBuilder:
         for item in tp.items()[:max_items]:
             self.note('@overload', context, offset=2 * offset)
             self.note(self.pretty_callable(item), context, offset=2 * offset)
-        if len(tp.items()) > max_items:
-            self.note('<{} more overload(s) not shown>'.format(len(tp.items()) - max_items),
-                      context, offset=2 * offset)
+        left = len(tp.items()) - max_items
+        if left > 0:
+            msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
+            self.note(msg, context, offset=2 * offset)
+
+    def pretty_overload_matches(self,
+                                targets: List[CallableType],
+                                func: Overloaded,
+                                context: Context,
+                                offset: int,
+                                max_items: int) -> None:
+        if not targets:
+            targets = func.items()
+
+        shown = min(max_items, len(targets))
+        max_matching = len(targets)
+        max_available = len(func.items())
+
+        # If there are 3 matches but max_items == 2, we might as well show
+        # all three items instead of having the 3rd item be an error message.
+        if shown + 1 == max_matching:
+            shown = max_matching
+
+        self.note('Possible overload variant{}:'.format(plural_s(shown)), context)
+        for item in targets[:shown]:
+            self.note(self.pretty_callable(item), context, offset=2 * offset)
+
+        assert shown <= max_matching <= max_available
+        if shown < max_matching <= max_available:
+            left = max_matching - shown
+            msg = '<{} more similar overload{} not shown, out of {} total overloads>'.format(
+                left, plural_s(left), max_available)
+            self.note(msg, context, offset=2 * offset)
+        elif shown == max_matching < max_available:
+            left = max_available - shown
+            msg = '<{} more non-matching overload{} not shown>'.format(left, plural_s(left))
+            self.note(msg, context, offset=2 * offset)
+        else:
+            assert shown == max_matching == max_available
 
     def print_more(self, conflicts: Sequence[Any], context: Context,
                    offset: int, max_items: int) -> None:
@@ -1221,6 +1383,13 @@ class MessageBuilder:
                     s = ', ' + s
                 s = definition_args[0] + s
             s = '{}({})'.format(tp.definition.name(), s)
+        elif tp.name:
+            first_arg = tp.def_extras.get('first_arg')
+            if first_arg:
+                if s:
+                    s = ', ' + s
+                s = first_arg + s
+            s = '{}({})'.format(tp.name.split()[0], s)  # skip "of Class" part
         else:
             s = '({})'.format(s)
 
@@ -1336,8 +1505,9 @@ def strip_quotes(s: str) -> str:
     return s
 
 
-def plural_s(s: Sequence[Any]) -> str:
-    if len(s) > 1:
+def plural_s(s: Union[int, Sequence[Any]]) -> str:
+    count = s if isinstance(s, int) else len(s)
+    if count > 1:
         return 's'
     else:
         return ''
@@ -1400,7 +1570,7 @@ def temp_message_builder() -> MessageBuilder:
 # For hard-coding suggested missing member alternatives.
 COMMON_MISTAKES = {
     'add': ('append', 'extend'),
-}  # type: Dict[str, Sequence[str]]
+}  # type: Final[Dict[str, Sequence[str]]]
 
 
 def best_matches(current: str, options: Iterable[str]) -> List[str]:

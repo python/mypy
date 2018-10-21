@@ -5,6 +5,7 @@ PREFIX = os.path.dirname(os.path.dirname(this_file_dir))
 
 # Location of test data files such as test case descriptions.
 test_data_prefix = os.path.join(PREFIX, 'test-data', 'unit')
+package_path = os.path.join(PREFIX, 'test-data', 'packages')
 
 assert os.path.isdir(test_data_prefix), \
     'Test data prefix ({}) not set correctly'.format(test_data_prefix)

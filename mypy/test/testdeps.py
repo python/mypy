@@ -8,15 +8,16 @@ if MYPY:
 from collections import defaultdict
 
 from mypy import build, defaults
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
 from mypy.options import Options
 from mypy.server.deps import get_dependencies
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.types import Type
+from mypy.typestate import TypeState
 
 
 # Only dependencies in these modules are dumped
@@ -32,8 +33,6 @@ class GetDependenciesSuite(DataSuite):
         'deps-statements.test',
         'deps-classes.test',
     ]
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
@@ -42,7 +41,13 @@ class GetDependenciesSuite(DataSuite):
             python_version = defaults.PYTHON2_VERSION
         else:
             python_version = defaults.PYTHON3_VERSION
-        messages, files, type_map = self.build(src, python_version)
+        options = parse_options(src, testcase, incremental_step=1)
+        options.use_builtins_fixtures = True
+        options.show_traceback = True
+        options.cache_dir = os.devnull
+        options.python_version = python_version
+        options.export_types = True
+        messages, files, type_map = self.build(src, options)
         a = messages
         if files is None or type_map is None:
             if not a:
@@ -54,9 +59,11 @@ class GetDependenciesSuite(DataSuite):
                                                                            'typing',
                                                                            'mypy_extensions',
                                                                            'enum'):
-                    new_deps = get_dependencies(files[module], type_map, python_version)
+                    new_deps = get_dependencies(files[module], type_map, python_version, options)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
+
+            TypeState.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
                 if source.startswith('<enum.'):
@@ -74,14 +81,9 @@ class GetDependenciesSuite(DataSuite):
 
     def build(self,
               source: str,
-              python_version: Tuple[int, int]) -> Tuple[List[str],
-                                                        Optional[Dict[str, MypyFile]],
-                                                        Optional[Dict[Expression, Type]]]:
-        options = Options()
-        options.use_builtins_fixtures = True
-        options.show_traceback = True
-        options.cache_dir = os.devnull
-        options.python_version = python_version
+              options: Options) -> Tuple[List[str],
+                                         Optional[Dict[str, MypyFile]],
+                                         Optional[Dict[Expression, Type]]]:
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

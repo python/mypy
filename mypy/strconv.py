@@ -3,7 +3,7 @@
 import re
 import os
 
-from typing import Any, List, Tuple, Optional, Union, Sequence, Dict
+from typing import Any, List, Tuple, Optional, Union, Sequence
 
 from mypy.util import short_type, IdMapper
 import mypy.nodes
@@ -146,6 +146,10 @@ class StrConv(NodeVisitor[str]):
             a.insert(0, o.type)
         if o.impl:
             a.insert(0, o.impl)
+        if o.is_static:
+            a.insert(-1, 'Static')
+        if o.is_class:
+            a.insert(-1, 'Class')
         return self.dump(a, o)
 
     def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> str:
@@ -340,6 +344,8 @@ class StrConv(NodeVisitor[str]):
 
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> str:
         pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
+        if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
+            pretty += ' = {}'.format(o.node.final_value)
         return short_type(o) + '(' + pretty + ')'
 
     def pretty_name(self, name: str, kind: Optional[int], fullname: Optional[str],
@@ -406,8 +412,12 @@ class StrConv(NodeVisitor[str]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> str:
         return self.dump([o.expr, o.type], o)
 
-    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> str:
-        return self.dump([o.expr], o)
+    def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> str:
+        if o.kind == mypy.nodes.REVEAL_TYPE:
+            return self.dump([o.expr], o)
+        else:
+            # REVEAL_LOCALS
+            return self.dump([o.local_nodes], o)
 
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> str:
         return self.dump([o.op, o.expr], o)
@@ -430,7 +440,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.base, o.index], o)
 
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> str:
-        return self.dump([o.name], o)
+        return self.dump([o.name, o.call], o)
 
     def visit_type_application(self, o: 'mypy.nodes.TypeApplication') -> str:
         return self.dump([o.expr, ('Types', o.types)], o)

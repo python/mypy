@@ -3,7 +3,7 @@ from typing import Sequence
 from mypy.types import (
     Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
-    TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
+    Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
 
 
@@ -98,7 +98,8 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return is_same_types(left.items, self.right.items)
+            return (is_same_type(left.fallback, self.right.fallback)
+                    and is_same_types(left.items, self.right.items))
         else:
             return False
 

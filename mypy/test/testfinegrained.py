@@ -5,28 +5,33 @@ incremental steps. We verify that each step produces the expected output.
 
 See the comment at the top of test-data/unit/fine-grained.test for more
 information.
+
+N.B.: Unlike most of the other test suites, testfinegrained does not
+rely on an alt_lib_path for finding source files. This means that they
+can test interactions with the lib_path that is built implicitly based
+on specified sources.
 """
 
 import os
 import re
 
-from typing import List, Set, Tuple, Optional, cast
+from typing import List, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.server.update import FineGrainedBuildManager
 from mypy.test.config import test_temp_dir
 from mypy.test.data import (
-    DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, UpdateFile
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
-from mypy.main import expand_dir
+from mypy.main import parse_config_file
+from mypy.find_sources import create_source_list
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -41,8 +46,6 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
     ]
-    base_path = test_temp_dir
-    optional_out = True
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
     use_cache = False
@@ -52,14 +55,14 @@ class FineGrainedSuite(DataSuite):
     # as skipped, not just elided.
     def should_skip(self, testcase: DataDrivenTestCase) -> bool:
         if self.use_cache:
-            if testcase.name.endswith("-skip-cache"):
+            if testcase.only_when == '-only_when_nocache':
                 return True
             # TODO: In caching mode we currently don't well support
             # starting from cached states with errors in them.
             if testcase.output and testcase.output[0] != '==':
                 return True
         else:
-            if testcase.name.endswith("-skip-nocache"):
+            if testcase.only_when == '-only_when_cache':
                 return True
 
         return False
@@ -74,13 +77,15 @@ class FineGrainedSuite(DataSuite):
         with open(main_path, 'w') as f:
             f.write(main_src)
 
-        server = Server(self.get_options(main_src, testcase, build_cache=False),
-                        alt_lib_path=test_temp_dir)
+        options = self.get_options(main_src, testcase, build_cache=False)
+        build_options = self.get_options(main_src, testcase, build_cache=True)
+        server = Server(options)
 
+        num_regular_incremental_steps = self.get_build_steps(main_src)
         step = 1
-        sources = self.parse_sources(main_src, step)
-        if self.use_cache:
-            messages = self.build(self.get_options(main_src, testcase, build_cache=True), sources)
+        sources = self.parse_sources(main_src, step, options)
+        if step <= num_regular_incremental_steps:
+            messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)
 
@@ -104,8 +109,12 @@ class FineGrainedSuite(DataSuite):
                 else:
                     # Delete file
                     os.remove(op.path)
-            sources = self.parse_sources(main_src, step)
-            new_messages = self.run_check(server, sources)
+            sources = self.parse_sources(main_src, step, options)
+
+            if step <= num_regular_incremental_steps:
+                new_messages = self.build(build_options, sources)
+            else:
+                new_messages = self.run_check(server, sources)
 
             updated = []  # type: List[str]
             changed = []  # type: List[str]
@@ -162,6 +171,11 @@ class FineGrainedSuite(DataSuite):
         if options.follow_imports == 'normal':
             options.follow_imports = 'error'
 
+        for name, _ in testcase.files:
+            if 'mypy.ini' in name:
+                parse_config_file(options, name)
+                break
+
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
@@ -174,8 +188,7 @@ class FineGrainedSuite(DataSuite):
               sources: List[BuildSource]) -> List[str]:
         try:
             result = build.build(sources=sources,
-                                 options=options,
-                                 alt_lib_path=test_temp_dir)
+                                 options=options)
         except CompileError as e:
             return e.messages
         return result.errors
@@ -189,8 +202,18 @@ class FineGrainedSuite(DataSuite):
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
 
+    def get_build_steps(self, program_text: str) -> int:
+        """Get the number of regular incremental steps to run, from the test source"""
+        if not self.use_cache:
+            return 0
+        m = re.search('# num_build_steps: ([0-9]+)$', program_text, flags=re.MULTILINE)
+        if m is not None:
+            return int(m.group(1))
+        return 1
+
     def parse_sources(self, program_text: str,
-                      incremental_step: int) -> List[BuildSource]:
+                      incremental_step: int,
+                      options: Options) -> List[BuildSource]:
         """Return target BuildSources for a test case.
 
         Normally, the unit tests will check all files included in the test
@@ -210,7 +233,7 @@ class FineGrainedSuite(DataSuite):
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
         regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
         alt_m = re.search(regex, program_text, flags=re.MULTILINE)
-        if alt_m is not None and incremental_step > 1:
+        if alt_m is not None:
             # Optionally return a different command if in a later step
             # of incremental mode, otherwise default to reusing the
             # original cmd.
@@ -218,18 +241,14 @@ class FineGrainedSuite(DataSuite):
 
         if m:
             # The test case wants to use a non-default set of files.
-            paths = m.group(1).strip().split()
-            result = []
-            for path in paths:
-                path = os.path.join(test_temp_dir, path)
-                module = module_from_path(path)
-                if module == 'main':
-                    module = '__main__'
-                result.append(BuildSource(path, module, None))
-            return result
+            paths = [os.path.join(test_temp_dir, path) for path in m.group(1).strip().split()]
+            return create_source_list(paths, options)
         else:
             base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
-            return [base] + expand_dir(test_temp_dir)
+            # Use expand_dir instead of create_source_list to avoid complaints
+            # when there aren't any .py files in an increment
+            return [base] + create_source_list([test_temp_dir], options,
+                                               allow_empty_dir=True)
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

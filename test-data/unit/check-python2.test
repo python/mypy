@@ -13,14 +13,6 @@ s = b'foo'
 from typing import TypeVar
 T = TypeVar(u'T')
 
-[case testNamedTupleUnicode]
-from typing import NamedTuple
-from collections import namedtuple
-N = NamedTuple(u'N', [(u'x', int)])
-n = namedtuple(u'n', u'x y')
-
-[builtins fixtures/dict.pyi]
-
 [case testPrintStatement]
 print ''() # E: "str" not callable
 print 1, 1() # E: "int" not callable
@@ -332,3 +324,16 @@ class B(A):
     def g(self): # type: () -> None
         super(B, self).f()
         super().f() # E: Too few arguments for "super"
+
+[case testPartialTypeComments_python2]
+def foo(
+    a,  # type: str
+    b,
+    args=None,
+):
+    # type: (...) -> None
+    pass
+
+[case testNoneHasNoBoolInPython2]
+none = None
+b = none.__bool__() # E: "None" has no attribute "__bool__"

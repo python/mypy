@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Union
-from mypy.types import TypeVarDef, TypeVarId
+from mypy.types import TypeVarDef
 from mypy.nodes import TypeVarExpr, SymbolTableNode
 
 

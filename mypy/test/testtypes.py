@@ -11,7 +11,7 @@ from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneTyp, Overloaded,
     TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny
 )
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 
@@ -150,11 +150,19 @@ class TypeOpsSuite(Suite):
 
     def test_erase_with_function_type(self) -> None:
         self.assert_erase(self.fx.callable(self.fx.a, self.fx.b),
-                          self.fx.callable_type(self.fx.nonet))
+                          CallableType(arg_types=[self.fx.anyt, self.fx.anyt],
+                                       arg_kinds=[ARG_STAR, ARG_STAR2],
+                                       arg_names=[None, None],
+                                       ret_type=self.fx.anyt,
+                                       fallback=self.fx.function))
 
     def test_erase_with_type_object(self) -> None:
         self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b),
-                          self.fx.callable_type(self.fx.nonet))
+                          CallableType(arg_types=[self.fx.anyt, self.fx.anyt],
+                                       arg_kinds=[ARG_STAR, ARG_STAR2],
+                                       arg_names=[None, None],
+                                       ret_type=self.fx.anyt,
+                                       fallback=self.fx.type_type))
 
     def test_erase_with_type_type(self) -> None:
         self.assert_erase(self.fx.type_a, self.fx.type_a)

@@ -4,6 +4,7 @@ from typing import AbstractSet, Dict, Set, List
 
 from mypy.test.helpers import assert_equal, Suite
 from mypy.build import BuildManager, State, BuildSourceSet
+from mypy.modulefinder import SearchPaths
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 from mypy.version import __version__
 from mypy.options import Options
@@ -39,10 +40,11 @@ class GraphSuite(Suite):
     def _make_manager(self) -> BuildManager:
         errors = Errors()
         options = Options()
-        fscache = FileSystemCache(options.python_version)
+        fscache = FileSystemCache()
+        search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(
             data_dir='',
-            lib_path=[],
+            search_paths=search_paths,
             ignore_prefix='',
             source_set=BuildSourceSet([]),
             reports=Reports('', {}),

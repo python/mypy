@@ -2,23 +2,22 @@
 
 import os
 import re
-import shutil
+import sys
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
-from mypy import build, defaults
-from mypy.build import BuildSource, Graph
-from mypy.test.config import test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy import build
+from mypy.build import Graph
+from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
+from mypy.test.config import test_temp_dir, test_data_prefix
+from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
     copy_and_fudge_mtime
 )
 from mypy.errors import CompileError
-from mypy.options import Options
 
-from mypy import experiments
 
 # List of files that contain test case descriptions.
 typecheck_files = [
@@ -76,13 +75,13 @@ typecheck_files = [
     'check-custom-plugin.test',
     'check-default-plugin.test',
     'check-attr.test',
+    'check-dataclasses.test',
+    'check-final.test',
 ]
 
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()
@@ -92,7 +91,6 @@ class TypeCheckSuite(DataSuite):
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
             # We briefly sleep to make sure file timestamps are distinct.
-            self.clear_cache()
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
@@ -102,18 +100,17 @@ class TypeCheckSuite(DataSuite):
                         raise ValueError(
                             'Output file {} exists though test case only has {} runs'.format(
                                 file, num_steps))
+            steps = testcase.find_steps()
             for step in range(1, num_steps + 1):
-                self.run_case_once(testcase, step)
+                idx = step - 2
+                ops = steps[idx] if idx < len(steps) and idx >= 0 else []
+                self.run_case_once(testcase, ops, step)
         else:
             self.run_case_once(testcase)
 
-    def clear_cache(self) -> None:
-        dn = defaults.CACHE_DIR
-
-        if os.path.exists(dn):
-            shutil.rmtree(dn)
-
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase,
+                      operations: List[FileOperation] = [],
+                      incremental_step: int = 0) -> None:
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
@@ -126,16 +123,15 @@ class TypeCheckSuite(DataSuite):
                     break
         elif incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
-            for dn, dirs, files in os.walk(os.curdir):
-                for file in files:
-                    if file.endswith('.' + str(incremental_step)):
-                        full = os.path.join(dn, file)
-                        target = full[:-2]
-                        copy_and_fudge_mtime(full, target)
-            # Delete files scheduled to be deleted in [delete <path>.num] sections.
-            for path in testcase.deleted_paths.get(incremental_step, set()):
-                # Use retries to work around potential flakiness on Windows (AppVeyor).
-                retry_on_error(lambda: os.remove(path))
+            for op in operations:
+                if isinstance(op, UpdateFile):
+                    # Modify/create file
+                    copy_and_fudge_mtime(op.source_path, op.target_path)
+                else:
+                    # Delete file
+                    # Use retries to work around potential flakiness on Windows (AppVeyor).
+                    path = op.path
+                    retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
@@ -143,14 +139,23 @@ class TypeCheckSuite(DataSuite):
         options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if incremental_step:
+        if incremental_step and options.incremental:
+            # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
+        else:
+            options.incremental = False
+            # Don't waste time writing cache unless we are specifically looking for it
+            if not testcase.writescache:
+                options.cache_dir = os.devnull
 
         sources = []
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
+
+        plugin_dir = os.path.join(test_data_prefix, 'plugins')
+        sys.path.insert(0, plugin_dir)
 
         res = None
         try:
@@ -160,6 +165,10 @@ class TypeCheckSuite(DataSuite):
             a = res.errors
         except CompileError as e:
             a = e.messages
+        finally:
+            assert sys.path[0] == plugin_dir
+            del sys.path[0]
+
         a = normalize_error_messages(a)
 
         # Make sure error messages match
@@ -177,12 +186,13 @@ class TypeCheckSuite(DataSuite):
         else:
             raise AssertionError()
 
-        if output != a and self.update_data:
+        if output != a and testcase.config.getoption('--update-data', False):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
-            self.verify_cache(module_data, res.errors, res.manager, res.graph)
+            if options.cache_dir != os.devnull:
+                self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
@@ -261,13 +271,14 @@ class TypeCheckSuite(DataSuite):
         Return a list of tuples (module name, file name, program text).
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
-        alt_m = re.search(regex, program_text, flags=re.MULTILINE)
-        if alt_m is not None and incremental_step > 1:
-            # Optionally return a different command if in a later step
-            # of incremental mode, otherwise default to reusing the
-            # original cmd.
-            m = alt_m
+        if incremental_step > 1:
+            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
+            if alt_m is not None:
+                # Optionally return a different command if in a later step
+                # of incremental mode, otherwise default to reusing the
+                # original cmd.
+                m = alt_m
 
         if m:
             # The test case wants to use a non-default main
@@ -275,8 +286,10 @@ class TypeCheckSuite(DataSuite):
             # analyze.
             module_names = m.group(1)
             out = []
+            search_paths = SearchPaths((test_temp_dir,), (), (), ())
+            cache = FindModuleCache(search_paths)
             for module_name in module_names.split(' '):
-                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
+                path = cache.find_module(module_name)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

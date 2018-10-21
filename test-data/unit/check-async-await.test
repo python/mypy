@@ -12,7 +12,7 @@ async def f() -> int:
 
 async def f() -> int:
     return 0
-reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+reveal_type(f())  # E: Revealed type is 'typing.Coroutine[Any, Any, builtins.int]'
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -163,8 +163,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:4: error: AsyncIterable expected
-main:4: error: "List[int]" has no attribute "__aiter__"
+main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
 
 [case testAsyncForTypeComments]
 
@@ -184,7 +183,7 @@ async def f() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehension]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
 
 T = TypeVar('T')
@@ -216,15 +215,15 @@ async def dictcomp(obj: Iterable[Tuple[int, str]]):
 
 async def generatorexp(obj: Iterable[int]):
     lst = (i async for i in asyncify(obj))
-    reveal_type(lst)  # E: Revealed type is 'typing.AsyncIterator[builtins.int*]'
+    reveal_type(lst)  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
     lst2 = (i async for i in asyncify(obj) for i in obj)
-    reveal_type(lst2)  # E: Revealed type is 'typing.AsyncIterator[builtins.int*]'
+    reveal_type(lst2)  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehensionErrors]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
 
 T = TypeVar('T')
@@ -247,14 +246,10 @@ async def wrong_iterable(obj: Iterable[int]):
     {i: i for i in asyncify(obj)}
 
 [out]
-main:18: error: AsyncIterable expected
-main:18: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"?
-main:19: error: Iterable expected
-main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"?
-main:20: error: AsyncIterable expected
-main:20: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"?
-main:21: error: Iterable expected
-main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"?
+main:18: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
+main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
+main:20: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
+main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -340,7 +335,7 @@ async def f() -> None:
     async with C() as y, C() as z:  # type: str, int  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         pass
 
-    async with C() as a:  # type: int, int  # E: Invalid tuple literal type
+    async with C() as a:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -383,7 +378,7 @@ def g() -> Generator[Any, None, str]:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:6: error: "yield from" can't be applied to "Awaitable[str]"
+main:6: error: "yield from" can't be applied to "Coroutine[Any, Any, str]"
 
 [case testAwaitableSubclass]
 
@@ -446,8 +441,8 @@ async def g() -> AsyncGenerator[int, None]:
     yield 'not an int'  # E: Incompatible types in "yield" (actual type "str", expected type "int")
     # return without a value is fine
     return
-reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, builtins.None]'
-reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, builtins.None]'
+reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, None]'
+reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, None]'
 
 async def h() -> None:
     async for item in g():
@@ -486,7 +481,7 @@ async def genfunc() -> AsyncGenerator[int, None]:
 async def user() -> None:
     gen = genfunc()
 
-    reveal_type(gen.__aiter__())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, builtins.None]'
+    reveal_type(gen.__aiter__())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
 
     reveal_type(await gen.__anext__())  # E: Revealed type is 'builtins.int*'
 
@@ -494,7 +489,7 @@ async def user() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAsend]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> None:
@@ -515,7 +510,7 @@ async def h() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAthrow]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[str, int]:
@@ -534,11 +529,11 @@ async def h() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoSyncIteration]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
-    for i in (1, 2, 3):
+    for i in [1, 2, 3]:
         yield i
 
 def h() -> None:
@@ -549,11 +544,10 @@ def h() -> None:
 [typing fixtures/typing-full.pyi]
 
 [out]
-main:9: error: Iterable expected
-main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"?
+main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 
 [case testAsyncGeneratorNoYieldFrom]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> AsyncGenerator[int, None]:
@@ -566,7 +560,7 @@ async def gen() -> AsyncGenerator[int, None]:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoReturnWithValue]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def return_int() -> AsyncGenerator[int, None]:
@@ -636,9 +630,9 @@ def plain_host_generator() -> Generator[str, None, None]:
     yield 'a'
     x = 0
     x = yield from plain_generator()
-    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Awaitable[int]"
+    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Coroutine[Any, Any, int]"
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Awaitable[int]]"
+    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Coroutine[Any, Any, int]]"
     x = yield from other_iterator()
     x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 
@@ -672,6 +666,36 @@ async def decorated_host_coroutine() -> None:
     x = await other_iterator()  # E: Incompatible types in "await" (actual type "It", expected type "Awaitable[Any]")
     x = await other_coroutine()
 
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testAsyncGenDisallowUntyped]
+# flags: --disallow-untyped-defs
+# These should not crash
+from typing import AsyncGenerator, Any
+
+async def f() -> AsyncGenerator[int, None]:
+    yield 0
+
+async def g() -> AsyncGenerator[Any, None]:
+    yield 0
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testAsyncGenDisallowUntypedTriggers]
+# flags: --disallow-untyped-defs
+from typing import AsyncGenerator, Any
+
+async def f() -> AsyncGenerator[Any, Any]:
+    yield None
+
+async def h() -> Any:
+    yield 0
+
+async def g():  # E: Function is missing a type annotation
+    yield 0
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]

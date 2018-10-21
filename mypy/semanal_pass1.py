@@ -3,7 +3,7 @@
 This sets up externally visible names defined in a module but doesn't
 follow imports and mostly ignores local definitions.  It helps enable
 (some) cyclic references between modules, such as module 'a' that
-imports module 'b' and used names defined in b *and* vice versa.  The
+imports module 'b' and used names defined in 'b' *and* vice versa.  The
 first pass can be performed before dependent modules have been
 processed.
 
@@ -13,7 +13,7 @@ in later passes. Examples of these include TypeVar and NamedTuple
 definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
-This pass also infers the reachability of certain if staments, such as
+This pass also infers the reachability of certain if statements, such as
 those with platform checks.
 """
 
@@ -26,19 +26,19 @@ from mypy.nodes import (
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
     MODULE_REF, implicit_module_attrs
 )
-from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
+from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
-from mypy.util import correct_relative_import
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
     """First phase of semantic analysis.
 
-    See docstring of 'analyze()' below for a description of what this does.
+    See docstring of 'visit_file()' below and the module docstring for a
+    description of what this does.
     """
 
     def __init__(self, sem: SemanticAnalyzerPass2) -> None:
@@ -103,6 +103,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     # reveal_type is a mypy-only function that gives an error with
                     # the type of its arg.
                     ('reveal_type', AnyType(TypeOfAny.special_form)),
+                    # reveal_locals is a mypy-only function that gives an error with the types of
+                    # locals
+                    ('reveal_locals', AnyType(TypeOfAny.special_form)),
                 ]  # type: List[Tuple[str, Type]]
 
                 # TODO(ddfisher): This guard is only needed because mypy defines
@@ -144,14 +147,31 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             for lval in s.lvalues:
                 self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
-    def visit_func_def(self, func: FuncDef) -> None:
+    def visit_func_def(self, func: FuncDef, decorated: bool = False) -> None:
+        """Process a func def.
+
+        decorated is true if we are processing a func def in a
+        Decorator that needs a _fullname and to have its body analyzed but
+        does not need to be added to the symbol table.
+        """
         sem = self.sem
         if sem.type is not None:
             # Don't process methods during pass 1.
             return
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
-        at_module = sem.is_module_scope()
+        at_module = sem.is_module_scope() and not decorated
+        if (at_module and func.name() == '__getattr__' and
+                self.sem.cur_mod_node.is_package_init_file() and self.sem.cur_mod_node.is_stub):
+            if isinstance(func.type, CallableType):
+                ret = func.type.ret_type
+                if isinstance(ret, UnboundType) and not ret.args:
+                    sym = self.sem.lookup_qualified(ret.name, func, suppress_errors=True)
+                    # We only interpret a package as partial if the __getattr__ return type
+                    # is either types.ModuleType of Any.
+                    if sym and sym.node and sym.node.fullname() in ('types.ModuleType',
+                                                                    'typing.Any'):
+                        self.sem.cur_mod_node.is_partial_stub_package = True
         if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
@@ -297,9 +317,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             return
         d.var._fullname = self.sem.qualified_name(d.var.name())
         self.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d), d)
+        self.visit_func_def(d.func, decorated=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
+        infer_reachability_of_if_statement(s, self.sem.options)
         for node in s.body:
             node.accept(self)
         if s.else_body:
@@ -334,7 +355,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.sem.locals[-1][name].node == node.node):
-                    self.sem.name_already_defined(name, context)
+                    self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
+                    return
             self.sem.locals[-1][name] = node
         else:
             assert self.sem.type is None  # Pass 1 doesn't look inside classes
@@ -350,6 +372,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 if existing.type and node.type and is_same_type(existing.type, node.type):
                     ok = True
                 if not ok:
-                    self.sem.name_already_defined(name, context)
+                    self.sem.name_already_defined(name, context, existing)
+                    return
             elif not existing:
                 self.sem.globals[name] = node

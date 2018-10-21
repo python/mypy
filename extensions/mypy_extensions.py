@@ -46,7 +46,7 @@ class _TypedDictMeta(type):
         # This method is called directly when TypedDict is subclassed,
         # or via _typeddict_new when TypedDict is instantiated. This way
         # TypedDict supports all three syntaxes described in its docstring.
-        # Subclasses and instanes of TypedDict return actual dictionaries
+        # Subclasses and instances of TypedDict return actual dictionaries
         # via _dict_new.
         ns['__new__'] = _typeddict_new if name == 'TypedDict' else _dict_new
         tp_dict = super(_TypedDictMeta, cls).__new__(cls, name, (dict,), ns)
@@ -135,3 +135,25 @@ def KwArg(type=Any):
 
 # Return type that indicates a function does not return
 class NoReturn: pass
+
+
+def trait(cls):
+    return cls
+
+
+# TODO: We may want to try to properly apply this to any type
+# variables left over...
+class _FlexibleAliasClsApplied:
+    def __init__(self, val):
+        self.val = val
+
+    def __getitem__(self, args):
+        return self.val
+
+
+class _FlexibleAliasCls:
+    def __getitem__(self, args):
+        return _FlexibleAliasClsApplied(args[-1])
+
+
+FlexibleAlias = _FlexibleAliasCls()

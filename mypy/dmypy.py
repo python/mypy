@@ -14,13 +14,20 @@ import socket
 import sys
 import time
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.util import write_junit_xml
+from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
+
+
+class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    def __init__(self, prog: str) -> None:
+        super().__init__(prog=prog, max_help_position=30)
+
 
 parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
@@ -51,18 +58,35 @@ stop_parser = p = subparsers.add_parser('stop', help="Stop daemon (asks it polit
 
 kill_parser = p = subparsers.add_parser('kill', help="Kill daemon (kills the process)")
 
-check_parser = p = subparsers.add_parser('check',
-                                         help="Check some files (requires running daemon)")
+check_parser = p = subparsers.add_parser('check', formatter_class=AugmentedHelpFormatter,
+                                         help="Check some files (requires daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
-p.add_argument('--junit-xml', help="write junit.xml to the given file")
+p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
-recheck_parser = p = subparsers.add_parser('recheck',
-    help="Check the same files as the most previous  check run (requires running daemon)")
+run_parser = p = subparsers.add_parser('run', formatter_class=AugmentedHelpFormatter,
+                                       help="Check some files, [re]starting daemon if necessary")
+p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
+p.add_argument('--junit-xml', help="Write junit.xml to the given file")
+p.add_argument('--timeout', metavar='TIMEOUT', type=int,
+               help="Server shutdown timeout (in seconds)")
+p.add_argument('--log-file', metavar='FILE', type=str,
+               help="Direct daemon stdout/stderr to FILE")
+p.add_argument('flags', metavar='ARG', nargs='*', type=str,
+               help="Regular mypy flags and files (precede with --)")
+
+recheck_parser = p = subparsers.add_parser('recheck', formatter_class=AugmentedHelpFormatter,
+    help="Re-check the previous list of files, with optional modifications (requires daemon).")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
-p.add_argument('--junit-xml', help="write junit.xml to the given file")
+p.add_argument('--junit-xml', help="Write junit.xml to the given file")
+p.add_argument('--add', metavar='FILE', nargs='*',
+               help="Files to add to the run")
+p.add_argument('--remove', metavar='FILE', nargs='*',
+               help="Files to remove from the run")
+p.add_argument('--update', metavar='FILE', nargs='*',
+               help="Files in the run to check again (default: all from previous run)..")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -142,19 +166,25 @@ def do_restart(args: argparse.Namespace) -> None:
     We first try to stop it politely if it's running.  This also sets
     mypy flags from the command line (see do_start()).
     """
+    restart_server(args)
+
+
+def restart_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
+    """Restart daemon (it may or may not be running; but not hanging)."""
     try:
         do_stop(args)
     except BadStatus:
         # Bad or missing status file or dead process; good to start.
         pass
-    start_server(args)
+    start_server(args, allow_sources)
 
 
-def start_server(args: argparse.Namespace) -> None:
+def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import daemonize, Server, process_start_options
-    if daemonize(Server(process_start_options(args.flags), timeout=args.timeout).serve,
+    if daemonize(Server(process_start_options(args.flags, allow_sources),
+                        timeout=args.timeout).serve,
                  args.log_file) != 0:
         sys.exit(1)
     wait_for_server()
@@ -178,6 +208,37 @@ def wait_for_server(timeout: float = 5.0) -> None:
         print("Daemon started")
         return
     sys.exit("Timed out waiting for daemon to start")
+
+
+@action(run_parser)
+def do_run(args: argparse.Namespace) -> None:
+    """Do a check, starting (or restarting) the daemon as necessary
+
+    Restarts the daemon if the running daemon reports that it is
+    required (due to a configuration change, for example).
+
+    Setting flags is a bit awkward; you have to use e.g.:
+
+      dmypy run -- --strict a.py b.py ...
+
+    since we don't want to duplicate mypy's huge list of flags.
+    (The -- is only necessary if flags are specified.)
+    """
+    if not is_running():
+        # Bad or missing status file or dead process; good to start.
+        start_server(args, allow_sources=True)
+
+    t0 = time.time()
+    response = request('run', version=__version__, args=args.flags)
+    # If the daemon signals that a restart is necessary, do it
+    if 'restart' in response:
+        print('Restarting: {}'.format(response['restart']))
+        restart_server(args, allow_sources=True)
+        response = request('run', version=__version__, args=args.flags)
+
+    t1 = time.time()
+    response['roundtrip_time'] = t1 - t0
+    check_output(response, args.verbose, args.junit_xml)
 
 
 @action(status_parser)
@@ -236,12 +297,24 @@ def do_check(args: argparse.Namespace) -> None:
 
 @action(recheck_parser)
 def do_recheck(args: argparse.Namespace) -> None:
-    """Ask the daemon to check the same list of files it checked most recently.
+    """Ask the daemon to recheck the previous list of files, with optional modifications.
 
-    This doesn't work across daemon restarts.
+    If at least one of --add, --remove or --update is given, the server will
+    update the list of files to check accordingly and assume that any other files
+    are unchanged.  If none of these flags are given, the server will call stat()
+    on each file last checked to determine its status.
+
+    Files given in --add ought to be new; files given in --update ought to exist.
+    Files given in --remove need not exist; if they don't they will be ignored.
+    The lists may be empty but oughtn't contain duplicates or overlap.
+
+    NOTE: The list of files is lost when the daemon is restarted.
     """
     t0 = time.time()
-    response = request('recheck')
+    if args.add is not None or args.remove is not None or args.update is not None:
+        response = request('recheck', add=args.add, remove=args.remove, update=args.update)
+    else:
+        response = request('recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml)
@@ -291,7 +364,7 @@ def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
-    Server(process_start_options(args.flags), timeout=args.timeout).serve()
+    Server(process_start_options(args.flags, allow_sources=False), timeout=args.timeout).serve()
 
 
 @action(help_parser)
@@ -388,6 +461,15 @@ def read_status() -> Dict[str, object]:
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
     return data
+
+
+def is_running() -> bool:
+    """Check if the server is running cleanly"""
+    try:
+        get_status()
+    except BadStatus as err:
+        return False
+    return True
 
 
 # Run main().

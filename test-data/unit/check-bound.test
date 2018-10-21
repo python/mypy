@@ -56,7 +56,8 @@ class C(Generic[T]):
         return self.t
 c1 = None # type: C[None]
 c1.get()
-d = c1.get() # E: "get" of "C" does not return a value
+d = c1.get()
+reveal_type(d)  # E: Revealed type is 'None'
 
 
 [case testBoundAny]
@@ -82,7 +83,8 @@ def f(g: Callable[[], T]) -> T:
     return g()
 def h() -> None: pass
 f(h)
-a = f(h) # E: "f" does not return a value
+a = f(h)
+reveal_type(a)  # E: Revealed type is 'None'
 
 
 [case testBoundInheritance]

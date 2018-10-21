@@ -668,7 +668,7 @@ TypeInfo<2>(
   Names(
     __annotations__<4> (builtins.object<1>)
     __doc__<5> (builtins.str<6>)
-    __init__<7>
+    __new__<7>
     _asdict<8>
     _field_defaults<9> (builtins.object<1>)
     _field_types<10> (builtins.object<1>)
@@ -690,7 +690,7 @@ TypeInfo<2>(
   Names(
     __annotations__<4> (builtins.object<1>)
     __doc__<5> (builtins.str<6>)
-    __init__<7>
+    __new__<7>
     _asdict<8>
     _field_defaults<9> (builtins.object<1>)
     _field_types<10> (builtins.object<1>)
@@ -980,7 +980,7 @@ target:
     Generic: Var<2>
     T: TypeVarExpr<3>
     TypeVar: Var<4>
-    X: Var<5>(type_override=target.A[builtins.int<6>]<1>)(def () -> target.A[builtins.int*<6>]<1>)
+    X: TypeAlias<5>
 ==>
 __main__:
     target: MypyFile<0>
@@ -989,7 +989,7 @@ target:
     Generic: Var<2>
     T: TypeVarExpr<3>
     TypeVar: Var<4>
-    X: Var<5>(type_override=target.A[builtins.str<7>]<1>)(def () -> target.A[builtins.str*<7>]<1>)
+    X: TypeAlias<5>
 
 [case testGenericFunction_types]
 import target
@@ -1163,7 +1163,7 @@ __main__:
     target: MypyFile<0>
 target:
     Iterator: TypeInfo<1>
-    List: TypeInfo<2>
+    List: TypeAlias<2>
     Tuple: Var<3>
     contextmanager: FuncDef<4>
     f: Decorator<5>
@@ -1172,7 +1172,7 @@ __main__:
     target: MypyFile<0>
 target:
     Iterator: TypeInfo<1>
-    List: TypeInfo<2>
+    List: TypeAlias<2>
     Tuple: Var<3>
     contextmanager: FuncDef<4>
     f: Decorator<5>
@@ -1440,7 +1440,8 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>)))
+    X<3> (builtins.int<4>))
+  MetaclassType(enum.EnumMeta<5>))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -1448,4 +1449,5 @@ TypeInfo<0>(
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
     X<3> (builtins.int<4>)
-    Y<5> (builtins.int<4>)))
+    Y<6> (builtins.int<4>))
+  MetaclassType(enum.EnumMeta<5>))

@@ -1,8 +1,11 @@
+<img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="300px"/>
+
 Mypy: Optional Static Typing for Python
 =======================================
 
 [![Build Status](https://api.travis-ci.org/python/mypy.svg?branch=master)](https://travis-ci.org/python/mypy)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 
 Got a question? Join us on Gitter!
@@ -108,7 +111,8 @@ Mypy can be integrated into popular IDEs:
 * Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy)
 * Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
 * Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
-* PyCharm: PyCharm integrates [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/2017.1/type-hinting-in-pycharm.html).
+* PyCharm: [mypy plugin](https://github.com/dropbox/mypy-PyCharm-plugin) (PyCharm integrates [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
+* VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
 
 Mypy can also be integrated into [Flake8] using [flake8-mypy].
 
@@ -136,7 +140,7 @@ this:
 
     $ python3 -m pip install -U mypy
 
-This should automatically installed the appropriate version of
+This should automatically install the appropriate version of
 mypy's parser, typed-ast.  If for some reason it does not, you
 can install it manually:
 
@@ -217,7 +221,12 @@ whenever you change branches, merge, rebase, or pull.
 Tests
 -----
 
-See [Test README.md](test-data/unit/README.md)
+The basic way to run tests:
+
+    $ pip3 install -r test-requirements.txt
+    $ ./runtests.py
+
+For more on the tests, see [Test README.md](test-data/unit/README.md)
 
 
 Development status

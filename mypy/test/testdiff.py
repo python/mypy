@@ -4,7 +4,7 @@ import os
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile
@@ -17,8 +17,6 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 class ASTDiffSuite(DataSuite):
     files = ['diff.test']
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         first_src = '\n'.join(testcase.input)

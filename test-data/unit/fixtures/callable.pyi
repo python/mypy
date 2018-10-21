@@ -24,3 +24,4 @@ class bool(int): pass
 class str:
     def __add__(self, other: 'str') -> 'str': pass
     def __eq__(self, other: 'str') -> bool: pass
+class ellipsis: pass

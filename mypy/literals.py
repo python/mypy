@@ -4,12 +4,16 @@ from mypy.nodes import (
     Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
     LITERAL_NO, NameExpr, LITERAL_TYPE, IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr,
     UnicodeExpr, ListExpr, TupleExpr, SetExpr, DictExpr, CallExpr, SliceExpr, CastExpr,
-    ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealTypeExpr, SuperExpr,
+    ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealExpr, SuperExpr,
     TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     GeneratorExpr, BackquoteExpr, TypeVarExpr, TypeAliasExpr, NamedTupleExpr, EnumCallExpr,
     TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode,
 )
 from mypy.visitor import ExpressionVisitor
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # [Note Literals and literal_hash]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -139,7 +143,8 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
-            rest = tuple((literal_hash(a), literal_hash(b)) for a, b in e.items)  # type: Any
+            rest = tuple((literal_hash(a) if a else None, literal_hash(b))
+                         for a, b in e.items)  # type: Any
             return ('Dict',) + rest
         return None
 
@@ -175,7 +180,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_yield_expr(self, e: YieldExpr) -> None:
         return None
 
-    def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
+    def visit_reveal_expr(self, e: RevealExpr) -> None:
         return None
 
     def visit_super_expr(self, e: SuperExpr) -> None:
@@ -230,4 +235,4 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
 
-_hasher = _Hasher()
+_hasher = _Hasher()  # type: Final

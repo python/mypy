@@ -10,15 +10,15 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from contextlib import contextmanager
-from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iterator
+from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
 from mypy import messages, experiments
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
+    MDEF, TypeAlias
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -30,15 +30,14 @@ from mypy.traverser import TraverserVisitor
 from mypy.typeanal import TypeAnalyserPass3, collect_any_types
 from mypy.typevars import has_no_typevars
 from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
+from mypy.semanal import SemanticAnalyzerPass2
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.semanal_shared import SemanticAnalyzerInterface
-import mypy.semanal
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 
 
-class SemanticAnalyzerPass3(TraverserVisitor,
-                            SemanticAnalyzerInterface):
+class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     """The third and final pass of semantic analysis.
 
     Check type argument counts and values of generic types, and perform some
@@ -46,7 +45,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     """
 
     def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
-                 sem: 'mypy.semanal.SemanticAnalyzerPass2') -> None:
+                 sem: SemanticAnalyzerPass2) -> None:
         self.modules = modules
         self.errors = errors
         self.sem = sem
@@ -68,15 +67,59 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
+            self.update_imported_vars()
             self.accept(file_node)
             self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+    def update_imported_vars(self) -> None:
+        """Update nodes for imported names, if they got updated from Var to TypeInfo or TypeAlias.
+
+        This is a simple _band-aid_ fix for "Invalid type" error in import cycles where type
+        aliases, named tuples, or typed dicts appear. The root cause is that during first pass
+        definitions like:
+
+            A = List[int]
+
+        are seen by mypy as variables, because it doesn't know yet that `List` refers to a type.
+        In the second pass, such `Var` is replaced with a `TypeAlias`. But in import cycle,
+        import of `A` will still refer to the old `Var` node. Therefore we need to update it.
+
+        Note that this is a partial fix that only fixes the "Invalid type" error when a type alias
+        etc. appears in type context. This doesn't fix errors (e.g. "Cannot determine type of A")
+        that may appear if the type alias etc. appear in runtime context.
+
+        The motivation for partial fix is two-fold:
+          * The "Invalid type" error often appears in stub files (especially for large
+            libraries/frameworks) where we have more import cycles, but no runtime
+            context at all.
+          * Ideally we should refactor semantic analysis to have deferred nodes, and process
+            them in smaller passes when there is more info (like we do in type checking phase).
+            But this is _much_ harder since this requires a large refactoring. Also an alternative
+            fix of updating node of every `NameExpr` and `MemberExpr` in third pass is costly
+            from performance point of view, and still nontrivial.
+        """
+        for sym in self.cur_mod_node.names.values():
+            if sym and isinstance(sym.node, Var):
+                fullname = sym.node.fullname()
+                if '.' not in fullname:
+                    continue
+                mod_name, _, name = fullname.rpartition('.')
+                if mod_name not in self.sem.modules:
+                    continue
+                if mod_name != self.sem.cur_mod_id:  # imported
+                    new_sym = self.sem.modules[mod_name].names.get(name)
+                    if new_sym and isinstance(new_sym.node, (TypeInfo, TypeAlias)):
+                        # This Var was replaced with a class (like named tuple)
+                        # or alias, update this.
+                        sym.node = new_sym.node
+
+    def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.options = self.sem.options
         self.patches = patches
         if isinstance(node, MypyFile):
             self.recurse_into_functions = False
@@ -127,6 +170,8 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                     types.append(tvar.upper_bound)
                 if tvar.values:
                     types.extend(tvar.values)
+            if tdef.info.tuple_type:
+                types.append(tdef.info.tuple_type)
             self.analyze_types(types, tdef.info)
             for type in tdef.info.bases:
                 if tdef.info.is_protocol:
@@ -138,9 +183,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
-            mypy.semanal.calculate_class_mro(tdef, self.fail_blocker)
-            if tdef.info.is_protocol:
-                add_protocol_members(tdef.info)
+            self.sem.calculate_class_mro(tdef)
         if tdef.analyzed is not None:
             # Also check synthetic types associated with this ClassDef.
             # Currently these are TypedDict, and NamedTuple.
@@ -206,7 +249,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             sig = find_fixed_callable_return(dec.decorators[0])
             if sig:
                 # The outermost decorator always returns the same kind of function,
-                # so we know that this is the type of the decoratored function.
+                # so we know that this is the type of the decorated function.
                 orig_sig = function_type(dec.func, self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
@@ -232,7 +275,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                     self.analyze_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
-                    mypy.semanal.calculate_class_mro(analyzed.info.defn, self.fail_blocker)
+                    self.sem.calculate_class_mro(analyzed.info.defn)
             if isinstance(analyzed, TypeVarExpr):
                 types = []
                 if analyzed.upper_bound:
@@ -245,15 +288,20 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
                 self.analyze_info(analyzed.info)
-        # We need to pay additional attention to assignments that define a type alias.
-        # The resulting type is also stored in the 'type_override' attribute of
-        # the corresponding SymbolTableNode.
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
-            if isinstance(s.lvalues[0], NameExpr):
-                node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
-                if node:
-                    self.analyze(node.type_override, node)
+        # Subclass attribute assignments with no type annotation should be
+        # assumed to be classvar if overriding a declared classvar from the base
+        # class.
+        if (isinstance(s.lvalues[0], NameExpr) and s.lvalues[0].kind == MDEF
+                and isinstance(s.lvalues[0].node, Var)):
+            var = s.lvalues[0].node
+            if var.info and var.is_inferred and not var.is_classvar:
+                for base in var.info.mro[1:]:
+                    tnode = base.names.get(var.name())
+                    if (tnode is not None and isinstance(tnode.node, Var)
+                            and tnode.node.is_classvar):
+                        var.is_classvar = True
         super().visit_assignment_stmt(s)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
@@ -268,8 +316,8 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         self.analyze(e.type, e)
         super().visit_cast_expr(e)
 
-    def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
-        super().visit_reveal_type_expr(e)
+    def visit_reveal_expr(self, e: RevealExpr) -> None:
+        super().visit_reveal_expr(e)
 
     def visit_type_application(self, e: TypeApplication) -> None:
         for type in e.types:
@@ -278,8 +326,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
 
     # Helpers
 
-    def perform_transform(self, node: Union[Node, SymbolTableNode],
-                          transform: Callable[[Type], Type]) -> None:
+    def perform_transform(self, node: Node, transform: Callable[[Type], Type]) -> None:
         """Apply transform to all types associated with node."""
         if isinstance(node, ForStmt):
             if node.index_type:
@@ -295,6 +342,8 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                              TypeAliasExpr, Var)):
             assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
+        if isinstance(node, TypeAlias):
+            node.target = transform(node.target)
         if isinstance(node, NewTypeExpr):
             assert node.old_type, "Scheduled patch for non-existent type"
             node.old_type = transform(node.old_type)
@@ -327,9 +376,6 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                                         transform(node.info.tuple_type))
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
-        if isinstance(node, SymbolTableNode):
-            assert node.type_override, "Scheduled patch for non-existent type"
-            node.type_override = transform(node.type_override)
         if isinstance(node, TypeInfo):
             for tvar in node.defn.type_vars:
                 if tvar.upper_bound:
@@ -348,6 +394,10 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                     alt_base = Instance(base.type, [transform(a) for a in base.args])
                     new_bases.append(alt_base)
             node.bases = new_bases
+            if node.tuple_type:
+                new_tuple_type = transform(node.tuple_type)
+                assert isinstance(new_tuple_type, TupleType)
+                node.tuple_type = new_tuple_type
 
     def transform_types_in_lvalue(self, lvalue: Lvalue,
                                   transform: Callable[[Type], Type]) -> None:
@@ -360,7 +410,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             for item in lvalue.items:
                 self.transform_types_in_lvalue(item, transform)
 
-    def analyze(self, type: Optional[Type], node: Union[Node, SymbolTableNode],
+    def analyze(self, type: Optional[Type], node: Node,
                 warn: bool = False) -> None:
         # Recursive type warnings are only emitted on type definition 'node's, marked by 'warn'
         # Flags appeared during analysis of 'type' are collected in this dict.
@@ -368,7 +418,11 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         if type:
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
-            self.check_for_omitted_generics(type)
+            if not (isinstance(node, TypeAlias) and node.no_args):
+                # We skip bare type aliases like `A = List`, these
+                # are still valid. In contrast, use/expansion points
+                # like `x: A` will be flagged.
+                self.check_for_omitted_generics(type)
             self.generate_type_patches(node, indicator, warn)
             if analyzer.aliases_used:
                 target = self.scope.current_target()
@@ -389,8 +443,8 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     def analyze_symbol_table(self, names: SymbolTable) -> None:
         """Analyze types in symbol table nodes only (shallow)."""
         for node in names.values():
-            if node.type_override:
-                self.analyze(node.type_override, node)
+            if isinstance(node.node, TypeAlias):
+                self.analyze(node.node.target, node.node)
 
     def make_scoped_patch(self, fn: Callable[[], None]) -> Callable[[], None]:
         saved_scope = self.scope.save()
@@ -401,7 +455,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         return patch
 
     def generate_type_patches(self,
-                              node: Union[Node, SymbolTableNode],
+                              node: Node,
                               indicator: Dict[str, bool],
                               warn: bool) -> None:
         if indicator.get('forward') or indicator.get('synthetic'):
@@ -411,11 +465,11 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                                                                   node, warn)))
             self.patches.append((PRIORITY_FORWARD_REF, self.make_scoped_patch(patch)))
         if indicator.get('typevar'):
-            def patch() -> None:
+            def patch2() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(TypeVariableChecker(self.fail)))
 
-            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch)))
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch2)))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
@@ -473,16 +527,6 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             return Instance(node, args)
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node, [any_type] * len(node.defn.type_vars))
-
-
-def add_protocol_members(typ: TypeInfo) -> None:
-    members = set()  # type: Set[str]
-    if typ.mro:
-        for base in typ.mro[:-1]:  # we skip "object" since everyone implements it
-            if base.is_protocol:
-                for name in base.names:
-                    members.add(name)
-    typ.protocol_members = sorted(list(members))
 
 
 def is_identity_signature(sig: Type) -> bool:
@@ -598,17 +642,20 @@ class ForwardReferenceResolver(TypeTranslator):
                 # The key idea is that when we recursively return to a type already traversed,
                 # then we break the cycle and put AnyType as a leaf.
                 return AnyType(TypeOfAny.from_error)
-            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+            return tp.copy_modified(fallback=Instance(info.replaced, [],
+                                                      line=t.line)).accept(self)
         # Same as above but for TypedDicts.
         if info.replaced and info.replaced.typeddict_type:
             td = info.replaced.typeddict_type
             if self.check_recursion(td):
                 # We also break the cycles for TypedDicts as explained above for NamedTuples.
                 return AnyType(TypeOfAny.from_error)
-            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+            return td.copy_modified(fallback=Instance(info.replaced, [],
+                                                      line=t.line)).accept(self)
         if self.check_recursion(t):
             # We also need to break a potential cycle with normal (non-synthetic) instance types.
-            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars),
+                            line=t.line)
         return super().visit_instance(t)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
@@ -705,7 +752,7 @@ class TypeVariableChecker(TypeTranslator):
                 self.fail('Type argument "{}" of "{}" must be '
                           'a subtype of "{}"'.format(
                               arg, info.name(), tvar.upper_bound), t)
-        return t
+        return super().visit_instance(t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:

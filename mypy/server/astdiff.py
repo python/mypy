@@ -50,16 +50,16 @@ Summary of how this works for certain kinds of differences:
   fine-grained dependencies.
 """
 
-from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence, Union
+from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
-    SymbolTable, SymbolTableNode, TypeInfo, Var, MypyFile, SymbolNode, Decorator, TypeVarExpr,
-    OverloadedFuncDef, FuncItem, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
+    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, function_type
+    UnionType, Overloaded, PartialType, TypeType
 )
 from mypy.util import get_prefix
 
@@ -146,15 +146,17 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
                             node.variance,
                             [snapshot_type(value) for value in node.values],
                             snapshot_type(node.upper_bound))
-        elif symbol.kind == TYPE_ALIAS:
+        elif isinstance(symbol.node, TypeAlias):
             result[name] = ('TypeAlias',
-                            symbol.alias_tvars,
-                            snapshot_optional_type(symbol.type_override))
+                            symbol.node.alias_tvars,
+                            symbol.node.normalized,
+                            symbol.node.no_args,
+                            snapshot_optional_type(symbol.node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname()) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ('CrossRef', common, symbol.normalized)
+                result[name] = ('CrossRef', common)
             else:
                 result[name] = snapshot_definition(node, common)
     return result
@@ -167,15 +169,20 @@ def snapshot_definition(node: Optional[SymbolNode],
     The representation is nested tuples and dicts. Only externally
     visible attributes are included.
     """
-    if isinstance(node, (OverloadedFuncDef, FuncItem)):
+    if isinstance(node, FuncBase):
         # TODO: info
         if node.type:
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
-        return ('Func', common, node.is_property, signature)
+        return ('Func', common,
+                node.is_property, node.is_final,
+                node.is_class, node.is_static,
+                signature)
     elif isinstance(node, Var):
-        return ('Var', common, snapshot_optional_type(node.type))
+        return ('Var', common,
+                snapshot_optional_type(node.type),
+                node.is_final)
     elif isinstance(node, Decorator):
         # Note that decorated methods are represented by Decorator instances in
         # a symbol table since we need to preserve information about the
@@ -190,17 +197,30 @@ def snapshot_definition(node: Optional[SymbolNode],
     elif isinstance(node, TypeInfo):
         attrs = (node.is_abstract,
                  node.is_enum,
+                 node.is_protocol,
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
+                 # We need this to e.g. trigger metaclass calculation in subclasses.
+                 snapshot_optional_type(node.metaclass_type),
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
                  [base.fullname() for base in node.mro],
-                 node.type_vars,
+                 # Note that the structure of type variables is a part of the external interface,
+                 # since creating instances might fail, for example:
+                 #     T = TypeVar('T', bound=int)
+                 #     class C(Generic[T]):
+                 #         ...
+                 #     x: C[str] <- this is invalid, and needs to be re-checked if `T` changes.
+                 # An alternative would be to create both deps: <...> -> C, and <...> -> <C>,
+                 # but this currently seems a bit ad hoc.
+                 tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname()
         symbol_table = snapshot_symbol_table(prefix, node.names)
+        # Special dependency for abstract attribute handling.
+        symbol_table['(abstract)'] = ('Abstract', tuple(sorted(node.abstract_attributes)))
         return ('TypeInfo', common, attrs, symbol_table)
     else:
         # Other node types are handled elsewhere.

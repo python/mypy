@@ -48,14 +48,16 @@ import traceback
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, Union, cast
+    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, cast
 )
 
 import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
+import mypy.util
 from mypy import defaults
+from mypy.modulefinder import FindModuleCache, SearchPaths
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
@@ -63,11 +65,18 @@ from mypy.nodes import (
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
-from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header
+from mypy.stubgenc import generate_stub_for_c_module
+from mypy.stubutil import is_c_module, write_header, parse_all_signatures, find_unique_signatures
 from mypy.options import Options as MypyOptions
-from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType
+from mypy.types import (
+    Type, TypeStrVisitor, CallableType,
+    UnboundType, NoneTyp, TupleType, TypeList,
+)
 from mypy.visitor import NodeVisitor
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
@@ -150,15 +159,6 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             try:
                 mod = importlib.import_module(module)
             except Exception:
-                # Print some debugging output that might help diagnose problems.
-                print('=== debug dump follows ===')
-                traceback.print_exc()
-                print('sys.path:')
-                for entry in sys.path:
-                    print('    %r' % entry)
-                print('PYTHONPATH: %s' % os.getenv("PYTHONPATH"))
-                dump_dir(os.getcwd())
-                print('=== end of debug dump ===')
                 raise CantImport(module)
             if is_c_module(mod):
                 return None
@@ -166,24 +166,13 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        module_path = mypy.build.FindModuleCache().find_module(module, ['.'] + search_path)
+        search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
+        module_path = FindModuleCache(search_paths).find_module(module)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
         module_all = None
     return module_path, module_all
-
-
-def dump_dir(path: str) -> None:
-    for root, dirs, files in os.walk(os.getcwd()):
-        print('%s:' % root)
-        for d in dirs:
-            print('    %s/' % d)
-        for f in files:
-            path = os.path.join(root, f)
-            print('    %s (%d bytes)' % (f, os.path.getsize(path)))
-        if not dirs and not files:
-            print('    (empty)')
 
 
 def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
@@ -223,7 +212,9 @@ def generate_stub(path: str,
                   include_private: bool = False
                   ) -> None:
 
-    source, _ = mypy.util.read_with_python_encoding(path, pyversion)
+    with open(path, 'rb') as f:
+        data = f.read()
+    source = mypy.util.decode_python_encoding(data, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:
@@ -249,12 +240,12 @@ def generate_stub(path: str,
 
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
-EMPTY = 'EMPTY'
-FUNC = 'FUNC'
-CLASS = 'CLASS'
-EMPTY_CLASS = 'EMPTY_CLASS'
-VAR = 'VAR'
-NOT_IN_ALL = 'NOT_IN_ALL'
+EMPTY = 'EMPTY'  # type: Final
+FUNC = 'FUNC'  # type: Final
+CLASS = 'CLASS'  # type: Final
+EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
+VAR = 'VAR'  # type: Final
+NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
 
 class AnnotationPrinter(TypeStrVisitor):
@@ -273,6 +264,9 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_none_type(self, t: NoneTyp) -> str:
         return "None"
+
+    def visit_type_list(self, t: TypeList) -> str:
+        return '[{}]'.format(self.list_str(t.items))
 
 
 class AliasPrinter(NodeVisitor[str]):
@@ -472,8 +466,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             kind = arg_.kind
             name = var.name()
             annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
-            if annotated_type and not (
-                    i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
+            is_self_arg = i == 0 and name == 'self'
+            is_cls_arg = i == 0 and name == 'cls'
+            if (annotated_type is None
+                    and not arg_.initializer
+                    and not is_self_arg
+                    and not is_cls_arg):
+                self.add_typing_import("Any")
+                annotation = ": Any"
+            elif annotated_type and not is_self_arg:
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
                 annotation = ""
@@ -822,28 +823,33 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
+class SelfTraverser(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        self.results = []  # type: List[Tuple[str, Expression]]
+
+    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        lvalue = o.lvalues[0]
+        if (isinstance(lvalue, MemberExpr) and
+                isinstance(lvalue.expr, NameExpr) and
+                lvalue.expr.name == 'self'):
+            self.results.append((lvalue.name, o.rvalue))
+
+
 def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
-    results = []  # type: List[Tuple[str, Expression]]
+    traverser = SelfTraverser()
+    fdef.accept(traverser)
+    return traverser.results
 
-    class SelfTraverser(mypy.traverser.TraverserVisitor):
-        def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-            lvalue = o.lvalues[0]
-            if (isinstance(lvalue, MemberExpr) and
-                    isinstance(lvalue.expr, NameExpr) and
-                    lvalue.expr.name == 'self'):
-                results.append((lvalue.name, o.rvalue))
 
-    fdef.accept(SelfTraverser())
-    return results
+class ReturnSeeker(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        self.found = True
 
 
 def has_return_statement(fdef: FuncBase) -> bool:
-    class ReturnSeeker(mypy.traverser.TraverserVisitor):
-        def __init__(self) -> None:
-            self.found = False
-
-        def visit_return_stmt(self, o: ReturnStmt) -> None:
-            self.found = True
 
     seeker = ReturnSeeker()
     fdef.accept(seeker)
@@ -861,15 +867,24 @@ def get_qualified_name(o: Expression) -> str:
 
 def walk_packages(packages: List[str]) -> Iterator[str]:
     for package_name in packages:
-        package = __import__(package_name)
+        package = importlib.import_module(package_name)
         yield package.__name__
-        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+        path = getattr(package, '__path__', None)
+        if path is None:
+            # It's a module inside a package.  There's nothing else to walk/yield.
+            continue
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
                                                                      prefix=package.__name__ + ".",
                                                                      onerror=lambda r: None):
             yield qualified_name
 
 
 def main() -> None:
+    # Make sure that the current directory is in sys.path so that
+    # stubgen can be run on packages in the current directory.
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
     options = parse_options(sys.argv[1:])
     if not os.path.isdir(options.output_dir):
         raise SystemExit('Directory "{}" does not exist'.format(options.output_dir))
@@ -999,7 +1014,7 @@ def usage(exit_nonzero: bool=True) -> None:
                           respect __all__)
           --include-private
                           generate stubs for objects and members considered private
-                          (single leading undescore and no trailing underscores)
+                          (single leading underscore and no trailing underscores)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
                           better stubs in some cases; consider setting this to
                           DIR/Python-X.Y.Z/Doc/library)

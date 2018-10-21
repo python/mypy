@@ -2,9 +2,8 @@ import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
-from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional, cast
+from typing import Tuple, List, TypeVar, Set, Dict, Optional
 
 from mypy.scope import Scope
 from mypy.options import Options
@@ -106,10 +105,10 @@ class Errors:
     import_ctx = None  # type: List[Tuple[str, int]]
 
     # Path name prefix that is removed from all paths, if set.
-    ignore_prefix = None  # type: str
+    ignore_prefix = None  # type: Optional[str]
 
     # Path to current file.
-    file = None  # type: str
+    file = ''  # type: str
 
     # Ignore errors on these lines of each file.
     ignored_lines = None  # type: Dict[str, Set[int]]
@@ -294,7 +293,7 @@ class Errors:
 
     def generate_unused_ignore_notes(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
-        if not self.is_typeshed_file(file):
+        if not self.is_typeshed_file(file) and file not in self.ignored_files:
             for line in ignored_lines - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
@@ -506,7 +505,7 @@ class Errors:
             while (j >= 0 and errors[j][0] == errors[i][0] and
                     errors[j][1] == errors[i][1]):
                 if (errors[j][3] == errors[i][3] and
-                        # Allow duplicate notes in overload conficts reporting
+                        # Allow duplicate notes in overload conflicts reporting.
                         not (errors[i][3] == 'note' and
                              errors[i][4].strip() in allowed_duplicates
                              or errors[i][4].strip().startswith('def ')) and
@@ -548,7 +547,7 @@ class CompileError(Exception):
         self.module_with_blocker = module_with_blocker
 
 
-def remove_path_prefix(path: str, prefix: str) -> str:
+def remove_path_prefix(path: str, prefix: Optional[str]) -> str:
     """If path starts with prefix, return copy of path with the prefix removed.
     Otherwise, return path. If path is None, return None.
     """
@@ -594,6 +593,8 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
         pdb.post_mortem(sys.exc_info()[2])
 
     # If requested, print traceback, else print note explaining how to get one.
+    if options.raise_exceptions:
+        raise err
     if not options.show_traceback:
         if not options.pdb:
             print('{}: note: please use --show-traceback to print a traceback '

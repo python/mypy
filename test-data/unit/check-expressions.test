@@ -537,9 +537,9 @@ class B:
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:3: error: Unsupported operand types for > ("A" and "A")
-main:5: error: Unsupported operand types for > ("A" and "A")
+main:3: error: Unsupported operand types for < ("A" and "A")
 main:5: error: Unsupported operand types for < ("A" and "A")
+main:5: error: Unsupported operand types for > ("A" and "A")
 
 
 [case testChainedCompBoolRes]
@@ -664,7 +664,7 @@ A() + cast(Any, 1)
 class C:
     def __gt__(self, x: 'A') -> object: pass
 class A:
-    def __lt__(self, x: C) -> int: pass
+    def __lt__(self, x: C) -> int: pass  # E: Signatures of "__lt__" of "A" and "__gt__" of "C" are unsafely overlapping
 class B:
     def __gt__(self, x: A) -> str: pass
 s = None  # type: str
@@ -673,6 +673,10 @@ n = A() < C()
 s = A() < B()
 n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 s = object() < B() # E: Unsupported operand types for > ("B" and "object")
+
+[case testReversibleComparisonWithExtraArgument]
+class C:
+    def __lt__(self, o: object, x: str = "") -> int: ...
 
 [case testErrorContextAndBinaryOperators]
 import typing
@@ -748,6 +752,7 @@ divmod('foo', f)  # E: Unsupported operand types for divmod ("str" and "float")
 divmod('foo', d)  # E: Unsupported operand types for divmod ("str" and "Decimal")
 
 [builtins fixtures/divmod.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 -- Unary operators
@@ -865,7 +870,10 @@ from typing import overload
 a, b, c = None, None, None  # type: (A, B, C)
 a[b]
 a[c]
-a[1]  # E: No overload variant of "__getitem__" of "A" matches argument types [builtins.int]
+a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int" \
+      # N: Possible overload variants: \
+      # N:     def __getitem__(self, B) -> int \
+      # N:     def __getitem__(self, C) -> str
 
 i, s = None, None  # type: (int, str)
 i = a[b]
@@ -930,6 +938,7 @@ a, o = None, None # type: (A, object)
 a = f()         # E: "f" does not return a value
 o = a()         # E: Function does not return a value
 o = A().g(a)    # E: "g" of "A" does not return a value
+o = A.g(a, a)   # E: "g" of "A" does not return a value
 A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
 f()
@@ -1447,6 +1456,37 @@ x = [1]
 x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
+[case testConditionalExpressionUnion]
+from typing import Union
+reveal_type(1 if bool() else 2) # E: Revealed type is 'builtins.int'
+reveal_type(1 if bool() else '') # E: Revealed type is 'builtins.object'
+x: Union[int, str] = reveal_type(1 if bool() else '') \
+    # E: Revealed type is 'Union[builtins.int, builtins.str]'
+class A:
+    pass
+class B(A):
+    pass
+class C:
+    pass
+class D(A):
+    pass
+a = A()
+b = B()
+c = C()
+d = D()
+reveal_type(a if bool() else b) # E: Revealed type is '__main__.A'
+reveal_type(b if bool() else c) # E: Revealed type is 'builtins.object'
+reveal_type(c if bool() else b) # E: Revealed type is 'builtins.object'
+reveal_type(c if bool() else a) # E: Revealed type is 'builtins.object'
+reveal_type(d if bool() else b) # E: Revealed type is '__main__.A'
+[builtins fixtures/bool.pyi]
+
+[case testConditionalExpressionUnionWithAny]
+from typing import Union, Any
+a: Any
+x: Union[int, str] = reveal_type(a if int() else 1)  # E: Revealed type is 'Union[Any, builtins.int]'
+reveal_type(a if int() else 1)  # E: Revealed type is 'Any'
+
 
 -- Special cases
 -- -------------
@@ -1707,6 +1747,17 @@ d() # E: "D[str, int]" not callable
 [case testRevealType]
 reveal_type(1) # E: Revealed type is 'builtins.int'
 
+[case testRevealLocals]
+x = 1
+y = 2
+z = x + y
+reveal_locals()
+[out]
+main:4: error: Revealed local types are:
+main:4: error: x: builtins.int
+main:4: error: y: builtins.int
+main:4: error: z: builtins.int
+
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
@@ -1774,6 +1825,7 @@ d = {**a, **b, 'c': 3}
 e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
 f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testDictIncompatibleTypeErrorMessage]
 from typing import Dict, Callable

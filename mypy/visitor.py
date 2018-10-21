@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 from typing import TypeVar, Generic
+from mypy_extensions import trait
 
 if False:
     # break import cycle only needed for mypy
@@ -11,6 +12,7 @@ if False:
 T = TypeVar('T')
 
 
+@trait
 class ExpressionVisitor(Generic[T]):
     @abstractmethod
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
@@ -77,7 +79,7 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> T:
+    def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> T:
         pass
 
     @abstractmethod
@@ -181,6 +183,7 @@ class ExpressionVisitor(Generic[T]):
         pass
 
 
+@trait
 class StatementVisitor(Generic[T]):
     # Definitions
 
@@ -301,6 +304,7 @@ class StatementVisitor(Generic[T]):
         pass
 
 
+@trait
 class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     """Empty base class for parse tree node visitors.
 
@@ -349,6 +353,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_var(self, o: 'mypy.nodes.Var') -> T:
+        pass
+
+    def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
         pass
 
     # Statements
@@ -458,7 +465,7 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> T:
         pass
 
-    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> T:
+    def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> T:
         pass
 
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:
