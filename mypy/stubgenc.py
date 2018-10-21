@@ -129,7 +129,7 @@ def generate_c_function_stub(module: ModuleType,
             groups = sig.split(',', 1)
             if groups[0] == self_var or groups[0].startswith(self_var + ':'):
                 self_arg = ''
-                sig = '{},{}'.format(self_var, groups[1:])
+                sig = '{},{}'.format(self_var, groups[1]) if len(groups) > 1 else self_var
     else:
         self_arg = self_arg.replace(', ', '')
     output.append('def %s(%s%s): ...' % (name, self_arg, sig))

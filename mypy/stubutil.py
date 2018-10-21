@@ -114,8 +114,11 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
     # allow colon so we can find Python-annotation style type hints
     # allow dot because something classes are annotated using full path,
     # like bar_object: foo.bar.baz
-    test_str = r'%s(\([a-zA-Z0-9_=, :\.]*\))' % name
+    # include brackets to allow type hints like List[int]
+    test_str = r'%s(\([a-zA-Z0-9_=, :\.\[\]]*\))' % name
     m = re.match(test_str, docstr)
+    import pdb
+    pdb.set_trace()
     if m:
         return m.group(1)
     else:
