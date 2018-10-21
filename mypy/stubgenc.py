@@ -126,10 +126,10 @@ def generate_c_function_stub(module: ModuleType,
     if sig:
         if self_var:
             # remove annotation on self from signature if present
-            first, last = sig.split(',', 1)
-            if first == self_var or first.startswith(self_var + ':'):
+            groups = sig.split(',', 1)
+            if groups[0] == self_var or groups[0].startswith(self_var + ':'):
                 self_arg = ''
-                sig = '{},{}'.format(self_var, last)
+                sig = '{},{}'.format(self_var, groups[1:])
     else:
         self_arg = self_arg.replace(', ', '')
     output.append('def %s(%s%s): ...' % (name, self_arg, sig))
