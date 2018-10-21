@@ -110,7 +110,12 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
     if not docstr:
         return None
     docstr = docstr.lstrip()
-    m = re.match(r'%s(\([a-zA-Z0-9_=, ]*\))' % name, docstr)
+    # look for function signature.
+    # allow colon so we can find Python-annotation style type hints
+    # allow dot because something classes are annotated using full path,
+    # like bar_object: foo.bar.baz
+    test_str = r'%s(\([a-zA-Z0-9_=, :\.]*\))' % name
+    m = re.match(test_str, docstr)
     if m:
         return m.group(1)
     else:

@@ -4,6 +4,7 @@ The public interface is via the mypy.stubgen module.
 """
 
 import importlib
+import inspect
 import os.path
 import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any
@@ -41,7 +42,7 @@ def generate_stub_for_c_module(module_name: str,
     for name, obj in items:
         if name.startswith('__') and name.endswith('__'):
             continue
-        if name not in done:
+        if name not in done and not inspect.ismodule(obj):
             type_str = type(obj).__name__
             if type_str not in ('int', 'str', 'bytes', 'float', 'bool'):
                 type_str = 'Any'
@@ -77,22 +78,21 @@ def add_typing_import(output: List[str]) -> List[str]:
 
 
 def is_c_function(obj: object) -> bool:
-    return type(obj) is type(ord)
+    return inspect.isbuiltin(obj) or type(obj) is type(ord)
 
 
 def is_c_method(obj: object) -> bool:
-    return type(obj) in (type(str.index),
-                         type(str.__add__),
-                         type(str.__new__))
+    return inspect.ismethoddescriptor(obj) or type(obj) in (type(str.index),
+                                                            type(str.__add__),
+                                                            type(str.__new__))
 
 
 def is_c_classmethod(obj: object) -> bool:
-    type_str = type(obj).__name__
-    return type_str == 'classmethod_descriptor'
+    return inspect.isbuiltin(obj) or type(obj).__name__ == 'classmethod_descriptor'
 
 
 def is_c_type(obj: object) -> bool:
-    return type(obj) is type(int)
+    return inspect.isclass(obj) or type(obj) is type(int)
 
 
 def generate_c_function_stub(module: ModuleType,
@@ -121,10 +121,15 @@ def generate_c_function_stub(module: ModuleType,
                 sig = infer_method_sig(name)
             else:
                 sig = sigs.get(name, '(*args, **kwargs)')
+    # strip away parenthesis
     sig = sig[1:-1]
     if sig:
-        if sig.split(',', 1)[0] == self_var:
-            self_arg = ''
+        if self_var:
+            # remove annotation on self from signature if present
+            first, last = sig.split(',', 1)
+            if first == self_var or first.startswith(self_var + ':'):
+                self_arg = ''
+                sig = '{},{}'.format(self_var, last)
     else:
         self_arg = self_arg.replace(', ', '')
     output.append('def %s(%s%s): ...' % (name, self_arg, sig))

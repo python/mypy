@@ -41,6 +41,7 @@ import json
 import os
 import os.path
 import pkgutil
+import inspect
 import subprocess
 import sys
 import textwrap
@@ -871,6 +872,13 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
         yield package.__name__
         path = getattr(package, '__path__', None)
         if path is None:
+            if is_c_module(package):
+                # This is a C module, which could have submodules.
+                subpackages = [package.__name__ + "." + name
+                               for name, val in inspect.getmembers(package)
+                               if inspect.ismodule(val)]
+                for submodule in walk_packages(subpackages):
+                    yield submodule
             # It's a module inside a package.  There's nothing else to walk/yield.
             continue
         for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
