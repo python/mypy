@@ -109,6 +109,7 @@ def _add_method(
     func.type = set_callable_name(signature, func)
     func._fullname = info.fullname() + '.' + name
     func.line = info.line
+    func.plugin_generated = True
 
     info.names[name] = SymbolTableNode(MDEF, func)
     info.defn.defs.body.append(func)

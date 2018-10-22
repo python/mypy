@@ -3375,6 +3375,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return SymbolTableNode(GDEF, v)
         return None
 
+    def add_symbol_to_type(self, info: TypeInfo, name: str, node: SymbolTableNode) -> None:
+        pass
+
     def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
         """If node refers to old version of module, return reference to new version.
 
@@ -3567,6 +3570,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             node = original_ctx.node
         elif isinstance(original_ctx, SymbolNode):
             node = original_ctx
+#        import pdb; pdb.set_trace()
 
         if isinstance(original_ctx, SymbolTableNode) and original_ctx.kind == MODULE_REF:
             # Since this is an import, original_ctx.node points to the module definition.

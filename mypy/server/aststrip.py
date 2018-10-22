@@ -44,7 +44,7 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr, ForStmt, Block
+    ListExpr, ForStmt, Block, FuncBase,
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -94,10 +94,17 @@ class NodeStripVisitor(TraverserVisitor):
         node.type_vars = []
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
+        print(node.defs.body)
+        node.defs.body = [s for s in node.defs.body
+                          if not (isinstance(s, FuncBase) and s.plugin_generated)]
+        print(node.defs.body)
+
         with self.enter_class(node.info):
             super().visit_class_def(node)
 
     def strip_type_info(self, info: TypeInfo) -> None:
+        print("stripping", info.fullname())
+
         info.type_vars = []
         info.bases = []
         info.is_abstract = False
@@ -110,6 +117,13 @@ class NodeStripVisitor(TraverserVisitor):
         TypeState.reset_subtype_caches_for(info)
         info.declared_metaclass = None
         info.metaclass_type = None
+
+        to_delete = [k for k, v in info.names.items()
+                     if isinstance(v.node, FuncBase) and v.node.plugin_generated]
+#        print("YO HOW BOUT THIS", to_delete, info.names.items())
+        for k in to_delete:
+            del info.names[k]
+#        import pdb; pdb.set_trace()
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:

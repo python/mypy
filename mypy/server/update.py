@@ -126,7 +126,7 @@ from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
+    MypyFile, FuncDef, FuncBase, TypeInfo, SymbolNode, Decorator,
     OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options
@@ -846,6 +846,12 @@ def reprocess_nodes(manager: BuildManager,
                     module_id)
         return set()
 
+    nodeset_ = set(s for s in nodeset
+                  if not (isinstance(s.node, FuncBase) and s.node.plugin_generated))
+    print(nodeset_ - nodeset)
+    nodeset = nodeset_
+    print(nodeset)
+
     file_node = manager.modules[module_id]
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
@@ -885,6 +891,7 @@ def reprocess_nodes(manager: BuildManager,
                 fnam=file_node.path,
                 options=options,
                 active_type=deferred.active_typeinfo):
+#            import pdb; pdb.set_trace()
             manager.semantic_analyzer.refresh_partial(deferred.node, patches)
 
     # Third pass of semantic analysis.
