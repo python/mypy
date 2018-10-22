@@ -68,7 +68,7 @@ def generate_stub_for_c_module(module_name: str,
 
 def add_typing_import(output: List[str]) -> List[str]:
     names = []
-    for name in ['Any']:
+    for name in ['Any', 'Union', 'Tuple', 'Optional', 'List', 'Dict']:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
@@ -88,7 +88,16 @@ def is_c_method(obj: object) -> bool:
 
 
 def is_c_classmethod(obj: object) -> bool:
-    return inspect.isbuiltin(obj) or type(obj).__name__ == 'classmethod_descriptor'
+    return inspect.isbuiltin(obj) or type(obj).__name__ in ('classmethod',
+                                                            'classmethod_descriptor')
+
+
+def is_c_property(obj: object) -> bool:
+    return inspect.isdatadescriptor(obj)
+
+
+def is_c_property_readonly(prop: object) -> bool:
+    return getattr(prop, 'fset') is None
 
 
 def is_c_type(obj: object) -> bool:
@@ -135,6 +144,15 @@ def generate_c_function_stub(module: ModuleType,
     output.append('def %s(%s%s): ...' % (name, self_arg, sig))
 
 
+def generate_c_property_stub(name: str, output: List[str], readonly: bool) -> None:
+
+    output.append('@property')
+    output.append('def {}(self) -> Any: ...'.format(name))
+    if not readonly:
+        output.append('@{}.setter'.format(name))
+        output.append('def {}(self, val: Any) -> None: ...'.format(name))
+
+
 def generate_c_type_stub(module: ModuleType,
                          class_name: str,
                          obj: type,
@@ -147,6 +165,7 @@ def generate_c_type_stub(module: ModuleType,
     obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods = []
+    properties = []
     done = set()
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
@@ -167,6 +186,10 @@ def generate_c_type_stub(module: ModuleType,
                     attr = '__init__'
                 generate_c_function_stub(module, attr, value, methods, self_var, sigs=sigs,
                                          class_name=class_name, class_sigs=class_sigs)
+        elif is_c_property(value):
+            done.add(attr)
+            generate_c_property_stub(attr, properties, is_c_property_readonly(value))
+
     variables = []
     for attr, value in items:
         if is_skipped_attribute(attr):
@@ -188,7 +211,7 @@ def generate_c_type_stub(module: ModuleType,
         bases_str = '(%s)' % ', '.join(base.__name__ for base in bases)
     else:
         bases_str = ''
-    if not methods and not variables:
+    if not methods and not variables and not properties:
         output.append('class %s%s: ...' % (class_name, bases_str))
     else:
         output.append('class %s%s:' % (class_name, bases_str))
@@ -196,6 +219,8 @@ def generate_c_type_stub(module: ModuleType,
             output.append('    %s' % variable)
         for method in methods:
             output.append('    %s' % method)
+        for prop in properties:
+            output.append('    %s' % prop)
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:
