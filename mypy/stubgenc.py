@@ -10,7 +10,8 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any
 from types import ModuleType
 
-from mypy.stubutil import is_c_module, write_header, infer_sig_from_docstring
+from mypy.stubutil import is_c_module, write_header, infer_sig_from_docstring, \
+    infer_prop_type_from_docstring
 
 
 def generate_stub_for_c_module(module_name: str,
@@ -141,16 +142,20 @@ def generate_c_function_stub(module: ModuleType,
                 sig = '{},{}'.format(self_var, groups[1]) if len(groups) > 1 else self_var
     else:
         self_arg = self_arg.replace(', ', '')
-    output.append('def %s(%s%s): ...' % (name, self_arg, sig))
+    output.append('def %s(%s%s) -> Any: ...' % (name, self_arg, sig))
 
 
-def generate_c_property_stub(name: str, output: List[str], readonly: bool) -> None:
+def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
+    docstr = getattr(obj, '__doc__', None)
+    inferred = infer_prop_type_from_docstring(docstr, name)
+    if not inferred:
+        inferred = 'Any'
 
     output.append('@property')
-    output.append('def {}(self) -> Any: ...'.format(name))
+    output.append('def {}(self) -> {}: ...'.format(name, inferred))
     if not readonly:
         output.append('@{}.setter'.format(name))
-        output.append('def {}(self, val: Any) -> None: ...'.format(name))
+        output.append('def {}(self, val: {}) -> None: ...'.format(name, inferred))
 
 
 def generate_c_type_stub(module: ModuleType,
@@ -188,7 +193,7 @@ def generate_c_type_stub(module: ModuleType,
                                          class_name=class_name, class_sigs=class_sigs)
         elif is_c_property(value):
             done.add(attr)
-            generate_c_property_stub(attr, properties, is_c_property_readonly(value))
+            generate_c_property_stub(attr, value, properties, is_c_property_readonly(value))
 
     variables = []
     for attr, value in items:

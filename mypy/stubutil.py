@@ -121,3 +121,18 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
         return m.group(1)
     else:
         return None
+
+
+def infer_prop_type_from_docstring(docstr: str, name: str) -> Optional[str]:
+    if not docstr:
+        return None
+
+    # check for Google/Numpy style docstring type annotation
+    # the docstring has the format "<type>: <descriptions>"
+    # in the type string, we allow the following characters
+    # dot: because something classes are annotated using full path,
+    # brackets: to allow type hints like List[int]
+    # comma/space: things like Tuple[int, int]
+    test_str = r'^([a-zA-Z0-9_, \.\[\]]*): '
+    m = re.match(test_str, docstr)
+    return m.group(1) if m else None
