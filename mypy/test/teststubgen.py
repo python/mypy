@@ -103,8 +103,9 @@ class StubgenUtilSuite(Suite):
              ('func3', '(arg, arg2)')])
 
     def test_infer_sig_from_docstring(self) -> None:
-        assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'), '(x)')
-        assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'), '(x, Y_a=None)')
+        assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'), ('(x)', 'Any'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
+                     ('(x, Y_a=None)', 'Any'))
         assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x=z(y))', 'func'), None)

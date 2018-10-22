@@ -94,7 +94,7 @@ def is_c_classmethod(obj: object) -> bool:
 
 
 def is_c_property(obj: object) -> bool:
-    return inspect.isdatadescriptor(obj)
+    return inspect.isdatadescriptor(obj) and hasattr(obj, 'fget')
 
 
 def is_c_property_readonly(prop: object) -> bool:
@@ -114,6 +114,8 @@ def generate_c_function_stub(module: ModuleType,
                              class_name: Optional[str] = None,
                              class_sigs: Dict[str, str] = {},
                              ) -> None:
+    ret_type = 'Any'
+
     if self_var:
         self_arg = '%s, ' % self_var
     else:
@@ -125,7 +127,7 @@ def generate_c_function_stub(module: ModuleType,
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
         if inferred:
-            sig = inferred
+            sig, ret_type = inferred
         else:
             if class_name and name not in sigs:
                 sig = infer_method_sig(name)
@@ -142,12 +144,12 @@ def generate_c_function_stub(module: ModuleType,
                 sig = '{},{}'.format(self_var, groups[1]) if len(groups) > 1 else self_var
     else:
         self_arg = self_arg.replace(', ', '')
-    output.append('def %s(%s%s) -> Any: ...' % (name, self_arg, sig))
+    output.append('def %s(%s%s) -> %s: ...' % (name, self_arg, sig, ret_type))
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
     docstr = getattr(obj, '__doc__', None)
-    inferred = infer_prop_type_from_docstring(docstr, name)
+    inferred = infer_prop_type_from_docstring(docstr)
     if not inferred:
         inferred = 'Any'
 
