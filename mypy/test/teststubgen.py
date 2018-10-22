@@ -17,7 +17,7 @@ from mypy.stubgen import (
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
-    infer_sig_from_docstring
+    infer_sig_from_docstring, infer_prop_type_from_docstring
 )
 
 
@@ -110,6 +110,23 @@ class StubgenUtilSuite(Suite):
         assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x=z(y))', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
+        # try to infer signature from type annotation
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int)', 'func'), ('(x: int)', 'Any'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3)', 'func'), ('(x: int=3)', 'Any'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
+                     ('(x: int=3)', 'int'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int   \n', 'func'),
+                     ('(x: int=3)', 'int'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
+                     ('(x: Tuple[int, str])', 'str'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: foo.bar)', 'func'),
+                     ('(x: foo.bar)', 'Any'))
+
+    def infer_prop_type_from_docstring(self) -> None:
+        assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
+        assert_equal(infer_prop_type_from_docstring('Optional[int]: An int.'), 'Optional[int]')
+        assert_equal(infer_prop_type_from_docstring('Tuple[int, int]: A tuple.'), 'Tuple[int, int]')
+        assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
 
 
 class StubgenPythonSuite(DataSuite):
