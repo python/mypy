@@ -125,7 +125,8 @@ class StubgenUtilSuite(Suite):
     def infer_prop_type_from_docstring(self) -> None:
         assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
         assert_equal(infer_prop_type_from_docstring('Optional[int]: An int.'), 'Optional[int]')
-        assert_equal(infer_prop_type_from_docstring('Tuple[int, int]: A tuple.'), 'Tuple[int, int]')
+        assert_equal(infer_prop_type_from_docstring('Tuple[int, int]: A tuple.'),
+                     'Tuple[int, int]')
         assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
 
 

@@ -7,7 +7,7 @@ import importlib
 import inspect
 import os.path
 import re
-from typing import List, Dict, Tuple, Optional, Mapping, Any
+from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
 from mypy.stubutil import (
@@ -173,9 +173,9 @@ def generate_c_type_stub(module: ModuleType,
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
     obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
-    methods = []
-    properties = []
-    done = set()
+    methods = []  # type: List[str]
+    properties = []  # type: List[str]
+    done = set()  # type: Set[str]
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
