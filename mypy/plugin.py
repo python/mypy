@@ -113,10 +113,6 @@ class SemanticAnalyzerPluginInterface:
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
-    @abstractmethod
-    def add_symbol_to_type(self, info: TypeInfo, name: str, node: SymbolTableNode) -> None:
-        raise NotImplementedError
-
 
 # A context for a function hook that infers the return type of a function with
 # a special signature.

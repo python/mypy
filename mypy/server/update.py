@@ -846,12 +846,6 @@ def reprocess_nodes(manager: BuildManager,
                     module_id)
         return set()
 
-    nodeset_ = set(s for s in nodeset
-                  if not (isinstance(s.node, FuncBase) and s.node.plugin_generated))
-    print(nodeset_ - nodeset)
-    nodeset = nodeset_
-    print(nodeset)
-
     file_node = manager.modules[module_id]
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
@@ -891,7 +885,6 @@ def reprocess_nodes(manager: BuildManager,
                 fnam=file_node.path,
                 options=options,
                 active_type=deferred.active_typeinfo):
-#            import pdb; pdb.set_trace()
             manager.semantic_analyzer.refresh_partial(deferred.node, patches)
 
     # Third pass of semantic analysis.
@@ -985,7 +978,9 @@ def update_deps(module_id: str,
 
 
 def lookup_target(manager: BuildManager,
-                  target: str) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
+                  target: str,
+                  promote_generated: bool = True,
+                  ) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
     """Look up a target by fully-qualified name.
 
     The first item in the return tuple is a list of deferred nodes that
@@ -1020,6 +1015,11 @@ def lookup_target(manager: BuildManager,
                 or c not in node.names):
             not_found()  # Stale dependency
             return [], None
+        if node.names[c].plugin_generated:
+            if not promote_generated:
+                return [], None
+            target = node.fullname()
+            break
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
@@ -1040,7 +1040,7 @@ def lookup_target(manager: BuildManager,
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                method, _ = lookup_target(manager, target + '.' + name)
+                method, _ = lookup_target(manager, target + '.' + name, promote_generated=False)
                 result.extend(method)
         return result, stale_info
     if isinstance(node, Decorator):

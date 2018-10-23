@@ -379,7 +379,7 @@ class ImportedName(SymbolNode):
 
 
 FUNCBASE_FLAGS = [
-    'is_property', 'is_class', 'is_static', 'is_final', 'plugin_generated'
+    'is_property', 'is_class', 'is_static', 'is_final'
 ]  # type: Final
 
 
@@ -394,7 +394,6 @@ class FuncBase(Node):
                  'is_static',       # Uses "@staticmethod"
                  'is_final',        # Uses "@final"
                  '_fullname',
-                 'plugin_generated',
                  )
 
     def __init__(self) -> None:
@@ -411,7 +410,6 @@ class FuncBase(Node):
         self.is_class = False
         self.is_static = False
         self.is_final = False
-        self.plugin_generated = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(Bogus[str], None)
@@ -2703,6 +2701,7 @@ class SymbolTableNode:
                  'module_hidden',
                  'cross_ref',
                  'implicit',
+                 'plugin_generated',
                  'no_serialize',
                  )
 
@@ -2721,7 +2720,7 @@ class SymbolTableNode:
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref = None  # type: Optional[str]
-#        self.plugin_generated = plugin_generated
+        self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
 
     @property
@@ -2778,8 +2777,8 @@ class SymbolTableNode:
             data['module_public'] = False
         if self.implicit:
             data['implicit'] = True
-        # if self.plugin_generated:
-        #     data['plugin_generated'] = True
+        if self.plugin_generated:
+            data['plugin_generated'] = True
         if self.kind == MODULE_REF:
             assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
             data['cross_ref'] = self.node.fullname()
@@ -2813,8 +2812,8 @@ class SymbolTableNode:
             stnode.module_public = data['module_public']
         if 'implicit' in data:
             stnode.implicit = data['implicit']
-        # if 'plugin_generated' in data:
-        #     stnode.plugin_generated = data['plugin_generated']
+        if 'plugin_generated' in data:
+            stnode.plugin_generated = data['plugin_generated']
         return stnode
 
 

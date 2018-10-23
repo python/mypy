@@ -691,8 +691,32 @@ B(1, 2)
 b.py:8: error: Argument 1 to "B" has incompatible type "int"; expected "str"
 [builtins fixtures/list.pyi]
 
+[case testDataclassUpdate3]
+# flags: --python-version 3.6
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
 
-
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "B"
 
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m
