@@ -150,7 +150,14 @@ def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) ->
         xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
     else:
         xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
-    with open(path, 'wb') as f:
+
+    # checks for a directory structure in path and creates folders if needed
+    xml_path = os.path.expanduser(os.path.expandvars(path))
+    xml_dirs = os.path.dirname(os.path.abspath(xml_path))
+    if not os.path.isdir(xml_dirs):
+        os.makedirs(xml_dirs)
+
+    with open(xml_path, 'wb') as f:
         f.write(xml.encode('utf-8'))
 
 
