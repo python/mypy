@@ -1387,7 +1387,7 @@ class D(C):
 <m.D> -> m.D
 
 [case testDataclassDeps]
-# flags: --python-version 3.6
+# flags: --python-version 3.7
 from dataclasses import dataclass
 
 Z = int
