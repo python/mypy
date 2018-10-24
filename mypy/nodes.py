@@ -227,6 +227,8 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package = False
+    # Plugin-created dependencies
+    plugin_deps = None  # type: Dict[str, Set[str]]
 
     def __init__(self,
                  defs: List[Statement],
@@ -239,6 +241,7 @@ class MypyFile(SymbolNode):
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
+        self.plugin_deps = {}
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:

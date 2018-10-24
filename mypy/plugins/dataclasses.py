@@ -11,6 +11,7 @@ from mypy.plugins.common import _add_method, _get_decorator_bool_argument
 from mypy.types import (
     CallableType, Instance, NoneTyp, Overloaded, TypeVarDef, TypeVarType,
 )
+from mypy.server.trigger import make_trigger
 
 MYPY = False
 if MYPY:
@@ -153,6 +154,10 @@ class DataclassTransformer:
         for attr in attributes:
             if attr.is_init_var:
                 del info.names[attr.name]
+
+        for attr in attributes:
+            ctx.api.add_plugin_dependency(make_trigger(info.fullname() + '.' + attr.name),
+                                          make_trigger(info.fullname()))
 
         info.metadata['dataclass'] = {
             'attributes': OrderedDict((attr.name, attr.serialize()) for attr in attributes),
