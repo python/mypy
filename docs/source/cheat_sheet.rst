@@ -204,8 +204,8 @@ that are common in idiomatic Python are standardized.
 
    def f(my_mapping):
        # type: (MutableMapping[int, str]) -> Set[str]
-       my_dict[5] = 'maybe'
-       return set(my_dict.values())
+       my_mapping[5] = 'maybe'
+       return set(my_mapping.values())
 
    f({3: 'yes', 4: 'no'})
 

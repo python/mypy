@@ -5366,3 +5366,26 @@ except Exception as e:
 [builtins fixtures/exception.pyi]
 [out]
 [out2]
+
+[case testBadEnumLoading]
+import a
+[file a.py]
+from b import E
+x: E
+y = 1
+
+[file a.py.2]
+from b import E
+x: E
+y = 2
+
+[file b.py]
+from typing import List
+from enum import Enum
+
+def f() -> List[str]: ...
+
+E = Enum('E', f())  # type: ignore
+[builtins fixtures/list.pyi]
+[out]
+[out2]

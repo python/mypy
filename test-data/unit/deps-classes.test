@@ -136,10 +136,8 @@ class D(C):
 <m.C.(abstract)> -> <m.D.__init__>, m
 <m.C.__init__> -> <m.D.__init__>, m.D.__init__
 <m.C.__new__> -> <m.D.__new__>
-<m.C.foo> -> <m.D.foo>
+<m.C.foo> -> <m.D.foo>, m.D.__init__
 <m.C> -> m, m.C, m.D
-<m.D.__init__> -> m.D.__init__
-<m.D.foo> -> m.D.__init__
 <m.D> -> m.D
 
 [case testClassMissingInit]
@@ -175,11 +173,69 @@ def g() -> None:
 class B: pass
 [out]
 <m.A.X> -> m.g
--- The __init__ is superfluous but benign
-<m.A.__init__> -> m.g
-<m.A.__new__> -> m.g
 <m.A> -> <m.f>, m.A, m.f, m.g
 <m.B.__init__> -> m
 <m.B.__new__> -> m
 -- The <m.A.X> dependecy target is superfluous but benign
 <m.B> -> <m.A.X>, m
+
+[case testClassAttribute]
+class C:
+    x = 0
+
+def f() -> None:
+    C.x
+
+def g() -> None:
+    C.x = 1
+[out]
+<m.C.x> -> m.f, m.g
+<m.C> -> m.C, m.f, m.g
+
+[case testStaticAndClassMethods]
+class C:
+    @staticmethod
+    def foo() -> None:
+        h()
+
+    @classmethod
+    def bar(cls) -> None:
+        h()
+
+def fstatic() -> None:
+    C.foo()
+
+def fclass() -> None:
+    C.bar()
+
+cc = C()
+
+def gstatic() -> None:
+    cc.foo()
+
+def gclass() -> None:
+    cc.bar()
+
+def h() -> None: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.bar> -> m, m.fclass, m.gclass
+<m.C.foo> -> m, m.fstatic, m.gstatic
+<m.C> -> <m.cc>, m, m.C, m.fclass, m.fstatic
+<m.cc> -> m, m.gclass, m.gstatic
+<m.h> -> m.C.bar, m.C.foo
+
+[case testClassAttributeWithMetaclass]
+class M(type):
+    x = 1
+class C(metaclass=M):
+    pass
+def f() -> None:
+    C.x
+[out]
+<m.C.x> -> m.f
+<m.C> -> m.C, m.f
+<m.M.x> -> m.f
+<m.M> -> <m.C>, m.M

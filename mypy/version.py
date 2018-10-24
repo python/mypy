@@ -1,7 +1,11 @@
 import os
 from mypy import git
 
-__version__ = '0.640+dev'
+# Base version.
+# - Release versions have the form "0.NNN".
+# - Dev versions have the form "0.NNN+dev" (PLUS sign to conform to PEP 440).
+# - For 1.0 we'll switch back to 1.2.3 form.
+__version__ = '0.650+dev'
 base_version = __version__
 
 mypy_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Build and upload mypy packages for Linux and macOS to PyPI.
 
+*** You must first tag the release and use `git push --tags`. ***
+
 Note: This should be run on macOS using official python.org Python 3.6 or
       later, as this is the only tested configuration. Use --force to
       run anyway.
@@ -67,7 +69,7 @@ class Builder:
             return
         extra = '' if self.no_upload else ' and upload'
         print('This will build{} PyPI packages for mypy {}.'.format(extra, self.version))
-        response = input('Proceeed? [yN] '.format(self.version))
+        response = input('Proceed? [yN] '.format(self.version))
         if response.lower() != 'y':
             sys.exit('Exiting')
 
@@ -101,7 +103,7 @@ class Builder:
         tag = 'v{}'.format(self.version)
         self.heading('Check out {}'.format(tag))
         self.run('cd mypy && git checkout {}'.format(tag))
-        self.run('cd mypy && git submodule update --init typeshed'.format(tag))
+        self.run('cd mypy && git submodule update --init'.format(tag))
 
     def make_virtualenv(self) -> None:
         self.heading('Creating a fresh virtualenv')
