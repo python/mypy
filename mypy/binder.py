@@ -110,10 +110,10 @@ class ConditionalTypeBinder:
         self.options_on_return.append([])
         return f
 
-    def _put(self, key: Key, type: Type, index: int=-1) -> None:
+    def _put(self, key: Key, type: Type, index: int = -1) -> None:
         self.frames[index].types[key] = type
 
-    def _get(self, key: Key, index: int=-1) -> Optional[Type]:
+    def _get(self, key: Key, index: int = -1) -> Optional[Type]:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):

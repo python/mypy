@@ -348,7 +348,7 @@ class ImportTracker:
             if alias:
                 self.reverse_alias[alias] = name
 
-    def add_import(self, module: str, alias: Optional[str]=None) -> None:
+    def add_import(self, module: str, alias: Optional[str] = None) -> None:
         name = module.split('.')[0]
         self.module_for[alias or name] = None
         self.direct_imports[name] = module
@@ -625,7 +625,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
         self._state = CLASS
 
-    def is_type_expression(self, expr: Expression, top_level: bool=True) -> bool:
+    def is_type_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like type expressions
 
         Used to know if assignments look like typealiases
@@ -994,7 +994,7 @@ def default_python2_interpreter() -> str:
     raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
 
 
-def usage(exit_nonzero: bool=True) -> None:
+def usage(exit_nonzero: bool = True) -> None:
     usage = textwrap.dedent("""\
         usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
                        [--search-path PATH] [-p PATH] [-o PATH]
