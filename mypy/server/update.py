@@ -978,9 +978,7 @@ def update_deps(module_id: str,
 
 
 def lookup_target(manager: BuildManager,
-                  target: str,
-                  promote_generated: bool = True,
-                  ) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
+                  target: str) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
     """Look up a target by fully-qualified name.
 
     The first item in the return tuple is a list of deferred nodes that
@@ -1015,11 +1013,11 @@ def lookup_target(manager: BuildManager,
                 or c not in node.names):
             not_found()  # Stale dependency
             return [], None
+        # Don't reprocess plugin generated targets. They should get
+        # stripped and regenerated when the containing target is
+        # reprocessed.
         if node.names[c].plugin_generated:
-            if not promote_generated:
-                return [], None
-            target = node.fullname()
-            break
+            return [], None
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
@@ -1040,7 +1038,7 @@ def lookup_target(manager: BuildManager,
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                method, _ = lookup_target(manager, target + '.' + name, promote_generated=False)
+                method, _ = lookup_target(manager, target + '.' + name)
                 result.extend(method)
         return result, stale_info
     if isinstance(node, Decorator):
