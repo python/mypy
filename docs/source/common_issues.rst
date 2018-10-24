@@ -499,10 +499,9 @@ Here's the above example modified to use ``MYPY``:
 Using classes that are generic in stubs but not at runtime
 ----------------------------------------------------------
 
-In some cases a class may be declared as generic in stubs, while
-it is not generic at runtime. For example this is the case for some
-classes in standard library, such as ``os.PathLike`` and ``queue.Queue``.
-Subscripting such class will result in runtime errors:
+Some classes are declared as generic in stubs, but not at runtime. Examples
+in the standard library include ``os.PathLike`` and ``queue.Queue``.
+Subscripting such a class will result in a runtime error:
 
 .. code-block:: python
 
@@ -513,8 +512,8 @@ Subscripting such class will result in runtime errors:
 
    results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
 
-To avoid these errors while still having precise types one can either use
-string literals or ``typing.TYPE_CHECKING``:
+To avoid these errors while still having precise types you can either use
+string literal types or ``typing.TYPE_CHECKING``:
 
 .. code-block:: python
 
@@ -522,9 +521,9 @@ string literals or ``typing.TYPE_CHECKING``:
    from typing import TYPE_CHECKING
 
    if TYPE_CHECKING:
-       BaseQueue = Queue[str]
+       BaseQueue = Queue[str]  # this is only processed by mypy
    else:
-       BaseQueue = Queue
+       BaseQueue = Queue  # this is not seen by mypy but will be executed at runtime.
 
    class Tasks(BaseQueue):  # OK
        ...
