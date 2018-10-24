@@ -170,7 +170,7 @@ class Server:
                         sys.exit(0)
                     try:
                         data = receive(conn)
-                    except OSError as err:
+                    except OSError:
                         conn.close()  # Maybe the client hung up
                         continue
                     resp = {}  # type: Dict[str, Any]
@@ -192,7 +192,7 @@ class Server:
                                 raise
                     try:
                         conn.sendall(json.dumps(resp).encode('utf8'))
-                    except OSError as err:
+                    except OSError:
                         pass  # Maybe the client hung up
                     conn.close()
                     if command == 'stop':

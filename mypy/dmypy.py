@@ -151,7 +151,7 @@ def do_start(args: argparse.Namespace) -> None:
     """
     try:
         get_status()
-    except BadStatus as err:
+    except BadStatus:
         # Bad or missing status file or dead process; good to start.
         pass
     else:
@@ -435,7 +435,7 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
         raise BadStatus("pid field is not an int")
     try:
         os.kill(pid, 0)
-    except OSError as err:
+    except OSError:
         raise BadStatus("Daemon has died")
     if 'sockname' not in data:
         raise BadStatus("Invalid status file (no sockname field)")
@@ -456,7 +456,7 @@ def read_status() -> Dict[str, object]:
     with open(STATUS_FILE) as f:
         try:
             data = json.load(f)
-        except Exception as err:
+        except Exception:
             raise BadStatus("Malformed status file (not JSON)")
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
@@ -467,7 +467,7 @@ def is_running() -> bool:
     """Check if the server is running cleanly"""
     try:
         get_status()
-    except BadStatus as err:
+    except BadStatus:
         return False
     return True
 
