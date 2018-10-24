@@ -564,6 +564,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 items.append(adjusted)
             return Overloaded(items)
 
+    def transform_callee_type(
+            self, callable_name: Optional[str], callee: Type, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]] = None, object_type: Optional[Type] = None) -> Type:
+        if callable_name is not None and object_type is not None and isinstance(callee, FunctionLike):
+            signature_hook = self.plugin.get_method_signature_hook(callable_name)
+            if signature_hook:
+                return self.apply_method_signature_hook(
+                    callee, args, arg_kinds, context, arg_names, object_type, signature_hook)
+
+        return callee
+
     def check_call_expr_with_callee_type(self,
                                          callee_type: Type,
                                          e: CallExpr,
@@ -574,6 +586,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         The given callee type overrides the type of the callee
         expression.
         """
+
+        callee_type = self.transform_callee_type(
+            callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee,
                                callable_name=callable_name,
@@ -607,14 +623,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 on which the method is being called
         """
         arg_messages = arg_messages or self.msg
-
-        if (callable_name is not None and object_type is not None
-                and isinstance(callee, FunctionLike)):
-            # Apply plugin signature hook that may generate a better signature.
-            signature_hook = self.plugin.get_method_signature_hook(callable_name)
-            if signature_hook:
-                callee = self.apply_method_signature_hook(
-                    callee, args, arg_kinds, context, arg_names, object_type, signature_hook)
 
         if isinstance(callee, CallableType):
             if callable_name is None and callee.name:
@@ -1822,6 +1830,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # TODO: Support non-Instance types.
             callable_name = '{}.{}'.format(base_type.type.fullname(), method_name)
             object_type = base_type
+
+        method_type = self.transform_callee_type(
+            callable_name, method_type, args, arg_kinds, context, object_type=object_type)
+
         return self.check_call(method_type, args, arg_kinds,
                                context, arg_messages=local_errors,
                                callable_name=callable_name, object_type=object_type)
