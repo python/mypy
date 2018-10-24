@@ -126,7 +126,7 @@ from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
-    MypyFile, FuncDef, FuncBase, TypeInfo, SymbolNode, Decorator,
+    MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
     OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options

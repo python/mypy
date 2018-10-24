@@ -44,7 +44,7 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr, ForStmt, Block, SymbolNode, FuncBase,
+    ListExpr, ForStmt, Block, SymbolNode,
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
