@@ -41,6 +41,7 @@ import json
 import os
 import os.path
 import pkgutil
+import inspect
 import subprocess
 import sys
 import textwrap
@@ -211,7 +212,6 @@ def generate_stub(path: str,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                   include_private: bool = False
                   ) -> None:
-
     with open(path, 'rb') as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data, pyversion)
@@ -254,7 +254,7 @@ class AnnotationPrinter(TypeStrVisitor):
         super().__init__()
         self.stubgen = stubgen
 
-    def visit_unbound_type(self, t: UnboundType)-> str:
+    def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
         base = s.split('.')[0]
         self.stubgen.import_tracker.require_name(base)
@@ -593,7 +593,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     if init:
                         found = True
                         if not sep and not self._indent and \
-                           self._state not in (EMPTY, VAR):
+                                self._state not in (EMPTY, VAR):
                             init = '\n' + init
                             sep = True
                         self.add(init)
@@ -795,7 +795,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue, NameExpr) and rvalue.name in ('True', 'False'):
             return 'bool'
         if can_infer_optional and \
-           isinstance(rvalue, NameExpr) and rvalue.name == 'None':
+                isinstance(rvalue, NameExpr) and rvalue.name == 'None':
             self.add_typing_import('Optional')
             self.add_typing_import('Any')
             return 'Optional[Any]'
@@ -850,7 +850,6 @@ class ReturnSeeker(mypy.traverser.TraverserVisitor):
 
 
 def has_return_statement(fdef: FuncBase) -> bool:
-
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
@@ -866,17 +865,35 @@ def get_qualified_name(o: Expression) -> str:
 
 
 def walk_packages(packages: List[str]) -> Iterator[str]:
+    """Iterates through all packages and sub-packages in the given list.
+
+    Python packages have a __path__ attribute defined, which pkgutil uses to determine
+    the package hierarchy.  However, packages in C extensions do not have this attribute,
+    so we have to roll out our own.
+    """
     for package_name in packages:
         package = importlib.import_module(package_name)
         yield package.__name__
+        # get the path of the object (needed by pkgutil)
         path = getattr(package, '__path__', None)
         if path is None:
+            # object has no path; this means it's either a module inside a package
+            # (and thus no sub-packages), or it could be a C extension package.
+            if is_c_module(package):
+                # This is a C extension module, now get the list of all sub-packages
+                # using the inspect module
+                subpackages = [package.__name__ + "." + name
+                               for name, val in inspect.getmembers(package)
+                               if inspect.ismodule(val)]
+                # recursively iterate through the subpackages
+                for submodule in walk_packages(subpackages):
+                    yield submodule
             # It's a module inside a package.  There's nothing else to walk/yield.
-            continue
-        for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
-                                                                     prefix=package.__name__ + ".",
-                                                                     onerror=lambda r: None):
-            yield qualified_name
+        else:
+            all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
+                                                 onerror=lambda r: None)
+            for importer, qualified_name, ispkg in all_packages:
+                yield qualified_name
 
 
 def main() -> None:
