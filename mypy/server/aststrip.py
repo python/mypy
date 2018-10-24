@@ -81,6 +81,7 @@ class NodeStripVisitor(TraverserVisitor):
         self.names = file_node.names
         self.file_node = file_node
         self.recurse_into_functions = False
+        file_node.plugin_deps.clear()
         file_node.accept(self)
 
     def visit_block(self, b: Block) -> None:
