@@ -59,15 +59,17 @@ class ArgSuite(Suite):
         special_opts.python_executable = None
         special_opts.python_version = None
         special_opts.no_executable = None
-        options = Options()
+
         # first test inferring executable from version
+        options = Options()
         options.python_executable = None
         options.python_version = sys.version_info[:2]
         infer_python_version_and_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
+
         # then test inferring version from executable
-        options.python_version = None
+        options = Options()
         options.python_executable = sys.executable
         infer_python_version_and_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]
