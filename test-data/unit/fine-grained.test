@@ -772,6 +772,108 @@ class A:
 ==
 main:3: error: Too few arguments for "B"
 
+[case testDataclassUpdate6]
+# flags: --python-version 3.7
+from b import B
+B(1, 2) < B(1, 2)
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass(order=True)
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Unsupported left operand type for < ("B")
+
+[case testAttrsUpdate1]
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+import attr
+@attr.s
+class B(A):
+    b = attr.ib()   # type: int
+[file a.py]
+import attr
+@attr.s(init=False)
+class A:
+    a = attr.ib()   # type: int
+
+[file a.py.2]
+import attr
+@attr.s(init=False)
+class A:
+    a = attr.ib()   # type: int
+    other = attr.ib()   # type: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:2: error: Too few arguments for "B"
+
+[case testAttrsUpdate2]
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+import attr
+@attr.s(auto_attribs=True)
+class B(A):
+    x: int
+[file a.py]
+import attr
+@attr.s(auto_attribs=True, init=False)
+class A:
+    a: int
+
+[file a.py.2]
+import attr
+@attr.s(auto_attribs=True, init=False)
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:2: error: Too few arguments for "B"
+
+[case testAttrsUpdate3]
+from b import B
+B(1, 2) < B(1, 2)
+[file b.py]
+from a import A
+import attr
+@attr.s(cmp=False)
+class B(A):
+    b = attr.ib()   # type: int
+[file a.py]
+import attr
+@attr.s(init=False)
+class A:
+    a = attr.ib()   # type: int
+
+[file a.py.2]
+import attr
+@attr.s(cmp=False, init=False)
+class A:
+    a = attr.ib()   # type: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:2: error: Unsupported left operand type for < ("B")
 
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m

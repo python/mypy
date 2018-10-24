@@ -19,6 +19,7 @@ from mypy.types import (
     Overloaded, Instance, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
+from mypy.server.trigger import make_trigger, make_wildcard_trigger
 
 MYPY = False
 if MYPY:
@@ -192,6 +193,22 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs)
 
+    # Trigger a "wildcard" update for the class whenever one of
+    # its attributes changes.  In collect_attributes, we arranged
+    # for each class (or rather the defining module) to depend on
+    # the wildcard trigger of every dataclass that it inherits
+    # from.  This will cause all subclasses to get reprocessed
+    # whenever a dataclass attribute in a parent is added,
+    # removed, or changed.
+    #
+    # This is somewhat annoyingly subtle. An alternate approach would be
+    # to have a dependency from each attribute to a full class trigger,
+    # which is a little simpler but will force rechecks in too much code.
+    for attr in attributes:
+        ctx.api.add_plugin_dependency(make_trigger(info.fullname() + '.' + attr.name),
+                                      make_wildcard_trigger(info.fullname()))
+
+
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
         'attributes': [attr.serialize() for attr in attributes],
@@ -248,6 +265,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
     super_attrs = []
     for super_info in ctx.cls.info.mro[1:-1]:
         if 'attrs' in super_info.metadata:
+            # Each class depends on the set of attributes in its attrs ancestors.
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(super_info.fullname()))
+
             for data in super_info.metadata['attrs']['attributes']:
                 # Only add an attribute if it hasn't been defined before.  This
                 # allows for overwriting attribute definitions by subclassing.
