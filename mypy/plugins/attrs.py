@@ -208,7 +208,6 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         ctx.api.add_plugin_dependency(make_trigger(info.fullname() + '.' + attr.name),
                                       make_wildcard_trigger(info.fullname()))
 
-
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
         'attributes': [attr.serialize() for attr in attributes],
