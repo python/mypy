@@ -496,6 +496,42 @@ Here's the above example modified to use ``MYPY``:
        return [arg]
 
 
+Using classes that are generic in stubs but not at runtime
+----------------------------------------------------------
+
+In some cases a class may be declared as generic in stubs, while
+it is not generic at runtime. For example this is the case for some
+classes in standard library, such as ``os.PathLike`` and ``queue.Queue``.
+Subscripting such class will result in runtime errors:
+
+.. code-block:: python
+
+   from queue import Queue
+
+   class Tasks(Queue[str]):  # TypeError: 'type' object is not subscriptable
+       ...
+
+   results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
+
+To avoid these errors while still having precise types one can either use
+string literals or ``typing.TYPE_CHECKING``:
+
+.. code-block:: python
+
+   from queue import Queue
+   from typing import TYPE_CHECKING
+
+   if TYPE_CHECKING:
+       BaseQueue = Queue[str]
+   else:
+       BaseQueue = Queue
+
+   class Tasks(BaseQueue):  # OK
+       ...
+
+   results: 'Queue[int]' = Queue()  # OK
+
+
 .. _silencing-linters:
 
 Silencing linters
