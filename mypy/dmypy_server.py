@@ -263,12 +263,11 @@ class Server:
         return self.check(sources)
 
     def cmd_recheck(self,
-                    add: Optional[List[str]] = None,
                     remove: Optional[List[str]] = None,
                     update: Optional[List[str]] = None) -> Dict[str, object]:
         """Check the same list of files we checked most recently.
 
-        If add/remove/update is given, they modify the previous list;
+        If remove/update is given, they modify the previous list;
         if all are None, stat() is called for each file in the previous list.
         """
         t0 = time.time()
@@ -278,16 +277,18 @@ class Server:
         if remove:
             removals = set(remove)
             sources = [s for s in sources if s.path and s.path not in removals]
-        if add:
+        if update:
+            known = {s.path for s in sources if s.path}
+            added = [p for p in update if p not in known]
             try:
-                added_sources = create_source_list(add, self.options, self.fscache)
+                added_sources = create_source_list(added, self.options, self.fscache)
             except InvalidSourceList as err:
                 return {'out': '', 'err': str(err), 'status': 2}
             sources = sources + added_sources  # Make a copy!
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
-        res = self.fine_grained_increment(sources, add, remove, update)
+        res = self.fine_grained_increment(sources, remove, update)
         self.fscache.flush()
         return res
 
@@ -355,7 +356,6 @@ class Server:
 
     def fine_grained_increment(self,
                                sources: List[BuildSource],
-                               add: Optional[List[str]] = None,
                                remove: Optional[List[str]] = None,
                                update: Optional[List[str]] = None,
                                ) -> Dict[str, Any]:
@@ -363,16 +363,15 @@ class Server:
         manager = self.fine_grained_manager.manager
 
         t0 = time.time()
-        if add is None and remove is None and update is None:
+        if remove is None and update is None:
             # Use the fswatcher to determine which files were changed
             # (updated or added) or removed.
             self.update_sources(sources)
             changed, removed = self.find_changed(sources)
         else:
-            # Use the add/remove/update lists to update fswatcher.
+            # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
-            changed, removed = self.update_changed(sources,
-                                                   add or [], remove or [], update or [])
+            changed, removed = self.update_changed(sources, remove or [], update or [])
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
@@ -389,12 +388,11 @@ class Server:
 
     def update_changed(self,
                        sources: List[BuildSource],
-                       add: List[str],
                        remove: List[str],
                        update: List[str],
                        ) -> ChangesAndRemovals:
 
-        changed_paths = self.fswatcher.update_changed(add, remove, update)
+        changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 
     def find_changed(self, sources: List[BuildSource]) -> ChangesAndRemovals:
