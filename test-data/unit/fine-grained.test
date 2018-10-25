@@ -655,9 +655,17 @@ from dataclasses import dataclass
 class A:
     x: str
 
+[file a.py.3]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
 [out]
 ==
 b.py:8: error: Argument 1 to "B" has incompatible type "int"; expected "str"
+==
 [builtins fixtures/list.pyi]
 
 [case testDataclassUpdate2]
@@ -767,10 +775,18 @@ from dataclasses import dataclass
 class A:
     a: int
     other: int
+
+[file a.py.3]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
 [builtins fixtures/list.pyi]
 [out]
 ==
 main:3: error: Too few arguments for "B"
+==
 
 [case testDataclassUpdate6]
 # flags: --python-version 3.7
