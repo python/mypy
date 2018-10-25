@@ -500,6 +500,7 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
         NoneTyp()
     )
 
+
 class MethodAdder:
     """Helper to add methods to a TypeInfo.
 
