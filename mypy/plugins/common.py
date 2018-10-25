@@ -78,7 +78,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     return None
 
 
-def _add_method(
+def add_method(
         ctx: ClassDefContext,
         name: str,
         args: List[Argument],
