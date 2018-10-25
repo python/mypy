@@ -220,7 +220,7 @@ class Errors:
 
     def report(self,
                line: int,
-               column: int,
+               column: Optional[int],
                message: str,
                blocker: bool = False,
                severity: str = 'error',
@@ -248,6 +248,8 @@ class Errors:
             type = None
             function = None
 
+        if column is None:
+            column = -1
         if file is None:
             file = self.file
         if offset:
