@@ -799,6 +799,33 @@ class A:
 main:3: error: Unsupported left operand type for < ("B")
 
 [case testAttrsUpdate1]
+[file a.py]
+import attr
+@attr.s
+class A:
+    a = attr.ib()   # type: int
+
+[file b.py]
+from a import A
+import attr
+@attr.s
+class B(A):
+    b = attr.ib()   # type: int
+
+B(1, 2)
+
+[file a.py.2]
+import attr
+@attr.s
+class A:
+    a = attr.ib()   # type: int
+    other = attr.ib()   # type: int
+[builtins fixtures/list.pyi]
+[out]
+==
+b.py:7: error: Too few arguments for "B"
+
+[case testAttrsUpdate2]
 from b import B
 B(1, 2)
 [file b.py]
@@ -824,7 +851,7 @@ class A:
 ==
 main:2: error: Too few arguments for "B"
 
-[case testAttrsUpdate2]
+[case testAttrsUpdate3]
 from b import B
 B(1, 2)
 [file b.py]
@@ -846,11 +873,20 @@ class A:
     a: int
     other: int
 [builtins fixtures/list.pyi]
+
+[file a.py.3]
+import attr
+@attr.s(auto_attribs=True, init=False)
+class A:
+    a: int
+[builtins fixtures/list.pyi]
+
 [out]
 ==
 main:2: error: Too few arguments for "B"
+==
 
-[case testAttrsUpdate3]
+[case testAttrsUpdate4]
 from b import B
 B(1, 2) < B(1, 2)
 [file b.py]
