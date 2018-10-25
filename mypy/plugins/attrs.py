@@ -193,21 +193,6 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs)
 
-    # Trigger a "wildcard" update for the class whenever one of
-    # its attributes changes.  In collect_attributes, we arranged
-    # for each class (or rather the defining module) to depend on
-    # the wildcard trigger of every dataclass that it inherits
-    # from.  This will cause all subclasses to get reprocessed
-    # whenever a dataclass attribute in a parent is added,
-    # removed, or changed.
-    #
-    # This is somewhat annoyingly subtle. An alternate approach would be
-    # to have a dependency from each attribute to a full class trigger,
-    # which is a little simpler but will force rechecks in too much code.
-    for attr in attributes:
-        ctx.api.add_plugin_dependency(make_trigger(info.fullname() + '.' + attr.name),
-                                      make_wildcard_trigger(info.fullname()))
-
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
         'attributes': [attr.serialize() for attr in attributes],

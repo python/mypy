@@ -155,21 +155,6 @@ class DataclassTransformer:
             if attr.is_init_var:
                 del info.names[attr.name]
 
-        # Trigger a "wildcard" update for the class whenever one of
-        # its attributes changes.  In collect_attributes, we arranged
-        # for each class (or rather the defining module) to depend on
-        # the wildcard trigger of every dataclass that it inherits
-        # from.  This will cause all subclasses to get reprocessed
-        # whenever a dataclass attribute in a parent is added,
-        # removed, or changed.
-        #
-        # This is somewhat annoyingly subtle. An alternate approach would be
-        # to have a dependency from each attribute to a full class trigger,
-        # which is a little simpler but will force rechecks in too much code.
-        for attr in attributes:
-            ctx.api.add_plugin_dependency(make_trigger(info.fullname() + '.' + attr.name),
-                                          make_wildcard_trigger(info.fullname()))
-
         info.metadata['dataclass'] = {
             'attributes': OrderedDict((attr.name, attr.serialize()) for attr in attributes),
             'frozen': decorator_arguments['frozen'],
