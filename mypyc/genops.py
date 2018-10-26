@@ -2328,10 +2328,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                        false_op)
 
         # Special case builtins.isinstance
-        if (callee.fullname == 'builtins.isinstance' and
-                len(expr.args) == 2 and
-                expr.arg_kinds == [ARG_POS, ARG_POS] and
-                isinstance(expr.args[1], (RefExpr, TupleExpr))):
+        if (callee.fullname == 'builtins.isinstance'
+                and len(expr.args) == 2
+                and expr.arg_kinds == [ARG_POS, ARG_POS]
+                and isinstance(expr.args[1], (RefExpr, TupleExpr))):
             irs = self.flatten_classes(expr.args[1])
             if irs is not None:
                 return self.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)

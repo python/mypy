@@ -1713,8 +1713,8 @@ def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
 
         lines.append(env.format('%l:%s', block.label, handler_msg))
         ops = block.ops
-        if (isinstance(ops[-1], Goto) and i + 1 < len(blocks) and
-                ops[-1].label == blocks[i + 1]):
+        if (isinstance(ops[-1], Goto) and i + 1 < len(blocks)
+                and ops[-1].label == blocks[i + 1]):
             # Hide the last goto if it just goes to the next basic block.
             ops = ops[:-1]
         for op in ops:

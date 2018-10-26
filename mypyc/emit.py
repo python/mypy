@@ -329,9 +329,9 @@ class Emitter:
                 return
 
         # TODO: Verify refcount handling.
-        if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ) or
-                is_float_rprimitive(typ) or is_str_rprimitive(typ) or is_int_rprimitive(typ) or
-                is_bool_rprimitive(typ)):
+        if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ)
+                or is_float_rprimitive(typ) or is_str_rprimitive(typ) or is_int_rprimitive(typ)
+                or is_bool_rprimitive(typ)):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             if is_list_rprimitive(typ):

@@ -346,7 +346,7 @@ class ModuleGenerator:
 
         return result
 
-    def declare_global(self, type_spaced: str, name: str, static: bool=True,
+    def declare_global(self, type_spaced: str, name: str, static: bool = True,
                        initializer: Optional[str] = None) -> None:
         initializer_body = '' if not initializer else ' = {}'.format(initializer)
         static_str = 'static ' if static else ''
