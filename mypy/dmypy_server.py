@@ -6,14 +6,19 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
+import argparse
 import json
 import os
+import pickle
 import shutil
 import socket
+import subprocess
 import sys
 import tempfile
 import time
 import traceback
+
+import _winapi
 
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -38,53 +43,72 @@ if MYPY:
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
 
-def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
-    """Arrange to call func() in a grandchild of the current process.
+DETACHED_PROCESS = 0x00000008
 
-    Return 0 for success, exit status for failure, negative if
-    subprocess killed by signal.
-    """
-    # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
-    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-    if sys.platform == 'win32' or bool():
-        raise ValueError('Mypy daemon is not supported on Windows yet')
-    sys.stdout.flush()
-    sys.stderr.flush()
-    pid = os.fork()
-    if pid:
-        # Parent process: wait for child in case things go bad there.
-        npid, sts = os.waitpid(pid, 0)
-        sig = sts & 0xff
-        if sig:
-            print("Child killed by signal", sig)
-            return -sig
-        sts = sts >> 8
-        if sts:
-            print("Child exit status", sts)
-        return sts
-    # Child process: do a bunch of UNIX stuff and then fork a grandchild.
-    try:
-        os.setsid()  # Detach controlling terminal
-        os.umask(0o27)
-        devnull = os.open('/dev/null', os.O_RDWR)
-        os.dup2(devnull, 0)
-        os.dup2(devnull, 1)
-        os.dup2(devnull, 2)
-        os.close(devnull)
+
+if sys.platform == 'win32':
+    def daemonize(opts: Options, timeout: Optional[int] = None) -> int:
+        """Create the daemon process via "dmypy daemon" and pass options via file
+
+        This uses the DETACHED_PROCESS flag to invoke the Server.
+        See https://docs.microsoft.com/en-us/windows/desktop/procthread/process-creation-flags
+
+        It also pickles the options to be unpickled by mypy.
+        """
+        command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
+        with tempfile.TemporaryDirectory() as dir:
+            options_file = os.path.join(dir, 'dmypy_options.pickle')
+            with open(options_file, 'wb') as file:
+                pickle.dump((opts, timeout), file)
+            command.append('--options-file={}'.format(options_file))
+            print(command)
+            subprocess.run(command, creationflags=DETACHED_PROCESS)
+
+else:
+    def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
+        """Arrange to call func() in a grandchild of the current process.
+
+        Return 0 for success, exit status for failure, negative if
+        subprocess killed by signal.
+        """
+        # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
+        sys.stdout.flush()
+        sys.stderr.flush()
         pid = os.fork()
         if pid:
-            # Child is done, exit to parent.
-            os._exit(0)
-        # Grandchild: run the server.
-        if log_file:
-            sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
-            fd = sys.stdout.fileno()
-            os.dup2(fd, 2)
-            os.dup2(fd, 1)
-        func()
-    finally:
-        # Make sure we never get back into the caller.
-        os._exit(1)
+            # Parent process: wait for child in case things go bad there.
+            npid, sts = os.waitpid(pid, 0)
+            sig = sts & 0xff
+            if sig:
+                print("Child killed by signal", sig)
+                return -sig
+            sts = sts >> 8
+            if sts:
+                print("Child exit status", sts)
+            return sts
+        # Child process: do a bunch of UNIX stuff and then fork a grandchild.
+        try:
+            os.setsid()  # Detach controlling terminal
+            os.umask(0o27)
+            devnull = os.open('/dev/null', os.O_RDWR)
+            os.dup2(devnull, 0)
+            os.dup2(devnull, 1)
+            os.dup2(devnull, 2)
+            os.close(devnull)
+            pid = os.fork()
+            if pid:
+                # Child is done, exit to parent.
+                os._exit(0)
+            # Grandchild: run the server.
+            if log_file:
+                sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
+                fd = sys.stdout.fileno()
+                os.dup2(fd, 2)
+                os.dup2(fd, 1)
+            func()
+        finally:
+            # Make sure we never get back into the caller.
+            os._exit(1)
 
 
 # Server code.
@@ -124,6 +148,8 @@ class Server:
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
+    buffer_size = 2**16
+
     def __init__(self, options: Options,
                  timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
@@ -153,6 +179,70 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
+        if sys.platform == 'win32':
+            self.serve_win()
+        else:
+            self.serve_nix()
+
+    def serve_win(self) -> None:
+        name = r'\\.\pipe\{}'.format(SOCKET_NAME)
+        try:
+            with open(STATUS_FILE, 'w') as f:
+                json.dump({'pid': os.getpid(), 'sockname': name}, f)
+                f.write('\n')  # I like my JSON with trailing newline
+            while True:
+                handle = _winapi.CreateNamedPipe(name,
+                    _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
+                    _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_WAIT,
+                    1,  # one instance
+                    self.buffer_size,
+                    self.buffer_size,
+                    0,  # PIPE_NOWAIT
+                    0,  # PIPE_ACCEPT_REMOTE_CLIENTS (this is the default, so I guess?)
+                                                 )
+                if _winapi.GetLastError() != 0:
+                    err = _winapi.GetLastError()
+                    print('Error creating pipe: {err}'.format(err))
+                    continue
+                _winapi.ConnectNamedPipe(handle, _winapi.NULL)
+
+            if handle != _winapi.NULL:
+                while True:
+                        try:
+                            data = receive(handle)
+                        except OSError:
+                            continue
+
+                        resp = {}  # type: Dict[str, Any]
+                        if 'command' not in data:
+                            resp = {'error': "No command found in request"}
+                        else:
+                            command = data['command']
+                            if not isinstance(command, str):
+                                resp = {'error': "Command is not a string"}
+                            else:
+                                command = data.pop('command')
+                                try:
+                                    resp = self.run_command(command, data)
+                                except Exception:
+                                    # If we are crashing, report the crash to the client
+                                    tb = traceback.format_exception(*sys.exc_info())
+                                    resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                    _winapi.WriteFile(json.dumps(resp).encode('utf8'))
+                                    raise
+                        try:
+                            _winapi.WriteFile(json.dumps(resp).encode('utf8'))
+                        except OSError:
+                            pass  # Maybe the client hung up
+
+                        if command == 'stop':
+                            _winapi.CloseHandle(handle)
+                            reset_global_state()
+                            sys.exit(0)
+        finally:
+            os.unlink(STATUS_FILE)
+
+    def serve_nix(self) -> None:
         try:
             sock = self.create_listening_socket()
             if self.timeout is not None:
