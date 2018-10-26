@@ -72,6 +72,24 @@ Import discovery
 The following flags customize how exactly mypy discovers and follows
 imports.
 
+``--namespace-packages``
+    This flag enables import discovery to use namespace packages (see
+    `PEP 420`_).  In particular, this allows discovery of imported
+    packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
+    file.
+
+    Namespace packages are found (using the PEP 420 rules, which
+    prefers "classic" packages over namespace packages) along the
+    module search path -- this is primarily set from the source files
+    passed on the command line, the ``MYPYPATH`` environment variable,
+    and the :ref:`mypy_path config option
+    <config-file-import-discovery-global>`.
+
+    Note that this only affects import discovery -- for modules and
+    packages explicitly passed on the command line, mypy still
+    searches for ``__init__.py[i]`` files in order to determine the
+    fully-qualified module/package name.
+
 ``--ignore-missing-imports``
     This flag makes mypy ignore all missing imports. It is equivalent
     to adding ``# type: ignore`` comments to all unresolved imports
@@ -436,7 +454,7 @@ beyond what incremental mode can offer, try running mypy in
 .. _quick-mode:
 
 ``--quick-and-dirty``
-    This flag enables an experimental, unsafe variant of incremental mode.
+    This flag enables a **deprecated**, unsafe variant of incremental mode.
     Quick mode is faster than regular incremental mode because it only
     re-checks modules that were modified since their cache file was
     last written: regular incremental mode also re-checks all modules
@@ -448,6 +466,7 @@ beyond what incremental mode can offer, try running mypy in
 
     We recommend that you try using the :ref:`mypy_daemon` before
     attempting to use this feature.
+    Quick mode is deprecated and will soon be removed.
 
 .. _advanced-flags:
 
@@ -568,6 +587,8 @@ Miscellaneous
     (The default ``__main__`` is technically more correct, but if you
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
+
+.. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 
 .. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 

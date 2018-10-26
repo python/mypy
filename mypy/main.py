@@ -474,10 +474,9 @@ def process_options(args: List[str],
     disallow_any_group.add_argument(
         '--disallow-any-explicit', default=False, action='store_true',
         help='Disallow explicit Any in type positions')
-    disallow_any_group.add_argument(
-        '--disallow-any-generics', default=False, action='store_true',
-        help='Disallow usage of generic types that do not specify explicit '
-             'type parameters')
+    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
+                        help='Disallow usage of generic types that do not specify explicit type '
+                        'parameters', group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
         title='Untyped definitions and calls',
@@ -575,9 +574,6 @@ def process_options(args: List[str],
         '--cache-fine-grained', action='store_true',
         help="Include fine-grained dependency information in the cache for the mypy daemon")
     incremental_group.add_argument(
-        '--quick-and-dirty', action='store_true',
-        help="Use cache even if dependencies out of date (implies --incremental)")
-    incremental_group.add_argument(
         '--skip-version-check', action='store_true',
         help="Allow using cache written by older mypy version")
 
@@ -589,6 +585,9 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--show-traceback', '--tb', action='store_true',
         help="Show traceback on fatal error")
+    internals_group.add_argument(
+        '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
+    )
     internals_group.add_argument(
         '--custom-typing', metavar='MODULE', dest='custom_typing_module',
         help="Use a custom typing module")
@@ -692,28 +691,10 @@ def process_options(args: List[str],
                         help=argparse.SUPPRESS)
 
     # deprecated options
-    parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
-                        help=argparse.SUPPRESS)
-    add_invertible_flag('--strict-boolean', default=False,
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-f', '--dirty-stubs', action='store_true',
-                        dest='special-opts:dirty_stubs',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--use-python-path', action='store_true',
-                        dest='special-opts:use_python_path',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-s', '--silent-imports', action='store_true',
-                        dest='special-opts:silent_imports',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--almost-silent', action='store_true',
-                        dest='special-opts:almost_silent',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--fast-parser', action='store_true', dest='special-opts:fast_parser',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--no-fast-parser', action='store_true',
-                        dest='special-opts:no_fast_parser',
+    parser.add_argument('--quick-and-dirty', action='store_true',
                         help=argparse.SUPPRESS)
 
+    # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
@@ -758,41 +739,10 @@ def process_options(args: List[str],
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
 
-    # --use-python-path is no longer supported; explain why.
-    if special_opts.use_python_path:
-        parser.error("Sorry, --use-python-path is no longer supported.\n"
-                     "If you are trying this because your code depends on a library module,\n"
-                     "you should really investigate how to obtain stubs for that module.\n"
-                     "See https://github.com/python/mypy/issues/1411 for more discussion."
-                     )
-
     # Process deprecated options
-    if special_opts.disallow_any:
-        print("--disallow-any option was split up into multiple flags. "
-              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing")
-    if options.strict_boolean:
-        print("Warning: --strict-boolean is deprecated; "
-              "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
-    if special_opts.almost_silent:
-        print("Warning: --almost-silent has been replaced by "
-              "--follow-imports=errors", file=sys.stderr)
-        if options.follow_imports == 'normal':
-            options.follow_imports = 'errors'
-    elif special_opts.silent_imports:
-        print("Warning: --silent-imports has been replaced by "
-              "--ignore-missing-imports --follow-imports=skip", file=sys.stderr)
-        options.ignore_missing_imports = True
-        if options.follow_imports == 'normal':
-            options.follow_imports = 'skip'
-    if special_opts.dirty_stubs:
-        print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
-              "checks the git status of stubs.",
+    if options.quick_and_dirty:
+        print("Warning: --quick-and-dirty is deprecated.  It will disappear in the next release.",
               file=sys.stderr)
-    if special_opts.fast_parser:
-        print("Warning: --fast-parser is now the default (and only) parser.")
-    if special_opts.no_fast_parser:
-        print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
-              "is now mypy's default and only parser.")
 
     try:
         infer_python_version_and_executable(options, special_opts)

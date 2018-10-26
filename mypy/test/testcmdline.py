@@ -113,7 +113,7 @@ def parse_args(line: str) -> List[str]:
 
 def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
     """Normalize file output for comparison."""
-    timestamp_regex = re.compile('\d{10}')
+    timestamp_regex = re.compile(r'\d{10}')
     result = [x.replace(current_abs_path, '$PWD') for x in content]
     result = [re.sub(r'\b' + re.escape(__version__) + r'\b', '$VERSION', x) for x in result]
     result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]

@@ -304,6 +304,10 @@ Note: this section describes only global-only import discovery options. See abov
 a list of import discovery options that may be used 
 :ref:`both per-module and globally <config-file-import-discovery-per-module>`.
 
+``namespace_packages`` (bool, default False)
+    Enables PEP 420 style namespace packages.  See :ref:`the
+    corresponding flag <import-discovery>` for more information.
+
 ``python_executable`` (string)
     Specifies the path to the Python executable to inspect to collect
     a list of available :ref:`PEP 561 packages <installed-packages>`. Defaults to
@@ -367,7 +371,7 @@ section of the command line docs.
     check and regenerate the cache if it was written by older versions of mypy.)
     
 ``quick_and_dirty`` (bool, default False)
-    Enables :ref:`quick mode <quick-mode>`.
+    Enables :ref:`quick mode <quick-mode>`.  **Deprecated.**
 
 
 Configuring error messages

@@ -31,7 +31,8 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery
+    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery,
+    is_optional, remove_optional
 )
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
@@ -2692,11 +2693,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(t, DeletedType):
                     self.msg.deleted_as_rvalue(t, s)
 
-                if self.options.strict_boolean:
-                    is_bool = isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'
-                    if not (is_bool or isinstance(t, AnyType)):
-                        self.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
-
                 if_map, else_map = self.find_isinstance_check(e)
 
                 # XXX Issue a warning if condition is always False?
@@ -3782,17 +3778,6 @@ def is_false_literal(n: Expression) -> bool:
 
 def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
-
-
-def is_optional(t: Type) -> bool:
-    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
-
-
-def remove_optional(typ: Type) -> Type:
-    if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
-    else:
-        return typ
 
 
 def is_literal_not_implemented(n: Expression) -> bool:

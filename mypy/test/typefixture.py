@@ -20,7 +20,7 @@ class TypeFixture:
     The members are initialized to contain various type-related values.
     """
 
-    def __init__(self, variance: int=COVARIANT) -> None:
+    def __init__(self, variance: int = COVARIANT) -> None:
         # The 'object' class
         self.oi = self.make_type_info('builtins.object')               # class object
         self.o = Instance(self.oi, [])                        # object

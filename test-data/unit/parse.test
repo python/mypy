@@ -2356,7 +2356,10 @@ super().x
 MypyFile:1(
   ExpressionStmt:1(
     SuperExpr:1(
-      x)))
+      x
+      CallExpr:1(
+        NameExpr(super)
+        Args()))))
 
 [case testKeywordAndDictArgs]
 f(x = y, **kwargs)

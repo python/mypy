@@ -577,7 +577,61 @@ import typing
 class A:
     def __init__(self, x: int): pass
 [out]
-main:3: error: The return type of "__init__" must be None
+
+[case testDecoratedConstructorWithImplicitReturnValueType]
+import typing
+from typing import Callable
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init__(self, x: int): pass
+[out]
+
+[case testOverloadedConstructorWithImplicitReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class Foo:
+    @overload
+    def __init__(self, a: int):
+        pass
+
+    @overload
+    def __init__(self, a: str):
+        pass
+
+[case testConstructorWithAnyReturnValueType]
+import typing
+from typing import Any
+class A:
+    def __init__(self) -> Any: pass # E: The return type of "__init__" must be None
+
+[case testDecoratedConstructorWithAnyReturnValueType]
+import typing
+from typing import Callable, Any
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init__(self) -> Any: pass # E: The return type of "__init__" must be None
+
+[case testOverloadedConstructorWithAnyReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload, Any
+class Foo:
+    @overload
+    def __init__(self, a: int) -> Any: # E: The return type of "__init__" must be None
+        pass
+
+    @overload
+    def __init__(self, a: str) -> Any: # E: The return type of "__init__" must be None
+        pass
 
 [case testInitSubclassWithReturnValueType]
 import typing
@@ -591,7 +645,62 @@ import typing
 class A:
     def __init_subclass__(cls, x: int=1): pass
 [out]
-main:3: error: The return type of "__init_subclass__" must be None
+
+[case testDecoratedInitSubclassWithImplicitReturnValueType]
+import typing
+from typing import Callable
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init_subclass__(cls, x: int=1): pass
+[out]
+
+[case testOverloadedInitSubclassWithImplicitReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class Foo:
+    @overload
+    def __init_subclass__(cls, a: int):
+        pass
+
+    @overload
+    def __init_subclass__(cls, a: str):
+        pass
+
+[case testInitSubclassWithAnyReturnValueType]
+import typing
+from typing import Any
+class A:
+    def __init_subclass__(cls) -> Any: pass # E: The return type of "__init_subclass__" must be None
+
+[case testDecoratedInitSubclassWithAnyReturnValueType]
+import typing
+from typing import Callable, Any
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init_subclass__(cls) -> Any: pass # E: The return type of "__init_subclass__" must be None
+[out]
+
+[case testOverloadedInitSubclassWithAnyReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload, Any
+class Foo:
+    @overload
+    def __init_subclass__(cls, a: int) -> Any: # E: The return type of "__init_subclass__" must be None
+        pass
+
+    @overload
+    def __init_subclass__(cls, a: str) -> Any: # E: The return type of "__init_subclass__" must be None
+        pass
 
 [case testGlobalFunctionInitWithReturnType]
 import typing

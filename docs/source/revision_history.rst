@@ -4,6 +4,19 @@ Revision history
 List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
 detailed release notes):
 
+- October 2018
+    * Publish ``mypy`` version 0.640 on PyPI.
+
+      * Document final qualifiers.
+
+      * Document ``--namespace-packages``.
+
+      * Remove deprecated options, and mark ``--quick-and-dirty`` as deprecated.
+
+      * Document ``--permissive-toplevel``.
+
+      * Reorganize config file docs.
+
 - September 2018
     * Publish ``mypy`` version 0.630 on PyPI.
 

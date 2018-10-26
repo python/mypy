@@ -4350,6 +4350,21 @@ import b
 [stale a, b, builtins]
 [rechecked a, b, builtins]
 
+[case testIncrementalBustedFineGrainedCache3]
+# flags: --cache-fine-grained
+import a
+import b
+[file a.py]
+[file b.py]
+-- This is a heinous hack, but we simulate having a invalid cache by deleting
+-- the proto deps file.
+[delete ../.mypy_cache/3.6/@proto_deps.meta.json.2]
+[file b.py.2]
+# uh
+-- Every file should get reloaded, since the cache was invalidated
+[stale a, b, builtins]
+[rechecked a, b, builtins]
+
 [case testIncrementalWorkingFineGrainedCache]
 # flags: --cache-fine-grained
 # flags2: --cache-fine-grained
@@ -5349,5 +5364,28 @@ try:
 except Exception as e:
     pass
 [builtins fixtures/exception.pyi]
+[out]
+[out2]
+
+[case testBadEnumLoading]
+import a
+[file a.py]
+from b import E
+x: E
+y = 1
+
+[file a.py.2]
+from b import E
+x: E
+y = 2
+
+[file b.py]
+from typing import List
+from enum import Enum
+
+def f() -> List[str]: ...
+
+E = Enum('E', f())  # type: ignore
+[builtins fixtures/list.pyi]
 [out]
 [out2]

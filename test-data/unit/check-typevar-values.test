@@ -18,7 +18,7 @@ s = ['x']
 o = [object()]
 i = f(1)
 s = f('')
-o = f(1) # E: Value of type variable "T" of "f" cannot be "object"
+o = f(1) # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]")
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
