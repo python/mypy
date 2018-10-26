@@ -288,14 +288,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # For method calls we include the defining class for the method
                 # in the full name (example: 'typing.Mapping.get').
                 callee_expr_type = self.chk.type_map.get(e.callee.expr)
-                info = None
-                # TODO: Support fallbacks of other kinds of types as well?
-                if isinstance(callee_expr_type, Instance):
-                    info = callee_expr_type.type
-                elif isinstance(callee_expr_type, TypedDictType):
-                    info = callee_expr_type.fallback.type.get_containing_type_info(e.callee.name)
-                if info:
-                    fullname = '{}.{}'.format(info.fullname(), e.callee.name)
+                fullname = self.method_fullname(callee_expr_type, e.callee.name)
+                if fullname is not None:
                     object_type = callee_expr_type
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
@@ -313,6 +307,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def method_fullname(self, object_type: Type, method_name: str) -> Optional[str]:
+        """Convert a method name to a fully qualified name, based on the type of the object that
+        it is invoked on. Return `None` if the name of `object_type` cannot be determined.
+        """
+
+        # TODO: Support fallbacks of other kinds of types as well?
+        info = None
+        if isinstance(object_type, Instance):
+            info = object_type.type
+        elif isinstance(object_type, TypedDictType):
+            info = object_type.fallback.type.get_containing_type_info(method_name)
+
+        if info is not None:
+            return '{}.{}'.format(info.fullname(), method_name)
+        else:
+            return None
 
     def always_returns_none(self, node: Expression) -> bool:
         """Check if `node` refers to something explicitly annotated as only returning None."""
@@ -1823,13 +1834,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Return tuple (result type, inferred method type).
         """
-        callable_name = None
-        object_type = None
-        if isinstance(base_type, Instance):
-            # TODO: Find out in which class the method was defined originally?
-            # TODO: Support non-Instance types.
-            callable_name = '{}.{}'.format(base_type.type.fullname(), method_name)
-            object_type = base_type
+        callable_name = self.method_fullname(base_type, method_name)
+        object_type = base_type if callable_name is not None else None
 
         method_type = self.transform_callee_type(
             callable_name, method_type, args, arg_kinds, context, object_type=object_type)
