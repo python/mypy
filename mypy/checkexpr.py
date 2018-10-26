@@ -313,15 +313,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         it is invoked on. Return `None` if the name of `object_type` cannot be determined.
         """
 
-        # TODO: Support fallbacks of other kinds of types as well?
-        info = None
+        # TODO: Support CallableType (i. e. class methods) and possibly others
+        type_name = None
         if isinstance(object_type, Instance):
-            info = object_type.type
+            type_name = object_type.type.fullname()
         elif isinstance(object_type, TypedDictType):
             info = object_type.fallback.type.get_containing_type_info(method_name)
+            type_name = info.fullname() if info is not None else None
+        elif isinstance(object_type, TupleType):
+            type_name = object_type.fallback.type.fullname()
 
-        if info is not None:
-            return '{}.{}'.format(info.fullname(), method_name)
+        if type_name is not None:
+            return '{}.{}'.format(type_name, method_name)
         else:
             return None
 
