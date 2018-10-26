@@ -9,7 +9,7 @@ import sys
 from typing import List, Iterator
 
 from mypy import build
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir, PREFIX
 from mypy.errors import CompileError
 from mypy.options import Options

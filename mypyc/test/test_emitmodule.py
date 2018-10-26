@@ -4,7 +4,7 @@ import os.path
 from typing import List
 
 from mypy import build
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
