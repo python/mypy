@@ -237,6 +237,9 @@ def generate_c_type_stub(module: ModuleType,
     if all_bases[-1] is object:
         # TODO: Is this always object?
         del all_bases[-1]
+    # remove pybind11_object
+    if all_bases[-1].__name__ == 'pybind11_object':
+        del all_bases[-1]
     # remove the class itself
     all_bases = all_bases[1:]
     # Remove base classes of other bases as redundant.
