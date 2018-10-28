@@ -116,7 +116,7 @@ def generate_c_function_stub(module: ModuleType,
                              class_name: Optional[str] = None,
                              class_sigs: Dict[str, str] = {},
                              ) -> None:
-    ret_type = 'Any'
+    ret_type = 'None' if name == '__init__' and class_name else 'Any'
 
     if self_var:
         self_arg = '%s, ' % self_var
