@@ -27,19 +27,20 @@ def generate_stub_for_c_module(module_name: str,
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
+    imports = [] # type: List[str]
     functions = []  # type: List[str]
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
-            generate_c_function_stub(module, name, obj, functions, sigs=sigs)
+            generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs)
             done.add(name)
     types = []  # type: List[str]
     for name, obj in items:
         if name.startswith('__') and name.endswith('__'):
             continue
         if is_c_type(obj):
-            generate_c_type_stub(module, name, obj, types, sigs=sigs, class_sigs=class_sigs)
+            generate_c_type_stub(module, name, obj, types, imports=imports, sigs=sigs, class_sigs=class_sigs)
             done.add(name)
     variables = []
     for name, obj in items:
@@ -51,6 +52,8 @@ def generate_stub_for_c_module(module_name: str,
                 type_str = 'Any'
             variables.append('%s: %s' % (name, type_str))
     output = []
+    for line in set(imports):
+        output.append(line)
     for line in variables:
         output.append(line)
     if output and functions:
@@ -111,6 +114,7 @@ def generate_c_function_stub(module: ModuleType,
                              name: str,
                              obj: object,
                              output: List[str],
+                             imports: List[str],
                              self_var: Optional[str] = None,
                              sigs: Dict[str, str] = {},
                              class_name: Optional[str] = None,
@@ -146,7 +150,29 @@ def generate_c_function_stub(module: ModuleType,
                 sig = '{},{}'.format(self_var, groups[1]) if len(groups) > 1 else self_var
     else:
         self_arg = self_arg.replace(', ', '')
+
+    if sig:
+        sig_types = []
+        for arg in (arg.split(':', 1) for arg in sig.split(',')):
+            if len(arg) == 1:
+                sig_types.append(arg[0].strip())
+            else:
+                arg_type = strip_or_import(arg[1].strip(), module, imports)
+                sig_types.append('%s: %s' % (arg[0].strip(), arg_type))
+        sig = ", ".join(sig_types)
+    ret_type = strip_or_import(ret_type, module, imports)
+
     output.append('def %s(%s%s) -> %s: ...' % (name, self_arg, sig, ret_type))
+
+
+def strip_or_import(type_: str, module: ModuleType, imports: List[str]) -> str:
+    arg_type = type_
+    if module and type_.startswith(module.__name__):
+        arg_type = type_[len(module.__name__) + 1:]
+    elif '.' in type_:
+        arg_module = arg_type[:arg_type.rindex('.')]
+        imports.append('import %s' % (arg_module,))
+    return arg_type
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
@@ -166,6 +192,7 @@ def generate_c_type_stub(module: ModuleType,
                          class_name: str,
                          obj: type,
                          output: List[str],
+                         imports: List[str],
                          sigs: Dict[str, str] = {},
                          class_sigs: Dict[str, str] = {},
                          ) -> None:
@@ -193,8 +220,9 @@ def generate_c_type_stub(module: ModuleType,
                         # better signature than __init__() ?
                         continue
                     attr = '__init__'
-                generate_c_function_stub(module, attr, value, methods, self_var, sigs=sigs,
-                                         class_name=class_name, class_sigs=class_sigs)
+                generate_c_function_stub(module, attr, value, methods, imports=imports,
+                                         self_var=self_var, sigs=sigs, class_name=class_name,
+                                         class_sigs=class_sigs)
         elif is_c_property(value):
             done.add(attr)
             generate_c_property_stub(attr, value, properties, is_c_property_readonly(value))
