@@ -458,7 +458,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
-        self.add("%s%sdef %s(" % (self._indent, o.is_coroutine and 'async ' or '', o.name()))
+        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name()))
         self.record_name(o.name())
         args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
