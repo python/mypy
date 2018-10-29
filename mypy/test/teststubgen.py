@@ -239,7 +239,7 @@ class StubgencSuite(Suite):
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output = []  # type: List[str]
         mod = ModuleType('module', '')  # any module is fine
-        imports = [] # type: List[str]
+        imports = []  # type: List[str]
         generate_c_type_stub(mod, 'alias', object, output, imports)
         assert_equal(output[0], 'class alias:')
 
@@ -249,20 +249,20 @@ class StubgencSuite(Suite):
             x = 1
 
         output = []  # type: List[str]
-        imports = [] # type: List[str]
+        imports = []  # type: List[str]
         mod = ModuleType('module', '')  # any module is fine
         generate_c_type_stub(mod, 'C', TestClassVariableCls, output, imports)
         assert_equal(output, ['class C:', '    x: Any = ...'])
 
     def test_generate_c_type_inheritance(self) -> None:
-        class TestClass(set):
+        class TestClass(KeyError):
             pass
 
-        output = [] # type: List[str]
-        imports = [] # type: List[str]
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
         mod = ModuleType('module, ')
         generate_c_type_stub(mod, 'C', TestClass, output, imports)
-        assert_equal(output, ['class C(set): ...', ])
+        assert_equal(output, ['class C(KeyError): ...', ])
         assert_equal(imports, [])
 
     def test_generate_c_type_inheritance_same_module(self) -> None:
@@ -272,24 +272,22 @@ class StubgencSuite(Suite):
         class TestClass(TestBaseClass):
             pass
 
-        output = [] # type: List[str]
-        imports = [] # type: List[str]
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
         mod = ModuleType(TestBaseClass.__module__, '')
         generate_c_type_stub(mod, 'C', TestClass, output, imports)
         assert_equal(output, ['class C(TestBaseClass): ...', ])
         assert_equal(imports, [])
 
     def test_generate_c_type_inheritance_other_module(self) -> None:
-        import collections
+        import argparse
 
-        class TestClass(collections.OrderedDict):
+        class TestClass(argparse.Action):
             pass
 
-        output = [] # type: List[str]
-        imports = [] # type: List[str]
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
         mod = ModuleType('module', '')
         generate_c_type_stub(mod, 'C', TestClass, output, imports)
-        assert_equal(output, ['class C(collections.OrderedDict): ...', ])
-        assert_equal(imports, ['import collections'])
-
-
+        assert_equal(output, ['class C(argparse.Action): ...', ])
+        assert_equal(imports, ['import argparse'])

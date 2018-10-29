@@ -27,7 +27,7 @@ def generate_stub_for_c_module(module_name: str,
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    imports = [] # type: List[str]
+    imports = []  # type: List[str]
     functions = []  # type: List[str]
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
@@ -40,7 +40,8 @@ def generate_stub_for_c_module(module_name: str,
         if name.startswith('__') and name.endswith('__'):
             continue
         if is_c_type(obj):
-            generate_c_type_stub(module, name, obj, types, imports=imports, sigs=sigs, class_sigs=class_sigs)
+            generate_c_type_stub(module, name, obj, types, imports=imports, sigs=sigs,
+                                 class_sigs=class_sigs)
             done.add(name)
     variables = []
     for name, obj in items:
