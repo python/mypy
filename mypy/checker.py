@@ -2513,8 +2513,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return rvalue_type, attribute_type, True
 
         get_type = analyze_descriptor_access(
-                       instance_type, attribute_type, self.named_type,
-                       self.msg, context, chk=self)
+            instance_type, attribute_type, self.named_type,
+            self.msg, context, chk=self)
         if not attribute_type.type.has_readable_member('__set__'):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
