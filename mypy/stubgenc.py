@@ -171,7 +171,10 @@ def strip_or_import(type_: str, module: ModuleType, imports: List[str]) -> str:
         arg_type = type_[len(module.__name__) + 1:]
     elif '.' in type_:
         arg_module = arg_type[:arg_type.rindex('.')]
-        imports.append('import %s' % (arg_module,))
+        if arg_module == 'builtins':
+            arg_type = arg_type[len('builtins') + 1:]
+        else:
+            imports.append('import %s' % (arg_module,))
     return arg_type
 
 
@@ -248,7 +251,12 @@ def generate_c_type_stub(module: ModuleType,
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
     if bases:
-        bases_str = '(%s)' % ', '.join(base.__name__ for base in bases)
+        bases_str = '(%s)' % ', '.join(
+            strip_or_import(
+                '%s.%s' % (base.__module__, base.__name__),
+                module,
+                imports
+            ) for base in bases)
     else:
         bases_str = ''
     if not methods and not variables and not properties:

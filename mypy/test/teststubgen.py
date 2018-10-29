@@ -253,3 +253,43 @@ class StubgencSuite(Suite):
         mod = ModuleType('module', '')  # any module is fine
         generate_c_type_stub(mod, 'C', TestClassVariableCls, output, imports)
         assert_equal(output, ['class C:', '    x: Any = ...'])
+
+    def test_generate_c_type_inheritance(self) -> None:
+        class TestClass(set):
+            pass
+
+        output = [] # type: List[str]
+        imports = [] # type: List[str]
+        mod = ModuleType('module, ')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(set): ...', ])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_inheritance_same_module(self) -> None:
+        class TestBaseClass:
+            pass
+
+        class TestClass(TestBaseClass):
+            pass
+
+        output = [] # type: List[str]
+        imports = [] # type: List[str]
+        mod = ModuleType(TestBaseClass.__module__, '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(TestBaseClass): ...', ])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_inheritance_other_module(self) -> None:
+        import collections
+
+        class TestClass(collections.OrderedDict):
+            pass
+
+        output = [] # type: List[str]
+        imports = [] # type: List[str]
+        mod = ModuleType('module', '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(collections.OrderedDict): ...', ])
+        assert_equal(imports, ['import collections'])
+
+
