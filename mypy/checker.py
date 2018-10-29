@@ -2498,6 +2498,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         is a descriptor, in which case this checks descriptor semantics as well.
 
         Return the inferred rvalue_type and whether to infer anything about the attribute type.
+        Note: this method exists here and not in checkmember.py, because we need to take
+        care about interaction between binder and __set__().
         """
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
@@ -2532,7 +2534,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
         _, inferred_dunder_set_type = self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), rvalue],
+            dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
         if not isinstance(inferred_dunder_set_type, CallableType):
@@ -2543,7 +2545,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # A message already will have been recorded in check_call
             return AnyType(TypeOfAny.from_error), False
 
-        return inferred_dunder_set_type.arg_types[1], False
+        set_type = inferred_dunder_set_type.arg_types[1]
+        # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
+        # then we invoke the binder to narrow type by this assignment. Technically, this is not
+        # type-safe, but in practice this is what a user expects.
+        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
+        infer = is_subtype(rvalue_type, set_type) and is_subtype(rvalue_type, attribute_type)
+        return set_type, infer
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Expression, context: Context) -> None:
