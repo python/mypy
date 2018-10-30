@@ -313,7 +313,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Convert a method name to a fully qualified name, based on the type of the object that
         it is invoked on. Return `None` if the name of `object_type` cannot be determined.
         """
-
         # TODO: Support CallableType (i. e. class methods) and possibly others
         type_name = None
         if isinstance(object_type, Instance):
@@ -582,8 +581,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def transform_callee_type(
             self, callable_name: Optional[str], callee: Type, args: List[Expression],
             arg_kinds: List[int], context: Context,
-            arg_names: Optional[Sequence[Optional[str]]] = None, object_type: Optional[Type] = None) -> Type:
-        if callable_name is not None and object_type is not None and isinstance(callee, FunctionLike):
+            arg_names: Optional[Sequence[Optional[str]]] = None,
+            object_type: Optional[Type] = None) -> Type:
+        if (callable_name is not None
+                and object_type is not None
+                and isinstance(callee, FunctionLike)):
             signature_hook = self.plugin.get_method_signature_hook(callable_name)
             if signature_hook:
                 return self.apply_method_signature_hook(
@@ -601,7 +603,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         The given callee type overrides the type of the callee
         expression.
         """
-
         callee_type = self.transform_callee_type(
             callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
 
