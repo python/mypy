@@ -185,7 +185,8 @@ class Server:
             self.serve_nix()
 
     def serve_win(self) -> None:
-        name = r'\\.\pipe\{}'.format(SOCKET_NAME)
+        name = r'\\.\pipe\python-{}-{}'.format(os.getpid(), SOCKET_NAME)
+        handle = _winapi.NULL
         try:
             with open(STATUS_FILE, 'w') as f:
                 json.dump({'pid': os.getpid(), 'sockname': name}, f)
@@ -197,22 +198,21 @@ class Server:
                     1,  # one instance
                     self.buffer_size,
                     self.buffer_size,
-                    0,  # PIPE_NOWAIT
+                    0,  # PIPE_WAIT, wait for a connection of the client
                     0,  # PIPE_ACCEPT_REMOTE_CLIENTS (this is the default, so I guess?)
                                                  )
-                if _winapi.GetLastError() != 0:
+                if handle == -1:  # INVALID_HANDLE_VALUE
                     err = _winapi.GetLastError()
-                    print('Error creating pipe: {err}'.format(err))
-                    continue
-                _winapi.ConnectNamedPipe(handle, _winapi.NULL)
-
-            if handle != _winapi.NULL:
-                while True:
+                    print('Invalid handle to pipe: {err}'.format(err))
+                    sys.exit(1)
+                res = _winapi.ConnectNamedPipe(handle, _winapi.NULL)
+                # we can connect if we connected, or the client already connected
+                if res or _winapi.GetLastError() == _winapi.ERROR_PIPE_CONNECTED:
+                    while True:
                         try:
                             data = receive(handle)
                         except OSError:
                             continue
-
                         resp = {}  # type: Dict[str, Any]
                         if 'command' not in data:
                             resp = {'error': "No command found in request"}
@@ -228,10 +228,10 @@ class Server:
                                     # If we are crashing, report the crash to the client
                                     tb = traceback.format_exception(*sys.exc_info())
                                     resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                    _winapi.WriteFile(json.dumps(resp).encode('utf8'))
+                                    _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
                                     raise
                         try:
-                            _winapi.WriteFile(json.dumps(resp).encode('utf8'))
+                            _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
                         except OSError:
                             pass  # Maybe the client hung up
 
@@ -241,6 +241,8 @@ class Server:
                             sys.exit(0)
         finally:
             os.unlink(STATUS_FILE)
+            if handle != _winapi.NULL:
+                _winapi.CloseHandle(handle)
 
     def serve_nix(self) -> None:
         try:
