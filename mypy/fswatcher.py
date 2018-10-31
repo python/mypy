@@ -86,7 +86,6 @@ class FileSystemWatcher:
         return self._find_changed(self._paths)
 
     def update_changed(self,
-                       add: List[str],
                        remove: List[str],
                        update: List[str],
                        ) -> AbstractSet[str]:
@@ -99,5 +98,5 @@ class FileSystemWatcher:
         remove_watched_paths() for remove.
         """
         self.remove_watched_paths(remove)
-        self.add_watched_paths(add)
-        return self._find_changed(add + update)
+        self.add_watched_paths(update)
+        return self._find_changed(update)
