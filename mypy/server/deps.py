@@ -604,6 +604,10 @@ class DependencyVisitor(TraverserVisitor):
                 # No type available -- this happens for unreachable code. Since it's unreachable,
                 # it wasn't type checked and we don't need to generate dependencies.
                 return
+            if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, MypyFile):
+                # Special case: reference to a missing module attribute.
+                self.add_dependency(make_trigger(e.expr.node.fullname() + '.' + e.name))
+                return
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)
             if self.use_logical_deps() and isinstance(typ, AnyType):
