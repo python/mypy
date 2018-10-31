@@ -22,6 +22,8 @@ if sys.platform == 'win32':
     import ctypes
     from ctypes import wintypes
 
+    from mypy.dmypy_util import write_file
+
     OpenProcess = ctypes.windll.kernel32.OpenProcess
     GetExitCodeProcess = ctypes.windll.kernel32.GetExitCodeProcess
 
@@ -450,8 +452,7 @@ def request(command: str, *, timeout: Optional[int] = None,
                 return {'error': "Failed to set pipe state: {}".format(e.winerror)}
             # great, we have a named pipe connection! Now write our data
             try:
-                _winapi.WriteFile(handle, bdata)
-                _winapi.WriteFile(handle, b'')
+                write_file(handle, bdata)
             except WindowsError as e:
                 return {'error': "Failed to write with error: {}".format(e.winerror)}
             # now get the response

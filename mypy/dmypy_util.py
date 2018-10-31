@@ -20,6 +20,13 @@ STATUS_FILE = '.dmypy.json'  # type: Final
 
 HANDLE = int
 
+if sys.platform == 'win32':
+
+    def write_file(handle: HANDLE, data: bytes) -> None:
+        """Write some bytes to a HANDLE and then an empty string"""
+        _winapi.WriteFile(handle, data)
+        _winapi.WriteFile(handle, b'')
+
 
 def receive(connection: Union[socket.socket, HANDLE]) -> Any:
     """Receive JSON data from a socket until EOF.

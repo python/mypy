@@ -21,6 +21,7 @@ import traceback
 
 if sys.platform == 'win32':
     import _winapi
+    from mypy.dmypy_util import write_file
 
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -238,12 +239,10 @@ class Server:
                                     # If we are crashing, report the crash to the client
                                     tb = traceback.format_exception(*sys.exc_info())
                                     resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                    _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
-                                    _winapi.WriteFile(handle, b'')
+                                    write_file(handle, json.dumps(resp).encode('utf8'))
                                     raise
                         try:
-                            _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
-                            _winapi.WriteFile(handle, b'')
+                            write_file(handle, json.dumps(resp).encode('utf8'))
                             if handle != _winapi.NULL:
                                 _winapi.CloseHandle(handle)
                             break
