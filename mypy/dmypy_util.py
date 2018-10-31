@@ -32,7 +32,7 @@ def receive(connection: Union[socket.socket, HANDLE]) -> Any:
     read_size = 100000
     if isinstance(connection, HANDLE):
         while True:
-            more = _winapi.ReadFile(connection, read_size)
+            more, _ = _winapi.ReadFile(connection, read_size)
             if not more:
                 break
             bdata.extend(more)

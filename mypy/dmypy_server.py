@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import pickle
+import random
 import shutil
 import socket
 import subprocess
@@ -56,13 +57,15 @@ if sys.platform == 'win32':
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
-        with tempfile.TemporaryDirectory() as dir:
-            options_file = os.path.join(dir, 'dmypy_options.pickle')
-            with open(options_file, 'wb') as file:
-                pickle.dump((opts, timeout), file)
-            command.append('--options-file={}'.format(options_file))
-            print(command)
-            subprocess.run(command, creationflags=DETACHED_PROCESS)
+        options_file = ".dmypy_options.pickle"
+        with open(options_file, 'wb') as file:
+            pickle.dump((opts, timeout), file)
+        command.append('--options-file={}'.format(options_file))
+        try:
+            subprocess.Popen(command, creationflags=DETACHED_PROCESS)
+            return 0
+        except subprocess.CalledProcessError as e:
+            return e.returncode
 
 else:
     def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -204,41 +207,46 @@ class Server:
                 if handle == -1:  # INVALID_HANDLE_VALUE
                     err = _winapi.GetLastError()
                     print('Invalid handle to pipe: {err}'.format(err))
+                    os.unlink(STATUS_FILE)
                     sys.exit(1)
-                res = _winapi.ConnectNamedPipe(handle, _winapi.NULL)
-                # we can connect if we connected, or the client already connected
-                if res or _winapi.GetLastError() == _winapi.ERROR_PIPE_CONNECTED:
-                    while True:
-                        try:
-                            data = receive(handle)
-                        except OSError:
-                            continue
-                        resp = {}  # type: Dict[str, Any]
-                        if 'command' not in data:
-                            resp = {'error': "No command found in request"}
+                _winapi.ConnectNamedPipe(handle, _winapi.NULL)
+                while True:
+                    try:
+                        data = receive(handle)
+                    except OSError:
+                        continue
+                    resp = {}  # type: Dict[str, Any]
+                    if 'command' not in data:
+                        resp = {'error': "No command found in request"}
+                    else:
+                        command = data['command']
+                        if not isinstance(command, str):
+                            resp = {'error': "Command is not a string"}
                         else:
-                            command = data['command']
-                            if not isinstance(command, str):
-                                resp = {'error': "Command is not a string"}
-                            else:
-                                command = data.pop('command')
-                                try:
-                                    resp = self.run_command(command, data)
-                                except Exception:
-                                    # If we are crashing, report the crash to the client
-                                    tb = traceback.format_exception(*sys.exc_info())
-                                    resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                    _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
-                                    raise
-                        try:
-                            _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
-                        except OSError:
-                            pass  # Maybe the client hung up
-
-                        if command == 'stop':
+                            command = data.pop('command')
+                            if command == 'stop':
+                                _winapi.CloseHandle(handle)
+                                os.unlink(STATUS_FILE)
+                                reset_global_state()
+                                sys.exit(0)
+                            try:
+                                resp = self.run_command(command, data)
+                            except Exception:
+                                # If we are crashing, report the crash to the client
+                                tb = traceback.format_exception(*sys.exc_info())
+                                resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
+                                _winapi.WriteFile(handle, b'')
+                                raise
+                    try:
+                        _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
+                        _winapi.WriteFile(handle, b'')
+                        if handle != _winapi.NULL:
                             _winapi.CloseHandle(handle)
-                            reset_global_state()
-                            sys.exit(0)
+                        break
+                    except WindowsError as e:
+                        print("Failed to respond to client: {}, {}".format(e, e.winerror))
+                        pass  # Maybe the client hung up
         finally:
             os.unlink(STATUS_FILE)
             if handle != _winapi.NULL:
