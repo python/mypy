@@ -7,7 +7,8 @@ import json
 import socket
 import sys
 
-import _winapi
+if sys.platform == 'win32':
+    import _winapi
 
 from typing import Any, Union
 
@@ -30,13 +31,14 @@ def receive(connection: Union[socket.socket, HANDLE]) -> Any:
     """
     bdata = bytearray()
     read_size = 100000
-    if isinstance(connection, HANDLE):
+    if sys.platform == 'win32' and isinstance(connection, HANDLE):
         while True:
             more, _ = _winapi.ReadFile(connection, read_size)
             if not more:
                 break
             bdata.extend(more)
     else:
+        assert isinstance(connection, socket.socket)
         while True:
             more = connection.recv(read_size)
             if not more:

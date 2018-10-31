@@ -414,7 +414,8 @@ def request(command: str, *, timeout: Optional[float] = None,
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
-    handle = _winapi.NULL
+    if sys.platform == 'win32':
+        handle = _winapi.NULL
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args.update(command=command)
