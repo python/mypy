@@ -285,10 +285,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 fullname = e.callee.node.target.type.fullname()
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
+                    and e.callee.expr in self.chk.type_map
                     and isinstance(callee_type, FunctionLike)):
                 # For method calls we include the defining class for the method
                 # in the full name (example: 'typing.Mapping.get').
-                callee_expr_type = self.chk.type_map.get(e.callee.expr)
+                callee_expr_type = self.chk.type_map[e.callee.expr]
                 fullname = self.method_fullname(callee_expr_type, e.callee.name)
                 if fullname is not None:
                     object_type = callee_expr_type
