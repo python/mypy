@@ -583,6 +583,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_kinds: List[int], context: Context,
             arg_names: Optional[Sequence[Optional[str]]] = None,
             object_type: Optional[Type] = None) -> Type:
+        """Attempt to determine a more accurate signature for a method call.
+
+        This is done by looking up and applying a method signature hook (if one exists for the
+        given method name).
+
+        If no matching method signature hook is found, callee is returned unmodified. The same
+        happens if the arguments refer to a non-method callable (this is allowed so that the code
+        calling transform_callee_type needs to perform fewer boilerplate checks).
+
+        Note: this method is *not* called automatically as part of check_call, because in some
+        cases check_call is called multiple times while checking a single call (for example when
+        dealing with overloads). Instead, this method needs to be called explicitly
+        (if appropriate) before the signature is passed to check_call.
+        """
         if (callable_name is not None
                 and object_type is not None
                 and isinstance(callee, FunctionLike)):
@@ -603,6 +617,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         The given callee type overrides the type of the callee
         expression.
         """
+        # Try to refine the call signature using plugin hooks before checking the call.
         callee_type = self.transform_callee_type(
             callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
 
@@ -1862,6 +1877,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callable_name = self.method_fullname(base_type, method_name)
         object_type = base_type if callable_name is not None else None
 
+        # Try to refine the method signature using plugin hooks before checking the call.
         method_type = self.transform_callee_type(
             callable_name, method_type, args, arg_kinds, context, object_type=object_type)
 
