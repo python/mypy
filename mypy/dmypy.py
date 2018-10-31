@@ -401,7 +401,7 @@ def do_help(args: argparse.Namespace) -> None:
 # Client-side infrastructure.
 
 
-def request(command: str, *, timeout: Optional[float] = None,
+def request(command: str, *, timeout: Optional[int] = None,
             **kwds: object) -> Dict[str, Any]:
     """Send a request to the daemon.
 
@@ -415,6 +415,7 @@ def request(command: str, *, timeout: Optional[float] = None,
     closed prematurely as well as invalid JSON received.
     """
     if sys.platform == 'win32':
+        timeout = timeout or 1000  # we have to set a timeout
         handle = _winapi.NULL
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
@@ -425,7 +426,7 @@ def request(command: str, *, timeout: Optional[float] = None,
         if sys.platform == 'win32':
             while 1:
                 try:
-                    _winapi.WaitNamedPipe(name, 5000)
+                    _winapi.WaitNamedPipe(name, timeout * 1000)
                     handle = _winapi.CreateFile(
                         name,
                         _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
