@@ -19,10 +19,6 @@ import tempfile
 import time
 import traceback
 
-if sys.platform == 'win32':
-    import _winapi
-    from mypy.dmypy_util import write_file
-
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 import mypy.build
@@ -42,6 +38,9 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
+if sys.platform == 'win32':
+    import _winapi
+    from mypy.dmypy_util import write_file
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 

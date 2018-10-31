@@ -7,14 +7,14 @@ import json
 import socket
 import sys
 
-if sys.platform == 'win32':
-    import _winapi
-
 from typing import Any, Union
 
 MYPY = False
 if MYPY:
     from typing_extensions import Final
+
+if sys.platform == 'win32':
+    import _winapi
 
 STATUS_FILE = '.dmypy.json'  # type: Final
 

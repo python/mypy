@@ -16,6 +16,12 @@ import subprocess
 import sys
 import time
 
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+
+from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.util import write_junit_xml
+from mypy.version import __version__
+
 if sys.platform == 'win32':
     # This may be private, but it is needed for IPC on Windows, and is basically stable
     import _winapi
@@ -26,12 +32,6 @@ if sys.platform == 'win32':
 
     OpenProcess = ctypes.windll.kernel32.OpenProcess
     GetExitCodeProcess = ctypes.windll.kernel32.GetExitCodeProcess
-
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
-
-from mypy.dmypy_util import STATUS_FILE, receive
-from mypy.util import write_junit_xml
-from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
