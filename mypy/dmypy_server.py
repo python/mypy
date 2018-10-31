@@ -542,17 +542,7 @@ MiB = 2**20  # type: Final
 
 
 def get_meminfo() -> Dict[str, Any]:
-    # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
-    import resource  # Since it doesn't exist on Windows.
     res = {}  # type: Dict[str, Any]
-    rusage = resource.getrusage(resource.RUSAGE_SELF)
-    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-    if sys.platform == 'darwin' or bool():
-        factor = 1
-    else:
-        factor = 1024  # Linux
-    res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
-    # If we can import psutil, use it for some extra data
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:
@@ -566,4 +556,17 @@ def get_meminfo() -> Dict[str, Any]:
         meminfo = process.memory_info()
         res['memory_rss_mib'] = meminfo.rss / MiB
         res['memory_vms_mib'] = meminfo.vms / MiB
+        if sys.platform == 'win32':
+            res['memory_maxrss_mib'] = meminfo.peak_wset / MiB
+        else:
+            # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
+            import resource  # Since it doesn't exist on Windows.
+            rusage = resource.getrusage(resource.RUSAGE_SELF)
+            # mypyc doesn't like unreachable code, so trick mypy into thinking
+            # the branch is reachable
+            if sys.platform == 'darwin' or bool():
+                factor = 1
+            else:
+                factor = 1024  # Linux
+            res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
     return res
