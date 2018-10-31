@@ -189,69 +189,71 @@ class Server:
             self.serve_nix()
 
     def serve_win(self) -> None:
-        name = r'\\.\pipe\python-{}-{}'.format(os.getpid(), SOCKET_NAME)
-        handle = _winapi.NULL
-        try:
-            with open(STATUS_FILE, 'w') as f:
-                json.dump({'pid': os.getpid(), 'sockname': name}, f)
-                f.write('\n')  # I like my JSON with trailing newline
-            while True:
-                handle = _winapi.CreateNamedPipe(name,
-                    _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
-                    _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_WAIT,
-                    1,  # one instance
-                    self.buffer_size,
-                    self.buffer_size,
-                    0,  # PIPE_WAIT, wait for a connection of the client
-                    0,  # PIPE_ACCEPT_REMOTE_CLIENTS (this is the default, so I guess?)
-                                                 )
-                if handle == -1:  # INVALID_HANDLE_VALUE
-                    err = _winapi.GetLastError()
-                    print('Invalid handle to pipe: {err}'.format(err))
-                    os.unlink(STATUS_FILE)
-                    sys.exit(1)
-                _winapi.ConnectNamedPipe(handle, _winapi.NULL)
+        if sys.platform == 'win32':
+            name = r'\\.\pipe\python-{}-{}'.format(os.getpid(), SOCKET_NAME)
+            handle = _winapi.NULL
+            try:
+                with open(STATUS_FILE, 'w') as f:
+                    json.dump({'pid': os.getpid(), 'sockname': name}, f)
+                    f.write('\n')  # I like my JSON with trailing newline
                 while True:
-                    try:
-                        data = receive(handle)
-                    except OSError:
-                        continue
-                    resp = {}  # type: Dict[str, Any]
-                    if 'command' not in data:
-                        resp = {'error': "No command found in request"}
-                    else:
-                        command = data['command']
-                        if not isinstance(command, str):
-                            resp = {'error': "Command is not a string"}
+                    handle = _winapi.CreateNamedPipe(name,
+                        _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
+                        _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_TYPE_MESSAGE
+                         | _winapi.PIPE_WAIT,
+                        1,  # one instance
+                        self.buffer_size,
+                        self.buffer_size,
+                        0,  # PIPE_WAIT, wait for a connection of the client
+                        0,  # PIPE_ACCEPT_REMOTE_CLIENTS (this is the default, so I guess?)
+                                                     )
+                    if handle == -1:  # INVALID_HANDLE_VALUE
+                        err = _winapi.GetLastError()
+                        print('Invalid handle to pipe: {err}'.format(err))
+                        os.unlink(STATUS_FILE)
+                        sys.exit(1)
+                    _winapi.ConnectNamedPipe(handle, _winapi.NULL)
+                    while True:
+                        try:
+                            data = receive(handle)
+                        except OSError:
+                            continue
+                        resp = {}  # type: Dict[str, Any]
+                        if 'command' not in data:
+                            resp = {'error': "No command found in request"}
                         else:
-                            command = data.pop('command')
-                            if command == 'stop':
+                            command = data['command']
+                            if not isinstance(command, str):
+                                resp = {'error': "Command is not a string"}
+                            else:
+                                command = data.pop('command')
+                                if command == 'stop':
+                                    _winapi.CloseHandle(handle)
+                                    os.unlink(STATUS_FILE)
+                                    reset_global_state()
+                                    sys.exit(0)
+                                try:
+                                    resp = self.run_command(command, data)
+                                except Exception:
+                                    # If we are crashing, report the crash to the client
+                                    tb = traceback.format_exception(*sys.exc_info())
+                                    resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                    _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
+                                    _winapi.WriteFile(handle, b'')
+                                    raise
+                        try:
+                            _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
+                            _winapi.WriteFile(handle, b'')
+                            if handle != _winapi.NULL:
                                 _winapi.CloseHandle(handle)
-                                os.unlink(STATUS_FILE)
-                                reset_global_state()
-                                sys.exit(0)
-                            try:
-                                resp = self.run_command(command, data)
-                            except Exception:
-                                # If we are crashing, report the crash to the client
-                                tb = traceback.format_exception(*sys.exc_info())
-                                resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
-                                _winapi.WriteFile(handle, b'')
-                                raise
-                    try:
-                        _winapi.WriteFile(handle, json.dumps(resp).encode('utf8'))
-                        _winapi.WriteFile(handle, b'')
-                        if handle != _winapi.NULL:
-                            _winapi.CloseHandle(handle)
-                        break
-                    except WindowsError as e:
-                        print("Failed to respond to client: {}, {}".format(e, e.winerror))
-                        pass  # Maybe the client hung up
-        finally:
-            os.unlink(STATUS_FILE)
-            if handle != _winapi.NULL:
-                _winapi.CloseHandle(handle)
+                            break
+                        except WindowsError as e:
+                            print("Failed to respond to client: {}, {}".format(e, e.winerror))
+                            pass  # Maybe the client hung up
+            finally:
+                os.unlink(STATUS_FILE)
+                if handle != _winapi.NULL:
+                    _winapi.CloseHandle(handle)
 
     def serve_nix(self) -> None:
         try:
