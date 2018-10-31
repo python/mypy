@@ -259,9 +259,11 @@ plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
 [case testMethodSignatureHookNamesFullyQualified]
 # flags: --config-file tmp/mypy.ini
 from mypy_extensions import TypedDict
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 class FullyQualifiedTestClass:
+    @classmethod
+    def class_method(self) -> str: ...
     def instance_method(self) -> str: ...
 
 class FullyQualifiedTestTypedDict(TypedDict):
@@ -270,9 +272,11 @@ class FullyQualifiedTestTypedDict(TypedDict):
 FullyQualifiedTestNamedTuple = NamedTuple('FullyQualifiedTestNamedTuple', [('foo', str)])
 
 # Check the return types to ensure that the method signature hook is called in each case
+reveal_type(FullyQualifiedTestClass.class_method()) # E: Revealed type is 'builtins.int'
 reveal_type(FullyQualifiedTestClass().instance_method()) # E: Revealed type is 'builtins.int'
 reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # E: Revealed type is 'builtins.int'
 
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
+[builtins fixtures/classmethod.pyi]
