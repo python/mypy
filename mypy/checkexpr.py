@@ -318,7 +318,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We "unwrap" it to a regular type, as the class/instance method difference doesn't
             # affect the fully qualified name.
             object_type = object_type.ret_type
-        
+
         type_name = None
         if isinstance(object_type, Instance):
             type_name = object_type.type.fullname()
