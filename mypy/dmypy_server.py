@@ -44,10 +44,6 @@ if sys.platform == 'win32':
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
-
-DETACHED_PROCESS = 0x00000008
-
-
 if sys.platform == 'win32':
     def daemonize(opts: Options, timeout: Optional[int] = None) -> int:
         """Create the daemon process via "dmypy daemon" and pass options via file
@@ -63,7 +59,7 @@ if sys.platform == 'win32':
             pickle.dump((opts, timeout), file)
         command.append('--options-file={}'.format(options_file))
         try:
-            subprocess.Popen(command, creationflags=DETACHED_PROCESS)
+            subprocess.Popen(command, creationflags=0x8)  # DETACHED_PROCESS
             return 0
         except subprocess.CalledProcessError as e:
             return e.returncode
@@ -195,7 +191,7 @@ class Server:
             try:
                 with open(STATUS_FILE, 'w') as f:
                     json.dump({'pid': os.getpid(), 'sockname': name}, f)
-                    f.write('\n')  # I like my JSON with trailing newline
+                    f.write('\n')  # I like my JSON with a trailing newline
                 while True:
                     handle = _winapi.CreateNamedPipe(name,
                         _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
@@ -210,8 +206,7 @@ class Server:
                     if handle == -1:  # INVALID_HANDLE_VALUE
                         err = _winapi.GetLastError()
                         print('Invalid handle to pipe: {err}'.format(err))
-                        os.unlink(STATUS_FILE)
-                        sys.exit(1)
+                        break
                     _winapi.ConnectNamedPipe(handle, _winapi.NULL)
                     while True:
                         try:
@@ -261,7 +256,7 @@ class Server:
             try:
                 with open(STATUS_FILE, 'w') as f:
                     json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
-                    f.write('\n')  # I like my JSON with trailing newline
+                    f.write('\n')  # I like my JSON with a trailing newline
                 while True:
                     try:
                         conn, addr = sock.accept()

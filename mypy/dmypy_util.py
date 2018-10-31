@@ -13,17 +13,15 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-if sys.platform == 'win32':
-    import _winapi
-
 STATUS_FILE = '.dmypy.json'  # type: Final
 
 HANDLE = int
 
 if sys.platform == 'win32':
+    import _winapi
 
     def write_file(handle: HANDLE, data: bytes) -> None:
-        """Write some bytes to a HANDLE and then an empty string"""
+        """Write some bytes to a HANDLE and then an empty bytes string"""
         _winapi.WriteFile(handle, data)
         _winapi.WriteFile(handle, b'')
 
@@ -38,19 +36,17 @@ def receive(connection: Union[socket.socket, HANDLE]) -> Any:
     """
     bdata = bytearray()
     read_size = 100000
-    if sys.platform == 'win32' and isinstance(connection, HANDLE):
-        while True:
+
+    while True:
+        if sys.platform == 'win32':
+            assert isinstance(connection, HANDLE)
             more, _ = _winapi.ReadFile(connection, read_size)
-            if not more:
-                break
-            bdata.extend(more)
-    else:
-        assert isinstance(connection, socket.socket)
-        while True:
+        else:
+            assert isinstance(connection, socket.socket)
             more = connection.recv(read_size)
-            if not more:
-                break
-            bdata.extend(more)
+        if not more:
+            break
+        bdata.extend(more)
     if not bdata:
         raise OSError("No data received")
     try:
