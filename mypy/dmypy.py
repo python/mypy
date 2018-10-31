@@ -424,7 +424,7 @@ def request(command: str, *, timeout: Optional[int] = None,
     pid, name = get_status()
     try:
         if sys.platform == 'win32':
-            while 1:
+            while True:
                 try:
                     _winapi.WaitNamedPipe(name, timeout * 1000)
                     handle = _winapi.CreateFile(
