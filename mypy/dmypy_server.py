@@ -19,7 +19,8 @@ import tempfile
 import time
 import traceback
 
-import _winapi
+if sys.platform == 'win32':
+    import _winapi
 
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
