@@ -12,7 +12,7 @@ import pytest  # type: ignore
 from mypy.test.helpers import Suite, assert_equal
 from mypy.options import Options
 from mypy.main import (process_options, PythonExecutableInferenceError,
-                       infer_python_version_and_executable)
+                       infer_python_executable)
 
 
 class ArgSuite(Suite):
@@ -64,13 +64,13 @@ class ArgSuite(Suite):
         options = Options()
         options.python_executable = None
         options.python_version = sys.version_info[:2]
-        infer_python_version_and_executable(options, special_opts)
+        infer_python_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
         # then test inferring version from executable
         options = Options()
         options.python_executable = sys.executable
-        infer_python_version_and_executable(options, special_opts)
+        infer_python_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
