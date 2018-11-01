@@ -392,13 +392,14 @@ class A:
 def f(x: object) -> None:
     if isinstance(x, A):
         x.g()
+def ff(x: object) -> None:
+    if isinstance(x, A):
+        pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
 -- The dependencies on the ctor are basically spurious but not a problem
-<m.A.__init__> -> m.f
-<m.A.__new__> -> m.f
 <m.A.g> -> m.f
-<m.A> -> m.A, m.f
+<m.A> -> m.A, m.f, m.ff
 
 [case testUnreachableIsInstance]
 class A:
@@ -413,9 +414,6 @@ def f(x: A) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
--- The dependencies on the ctor are basically spurious but not a problem
-<m.B.__init__> -> m.f
-<m.B.__new__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testAttributeWithClassType1]
