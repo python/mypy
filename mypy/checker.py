@@ -2497,7 +2497,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
-        Return the inferred rvalue_type and whether to infer anything about the attribute type.
+        Return the inferred rvalue_type, inferred lvalue_type, and whether to use the binder
+        for this assignment.
+
         Note: this method exists here and not in checkmember.py, because we need to take
         care about interaction between binder and __set__().
         """
@@ -2533,7 +2535,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
+        # Here we just infer the type, the result should be type-checked like a normal assignment.
+        # For this we use the rvalue as type context.
+        self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
+            dunder_set_type, [TempNode(instance_type), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
+        self.msg.enable_errors()
+
+        # And now we type check the call second time, to show errors related
+        # to wrong arguments count, etc.
+        self.expr_checker.check_call(
             dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
@@ -2547,10 +2559,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         set_type = inferred_dunder_set_type.arg_types[1]
         # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
-        # then we invoke the binder to narrow type by this assignment. Technically, this is not
-        # safe, but in practice this is what a user expects.
+        # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
+        # by this assignment. Technically, this is not safe, but in practice this is
+        # what a user expects.
         rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
-        infer = is_subtype(rvalue_type, set_type) and is_subtype(rvalue_type, get_type)
+        infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
 
     def check_indexed_assignment(self, lvalue: IndexExpr,

@@ -5617,16 +5617,16 @@ from typing import Type, TypeVar, Optional
 T = TypeVar('T')
 
 class IntDescr:
-  def __get__(self, obj: T, typ: Type[T]) -> Optional[int]: ...
-  def __set__(self, obj: T, value: Optional[int]) -> None: ...
+    def __get__(self, obj: T, typ: Type[T]) -> Optional[int]: ...
+    def __set__(self, obj: T, value: Optional[int]) -> None: ...
 
 class C:
-  spec = IntDescr()
+    spec = IntDescr()
 
-  def meth_spec(self) -> int:
-    if self.spec is None:
-      self.spec = 0
-    return self.spec
+    def meth_spec(self) -> None:
+        if self.spec is None:
+            self.spec = 0
+        reveal_type(self.spec)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/bool.pyi]
 
 [case testUnionDescriptorsBinder]
@@ -5637,15 +5637,15 @@ class A: ...
 class B: ...
 
 class UnionDescr:
-  def __get__(self, obj: T, typ: Type[T]) -> Union[A, B]: ...
-  def __set__(self, obj: T, value: Union[A, B]) -> None: ...
+    def __get__(self, obj: T, typ: Type[T]) -> Union[A, B]: ...
+    def __set__(self, obj: T, value: Union[A, B]) -> None: ...
 
 class C:
-  spec = UnionDescr()
+    spec = UnionDescr()
 
-  def meth_spec(self) -> A:
-    self.spec = A()
-    return self.spec
+    def meth_spec(self) -> None:
+        self.spec = A()
+        reveal_type(self.spec)  # E: Revealed type is '__main__.A'
 [builtins fixtures/bool.pyi]
 
 [case testSubclassDescriptorsBinder]
@@ -5656,13 +5656,13 @@ class A: ...
 class B(A): ...
 
 class SubDescr:
-  def __get__(self, obj: T, typ: Type[T]) -> A: ...
-  def __set__(self, obj: T, value: A) -> None: ...
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+    def __set__(self, obj: T, value: A) -> None: ...
 
 class C:
-  spec = SubDescr()
+    spec = SubDescr()
 
-  def meth_spec(self) -> B:
-    self.spec = B()
-    return self.spec
+    def meth_spec(self) -> None:
+        self.spec = B()
+        reveal_type(self.spec)  # E: Revealed type is '__main__.B'
 [builtins fixtures/bool.pyi]
