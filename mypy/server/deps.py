@@ -599,10 +599,14 @@ class DependencyVisitor(TraverserVisitor):
             # Reference to a module attribute
             self.process_global_ref_expr(e)
         else:
-            # Reference to a non-module attribute
+            # Reference to a non-module (or missing) attribute
             if e.expr not in self.type_map:
                 # No type available -- this happens for unreachable code. Since it's unreachable,
                 # it wasn't type checked and we don't need to generate dependencies.
+                return
+            if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, MypyFile):
+                # Special case: reference to a missing module attribute.
+                self.add_dependency(make_trigger(e.expr.node.fullname() + '.' + e.name))
                 return
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)

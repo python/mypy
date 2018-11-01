@@ -825,6 +825,47 @@ def f(x: A) -> None:
 <m.A> -> <m.f>, m.f
 <p.b.A> -> m
 
+[case testIgnoredMissingModuleAttribute]
+import a
+a.x  # type: ignore
+
+import b.c
+b.c.x  # type: ignore
+
+from b import c
+c.y  # type: ignore
+[file a.py]
+[file b/__init__.py]
+[file b/c.py]
+[builtins fixtures/module.pyi]
+[out]
+<a.x> -> m
+<a> -> m
+<b.c.x> -> m
+<b.c.y> -> m
+<b.c> -> m
+<b> -> m
+
+[case testIgnoredMissingInstanceAttribute]
+from a import C
+C().x  # type: ignore
+[file a.py]
+class C: pass
+[out]
+<a.C.__init__> -> m
+<a.C.__new__> -> m
+<a.C.x> -> m
+<a.C> -> m
+
+[case testIgnoredMissingClassAttribute]
+from a import C
+C.x  # type: ignore
+[file a.py]
+class C: pass
+[out]
+<a.C.x> -> m
+<a.C> -> m
+
 [case testDepsFromOverloadMod]
 # __dump_all__
 import mod
