@@ -227,17 +227,6 @@ def python_executable_prefix(v: str) -> List[str]:
         return ['python{}'.format(v)]
 
 
-def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
-    try:
-        check = subprocess.check_output([python_executable, '-c',
-                                         'import sys; print(repr(sys.version_info[:2]))'],
-                                        stderr=subprocess.STDOUT).decode()
-        return ast.literal_eval(check)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise PythonExecutableInferenceError(
-            'invalid Python executable {}'.format(python_executable))
-
-
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
@@ -267,22 +256,14 @@ def infer_python_version_and_executable(options: Options,
 
     # Use the command line specified python_version/executable, or fall back to one set in the
     # config file
-    python_version = special_opts.python_version or options.python_version
+
+    options.python_version = special_opts.python_version or options.python_version
     python_executable = special_opts.python_executable or options.python_executable
 
-    if python_executable is not None and python_version is not None:
-        options.python_version = python_version
-        options.python_executable = python_executable
-    elif python_executable is None and python_version is not None:
-        options.python_version = python_version
-        py_exe = None
+    if python_executable is None:
         if not special_opts.no_executable:
-            py_exe = _python_executable_from_version(python_version)
-        options.python_executable = py_exe
-    elif python_version is None and python_executable is not None:
-        options.python_version = _python_version_from_executable(
-            python_executable)
-        options.python_executable = python_executable
+            python_executable = _python_executable_from_version(options.python_version)
+    options.python_executable = python_executable
 
 
 HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
