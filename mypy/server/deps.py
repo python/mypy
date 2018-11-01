@@ -599,7 +599,7 @@ class DependencyVisitor(TraverserVisitor):
             # Reference to a module attribute
             self.process_global_ref_expr(e)
         else:
-            # Reference to a non-module attribute
+            # Reference to a non-module (or missing) attribute
             if e.expr not in self.type_map:
                 # No type available -- this happens for unreachable code. Since it's unreachable,
                 # it wasn't type checked and we don't need to generate dependencies.
