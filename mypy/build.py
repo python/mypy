@@ -865,7 +865,7 @@ def atomic_write(filename: str, line1: str, line2: str) -> bool:
             for line in lines:
                 f.write(line)
         os.replace(tmp_filename, filename)
-    except os.error as err:
+    except os.error:
         return False
     return True
 

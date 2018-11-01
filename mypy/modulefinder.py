@@ -121,7 +121,7 @@ class FindModuleCache:
         path, verify = match
         for i in range(1, len(components)):
             pkg_id = '.'.join(components[:-i])
-            if pkg_id not in self.ns_ancestors:
+            if pkg_id not in self.ns_ancestors and self.fscache.isdir(path):
                 self.ns_ancestors[pkg_id] = path
             path = os.path.dirname(path)
 
@@ -170,7 +170,7 @@ class FindModuleCache:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
             third_party_stubs_dirs.clear()
-        python_mypy_path = self.search_paths.python_path + self.search_paths.mypy_path
+        python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
             self.find_lib_path_dirs(dir_chain, self.search_paths.typeshed_path)

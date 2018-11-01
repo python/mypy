@@ -36,7 +36,7 @@ class EnumCallAnalyzer:
 
     def check_enum_call(self,
                         node: Expression,
-                        var_name: Optional[str],
+                        var_name: str,
                         is_func_scope: bool) -> Optional[TypeInfo]:
         """Check if a call defines an Enum.
 
@@ -62,7 +62,7 @@ class EnumCallAnalyzer:
         items, values, ok = self.parse_enum_call_args(call, fullname.split('.')[-1])
         if not ok:
             # Error. Construct dummy return value.
-            return self.build_enum_call_typeinfo('Enum', [], fullname)
+            return self.build_enum_call_typeinfo(var_name, [], fullname)
         name = cast(Union[StrExpr, UnicodeExpr], call.args[0]).value
         if name != var_name or is_func_scope:
             # Give it a unique name derived from the line number.

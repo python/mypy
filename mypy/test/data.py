@@ -479,7 +479,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
         # The first in the split things isn't a comment
         for possible_err_comment in input[i].split(' # ')[1:]:
             m = re.search(
-                '^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
+                r'^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
                 possible_err_comment.strip())
             if m:
                 if m.group(1) == 'E':
@@ -572,11 +572,11 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     """
     with open(file, encoding='utf-8') as f:
         data = f.read()
-    cases = re.split('^\[case ([a-zA-Z_0-9]+)'
-                     '(-writescache)?'
-                     '(-only_when_cache|-only_when_nocache)?'
-                     '(-skip)?'
-                     '\][ \t]*$\n', data,
+    cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
+                     r'(-writescache)?'
+                     r'(-only_when_cache|-only_when_nocache)?'
+                     r'(-skip)?'
+                     r'\][ \t]*$\n', data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
     for i in range(1, len(cases), 5):

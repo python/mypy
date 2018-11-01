@@ -1917,7 +1917,7 @@ class TypeVarExpr(SymbolNode, Expression):
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
                  upper_bound: 'mypy.types.Type',
-                 variance: int=INVARIANT) -> None:
+                 variance: int = INVARIANT) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
