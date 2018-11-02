@@ -1013,6 +1013,11 @@ def lookup_target(manager: BuildManager,
                 or c not in node.names):
             not_found()  # Stale dependency
             return [], None
+        # Don't reprocess plugin generated targets. They should get
+        # stripped and regenerated when the containing target is
+        # reprocessed.
+        if node.names[c].plugin_generated:
+            return [], None
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined

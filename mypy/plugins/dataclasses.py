@@ -7,10 +7,11 @@ from mypy.nodes import (
     OverloadedFuncDef, SymbolTableNode, TempNode, TypeInfo, Var,
 )
 from mypy.plugin import ClassDefContext
-from mypy.plugins.common import _add_method, _get_decorator_bool_argument
+from mypy.plugins.common import add_method, _get_decorator_bool_argument
 from mypy.types import (
     CallableType, Instance, NoneTyp, Overloaded, TypeVarDef, TypeVarType,
 )
+from mypy.server.trigger import make_trigger, make_wildcard_trigger
 
 MYPY = False
 if MYPY:
@@ -86,7 +87,7 @@ class DataclassTransformer:
         }
 
         if decorator_arguments['init']:
-            _add_method(
+            add_method(
                 ctx,
                 '__init__',
                 args=[attr.to_argument(info) for attr in attributes if attr.is_in_init],
@@ -98,13 +99,13 @@ class DataclassTransformer:
             for method_name in ['__eq__', '__ne__']:
                 # The TVar is used to enforce that "other" must have
                 # the same type as self (covariant).  Note the
-                # "self_type" parameter to _add_method.
+                # "self_type" parameter to add_method.
                 obj_type = ctx.api.named_type('__builtins__.object')
                 cmp_tvar_def = TypeVarDef('T', 'T', -1, [], obj_type)
                 cmp_other_type = TypeVarType(cmp_tvar_def)
                 cmp_return_type = ctx.api.named_type('__builtins__.bool')
 
-                _add_method(
+                add_method(
                     ctx,
                     method_name,
                     args=[Argument(Var('other', cmp_other_type), cmp_other_type, None, ARG_POS)],
@@ -137,7 +138,7 @@ class DataclassTransformer:
                         existing_method.node,
                     )
 
-                _add_method(
+                add_method(
                     ctx,
                     method_name,
                     args=order_args,
@@ -238,6 +239,9 @@ class DataclassTransformer:
         for info in cls.info.mro[1:-1]:
             if 'dataclass' not in info.metadata:
                 continue
+
+            # Each class depends on the set of attributes in its dataclass ancestors.
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname()))
 
             for name, data in info.metadata['dataclass']['attributes'].items():
                 if name not in known_attrs:

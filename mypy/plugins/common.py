@@ -78,7 +78,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     return None
 
 
-def _add_method(
+def add_method(
         ctx: ClassDefContext,
         name: str,
         args: List[Argument],
@@ -110,5 +110,5 @@ def _add_method(
     func._fullname = info.fullname() + '.' + name
     func.line = info.line
 
-    info.names[name] = SymbolTableNode(MDEF, func)
+    info.names[name] = SymbolTableNode(MDEF, func, plugin_generated=True)
     info.defn.defs.body.append(func)
