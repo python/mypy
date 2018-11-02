@@ -2,26 +2,22 @@
 
 ## Supported Features
 
-Only a subset of Python is supported. If you try to compile
-something that is not supported, you are not likely to get a good
-error message.
+Mypyc supports a subset of Python. If you try to compile something
+that is not supported, you are not likely to get a good error message.
 
-Here are some major things that aren't supported:
+Here are some major things that aren't supported in compiled code:
 
 * Unannotated functions
 * Functions that take `*args` or `**kwargs`
-* Decorated functions
 * Many dunder methods (only some work, such as `__init__` and `__eq__`)
 * Monkey patching compiled functions or classes
 * Metaclasses
 * Async features
-* Enums
-* Generally Python 3.5+ features
-* Subclassing built-in types (other than `object`)
+* Generally Python 3.5+ only features
 * General multiple inheritance (a limited form is supported))
 * Classes or functions that use type variables with value restrictions
 * Self types
-* TypedDicts
+* TypedDict
 * Named tuple defined using the class-based syntax
 * Complex numbers
 * Defining protocols
@@ -29,10 +25,10 @@ Here are some major things that aren't supported:
 * `# type: ignore`
 * `del name`
 
-We aren't focused on feature completeness right now. Instead, we aim
-to support a Python subset that is just good enough to compile
-mypy. We'll likely also add some features that aren't necessary for
-compiling mypy (as long as they are easy enough to implement).
+We aren't focused on Python feature completeness right now. Instead,
+we support a Python subset that is good enough to compile mypy. We are
+generally happy to accept contributions that implement new Python
+features, however.
 
 ## High-level Overview
 
@@ -98,8 +94,6 @@ All of these limitations will likely be fixed in the future:
 * We don't detect infinite recursion.
 
 * We don't handle Ctrl-C in compiled code.
-
-* We don't detect undefined local variables.
 
 ## Hints for Implementing Typical Mypyc Features
 

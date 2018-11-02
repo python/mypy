@@ -1,10 +1,11 @@
 mypyc: Mypy to Python C Extension Compiler
 ==========================================
 
-*Mypyc is very early in development and not yet useful for anything.*
+*Mypyc is not yet useful for general Python development.*
 
-Mypyc is a compiler that aims to eventually compile mypy-annotated,
-statically typed Python modules into Python C extensions.
+Mypyc is a compiler that compiles mypy-annotated, statically typed
+Python modules into Python C extensions. Currently our focus is
+on making mypy faster through compilation.
 
 MacOS Requirements
 ------------------
@@ -64,8 +65,8 @@ Documentation
 
 We have some [developer documentation](doc/dev-intro.md).
 
-Development Roadmap
--------------------
+Development Status and Roadmap
+------------------------------
 
 These are the current planned major milestones:
 
@@ -78,12 +79,14 @@ These are the current planned major milestones:
    calls will use slower Python-level objects, wrapper functions and
    Python namespaces.
 
-3. Self-compilation (at least mypy).
+3. [DONE] Mypyc can compile mypy.
 
-4. Optimize some important performance bottlenecks.
+4. [DONE] Optimize some important performance bottlenecks.
 
 5. Generate useful errors for code that uses unsupported Python
    features instead of crashing or generating bad code.
+
+6. Release a version of mypy that includes a compiled mypy.
 
 Future
 ------
