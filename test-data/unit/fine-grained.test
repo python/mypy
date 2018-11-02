@@ -814,6 +814,80 @@ class A:
 ==
 main:3: error: Unsupported left operand type for < ("B")
 
+[case testDataclassUpdate8]
+# flags: --python-version 3.7
+from c import C
+C(1, 2, 3)
+[file c.py]
+from b import B
+from dataclasses import dataclass
+@dataclass
+class C(B):
+    c: int
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "C"
+
+[case testDataclassUpdate9]
+# flags: --python-version 3.7
+from c import C
+C(1, 2, 3)
+[file c.py]
+from b import B
+from dataclasses import dataclass
+@dataclass
+class C(B):
+    c: int
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+    other: int
+
+[file a.py.3]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "C"
+==
+
 [case testAttrsUpdate1]
 [file a.py]
 import attr
