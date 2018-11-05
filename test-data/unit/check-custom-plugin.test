@@ -229,3 +229,54 @@ def decorator2() -> Callable[..., Callable[..., int]]: pass
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/named_callable.py
+
+[case testMethodSignatureHook]
+# flags: --config-file tmp/mypy.ini
+from typing import Iterator
+
+class Foo:
+    # Test that method signature hooks are applied in various cases: explicit method calls, and
+    # implicit dunder method calls through language syntax.
+    # The plugin's method signature hook should turn all str occurrences into int.
+    def __init__(self) -> None: ...
+    def __getitem__(self, index: str) -> str: ...
+    def __setitem__(self, index: str, value: str) -> None: ...
+    def __iter__(self) -> Iterator[str]: ...
+    def __next__(self) -> str: ...
+    def m(self, arg: str) -> str: ...
+
+foo = Foo()
+reveal_type(foo.m(2)) # E: Revealed type is 'builtins.int'
+reveal_type(foo[3]) # E: Revealed type is 'builtins.int'
+foo[4] = 5
+for x in foo:
+    reveal_type(x) # E: Revealed type is 'builtins.int*'
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
+
+[case testMethodSignatureHookNamesFullyQualified]
+# flags: --config-file tmp/mypy.ini
+from mypy_extensions import TypedDict
+from typing import NamedTuple
+
+class FullyQualifiedTestClass:
+    @classmethod
+    def class_method(self) -> str: ...
+    def instance_method(self) -> str: ...
+
+class FullyQualifiedTestTypedDict(TypedDict):
+    foo: str
+
+FullyQualifiedTestNamedTuple = NamedTuple('FullyQualifiedTestNamedTuple', [('foo', str)])
+
+# Check the return types to ensure that the method signature hook is called in each case
+reveal_type(FullyQualifiedTestClass.class_method()) # E: Revealed type is 'builtins.int'
+reveal_type(FullyQualifiedTestClass().instance_method()) # E: Revealed type is 'builtins.int'
+reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # E: Revealed type is 'builtins.int'
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
+[builtins fixtures/classmethod.pyi]

@@ -2566,9 +2566,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             method_type = self.expr_checker.analyze_external_member_access(
                 '__setitem__', basetype, context)
         lvalue.method_type = method_type
-        self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
-                                     [nodes.ARG_POS, nodes.ARG_POS],
-                                     context)
+        self.expr_checker.check_method_call(
+            '__setitem__', basetype, method_type, [lvalue.index, rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
 
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Expression) -> None:
@@ -2939,10 +2939,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-        method = echk.analyze_external_member_access('__aiter__', iterable, expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
-        method = echk.analyze_external_member_access('__anext__', iterator, expr)
-        awaitable = echk.check_call(method, [], [], expr)[0]
+        iterator = echk.check_method_call_by_name('__aiter__', iterable, [], [], expr)[0]
+        awaitable = echk.check_method_call_by_name('__anext__', iterator, [], [], expr)[0]
         item_type = echk.check_awaitable_expr(awaitable, expr,
                                               messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
         return iterator, item_type
@@ -2951,8 +2949,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-        method = echk.analyze_external_member_access('__iter__', iterable, expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
+        iterator = echk.check_method_call_by_name('__iter__', iterable, [], [], expr)[0]
 
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
@@ -2965,9 +2962,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
-            method = echk.analyze_external_member_access(nextmethod, iterator,
-                                                         expr)
-            return iterator, echk.check_call(method, [], [], expr)[0]
+            return iterator, echk.check_method_call_by_name(nextmethod, iterator, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
@@ -3067,15 +3062,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = echk.accept(expr)
-        enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
-        obj = echk.check_call(enter, [], [], expr)[0]
+        obj = echk.check_method_call_by_name('__aenter__', ctx, [], [], expr)[0]
         obj = echk.check_awaitable_expr(
             obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
-        exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+        res = echk.check_method_call_by_name(
+            '__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
         echk.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
@@ -3083,13 +3077,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = echk.accept(expr)
-        enter = echk.analyze_external_member_access('__enter__', ctx, expr)
-        obj = echk.check_call(enter, [], [], expr)[0]
+        obj = echk.check_method_call_by_name('__enter__', ctx, [], [], expr)[0]
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
-        exit = echk.analyze_external_member_access('__exit__', ctx, expr)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        echk.check_method_call_by_name('__exit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
