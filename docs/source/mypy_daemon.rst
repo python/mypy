@@ -24,10 +24,6 @@ you'll find errors sooner.
 
 .. note::
 
-    The mypy daemon currently supports macOS and Linux only.
-
-.. note::
-
     Each mypy daemon process supports one user and one set of source files,
     and it can only process one type checking request at a time. You can
     run multiple mypy daemon processes to type check multiple repositories.
@@ -103,5 +99,3 @@ Limitations
   limitation. This can be defined
   through the command line or through a
   :ref:`configuration file <config-file>`.
-
-* Windows is not supported.
