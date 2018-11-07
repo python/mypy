@@ -26,12 +26,15 @@ if sys.platform == 'win32':
     # This may be private, but it is needed for IPC on Windows, and is basically stable
     import _winapi
     import ctypes
-    from ctypes import wintypes
+    from ctypes.wintypes import DWORD, HANDLE
 
     from mypy.dmypy_util import write_file
 
-    OpenProcess = ctypes.windll.kernel32.OpenProcess
-    GetExitCodeProcess = ctypes.windll.kernel32.GetExitCodeProcess
+    PROCESS_QUERY_LIMITED_INFORMATION = ctypes.c_ulong(0x1000)
+
+    kernel32 = ctypes.windll.kernel32
+    OpenProcess = kernel32.OpenProcess  # type: Callable[[DWORD, int, int], HANDLE]
+    GetExitCodeProcess = kernel32.GetExitCodeProcess  # type: Callable[[HANDLE, Any], int]
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
@@ -106,7 +109,7 @@ p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                help="Regular mypy flags (precede with --)")
-p.add_argument('--options-file', help="For internal use only")
+p.add_argument('--options-file', help=argparse.SUPPRESS)
 help_parser = p = subparsers.add_parser('help')
 
 del p
@@ -415,7 +418,7 @@ def request(command: str, *, timeout: Optional[int] = None,
     closed prematurely as well as invalid JSON received.
     """
     if sys.platform == 'win32':
-        timeout = timeout or 1000  # we have to set a timeout
+        timeout = timeout or 1000000  # we have to set a timeout
         handle = _winapi.NULL
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
@@ -505,8 +508,8 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
         raise BadStatus("pid field is not an int")
     if sys.platform == 'win32':
         # why can't anything be easy...
-        status = wintypes.DWORD()
-        handle = OpenProcess(0x1000,  # PROCESS_QUERY_LIMITED_INFORMATION
+        status = DWORD()
+        handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,
                              0,
                              pid)
         GetExitCodeProcess(handle, ctypes.byref(status))
