@@ -127,6 +127,10 @@ class TypeCheckSuite(DataSuite):
                 if isinstance(op, UpdateFile):
                     # Modify/create file
                     copy_and_fudge_mtime(op.source_path, op.target_path)
+                    # Unload already loaded plugins, if they are updated.
+                    if op.module.endswith('_plugin') and op.module in sys.modules:
+                        del sys.modules[op.module]
+
                 else:
                     # Delete file
                     # Use retries to work around potential flakiness on Windows (AppVeyor).

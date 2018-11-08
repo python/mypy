@@ -888,6 +888,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         # Check if plugins are still the same.
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log('Metadata abandoned for {}: plugins differ'.format(id))
+            return None
 
     manager.add_stats(fresh_metas=1)
     return m
@@ -2210,6 +2211,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         process_fine_grained_cache_graph(graph, manager)
     else:
         process_graph(graph, manager)
+        # Update plugins snapshot.
+        write_plugins_snapshot(manager)
+        manager.old_plugins_snapshot = manager.plugins_snapshot
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             # If we are running a daemon or are going to write cache for further fine grained use,
             # then we need to collect fine grained protocol dependencies.
