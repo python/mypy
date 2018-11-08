@@ -1758,9 +1758,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if not isinstance(call.callee, RefExpr):
             return
         fname = call.callee.fullname
-        hook = self.plugin.get_dynamic_class_hook(fname)
-        if hook:
-            hook(DynamicClassDefContext(call, lval.name, self))
+        if fname:
+            hook = self.plugin.get_dynamic_class_hook(fname)
+            if hook:
+                hook(DynamicClassDefContext(call, lval.name, self))
 
     def unwrap_final(self, s: AssignmentStmt) -> None:
         """Strip Final[...] if present in an assignment.

@@ -365,7 +365,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_customize_class_mro_hook(fullname))
 
     def get_dynamic_class_hook(self, fullname: str
-                            ) -> Optional[Callable[[DynamicClassDefContext], None]]:
+                               ) -> Optional[Callable[[DynamicClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_dynamic_class_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
