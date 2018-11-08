@@ -78,9 +78,43 @@ class Person(Mammal):
     name: str
     age: int
 
-reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
-Person('John', 32)
-Person('John', 21, None)  # E: Too many arguments for "Person"
+@dataclass
+class SpecialPerson(Person):
+    special_factor: float
+
+@dataclass
+class ExtraSpecialPerson(SpecialPerson):
+    age: int
+    special_factor: float
+    name: str
+
+reveal_type(Person)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str) -> __main__.Person'
+reveal_type(SpecialPerson)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str, special_factor: builtins.float) -> __main__.SpecialPerson'
+reveal_type(ExtraSpecialPerson)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str, special_factor: builtins.float) -> __main__.ExtraSpecialPerson'
+Person(32, 'John')
+Person(21, 'John', None)  # E: Too many arguments for "Person"
+SpecialPerson(21, 'John', 0.5)
+ExtraSpecialPerson(21, 'John', 0.5)
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOverridingWithDefaults]
+# Issue #5681 https://github.com/python/mypy/issues/5681
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Any
+
+@dataclass
+class Base:
+    some_int: Any
+    some_str: str = 'foo'
+
+
+@dataclass
+class C(Base):
+    some_int: int
+
+reveal_type(C)  # E: Revealed type is 'def (some_int: builtins.int, some_str: builtins.str =) -> __main__.C'
 
 [builtins fixtures/list.pyi]
 
