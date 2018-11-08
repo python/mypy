@@ -310,6 +310,8 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
 
     Return a plugin that encapsulates all plugins chained together. Always
     at least include the default plugin (it's last in the chain).
+    The second return value is a snapshot of versions/hashes of loaded user
+    plugins (for cache validation).
     """
     import importlib
     snapshot = {}  # type: Dict[str, str]
@@ -377,6 +379,9 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
                 '(in {})'.format(plugin_path))
         try:
             custom_plugins.append(plugin_type(options))
+            # We record _both_ hash and the version to detect more
+            # possible changes (e.g. if there is a change in modules
+            # imported by a plugin).
             if hasattr(module, '__file__'):
                 with open(module.__file__, 'rb') as f:
                     digest = hashlib.md5(f.read()).hexdigest()
