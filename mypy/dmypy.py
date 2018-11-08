@@ -209,7 +209,7 @@ def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     wait_for_server()
 
 
-def wait_for_server(timeout: float = 30.0) -> None:
+def wait_for_server(timeout: float = 5.0) -> None:
     """Wait until the server is up.
 
     Exit if it doesn't happen within the timeout.
