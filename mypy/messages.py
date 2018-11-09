@@ -101,7 +101,6 @@ INVALID_TYPEDDICT_ARGS = \
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict key to be string literal'  # type: Final
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # type: Final
-NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'  # type: Final
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final

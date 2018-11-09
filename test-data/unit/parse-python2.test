@@ -211,7 +211,7 @@ MypyFile:1(
       IntExpr(1)
       IntExpr(2))))
 
-[case testLambdaInListComprehensionInPython2]
+[case testListComprehensionInPython2]
 ([ 0 for x in 1, 2 if 3 ])
 [out]
 MypyFile:1(
@@ -395,3 +395,416 @@ MypyFile:1(
       TupleExpr:1(
         IntExpr(1)
         IntExpr(2)))))
+
+[case testSuperInPython2]
+class A:
+    def f(self):
+        super(A, self).x
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Block:2(
+        ExpressionStmt:3(
+          SuperExpr:3(
+            x
+            CallExpr:3(
+              NameExpr(super)
+              Args(
+                NameExpr(A)
+                NameExpr(self)))))))))
+
+[case testTypeCommentsInPython2]
+x = 1 # type: List[int]
+
+def f(x, y=0):
+    # type: (List[int], str) -> None
+    pass
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1)
+    List?[int?])
+  FuncDef:3(
+    f
+    Args(
+      Var(x)
+      default(
+        Var(y)
+        IntExpr(0)))
+    def (x: List?[int?], y: str? =) -> None?
+    Block:3(
+      PassStmt:5())))
+
+[case testMultiLineTypeCommentInPython2]
+def f(x,  # type: List[int]
+      y,
+      z=1, # type: str
+      ):
+    # type: (...) -> None
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y)
+      default(
+        Var(z)
+        IntExpr(1)))
+    def (x: List?[int?], y: Any, z: str? =) -> None?
+    Block:1(
+      PassStmt:6())))
+
+[case testIfStmtInPython2]
+if x:
+    y
+elif z:
+    a
+else:
+    b
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      NameExpr(x))
+    Then(
+      ExpressionStmt:2(
+        NameExpr(y)))
+    Else(
+      IfStmt:3(
+        If(
+          NameExpr(z))
+        Then(
+          ExpressionStmt:4(
+            NameExpr(a)))
+        Else(
+          ExpressionStmt:6(
+            NameExpr(b)))))))
+
+[case testWhileStmtInPython2]
+while x:
+    y
+else:
+    z
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    NameExpr(x)
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(y)))
+    Else(
+      ExpressionStmt:4(
+        NameExpr(z)))))
+
+[case testForStmtInPython2]
+for x, y in z:
+    a
+else:
+    b
+[out]
+MypyFile:1(
+  ForStmt:1(
+    TupleExpr:1(
+      NameExpr(x)
+      NameExpr(y))
+    NameExpr(z)
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(a)))
+    Else(
+      ExpressionStmt:4(
+        NameExpr(b)))))
+
+[case testWithStmtInPython2]
+with x as y:
+    z
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(x))
+    Target(
+      NameExpr(y))
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(z)))))
+
+[case testExpressionsInPython2]
+x[y]
+x + y
+~z
+x.y
+([x, y])
+{x, y}
+{x: y}
+x < y > z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:2(
+    OpExpr:2(
+      +
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:3(
+    UnaryExpr:3(
+      ~
+      NameExpr(z)))
+  ExpressionStmt:4(
+    MemberExpr:4(
+      NameExpr(x)
+      y))
+  ExpressionStmt:5(
+    ListExpr:5(
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:6(
+    SetExpr:6(
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:7(
+    DictExpr:7(
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:8(
+    ComparisonExpr:8(
+      <
+      >
+      NameExpr(x)
+      NameExpr(y)
+      NameExpr(z))))
+
+[case testSlicingInPython2]
+x[y:]
+x[y:z]
+x[::y]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(x)
+      SliceExpr:-1(
+        NameExpr(y)
+        <empty>)))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x)
+      SliceExpr:-1(
+        NameExpr(y)
+        NameExpr(z))))
+  ExpressionStmt:3(
+    IndexExpr:3(
+      NameExpr(x)
+      SliceExpr:-1(
+        <empty>
+        <empty>
+        NameExpr(y)))))
+
+[case testStarArgsInPython2]
+def f(*x): # type: (*int) -> None
+    pass
+f(x, *y)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def (*x: int?) -> None?
+    VarArg(
+      Var(x))
+    Block:1(
+      PassStmt:2()))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(f)
+      Args(
+        NameExpr(x)
+        NameExpr(y))
+      VarArg)))
+
+[case testKwArgsInPython2]
+def f(**x): # type: (**int) -> None
+    pass
+f(x, **y)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def (**x: int?) -> None?
+    DictVarArg(
+      Var(x))
+    Block:1(
+      PassStmt:2()))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(f)
+      Args(
+        NameExpr(x))
+      DictVarArg(
+        NameExpr(y)))))
+
+[case testBoolOpInPython2]
+x and y or z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      or
+      OpExpr:1(
+        and
+        NameExpr(x)
+        NameExpr(y))
+      NameExpr(z))))
+
+[case testImportsInPython2]
+from x import y, z as zz
+import m
+import n as nn
+from aa import *
+[out]
+MypyFile:1(
+  ImportFrom:1(x, [y, z : zz])
+  Import:2(m)
+  Import:3(n : nn)
+  ImportAll:4(aa))
+
+[case testTryFinallyInPython2]
+try:
+    x
+finally:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    Finally(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testRaiseInPython2]
+raise
+raise x
+[out]
+MypyFile:1(
+  RaiseStmt:1()
+  RaiseStmt:2(
+    NameExpr(x)))
+
+[case testAssignmentInPython2]
+x = y
+x, (y, z) = aa
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    NameExpr(y))
+  AssignmentStmt:2(
+    TupleExpr:2(
+      NameExpr(x)
+      TupleExpr:2(
+        NameExpr(y)
+        NameExpr(z)))
+    NameExpr(aa)))
+
+[case testAugmentedAssignmentInPython2]
+x += y
+x *= 2
+[out]
+MypyFile:1(
+  OperatorAssignmentStmt:1(
+    +
+    NameExpr(x)
+    NameExpr(y))
+  OperatorAssignmentStmt:2(
+    *
+    NameExpr(x)
+    IntExpr(2)))
+
+[case testDelStatementInPython2]
+del x
+del x.y, x[y]
+[out]
+MypyFile:1(
+  DelStmt:1(
+    NameExpr(x))
+  DelStmt:2(
+    TupleExpr:2(
+      MemberExpr:2(
+        NameExpr(x)
+        y)
+      IndexExpr:2(
+        NameExpr(x)
+        NameExpr(y)))))
+
+[case testClassDecoratorInPython2]
+@dec()
+class C:
+    pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    C
+    Decorators(
+      CallExpr:1(
+        NameExpr(dec)
+        Args()))
+    PassStmt:3()))
+
+[case testFunctionDecaratorInPython2]
+@dec()
+def f():
+    pass
+[out]
+MypyFile:1(
+  Decorator:1(
+    Var(f)
+    CallExpr:1(
+      NameExpr(dec)
+      Args())
+    FuncDef:2(
+      f
+      Block:2(
+        PassStmt:3()))))
+
+[case testOverloadedFunctionInPython2]
+@overload
+def g():
+    pass
+@overload
+def g():
+    pass
+def g():
+    pass
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(g)
+      NameExpr(overload)
+      FuncDef:2(
+        g
+        Block:2(
+          PassStmt:3())))
+    Decorator:4(
+      Var(g)
+      NameExpr(overload)
+      FuncDef:5(
+        g
+        Block:5(
+          PassStmt:6())))
+    FuncDef:7(
+      g
+      Block:7(
+        PassStmt:8()))))

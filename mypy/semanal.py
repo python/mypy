@@ -68,7 +68,7 @@ from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType,
-    TypeTranslator, TypeOfAny, TypeType,
+    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -80,7 +80,10 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import (
+    Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
+    DynamicClassDefContext
+)
 from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
@@ -262,6 +265,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def is_typeshed_stub_file(self) -> bool:
         return self._is_typeshed_stub_file
 
+    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Add dependency from trigger to a target.
+
+        If the target is not given explicitly, use the current target.
+        """
+        if target is None:
+            target = self.scope.current_target()
+        self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
+
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
@@ -407,6 +419,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             add_symbol = False
                     if add_symbol:
                         self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
+                    assert isinstance(defn.type, CallableType)
+                    if isinstance(defn.type.ret_type, AnyType):
+                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
@@ -1716,6 +1732,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+        self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
@@ -1730,6 +1747,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
+        if len(s.lvalues) > 1:
+            return
+        lval = s.lvalues[0]
+        if not isinstance(lval, NameExpr) or not isinstance(s.rvalue, CallExpr):
+            return
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return
+        fname = call.callee.fullname
+        if fname:
+            hook = self.plugin.get_dynamic_class_hook(fname)
+            if hook:
+                hook(DynamicClassDefContext(call, lval.name, self))
 
     def unwrap_final(self, s: AssignmentStmt) -> None:
         """Strip Final[...] if present in an assignment.
@@ -2017,7 +2049,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                          not self.type)
         if (add_global or nested_global) and lval.name not in self.globals:
             # Define new global name.
-            v = self.make_name_lvalue_var(lval, GDEF)
+            v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
             self.globals[lval.name] = SymbolTableNode(GDEF, v)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
@@ -2029,7 +2061,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
               lval.name not in self.global_decls[-1] and
               lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
-            v = self.make_name_lvalue_var(lval, LDEF)
+            v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
             self.add_local(v, lval)
             if lval.name == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
@@ -2038,16 +2070,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif not self.is_func_scope() and (self.type and
                                            lval.name not in self.type.names):
             # Define a new attribute within class body.
-            v = self.make_name_lvalue_var(lval, MDEF)
-            v.is_inferred = not explicit_type
+            v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
 
-    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
+    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int, inferred: bool) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
         v = Var(lvalue.name)
         v.set_line(lvalue)
+        v.is_inferred = inferred
         if kind == MDEF:
             assert self.type is not None
             v.info = self.type

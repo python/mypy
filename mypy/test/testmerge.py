@@ -5,7 +5,8 @@ import shutil
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildSource, BuildResult
+from mypy.build import BuildResult
+from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.nodes import (
@@ -113,7 +114,7 @@ class ASTMergeSuite(DataSuite):
             result = build.build(sources=[BuildSource(main_path, None, None)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)
-        except CompileError as e:
+        except CompileError:
             # TODO: Is it okay to return None?
             return None
         return result

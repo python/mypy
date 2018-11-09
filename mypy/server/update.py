@@ -119,9 +119,10 @@ from typing import (
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    BuildManager, State, BuildResult, Graph, load_graph,
     process_fresh_modules, DEBUG_FINE_GRAINED,
 )
+from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
@@ -1011,6 +1012,11 @@ def lookup_target(manager: BuildManager,
         if (not isinstance(node, (MypyFile, TypeInfo))
                 or c not in node.names):
             not_found()  # Stale dependency
+            return [], None
+        # Don't reprocess plugin generated targets. They should get
+        # stripped and regenerated when the containing target is
+        # reprocessed.
+        if node.names[c].plugin_generated:
             return [], None
         node = node.names[c].node
     if isinstance(node, TypeInfo):

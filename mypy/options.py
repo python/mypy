@@ -20,6 +20,7 @@ class BuildType:
 
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
+    "allow_untyped_globals",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -42,7 +43,6 @@ PER_MODULE_OPTIONS = {
     "mypyc",
     "no_implicit_optional",
     "show_none_errors",
-    "strict_boolean",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
@@ -79,7 +79,9 @@ class Options:
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
-        self.follow_imports_for_stubs = False  # type: bool
+        self.follow_imports_for_stubs = False
+        # PEP 420 namespace packages
+        self.namespace_packages = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -128,9 +130,6 @@ class Options:
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
 
-        # Only allow booleans in conditions
-        self.strict_boolean = False
-
         # Apply strict None checking
         self.strict_optional = True
 
@@ -146,6 +145,9 @@ class Options:
 
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
+
+        # Suppress toplevel errors caused by missing annotations
+        self.allow_untyped_globals = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]
@@ -190,6 +192,7 @@ class Options:
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
         self.show_traceback = False
+        self.raise_exceptions = False
         self.dump_type_stats = False
         self.dump_inference_stats = False
 
@@ -335,7 +338,7 @@ class Options:
         parts = s.split('.')
         expr = re.escape(parts[0]) if parts[0] != '*' else '.*'
         for part in parts[1:]:
-            expr += re.escape('.' + part) if part != '*' else '(\..*)?'
+            expr += re.escape('.' + part) if part != '*' else r'(\..*)?'
         return re.compile(expr + '\\Z')
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:

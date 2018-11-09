@@ -4,7 +4,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable,
-    Sequence, Any, Iterator
+    Sequence, Iterator
 )
 MYPY = False
 if MYPY:
@@ -18,9 +18,9 @@ from mypy.typeanal import (
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, TypeOfAny,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    get_typ_args, StarType
+    StarType, is_optional, remove_optional, is_invariant_instance
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -31,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolTable,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -45,13 +45,12 @@ from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type
-from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
     is_subtype, is_proper_subtype, is_equivalent, find_member, non_method_protocol_members,
 )
 from mypy import applytype
 from mypy import erasetype
-from mypy.checkmember import analyze_member_access, type_object_type, bind_self
+from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
@@ -60,8 +59,6 @@ from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
-
-from mypy import experiments
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -165,21 +162,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
-                in_scope, partial_types = self.chk.find_partial_types_in_all_scopes(node)
-                if result.type is None and in_scope:
-                    # 'None' partial type. It has a well-defined type. In an lvalue context
-                    # we want to preserve the knowledge of it being a partial type.
-                    if not lvalue:
-                        result = NoneTyp()
-                else:
-                    if partial_types is not None and not self.chk.current_node_deferred:
-                        if in_scope:
-                            context = partial_types[node]
-                            self.msg.need_annotation_for_var(node, context)
-                        else:
-                            # Defer the node -- we might get a better type in the outer scope
-                            self.chk.handle_cannot_determine_type(node.name(), e)
-                    result = AnyType(TypeOfAny.special_form)
+                result = self.chk.handle_partial_var_type(result, lvalue, node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
@@ -302,25 +285,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 fullname = e.callee.node.target.type.fullname()
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
+                    and e.callee.expr in self.chk.type_map
                     and isinstance(callee_type, FunctionLike)):
                 # For method calls we include the defining class for the method
                 # in the full name (example: 'typing.Mapping.get').
-                callee_expr_type = self.chk.type_map.get(e.callee.expr)
-                info = None
-                # TODO: Support fallbacks of other kinds of types as well?
-                if isinstance(callee_expr_type, Instance):
-                    info = callee_expr_type.type
-                elif isinstance(callee_expr_type, TypedDictType):
-                    info = callee_expr_type.fallback.type.get_containing_type_info(e.callee.name)
-                if info:
-                    fullname = '{}.{}'.format(info.fullname(), e.callee.name)
+                callee_expr_type = self.chk.type_map[e.callee.expr]
+                fullname = self.method_fullname(callee_expr_type, e.callee.name)
+                if fullname is not None:
                     object_type = callee_expr_type
-                    # Apply plugin signature hook that may generate a better signature.
-                    signature_hook = self.plugin.get_method_signature_hook(fullname)
-                    if signature_hook:
-                        assert object_type is not None
-                        callee_type = self.apply_method_signature_hook(
-                            e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
             if e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass'):
@@ -329,10 +301,75 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
-        if not allow_none_return and isinstance(ret_type, NoneTyp):
+        # Warn on calls to functions that always return None. The check
+        # of ret_type is both a common-case optimization and prevents reporting
+        # the error in dynamic functions (where it will be Any).
+        if (not allow_none_return and isinstance(ret_type, NoneTyp)
+                and self.always_returns_none(e.callee)):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def method_fullname(self, object_type: Type, method_name: str) -> Optional[str]:
+        """Convert a method name to a fully qualified name, based on the type of the object that
+        it is invoked on. Return `None` if the name of `object_type` cannot be determined.
+        """
+        if isinstance(object_type, CallableType) and object_type.is_type_obj():
+            # For class method calls, object_type is a callable representing the class object.
+            # We "unwrap" it to a regular type, as the class/instance method difference doesn't
+            # affect the fully qualified name.
+            object_type = object_type.ret_type
+
+        type_name = None
+        if isinstance(object_type, Instance):
+            type_name = object_type.type.fullname()
+        elif isinstance(object_type, TypedDictType):
+            info = object_type.fallback.type.get_containing_type_info(method_name)
+            type_name = info.fullname() if info is not None else None
+        elif isinstance(object_type, TupleType):
+            type_name = object_type.fallback.type.fullname()
+
+        if type_name is not None:
+            return '{}.{}'.format(type_name, method_name)
+        else:
+            return None
+
+    def always_returns_none(self, node: Expression) -> bool:
+        """Check if `node` refers to something explicitly annotated as only returning None."""
+        if isinstance(node, RefExpr):
+            if self.defn_returns_none(node.node):
+                return True
+        if isinstance(node, MemberExpr) and node.node is None:  # instance or class attribute
+            typ = self.chk.type_map.get(node.expr)
+            if isinstance(typ, Instance):
+                info = typ.type
+            elif (isinstance(typ, CallableType) and typ.is_type_obj() and
+                  isinstance(typ.ret_type, Instance)):
+                info = typ.ret_type.type
+            else:
+                return False
+            sym = info.get(node.name)
+            if sym and self.defn_returns_none(sym.node):
+                return True
+        return False
+
+    def defn_returns_none(self, defn: Optional[SymbolNode]) -> bool:
+        """Check if `defn` can _only_ return None."""
+        if isinstance(defn, FuncDef):
+            return (isinstance(defn.type, CallableType) and
+                    isinstance(defn.type.ret_type, NoneTyp))
+        if isinstance(defn, OverloadedFuncDef):
+            return all(isinstance(item.type, CallableType) and
+                       isinstance(item.type.ret_type, NoneTyp) for item in defn.items)
+        if isinstance(defn, Var):
+            if (not defn.is_inferred and isinstance(defn.type, CallableType) and
+                    isinstance(defn.type.ret_type, NoneTyp)):
+                return True
+            if isinstance(defn.type, Instance):
+                sym = defn.type.type.get('__call__')
+                if sym and self.defn_returns_none(sym.node):
+                    return True
+        return False
 
     def check_runtime_protocol_test(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
@@ -520,13 +557,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               context, self.chk))
 
     def apply_method_signature_hook(
-            self, e: CallExpr, callee: FunctionLike, object_type: Type,
+            self, callee: FunctionLike, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
             signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a method."""
         if isinstance(callee, CallableType):
-            arg_kinds = e.arg_kinds
-            arg_names = e.arg_names
-            args = e.args
             num_formals = len(callee.arg_kinds)
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
@@ -537,15 +573,45 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
             return signature_hook(
-                MethodSigContext(object_type, formal_arg_exprs, callee, e, self.chk))
+                MethodSigContext(object_type, formal_arg_exprs, callee, context, self.chk))
         else:
             assert isinstance(callee, Overloaded)
             items = []
             for item in callee.items():
-                adjusted = self.apply_method_signature_hook(e, item, object_type, signature_hook)
+                adjusted = self.apply_method_signature_hook(
+                    item, args, arg_kinds, context, arg_names, object_type, signature_hook)
                 assert isinstance(adjusted, CallableType)
                 items.append(adjusted)
             return Overloaded(items)
+
+    def transform_callee_type(
+            self, callable_name: Optional[str], callee: Type, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]] = None,
+            object_type: Optional[Type] = None) -> Type:
+        """Attempt to determine a more accurate signature for a method call.
+
+        This is done by looking up and applying a method signature hook (if one exists for the
+        given method name).
+
+        If no matching method signature hook is found, callee is returned unmodified. The same
+        happens if the arguments refer to a non-method callable (this is allowed so that the code
+        calling transform_callee_type needs to perform fewer boilerplate checks).
+
+        Note: this method is *not* called automatically as part of check_call, because in some
+        cases check_call is called multiple times while checking a single call (for example when
+        dealing with overloads). Instead, this method needs to be called explicitly
+        (if appropriate) before the signature is passed to check_call.
+        """
+        if (callable_name is not None
+                and object_type is not None
+                and isinstance(callee, FunctionLike)):
+            signature_hook = self.plugin.get_method_signature_hook(callable_name)
+            if signature_hook:
+                return self.apply_method_signature_hook(
+                    callee, args, arg_kinds, context, arg_names, object_type, signature_hook)
+
+        return callee
 
     def check_call_expr_with_callee_type(self,
                                          callee_type: Type,
@@ -557,6 +623,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         The given callee type overrides the type of the callee
         expression.
         """
+        # Try to refine the call signature using plugin hooks before checking the call.
+        callee_type = self.transform_callee_type(
+            callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee,
                                callable_name=callable_name,
@@ -590,6 +660,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 on which the method is being called
         """
         arg_messages = arg_messages or self.msg
+
         if isinstance(callee, CallableType):
             if callable_name is None and callee.name:
                 callable_name = callee.name
@@ -796,20 +867,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if isinstance(ret_type, TypeVarType):
-            if ret_type.values or (not isinstance(ctx, Instance) or
-                                   not ctx.args):
-                # The return type is a type variable. If it has values, we can't easily restrict
-                # type inference to conform to the valid values. If it's unrestricted, we could
-                # infer a too general type for the type variable if we use context, and this could
-                # result in confusing and spurious type errors elsewhere.
-                #
-                # Give up and just use function arguments for type inference. As an exception,
-                # if the context is a generic instance type, actually use it as context, as
-                # this *seems* to usually be the reasonable thing to do.
-                #
-                # See also github issues #462 and #360.
-                ret_type = NoneTyp()
+        if is_optional(ret_type) and is_optional(ctx):
+            # If both the context and the return type are optional, unwrap the optional,
+            # since in 99% cases this is what a user expects. In other words, we replace
+            #     Optional[T] <: Optional[int]
+            # with
+            #     T <: int
+            # while the former would infer T <: Optional[int].
+            ret_type = remove_optional(ret_type)
+            erased_ctx = remove_optional(erased_ctx)
+            #
+            # TODO: Instead of this hack and the one below, we need to use outer and
+            # inner contexts at the same time. This is however not easy because of two
+            # reasons:
+            #   * We need to support constraints like [1 <: 2, 2 <: X], i.e. with variables
+            #     on both sides. (This is not too hard.)
+            #   * We need to update all the inference "infrastructure", so that all
+            #     variables in an expression are inferred at the same time.
+            #     (And this is hard, also we need to be careful with lambdas that require
+            #     two passes.)
+        if isinstance(ret_type, TypeVarType) and not is_invariant_instance(ctx):
+            # Another special case: the return type is a type variable. If it's unrestricted,
+            # we could infer a too general type for the type variable if we use context,
+            # and this could result in confusing and spurious type errors elsewhere.
+            #
+            # Give up and just use function arguments for type inference. As an exception,
+            # if the context is an invariant instance type, actually use it as context, as
+            # this *seems* to usually be the reasonable thing to do.
+            #
+            # See also github issues #462 and #360.
+            return callable.copy_modified()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
@@ -818,7 +905,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        return self.apply_generic_arguments(callable, new_args, error_context)
+        # Don't show errors after we have only used the outer context for inference.
+        # We will use argument context to infer more variables.
+        return self.apply_generic_arguments(callable, new_args, error_context,
+                                            skip_unsatisfied=True)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -1586,9 +1676,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
     def apply_generic_arguments(self, callable: CallableType, types: Sequence[Optional[Type]],
-                                context: Context) -> CallableType:
+                                context: Context, skip_unsatisfied: bool = False) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
-        return applytype.apply_generic_arguments(callable, types, self.msg, context)
+        return applytype.apply_generic_arguments(callable, types, self.msg, context,
+                                                 skip_unsatisfied=skip_unsatisfied)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
@@ -1706,8 +1797,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # are just to verify whether something is valid typing wise).
                 local_errors = self.msg.copy()
                 local_errors.disable_count = 0
-                sub_result, method_type = self.check_op_local_by_name('__contains__', right_type,
-                                                                      left, e, local_errors)
+                sub_result, method_type = self.check_method_call_by_name(
+                    '__contains__', right_type, [left], [ARG_POS], e, local_errors)
                 if isinstance(right_type, PartialType):
                     # We don't really know if this is an error or not, so just shut up.
                     pass
@@ -1758,40 +1849,45 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             return nodes.op_methods[op]
 
-    def check_op_local_by_name(self,
-                               method: str,
-                               base_type: Type,
-                               arg: Expression,
-                               context: Context,
-                               local_errors: MessageBuilder) -> Tuple[Type, Type]:
-        """Type check a binary operation which maps to a method call.
+    def check_method_call_by_name(self,
+                                  method: str,
+                                  base_type: Type,
+                                  args: List[Expression],
+                                  arg_kinds: List[int],
+                                  context: Context,
+                                  local_errors: Optional[MessageBuilder] = None,
+                                  ) -> Tuple[Type, Type]:
+        """Type check a call to a named method on an object.
 
-        Return tuple (result type, inferred operator method type).
+        Return tuple (result type, inferred method type).
         """
+        local_errors = local_errors or self.msg
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
                                             original_type=base_type, chk=self.chk)
-        return self.check_op_local(method, method_type, base_type, arg, context, local_errors)
+        return self.check_method_call(
+            method, base_type, method_type, args, arg_kinds, context, local_errors)
 
-    def check_op_local(self,
-                       method_name: str,
-                       method_type: Type,
-                       base_type: Type,
-                       arg: Expression,
-                       context: Context,
-                       local_errors: MessageBuilder) -> Tuple[Type, Type]:
-        """Type check a binary operation using the (assumed) type of the operator method.
+    def check_method_call(self,
+                          method_name: str,
+                          base_type: Type,
+                          method_type: Type,
+                          args: List[Expression],
+                          arg_kinds: List[int],
+                          context: Context,
+                          local_errors: Optional[MessageBuilder] = None) -> Tuple[Type, Type]:
+        """Type check a call to a method with the given name and type on an object.
 
-        Return tuple (result type, inferred operator method type).
+        Return tuple (result type, inferred method type).
         """
-        callable_name = None
-        object_type = None
-        if isinstance(base_type, Instance):
-            # TODO: Find out in which class the method was defined originally?
-            # TODO: Support non-Instance types.
-            callable_name = '{}.{}'.format(base_type.type.fullname(), method_name)
-            object_type = base_type
-        return self.check_call(method_type, [arg], [nodes.ARG_POS],
+        callable_name = self.method_fullname(base_type, method_name)
+        object_type = base_type if callable_name is not None else None
+
+        # Try to refine the method signature using plugin hooks before checking the call.
+        method_type = self.transform_callee_type(
+            callable_name, method_type, args, arg_kinds, context, object_type=object_type)
+
+        return self.check_call(method_type, args, arg_kinds,
                                context, arg_messages=local_errors,
                                callable_name=callable_name, object_type=object_type)
 
@@ -1950,7 +2046,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         results = []
         for method, obj, arg in variants:
             local_errors = make_local_errors()
-            result = self.check_op_local(op_name, method, obj, arg, context, local_errors)
+            result = self.check_method_call(
+                op_name, obj, method, [arg], [ARG_POS], context, local_errors)
             if local_errors.is_errors():
                 errors.append(local_errors)
                 results.append(result)
@@ -1963,8 +2060,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if not variants:
             local_errors = make_local_errors()
-            result = self.check_op_local_by_name(
-                op_name, left_type, right_expr, context, local_errors)
+            result = self.check_method_call_by_name(
+                op_name, left_type, [right_expr], [ARG_POS], context, local_errors)
 
             if local_errors.is_errors():
                 errors.append(local_errors)
@@ -2076,10 +2173,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             inferred_final = self.combine_function_signatures(all_inferred)
             return results_final, inferred_final
         else:
-            return self.check_op_local_by_name(
+            return self.check_method_call_by_name(
                 method=method,
                 base_type=base_type,
-                arg=arg,
+                args=[arg],
+                arg_kinds=[ARG_POS],
                 context=context,
                 local_errors=self.msg,
             )
@@ -2171,8 +2269,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.bool_type()  # type: Type
         else:
             method = nodes.unary_op_methods[op]
-            method_type = self.analyze_external_member_access(method, operand_type, e)
-            result, method_type = self.check_call(method_type, [], [], e)
+            result, method_type = self.check_method_call_by_name(method, operand_type, [], [], e)
             e.method_type = method_type
         return result
 
@@ -2213,7 +2310,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               and left_type.is_type_obj() and left_type.type_object().is_enum):
             return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
-            result, method_type = self.check_op('__getitem__', left_type, e.index, e)
+            result, method_type = self.check_method_call_by_name(
+                '__getitem__', left_type, [e.index], [ARG_POS], e)
             e.method_type = method_type
             return result
 
@@ -2588,8 +2686,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         variables=[ktdef, vtdef])
                     rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
                 else:
-                    method = self.analyze_external_member_access('update', rv, arg)
-                    self.check_call(method, [arg], [nodes.ARG_POS], arg)
+                    self.check_method_call_by_name('update', rv, [arg], [nodes.ARG_POS], arg)
         assert rv is not None
         return rv
 
@@ -2885,12 +2982,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.chk.binder.put(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
-        cond_type = self.accept(e.cond)
-        if self.chk.options.strict_boolean:
-            is_bool = (isinstance(cond_type, Instance)
-                and cond_type.type.fullname() == 'builtins.bool')
-            if not (is_bool or isinstance(cond_type, AnyType)):
-                self.chk.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
+        self.accept(e.cond)
         ctx = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
@@ -3089,8 +3181,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       msg, 'actual type', 'expected type'):
             return AnyType(TypeOfAny.special_form)
         else:
-            method = self.analyze_external_member_access('__await__', t, ctx)
-            generator = self.check_call(method, [], [], ctx)[0]
+            generator = self.check_method_call_by_name('__await__', t, [], [], ctx)[0]
             return self.chk.get_generator_return_type(generator, False)
 
     def visit_yield_from_expr(self, e: YieldFromExpr, allow_none_return: bool = False) -> Type:
@@ -3113,16 +3204,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif self.chk.type_is_iterable(subexpr_type):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
-            iter_method_type = self.analyze_external_member_access(
-                '__iter__',
-                subexpr_type,
-                AnyType(TypeOfAny.special_form))
 
             any_type = AnyType(TypeOfAny.special_form)
             generic_generator_type = self.chk.named_generic_type('typing.Generator',
                                                                  [any_type, any_type, any_type])
-            iter_type, _ = self.check_call(iter_method_type, [], [],
-                                           context=generic_generator_type)
+            iter_type, _ = self.check_method_call_by_name(
+                '__iter__', subexpr_type, [], [], context=generic_generator_type)
         else:
             if not (is_async_def(subexpr_type) and has_coroutine_decorator(return_type)):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
@@ -3150,6 +3237,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
             else:
+                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
                 expr_type = NoneTyp()
 
         if not allow_none_return and isinstance(expr_type, NoneTyp):

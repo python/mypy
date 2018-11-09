@@ -9,13 +9,13 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Callable
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy import experiments
 from mypy import util
-from mypy.build import BuildSource, BuildResult, SearchPaths
+from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
@@ -64,10 +64,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    if script_path:
-        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
-    else:
-        bin_dir = None
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
@@ -89,10 +85,11 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     serious = False
     blockers = False
+    res = None
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
+        res = build.build(sources, options, None, flush_errors, fscache)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -110,6 +107,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
+    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -123,20 +121,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit(code)
 
 
-def find_bin_directory(script_path: str) -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script_path):
-            script_path = readlinkabs(script_path)
-        else:
-            break
-    return os.path.dirname(script_path)
-
-
 def readlinkabs(link: str) -> str:
     """Return an absolute path to symbolic link destination."""
     # Adapted from code by Greg Smith.
@@ -145,18 +129,6 @@ def readlinkabs(link: str) -> str:
     if os.path.isabs(path):
         return path
     return os.path.join(os.path.dirname(link), path)
-
-
-def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]],
-                    fscache: FileSystemCache) -> BuildResult:
-    # Type-check the program and dependencies.
-    return build.build(sources=sources,
-                       bin_dir=bin_dir,
-                       options=options,
-                       flush_errors=flush_errors,
-                       fscache=fscache)
 
 
 class SplitNamespace(argparse.Namespace):
@@ -453,6 +425,10 @@ def process_options(args: List[str],
     imports_group.add_argument(
         '--no-silence-site-packages', action='store_true',
         help="Do not silence errors in PEP 561 compliant installed packages")
+    add_invertible_flag(
+        '--namespace-packages', default=False,
+        help="Support namespace packages (PEP 420, __init__.py-less)",
+        group=imports_group)
 
     platform_group = parser.add_argument_group(
         title='Platform configuration',
@@ -498,10 +474,9 @@ def process_options(args: List[str],
     disallow_any_group.add_argument(
         '--disallow-any-explicit', default=False, action='store_true',
         help='Disallow explicit Any in type positions')
-    disallow_any_group.add_argument(
-        '--disallow-any-generics', default=False, action='store_true',
-        help='Disallow usage of generic types that do not specify explicit '
-             'type parameters')
+    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
+                        help='Disallow usage of generic types that do not specify explicit type '
+                        'parameters', group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
         title='Untyped definitions and calls',
@@ -574,6 +549,10 @@ def process_options(args: List[str],
     strictness_group = parser.add_argument_group(
         title='Other strictness checks')
 
+    add_invertible_flag('--allow-untyped-globals', default=False, strict_flag=False,
+                        help="Suppress toplevel errors caused by missing annotations",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -595,9 +574,6 @@ def process_options(args: List[str],
         '--cache-fine-grained', action='store_true',
         help="Include fine-grained dependency information in the cache for the mypy daemon")
     incremental_group.add_argument(
-        '--quick-and-dirty', action='store_true',
-        help="Use cache even if dependencies out of date (implies --incremental)")
-    incremental_group.add_argument(
         '--skip-version-check', action='store_true',
         help="Allow using cache written by older mypy version")
 
@@ -609,6 +585,9 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--show-traceback', '--tb', action='store_true',
         help="Show traceback on fatal error")
+    internals_group.add_argument(
+        '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
+    )
     internals_group.add_argument(
         '--custom-typing', metavar='MODULE', dest='custom_typing_module',
         help="Use a custom typing module")
@@ -712,28 +691,10 @@ def process_options(args: List[str],
                         help=argparse.SUPPRESS)
 
     # deprecated options
-    parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
-                        help=argparse.SUPPRESS)
-    add_invertible_flag('--strict-boolean', default=False,
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-f', '--dirty-stubs', action='store_true',
-                        dest='special-opts:dirty_stubs',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--use-python-path', action='store_true',
-                        dest='special-opts:use_python_path',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-s', '--silent-imports', action='store_true',
-                        dest='special-opts:silent_imports',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--almost-silent', action='store_true',
-                        dest='special-opts:almost_silent',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--fast-parser', action='store_true', dest='special-opts:fast_parser',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--no-fast-parser', action='store_true',
-                        dest='special-opts:no_fast_parser',
+    parser.add_argument('--quick-and-dirty', action='store_true',
                         help=argparse.SUPPRESS)
 
+    # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
@@ -778,41 +739,10 @@ def process_options(args: List[str],
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
 
-    # --use-python-path is no longer supported; explain why.
-    if special_opts.use_python_path:
-        parser.error("Sorry, --use-python-path is no longer supported.\n"
-                     "If you are trying this because your code depends on a library module,\n"
-                     "you should really investigate how to obtain stubs for that module.\n"
-                     "See https://github.com/python/mypy/issues/1411 for more discussion."
-                     )
-
     # Process deprecated options
-    if special_opts.disallow_any:
-        print("--disallow-any option was split up into multiple flags. "
-              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing")
-    if options.strict_boolean:
-        print("Warning: --strict-boolean is deprecated; "
-              "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
-    if special_opts.almost_silent:
-        print("Warning: --almost-silent has been replaced by "
-              "--follow-imports=errors", file=sys.stderr)
-        if options.follow_imports == 'normal':
-            options.follow_imports = 'errors'
-    elif special_opts.silent_imports:
-        print("Warning: --silent-imports has been replaced by "
-              "--ignore-missing-imports --follow-imports=skip", file=sys.stderr)
-        options.ignore_missing_imports = True
-        if options.follow_imports == 'normal':
-            options.follow_imports = 'skip'
-    if special_opts.dirty_stubs:
-        print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
-              "checks the git status of stubs.",
+    if options.quick_and_dirty:
+        print("Warning: --quick-and-dirty is deprecated.  It will disappear in the next release.",
               file=sys.stderr)
-    if special_opts.fast_parser:
-        print("Warning: --fast-parser is now the default (and only) parser.")
-    if special_opts.no_fast_parser:
-        print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
-              "is now mypy's default and only parser.")
 
     try:
         infer_python_version_and_executable(options, special_opts)
@@ -876,14 +806,14 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(build.mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = build.FindModuleCache(fscache)
+        cache = FindModuleCache(search_paths, fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
-            p_targets = cache.find_modules_recursive(p, search_paths, options.python_executable)
+            p_targets = cache.find_modules_recursive(p)
             if not p_targets:
                 fail("Can't find package '{}'".format(p))
             targets.extend(p_targets)

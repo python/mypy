@@ -3,7 +3,8 @@
 from typing import AbstractSet, Dict, Set, List
 
 from mypy.test.helpers import assert_equal, Suite
-from mypy.build import BuildManager, State, BuildSourceSet, SearchPaths
+from mypy.build import BuildManager, State, BuildSourceSet
+from mypy.modulefinder import SearchPaths
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 from mypy.version import __version__
 from mypy.options import Options

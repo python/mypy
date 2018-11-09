@@ -3,7 +3,7 @@
 import os.path
 
 from mypy import build
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.test.helpers import (
     assert_string_arrays_equal, testfile_pyversion, normalize_error_messages
 )
