@@ -1070,3 +1070,42 @@ class C:
         pass
 [out]
 __main__.C.m
+
+[case testDynamicBasePluginDiff]
+# flags: --config-file tmp/mypy.ini
+from mod import declarative_base, Column, Instr
+
+Base = declarative_base()
+
+class Model(Base):
+    x: Column[int]
+class Other:
+    x: Column[int]
+class Diff:
+    x: Column[int]
+[file next.py]
+from mod import declarative_base, Column, Instr
+
+Base = declarative_base()
+
+class Model(Base):
+    x: Column[int]
+class Other:
+    x: Column[int]
+class Diff(Base):
+    x: Column[int]
+[file mod.py]
+from typing import Generic, TypeVar
+def declarative_base(): ...
+
+T = TypeVar('T')
+
+class Column(Generic[T]): ...
+class Instr(Generic[T]): ...
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+[out]
+__main__.Diff
+__main__.Diff.x
