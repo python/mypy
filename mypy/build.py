@@ -21,6 +21,7 @@ import stat
 import sys
 import time
 import errno
+import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
@@ -379,21 +380,27 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
                 '(in {})'.format(plugin_path))
         try:
             custom_plugins.append(plugin_type(options))
-            # We record _both_ hash and the version to detect more
-            # possible changes (e.g. if there is a change in modules
-            # imported by a plugin).
-            if hasattr(module, '__file__'):
-                with open(module.__file__, 'rb') as f:
-                    digest = hashlib.md5(f.read()).hexdigest()
-            else:
-                digest = 'unknown'
-            ver = getattr(module, '__version__', 'none')
-            snapshot[module_name] = '{}:{}'.format(ver, digest)
+            snapshot[module_name] = take_module_snapshot(module)
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
+
+
+def take_module_snapshot(module: types.ModuleType) -> str:
+    """Take plugin module snapshot by recording its version and hash.
+
+    We record _both_ hash and the version to detect more possible changes
+    (e.g. if there is a change in modules imported by a plugin).
+    """
+    if hasattr(module, '__file__'):
+        with open(module.__file__, 'rb') as f:
+            digest = hashlib.md5(f.read()).hexdigest()
+    else:
+        digest = 'unknown'
+    ver = getattr(module, '__version__', 'none')
+    return '{}:{}'.format(ver, digest)
 
 
 def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
@@ -440,6 +447,11 @@ class BuildManager(BuildManagerBase):
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
+      plugins_snapshot:
+                       Snapshot of currently active user plugins (versions and hashes)
+      old_plugins_snapshot:
+                       Plugins snapshot from previous incremental run (or None in
+                       non-incremental mode and if cache was not found)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
       cache_enabled:   Whether cache is being read. This is set based on options,

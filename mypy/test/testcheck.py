@@ -10,7 +10,9 @@ from mypy import build
 from mypy.build import Graph
 from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
+from mypy.test.data import (
+    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+)
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
@@ -122,15 +124,16 @@ class TypeCheckSuite(DataSuite):
                         f.write(program_text)
                     break
         elif incremental_step > 1:
+            # Unload already loaded plugins, they may be updated.
+            for file, _ in testcase.files:
+                module = module_from_path(file)
+                if module.endswith('_plugin') and module in sys.modules:
+                    del sys.modules[module]
             # In runs 2+, copy *.[num] files to * files.
             for op in operations:
                 if isinstance(op, UpdateFile):
                     # Modify/create file
                     copy_and_fudge_mtime(op.source_path, op.target_path)
-                    # Unload already loaded plugins, if they are updated.
-                    if op.module.endswith('_plugin') and op.module in sys.modules:
-                        del sys.modules[op.module]
-
                 else:
                     # Delete file
                     # Use retries to work around potential flakiness on Windows (AppVeyor).
