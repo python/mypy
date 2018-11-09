@@ -234,12 +234,15 @@ class DataclassTransformer:
         # Next, collect attributes belonging to any class in the MRO
         # as long as those attributes weren't already collected.  This
         # makes it possible to overwrite attributes in subclasses.
-        super_attrs = []
+        # copy() because we potentially modify all_attrs below and if this code requires debugging
+        # we'll have unmodified attrs laying around.
+        all_attrs = attrs.copy()
         init_method = cls.info.get_method('__init__')
         for info in cls.info.mro[1:-1]:
             if 'dataclass' not in info.metadata:
                 continue
 
+            super_attrs = []
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname()))
 
@@ -258,8 +261,15 @@ class DataclassTransformer:
 
                     known_attrs.add(name)
                     super_attrs.append(attr)
-
-        all_attrs = super_attrs + attrs
+                else:
+                    # How early in the attribute list an attribute appears is determined by the
+                    # reverse MRO, not simply MRO.
+                    # See https://docs.python.org/3/library/dataclasses.html#inheritance for
+                    # details.
+                    (attr,) = [a for a in all_attrs if a.name == name]
+                    all_attrs.remove(attr)
+                    super_attrs.append(attr)
+            all_attrs = super_attrs + all_attrs
 
         # Ensure that arguments without a default don't follow
         # arguments that have a default.

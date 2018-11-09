@@ -4625,7 +4625,7 @@ main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
 [case testIncrementalDataclassesThreeFiles]
 from c import C
-C(5, 'foo', True)
+C('foo', 5, True)
 
 [file a.py]
 from dataclasses import dataclass
@@ -4662,6 +4662,7 @@ class C(A, B):
 [out1]
 [out2]
 tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
+main:2: error: Argument 2 to "C" has incompatible type "int"; expected "bool"
 
 [case testIncrementalDataclassesThreeRuns]
 from a import A
