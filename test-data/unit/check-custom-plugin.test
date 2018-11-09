@@ -280,3 +280,54 @@ reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # E: Revealed type is 'b
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
 [builtins fixtures/classmethod.pyi]
+
+[case testDynamicClassPlugin]
+# flags: --config-file tmp/mypy.ini
+from mod import declarative_base, Column, Instr
+
+Base = declarative_base()
+
+class Model(Base):
+    x: Column[int]
+class Other:
+    x: Column[int]
+
+reveal_type(Model().x)  # E: Revealed type is 'mod.Instr[builtins.int]'
+reveal_type(Other().x)  # E: Revealed type is 'mod.Column[builtins.int]'
+[file mod.py]
+from typing import Generic, TypeVar
+def declarative_base(): ...
+
+T = TypeVar('T')
+
+class Column(Generic[T]): ...
+class Instr(Generic[T]): ...
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassPluginNegatives]
+# flags: --config-file tmp/mypy.ini
+from mod import declarative_base, Column, Instr, non_declarative_base
+
+Bad1 = non_declarative_base()
+Bad2 = Bad3 = declarative_base()
+
+class C1(Bad1): ...  # E: Invalid base class
+class C2(Bad2): ...  # E: Invalid base class
+class C3(Bad3): ...  # E: Invalid base class
+
+[file mod.py]
+from typing import Generic, TypeVar
+def declarative_base(): ...
+def non_declarative_base(): ...
+
+T = TypeVar('T')
+
+class Column(Generic[T]): ...
+class Instr(Generic[T]): ...
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py

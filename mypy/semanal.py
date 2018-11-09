@@ -80,7 +80,10 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import (
+    Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
+    DynamicClassDefContext
+)
 from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
@@ -1729,6 +1732,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+        self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
@@ -1743,6 +1747,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
+        if len(s.lvalues) > 1:
+            return
+        lval = s.lvalues[0]
+        if not isinstance(lval, NameExpr) or not isinstance(s.rvalue, CallExpr):
+            return
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return
+        fname = call.callee.fullname
+        if fname:
+            hook = self.plugin.get_dynamic_class_hook(fname)
+            if hook:
+                hook(DynamicClassDefContext(call, lval.name, self))
 
     def unwrap_final(self, s: AssignmentStmt) -> None:
         """Strip Final[...] if present in an assignment.

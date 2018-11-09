@@ -9,7 +9,7 @@ from mypy_extensions import trait
 
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
-    TypeInfo, SymbolTableNode, MypyFile
+    TypeInfo, SymbolTableNode, MypyFile, CallExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
@@ -69,6 +69,7 @@ class SemanticAnalyzerPluginInterface:
 
     modules = None  # type: Dict[str, MypyFile]
     options = None  # type: Options
+    cur_mod_id = None  # type: str
     msg = None  # type: MessageBuilder
 
     @abstractmethod
@@ -115,6 +116,15 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
+        """Add node to global symbol table (or to nearest class if there is one)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def qualified_name(self, n: str) -> str:
         raise NotImplementedError
 
 
@@ -165,9 +175,18 @@ AttributeContext = NamedTuple(
 
 # A context for a class hook that modifies the class definition.
 ClassDefContext = NamedTuple(
-    'ClassDecoratorContext', [
+    'ClassDefContext', [
         ('cls', ClassDef),       # The class definition
         ('reason', Expression),  # The expression being applied (decorator, metaclass, base class)
+        ('api', SemanticAnalyzerPluginInterface)
+    ])
+
+# A context for dynamic class definitions like
+# Base = declarative_base()
+DynamicClassDefContext = NamedTuple(
+    'DynamicClassDefContext', [
+        ('call', CallExpr),      # The r.h.s. of dynamic class definition
+        ('name', str),  # The name this class is being assigned to
         ('api', SemanticAnalyzerPluginInterface)
     ])
 
@@ -225,6 +244,10 @@ class Plugin:
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
+    def get_dynamic_class_hook(self, fullname: str
+                               ) -> Optional[Callable[[DynamicClassDefContext], None]]:
+        return None
+
 
 T = TypeVar('T')
 
@@ -279,6 +302,10 @@ class WrapperPlugin(Plugin):
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
         return self.plugin.get_customize_class_mro_hook(fullname)
+
+    def get_dynamic_class_hook(self, fullname: str
+                               ) -> Optional[Callable[[DynamicClassDefContext], None]]:
+        return self.plugin.get_dynamic_class_hook(fullname)
 
 
 class ChainedPlugin(Plugin):
@@ -336,6 +363,10 @@ class ChainedPlugin(Plugin):
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_customize_class_mro_hook(fullname))
+
+    def get_dynamic_class_hook(self, fullname: str
+                               ) -> Optional[Callable[[DynamicClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_dynamic_class_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:

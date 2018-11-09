@@ -67,3 +67,8 @@ class InterpretedPlugin:
                                      ) -> Optional[Callable[['mypy.plugin.ClassDefContext'],
                                                             None]]:
         return None
+
+    def get_dynamic_class_hook(self, fullname: str
+                               ) -> Optional[Callable[['mypy.plugin.DynamicClassDefContext'],
+                                                      None]]:
+        return None
