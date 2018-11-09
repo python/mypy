@@ -116,6 +116,11 @@ class TypeCheckSuite(DataSuite):
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
+        # Unload already loaded plugins, they may be updated.
+        for file, _ in testcase.files:
+            module = module_from_path(file)
+            if module.endswith('_plugin') and module in sys.modules:
+                del sys.modules[module]
         if incremental_step == 0 or incremental_step == 1:
             # In run 1, copy program text to program file.
             for module_name, program_path, program_text in module_data:
@@ -124,11 +129,6 @@ class TypeCheckSuite(DataSuite):
                         f.write(program_text)
                     break
         elif incremental_step > 1:
-            # Unload already loaded plugins, they may be updated.
-            for file, _ in testcase.files:
-                module = module_from_path(file)
-                if module.endswith('_plugin') and module in sys.modules:
-                    del sys.modules[module]
             # In runs 2+, copy *.[num] files to * files.
             for op in operations:
                 if isinstance(op, UpdateFile):
