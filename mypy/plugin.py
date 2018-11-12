@@ -395,8 +395,12 @@ class DefaultPlugin(Plugin):
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
         print(f"get_method_signature_hook({fullname!r})")  # XXX debugging
+        from mypy.plugins import ctypes
+
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
+        elif fullname == 'ctypes.Array.__setitem__':
+            return ctypes.array_setitem_callback
         return None
 
     def get_method_hook(self, fullname: str
