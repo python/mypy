@@ -416,7 +416,7 @@ class MemoryXmlReporter(AbstractReporter):
 
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
-    control_fixer = str.maketrans(''.join(chr(i) for i in range(32)), '?'*32)
+    control_fixer = str.maketrans(''.join(chr(i) for i in range(32)), '?' * 32)
 
     def on_file(self,
                 tree: MypyFile,
