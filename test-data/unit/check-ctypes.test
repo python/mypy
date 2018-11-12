@@ -54,6 +54,15 @@ reveal_type(wca.value)  # E: Revealed type is 'builtins.str'
 wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
 [builtins fixtures/ctypes.pyi]
 
+[case testCtypesWcharArrayAttrsPy2]
+# flags: --py2
+import ctypes
+
+wca = (ctypes.c_wchar * 4)(u'a', u'b', u'c', u'\x00')
+reveal_type(wca.value)  # E: Revealed type is 'builtins.unicode'
+wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
+[builtins_py2 fixtures/ctypes_py2.pyi]
+
 [case testCtypesOtherArrayAttrs]
 import ctypes
 
