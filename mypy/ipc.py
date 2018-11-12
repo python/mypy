@@ -12,7 +12,12 @@ import socket
 import sys
 import tempfile
 
-from typing import Iterator, Optional, Type, Callable
+from typing import Iterator, Optional, Callable
+
+MYPY = False
+if MYPY:
+    from typing import Type
+
 from types import TracebackType
 
 if sys.platform == 'win32':
