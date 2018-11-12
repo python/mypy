@@ -7,6 +7,7 @@ import mypy.plugin
 from mypy.subtypes import is_subtype
 from mypy.types import CallableType, Instance, Type, UnionType
 
+
 def _find_simplecdata_base_arg(tp: Instance) -> Optional[Type]:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
 
@@ -19,6 +20,7 @@ def _find_simplecdata_base_arg(tp: Instance) -> Optional[Type]:
             if len(base.args) == 1:
                 return base.args[0]
     return None
+
 
 def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface') -> Type:
     """Get a type that is compatible with all types that can be implicitly converted to the given
@@ -47,6 +49,7 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
 
     return UnionType.make_simplified_union(allowed_types)
 
+
 def _autounboxed_cdata(tp: Type) -> Type:
     """Get the auto-unboxed version of a CData type, if applicable.
 
@@ -66,16 +69,18 @@ def _autounboxed_cdata(tp: Type) -> Type:
     # the type is not auto-unboxed.
     return tp
 
-def _get_array_element_type(tp: Instance) -> Optional[Type]:
+
+def _get_array_element_type(tp: Type) -> Optional[Type]:
     """Get the element type of the Array type tp, or None if not specified."""
 
-    assert tp.type.fullname() == 'ctypes.Array'
-    if len(tp.args) == 1:
-        return tp.args[0]
-    else:
-        return None
+    if isinstance(tp, Instance):
+        assert tp.type.fullname() == 'ctypes.Array'
+        if len(tp.args) == 1:
+            return tp.args[0]
+    return None
 
-def array_constructor_callback(ctx: 'mypy.plugin.MethodContext') -> CallableType:
+
+def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
     """Callback to provide an accurate signature for the ctypes.Array constructor."""
 
     # Extract the element type from the constructor's return type, i. e. the type of the array
@@ -94,6 +99,7 @@ def array_constructor_callback(ctx: 'mypy.plugin.MethodContext') -> CallableType
                     ctx.context)
     return ctx.default_return_type
 
+
 def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__getitem__."""
 
@@ -110,7 +116,8 @@ def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
                 return ctx.api.named_generic_type('builtins.list', [unboxed])
     return ctx.default_return_type
 
-def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> Type:
+
+def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> CallableType:
     """Callback to provide an accurate signature for ctypes.Array.__setitem__."""
 
     et = _get_array_element_type(ctx.type)
@@ -131,6 +138,7 @@ def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> Type:
                     arg_types=ctx.default_signature.arg_types[:1] + [arg_type],
                 )
     return ctx.default_signature
+
 
 def array_iter_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__iter__."""
