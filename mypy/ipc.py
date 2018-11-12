@@ -121,7 +121,7 @@ class IPCClient(IPCBase):
         return self
 
     def __exit__(self,
-                 exc_ty: Optional[Type[BaseException]] = None,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
                  exc_val: Optional[BaseException] = None,
                  exc_tb: Optional[TracebackType] = None,
                  ) -> bool:
@@ -171,7 +171,7 @@ class IPCServer(IPCBase):
         return self
 
     def __exit__(self,
-                 exc_ty: Optional[Type[BaseException]] = None,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
                  exc_val: Optional[BaseException] = None,
                  exc_tb: Optional[TracebackType] = None,
                  ) -> bool:
