@@ -4,10 +4,8 @@ This should be pretty lightweight and not depend on other mypy code (other than 
 """
 
 import json
-import socket
-import sys
 
-from typing import Any, Union
+from typing import Any
 
 from mypy.ipc import IPCBase
 
