@@ -112,28 +112,6 @@ def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
                 return ctx.api.named_generic_type('builtins.list', [unboxed])
     return ctx.default_return_type
 
-# TODO Would a signature callback be better?
-'''
-def array_getitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> CallableType:
-    """Callback to provide an accurate signature for ctypes.Array.__getitem__."""
-    print(f"array_getitem_callback({ctx!r})")  # XXX debugging
-
-    et = _get_array_element_type(ctx.type)
-    print(et)
-    if et is not None:
-        unboxed = _autounboxed_cdata(et)
-        assert len(ctx.default_signature.arg_types) == 1
-        index_type = ctx.default_signature.arg_types[0]
-        if isinstance(index_type, Instance):
-            if index_type.type.has_base('builtins.int'):
-                return ctx.default_signature.copy_modified(ret_type=unboxed)
-            elif index_type.type.has_base('builtins.slice'):
-                return ctx.default_signature.copy_modified(
-                    ret_type=ctx.api.named_generic_type('builtins.list', [unboxed])
-                )
-    return ctx.default_signature
-#'''
-
 def array_iter_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__iter__."""
     print(f"array_iter_callback({ctx!r})")  # XXX debugging
