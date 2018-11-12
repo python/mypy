@@ -19,9 +19,7 @@ STATUS_FILE = '.dmypy.json'  # type: Final
 
 
 def receive(connection: IPCBase) -> Any:
-    """Receive JSON data from a socket until EOF.
-
-    Raise a subclass of OSError if there's a socket exception.
+    """Receive JSON data from a connection until EOF.
 
     Raise OSError if the data received is not valid JSON or if it is
     not a dict.

@@ -11,7 +11,6 @@ import json
 import os
 import pickle
 import signal
-import socket
 import subprocess
 import sys
 import time
@@ -410,7 +409,7 @@ def request(command: str, *, timeout: Optional[int] = None,
     Raise BadStatus if there is something wrong with the status file
     or if the process whose pid is in the status file has died.
 
-    Return {'error': <message>} if a socket operation or receive()
+    Return {'error': <message>} if an IPC operation or receive()
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """

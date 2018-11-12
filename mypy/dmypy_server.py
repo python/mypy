@@ -11,11 +11,8 @@ import json
 import os
 import pickle
 import random
-import shutil
-import socket
 import subprocess
 import sys
-import tempfile
 import time
 import traceback
 
