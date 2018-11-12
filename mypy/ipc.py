@@ -79,6 +79,14 @@ class IPCBase:
         else:
             self.connection.close()
 
+    def __exit__(self,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
+                 exc_val: Optional[BaseException] = None,
+                 exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        self.close()
+        return False
+
 
 class IPCClient(IPCBase):
     """The client side of an IPC connection."""
@@ -120,14 +128,6 @@ class IPCClient(IPCBase):
     def __enter__(self) -> 'IPCClient':
         return self
 
-    def __exit__(self,
-                 exc_ty: 'Optional[Type[BaseException]]' = None,
-                 exc_val: Optional[BaseException] = None,
-                 exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
-        self.close()
-        return False
-
 
 class IPCServer(IPCBase):
 
@@ -146,6 +146,7 @@ class IPCServer(IPCBase):
 
     def __enter__(self) -> 'IPCServer':
         if sys.platform == 'win32':
+            # The NamedPipe needs to be recreated every time we wait for a connection
             self.connection = _winapi.CreateNamedPipe(self.name,
                 _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
                 _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_WAIT,
@@ -169,14 +170,6 @@ class IPCServer(IPCBase):
                 except socket.timeout:
                     raise IPCException('The socket timed out')
         return self
-
-    def __exit__(self,
-                 exc_ty: 'Optional[Type[BaseException]]' = None,
-                 exc_val: Optional[BaseException] = None,
-                 exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
-        self.close()
-        return False
 
     def cleanup(self) -> None:
         if sys.platform != 'win32':
