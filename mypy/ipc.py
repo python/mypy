@@ -163,12 +163,10 @@ class IPCServer(IPCBase):
             # client never connects, though this can be "solved" by killing the server
             _winapi.ConnectNamedPipe(self.connection, _winapi.NULL)
         else:
-            while True:
-                try:
-                    self.connection, _ = self.sock.accept()
-                    break
-                except socket.timeout:
-                    raise IPCException('The socket timed out')
+            try:
+                self.connection, _ = self.sock.accept()
+            except socket.timeout:
+                raise IPCException('The socket timed out')
         return self
 
     def cleanup(self) -> None:
