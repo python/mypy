@@ -37,3 +37,27 @@ mya[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches 
 for myx in mya:
     reveal_type(myx)  # E: Revealed type is '__main__.MyCInt*'
 [builtins fixtures/ctypes.pyi]
+
+[case testCtypesCharArrayAttrs]
+import ctypes
+
+ca = (ctypes.c_char * 4)(b'a', b'b', b'c', b'\x00')
+reveal_type(ca.value)  # E: Revealed type is 'builtins.bytes'
+reveal_type(ca.raw)  # E: Revealed type is 'builtins.bytes'
+[builtins fixtures/ctypes.pyi]
+
+[case testCtypesWcharArrayAttrs]
+import ctypes
+
+wca = (ctypes.c_wchar * 4)('a', 'b', 'c', '\x00')
+reveal_type(wca.value)  # E: Revealed type is 'builtins.str'
+wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
+[builtins fixtures/ctypes.pyi]
+
+[case testCtypesOtherArrayAttrs]
+import ctypes
+
+oa = (ctypes.c_int * 4)(1, 2, 3, 4)
+oa.value  # E: ctypes.Array attribute "value" is only available with element type c_char or c_wchar, not "ctypes.c_int"
+oa.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_int"
+[builtins fixtures/ctypes.pyi]

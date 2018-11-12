@@ -148,3 +148,40 @@ def array_iter_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
         unboxed = _autounboxed_cdata(et)
         return ctx.api.named_generic_type('typing.Iterator', [unboxed])
     return ctx.default_return_type
+
+
+def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
+    """Callback to provide an accurate type for ctypes.Array.value."""
+
+    et = _get_array_element_type(ctx.type)
+    if et is not None:
+        if isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_char':
+            return ctx.api.named_generic_type('builtins.bytes', [])
+        elif isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_wchar':
+            try:
+                return ctx.api.named_generic_type('builtins.unicode', [])
+            except KeyError:
+                return ctx.api.named_generic_type('builtins.str', [])
+        else:
+            ctx.api.msg.fail(
+                'ctypes.Array attribute "value" is only available'
+                ' with element type c_char or c_wchar, not "{}"'
+                .format(et),
+                ctx.context)
+    return ctx.default_attr_type
+
+
+def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
+    """Callback to provide an accurate type for ctypes.Array.raw."""
+
+    et = _get_array_element_type(ctx.type)
+    if et is not None:
+        if isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_char':
+            return ctx.api.named_generic_type('builtins.bytes', [])
+        else:
+            ctx.api.msg.fail(
+                'ctypes.Array attribute "raw" is only available'
+                ' with element type c_char, not "{}"'
+                .format(et),
+                ctx.context)
+    return ctx.default_attr_type

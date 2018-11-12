@@ -417,6 +417,12 @@ class DefaultPlugin(Plugin):
 
     def get_attribute_hook(self, fullname: str
                            ) -> Optional[Callable[[AttributeContext], Type]]:
+        from mypy.plugins import ctypes
+
+        if fullname == 'ctypes.Array.value':
+            return ctypes.array_value_callback
+        elif fullname == 'ctypes.Array.raw':
+            return ctypes.array_raw_callback
         return None
 
     def get_class_decorator_hook(self, fullname: str
