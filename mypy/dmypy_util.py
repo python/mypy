@@ -1,6 +1,6 @@
 """Shared code between dmypy.py and dmypy_server.py.
 
-This should be pretty lightweight and not depend on other mypy code.
+This should be pretty lightweight and not depend on other mypy code (other than ipc).
 """
 
 import json
@@ -9,24 +9,16 @@ import sys
 
 from typing import Any, Union
 
+from mypy.ipc import IPCBase
+
 MYPY = False
 if MYPY:
     from typing_extensions import Final
 
 STATUS_FILE = '.dmypy.json'  # type: Final
 
-HANDLE = int
 
-if sys.platform == 'win32':
-    import _winapi
-
-    def write_file(handle: HANDLE, data: bytes) -> None:
-        """Write some bytes to a HANDLE and then an empty bytes string"""
-        _winapi.WriteFile(handle, data)
-        _winapi.WriteFile(handle, b'')
-
-
-def receive(connection: Union[socket.socket, HANDLE]) -> Any:
+def receive(connection: IPCBase) -> Any:
     """Receive JSON data from a socket until EOF.
 
     Raise a subclass of OSError if there's a socket exception.
@@ -34,19 +26,7 @@ def receive(connection: Union[socket.socket, HANDLE]) -> Any:
     Raise OSError if the data received is not valid JSON or if it is
     not a dict.
     """
-    bdata = bytearray()
-    read_size = 100000
-
-    while True:
-        if sys.platform == 'win32':
-            assert isinstance(connection, HANDLE)
-            more, _ = _winapi.ReadFile(connection, read_size)
-        else:
-            assert isinstance(connection, socket.socket)
-            more = connection.recv(read_size)
-        if not more:
-            break
-        bdata.extend(more)
+    bdata = connection.read()
     if not bdata:
         raise OSError("No data received")
     try:

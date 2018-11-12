@@ -27,6 +27,7 @@ import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.ipc import IPCServer, IPCException
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
@@ -37,10 +38,6 @@ from mypy.version import __version__
 MYPY = False
 if MYPY:
     from typing_extensions import Final
-
-if sys.platform == 'win32':
-    import _winapi
-    from mypy.dmypy_util import write_file
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
@@ -112,8 +109,10 @@ else:
 
 
 # Server code.
-
-SOCKET_NAME = 'dmypy.sock'  # type: Final
+if sys.platform == 'win32':
+    CONNECTION_NAME = r'\\.\pipe\dmypy.pipe'  # type: Final
+else:
+    CONNECTION_NAME = 'dmypy.sock'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -179,96 +178,14 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
-        if sys.platform == 'win32':
-            self.serve_win()
-        else:
-            self.serve_nix()
-
-    def serve_win(self) -> None:
-        if sys.platform == 'win32':
-            name = r'\\.\pipe\python-{}-{}'.format(os.getpid(), SOCKET_NAME)
-            handle = _winapi.NULL
-            try:
-                with open(STATUS_FILE, 'w') as f:
-                    json.dump({'pid': os.getpid(), 'sockname': name}, f)
-                    f.write('\n')  # I like my JSON with a trailing newline
-                while True:
-                    handle = _winapi.CreateNamedPipe(name,
-                        _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
-                        _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_TYPE_MESSAGE
-                         | _winapi.PIPE_WAIT,
-                        1,  # one instance
-                        self.buffer_size,
-                        self.buffer_size,
-                        0,  # PIPE_WAIT, wait for a connection of the client
-                        0,  # PIPE_ACCEPT_REMOTE_CLIENTS (this is the default, so I guess?)
-                                                     )
-                    if handle == -1:  # INVALID_HANDLE_VALUE
-                        err = _winapi.GetLastError()
-                        print('Invalid handle to pipe: {err}'.format(err))
-                        break
-                    _winapi.ConnectNamedPipe(handle, _winapi.NULL)
-                    while True:
-                        try:
-                            data = receive(handle)
-                        except OSError:
-                            continue
-                        resp = {}  # type: Dict[str, Any]
-                        if 'command' not in data:
-                            resp = {'error': "No command found in request"}
-                        else:
-                            command = data['command']
-                            if not isinstance(command, str):
-                                resp = {'error': "Command is not a string"}
-                            else:
-                                command = data.pop('command')
-                                if command == 'stop':
-                                    _winapi.CloseHandle(handle)
-                                    os.unlink(STATUS_FILE)
-                                    reset_global_state()
-                                    sys.exit(0)
-                                try:
-                                    resp = self.run_command(command, data)
-                                except Exception:
-                                    # If we are crashing, report the crash to the client
-                                    tb = traceback.format_exception(*sys.exc_info())
-                                    resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                    write_file(handle, json.dumps(resp).encode('utf8'))
-                                    raise
-                        try:
-                            write_file(handle, json.dumps(resp).encode('utf8'))
-                            if handle != _winapi.NULL:
-                                _winapi.CloseHandle(handle)
-                            break
-                        except WindowsError as e:
-                            print("Failed to respond to client: {}, {}".format(e, e.winerror))
-                            pass  # Maybe the client hung up
-            finally:
-                os.unlink(STATUS_FILE)
-                if handle != _winapi.NULL:
-                    _winapi.CloseHandle(handle)
-
-    def serve_nix(self) -> None:
         try:
-            sock = self.create_listening_socket()
-            if self.timeout is not None:
-                sock.settimeout(self.timeout)
-            try:
-                with open(STATUS_FILE, 'w') as f:
-                    json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
-                    f.write('\n')  # I like my JSON with a trailing newline
-                while True:
-                    try:
-                        conn, addr = sock.accept()
-                    except socket.timeout:
-                        print("Exiting due to inactivity.")
-                        reset_global_state()
-                        sys.exit(0)
-                    try:
-                        data = receive(conn)
-                    except OSError:
-                        conn.close()  # Maybe the client hung up
-                        continue
+            server = IPCServer(CONNECTION_NAME, self.timeout)
+            with open(STATUS_FILE, 'w') as f:
+                json.dump({'pid': os.getpid(), 'connection_name': server.connection_name}, f)
+                f.write('\n')  # I like my JSON with a trailing newline
+            while True:
+                with server:
+                    data = receive(server)
                     resp = {}  # type: Dict[str, Any]
                     if 'command' not in data:
                         resp = {'error': "No command found in request"}
@@ -284,33 +201,24 @@ class Server:
                                 # If we are crashing, report the crash to the client
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                conn.sendall(json.dumps(resp).encode('utf8'))
+                                server.write(json.dumps(resp).encode('utf8'))
                                 raise
                     try:
-                        conn.sendall(json.dumps(resp).encode('utf8'))
+                        server.write(json.dumps(resp).encode('utf8'))
                     except OSError:
                         pass  # Maybe the client hung up
-                    conn.close()
                     if command == 'stop':
-                        sock.close()
                         reset_global_state()
                         sys.exit(0)
-            finally:
-                os.unlink(STATUS_FILE)
         finally:
-            shutil.rmtree(self.sock_directory)
+            try:
+                server.cleanup()  # try to remove the socket dir on Linux
+            except OSError:
+                pass
+            os.unlink(STATUS_FILE)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
-
-    def create_listening_socket(self) -> socket.socket:
-        """Create the socket and set it up for listening."""
-        self.sock_directory = tempfile.mkdtemp()
-        sockname = os.path.join(self.sock_directory, SOCKET_NAME)
-        sock = socket.socket(socket.AF_UNIX)
-        sock.bind(sockname)
-        sock.listen(1)
-        return sock
 
     def run_command(self, command: str, data: Mapping[str, object]) -> Dict[str, object]:
         """Run a specific command from the registry."""

@@ -19,16 +19,13 @@ import time
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.ipc import IPCClient, IPCException
 from mypy.util import write_junit_xml
 from mypy.version import __version__
 
 if sys.platform == 'win32':
-    # This may be private, but it is needed for IPC on Windows, and is basically stable
-    import _winapi
     import ctypes
     from ctypes.wintypes import DWORD, HANDLE
-
-    from mypy.dmypy_util import write_file
 
     PROCESS_QUERY_LIMITED_INFORMATION = ctypes.c_ulong(0x1000)
 
@@ -223,7 +220,7 @@ def wait_for_server(timeout: float = 5.0) -> None:
             time.sleep(0.1)
             continue
         # If the file's content is bogus or the process is dead, fail.
-        pid, sockname = check_status(data)
+        check_status(data)
         print("Daemon started")
         return
     sys.exit("Timed out waiting for daemon to start")
@@ -294,7 +291,7 @@ def do_stop(args: argparse.Namespace) -> None:
 @action(kill_parser)
 def do_kill(args: argparse.Namespace) -> None:
     """Kill daemon process with SIGKILL."""
-    pid, sockname = get_status()
+    pid, _ = get_status()
     try:
         if sys.platform == 'win32':
             subprocess.check_output("taskkill /pid {pid} /f /t".format(pid=pid))
@@ -417,76 +414,26 @@ def request(command: str, *, timeout: Optional[int] = None,
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
-    if sys.platform == 'win32':
-        timeout = timeout or 1000000  # we have to set a timeout
-        handle = _winapi.NULL
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args.update(command=command)
     bdata = json.dumps(args).encode('utf8')
-    pid, name = get_status()
+    _, name = get_status()
     try:
-        if sys.platform == 'win32':
-            while True:
-                try:
-                    _winapi.WaitNamedPipe(name, timeout * 1000)
-                    handle = _winapi.CreateFile(
-                        name,
-                        _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
-                        0,
-                        _winapi.NULL,
-                        _winapi.OPEN_EXISTING,
-                        0,
-                        _winapi.NULL,
-                    )
-                except WindowsError as e:
-                    if e.winerror not in (_winapi.ERROR_SEM_TIMEOUT, _winapi.ERROR_PIPE_BUSY):
-                        return {'error': "Error with pipe {}: {}".format(name, str(e))}
-                else:
-                    break
-            try:
-                _winapi.SetNamedPipeHandleState(handle,
-                                                _winapi.PIPE_READMODE_MESSAGE,
-                                                None,
-                                                None)
-            except WindowsError as e:
-                return {'error': "Failed to set pipe state: {}".format(e.winerror)}
-            # great, we have a named pipe connection! Now write our data
-            try:
-                write_file(handle, bdata)
-            except WindowsError as e:
-                return {'error': "Failed to write with error: {}".format(e.winerror)}
-            # now get the response
-            try:
-                response = receive(handle)
-            except WindowsError as e:
-                if e.winerror != 109:  # The pipe ended (the server hung up)
-                    raise
-        else:
-            sock = socket.socket(socket.AF_UNIX)
-            if timeout is not None:
-                sock.settimeout(timeout)
-                sock.connect(name)
-                sock.sendall(bdata)
-                sock.shutdown(socket.SHUT_WR)
-                response = receive(sock)
-    except OSError as err:
+        with IPCClient(name, timeout) as client:
+                client.write(bdata)
+                response = receive(client)
+    except (OSError, IPCException) as err:
         return {'error': str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
     else:
         return response
-    finally:
-        if sys.platform == 'win32':
-            if handle != _winapi.NULL:
-                _winapi.CloseHandle(handle)
-        else:
-            sock.close()
 
 
 def get_status() -> Tuple[int, str]:
     """Read status file and check if the process is alive.
 
-    Return (pid, sockname) on success.
+    Return (pid, connection_name) on success.
 
     Raise BadStatus if something's wrong.
     """
@@ -497,7 +444,7 @@ def get_status() -> Tuple[int, str]:
 def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     """Check if the process is alive.
 
-    Return (pid, sockname) on success.
+    Return (pid, connection_name) on success.
 
     Raise BadStatus if something's wrong.
     """
@@ -514,18 +461,18 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
                              pid)
         GetExitCodeProcess(handle, ctypes.byref(status))
         if status.value != 259:  # STILL_ACTIVE
-            raise BadStatus("Daemon has died")
+            raise BadStatus("Daemon is dead")
     else:
         try:
             os.kill(pid, 0)
         except OSError:
-            raise BadStatus("Daemon has died")
-    if 'sockname' not in data:
-        raise BadStatus("Invalid status file (no sockname field)")
-    sockname = data['sockname']
-    if not isinstance(sockname, str):
-        raise BadStatus("sockname field is not a string")
-    return pid, sockname
+            raise BadStatus("Daemon is dead")
+    if 'connection_name' not in data:
+        raise BadStatus("Invalid status file (no connection_name field)")
+    connection_name = data['connection_name']
+    if not isinstance(connection_name, str):
+        raise BadStatus("connection_name field is not a string")
+    return pid, connection_name
 
 
 def read_status() -> Dict[str, object]:
