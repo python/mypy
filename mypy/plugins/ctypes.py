@@ -4,6 +4,7 @@ from typing import Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
+from mypy.subtypes import is_subtype
 from mypy.types import CallableType, Instance, Type, UnionType
 
 def _find_simplecdata_base_arg(tp: Instance) -> Optional[Type]:
@@ -74,16 +75,25 @@ def _get_array_element_type(tp: Instance) -> Optional[Type]:
     else:
         return None
 
-# TODO Untested
-def array_init_callback(ctx: 'mypy.plugin.MethodSigContext') -> CallableType:
-    """Callback to provide an accurate signature for ctypes.Array.__init__."""
-    print(f"array_init_callback({ctx!r})")  # XXX debugging
+def array_constructor_callback(ctx: 'mypy.plugin.MethodContext') -> CallableType:
+    """Callback to provide an accurate signature for the ctypes.Array constructor."""
+    print(f"array_constructor_callback({ctx!r})")  # XXX debugging
 
-    et = _get_array_element_type(ctx.type)
+    # Extract the element type from the constructor's return type, i. e. the type of the array
+    # being constructed.
+    et = _get_array_element_type(ctx.default_return_type)
     if et is not None:
         allowed = _autoconvertible_to_cdata(et, ctx.api)
-        return ctx.default_signature.copy_modified(arg_types=[allowed])
-    return ctx.default_signature
+        assert len(ctx.arg_types) == 1, (
+            "The stub of the ctypes.Array constructor should have a single vararg parameter")
+        for arg_num, arg_type in enumerate(ctx.arg_types[0], 1):
+            if not is_subtype(arg_type, allowed):
+                ctx.api.msg.fail(
+                    'Array constructor argument {} of type "{}"'
+                    ' is not convertible to the array element type "{}"'
+                    .format(arg_num, arg_type, et),
+                    ctx.context)
+    return ctx.default_return_type
 
 def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__getitem__."""

@@ -382,21 +382,21 @@ class DefaultPlugin(Plugin):
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         print(f"get_function_hook({fullname!r})")  # XXX debugging
+        from mypy.plugins import ctypes
+
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback
+        elif fullname == 'ctypes.Array':
+            return ctypes.array_constructor_callback
         return None
 
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
         print(f"get_method_signature_hook({fullname!r})")  # XXX debugging
-        from mypy.plugins import ctypes
-
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
-        elif fullname == 'ctypes.Array.__init__':
-            return ctypes.array_init_callback
         return None
 
     def get_method_hook(self, fullname: str
