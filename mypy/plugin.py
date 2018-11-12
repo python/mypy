@@ -381,7 +381,6 @@ class DefaultPlugin(Plugin):
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
-        print(f"get_function_hook({fullname!r})")  # XXX debugging
         from mypy.plugins import ctypes
 
         if fullname == 'contextlib.contextmanager':
@@ -394,7 +393,6 @@ class DefaultPlugin(Plugin):
 
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
-        print(f"get_method_signature_hook({fullname!r})")  # XXX debugging
         from mypy.plugins import ctypes
 
         if fullname == 'typing.Mapping.get':
@@ -405,7 +403,6 @@ class DefaultPlugin(Plugin):
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
-        print(f"get_method_hook({fullname!r})")  # XXX debugging
         from mypy.plugins import ctypes
 
         if fullname == 'typing.Mapping.get':
@@ -420,7 +417,6 @@ class DefaultPlugin(Plugin):
 
     def get_attribute_hook(self, fullname: str
                            ) -> Optional[Callable[[AttributeContext], Type]]:
-        print(f"get_attribute_hook({fullname!r})")  # XXX debugging
         return None
 
     def get_class_decorator_hook(self, fullname: str

@@ -77,7 +77,6 @@ def _get_array_element_type(tp: Instance) -> Optional[Type]:
 
 def array_constructor_callback(ctx: 'mypy.plugin.MethodContext') -> CallableType:
     """Callback to provide an accurate signature for the ctypes.Array constructor."""
-    print(f"array_constructor_callback({ctx!r})")  # XXX debugging
 
     # Extract the element type from the constructor's return type, i. e. the type of the array
     # being constructed.
@@ -97,7 +96,6 @@ def array_constructor_callback(ctx: 'mypy.plugin.MethodContext') -> CallableType
 
 def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__getitem__."""
-    print(f"array_getitem_callback({ctx!r})")  # XXX debugging
 
     et = _get_array_element_type(ctx.type)
     if et is not None:
@@ -114,7 +112,6 @@ def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
 
 def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> Type:
     """Callback to provide an accurate signature for ctypes.Array.__setitem__."""
-    print(f"array_setitem_callback({ctx!r})")  # XXX debugging
 
     et = _get_array_element_type(ctx.type)
     if et is not None:
@@ -137,7 +134,6 @@ def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> Type:
 
 def array_iter_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__iter__."""
-    print(f"array_iter_callback({ctx!r})")  # XXX debugging
 
     et = _get_array_element_type(ctx.type)
     if et is not None:
