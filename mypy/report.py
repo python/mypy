@@ -90,7 +90,8 @@ class Reports:
 class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
-        stats.ensure_dir_exists(output_dir)
+        if output_dir != '<memory>':
+            stats.ensure_dir_exists(output_dir)
 
     @abstractmethod
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
