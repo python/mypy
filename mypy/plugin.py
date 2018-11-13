@@ -25,6 +25,8 @@ import mypy.interpreted_plugin
 class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
+    options = None  # type: Options
+
     @abstractmethod
     def fail(self, msg: str, ctx: Context) -> None:
         raise NotImplementedError
@@ -57,6 +59,7 @@ class CheckerPluginInterface:
     """Interface for accessing type checker functionality in plugins."""
 
     msg = None  # type: MessageBuilder
+    options = None  # type: Options
 
     @abstractmethod
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
