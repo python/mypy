@@ -158,10 +158,9 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
         if isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_char':
             return ctx.api.named_generic_type('builtins.bytes', [])
         elif isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_wchar':
-            try:
-                return ctx.api.named_generic_type('builtins.unicode', [])
-            except KeyError:
-                return ctx.api.named_generic_type('builtins.str', [])
+            return ctx.api.named_generic_type(
+                'builtins.str' if ctx.api.options.python_version >= (3,) else 'builtins.unicode',
+                [])
         else:
             ctx.api.msg.fail(
                 'ctypes.Array attribute "value" is only available'
