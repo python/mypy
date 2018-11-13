@@ -65,7 +65,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
         for pos, line in enumerate(err):
             if line.startswith('pydev debugger: '):
                 # Delete the attaching debugger message itself, plus the extra newline added.
-                del err[pos : pos + 2]
+                del err[pos:pos + 2]
                 break
 
     # Remove temp file.
