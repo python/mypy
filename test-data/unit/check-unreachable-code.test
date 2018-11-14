@@ -671,3 +671,11 @@ import sys
 assert sys.platform == 'lol'
 def bar() -> None: pass
 [builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertNotInsideIf]
+import sys
+if sys.version_info[0] >= 2:
+    assert sys.platform == 'lol'
+    reveal_type('')  # E: Revealed type is 'builtins.str'
+reveal_type('')  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]
