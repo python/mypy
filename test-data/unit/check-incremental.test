@@ -5500,3 +5500,89 @@ plugins=basic_plugin.py
 [out]
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testAddedPluginsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+def f() -> int: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file mypy.ini]
+[[mypy]
+python_version=3.6
+[file mypy.ini.2]
+[[mypy]
+python_version=3.6
+plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedPluginsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: str = x
+
+[file a.py.2]
+from b import x
+y: str = x
+touch = 1
+
+[file b.py]
+def f() -> int: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file mypy.ini]
+[[mypy]
+python_version=3.6
+plugins=basic_plugin.py
+[file mypy.ini.2]
+[[mypy]
+python_version=3.6
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
