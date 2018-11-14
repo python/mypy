@@ -2637,6 +2637,15 @@ roles.role = 1
 [file roles.pyi]
 def __getattr__(name): ...
 
+[case testModuleGetAttrAssignUnannotatedDouble]
+import roles
+
+# this also should not crash
+roles.role.attr = 1
+
+[file roles.pyi]
+def __getattr__(name): ...
+
 [case testModuleGetAttrAssignAny]
 import roles
 
