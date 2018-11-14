@@ -2659,3 +2659,21 @@ roles.role = 1  # E: Incompatible types in assignment (expression has type "int"
 
 [file roles.pyi]
 def __getattr__(name: str) -> str: ...
+
+[case testModuleGetAttrAssignSubmodule]
+import roles
+roles.role = 1
+roles.missing.attr = 1
+
+[file roles/__init__.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[case testModuleGetAttrAssignSubmoduleStrict]
+import roles
+roles.role = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+
+[file roles/__init__.pyi]
+from types import ModuleType
+def __getattr__(name: str) -> ModuleType: ...
+[builtins fixtures/module.pyi]
