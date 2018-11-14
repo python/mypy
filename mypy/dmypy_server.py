@@ -13,6 +13,7 @@ import pickle
 import random
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 
@@ -48,10 +49,9 @@ if sys.platform == 'win32':
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
-        options_file = ".dmypy_options.pickle"
-        with open(options_file, 'wb') as file:
+        with tempfile.NamedTemporaryFile(suffix=".dmypy_options.pickle", delete=False) as file:
             pickle.dump((opts, timeout), file)
-        command.append('--options-file={}'.format(options_file))
+            command.append('--options-file={}'.format(file.name))
         try:
             subprocess.Popen(command, creationflags=0x8)  # DETACHED_PROCESS
             return 0
@@ -107,7 +107,7 @@ else:
 
 # Server code.
 if sys.platform == 'win32':
-    CONNECTION_NAME = r'\\.\pipe\dmypy.pipe'  # type: Final
+    CONNECTION_NAME = r'\\.\pipe\dmypy-{}.pipe'.format(os.getpid())  # type: Final
 else:
     CONNECTION_NAME = 'dmypy.sock'  # type: Final
 
