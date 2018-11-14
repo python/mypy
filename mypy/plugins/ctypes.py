@@ -4,21 +4,21 @@ from typing import Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
+from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype
 from mypy.types import CallableType, Instance, Type, UnionType
 
 
-def _find_simplecdata_base_arg(tp: Instance) -> Optional[Type]:
+def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInterface') -> Optional[Type]:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
 
-    None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases,
-    or if it doesn't have a single type argument.
+    None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases.
     """
-
-    for mro_type in tp.type.mro:
-        for base in mro_type.bases:
-            if len(base.args) == 1:
-                return base.args[0]
+    if tp.type.has_base('ctypes._SimpleCData'):
+        simplecdata_base = map_instance_to_supertype(tp,
+            api.named_generic_type('ctypes._SimpleCData', []).type)
+        assert len(simplecdata_base.args) == 1, '_SimpleCData takes exactly one type argument'
+        return simplecdata_base.args[0]
     return None
 
 
@@ -35,7 +35,7 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
     # Every type can be converted from itself (obviously).
     allowed_types = [tp]
     if isinstance(tp, Instance):
-        unboxed = _find_simplecdata_base_arg(tp)
+        unboxed = _find_simplecdata_base_arg(tp, api)
         if unboxed is not None:
             # If _SimpleCData appears in tp's (direct or indirect) bases, its type argument
             # specifies the type's "unboxed" version, which can always be converted back to
