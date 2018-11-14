@@ -383,7 +383,8 @@ More specifically, mypy will understand the use of ``sys.version_info`` and
        # Other systems
 
 As a special case, you can also use one of these checks in a top-level
-``assert``; this makes mypy skip the rest of the file.  Example:
+(unindented) ``assert``; this makes mypy skip the rest of the file.
+Example:
 
 .. code-block:: python
 
