@@ -31,7 +31,6 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
     * c_char_p -> Union[c_char_p, bytes, int, NoneType]
     * MyStructure -> MyStructure
     """
-
     # Every type can be converted from itself (obviously).
     allowed_types = [tp]
     if isinstance(tp, Instance):
@@ -57,7 +56,6 @@ def _autounboxed_cdata(tp: Type) -> Type:
     is returned.
     For all other CData types, including indirect _SimpleCData subclasses, tp is returned as-is.
     """
-
     if isinstance(tp, Instance):
         for base in tp.type.bases:
             if base.type.fullname() == 'ctypes._SimpleCData':
@@ -72,7 +70,6 @@ def _autounboxed_cdata(tp: Type) -> Type:
 
 def _get_array_element_type(tp: Type) -> Optional[Type]:
     """Get the element type of the Array type tp, or None if not specified."""
-
     if isinstance(tp, Instance):
         assert tp.type.fullname() == 'ctypes.Array'
         if len(tp.args) == 1:
@@ -82,14 +79,13 @@ def _get_array_element_type(tp: Type) -> Optional[Type]:
 
 def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
     """Callback to provide an accurate signature for the ctypes.Array constructor."""
-
     # Extract the element type from the constructor's return type, i. e. the type of the array
     # being constructed.
     et = _get_array_element_type(ctx.default_return_type)
     if et is not None:
         allowed = _autoconvertible_to_cdata(et, ctx.api)
-        assert len(ctx.arg_types) == 1, (
-            "The stub of the ctypes.Array constructor should have a single vararg parameter")
+        assert len(ctx.arg_types) == 1, \
+            "The stub of the ctypes.Array constructor should have a single vararg parameter"
         for arg_num, arg_type in enumerate(ctx.arg_types[0], 1):
             if not is_subtype(arg_type, allowed):
                 ctx.api.msg.fail(
@@ -102,7 +98,6 @@ def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
 
 def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__getitem__."""
-
     et = _get_array_element_type(ctx.type)
     if et is not None:
         unboxed = _autounboxed_cdata(et)
@@ -119,7 +114,6 @@ def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
 
 def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> CallableType:
     """Callback to provide an accurate signature for ctypes.Array.__setitem__."""
-
     et = _get_array_element_type(ctx.type)
     if et is not None:
         allowed = _autoconvertible_to_cdata(et, ctx.api)
@@ -142,7 +136,6 @@ def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> CallableType:
 
 def array_iter_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
     """Callback to provide an accurate return type for ctypes.Array.__iter__."""
-
     et = _get_array_element_type(ctx.type)
     if et is not None:
         unboxed = _autounboxed_cdata(et)
@@ -152,7 +145,6 @@ def array_iter_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
 
 def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """Callback to provide an accurate type for ctypes.Array.value."""
-
     et = _get_array_element_type(ctx.type)
     if et is not None:
         if isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_char':
@@ -172,7 +164,6 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
 
 def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """Callback to provide an accurate type for ctypes.Array.raw."""
-
     et = _get_array_element_type(ctx.type)
     if et is not None:
         if isinstance(et, Instance) and et.type.fullname() == 'ctypes.c_char':
