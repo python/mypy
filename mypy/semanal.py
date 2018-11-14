@@ -3017,7 +3017,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         typ = AnyType(TypeOfAny.from_error)
                 else:
                     typ = AnyType(TypeOfAny.from_error)
-                expr.kind = MDEF
+                expr.kind = GDEF
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
             else:
