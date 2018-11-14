@@ -73,6 +73,24 @@ reveal_type(wca.value)  # E: Revealed type is 'builtins.unicode'
 wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
 [builtins_py2 fixtures/ctypes_py2.pyi]
 
+[case testCtypesCharUnionArrayAttrs]
+import ctypes
+from typing import Union
+
+cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_wchar]]
+reveal_type(cua.value)  # E: Revealed type is 'Union[builtins.bytes, builtins.str]'
+cua.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "Union[ctypes.c_char, ctypes.c_wchar]"
+[builtins fixtures/ctypes.pyi]
+
+[case testCtypesOtherUnionArrayAttrs]
+import ctypes
+from typing import Union
+
+cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_int]]
+cua.value  # E: ctypes.Array attribute "value" is only available with element type c_char or c_wchar, not "Union[ctypes.c_char, ctypes.c_int]"
+cua.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "Union[ctypes.c_char, ctypes.c_int]"
+[builtins fixtures/ctypes.pyi]
+
 [case testCtypesOtherArrayAttrs]
 import ctypes
 
