@@ -623,3 +623,36 @@ class Child(Parent):
         reveal_type(self)       # E: Revealed type is '__main__.Child'
         return 3
 [builtins fixtures/isinstance.pyi]
+
+[case testUnreachableAfterToplevelAssert]
+import sys
+reveal_type(0)  # E: Revealed type is 'builtins.int'
+assert sys.platform == 'lol'
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssert2]
+import sys
+reveal_type(0)  # E: Revealed type is 'builtins.int'
+assert sys.version_info[0] == 1
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertImport]
+import foo
+foo.bar()  # E: "object" has no attribute "bar"
+[file foo.py]
+import sys
+assert sys.platform == 'lol'
+def bar() -> None: pass
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertImport2]
+# flags: --platform lol
+import foo
+foo.bar()  # No error :-)
+[file foo.py]
+import sys
+assert sys.platform == 'lol'
+def bar() -> None: pass
+[builtins fixtures/ops.pyi]
