@@ -250,6 +250,12 @@ class Server:
                 return {'restart': 'configuration changed'}
             if __version__ != version:
                 return {'restart': 'mypy version changed'}
+            if self.fine_grained_manager:
+                manager = self.fine_grained_manager.manager
+                start_plugins_snapshot = manager.plugins_snapshot
+                _, current_plugins_snapshot = mypy.build.load_plugins(options, manager.errors)
+                if current_plugins_snapshot != start_plugins_snapshot:
+                    return {'restart': 'plugins changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(sources)

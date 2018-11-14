@@ -24,6 +24,10 @@
 -- # flags2: --another-flag
 -- (and flags3 for the third run, and so on).
 --
+-- Incremental tests involving plugins that get updated are also supported.
+-- All plugin files that are updated *must* end in '_plugin', so they will
+-- be unloaded from 'sys.modules' between incremental steps.
+--
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
@@ -5390,3 +5394,109 @@ E = Enum('E', f())  # type: ignore
 [builtins fixtures/list.pyi]
 [out]
 [out2]
+
+[case testChangedPluginsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+class C: ...
+def f() -> C: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.int', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file basic_plugin.py.2]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+[file mypy.ini]
+[[mypy]
+plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testChangedPluginsInvalidateCache2]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+class C: ...
+def f() -> C: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+from version_plugin import __version__, choice
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    if choice:
+        return ctx.api.named_generic_type('builtins.int', [])
+    else:
+        return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file version_plugin.py]
+__version__ = 0.1
+choice = True
+
+[file version_plugin.py.2]
+__version__ = 0.2
+choice = False
+[file mypy.ini]
+[[mypy]
+plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
