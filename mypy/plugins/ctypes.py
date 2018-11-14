@@ -9,7 +9,8 @@ from mypy.subtypes import is_subtype
 from mypy.types import CallableType, Instance, Type, UnionType, union_items
 
 
-def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInterface') -> Optional[Type]:
+def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInterface'
+                               ) -> Optional[Type]:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
 
     None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases.
@@ -155,7 +156,9 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 types.append(ctx.api.named_generic_type('builtins.bytes', []))
             elif isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_wchar':
                 types.append(ctx.api.named_generic_type(
-                    'builtins.str' if ctx.api.options.python_version >= (3,) else 'builtins.unicode',
+                    'builtins.str'
+                    if ctx.api.options.python_version >= (3,)
+                    else 'builtins.unicode',
                     []))
             else:
                 ctx.api.msg.fail(
