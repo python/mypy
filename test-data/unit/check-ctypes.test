@@ -80,3 +80,16 @@ oa = (ctypes.c_int * 4)(1, 2, 3, 4)
 oa.value  # E: ctypes.Array attribute "value" is only available with element type c_char or c_wchar, not "ctypes.c_int"
 oa.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_int"
 [builtins fixtures/ctypes.pyi]
+
+[case testCtypesArrayConstructorStarargs]
+import ctypes
+
+intarr4 = ctypes.c_int * 4
+intarr6 = ctypes.c_int * 6
+int_values = [1, 2, 3, 4]
+c_int_values = [ctypes.c_int(1), ctypes.c_int(2), ctypes.c_int(3), ctypes.c_int(4)]
+reveal_type(intarr4(*int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
+reveal_type(intarr4(*c_int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
+reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
+reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
+[builtins fixtures/ctypes.pyi]
