@@ -24,10 +24,12 @@ from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
-    MODULE_REF, implicit_module_attrs
+    MODULE_REF, implicit_module_attrs, AssertStmt,
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
-from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
+from mypy.semanal import (
+    SemanticAnalyzerPass2, infer_reachability_of_if_statement, assert_will_always_fail,
+)
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
@@ -92,8 +94,14 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
-            for d in defs:
+            for i, d in enumerate(defs):
                 d.accept(self)
+                if isinstance(d, AssertStmt) and assert_will_always_fail(d, options):
+                    # We've encountered an assert that's always false,
+                    # e.g. assert sys.platform == 'lol'.  Truncate the
+                    # list of statements.  This mutates file.defs too.
+                    del defs[i + 1:]
+                    break
 
             # Add implicit definition of literals/keywords to builtins, as we
             # cannot define a variable with them explicitly.

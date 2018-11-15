@@ -3805,6 +3805,10 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
             break
 
 
+def assert_will_always_fail(s: AssertStmt, options: Options) -> bool:
+    return infer_condition_value(s.expr, options) in (ALWAYS_FALSE, MYPY_FALSE)
+
+
 def infer_condition_value(expr: Expression, options: Options) -> int:
     """Infer whether the given condition is always true/false.
 
