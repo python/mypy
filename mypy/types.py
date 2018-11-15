@@ -27,9 +27,10 @@ T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
 
-# If we import type_visitor in the middle of the file, mypy breaks, and if we do it
-# at the top, it breaks at runtime because of import cycle issues, so we do it at different
-# times in different places.
+# If we only import type_visitor in the middle of the file, mypy
+# breaks, and if we do it at the top, it breaks at runtime because of
+# import cycle issues, so we do it at the top while typechecking and
+# then again in the middle at runtime.
 if MYPY:
     from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
 
@@ -1542,10 +1543,9 @@ class ForwardRef(Type):
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-if not MYPY:
-    from mypy.type_visitor import (  # noqa
-        TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
-    )
+from mypy.type_visitor import (  # noqa
+    TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+)
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
