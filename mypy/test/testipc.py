@@ -2,7 +2,7 @@ import os
 import sys
 import time
 from unittest import TestCase, main
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 
 from mypy.ipc import IPCClient, IPCServer, IPCException
 
@@ -13,23 +13,26 @@ else:
     CONNECTION_NAME = 'dmypy-test-ipc-{}.sock'
 
 
-def server(msg: str, pid: int) -> None:
-    with IPCServer(CONNECTION_NAME.format(pid)) as server:
-        server.read()
+def server(msg: str, q: Queue) -> None:
+    server = IPCServer(CONNECTION_NAME.format(os.getpid()))
+    q.put(server.connection_name)
+    with server:
         server.write(msg.encode())
-        server.cleanup()
+    server.cleanup()
 
 
 class IPCTests(TestCase):
     def test_transaction_large(self) -> None:
-        pid = os.getpid()
+        queue = Queue()
         msg = 't' * 100001  # longer than the max read size of 100_000
-        p = Process(target=server, args=(msg, pid), daemon=True)
+        p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
-        time.sleep(1)  # wait for server to get set up
-        with IPCClient(CONNECTION_NAME.format(pid), timeout=10) as client:
-            client.write(b'')  # signal we are ready for a write from the server
+        connection_name = queue.get()
+        with IPCClient(connection_name, timeout=10) as client:
             assert client.read() == msg.encode()
+        queue.close()
+        queue.join_thread()
+        p.join()
 
 
 if __name__ == '__main__':
