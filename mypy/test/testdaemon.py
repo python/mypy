@@ -37,7 +37,6 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
         output_lines = output.splitlines()
         if sts:
             output_lines.append('== Return code: %d' % sts)
-        if expected_lines != output_lines: import pdb; pdb.set_trace()
         assert_string_arrays_equal(expected_lines,
                                    output_lines,
                                    "Command %d (%s) did not give expected output" %
