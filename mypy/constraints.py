@@ -13,6 +13,7 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
+from mypy.argmap import get_actual_type
 
 MYPY = False
 if MYPY:
@@ -68,40 +69,6 @@ def infer_constraints_for_callable(
             constraints.extend(c)
 
     return constraints
-
-
-def get_actual_type(arg_type: Type, kind: int,
-                    tuple_counter: List[int]) -> Type:
-    """Return the type of an actual argument with the given kind.
-
-    If the argument is a *arg, return the individual argument item.
-    """
-
-    if kind == nodes.ARG_STAR:
-        if isinstance(arg_type, Instance):
-            if arg_type.type.fullname() == 'builtins.list':
-                # List *arg.
-                return arg_type.args[0]
-            elif arg_type.args:
-                # TODO try to map type arguments to Iterable
-                return arg_type.args[0]
-            else:
-                return AnyType(TypeOfAny.from_error)
-        elif isinstance(arg_type, TupleType):
-            # Get the next tuple item of a tuple *arg.
-            tuple_counter[0] += 1
-            return arg_type.items[tuple_counter[0] - 1]
-        else:
-            return AnyType(TypeOfAny.from_error)
-    elif kind == nodes.ARG_STAR2:
-        if isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
-            # Dict **arg. TODO more general (Mapping)
-            return arg_type.args[1]
-        else:
-            return AnyType(TypeOfAny.from_error)
-    else:
-        # No translation for other kinds.
-        return arg_type
 
 
 def infer_constraints(template: Type, actual: Type,
