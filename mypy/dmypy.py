@@ -19,20 +19,11 @@ import time
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.dmypy_os import alive, kill
 from mypy.ipc import IPCClient, IPCException
 from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypy.version import __version__
-
-if sys.platform == 'win32':
-    import ctypes
-    from ctypes.wintypes import DWORD, HANDLE
-
-    PROCESS_QUERY_LIMITED_INFORMATION = ctypes.c_ulong(0x1000)
-
-    kernel32 = ctypes.windll.kernel32
-    OpenProcess = kernel32.OpenProcess  # type: Callable[[DWORD, int, int], HANDLE]
-    GetExitCodeProcess = kernel32.GetExitCodeProcess  # type: Callable[[HANDLE, Any], int]
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
@@ -288,10 +279,7 @@ def do_kill(args: argparse.Namespace) -> None:
     """Kill daemon process with SIGKILL."""
     pid, _ = get_status()
     try:
-        if sys.platform == 'win32':
-            subprocess.check_output("taskkill /pid {pid} /f /t".format(pid=pid))
-        else:
-            os.kill(pid, signal.SIGKILL)
+        kill(pid)
     except OSError as err:
         sys.exit(str(err))
     else:
@@ -453,20 +441,8 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     pid = data['pid']
     if not isinstance(pid, int):
         raise BadStatus("pid field is not an int")
-    if sys.platform == 'win32':
-        # why can't anything be easy...
-        status = DWORD()
-        handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,
-                             0,
-                             pid)
-        GetExitCodeProcess(handle, ctypes.byref(status))
-        if status.value != 259:  # STILL_ACTIVE
-            raise BadStatus("Daemon is dead")
-    else:
-        try:
-            os.kill(pid, 0)
-        except OSError:
-            raise BadStatus("Daemon is dead")
+    if not alive(pid):
+        raise BadStatus("Daemon is dead")
     if 'connection_name' not in data:
         raise BadStatus("Invalid status file (no connection_name field)")
     connection_name = data['connection_name']
