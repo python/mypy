@@ -26,9 +26,11 @@ else:
     import socket
     _IPCHandle = socket.socket
 
+
 class IPCException(Exception):
     """Exception for IPC issues."""
     pass
+
 
 class IPCBase:
     """Base class for communication between the dmypy client and server.
