@@ -63,6 +63,8 @@ class IPCBase:
         if sys.platform == 'win32':
             try:
                 _winapi.WriteFile(self.connection, data)
+                # this empty write is to copy the behavior of socket.sendall,
+                # which also sends an empty message to signify it is done writing
                 _winapi.WriteFile(self.connection, b'')
             except WindowsError as e:
                 raise IPCException("Failed to write with error: {}".format(e.winerror))
