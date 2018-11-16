@@ -62,9 +62,7 @@ if sys.platform == 'win32':
             return e.returncode
 
 else:
-    def daemonize(options: Options,
-                  timeout: Optional[int] = None,
-                  log_file: Optional[str] = None) -> int:
+    def _daemonize_cb(func: Callable[[], None], log_file: Optional[str] = None) -> int:
         """Arrange to call func() in a grandchild of the current process.
 
         Return 0 for success, exit status for failure, negative if
@@ -104,11 +102,20 @@ else:
                 fd = sys.stdout.fileno()
                 os.dup2(fd, 2)
                 os.dup2(fd, 1)
-            Server(options, timeout).serve
+            func()
         finally:
             # Make sure we never get back into the caller.
             os._exit(1)
 
+    def daemonize(options: Options,
+                  timeout: Optional[int] = None,
+                  log_file: Optional[str] = None) -> int:
+        """Run the mypy daemon in a grandchild of the current process
+
+        Return 0 for success, exit status for failure, negative if
+        subprocess killed by signal.
+        """
+        return _daemonize_cb(Server(options, timeout).serve, log_file)
 
 # Server code.
 if sys.platform == 'win32':
