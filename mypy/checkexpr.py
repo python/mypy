@@ -1049,7 +1049,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # arguments.
         return self.apply_generic_arguments(callee_type, inferred_args, context)
 
-    def check_argument_count(self, callee: CallableType, actual_types: List[Type],
+    def check_argument_count(self,
+                             callee: CallableType,
+                             actual_types: List[Type],
                              actual_kinds: List[int],
                              actual_names: Optional[Sequence[Optional[str]]],
                              formal_to_actual: List[List[int]],
@@ -1072,6 +1074,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors.
         ok = True  # False if we've found any error.
+
+        # Check for extra actuals.
         for i, kind in enumerate(actual_kinds):
             if i not in all_actuals and (
                     kind != nodes.ARG_STAR or
@@ -1103,7 +1107,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         ok = False
                 # *args can be applied even if the function takes a fixed
                 # number of positional arguments. This may succeed at runtime.
+            elif kind == nodes.ARG_STAR2 and isinstance(actual_types[i], TypedDictType):
+                if all_actuals.count(i) < len(actual_types[i].items):
+                    # Too many tuple items as some did not match.
+                    if messages:
+                        assert context, "Internal error: messages given without context"
+                        messages.too_many_arguments(callee, context)
+                    ok = False
 
+        # Check for too many or few values for formals.
         for i, kind in enumerate(formal_kinds):
             if kind == nodes.ARG_POS and (not formal_to_actual[i] and
                                           not is_unexpected_arg_error):
