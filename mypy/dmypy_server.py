@@ -144,8 +144,6 @@ class Server:
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
-    buffer_size = 2**16
-
     def __init__(self, options: Options,
                  timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
