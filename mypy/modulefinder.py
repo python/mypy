@@ -401,7 +401,10 @@ def compute_search_paths(sources: List[BuildSource],
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).  This is a test-only feature, so assume our files are laid out
         # as in the source tree.
-        root_dir = os.path.dirname(os.path.dirname(__file__))
+        # We also need to allow overriding where to look for it. Argh.
+        root_dir = os.getenv('MYPY_TEST_PREFIX', None)
+        if not root_dir:
+            root_dir = os.path.dirname(os.path.dirname(__file__))
         lib_path.appendleft(os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.
