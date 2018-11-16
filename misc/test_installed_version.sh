@@ -12,7 +12,7 @@ PYTHON="${2-python3}"
 VENV="$(mktemp -d --tmpdir mypy-test-venv.XXXXXXXXXX)"
 trap "rm -rf '$VENV'" EXIT
 
-"$PYTHON" -m virtualenv "$VENV"
+"$PYTHON" -m venv "$VENV"
 source "$VENV/bin/activate"
 
 pip install -r test-requirements.txt
@@ -26,7 +26,7 @@ cp pytest.ini conftest.py "$VENV/"
 ROOT="$PWD"
 
 # Change directory so we can't pick up any of the stuff in the root
-cd /
+cd "$VENV"
 
 # Find the directory that mypy tests were installed into
 MYPY_TEST_DIR="$(python3 -c 'import mypy.test; print(mypy.test.__path__[0])')"
