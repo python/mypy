@@ -3535,3 +3535,29 @@ print(z)
 (1, 2)
 1
 2
+
+[case testCheckVersion]
+import sys
+
+# We lie about the version we are running in tests if it is 3.5, so
+# that hits a crash case.
+if sys.version_info[:2] == (3, 7):
+    def version() -> int:
+        return 7
+elif sys.version_info[:2] == (3, 6):
+    def version() -> int:
+        return 6
+else:
+    raise Exception("we don't support this version yet!")
+
+
+[file driver.py]
+import sys
+version = sys.version_info[:2]
+
+try:
+    import native
+    assert version != (3, 5), "3.5 should fail!"
+    assert native.version() == sys.version_info[1]
+except RuntimeError:
+    assert version == (3, 5), "only 3.5 should fail!"

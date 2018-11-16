@@ -123,11 +123,17 @@ def build_ir(modules: List[MypyFile],
         with catch_errors(module.path, cdef.line):
             prepare_class_def(module.fullname(), cdef, mapper)
 
-    # Collect all the functions also
+    # Collect all the functions also. We collect from the symbol table
+    # so that we can easily pick out the right copy of a function that
+    # is conditionally defined.
     for module in modules:
-        for node in module.defs:
-            if isinstance(node, (FuncDef, Decorator, OverloadedFuncDef)):
-                prepare_func_def(module.fullname(), None, get_func_def(node), mapper)
+        for name, node in module.names.items():
+            # We need to filter out functions that are imported or
+            # aliases.  The best way to do this seems to be by
+            # checking that the fullname matches.
+            if (isinstance(node.node, (FuncDef, Decorator, OverloadedFuncDef))
+                    and node.fullname == module.fullname() + '.' + name):
+                prepare_func_def(module.fullname(), None, get_func_def(node.node), mapper)
             # TODO: what else?
 
     # Generate IR for all modules.
@@ -1331,8 +1337,17 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Unreachable())
 
     def visit_block(self, block: Block) -> None:
-        for stmt in block.body:
-            self.accept(stmt)
+        if not block.is_unreachable:
+            for stmt in block.body:
+                self.accept(stmt)
+        # Raise a RuntimeError if we hit a non-empty unreachable block.
+        # Don't complain about empty unreachable blocks, since mypy inserts
+        # those after `if MYPY`.
+        elif block.body:
+            self.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
+                                        'Reached allegedly unreachable code!',
+                                        block.line))
+            self.add(Unreachable())
 
     def visit_expression_stmt(self, stmt: ExpressionStmt) -> None:
         self.accept(stmt.expr)

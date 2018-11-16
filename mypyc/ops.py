@@ -1263,6 +1263,7 @@ class RaiseStandardError(RegisterOp):
     ASSERTION_ERROR = 'AssertionError'
     STOP_ITERATION = 'StopIteration'
     UNBOUND_LOCAL_ERROR = 'UnboundLocalError'
+    RUNTIME_ERROR = 'RuntimeError'
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)
