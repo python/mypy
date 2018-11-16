@@ -97,7 +97,7 @@ class IPCClient(IPCBase):
             timeout = timeout or 1000  # we need to set a timeout
             while True:
                 try:
-                    _winapi.WaitNamedPipe(self.name, timeout * 1000)
+                    _winapi.WaitNamedPipe(self.name, timeout)
                 except WindowsError as e:
                     if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
                         raise IPCException("Timed out waiting for connection.")
