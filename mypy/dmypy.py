@@ -7,6 +7,7 @@ rather than having to read it back from disk on each run.
 """
 
 import argparse
+import base64
 import json
 import os
 import pickle
@@ -19,6 +20,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
+from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypy.version import __version__
 
@@ -105,7 +107,7 @@ p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                help="Regular mypy flags (precede with --)")
-p.add_argument('--options-file', help=argparse.SUPPRESS)
+p.add_argument('--options-data', help=argparse.SUPPRESS)
 help_parser = p = subparsers.add_parser('help')
 
 del p
@@ -381,10 +383,10 @@ def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
-    if args.options_file:
-        with open(args.options_file, 'rb') as f:
-            options, timeout = pickle.load(f)
-        os.unlink(args.options_file)
+    if args.options_data:
+        options_dict, timeout = pickle.loads(base64.b64decode(args.options_data))
+        options_obj = Options()
+        options = options_obj.apply_changes(options_dict)
     else:
         options = process_start_options(args.flags, allow_sources=False)
         timeout = args.timeout

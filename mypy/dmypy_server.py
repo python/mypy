@@ -7,6 +7,7 @@ to enable fine-grained incremental reprocessing of changes.
 """
 
 import argparse
+import base64
 import json
 import os
 import pickle
@@ -33,6 +34,7 @@ from mypy.options import Options
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 
+
 MYPY = False
 if MYPY:
     from typing_extensions import Final
@@ -49,9 +51,8 @@ if sys.platform == 'win32':
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
-        with tempfile.NamedTemporaryFile(suffix=".dmypy_options.pickle", delete=False) as file:
-            pickle.dump((opts, timeout), file)
-            command.append('--options-file={}'.format(file.name))
+        pickeled_options = pickle.dumps((opts.snapshot(), timeout))
+        command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
         try:
             subprocess.Popen(command, creationflags=0x8)  # DETACHED_PROCESS
             return 0
