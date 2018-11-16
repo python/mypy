@@ -51,7 +51,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"quick_and_dirty", "platform", "bazel"})
+                            {"quick_and_dirty", "platform", "bazel", "plugins"})
                            - {"debug_cache"})  # type: Final
 
 

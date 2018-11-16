@@ -2125,3 +2125,20 @@ def f(x: str) -> None: pass
 [out]
 ==
 main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testIgnoredAttrReprocessedModule]
+import a
+[file a.py]
+import b
+x = b.x  # type: ignore
+y: int = x
+[file b.py]
+import c
+[file b.py.2]
+import c
+x = c.x
+[file c.py]
+x: str
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")

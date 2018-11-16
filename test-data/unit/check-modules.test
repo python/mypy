@@ -2627,3 +2627,53 @@ import foo.bar.baz
 reveal_type(foo.bar.baz.x)  # E: Revealed type is 'builtins.int'
 [file foo/bar/baz.py]
 x = 0
+
+[case testModuleGetAttrAssignUnannotated]
+import roles
+# this should not crash
+roles.role = 1
+
+[file roles.pyi]
+def __getattr__(name): ...
+
+[case testModuleGetAttrAssignUnannotatedDouble]
+import roles
+# this also should not crash
+roles.role.attr = 1
+
+[file roles.pyi]
+def __getattr__(name): ...
+
+[case testModuleGetAttrAssignAny]
+import roles
+roles.role = 1
+
+[file roles.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[case testModuleGetAttrAssignError]
+import roles
+
+roles.role = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[file roles.pyi]
+def __getattr__(name: str) -> str: ...
+
+[case testModuleGetAttrAssignSubmodule]
+import roles
+roles.role = 1
+roles.missing.attr = 1
+
+[file roles/__init__.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[case testModuleGetAttrAssignSubmoduleStrict]
+import roles
+roles.role = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+
+[file roles/__init__.pyi]
+from types import ModuleType
+def __getattr__(name: str) -> ModuleType: ...
+[builtins fixtures/module.pyi]

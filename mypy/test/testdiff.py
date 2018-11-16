@@ -12,7 +12,7 @@ from mypy.options import Options
 from mypy.server.astdiff import snapshot_symbol_table, compare_symbol_table_snapshots
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, parse_options
 
 
 class ASTDiffSuite(DataSuite):
@@ -22,9 +22,10 @@ class ASTDiffSuite(DataSuite):
         first_src = '\n'.join(testcase.input)
         files_dict = dict(testcase.files)
         second_src = files_dict['tmp/next.py']
+        options = parse_options(first_src, testcase, 1)
 
-        messages1, files1 = self.build(first_src)
-        messages2, files2 = self.build(second_src)
+        messages1, files1 = self.build(first_src, options)
+        messages2, files2 = self.build(second_src, options)
 
         a = []
         if messages1:
@@ -47,8 +48,8 @@ class ASTDiffSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:
-        options = Options()
+    def build(self, source: str,
+              options: Options) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull

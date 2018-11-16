@@ -77,7 +77,7 @@ def untyped_function():
 # cmd: mypy --html-report report n.py
 [file n.py]
 class A(object):
-    pass
+    pass  # hex 1f here: ()
 
 [file report/mypy-html.css]
 [file report/index.html]
@@ -96,7 +96,7 @@ class A(object):
 <span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
 </pre></td>
 <td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">class A(object):</span>
-<span class="line-empty" title="No Anys on this line!">    pass</span>
+<span class="line-empty" title="No Anys on this line!">    pass  # hex 1f here: (?)</span>
 </pre></td>
 </tr></tbody>
 </table>

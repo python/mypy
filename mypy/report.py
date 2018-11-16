@@ -90,6 +90,8 @@ class Reports:
 class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
+        if output_dir != '<memory>':
+            stats.ensure_dir_exists(output_dir)
 
     @abstractmethod
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
@@ -123,8 +125,6 @@ class LineCountReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
-
-        stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
                 tree: MypyFile,
@@ -170,7 +170,6 @@ class AnyExpressionsReporter(AbstractReporter):
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
         self.any_types_counter = {}  # type: Dict[str, typing.Counter[int]]
-        stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
                 tree: MypyFile,
@@ -361,8 +360,6 @@ class LineCoverageReporter(AbstractReporter):
         super().__init__(reports, output_dir)
         self.lines_covered = {}  # type: Dict[str, List[int]]
 
-        stats.ensure_dir_exists(output_dir)
-
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
@@ -418,6 +415,10 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = None  # type: Optional[Any]
         self.files = []  # type: List[FileInfo]
 
+    # XML doesn't like control characters, but they are sometimes
+    # legal in source code (e.g. comments, string literals).
+    control_fixer = str.maketrans(''.join(chr(i) for i in range(32)), '?' * 32)
+
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
@@ -446,7 +447,7 @@ class MemoryXmlReporter(AbstractReporter):
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text.rstrip('\n'),
+                                 content=line_text.rstrip('\n').translate(self.control_fixer),
                                  any_info=self._get_any_info_for_line(visitor, lineno))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
@@ -737,7 +738,6 @@ class XsltTxtReporter(AbstractXmlReporter):
         last_xml = self.memory_xml.last_xml
         assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.txt')
-        stats.ensure_dir_exists(os.path.dirname(out_path))
         transformed_txt = bytes(self.xslt_txt(last_xml))
         with open(out_path, 'wb') as out_file:
             out_file.write(transformed_txt)

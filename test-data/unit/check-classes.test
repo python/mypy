@@ -1301,7 +1301,7 @@ class A:
     f = D()
 a = A()
 a.f = ''
-a.f = 1 # E: Argument 2 to "__set__" of "D" has incompatible type "int"; expected "str"
+a.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testReadingDescriptorWithoutDunderGet]
 from typing import Union, Any
@@ -1383,9 +1383,9 @@ class A:
     g = D('10')
 a = A()
 a.f = 1
-a.f = '' # E: Argument 2 to "__set__" of "D" has incompatible type "str"; expected "int"
+a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 a.g = ''
-a.g = 1 # E: Argument 2 to "__set__" of "D" has incompatible type "int"; expected "str"
+a.g = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAccessingGenericDescriptorFromClass]
 # flags: --strict-optional
@@ -1479,7 +1479,7 @@ class A:
     f = D()
 a = A()
 a.f = ''
-a.f = 1 # E: Argument 2 to "__set__" of "C" has incompatible type "int"; expected "str"
+a.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testReadingDescriptorSubclassWithoutDunderGet]
 from typing import Union, Any
@@ -1520,9 +1520,9 @@ class A:
     g = D('10')  # type: D[A, str]
 a = A()
 a.f = 1
-a.f = '' # E: Argument 2 to "__set__" of "C" has incompatible type "str"; expected "int"
+a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 a.g = ''
-a.g = 1 # E: Argument 2 to "__set__" of "C" has incompatible type "int"; expected "str"
+a.g = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testSetDescriptorOnClass]
 from typing import TypeVar, Type, Generic
@@ -5610,3 +5610,59 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [out]
+
+[case testOptionalDescriptorsBinder]
+# flags: --strict-optional
+from typing import Type, TypeVar, Optional
+T = TypeVar('T')
+
+class IntDescr:
+    def __get__(self, obj: T, typ: Type[T]) -> Optional[int]: ...
+    def __set__(self, obj: T, value: Optional[int]) -> None: ...
+
+class C:
+    spec = IntDescr()
+
+    def meth_spec(self) -> None:
+        if self.spec is None:
+            self.spec = 0
+        reveal_type(self.spec)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/bool.pyi]
+
+[case testUnionDescriptorsBinder]
+from typing import Type, TypeVar, Union
+T = TypeVar('T')
+
+class A: ...
+class B: ...
+
+class UnionDescr:
+    def __get__(self, obj: T, typ: Type[T]) -> Union[A, B]: ...
+    def __set__(self, obj: T, value: Union[A, B]) -> None: ...
+
+class C:
+    spec = UnionDescr()
+
+    def meth_spec(self) -> None:
+        self.spec = A()
+        reveal_type(self.spec)  # E: Revealed type is '__main__.A'
+[builtins fixtures/bool.pyi]
+
+[case testSubclassDescriptorsBinder]
+from typing import Type, TypeVar, Optional
+T = TypeVar('T')
+
+class A: ...
+class B(A): ...
+
+class SubDescr:
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+    def __set__(self, obj: T, value: A) -> None: ...
+
+class C:
+    spec = SubDescr()
+
+    def meth_spec(self) -> None:
+        self.spec = B()
+        reveal_type(self.spec)  # E: Revealed type is '__main__.B'
+[builtins fixtures/bool.pyi]

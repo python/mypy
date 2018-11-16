@@ -623,3 +623,59 @@ class Child(Parent):
         reveal_type(self)       # E: Revealed type is '__main__.Child'
         return 3
 [builtins fixtures/isinstance.pyi]
+
+[case testUnreachableAfterToplevelAssert]
+import sys
+reveal_type(0)  # E: Revealed type is 'builtins.int'
+assert sys.platform == 'lol'
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssert2]
+import sys
+reveal_type(0)  # E: Revealed type is 'builtins.int'
+assert sys.version_info[0] == 1
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssert3]
+reveal_type(0)  # E: Revealed type is 'builtins.int'
+MYPY = False
+assert not MYPY
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssert4]
+# flags: --always-false NOPE
+reveal_type(0)  # E: Revealed type is 'builtins.int'
+NOPE = False
+assert NOPE
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertImport]
+import foo
+foo.bar()  # E: "object" has no attribute "bar"
+[file foo.py]
+import sys
+assert sys.platform == 'lol'
+def bar() -> None: pass
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertImport2]
+# flags: --platform lol
+import foo
+foo.bar()  # No error :-)
+[file foo.py]
+import sys
+assert sys.platform == 'lol'
+def bar() -> None: pass
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertNotInsideIf]
+import sys
+if sys.version_info[0] >= 2:
+    assert sys.platform == 'lol'
+    reveal_type('')  # E: Revealed type is 'builtins.str'
+reveal_type('')  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]

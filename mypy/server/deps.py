@@ -174,6 +174,8 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
         self.add_type_alias_deps(self.scope.current_target())
+        for trigger, targets in o.plugin_deps.items():
+            self.map.setdefault(trigger, set()).update(targets)
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -570,8 +572,8 @@ class DependencyVisitor(TraverserVisitor):
 
         # If this is a reference to a type, generate a dependency to its
         # constructor.
-        # TODO: avoid generating spurious dependencies for isinstance checks,
-        # except statements, class attribute reference, etc, if perf problem.
+        # IDEA: Avoid generating spurious dependencies for except statements,
+        #       class attribute references, etc., if performance is a problem.
         typ = self.type_map.get(o)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
@@ -599,10 +601,14 @@ class DependencyVisitor(TraverserVisitor):
             # Reference to a module attribute
             self.process_global_ref_expr(e)
         else:
-            # Reference to a non-module attribute
+            # Reference to a non-module (or missing) attribute
             if e.expr not in self.type_map:
                 # No type available -- this happens for unreachable code. Since it's unreachable,
                 # it wasn't type checked and we don't need to generate dependencies.
+                return
+            if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, MypyFile):
+                # Special case: reference to a missing module attribute.
+                self.add_dependency(make_trigger(e.expr.node.fullname() + '.' + e.name))
                 return
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)
@@ -659,6 +665,24 @@ class DependencyVisitor(TraverserVisitor):
                     break
 
     def visit_call_expr(self, e: CallExpr) -> None:
+        if isinstance(e.callee, RefExpr) and e.callee.fullname == 'builtins.isinstance':
+            self.process_isinstance_call(e)
+        else:
+            super().visit_call_expr(e)
+
+    def process_isinstance_call(self, e: CallExpr) -> None:
+        """Process "isinstance(...)" in a way to avoid some extra dependencies."""
+        if len(e.args) == 2:
+            arg = e.args[1]
+            if (isinstance(arg, RefExpr)
+                    and arg.kind == GDEF
+                    and isinstance(arg.node, TypeInfo)
+                    and arg.fullname):
+                # Special case to avoid redundant dependencies from "__init__".
+                self.add_dependency(make_trigger(arg.fullname))
+                return
+        # In uncommon cases generate normal dependencies. These will include
+        # spurious dependencies, but the performance impact is small.
         super().visit_call_expr(e)
 
     def visit_cast_expr(self, e: CastExpr) -> None:

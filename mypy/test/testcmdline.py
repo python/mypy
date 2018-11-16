@@ -52,24 +52,31 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     env['PYTHONPATH'] = PREFIX
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
+                               stderr=subprocess.PIPE,
                                cwd=test_temp_dir,
                                env=env)
-    outb = process.stdout.read()
+    outb, errb = process.communicate()
+    result = process.returncode
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    err = [s.rstrip('\n\r') for s in str(errb, 'utf8').splitlines()]
 
     if "PYCHARM_HOSTED" in os.environ:
-        pos = next((p for p, i in enumerate(out) if i.startswith('pydev debugger: ')), None)
-        if pos is not None:
-            del out[pos]  # the attaching debugger message itself
-            del out[pos]  # plus the extra new line added
+        for pos, line in enumerate(err):
+            if line.startswith('pydev debugger: '):
+                # Delete the attaching debugger message itself, plus the extra newline added.
+                del err[pos:pos + 2]
+                break
 
-    result = process.wait()
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
     if testcase.output_files:
+        # Ignore stdout, but we insist on empty stderr and zero status.
+        if err or result:
+            raise AssertionError(
+                'Expected zero status and empty stderr, got %d and\n%s' %
+                (result, '\n'.join(err + out)))
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
                 raise AssertionError(
@@ -85,7 +92,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                                        'Output file {} did not match its expected output'.format(
                                            path))
     else:
-        out = normalize_error_messages(out)
+        out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))
