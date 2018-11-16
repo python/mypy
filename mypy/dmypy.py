@@ -194,16 +194,10 @@ def restart_server(args: argparse.Namespace, allow_sources: bool = False) -> Non
 def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import daemonize, Server, process_start_options
+    from mypy.dmypy_server import daemonize, process_start_options
     start_options = process_start_options(args.flags, allow_sources)
-    if sys.platform == 'win32':
-        if daemonize(start_options, timeout=args.timeout):
-            sys.exit(1)
-    else:
-        if daemonize(Server(start_options,
-                            timeout=args.timeout).serve,
-                    args.log_file) != 0:
-            sys.exit(1)
+    if daemonize(start_options, timeout=args.timeout, log_file=args.log_file):
+        sys.exit(1)
     wait_for_server()
 
 
@@ -384,9 +378,14 @@ def do_daemon(args: argparse.Namespace) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
     if args.options_data:
-        options_dict, timeout = pickle.loads(base64.b64decode(args.options_data))
+        options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
+        if log_file:
+            sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
+            fd = sys.stdout.fileno()
+            os.dup2(fd, 2)
+            os.dup2(fd, 1)
     else:
         options = process_start_options(args.flags, allow_sources=False)
         timeout = args.timeout

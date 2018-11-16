@@ -42,8 +42,10 @@ if MYPY:
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
 if sys.platform == 'win32':
-    def daemonize(opts: Options, timeout: Optional[int] = None) -> int:
-        """Create the daemon process via "dmypy daemon" and pass options via file
+    def daemonize(options: Options,
+                  timeout: Optional[int] = None,
+                  log_file: Optional[str] = None) -> int:
+        """Create the daemon process via "dmypy daemon" and pass options via command line
 
         This uses the DETACHED_PROCESS flag to invoke the Server.
         See https://docs.microsoft.com/en-us/windows/desktop/procthread/process-creation-flags
@@ -51,7 +53,7 @@ if sys.platform == 'win32':
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
-        pickeled_options = pickle.dumps((opts.snapshot(), timeout))
+        pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
         command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
         try:
             subprocess.Popen(command, creationflags=0x8)  # DETACHED_PROCESS
@@ -60,7 +62,9 @@ if sys.platform == 'win32':
             return e.returncode
 
 else:
-    def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
+    def daemonize(options: Options,
+                  timeout: Optional[int] = None,
+                  log_file: Optional[str] = None) -> int:
         """Arrange to call func() in a grandchild of the current process.
 
         Return 0 for success, exit status for failure, negative if
@@ -100,7 +104,7 @@ else:
                 fd = sys.stdout.fileno()
                 os.dup2(fd, 2)
                 os.dup2(fd, 1)
-            func()
+            Server(options, timeout).serve
         finally:
             # Make sure we never get back into the caller.
             os._exit(1)
