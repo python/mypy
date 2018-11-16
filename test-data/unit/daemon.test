@@ -1,0 +1,25 @@
+-- End-to-end test cases for the daemon (dmypy).
+-- These are special because they run multiple shell commands.
+
+[case testDaemonStartStop]
+$ dmypy start -- --follow-imports=error
+Daemon started
+$ dmypy stop
+Daemon stopped
+
+[case testDaemonBasic]
+$ dmypy start -- --follow-imports=error
+Daemon started
+$ dmypy check -- foo.py
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRun]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
