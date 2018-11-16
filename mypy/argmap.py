@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Sequence, Callable
 
-from mypy.types import Type, Instance, TupleType, AnyType, TypeOfAny
+from mypy.types import Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType
 from mypy import nodes
 
 
@@ -65,13 +65,23 @@ def map_actuals_to_formals(caller_kinds: List[int],
                 map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
         else:
             assert kind == nodes.ARG_STAR2
-            for j in range(ncallee):
-                # TODO tuple varargs complicate this
-                no_certain_match = (
-                    not map[j] or caller_kinds[map[j][0]] == nodes.ARG_STAR)
-                if ((callee_names[j] and no_certain_match)
-                        or callee_kinds[j] == nodes.ARG_STAR2):
-                    map[j].append(i)
+            argt = caller_arg_type(i)
+            if isinstance(argt, TypedDictType):
+                for name, value in argt.items.items():
+                    if name in callee_names:
+                        map[callee_names.index(name)].append(i)
+                    elif nodes.ARG_STAR2 in callee_kinds:
+                        map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
+            else:
+                # We don't exactly which **kwargs are provided by the
+                # caller. Assume that they will fill the remaining arguments.
+                for j in range(ncallee):
+                    # TODO tuple varargs complicate this
+                    no_certain_match = (
+                        not map[j] or caller_kinds[map[j][0]] == nodes.ARG_STAR)
+                    if ((callee_names[j] and no_certain_match)
+                            or callee_kinds[j] == nodes.ARG_STAR2):
+                        map[j].append(i)
     return map
 
 
@@ -95,13 +105,12 @@ def map_formals_to_actuals(caller_kinds: List[int],
     return actual_to_formal
 
 
-def get_actual_type(arg_type: Type, kind: int,
+def get_actual_type(arg_type: Type, kind: int, arg_name: Optional[str],
                     tuple_counter: List[int]) -> Type:
     """Return the type of an actual argument with the given kind.
 
     If the argument is a *arg, return the individual argument item.
     """
-
     if kind == nodes.ARG_STAR:
         if isinstance(arg_type, Instance):
             if arg_type.type.fullname() == 'builtins.list':
@@ -119,7 +128,10 @@ def get_actual_type(arg_type: Type, kind: int,
         else:
             return AnyType(TypeOfAny.from_error)
     elif kind == nodes.ARG_STAR2:
-        if isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
+        if isinstance(arg_type, TypedDictType):
+            assert arg_name is not None
+            return arg_type.items[arg_name]
+        elif isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
             return arg_type.args[1]
         else:

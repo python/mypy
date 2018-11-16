@@ -63,7 +63,7 @@ def infer_constraints_for_callable(
                 continue
 
             actual_type = get_actual_type(actual_arg_type, arg_kinds[actual],
-                                          tuple_counter)
+                                          callee.arg_names, tuple_counter)
             c = infer_constraints(callee.arg_types[i], actual_type,
                                   SUPERTYPE_OF)
             constraints.extend(c)

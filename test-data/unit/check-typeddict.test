@@ -1413,3 +1413,20 @@ from mypy_extensions import TypedDict
 tp = TypedDict('tp', {'x': int})
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testTypedDictAsStarStarArg]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+
+def f(x: int, y: str) -> None: ...
+def g(x: int, y: int) -> None: ...
+
+a: A
+f(**a)
+g(**a) # E: Argument 1 to "g" has incompatible type "**A"; expected "int"
+
+# TODO:
+# - missing arguments
+# - too many arguments
+# - caller takes **kwargs

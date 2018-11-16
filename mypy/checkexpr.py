@@ -704,8 +704,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)
 
-            self.check_argument_types(arg_types, arg_kinds, callee,
-                                      formal_to_actual, context,
+            self.check_argument_types(arg_types, arg_kinds, callee.arg_names,
+                                      callee, formal_to_actual, context,
                                       messages=arg_messages)
 
             if (callee.is_type_obj() and (len(arg_types) == 1)
@@ -1139,7 +1139,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ok = False
         return ok
 
-    def check_argument_types(self, arg_types: List[Type], arg_kinds: List[int],
+    def check_argument_types(self,
+                             arg_types: List[Type],
+                             arg_kinds: List[int],
+                             formal_names: List[Optional[str]],
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
@@ -1173,7 +1176,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         and arg_kinds[actual] == nodes.ARG_STAR):
                     # The tuple is exhausted. Continue with further arguments.
                     continue
-                actual_type = get_actual_type(arg_type, arg_kinds[actual],
+                actual_type = get_actual_type(arg_type, arg_kinds[actual], formal_names[i],
                                               tuple_counter)
                 check_arg(actual_type, arg_type, arg_kinds[actual],
                           callee.arg_types[i],
@@ -1188,6 +1191,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     while tuple_counter[0] < len(tuplet.items):
                         actual_type = get_actual_type(arg_type,
                                                       arg_kinds[actual],
+                                                      callee.arg_names[i],
                                                       tuple_counter)
                         check_arg(actual_type, arg_type, arg_kinds[actual],
                                   callee.arg_types[i],
@@ -1669,8 +1673,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 raise Finished
 
         try:
-            self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                      context=context, check_arg=check_arg)
+            self.check_argument_types(arg_types, arg_kinds, callee.arg_names, callee,
+                                      formal_to_actual, context=context, check_arg=check_arg)
             return True
         except Finished:
             return False
