@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from unittest import TestCase, main
 from multiprocessing import Process
 
@@ -25,10 +26,10 @@ class IPCTests(TestCase):
         msg = 't' * 100001  # longer than the max read size of 100_000
         p = Process(target=server, args=(msg, pid), daemon=True)
         p.start()
+        time.sleep(1)  # wait for server to get set up
         with IPCClient(CONNECTION_NAME.format(pid), timeout=10) as client:
             client.write(b'')  # signal we are ready for a write from the server
             assert client.read() == msg.encode()
-        p.join()
 
 
 if __name__ == '__main__':
