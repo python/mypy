@@ -5,6 +5,7 @@ These are special because they run multiple shell commands.
 
 import os
 import subprocess
+import sys
 
 from typing import List, Tuple
 
@@ -25,6 +26,8 @@ class DaemonSuite(DataSuite):
 
 
 def test_daemon(testcase: DataDrivenTestCase) -> None:
+    if sys.platform == 'win32':
+        return  # These tests don't run on Windows yet.
     assert testcase.old_cwd is not None, "test was not properly set up"
     for i, cmd in enumerate(parse_script(testcase.input)):
         input = cmd[0]
