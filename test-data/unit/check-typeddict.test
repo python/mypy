@@ -1434,5 +1434,6 @@ f4(**a) # E: Too many arguments for "f4"
 f5(**a) # E: Too few arguments for "f5"
 
 # TODO:
+# - constraint inference
 # - duplicate args due to **a
 # - caller takes **kwargs

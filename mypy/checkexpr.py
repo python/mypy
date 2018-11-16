@@ -1064,6 +1064,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Return False if there were any errors. Otherwise return True
         """
+        if messages:
+            assert context, "Internal error: messages gives without context"
+        elif context is None:
+            context = TempNode(AnyType(TypeOfAny.special_form))  # Avoid "is None" checks
+
         # TODO(jukka): We could return as soon as we find an error if messages is None.
         formal_kinds = callee.arg_kinds
 
@@ -1084,36 +1089,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ok = False
                 if kind != nodes.ARG_NAMED:
                     if messages:
-                        assert context, "Internal error: messages given without context"
                         messages.too_many_arguments(callee, context)
                 else:
                     if messages:
-                        assert context, "Internal error: messages given without context"
                         assert actual_names, "Internal error: named kinds without names given"
                         act_name = actual_names[i]
                         assert act_name is not None
-                        messages.unexpected_keyword_argument(
-                            callee, act_name, context)
+                        messages.unexpected_keyword_argument(callee, act_name, context)
                     is_unexpected_arg_error = True
-            elif kind == nodes.ARG_STAR and (
-                    nodes.ARG_STAR not in formal_kinds):
+            elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in formal_kinds)
+                      or kind == nodes.ARG_STAR2):
                 actual_type = actual_types[i]
-                if isinstance(actual_type, TupleType):
+                if isinstance(actual_type, (TupleType, TypedDictType)):
                     if all_actuals.count(i) < len(actual_type.items):
                         # Too many tuple items as some did not match.
                         if messages:
-                            assert context, "Internal error: messages given without context"
                             messages.too_many_arguments(callee, context)
                         ok = False
-                # *args can be applied even if the function takes a fixed
+                # *args/**kwargs can be applied even if the function takes a fixed
                 # number of positional arguments. This may succeed at runtime.
-            elif kind == nodes.ARG_STAR2 and isinstance(actual_types[i], TypedDictType):
-                if all_actuals.count(i) < len(actual_types[i].items):
-                    # Too many tuple items as some did not match.
-                    if messages:
-                        assert context, "Internal error: messages given without context"
-                        messages.too_many_arguments(callee, context)
-                    ok = False
 
         # Check for too many or few values for formals.
         for i, kind in enumerate(formal_kinds):
@@ -1121,7 +1115,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                           not is_unexpected_arg_error):
                 # No actual for a mandatory positional formal.
                 if messages:
-                    assert context, "Internal error: messages given without context"
                     messages.too_few_arguments(callee, context, actual_names)
                 ok = False
             elif kind == nodes.ARG_NAMED and (not formal_to_actual[i] and
@@ -1130,7 +1123,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if messages:
                     argname = callee.arg_names[i]
                     assert argname is not None
-                    assert context, "Internal error: messages given without context"
                     messages.missing_named_argument(callee, context, argname)
                 ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
@@ -1139,14 +1131,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (self.chk.in_checked_function() or
                         isinstance(actual_types[formal_to_actual[i][0]], TupleType)):
                     if messages:
-                        assert context, "Internal error: messages given without context"
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
             elif (kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT) and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
-                    assert context, "Internal error: messages given without context"
                     messages.too_many_positional_arguments(callee, context)
                 ok = False
         return ok
