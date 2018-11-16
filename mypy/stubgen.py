@@ -884,8 +884,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
                 # using the inspect module
                 subpackages = [package.__name__ + "." + name
                                for name, val in inspect.getmembers(package)
-                               if inspect.ismodule(val)
-                               if val.__name__ == package.__name__ + "." + name]
+                               if inspect.ismodule(val)]
                 # recursively iterate through the subpackages
                 for submodule in walk_packages(subpackages):
                     yield submodule
