@@ -23,3 +23,22 @@ $ dmypy stop
 Daemon stopped
 [file foo.py]
 def f(): pass
+
+[case testDaemonRunRestart]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+$ dmypy run -- foo.py --follow-imports=error
+$ echo '[mypy]' >mypy.ini
+$ echo 'disallow_untyped_defs = True' >>mypy.ini
+$ dmypy run -- foo.py --follow-imports=error
+Restarting: configuration changed
+Daemon stopped
+Daemon started
+foo.py:1: error: Function is missing a type annotation
+== Return code: 1
+$ echo 'def f() -> None: pass' >foo.py
+$ dmypy run -- foo.py --follow-imports=error
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
