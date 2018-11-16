@@ -676,6 +676,7 @@ class MessageBuilder:
                     and m <= len(callee.arg_names)
                     and callee.arg_names[m - 1] is not None):
                 arg_name = callee.arg_names[m - 1]
+                assert arg_name is not None
                 arg_type_str, expected_type_str = self.format_distinctly(
                     arg_type.items[arg_name],
                     expected_type,
