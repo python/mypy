@@ -13,7 +13,7 @@ else:
     CONNECTION_NAME = 'dmypy-test-ipc-{}.sock'
 
 
-def server(msg: str, q: Queue) -> None:
+def server(msg: str, q: 'Queue[str]') -> None:
     server = IPCServer(CONNECTION_NAME.format(os.getpid()))
     q.put(server.connection_name)
     with server:
@@ -23,7 +23,7 @@ def server(msg: str, q: Queue) -> None:
 
 class IPCTests(TestCase):
     def test_transaction_large(self) -> None:
-        queue = Queue()
+        queue = Queue()  # type: Queue[str]
         msg = 't' * 100001  # longer than the max read size of 100_000
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
