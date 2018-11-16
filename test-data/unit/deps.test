@@ -392,13 +392,14 @@ class A:
 def f(x: object) -> None:
     if isinstance(x, A):
         x.g()
+def ff(x: object) -> None:
+    if isinstance(x, A):
+        pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
 -- The dependencies on the ctor are basically spurious but not a problem
-<m.A.__init__> -> m.f
-<m.A.__new__> -> m.f
 <m.A.g> -> m.f
-<m.A> -> m.A, m.f
+<m.A> -> m.A, m.f, m.ff
 
 [case testUnreachableIsInstance]
 class A:
@@ -413,9 +414,6 @@ def f(x: A) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
--- The dependencies on the ctor are basically spurious but not a problem
-<m.B.__init__> -> m.f
-<m.B.__new__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testAttributeWithClassType1]
@@ -826,6 +824,47 @@ def f(x: A) -> None:
 [out]
 <m.A> -> <m.f>, m.f
 <p.b.A> -> m
+
+[case testIgnoredMissingModuleAttribute]
+import a
+a.x  # type: ignore
+
+import b.c
+b.c.x  # type: ignore
+
+from b import c
+c.y  # type: ignore
+[file a.py]
+[file b/__init__.py]
+[file b/c.py]
+[builtins fixtures/module.pyi]
+[out]
+<a.x> -> m
+<a> -> m
+<b.c.x> -> m
+<b.c.y> -> m
+<b.c> -> m
+<b> -> m
+
+[case testIgnoredMissingInstanceAttribute]
+from a import C
+C().x  # type: ignore
+[file a.py]
+class C: pass
+[out]
+<a.C.__init__> -> m
+<a.C.__new__> -> m
+<a.C.x> -> m
+<a.C> -> m
+
+[case testIgnoredMissingClassAttribute]
+from a import C
+C.x  # type: ignore
+[file a.py]
+class C: pass
+[out]
+<a.C.x> -> m
+<a.C> -> m
 
 [case testDepsFromOverloadMod]
 # __dump_all__
@@ -1346,3 +1385,33 @@ class D(C):
 <m.C.mm> -> m.D.mm
 <m.C> -> m, m.C, m.D
 <m.D> -> m.D
+
+[case testDataclassDeps]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+Z = int
+
+@dataclass
+class A:
+    x: Z
+
+@dataclass
+class B(A):
+    y: int
+[builtins fixtures/list.pyi]
+
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__eq__> -> <m.B.__eq__>
+<m.A.__init__> -> <m.B.__init__>, m.B.__init__
+<m.A.__ne__> -> <m.B.__ne__>
+<m.A.__new__> -> <m.B.__new__>
+<m.A.x> -> <m.B.x>
+<m.A.y> -> <m.B.y>
+<m.A> -> m, m.A, m.B
+<m.A[wildcard]> -> m
+<m.B.y> -> m
+<m.B> -> m.B
+<m.Z> -> m
+<dataclasses.dataclass> -> m

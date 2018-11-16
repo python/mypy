@@ -21,6 +21,7 @@ import stat
 import sys
 import time
 import errno
+import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
@@ -183,7 +184,7 @@ def _build(sources: List[BuildSource],
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin = load_plugins(options, errors)
+    plugin, snapshot = load_plugins(options, errors)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -195,6 +196,7 @@ def _build(sources: List[BuildSource],
                            options=options,
                            version_id=__version__,
                            plugin=plugin,
+                           plugins_snapshot=snapshot,
                            errors=errors,
                            flush_errors=flush_errors,
                            fscache=fscache)
@@ -304,17 +306,20 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options, errors: Errors) -> Plugin:
+def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
     at least include the default plugin (it's last in the chain).
+    The second return value is a snapshot of versions/hashes of loaded user
+    plugins (for cache validation).
     """
     import importlib
+    snapshot = {}  # type: Dict[str, str]
 
     default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
-        return default_plugin
+        return default_plugin, snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
@@ -375,11 +380,27 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
                 '(in {})'.format(plugin_path))
         try:
             custom_plugins.append(plugin_type(options))
+            snapshot[module_name] = take_module_snapshot(module)
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
     # Custom plugins take precedence over the default plugin.
-    return ChainedPlugin(options, custom_plugins + [default_plugin])
+    return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
+
+
+def take_module_snapshot(module: types.ModuleType) -> str:
+    """Take plugin module snapshot by recording its version and hash.
+
+    We record _both_ hash and the version to detect more possible changes
+    (e.g. if there is a change in modules imported by a plugin).
+    """
+    if hasattr(module, '__file__'):
+        with open(module.__file__, 'rb') as f:
+            digest = hashlib.md5(f.read()).hexdigest()
+    else:
+        digest = 'unknown'
+    ver = getattr(module, '__version__', 'none')
+    return '{}:{}'.format(ver, digest)
 
 
 def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
@@ -426,6 +447,11 @@ class BuildManager(BuildManagerBase):
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
+      plugins_snapshot:
+                       Snapshot of currently active user plugins (versions and hashes)
+      old_plugins_snapshot:
+                       Plugins snapshot from previous incremental run (or None in
+                       non-incremental mode and if cache was not found)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
       cache_enabled:   Whether cache is being read. This is set based on options,
@@ -446,6 +472,7 @@ class BuildManager(BuildManagerBase):
                  options: Options,
                  version_id: str,
                  plugin: Plugin,
+                 plugins_snapshot: Dict[str, str],
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
@@ -471,7 +498,6 @@ class BuildManager(BuildManagerBase):
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
-        self.plugin = plugin
         self.flush_errors = flush_errors
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
@@ -487,6 +513,9 @@ class BuildManager(BuildManagerBase):
                                in self.options.shadow_file}
         # a mapping from each file being typechecked to its possible shadow file
         self.shadow_equivalence_map = {}  # type: Dict[str, Optional[str]]
+        self.plugin = plugin
+        self.plugins_snapshot = plugins_snapshot
+        self.old_plugins_snapshot = read_plugins_snapshot(self)
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -685,6 +714,30 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
                               blocker=True)
 
 
+def write_plugins_snapshot(manager: BuildManager) -> None:
+    """Write snapshot of versions and hashes of currently active plugins."""
+    name = os.path.join(_cache_dir_prefix(manager), '@plugins_snapshot.json')
+    if not atomic_write(name, json.dumps(manager.plugins_snapshot), '\n'):
+        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.report(0, 0, "Error writing plugins snapshot",
+                              blocker=True)
+
+
+def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
+    """Read cached snapshot of versions and hashes of plugins from previous run."""
+    name = os.path.join(_cache_dir_prefix(manager), '@plugins_snapshot.json')
+    snapshot = _load_json_file(name, manager,
+                               log_sucess='Plugins snapshot ',
+                               log_error='Could not load plugins snapshot: ')
+    if snapshot is None:
+        return None
+    if not isinstance(snapshot, dict):
+        manager.log('Could not load plugins snapshot: cache is not a dict: {}'
+                    .format(type(snapshot)))
+        return None
+    return snapshot
+
+
 def read_protocol_cache(manager: BuildManager,
                         graph: Graph) -> Optional[Dict[str, Set[str]]]:
     """Read and validate protocol dependencies cache.
@@ -848,6 +901,11 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                     manager.trace('    {}: {} != {}'
                                   .format(key, cached_options.get(key), current_options.get(key)))
         return None
+    if manager.old_plugins_snapshot and manager.plugins_snapshot:
+        # Check if plugins are still the same.
+        if manager.plugins_snapshot != manager.old_plugins_snapshot:
+            manager.log('Metadata abandoned for {}: plugins differ'.format(id))
+            return None
 
     manager.add_stats(fresh_metas=1)
     return m
@@ -2170,6 +2228,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         process_fine_grained_cache_graph(graph, manager)
     else:
         process_graph(graph, manager)
+        # Update plugins snapshot.
+        write_plugins_snapshot(manager)
+        manager.old_plugins_snapshot = manager.plugins_snapshot
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             # If we are running a daemon or are going to write cache for further fine grained use,
             # then we need to collect fine grained protocol dependencies.

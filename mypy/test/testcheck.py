@@ -10,7 +10,9 @@ from mypy import build
 from mypy.build import Graph
 from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
+from mypy.test.data import (
+    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+)
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
@@ -114,6 +116,11 @@ class TypeCheckSuite(DataSuite):
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
+        # Unload already loaded plugins, they may be updated.
+        for file, _ in testcase.files:
+            module = module_from_path(file)
+            if module.endswith('_plugin') and module in sys.modules:
+                del sys.modules[module]
         if incremental_step == 0 or incremental_step == 1:
             # In run 1, copy program text to program file.
             for module_name, program_path, program_text in module_data:

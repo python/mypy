@@ -382,6 +382,23 @@ More specifically, mypy will understand the use of ``sys.version_info`` and
    else:
        # Other systems
 
+As a special case, you can also use one of these checks in a top-level
+(unindented) ``assert``; this makes mypy skip the rest of the file.
+Example:
+
+.. code-block:: python
+
+   import sys
+
+   assert sys.platform != 'win32'
+
+   # The rest of this file doesn't apply to Windows.
+
+Some other expressions exhibit similar behavior; in particular,
+``typing.TYPE_CHECKING``, variables named ``MYPY``, and any variable
+whose name is passed to ``--always-true`` or ``--always-false``.
+(However, ``True`` and ``False`` are not treated specially!)
+
 .. note::
 
    Mypy currently does not support more complex checks, and does not assign

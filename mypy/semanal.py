@@ -80,7 +80,10 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import (
+    Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
+    DynamicClassDefContext
+)
 from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
@@ -261,6 +264,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     @property
     def is_typeshed_stub_file(self) -> bool:
         return self._is_typeshed_stub_file
+
+    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Add dependency from trigger to a target.
+
+        If the target is not given explicitly, use the current target.
+        """
+        if target is None:
+            target = self.scope.current_target()
+        self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
@@ -1720,6 +1732,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+        self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
@@ -1734,6 +1747,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
+        if len(s.lvalues) > 1:
+            return
+        lval = s.lvalues[0]
+        if not isinstance(lval, NameExpr) or not isinstance(s.rvalue, CallExpr):
+            return
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return
+        fname = call.callee.fullname
+        if fname:
+            hook = self.plugin.get_dynamic_class_hook(fname)
+            if hook:
+                hook(DynamicClassDefContext(call, lval.name, self))
 
     def unwrap_final(self, s: AssignmentStmt) -> None:
         """Strip Final[...] if present in an assignment.
@@ -2989,7 +3017,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         typ = AnyType(TypeOfAny.from_error)
                 else:
                     typ = AnyType(TypeOfAny.from_error)
-                expr.kind = MDEF
+                expr.kind = GDEF
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
             else:
@@ -3775,6 +3803,10 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
                 s.else_body = Block([])
             mark_block_unreachable(s.else_body)
             break
+
+
+def assert_will_always_fail(s: AssertStmt, options: Options) -> bool:
+    return infer_condition_value(s.expr, options) in (ALWAYS_FALSE, MYPY_FALSE)
 
 
 def infer_condition_value(expr: Expression, options: Options) -> int:

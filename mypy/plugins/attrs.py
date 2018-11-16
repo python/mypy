@@ -12,13 +12,14 @@ from mypy.nodes import (
     PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
 )
 from mypy.plugins.common import (
-    _get_argument, _get_bool_argument, _get_decorator_bool_argument
+    _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
     Overloaded, Instance, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
+from mypy.server.trigger import make_trigger, make_wildcard_trigger
 
 MYPY = False
 if MYPY:
@@ -198,7 +199,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         'frozen': frozen,
     }
 
-    adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
+    adder = MethodAdder(ctx)
     if init:
         _add_init(ctx, attributes, adder)
     if cmp:
@@ -248,6 +249,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
     super_attrs = []
     for super_info in ctx.cls.info.mro[1:-1]:
         if 'attrs' in super_info.metadata:
+            # Each class depends on the set of attributes in its attrs ancestors.
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(super_info.fullname()))
+
             for data in super_info.metadata['attrs']['attributes']:
                 # Only add an attribute if it hasn't been defined before.  This
                 # allows for overwriting attribute definitions by subclassing.
@@ -500,17 +504,14 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
 class MethodAdder:
     """Helper to add methods to a TypeInfo.
 
-    info: The TypeInfo on which we will add methods.
-    function_type: The type of __builtins__.function that will be used as the
-                   fallback for all methods added.
+    ctx: The ClassDefCtx we are using on which we will add methods.
     """
 
     # TODO: Combine this with the code build_namedtuple_typeinfo to support both.
 
-    def __init__(self, info: TypeInfo, function_type: Instance) -> None:
-        self.info = info
-        self.self_type = fill_typevars(info)
-        self.function_type = function_type
+    def __init__(self, ctx: 'mypy.plugin.ClassDefContext') -> None:
+        self.ctx = ctx
+        self.self_type = fill_typevars(ctx.cls.info)
 
     def add_method(self,
                    method_name: str, args: List[Argument], ret_type: Type,
@@ -521,23 +522,5 @@ class MethodAdder:
         self_type: The type to use for the self argument or None to use the inferred self type.
         tvd: If the method is generic these should be the type variables.
         """
-        from mypy.semanal import set_callable_name
         self_type = self_type if self_type is not None else self.self_type
-        args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
-        arg_types = [arg.type_annotation for arg in args]
-        arg_names = [arg.variable.name() for arg in args]
-        arg_kinds = [arg.kind for arg in args]
-        assert None not in arg_types
-        signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
-                                 ret_type, self.function_type)
-        if tvd:
-            signature.variables = [tvd]
-        func = FuncDef(method_name, args, Block([PassStmt()]))
-        func.info = self.info
-        func.type = set_callable_name(signature, func)
-        func._fullname = self.info.fullname() + '.' + method_name
-        func.line = self.info.line
-        self.info.names[method_name] = SymbolTableNode(MDEF, func)
-        # Add the created methods to the body so that they can get further semantic analysis.
-        # e.g. Forward Reference Resolution.
-        self.info.defn.defs.body.append(func)
+        add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
