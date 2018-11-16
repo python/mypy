@@ -671,6 +671,16 @@ class MessageBuilder:
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
 
+            if (arg_kind == ARG_STAR2
+                    and isinstance(arg_type, TypedDictType)
+                    and m <= len(callee.arg_names)
+                    and callee.arg_names[m - 1] is not None):
+                arg_name = callee.arg_names[m - 1]
+                arg_type_str, expected_type_str = self.format_distinctly(
+                    arg_type.items[arg_name],
+                    expected_type,
+                    bare=True)
+                arg_label = '"{}"'.format(arg_name)
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))

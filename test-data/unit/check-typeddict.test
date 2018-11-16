@@ -1418,13 +1418,16 @@ tp = TypedDict('tp', {'x': int})
 from mypy_extensions import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str})
+class B: pass
 
 def f(x: int, y: str) -> None: ...
 def g(x: int, y: int) -> None: ...
+def h(x: B, y: str) -> None: ...
 
 a: A
 f(**a)
-g(**a) # E: Argument 1 to "g" has incompatible type "**A"; expected "int"
+g(**a) # E: Argument "y" to "g" has incompatible type "str"; expected "int"
+h(**a) # E: Argument "x" to "h" has incompatible type "int"; expected "B"
 
 # TODO:
 # - missing arguments
