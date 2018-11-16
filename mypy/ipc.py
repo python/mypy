@@ -5,10 +5,8 @@ On Windows, this uses NamedPipes.
 """
 
 import contextlib
-import json
 import os
 import shutil
-import socket
 import sys
 import tempfile
 
@@ -23,13 +21,14 @@ from types import TracebackType
 if sys.platform == 'win32':
     # This may be private, but it is needed for IPC on Windows, and is basically stable
     import _winapi
-    HANDLE = int
-
+    _IPCHandle = int
+else:
+    import socket
+    _IPCHandle = socket.socket
 
 class IPCException(Exception):
     """Exception for IPC issues."""
     pass
-
 
 class IPCBase:
     """Base class for communication between the dmypy client and server.
@@ -38,10 +37,7 @@ class IPCBase:
     and writing.
     """
 
-    if sys.platform == 'win32':
-        connection = None  # type: int
-    else:
-        connection = None  # type: socket.socket
+    connection = None  # type: _IPCHandle
 
     def __init__(self, name: str) -> None:
         self.READ_SIZE = 100000
