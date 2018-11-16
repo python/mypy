@@ -161,7 +161,11 @@ class IPCServer(IPCBase):
                 raise IPCException('Invalid handle to pipe: {err}'.format(err))
             # NOTE: It is theoretically possible that this will hang forever if the
             # client never connects, though this can be "solved" by killing the server
-            _winapi.ConnectNamedPipe(self.connection, _winapi.NULL)
+            try:
+                _winapi.ConnectNamedPipe(self.connection, _winapi.NULL)
+            except WindowsError as e:
+                if e.winerror == _winapi.ERROR_PIPE_CONNECTED:
+                    pass  # The client already exists, which is fine.
         else:
             try:
                 self.connection, _ = self.sock.accept()
