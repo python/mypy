@@ -34,8 +34,6 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
         expected_lines = cmd[1:]
         assert input.startswith('$')
         input = input[1:].strip()
-        if input.startswith('dmypy '):
-            input = 'python3 -m mypy.' + input
         sts, output = run_cmd(input)
         output_lines = output.splitlines()
         if sts:
@@ -66,6 +64,8 @@ def parse_script(input: str) -> List[str]:
 
 
 def run_cmd(input: str) -> Tuple[int, str]:
+    if input.startswith('dmypy '):
+        input = sys.executable + ' -m mypy.' + input
     env = os.environ.copy()
     env['PYTHONPATH'] = PREFIX
     try:
