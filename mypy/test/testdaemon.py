@@ -18,6 +18,7 @@ daemon_files = [
     'daemon.test',
 ]
 
+
 class DaemonSuite(DataSuite):
     files = daemon_files
 
@@ -44,13 +45,13 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
                                    (i + 1, input))
 
 
-def parse_script(input: str) -> List[str]:
+def parse_script(input: List[str]) -> List[List[str]]:
     # Parse testcase.input into commands.
     # Each command starts with a line starting with '$'.
     # The first line (less '$') is sent to the shell.
     # The remaining lines are expected output.
     commands = []
-    cmd = []
+    cmd = []  # type: List[str]
     for line in input:
         if line.startswith('$'):
             if cmd:
