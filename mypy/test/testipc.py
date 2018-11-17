@@ -7,14 +7,11 @@ from multiprocessing import Process, Queue
 from mypy.ipc import IPCClient, IPCServer, IPCException
 
 
-if sys.platform == 'win32':
-    CONNECTION_NAME = r'\\.\pipe\dmypy-ipc-test-{}.pipe'
-else:
-    CONNECTION_NAME = 'dmypy-test-ipc-{}.sock'
+CONNECTION_NAME = 'dmypy-test-ipc.sock'
 
 
 def server(msg: str, q: 'Queue[str]') -> None:
-    server = IPCServer(CONNECTION_NAME.format(os.getpid()))
+    server = IPCServer(CONNECTION_NAME)
     q.put(server.connection_name)
     with server:
         server.write(msg.encode())
@@ -28,7 +25,7 @@ class IPCTests(TestCase):
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
-        with IPCClient(connection_name, timeout=10) as client:
+        with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
         queue.close()
         queue.join_thread()
