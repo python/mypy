@@ -77,7 +77,4 @@ def run_cmd(input: str) -> Tuple[int, str]:
                                          env=env)
         return 0, output
     except subprocess.CalledProcessError as err:
-        output = err.output
-        if err.stderr:
-            output = err.stderr + output
-        return err.returncode, output
+        return err.returncode, err.output
