@@ -1,6 +1,6 @@
 """Plugin to provide accurate types for some parts of the ctypes module."""
 
-from typing import Optional
+from typing import List, Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
@@ -150,7 +150,7 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """Callback to provide an accurate type for ctypes.Array.value."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types = []
+        types = []  # type: List[Type]
         for tp in union_items(et):
             if isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_char':
                 types.append(ctx.api.named_generic_type('builtins.bytes', []))
