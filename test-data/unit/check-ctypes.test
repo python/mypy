@@ -82,6 +82,15 @@ reveal_type(cua.value)  # E: Revealed type is 'Union[builtins.bytes, builtins.st
 cua.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "Union[ctypes.c_char, ctypes.c_wchar]"
 [builtins fixtures/floatdict.pyi]
 
+[case testCtypesAnyUnionArrayAttrs]
+import ctypes
+from typing import Any, Union
+
+caa: ctypes.Array[Union[ctypes.c_char, Any]]
+reveal_type(caa.value)  # E: Revealed type is 'Union[builtins.bytes, Any]'
+reveal_type(caa.raw)  # E: Revealed type is 'builtins.bytes'
+[builtins fixtures/floatdict.pyi]
+
 [case testCtypesOtherUnionArrayAttrs]
 import ctypes
 from typing import Union
@@ -89,6 +98,14 @@ from typing import Union
 cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_int]]
 cua.value  # E: ctypes.Array attribute "value" is only available with element type c_char or c_wchar, not "Union[ctypes.c_char, ctypes.c_int]"
 cua.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "Union[ctypes.c_char, ctypes.c_int]"
+[builtins fixtures/floatdict.pyi]
+
+[case testCtypesAnyArrayAttrs]
+import ctypes
+
+aa: ctypes.Array[Any]
+reveal_type(aa.value)  # E: Revealed type is 'Any'
+reveal_type(aa.raw)  # E: Revealed type is 'builtins.bytes'
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesOtherArrayAttrs]
