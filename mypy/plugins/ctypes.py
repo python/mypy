@@ -6,7 +6,7 @@ from typing import List, Optional
 import mypy.plugin
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype
-from mypy.types import CallableType, Instance, Type, UnionType, union_items
+from mypy.types import AnyType, CallableType, Instance, Type, TypeOfAny, UnionType, union_items
 
 
 def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInterface'
@@ -17,7 +17,7 @@ def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInte
     """
     if tp.type.has_base('ctypes._SimpleCData'):
         simplecdata_base = map_instance_to_supertype(tp,
-            api.named_generic_type('ctypes._SimpleCData', []).type)
+            api.named_generic_type('ctypes._SimpleCData', [AnyType(TypeOfAny.special_form)]).type)
         assert len(simplecdata_base.args) == 1, '_SimpleCData takes exactly one type argument'
         return simplecdata_base.args[0]
     return None
