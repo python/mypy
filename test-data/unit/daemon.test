@@ -11,6 +11,7 @@ Daemon stopped
 $ dmypy start -- --follow-imports=error
 Daemon started
 $ dmypy check -- foo.py
+$ dmypy recheck
 $ dmypy stop
 Daemon stopped
 [file foo.py]
@@ -42,3 +43,42 @@ $ dmypy stop
 Daemon stopped
 [file foo.py]
 def f(): pass
+
+[case testDaemonStatusKillRestartRecheck]
+$ dmypy status
+No status file found
+== Return code: 1
+$ dmypy stop
+No status file found
+== Return code: 1
+$ dmypy kill
+No status file found
+== Return code: 1
+$ dmypy recheck
+No status file found
+== Return code: 1
+$ dmypy start --  --follow-imports=error
+Daemon started
+$ dmypy status
+Daemon is up and running
+$ dmypy start
+Daemon is still alive
+== Return code: 1
+$ dmypy restart --  --follow-imports=error
+Daemon stopped
+Daemon started
+$ dmypy stop
+Daemon stopped
+$ dmypy status
+No status file found
+== Return code: 1
+$ dmypy restart --  --follow-imports=error
+Daemon started
+$ dmypy recheck
+Command 'recheck' is only valid after a 'check' command
+== Return code: 1
+$ dmypy kill
+Daemon killed
+$ dmypy status
+Daemon has died
+== Return code: 1
