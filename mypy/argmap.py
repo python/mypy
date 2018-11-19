@@ -1,6 +1,6 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
-from typing import List, Optional, Sequence, Callable
+from typing import List, Optional, Sequence, Callable, Set
 
 from mypy.types import Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType
 from mypy import nodes
@@ -105,37 +105,60 @@ def map_formals_to_actuals(caller_kinds: List[int],
     return actual_to_formal
 
 
-def get_actual_type(arg_type: Type, kind: int, arg_name: Optional[str],
-                    tuple_counter: List[int]) -> Type:
-    """Return the type of an actual argument with the given kind.
+class ArgTypeMapper:
+    """Utility class for mapping actual argument types to formal argument types.
 
-    If the argument is a *arg, return the individual argument item.
+    The main job is to expand tuple *args and typed dict **kwargs in caller, and to
+    keep track of which tuple/typed dict items have already been consumed.
     """
-    if kind == nodes.ARG_STAR:
-        if isinstance(arg_type, Instance):
-            if arg_type.type.fullname() == 'builtins.list':
-                # List *arg.
-                return arg_type.args[0]
-            elif arg_type.args:
-                # TODO try to map type arguments to Iterable
-                return arg_type.args[0]
+
+    def __init__(self) -> None:
+        # Next tuple *args index to use.
+        self.tuple_index = 0
+        # Keyword arguments in TypedDict **kwargs used.
+        self.kwargs_used = set()  # type: Set[str]
+
+    def get_actual_type(self, arg_type: Type, kind: int, arg_name: Optional[str]) -> List[Type]:
+        """Return the type(s) of an actual argument with the given kind.
+
+        If the argument is a *args, return the individual argument item. The
+        tuple_counter argument tracks the next unused tuple item.
+
+        If the argument is a **kwargs, return the item type based on argument name,
+        or all item types otherwise.
+        """
+        if kind == nodes.ARG_STAR:
+            if isinstance(arg_type, Instance):
+                if arg_type.type.fullname() == 'builtins.list':
+                    # List *arg.
+                    return [arg_type.args[0]]
+                elif arg_type.args:
+                    # TODO try to map type arguments to Iterable
+                    return [arg_type.args[0]]
+                else:
+                    return [AnyType(TypeOfAny.from_error)]
+            elif isinstance(arg_type, TupleType):
+                # Get the next tuple item of a tuple *arg.
+                self.tuple_index += 1
+                return [arg_type.items[self.tuple_index - 1]]
             else:
-                return AnyType(TypeOfAny.from_error)
-        elif isinstance(arg_type, TupleType):
-            # Get the next tuple item of a tuple *arg.
-            tuple_counter[0] += 1
-            return arg_type.items[tuple_counter[0] - 1]
+                return [AnyType(TypeOfAny.from_error)]
+        elif kind == nodes.ARG_STAR2:
+            if isinstance(arg_type, TypedDictType):
+                if arg_name in arg_type.items:
+                    # Lookup type based on keyword argument name.
+                    assert arg_name is not None
+                    self.kwargs_used.add(arg_name)
+                    return [arg_type.items[arg_name]]
+                else:
+                    # Callee takes **kwargs. Give all remaining keyword args.
+                    return [value for key, value in arg_type.items.items()
+                            if key not in self.kwargs_used]
+            elif isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
+                # Dict **arg. TODO more general (Mapping)
+                return [arg_type.args[1]]
+            else:
+                return [AnyType(TypeOfAny.from_error)]
         else:
-            return AnyType(TypeOfAny.from_error)
-    elif kind == nodes.ARG_STAR2:
-        if isinstance(arg_type, TypedDictType):
-            assert arg_name is not None
-            return arg_type.items[arg_name]
-        elif isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
-            # Dict **arg. TODO more general (Mapping)
-            return arg_type.args[1]
-        else:
-            return AnyType(TypeOfAny.from_error)
-    else:
-        # No translation for other kinds.
-        return arg_type
+            # No translation for other kinds.
+            return [arg_type]

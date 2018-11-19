@@ -1447,3 +1447,23 @@ def f1(x: T, y: S) -> Union[T, S]: ...
 A = TypedDict('A', {'y': int, 'x': str})
 a: A
 reveal_type(f1(**a)) # E: Revealed type is 'Union[builtins.str*, builtins.int*]'
+
+[case testTypedDictAsStarStarArgCalleeKwargs]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+B = TypedDict('B', {'x': str, 'y': str})
+
+def f(**kwargs: str) -> None: ...
+def g(x: int, **kwargs: str) -> None: ...
+
+a: A
+b: B
+f(**a) # E: Argument 1 to "f" has incompatible type "**A"; expected "str"
+f(**b)
+g(**a)
+g(**b) # E: Argument "x" to "g" has incompatible type "str"; expected "int"
+g(1, **a) # E: "g" gets multiple values for keyword argument "x"
+g(1, **b) # E: "g" gets multiple values for keyword argument "x" \
+          # E: Argument "x" to "g" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]

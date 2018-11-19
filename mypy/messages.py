@@ -674,7 +674,8 @@ class MessageBuilder:
             if (arg_kind == ARG_STAR2
                     and isinstance(arg_type, TypedDictType)
                     and m <= len(callee.arg_names)
-                    and callee.arg_names[m - 1] is not None):
+                    and callee.arg_names[m - 1] is not None
+                    and callee.arg_kinds[m - 1] != ARG_STAR2):
                 arg_name = callee.arg_names[m - 1]
                 assert arg_name is not None
                 arg_type_str, expected_type_str = self.format_distinctly(

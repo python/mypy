@@ -13,7 +13,7 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
-from mypy.argmap import get_actual_type
+from mypy.argmap import ArgTypeMapper
 
 MYPY = False
 if MYPY:
@@ -54,7 +54,7 @@ def infer_constraints_for_callable(
     Return a list of constraints.
     """
     constraints = []  # type: List[Constraint]
-    tuple_counter = [0]
+    mapper = ArgTypeMapper()
 
     for i, actuals in enumerate(formal_to_actual):
         for actual in actuals:
@@ -62,11 +62,12 @@ def infer_constraints_for_callable(
             if actual_arg_type is None:
                 continue
 
-            actual_type = get_actual_type(actual_arg_type, arg_kinds[actual],
-                                          callee.arg_names[i], tuple_counter)
-            c = infer_constraints(callee.arg_types[i], actual_type,
-                                  SUPERTYPE_OF)
-            constraints.extend(c)
+            actual_types = mapper.get_actual_type(actual_arg_type, arg_kinds[actual],
+                                                  callee.arg_names[i])
+            for actual_type in actual_types:
+                c = infer_constraints(callee.arg_types[i], actual_type,
+                                      SUPERTYPE_OF)
+                constraints.extend(c)
 
     return constraints
 

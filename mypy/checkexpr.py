@@ -51,7 +51,7 @@ from mypy.subtypes import (
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.argmap import get_actual_type, map_actuals_to_formals, map_formals_to_actuals
+from mypy.argmap import ArgTypeMapper, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
@@ -1180,7 +1180,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         messages = messages or self.msg
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
-        tuple_counter = [0]
+        mapper = ArgTypeMapper()
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
                 arg_type = arg_types[actual]
@@ -1197,15 +1197,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Get the type of an individual actual argument (for *args
                 # and **args this is the item type, not the collection type).
                 if (isinstance(arg_type, TupleType)
-                        and tuple_counter[0] >= len(arg_type.items)
+                        and mapper.tuple_index >= len(arg_type.items)
                         and arg_kinds[actual] == nodes.ARG_STAR):
                     # The tuple is exhausted. Continue with further arguments.
                     continue
-                actual_type = get_actual_type(arg_type, arg_kinds[actual], formal_names[i],
-                                              tuple_counter)
-                check_arg(actual_type, arg_type, arg_kinds[actual],
-                          callee.arg_types[i],
-                          actual + 1, i + 1, callee, context, messages)
+                actual_types = mapper.get_actual_type(arg_type, arg_kinds[actual], formal_names[i])
+                for actual_type in actual_types:
+                    check_arg(actual_type, arg_type, arg_kinds[actual],
+                              callee.arg_types[i],
+                              actual + 1, i + 1, callee, context, messages)
 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
@@ -1213,12 +1213,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (callee.arg_kinds[i] == nodes.ARG_STAR and
                         arg_kinds[actual] == nodes.ARG_STAR and
                         isinstance(tuplet, TupleType)):
-                    while tuple_counter[0] < len(tuplet.items):
-                        actual_type = get_actual_type(arg_type,
-                                                      arg_kinds[actual],
-                                                      callee.arg_names[i],
-                                                      tuple_counter)
-                        check_arg(actual_type, arg_type, arg_kinds[actual],
+                    while mapper.tuple_index < len(tuplet.items):
+                        actual_types = mapper.get_actual_type(arg_type,
+                                                              arg_kinds[actual],
+                                                              callee.arg_names[i])
+                        assert len(actual_types) == 1
+                        check_arg(actual_types[0], arg_type, arg_kinds[actual],
                                   callee.arg_types[i],
                                   actual + 1, i + 1, callee, context, messages)
 
