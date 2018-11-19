@@ -23,7 +23,11 @@ class DaemonSuite(DataSuite):
     files = daemon_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_daemon(testcase)
+        try:
+            test_daemon(testcase)
+        finally:
+            # Kill the daemon if it's still running.
+            run_cmd('dmypy kill')
 
 
 def test_daemon(testcase: DataDrivenTestCase) -> None:
