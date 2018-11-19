@@ -48,6 +48,26 @@ for myx in mya:
     reveal_type(myx)  # E: Revealed type is '__main__.MyCInt*'
 [builtins fixtures/floatdict.pyi]
 
+[case testCtypesArrayUnionElementType]
+import ctypes
+from typing import Union
+
+class MyCInt(ctypes.c_int):
+    pass
+
+mya: ctypes.Array[Union[MyCInt, ctypes.c_uint]]
+reveal_type(mya)  # E: Revealed type is 'ctypes.Array[Union[__main__.MyCInt, ctypes.c_uint]]'
+reveal_type(mya[0])  # E: Revealed type is 'Union[__main__.MyCInt, builtins.int]'
+reveal_type(mya[1:3])  # E: Revealed type is 'builtins.list[Union[__main__.MyCInt, builtins.int]]'
+# TODO: The __setitem__ hook does not handle unions correctly yet
+# mya[0] = 42  # OK
+# mya[1] = ctypes.c_uint(42)  # error
+# mya[2] = MyCInt(42)  # error
+# mya[3] = b"bytes"  # error
+for myx in mya:
+    reveal_type(myx)  # E: Revealed type is 'Union[__main__.MyCInt, builtins.int]'
+[builtins fixtures/floatdict.pyi]
+
 [case testCtypesCharArrayAttrs]
 import ctypes
 

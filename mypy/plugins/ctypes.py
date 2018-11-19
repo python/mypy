@@ -57,7 +57,9 @@ def _autounboxed_cdata(tp: Type) -> Type:
     is returned.
     For all other CData types, including indirect _SimpleCData subclasses, tp is returned as-is.
     """
-    if isinstance(tp, Instance):
+    if isinstance(tp, UnionType):
+        return UnionType.make_simplified_union([_autounboxed_cdata(t) for t in tp.items])
+    elif isinstance(tp, Instance):
         for base in tp.type.bases:
             if base.type.fullname() == 'ctypes._SimpleCData':
                 # If tp has _SimpleCData as a direct base class,
