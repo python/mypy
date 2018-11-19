@@ -30,38 +30,40 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
     if sys.platform == 'win32':
         return  # These tests don't run on Windows yet.
     assert testcase.old_cwd is not None, "test was not properly set up"
-    for i, cmd in enumerate(parse_script(testcase.input)):
-        input = cmd[0]
-        expected_lines = cmd[1:]
-        assert input.startswith('$')
-        input = input[1:].strip()
-        sts, output = run_cmd(input)
+    for i, step in enumerate(parse_script(testcase.input)):
+        cmd = step[0]
+        expected_lines = step[1:]
+        assert cmd.startswith('$')
+        cmd = cmd[1:].strip()
+        sts, output = run_cmd(cmd)
         output_lines = output.splitlines()
         if sts:
             output_lines.append('== Return code: %d' % sts)
         assert_string_arrays_equal(expected_lines,
                                    output_lines,
                                    "Command %d (%s) did not give expected output" %
-                                   (i + 1, input))
+                                   (i + 1, cmd))
 
 
 def parse_script(input: List[str]) -> List[List[str]]:
-    # Parse testcase.input into commands.
-    # Each command starts with a line starting with '$'.
-    # The first line (less '$') is sent to the shell.
-    # The remaining lines are expected output.
-    commands = []
-    cmd = []  # type: List[str]
+    """Parse testcase.input into steps.
+
+    Each command starts with a line starting with '$'.
+    The first line (less '$') is sent to the shell.
+    The remaining lines are expected output.
+    """
+    steps = []
+    step = []  # type: List[str]
     for line in input:
         if line.startswith('$'):
-            if cmd:
-                assert cmd[0].startswith('$')
-                commands.append(cmd)
-                cmd = []
-        cmd.append(line)
-    if cmd:
-        commands.append(cmd)
-    return commands
+            if step:
+                assert step[0].startswith('$')
+                steps.append(step)
+                step = []
+        step.append(line)
+    if step:
+        steps.append(step)
+    return steps
 
 
 def run_cmd(input: str) -> Tuple[int, str]:
