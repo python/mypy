@@ -44,6 +44,27 @@ Daemon stopped
 [file foo.py]
 def f(): pass
 
+[case testDaemonRunRestartPluginVersion]
+$ dmypy run -- foo.py
+Daemon started
+$ echo ' ' >>plug.py
+$ dmypy run -- foo.py
+Restarting: plugins changed
+Daemon stopped
+Daemon started
+$ dmypy stop
+Daemon stopped
+[file mypy.ini]
+[[mypy]
+follow_imports = error
+plugins = plug.py
+[file foo.py]
+pass
+[file plug.py]
+from mypy.plugin import Plugin
+class Dummy(Plugin): pass
+def plugin(version): return Dummy
+
 [case testDaemonStatusKillRestartRecheck]
 $ dmypy status
 No status file found
