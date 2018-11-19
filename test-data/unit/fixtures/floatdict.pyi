@@ -17,8 +17,10 @@ class str:
     def __rmul__(self, n: int) -> str: ...
 
 class bytes: pass
+class unicode: pass
 
 class tuple(Generic[T]): pass
+class slice: pass
 class function: pass
 
 class ellipsis: pass
