@@ -1425,15 +1425,19 @@ def f2(x: int, y: int) -> None: ...
 def f3(x: B, y: str) -> None: ...
 def f4(x: int) -> None: pass
 def f5(x: int, y: str, z: int) -> None: pass
+def f6(x: int, z: str) -> None: pass
 
 a: A
 f1(**a)
 f2(**a) # E: Argument "y" to "f2" has incompatible type "str"; expected "int"
 f3(**a) # E: Argument "x" to "f3" has incompatible type "int"; expected "B"
-f4(**a) # E: Too many arguments for "f4"
+f4(**a) # E: Extra argument "y" from **args for "f4"
 f5(**a) # E: Too few arguments for "f5"
+f6(**a) # E: Extra argument "y" from **args for "f6"
+f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
+
 
 # TODO:
 # - constraint inference
-# - duplicate args due to **a
 # - caller takes **kwargs
+# ? non-total typeddict shouldn't generate extra arg errors

@@ -722,6 +722,20 @@ class MessageBuilder:
         msg = 'Too many arguments' + for_function(callee)
         self.fail(msg, context)
 
+    def too_many_arguments_from_typed_dict(self,
+                                           callee: CallableType,
+                                           arg_type: TypedDictType,
+                                           context: Context) -> None:
+        # Try to determine the name of the extra argument.
+        for key in arg_type.items:
+            if key not in callee.arg_names:
+                msg = 'Extra argument "{}" from **args'.format(key) + for_function(callee)
+                break
+        else:
+            self.too_many_arguments(callee, context)
+            return
+        self.fail(msg, context)
+
     def too_many_positional_arguments(self, callee: CallableType,
                                       context: Context) -> None:
         msg = 'Too many positional arguments' + for_function(callee)

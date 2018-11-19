@@ -1070,47 +1070,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             context = TempNode(AnyType(TypeOfAny.special_form))  # Avoid "is None" checks
 
         # TODO(jukka): We could return as soon as we find an error if messages is None.
-        formal_kinds = callee.arg_kinds
 
         # Collect list of all actual arguments matched to formal arguments.
         all_actuals = []  # type: List[int]
         for actuals in formal_to_actual:
             all_actuals.extend(actuals)
 
-        is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors.
-        ok = True  # False if we've found any error.
-
-        # Check for extra actuals.
-        for i, kind in enumerate(actual_kinds):
-            if i not in all_actuals and (
-                    kind != nodes.ARG_STAR or
-                    not is_empty_tuple(actual_types[i])):
-                # Extra actual: not matched by a formal argument.
-                ok = False
-                if kind != nodes.ARG_NAMED:
-                    if messages:
-                        messages.too_many_arguments(callee, context)
-                else:
-                    if messages:
-                        assert actual_names, "Internal error: named kinds without names given"
-                        act_name = actual_names[i]
-                        assert act_name is not None
-                        messages.unexpected_keyword_argument(callee, act_name, context)
-                    is_unexpected_arg_error = True
-            elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in formal_kinds)
-                      or kind == nodes.ARG_STAR2):
-                actual_type = actual_types[i]
-                if isinstance(actual_type, (TupleType, TypedDictType)):
-                    if all_actuals.count(i) < len(actual_type.items):
-                        # Too many tuple items as some did not match.
-                        if messages:
-                            messages.too_many_arguments(callee, context)
-                        ok = False
-                # *args/**kwargs can be applied even if the function takes a fixed
-                # number of positional arguments. This may succeed at runtime.
+        ok, is_unexpected_arg_error = self.check_for_extra_actual_arguments(
+            callee, actual_types, actual_kinds, actual_names, all_actuals, context, messages)
 
         # Check for too many or few values for formals.
-        for i, kind in enumerate(formal_kinds):
+        for i, kind in enumerate(callee.arg_kinds):
             if kind == nodes.ARG_POS and (not formal_to_actual[i] and
                                           not is_unexpected_arg_error):
                 # No actual for a mandatory positional formal.
@@ -1140,6 +1110,59 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     messages.too_many_positional_arguments(callee, context)
                 ok = False
         return ok
+
+    def check_for_extra_actual_arguments(self,
+                                         callee: CallableType,
+                                         actual_types: List[Type],
+                                         actual_kinds: List[int],
+                                         actual_names: Optional[Sequence[Optional[str]]],
+                                         all_actuals: List[int],
+                                         context: Context,
+                                         messages: Optional[MessageBuilder]) -> Tuple[bool, bool]:
+        """Check for extra actual arguments.
+
+        Return tuple (was everything ok,
+                      was there an extra keyword argument error).
+        """
+
+        is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors
+        ok = True  # False if we've found any error
+
+        for i, kind in enumerate(actual_kinds):
+            if i not in all_actuals and (
+                    kind != nodes.ARG_STAR or
+                    not is_empty_tuple(actual_types[i])):
+                # Extra actual: not matched by a formal argument.
+                ok = False
+                if kind != nodes.ARG_NAMED:
+                    if messages:
+                        messages.too_many_arguments(callee, context)
+                else:
+                    if messages:
+                        assert actual_names, "Internal error: named kinds without names given"
+                        act_name = actual_names[i]
+                        assert act_name is not None
+                        messages.unexpected_keyword_argument(callee, act_name, context)
+                    is_unexpected_arg_error = True
+            elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in callee.arg_kinds)
+                      or kind == nodes.ARG_STAR2):
+                actual_type = actual_types[i]
+                if isinstance(actual_type, (TupleType, TypedDictType)):
+                    if all_actuals.count(i) < len(actual_type.items):
+                        # Too many tuple/dict items as some did not match.
+                        if messages:
+                            if (kind != nodes.ARG_STAR2
+                                    or not isinstance(actual_type, TypedDictType)):
+                                messages.too_many_arguments(callee, context)
+                            else:
+                                messages.too_many_arguments_from_typed_dict(callee, actual_type,
+                                                                            context)
+                                is_unexpected_arg_error = True
+                        ok = False
+                # *args/**kwargs can be applied even if the function takes a fixed
+                # number of positional arguments. This may succeed at runtime.
+
+        return ok, is_unexpected_arg_error
 
     def check_argument_types(self,
                              arg_types: List[Type],
