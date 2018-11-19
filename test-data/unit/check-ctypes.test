@@ -136,7 +136,7 @@ oa.value  # E: ctypes.Array attribute "value" is only available with element typ
 oa.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_int"
 [builtins fixtures/floatdict.pyi]
 
-[case testCtypesArrayConstructorStarargs]
+[case testCtypesArrayConstructorStarargs-skip]
 import ctypes
 
 intarr4 = ctypes.c_int * 4

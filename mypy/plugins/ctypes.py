@@ -90,6 +90,12 @@ def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
         assert len(ctx.arg_types) == 1, \
             "The stub of the ctypes.Array constructor should have a single vararg parameter"
         for arg_num, arg_type in enumerate(ctx.arg_types[0], 1):
+            # TODO This causes false errors if the argument list contains *args.
+            # In a function hook, the type of an *args parameter is the type of the iterable being
+            # unpacked. However, FunctionContext currently doesn't provide a way to differentiate
+            # between normal arguments and *args, so the iterable type is considered invalid.
+            # Once FunctionContext has an API for this, *args should be allowed here if the
+            # iterable's element type is compatible with the array element type.
             if not is_subtype(arg_type, allowed):
                 ctx.api.msg.fail(
                     'Array constructor argument {} of type "{}"'
