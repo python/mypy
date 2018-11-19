@@ -1,0 +1,124 @@
+-- End-to-end test cases for the daemon (dmypy).
+-- These are special because they run multiple shell commands.
+
+[case testDaemonStartStop]
+$ dmypy start -- --follow-imports=error
+Daemon started
+$ dmypy stop
+Daemon stopped
+
+[case testDaemonBasic]
+$ dmypy start -- --follow-imports=error
+Daemon started
+$ dmypy check -- foo.py
+$ dmypy recheck
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRun]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunRestart]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+$ dmypy run -- foo.py --follow-imports=error
+$ echo '[mypy]' >mypy.ini
+$ echo 'disallow_untyped_defs = True' >>mypy.ini
+$ dmypy run -- foo.py --follow-imports=error
+Restarting: configuration changed
+Daemon stopped
+Daemon started
+foo.py:1: error: Function is missing a type annotation
+== Return code: 1
+$ echo 'def f() -> None: pass' >foo.py
+$ dmypy run -- foo.py --follow-imports=error
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunRestartPluginVersion]
+$ dmypy run -- foo.py
+Daemon started
+$ echo ' ' >>plug.py
+$ dmypy run -- foo.py
+Restarting: plugins changed
+Daemon stopped
+Daemon started
+$ dmypy stop
+Daemon stopped
+[file mypy.ini]
+[[mypy]
+follow_imports = error
+plugins = plug.py
+[file foo.py]
+pass
+[file plug.py]
+from mypy.plugin import Plugin
+class Dummy(Plugin): pass
+def plugin(version): return Dummy
+
+[case testDaemonStatusKillRestartRecheck]
+$ dmypy status
+No status file found
+== Return code: 1
+$ dmypy stop
+No status file found
+== Return code: 1
+$ dmypy kill
+No status file found
+== Return code: 1
+$ dmypy recheck
+No status file found
+== Return code: 1
+$ dmypy start --  --follow-imports=error
+Daemon started
+$ dmypy status
+Daemon is up and running
+$ dmypy start
+Daemon is still alive
+== Return code: 1
+$ dmypy restart --  --follow-imports=error
+Daemon stopped
+Daemon started
+$ dmypy stop
+Daemon stopped
+$ dmypy status
+No status file found
+== Return code: 1
+$ dmypy restart --  --follow-imports=error
+Daemon started
+$ dmypy recheck
+Command 'recheck' is only valid after a 'check' command
+== Return code: 1
+$ dmypy kill
+Daemon killed
+$ dmypy status
+Daemon has died
+== Return code: 1
+
+[case testDaemonRecheck]
+$ dmypy start -- --follow-imports=error
+Daemon started
+$ dmypy check foo.py bar.py
+$ dmypy recheck
+$ dmypy recheck --update foo.py --remove bar.py sir_not_appearing_in_this_film.py
+foo.py:1: note: Import of 'bar' ignored
+foo.py:1: note: (Using --follow-imports=error, module not passed on command line)
+== Return code: 1
+$ dmypy recheck --update bar.py
+$ dmypy recheck --update sir_not_appearing_in_this_film.py
+$ dmypy recheck --update --remove
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+import bar
+[file bar.py]
+pass
