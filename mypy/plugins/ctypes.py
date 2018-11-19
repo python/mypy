@@ -47,9 +47,10 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
                 # specifies the type's "unboxed" version, which can always be converted back to
                 # the original "boxed" type.
                 allowed_types.append(unboxed)
-            
+
                 if t.type.has_base('ctypes._PointerLike'):
-                    # Pointer-like _SimpleCData subclasses can also be converted from an int or None.
+                    # Pointer-like _SimpleCData subclasses can also be converted from
+                    # an int or None.
                     allowed_types.append(api.named_generic_type('builtins.int', []))
                     allowed_types.append(api.named_generic_type('builtins.NoneType', []))
 
@@ -192,7 +193,8 @@ def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     if et is not None:
         types = []  # type: List[Type]
         for tp in union_items(et):
-            if isinstance(tp, AnyType) or isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_char':
+            if (isinstance(tp, AnyType)
+                    or isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_char'):
                 types.append(ctx.api.named_generic_type('builtins.bytes', []))
             else:
                 ctx.api.msg.fail(
