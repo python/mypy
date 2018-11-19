@@ -1436,8 +1436,14 @@ f5(**a) # E: Too few arguments for "f5"
 f6(**a) # E: Extra argument "y" from **args for "f6"
 f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
 
+[case testTypedDictAsStarStarArgConstraints]
+from typing import TypeVar, Union
+from mypy_extensions import TypedDict
 
-# TODO:
-# - constraint inference
-# - caller takes **kwargs
-# ? non-total typeddict shouldn't generate extra arg errors
+T = TypeVar('T')
+S = TypeVar('S')
+def f1(x: T, y: S) -> Union[T, S]: ...
+
+A = TypedDict('A', {'y': int, 'x': str})
+a: A
+reveal_type(f1(**a)) # E: Revealed type is 'Union[builtins.str*, builtins.int*]'
