@@ -19,10 +19,9 @@ import time
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
-from mypy.dmypy_os import alive, kill
 from mypy.ipc import IPCClient, IPCException
+from mypy.dmypy_os import alive, kill
 from mypy.options import Options
-from mypy.util import write_junit_xml
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
@@ -337,6 +336,8 @@ def check_output(response: Dict[str, Any], verbose: bool, junit_xml: Optional[st
     if verbose:
         show_stats(response)
     if junit_xml:
+        # Lazy import so this import doesn't slow things down when not writing junit
+        from mypy.util import write_junit_xml
         messages = (out + err).splitlines()
         write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml)
     if status_code:

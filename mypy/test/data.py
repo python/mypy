@@ -13,9 +13,9 @@ from abc import abstractmethod
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
-from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+root_dir = os.path.normpath(PREFIX)
 
 # File modify/create operation: copy module contents from source_path.
 UpdateFile = NamedTuple('UpdateFile', [('module', str),

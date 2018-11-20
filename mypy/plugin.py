@@ -384,24 +384,48 @@ class DefaultPlugin(Plugin):
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
+        from mypy.plugins import ctypes
+
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback
+        elif fullname == 'ctypes.Array':
+            return ctypes.array_constructor_callback
         return None
 
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+        from mypy.plugins import ctypes
+
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
+        elif fullname == 'ctypes.Array.__setitem__':
+            return ctypes.array_setitem_callback
         return None
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
+        from mypy.plugins import ctypes
+
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
+        elif fullname == 'ctypes.Array.__getitem__':
+            return ctypes.array_getitem_callback
+        elif fullname == 'ctypes.Array.__iter__':
+            return ctypes.array_iter_callback
+        return None
+
+    def get_attribute_hook(self, fullname: str
+                           ) -> Optional[Callable[[AttributeContext], Type]]:
+        from mypy.plugins import ctypes
+
+        if fullname == 'ctypes.Array.value':
+            return ctypes.array_value_callback
+        elif fullname == 'ctypes.Array.raw':
+            return ctypes.array_raw_callback
         return None
 
     def get_class_decorator_hook(self, fullname: str

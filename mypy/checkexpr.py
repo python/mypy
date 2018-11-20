@@ -51,7 +51,7 @@ from mypy.subtypes import (
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.constraints import get_actual_type
+from mypy.argmap import get_actual_type, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
@@ -3347,75 +3347,6 @@ def is_async_def(t: Type) -> bool:
     return isinstance(t, Instance) and t.type.fullname() == 'typing.Coroutine'
 
 
-def map_actuals_to_formals(caller_kinds: List[int],
-                           caller_names: Optional[Sequence[Optional[str]]],
-                           callee_kinds: List[int],
-                           callee_names: Sequence[Optional[str]],
-                           caller_arg_type: Callable[[int],
-                                                     Type]) -> List[List[int]]:
-    """Calculate mapping between actual (caller) args and formals.
-
-    The result contains a list of caller argument indexes mapping to each
-    callee argument index, indexed by callee index.
-
-    The caller_arg_type argument should evaluate to the type of the actual
-    argument type with the given index.
-    """
-    ncallee = len(callee_kinds)
-    map = [[] for i in range(ncallee)]  # type: List[List[int]]
-    j = 0
-    for i, kind in enumerate(caller_kinds):
-        if kind == nodes.ARG_POS:
-            if j < ncallee:
-                if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
-                                       nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
-                    map[j].append(i)
-                    j += 1
-                elif callee_kinds[j] == nodes.ARG_STAR:
-                    map[j].append(i)
-        elif kind == nodes.ARG_STAR:
-            # We need to know the actual type to map varargs.
-            argt = caller_arg_type(i)
-            if isinstance(argt, TupleType):
-                # A tuple actual maps to a fixed number of formals.
-                for _ in range(len(argt.items)):
-                    if j < ncallee:
-                        if callee_kinds[j] != nodes.ARG_STAR2:
-                            map[j].append(i)
-                        else:
-                            break
-                        if callee_kinds[j] != nodes.ARG_STAR:
-                            j += 1
-            else:
-                # Assume that it is an iterable (if it isn't, there will be
-                # an error later).
-                while j < ncallee:
-                    if callee_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
-                        break
-                    else:
-                        map[j].append(i)
-                    if callee_kinds[j] == nodes.ARG_STAR:
-                        break
-                    j += 1
-        elif kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
-            assert caller_names is not None, "Internal error: named kinds without names given"
-            name = caller_names[i]
-            if name in callee_names:
-                map[callee_names.index(name)].append(i)
-            elif nodes.ARG_STAR2 in callee_kinds:
-                map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
-        else:
-            assert kind == nodes.ARG_STAR2
-            for j in range(ncallee):
-                # TODO tuple varargs complicate this
-                no_certain_match = (
-                    not map[j] or caller_kinds[map[j][0]] == nodes.ARG_STAR)
-                if ((callee_names[j] and no_certain_match)
-                        or callee_kinds[j] == nodes.ARG_STAR2):
-                    map[j].append(i)
-    return map
-
-
 def is_empty_tuple(t: Type) -> bool:
     return isinstance(t, TupleType) and not t.items
 
@@ -3604,26 +3535,6 @@ def all_same_types(types: Iterable[Type]) -> bool:
     if len(types) == 0:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])
-
-
-def map_formals_to_actuals(caller_kinds: List[int],
-                           caller_names: Optional[Sequence[Optional[str]]],
-                           callee_kinds: List[int],
-                           callee_names: List[Optional[str]],
-                           caller_arg_type: Callable[[int],
-                                                     Type]) -> List[List[int]]:
-    """Calculate the reverse mapping of map_actuals_to_formals."""
-    formal_to_actual = map_actuals_to_formals(caller_kinds,
-                                              caller_names,
-                                              callee_kinds,
-                                              callee_names,
-                                              caller_arg_type)
-    # Now reverse the mapping.
-    actual_to_formal = [[] for _ in caller_kinds]  # type: List[List[int]]
-    for formal, actuals in enumerate(formal_to_actual):
-        for actual in actuals:
-            actual_to_formal[actual].append(formal)
-    return actual_to_formal
 
 
 def merge_typevars_in_callables_by_name(
