@@ -47,7 +47,7 @@ def f(): pass
 [case testDaemonRunRestartPluginVersion]
 $ dmypy run -- foo.py
 Daemon started
-$ echo # >>plug.py
+$ echo "" >> plug.py
 $ dmypy run -- foo.py
 Restarting: plugins changed
 Daemon stopped
