@@ -95,31 +95,30 @@ class IPCClient(IPCBase):
         super().__init__(name)
         if sys.platform == 'win32':
             timeout = timeout or 1000  # we need to set a timeout
-            while True:
-                try:
-                    _winapi.WaitNamedPipe(self.name, timeout)
-                except WindowsError as e:
-                    if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
-                        raise IPCException("Timed out waiting for connection.")
-                    else:
-                        raise
-                try:
-                    self.connection = _winapi.CreateFile(
-                        self.name,
-                        _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
-                        0,
-                        _winapi.NULL,
-                        _winapi.OPEN_EXISTING,
-                        0,
-                        _winapi.NULL,
-                    )
-                except WindowsError as e:
-                    if e.winerror == _winapi.ERROR_PIPE_BUSY:
-                        raise IPCException("The connection is busy.")
-                    else:
-                        raise
+            try:
+                _winapi.WaitNamedPipe(self.name, timeout)
+            except FileNotFoundError:
+                raise IPCException("The NamedPipe at {} was not found.".format(self.name))
+            except WindowsError as e:
+                if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
+                    raise IPCException("Timed out waiting for connection.")
                 else:
-                    break
+                    raise
+            try:
+                self.connection = _winapi.CreateFile(
+                    self.name,
+                    _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
+                    0,
+                    _winapi.NULL,
+                    _winapi.OPEN_EXISTING,
+                    0,
+                    _winapi.NULL,
+                )
+            except WindowsError as e:
+                if e.winerror == _winapi.ERROR_PIPE_BUSY:
+                    raise IPCException("The connection is busy.")
+                else:
+                    raise
             _winapi.SetNamedPipeHandleState(self.connection,
                                             _winapi.PIPE_READMODE_MESSAGE,
                                             None,
