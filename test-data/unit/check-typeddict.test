@@ -1467,3 +1467,27 @@ g(1, **a) # E: "g" gets multiple values for keyword argument "x"
 g(1, **b) # E: "g" gets multiple values for keyword argument "x" \
           # E: Argument "x" to "g" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictAsStarStarTwice]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+B = TypedDict('B', {'z': bytes})
+C = TypedDict('C', {'x': str, 'z': bytes})
+
+def f1(x: int, y: str, z: bytes) -> None: ...
+def f2(x: int, y: float, z: bytes) -> None: ...
+def f3(x: int, y: str, z: float) -> None: ...
+
+a: A
+b: B
+c: C
+f1(**a, **b)
+f1(**b, **a)
+f2(**a, **b) # E: Argument "y" to "f2" has incompatible type "str"; expected "float"
+f3(**a, **b) # E: Argument "z" to "f3" has incompatible type "bytes"; expected "float"
+f3(**b, **a) # E: Argument "z" to "f3" has incompatible type "bytes"; expected "float"
+f1(**a, **c) # E: "f1" gets multiple values for keyword argument "x" \
+             # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
+f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
+             # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
