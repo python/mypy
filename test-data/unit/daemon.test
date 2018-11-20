@@ -29,8 +29,8 @@ def f(): pass
 $ dmypy run -- foo.py --follow-imports=error
 Daemon started
 $ dmypy run -- foo.py --follow-imports=error
-$ echo '[mypy]' >mypy.ini
-$ echo 'disallow_untyped_defs = True' >>mypy.ini
+$ echo [mypy] >mypy.ini
+$ echo disallow_untyped_defs = True >>mypy.ini
 $ dmypy run -- foo.py --follow-imports=error
 Restarting: configuration changed
 Daemon stopped
@@ -47,7 +47,7 @@ def f(): pass
 [case testDaemonRunRestartPluginVersion]
 $ dmypy run -- foo.py
 Daemon started
-$ echo ' ' >>plug.py
+$ echo # >>plug.py
 $ dmypy run -- foo.py
 Restarting: plugins changed
 Daemon stopped

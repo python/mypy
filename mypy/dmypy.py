@@ -443,7 +443,7 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     if not isinstance(pid, int):
         raise BadStatus("pid field is not an int")
     if not alive(pid):
-        raise BadStatus("Daemon is dead")
+        raise BadStatus("Daemon has died")
     if 'connection_name' not in data:
         raise BadStatus("Invalid status file (no connection_name field)")
     connection_name = data['connection_name']

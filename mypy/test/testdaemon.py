@@ -31,8 +31,6 @@ class DaemonSuite(DataSuite):
 
 
 def test_daemon(testcase: DataDrivenTestCase) -> None:
-    if sys.platform == 'win32':
-        return  # These tests don't run on Windows yet.
     assert testcase.old_cwd is not None, "test was not properly set up"
     for i, step in enumerate(parse_script(testcase.input)):
         cmd = step[0]
