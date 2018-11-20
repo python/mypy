@@ -15,8 +15,9 @@ import signal
 import subprocess
 import sys
 import time
+import traceback
 
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
 
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
@@ -114,9 +115,9 @@ class BadStatus(Exception):
     pass
 
 
-def main() -> None:
+def main(argv: List[str]) -> None:
     """The code is top-down."""
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
     else:
@@ -124,6 +125,11 @@ def main() -> None:
             args.action(args)
         except BadStatus as err:
             sys.exit(err.args[0])
+        except Exception:
+            # We do this explicitly to avoid exceptions percolating up
+            # through mypy.api invocations
+            traceback.print_exc()
+            sys.exit(2)
 
 
 ActionFunction = Callable[[argparse.Namespace], None]
@@ -483,4 +489,4 @@ def is_running() -> bool:
 # Run main().
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
