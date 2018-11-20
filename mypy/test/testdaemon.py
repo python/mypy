@@ -37,6 +37,7 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
         expected_lines = step[1:]
         assert cmd.startswith('$')
         cmd = cmd[1:].strip()
+        cmd = cmd.replace('{python}', sys.executable)
         sts, output = run_cmd(cmd)
         output_lines = output.splitlines()
         if sts:
