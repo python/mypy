@@ -1144,7 +1144,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         messages.unexpected_keyword_argument(callee, act_name, context)
                     is_unexpected_arg_error = True
             elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in callee.arg_kinds)
-                      or kind == nodes.ARG_STAR2):
+                  or kind == nodes.ARG_STAR2):
                 actual_type = actual_types[i]
                 if isinstance(actual_type, (TupleType, TypedDictType)):
                     if all_actuals.count(i) < len(actual_type.items):

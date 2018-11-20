@@ -180,7 +180,7 @@ class ArgTypeExpander:
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
             elif (isinstance(actual_type, Instance)
-                      and (actual_type.type.fullname() == 'builtins.dict')):
+                  and (actual_type.type.fullname() == 'builtins.dict')):
                 # Dict **arg.
                 # TODO: Handle arbitrary Mapping
                 return actual_type.args[1]
