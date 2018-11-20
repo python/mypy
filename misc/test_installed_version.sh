@@ -9,7 +9,7 @@
 
 TO_INSTALL="${1-.}"
 PYTHON="${2-python3}"
-VENV="$(mktemp -d --tmpdir mypy-test-venv.XXXXXXXXXX)"
+VENV="$(mktemp -d -t mypy-test-venv.XXXXXXXXXX)"
 trap "rm -rf '$VENV'" EXIT
 
 "$PYTHON" -m venv "$VENV"
