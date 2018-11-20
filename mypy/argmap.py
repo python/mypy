@@ -117,10 +117,11 @@ class ArgTypeExpander:
        . def f(x: int, *args: str) -> None: ...
        . f(*(1, 'x', 1.1)
 
-    We'd call expand_actual_type twice:
+    We'd call expand_actual_type three times:
 
-      1. The first call would provide 'int' as the type of 'x'.
-      2. The second call would provide 'str' and 'float' as the types of '*args'.
+      1. The first call would provide 'int' as the actual type of 'x' (from '1').
+      2. The second call would provide 'str' as one of the actual types for '*args'.
+      2. The third call would provide 'float' as one of the actual types for '*args'.
 
     Construct a separate instance for each call since instances have per-call
     state.
@@ -136,7 +137,7 @@ class ArgTypeExpander:
                            actual_type: Type,
                            actual_kind: int,
                            formal_name: Optional[str],
-                           formal_kind: int) -> List[Type]:
+                           formal_kind: int) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
         If the actual argument is a tuple *args, return the individual tuple item(s) that
@@ -152,40 +153,39 @@ class ArgTypeExpander:
             if isinstance(actual_type, Instance):
                 if actual_type.type.fullname() == 'builtins.list':
                     # List *arg.
-                    return [actual_type.args[0]]
+                    return actual_type.args[0]
                 elif actual_type.args:
                     # TODO: Try to map type arguments to Iterable
-                    return [actual_type.args[0]]
+                    return actual_type.args[0]
                 else:
-                    return [AnyType(TypeOfAny.from_error)]
+                    return AnyType(TypeOfAny.from_error)
             elif isinstance(actual_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
-                if formal_kind != nodes.ARG_STAR:
-                    self.tuple_index += 1
-                    return [actual_type.items[self.tuple_index - 1]]
+                if self.tuple_index >= len(actual_type.items):
+                    # Exhausted a tuple -- continue to the next *args.
+                    self.tuple_index = 1
                 else:
-                    # Callee takes *args. Give all remaining actual *args.
-                    return actual_type.items[self.tuple_index:]
+                    self.tuple_index += 1
+                return actual_type.items[self.tuple_index - 1]
             else:
-                return [AnyType(TypeOfAny.from_error)]
+                return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
             if isinstance(actual_type, TypedDictType):
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
                     assert formal_name is not None
-                    self.kwargs_used.add(formal_name)
-                    return [actual_type.items[formal_name]]
                 else:
-                    # Callee takes **kwargs. Give all remaining actual **kwargs.
-                    return [value for key, value in actual_type.items.items()
-                            if key not in self.kwargs_used]
+                    # Pick an arbitrary item if no specified keyword is expected.
+                    formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
+                self.kwargs_used.add(formal_name)
+                return actual_type.items[formal_name]
             elif (isinstance(actual_type, Instance)
                       and (actual_type.type.fullname() == 'builtins.dict')):
                 # Dict **arg.
                 # TODO: Handle arbitrary Mapping
-                return [actual_type.args[1]]
+                return actual_type.args[1]
             else:
-                return [AnyType(TypeOfAny.from_error)]
+                return AnyType(TypeOfAny.from_error)
         else:
             # No translation for other kinds -- 1:1 mapping.
-            return [actual_type]
+            return actual_type

@@ -62,12 +62,10 @@ def infer_constraints_for_callable(
             if actual_arg_type is None:
                 continue
 
-            actual_types = mapper.expand_actual_type(actual_arg_type, arg_kinds[actual],
-                                                     callee.arg_names[i], callee.arg_kinds[i])
-            for actual_type in actual_types:
-                c = infer_constraints(callee.arg_types[i], actual_type,
-                                      SUPERTYPE_OF)
-                constraints.extend(c)
+            actual_type = mapper.expand_actual_type(actual_arg_type, arg_kinds[actual],
+                                                    callee.arg_names[i], callee.arg_kinds[i])
+            c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
+            constraints.extend(c)
 
     return constraints
 

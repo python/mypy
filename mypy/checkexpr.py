@@ -1193,13 +1193,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         not self.is_valid_keyword_var_arg(actual_type)):
                     is_mapping = is_subtype(actual_type, self.chk.named_type('typing.Mapping'))
                     messages.invalid_keyword_var_arg(actual_type, is_mapping, context)
-                expanded_actuals = mapper.expand_actual_type(
+                expanded_actual = mapper.expand_actual_type(
                     actual_type, actual_kind,
                     callee.arg_names[i], callee.arg_kinds[i])
-                for actual_item in expanded_actuals:
-                    check_arg(actual_item, actual_type, arg_kinds[actual],
-                              callee.arg_types[i],
-                              actual + 1, i + 1, callee, context, messages)
+                check_arg(expanded_actual, actual_type, arg_kinds[actual],
+                          callee.arg_types[i],
+                          actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
                   caller_kind: int,
