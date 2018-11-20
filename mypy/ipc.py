@@ -101,6 +101,8 @@ class IPCClient(IPCBase):
                 except WindowsError as e:
                     if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
                         raise IPCException("Timed out waiting for connection.")
+                    else:
+                        raise
                 try:
                     self.connection = _winapi.CreateFile(
                         self.name,
@@ -114,6 +116,8 @@ class IPCClient(IPCBase):
                 except WindowsError as e:
                     if e.winerror == _winapi.ERROR_PIPE_BUSY:
                         raise IPCException("The connection is busy.")
+                    else:
+                        raise
                 else:
                     break
             _winapi.SetNamedPipeHandleState(self.connection,
@@ -134,6 +138,8 @@ class IPCServer(IPCBase):
     BUFFER_SIZE = 2**16
 
     def __init__(self, name: str, timeout: Optional[int] = None) -> None:
+        if sys.platform == 'win32':
+            name = r'\\.\pipe\{}-{}.pipe'.format(name, os.getpid())
         super().__init__(name)
         if sys.platform != 'win32':
             self.sock_directory = tempfile.mkdtemp()

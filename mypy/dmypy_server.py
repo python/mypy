@@ -118,10 +118,8 @@ else:
         return _daemonize_cb(Server(options, timeout).serve, log_file)
 
 # Server code.
-if sys.platform == 'win32':
-    CONNECTION_NAME = r'\\.\pipe\dmypy-{}.pipe'.format(os.getpid())  # type: Final
-else:
-    CONNECTION_NAME = 'dmypy.sock'  # type: Final
+
+CONNECTION_NAME = 'dmypy.sock'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
