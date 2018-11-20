@@ -37,11 +37,9 @@ print ('\nExit status:', result[2])
 
 import sys
 from io import StringIO
-from typing import List, Tuple
-from mypy.main import main
+from typing import List, Tuple, Callable
 
-
-def run(args: List[str]) -> Tuple[str, str, int]:
+def _run(f: Callable[[], None]) -> Tuple[str, str, int]:
     old_stdout = sys.stdout
     new_stdout = StringIO()
     sys.stdout = new_stdout
@@ -51,7 +49,7 @@ def run(args: List[str]) -> Tuple[str, str, int]:
     sys.stderr = new_stderr
 
     try:
-        main(None, args=args)
+        f()
         exit_status = 0
     except SystemExit as system_exit:
         exit_status = system_exit.code
@@ -60,3 +58,13 @@ def run(args: List[str]) -> Tuple[str, str, int]:
         sys.stderr = old_stderr
 
     return new_stdout.getvalue(), new_stderr.getvalue(), exit_status
+
+
+def run(args: List[str]) -> Tuple[str, str, int]:
+    from mypy.main import main
+    return _run(lambda: main(None, args=args))
+
+
+def run_daemon(args: List[str]) -> Tuple[str, str, int]:
+    from mypy.dmypy import main
+    return _run(lambda: main(args))

@@ -109,9 +109,9 @@ class BadStatus(Exception):
     pass
 
 
-def main() -> None:
+def main(argv: List[str]) -> None:
     """The code is top-down."""
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
     else:
@@ -474,4 +474,4 @@ def is_running() -> bool:
 # Run main().
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
