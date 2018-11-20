@@ -4940,12 +4940,13 @@ class D(B, C):
 class C1(object):
     t = 'a'
     y = 3.0
+    class Inner(object): pass
     reveal_locals()
 
 [out]
-main:4: error: Revealed local types are:
-main:4: error: t: builtins.str
-main:4: error: y: builtins.float
+main:5: error: Revealed local types are:
+main:5: error: t: builtins.str
+main:5: error: y: builtins.float
 
 [case testAbstractClasses]
 import a
