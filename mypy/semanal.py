@@ -2883,21 +2883,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 local_nodes = [n.node
                                for name, n in self.globals.items()
                                if getattr(n.node, 'is_inferred', False)
-                                  and isinstance(n.node, Var)
-                              ]
+                               and isinstance(n.node, Var)]
             elif self.is_class_scope():
                 # type = None  # type: Optional[TypeInfo]
                 if self.type is not None:
                     local_nodes = [st.node
                                    for st in self.type.names.values()
-                                   if isinstance(st.node, Var)
-                                  ]
+                                   if isinstance(st.node, Var)]
             elif self.is_func_scope():
                 # locals = None  # type: List[Optional[SymbolTable]]
                 if self.locals is not None:
                     symbol_table = self.locals[-1]
                     if symbol_table is not None:
-                        local_nodes = [st.node for st in symbol_table.values() if isinstance(st.node, Var)]
+                        local_nodes = [st.node
+                                       for st in symbol_table.values()
+                                       if isinstance(st.node, Var)]
             expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
