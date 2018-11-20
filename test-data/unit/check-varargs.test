@@ -553,7 +553,7 @@ main:10: error: Incompatible types in assignment (expression has type "List[<not
 main:11: error: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]")
 main:11: error: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
 
-[case testCallerTupleVarArgsAndGenerics]
+[case testCallerTupleVarArgsAndGenericCalleeVarArg]
 # flags: --strict-optional
 from typing import TypeVar
 
@@ -561,6 +561,8 @@ T = TypeVar('T')
 
 def f(*args: T) -> T: ...
 reveal_type(f(*(1, None)))  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(1, *(None, 1)))  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(1, *(1, None)))  # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/tuple.pyi]
 
 
