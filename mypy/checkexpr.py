@@ -51,7 +51,7 @@ from mypy.subtypes import (
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.argmap import ArgTypeMapper, map_actuals_to_formals, map_formals_to_actuals
+from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
@@ -704,8 +704,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)
 
-            self.check_argument_types(arg_types, arg_kinds, callee.arg_names,
-                                      callee, formal_to_actual, context,
+            self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual, context,
                                       messages=arg_messages)
 
             if (callee.is_type_obj() and (len(arg_types) == 1)
@@ -1167,7 +1166,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_argument_types(self,
                              arg_types: List[Type],
                              arg_kinds: List[int],
-                             formal_names: List[Optional[str]],
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
@@ -1180,47 +1178,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         messages = messages or self.msg
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
-        mapper = ArgTypeMapper()
+        mapper = ArgTypeExpander()
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
-                arg_type = arg_types[actual]
-                if arg_type is None:
+                actual_type = arg_types[actual]
+                if actual_type is None:
                     continue  # Some kind of error was already reported.
+                actual_kind = arg_kinds[actual]
                 # Check that a *arg is valid as varargs.
-                if (arg_kinds[actual] == nodes.ARG_STAR and
-                        not self.is_valid_var_arg(arg_type)):
-                    messages.invalid_var_arg(arg_type, context)
-                if (arg_kinds[actual] == nodes.ARG_STAR2 and
-                        not self.is_valid_keyword_var_arg(arg_type)):
-                    is_mapping = is_subtype(arg_type, self.chk.named_type('typing.Mapping'))
-                    messages.invalid_keyword_var_arg(arg_type, is_mapping, context)
-                # Get the type of an individual actual argument (for *args
-                # and **args this is the item type, not the collection type).
-                if (isinstance(arg_type, TupleType)
-                        and mapper.tuple_index >= len(arg_type.items)
-                        and arg_kinds[actual] == nodes.ARG_STAR):
-                    # The tuple is exhausted. Continue with further arguments.
-                    continue
-                actual_types = mapper.get_actual_type(arg_type, arg_kinds[actual], formal_names[i])
-                for actual_type in actual_types:
-                    check_arg(actual_type, arg_type, arg_kinds[actual],
+                if (actual_kind == nodes.ARG_STAR and
+                        not self.is_valid_var_arg(actual_type)):
+                    messages.invalid_var_arg(actual_type, context)
+                if (actual_kind == nodes.ARG_STAR2 and
+                        not self.is_valid_keyword_var_arg(actual_type)):
+                    is_mapping = is_subtype(actual_type, self.chk.named_type('typing.Mapping'))
+                    messages.invalid_keyword_var_arg(actual_type, is_mapping, context)
+                expanded_actuals = mapper.expand_actual_type(
+                    actual_type, actual_kind,
+                    callee.arg_names[i], callee.arg_kinds[i])
+                for actual_item in expanded_actuals:
+                    check_arg(actual_item, actual_type, arg_kinds[actual],
                               callee.arg_types[i],
                               actual + 1, i + 1, callee, context, messages)
-
-                # There may be some remaining tuple varargs items that haven't
-                # been checked yet. Handle them.
-                tuplet = arg_types[actual]
-                if (callee.arg_kinds[i] == nodes.ARG_STAR and
-                        arg_kinds[actual] == nodes.ARG_STAR and
-                        isinstance(tuplet, TupleType)):
-                    while mapper.tuple_index < len(tuplet.items):
-                        actual_types = mapper.get_actual_type(arg_type,
-                                                              arg_kinds[actual],
-                                                              callee.arg_names[i])
-                        assert len(actual_types) == 1
-                        check_arg(actual_types[0], arg_type, arg_kinds[actual],
-                                  callee.arg_types[i],
-                                  actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
                   caller_kind: int,
@@ -1698,7 +1677,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 raise Finished
 
         try:
-            self.check_argument_types(arg_types, arg_kinds, callee.arg_names, callee,
+            self.check_argument_types(arg_types, arg_kinds, callee,
                                       formal_to_actual, context=context, check_arg=check_arg)
             return True
         except Finished:

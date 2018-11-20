@@ -105,11 +105,25 @@ def map_formals_to_actuals(caller_kinds: List[int],
     return actual_to_formal
 
 
-class ArgTypeMapper:
-    """Utility class for mapping actual argument types to formal argument types.
+class ArgTypeExpander:
+    """Utility class for mapping actual argument types to formal arguments.
 
-    The main job is to expand tuple *args and typed dict **kwargs in caller, and to
-    keep track of which tuple/typed dict items have already been consumed.
+    One of the main responsibilities is to expand caller tuple *args and TypedDict
+    **kwargs, and to keep track of which tuple/TypedDict items have already been
+    consumed.
+
+    Example:
+
+       . def f(x: int, *args: str) -> None: ...
+       . f(*(1, 'x', 1.1)
+
+    We'd call expand_actual_type twice:
+
+      1. The first call would provide 'int' as the type of 'x'.
+      2. The second call would provide 'str' and 'float' as the types of '*args'.
+
+    Construct a separate instance for each call since instances have per-call
+    state.
     """
 
     def __init__(self) -> None:
@@ -118,47 +132,60 @@ class ArgTypeMapper:
         # Keyword arguments in TypedDict **kwargs used.
         self.kwargs_used = set()  # type: Set[str]
 
-    def get_actual_type(self, arg_type: Type, kind: int, arg_name: Optional[str]) -> List[Type]:
-        """Return the type(s) of an actual argument with the given kind.
+    def expand_actual_type(self,
+                           actual_type: Type,
+                           actual_kind: int,
+                           formal_name: Optional[str],
+                           formal_kind: int) -> List[Type]:
+        """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
-        If the argument is a *args, return the individual argument item. The
-        tuple_counter argument tracks the next unused tuple item.
+        If the actual argument is a tuple *args, return the individual tuple item(s) that
+        map(s) to the formal arg.
 
-        If the argument is a **kwargs, return the item type based on argument name,
-        or all item types otherwise.
+        If the actual argument is a TypedDict **kwargs, return the matching typed dict dict
+        value type(s) based on formal argument name and kind.
+
+        This is supposed to be called for each formal, in order. Call multiple times per
+        formal if multiple actuals map to a formal.
         """
-        if kind == nodes.ARG_STAR:
-            if isinstance(arg_type, Instance):
-                if arg_type.type.fullname() == 'builtins.list':
+        if actual_kind == nodes.ARG_STAR:
+            if isinstance(actual_type, Instance):
+                if actual_type.type.fullname() == 'builtins.list':
                     # List *arg.
-                    return [arg_type.args[0]]
-                elif arg_type.args:
-                    # TODO try to map type arguments to Iterable
-                    return [arg_type.args[0]]
+                    return [actual_type.args[0]]
+                elif actual_type.args:
+                    # TODO: Try to map type arguments to Iterable
+                    return [actual_type.args[0]]
                 else:
                     return [AnyType(TypeOfAny.from_error)]
-            elif isinstance(arg_type, TupleType):
+            elif isinstance(actual_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
-                self.tuple_index += 1
-                return [arg_type.items[self.tuple_index - 1]]
+                if formal_kind != nodes.ARG_STAR:
+                    self.tuple_index += 1
+                    return [actual_type.items[self.tuple_index - 1]]
+                else:
+                    # Callee takes *args. Give all remaining actual *args.
+                    return actual_type.items[self.tuple_index:]
             else:
                 return [AnyType(TypeOfAny.from_error)]
-        elif kind == nodes.ARG_STAR2:
-            if isinstance(arg_type, TypedDictType):
-                if arg_name in arg_type.items:
+        elif actual_kind == nodes.ARG_STAR2:
+            if isinstance(actual_type, TypedDictType):
+                if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
-                    assert arg_name is not None
-                    self.kwargs_used.add(arg_name)
-                    return [arg_type.items[arg_name]]
+                    assert formal_name is not None
+                    self.kwargs_used.add(formal_name)
+                    return [actual_type.items[formal_name]]
                 else:
-                    # Callee takes **kwargs. Give all remaining keyword args.
-                    return [value for key, value in arg_type.items.items()
+                    # Callee takes **kwargs. Give all remaining actual **kwargs.
+                    return [value for key, value in actual_type.items.items()
                             if key not in self.kwargs_used]
-            elif isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
-                # Dict **arg. TODO more general (Mapping)
-                return [arg_type.args[1]]
+            elif (isinstance(actual_type, Instance)
+                      and (actual_type.type.fullname() == 'builtins.dict')):
+                # Dict **arg.
+                # TODO: Handle arbitrary Mapping
+                return [actual_type.args[1]]
             else:
                 return [AnyType(TypeOfAny.from_error)]
         else:
-            # No translation for other kinds.
-            return [arg_type]
+            # No translation for other kinds -- 1:1 mapping.
+            return [actual_type]
