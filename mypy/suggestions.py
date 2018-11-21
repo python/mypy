@@ -80,7 +80,7 @@ class SuggestionEngine:
         for caller in callers:
             try:
                 modname, classname, funcname, node = self.find_node(caller)
-            except SuggestionFailure as err:
+            except SuggestionFailure:
                 continue
             deferred_set.add(mypy.checker.FineGrainedDeferredNode(node, classname, None))
         for deferred_node in deferred_set:
