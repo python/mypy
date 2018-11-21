@@ -1507,3 +1507,16 @@ reveal_type(a.copy()) # E: Revealed type is 'TypedDict('__main__.A', {'x': built
 reveal_type(a.has_key()) # E: Revealed type is 'builtins.bool'
 a.clear() # E: "A" has no attribute "clear"
 [builtins_py2 fixtures/dict.pyi]
+
+[case testTypedDictNonMappingMethodsXXX]
+from typing import List
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': List[int]}, total=False)
+a: A
+
+reveal_type(a.pop('x')) # E: Revealed type is 'builtins.int'
+reveal_type(a.pop('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
+a.pop('x', '') # E: Argument 2 to "pop" of "_TypedDict" has incompatible type "str"; expected "int"
+a.pop('invalid', '') # E: x
+[builtins fixtures/dict.pyi]
