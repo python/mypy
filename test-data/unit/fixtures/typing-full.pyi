@@ -122,13 +122,11 @@ class AsyncIterator(AsyncIterable[T], Protocol):
     @abstractmethod
     def __anext__(self) -> Awaitable[T]: pass
 
-@runtime
-class Sequence(Iterable[T_co], Protocol):
+class Sequence(Iterable[T_co]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
 
-@runtime
-class Mapping(Iterable[T], Protocol[T, T_co], metaclass=ABCMeta):
+class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
@@ -138,8 +136,7 @@ class Mapping(Iterable[T], Protocol[T, T_co], metaclass=ABCMeta):
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass
 
-@runtime
-class MutableMapping(Mapping[T, U], Protocol, metaclass=ABCMeta):
+class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
     def __setitem__(self, k: T, v: U) -> None: pass
 
 class SupportsInt(Protocol):
