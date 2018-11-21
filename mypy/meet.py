@@ -7,7 +7,7 @@ from mypy.join import (
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
-    UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike,
+    UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
 )
 from mypy.subtypes import (
     is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
@@ -519,6 +519,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return TypedDictType(items, required_keys, fallback)
         else:
             return self.default(self.s)
+
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        raise NotImplementedError()
 
     def visit_partial_type(self, t: PartialType) -> Type:
         # We can't determine the meet of partial types. We should never get here.

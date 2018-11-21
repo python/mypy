@@ -27,6 +27,19 @@ T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
 
+# The set of all valid expressions that can currently be contained
+# inside of a Literal[...].
+#
+# Literals can contain enum-values: we special-case those and
+# store the value as a string.
+#
+# Note: this type also happens to correspond to types that can be
+# directly converted into JSON. The serialize/deserialize methods
+# of 'LiteralType' rely on this, as well 'server.astdiff.SnapshotTypeVisitor'
+# and 'types.TypeStrVisitor'. If we end up adding any non-JSON-serializable
+# types to this list, we should make sure to edit those methods to match.
+LiteralInnerExpr = Union[int, str, bool, None]
+
 # If we only import type_visitor in the middle of the file, mypy
 # breaks, and if we do it at the top, it breaks at runtime because of
 # import cycle issues, so we do it at the top while typechecking and
@@ -1240,6 +1253,43 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
+class LiteralType(Type):
+    __slots__ = ('value', 'fallback')
+
+    def __init__(self, value: LiteralInnerExpr, fallback: Instance,
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.value = value
+        self.fallback = fallback
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_literal_type(self)
+
+    def __hash__(self) -> int:
+        return hash((self.value, self.fallback))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, LiteralType):
+            return self.fallback == other.fallback and self.value == other.value
+        else:
+            return NotImplemented
+
+    def serialize(self) -> Union[JsonDict, str]:
+        return {
+            '.class': 'LiteralType',
+            'value': self.value,
+            'fallback': self.fallback.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'LiteralType':
+        assert data['.class'] == 'LiteralType'
+        return LiteralType(
+            value=data['value'],
+            fallback=Instance.deserialize(data['fallback']),
+        )
+
+
 class StarType(Type):
     """The star type *type_parameter.
 
@@ -1692,6 +1742,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             else:
                 suffix = ', fallback={}'.format(t.fallback.accept(self))
         return 'TypedDict({}{}{})'.format(prefix, s, suffix)
+
+    def visit_literal_type(self, t: LiteralType) -> str:
+        return 'Literal[{}]'.format(t.value)
 
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)

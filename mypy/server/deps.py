@@ -99,7 +99,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, ForwardRef, Overloaded, TypeOfAny
+    FunctionLike, ForwardRef, Overloaded, TypeOfAny, LiteralType,
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -948,6 +948,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(item))
         triggers.extend(self.get_type_triggers(typ.fallback))
         return triggers
+
+    def visit_literal_type(self, typ: LiteralType) -> List[str]:
+        return self.get_type_triggers(typ.fallback)
 
     def visit_unbound_type(self, typ: UnboundType) -> List[str]:
         return []

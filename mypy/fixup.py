@@ -9,7 +9,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
-    TypeVarType, UnboundType, UnionType, TypeVisitor,
+    TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
     TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
@@ -205,6 +205,9 @@ class TypeFixer(TypeVisitor[None]):
                 it.accept(self)
         if tdt.fallback is not None:
             tdt.fallback.accept(self)
+
+    def visit_literal_type(self, lt: LiteralType) -> None:
+        lt.fallback.accept(self)
 
     def visit_type_var(self, tvt: TypeVarType) -> None:
         if tvt.values:

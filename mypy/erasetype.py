@@ -3,7 +3,7 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny
+    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType,
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -76,6 +76,10 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        return t.fallback.accept(self)
+
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        # TODO: Verify this implementation is correct
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> Type:
