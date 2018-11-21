@@ -126,7 +126,7 @@ class Sequence(Iterable[T_co]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
 
-class Mapping(Generic[T, T_co], Iterable[T], metaclass=ABCMeta):
+class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
