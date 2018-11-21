@@ -1247,6 +1247,7 @@ a = x1
 a = x2
 a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testListWithDucktypeCompatibilityAndTransitivity]
 from typing import List, _promote
@@ -1263,6 +1264,7 @@ a = x1
 a = x2
 a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 -- Inferring type of variable when initialized to an empty collection

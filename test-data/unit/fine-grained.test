@@ -1625,6 +1625,7 @@ T = List[int]
 from typing import List
 T = List[int]  # yo
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 ==
 
@@ -5119,6 +5120,7 @@ from enum import Enum
 
 class C(Enum):
     X = 0
+[typing fixtures/typing-full.pyi]
 [out]
 ==
 a.py:5: error: "Type[C]" has no attribute "Y"
@@ -5212,6 +5214,7 @@ C = Enum('C', 'X Y')
 from enum import Enum
 
 C = Enum('C', 'X')
+[typing fixtures/typing-full.pyi]
 [out]
 ==
 a.py:5: error: "Type[C]" has no attribute "Y"
