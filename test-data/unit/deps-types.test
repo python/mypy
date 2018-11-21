@@ -852,7 +852,7 @@ class I: pass
 <m.P> -> m.P
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
-<mod.I> -> <m.P>, m, m.P
+<mod.I> -> <m.P>, m
 <mypy_extensions.TypedDict> -> m
 
 [case testAliasDepsTypedDictFunctional]
