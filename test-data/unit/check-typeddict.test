@@ -1508,15 +1508,18 @@ reveal_type(a.has_key()) # E: Revealed type is 'builtins.bool'
 a.clear() # E: "A" has no attribute "clear"
 [builtins_py2 fixtures/dict.pyi]
 
-[case testTypedDictNonMappingMethodsXXX]
+[case testTypedDictPopMethod]
 from typing import List
 from mypy_extensions import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': List[int]}, total=False)
+B = TypedDict('B', {'x': int})
 a: A
+b: B
 
 reveal_type(a.pop('x')) # E: Revealed type is 'builtins.int'
 reveal_type(a.pop('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
-a.pop('x', '') # E: Argument 2 to "pop" of "_TypedDict" has incompatible type "str"; expected "int"
-a.pop('invalid', '') # E: x
+reveal_type(a.pop('x', '')) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
+b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
 [builtins fixtures/dict.pyi]

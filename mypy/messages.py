@@ -1185,6 +1185,18 @@ class MessageBuilder:
         else:
             self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
 
+    def typeddict_key_cannot_be_deleted(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+                      context)
+        else:
+            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+                item_name, self.format(typ)), context)
+
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 

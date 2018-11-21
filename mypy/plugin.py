@@ -402,6 +402,8 @@ class DefaultPlugin(Plugin):
             return typed_dict_get_signature_callback
         elif fullname == 'mypy_extensions._TypedDict.setdefault':
             return typed_dict_setdefault_signature_callback
+        elif fullname == 'mypy_extensions._TypedDict.pop':
+            return typed_dict_pop_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         return None
@@ -416,6 +418,8 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         elif fullname == 'mypy_extensions._TypedDict.setdefault':
             return typed_dict_setdefault_callback
+        elif fullname == 'mypy_extensions._TypedDict.pop':
+            return typed_dict_pop_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
@@ -542,6 +546,64 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                         return value_type.copy_modified(required_keys=set())
                     else:
                         return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
+            else:
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                return AnyType(TypeOfAny.from_error)
+    return ctx.default_return_type
+
+
+def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
+    """Try to infer a better signature type for TypedDict.pop.
+
+    This is used to get better type context for the second argument that
+    depends on a TypedDict value type.
+    """
+    signature = ctx.default_signature
+    if (isinstance(ctx.type, TypedDictType)
+            and len(ctx.args) == 2
+            and len(ctx.args[0]) == 1
+            and isinstance(ctx.args[0][0], StrExpr)
+            and len(signature.arg_types) == 2
+            and len(signature.variables) == 1
+            and len(ctx.args[1]) == 1):
+        key = ctx.args[0][0].value
+        value_type = ctx.type.items.get(key)
+        if value_type:
+            default_arg = ctx.args[1][0]
+            if (isinstance(value_type, TypedDictType)
+                    and isinstance(default_arg, DictExpr)
+                    and len(default_arg.items) == 0):
+                # Caller has empty dict {} as default for typed dict.
+                value_type = value_type.copy_modified(required_keys=set())
+            # Tweak the signature to include the value type as context. It's
+            # only needed for type inference since there's a union with a type
+            # variable that accepts everything.
+            tv = TypeVarType(signature.variables[0])
+            ret_type = UnionType.make_simplified_union([value_type, tv])
+            return signature.copy_modified(
+                arg_types=[signature.arg_types[0],
+                           UnionType.make_simplified_union([value_type, tv])],
+                ret_type=ret_type)
+    return signature
+
+
+def typed_dict_pop_callback(ctx: MethodContext) -> Type:
+    """Infer a precise return type for TypedDict.get with literal first argument."""
+    if (isinstance(ctx.type, TypedDictType)
+            and len(ctx.arg_types) >= 1
+            and len(ctx.arg_types[0]) == 1):
+        if isinstance(ctx.args[0][0], StrExpr):
+            key = ctx.args[0][0].value
+            if key in ctx.type.required_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+            value_type = ctx.type.items.get(key)
+            if value_type:
+                if len(ctx.args[1]) == 0:
+                    return value_type
+                elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
+                      and len(ctx.args[1]) == 1):
+                    default_arg = ctx.args[1][0]
+                    return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
             else:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
                 return AnyType(TypeOfAny.from_error)
