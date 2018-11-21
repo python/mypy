@@ -806,6 +806,7 @@ from typing import no_type_check
 @no_type_check
 def foo(x: 'bar', y: {'x': 4}) -> 42:
     1 + 'x'
+[typing fixtures/typing-full.pyi]
 
 [case testNoTypeCheckDecoratorOnMethod2]
 import typing
@@ -817,6 +818,7 @@ def foo(x: 's', y: {'x': 4}) -> 42:
 @typing.no_type_check
 def bar() -> None:
     1 + 'x'
+[typing fixtures/typing-full.pyi]
 
 [case testCallingNoTypeCheckFunction]
 import typing
@@ -827,6 +829,7 @@ def foo(x: {1:2}) -> [1]:
 
 foo()
 foo(1, 'b')
+[typing fixtures/typing-full.pyi]
 
 [case testCallingNoTypeCheckFunction2]
 import typing
@@ -837,6 +840,7 @@ def f() -> None:
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     1 + 'x'
+[typing fixtures/typing-full.pyi]
 
 [case testNoTypeCheckDecoratorSemanticError]
 import typing
@@ -844,6 +848,7 @@ import typing
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     x = y
+[typing fixtures/typing-full.pyi]
 
 
 -- Forward references to decorated functions

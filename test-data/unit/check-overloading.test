@@ -1048,6 +1048,7 @@ def f(n: A) -> A:
 
 f(B()) + 'x'  # E: Unsupported left operand type for + ("B")
 f(A()) + 'x'  # E: Unsupported left operand type for + ("A")
+[typing fixtures/typing-full.pyi]
 
 [case testOverloadingAndIntFloatSubtyping]
 from foo import *
@@ -4806,6 +4807,7 @@ def g(x: Union[int, float]) -> Union[List[int], List[float]]:
         return floats
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOverloadsTypesAndUnions]
 from typing import overload, Type, Union

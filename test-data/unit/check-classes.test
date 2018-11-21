@@ -1656,6 +1656,7 @@ a = None  # type: A
 b = None  # type: B
 b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = b
+[typing fixtures/typing-full.pyi]
 
 [case testDucktypeTransitivityDecorator]
 from typing import _promote
@@ -1668,6 +1669,7 @@ a = None  # type: A
 c = None  # type: C
 c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
 a = c
+[typing fixtures/typing-full.pyi]
 
 
 -- Hard coded type promotions

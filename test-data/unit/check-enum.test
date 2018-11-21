@@ -337,6 +337,7 @@ U = Enum('U', *['a'])
 V = Enum('U', **{'a': 1})
 W = Enum('W', 'a b')
 W.c
+[typing fixtures/typing-full.pyi]
 [out]
 main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
@@ -454,4 +455,3 @@ main:3: error: Revealed type is 'm.F'
 [out2]
 main:2: error: Revealed type is 'm.E'
 main:3: error: Revealed type is 'm.F'
-
