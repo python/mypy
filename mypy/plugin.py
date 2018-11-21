@@ -420,6 +420,8 @@ class DefaultPlugin(Plugin):
             return typed_dict_setdefault_callback
         elif fullname == 'mypy_extensions._TypedDict.pop':
             return typed_dict_pop_callback
+        elif fullname == 'mypy_extensions._TypedDict.__delitem__':
+            return typed_dict_del_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
@@ -654,6 +656,20 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             else:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
                 return AnyType(TypeOfAny.from_error)
+    return ctx.default_return_type
+
+
+def typed_dict_del_callback(ctx: MethodContext) -> Type:
+    """Type check <TypedDict>.__del__."""
+    if (isinstance(ctx.type, TypedDictType)
+            and len(ctx.arg_types) == 1
+            and len(ctx.arg_types[0]) == 1):
+        if isinstance(ctx.args[0][0], StrExpr):
+            key = ctx.args[0][0].value
+            if key in ctx.type.required_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+            elif key not in ctx.type.items:
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
     return ctx.default_return_type
 
 

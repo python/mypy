@@ -1523,3 +1523,17 @@ reveal_type(a.pop('x', '')) # E: Revealed type is 'Union[builtins.int, builtins.
 a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
 b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictDel]
+from typing import List
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': List[int]}, total=False)
+B = TypedDict('B', {'x': int})
+a: A
+b: B
+
+del a['x']
+del a['invalid'] # E: TypedDict "A" has no key 'invalid'
+del b['x'] # E: Key 'x' of TypedDict "B" cannot be deleted
+[builtins fixtures/dict.pyi]
