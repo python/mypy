@@ -1481,3 +1481,29 @@ f1(**a, **c) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
 f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
+
+[case testTypedDictNonMappingMethods]
+from typing import List
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': List[int]})
+a: A
+
+reveal_type(a.copy()) # E: Revealed type is 'TypedDict('__main__.A', {'x': builtins.int, 'y': builtins.list[builtins.int]})'
+a.has_key() # E: "A" has no attribute "has_key"
+a.clear() # E: "A" has no attribute "clear"
+
+a.setdefault('invalid', 1) # E: TypedDict "A" has no key 'invalid'
+reveal_type(a.setdefault('x', 1)) # E: Revealed type is 'builtins.int'
+reveal_type(a.setdefault('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
+a.setdefault('y', '') # E: Argument 2 to "setdefault" of "_TypedDict" has incompatible type "str"; expected "List[int]"
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictNonMappingMethods_python2]
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int})
+a = A(x=1)
+reveal_type(a.copy()) # E: Revealed type is 'TypedDict('__main__.A', {'x': builtins.int})'
+reveal_type(a.has_key()) # E: Revealed type is 'builtins.bool'
+a.clear() # E: "A" has no attribute "clear"
+[builtins_py2 fixtures/dict.pyi]
