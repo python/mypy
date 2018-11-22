@@ -1497,6 +1497,14 @@ a.setdefault('invalid', 1) # E: TypedDict "A" has no key 'invalid'
 reveal_type(a.setdefault('x', 1)) # E: Revealed type is 'builtins.int'
 reveal_type(a.setdefault('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
 a.setdefault('y', '') # E: Argument 2 to "setdefault" of "_TypedDict" has incompatible type "str"; expected "List[int]"
+
+a.update({})
+a.update({'x': 1})
+a.update({'x': 1, 'y': []})
+a.update({'x': 1, 'y': [1]})
+a.update({'z': 1}) # E: Extra key 'z' for TypedDict "A"
+d = {'x': 1}
+a.update(d) # E: Argument 1 to "update" of "_TypedDict" has incompatible type "Dict[str, int]"; expected "A"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictNonMappingMethods_python2]

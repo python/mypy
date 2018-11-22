@@ -404,6 +404,8 @@ class DefaultPlugin(Plugin):
             return typed_dict_setdefault_signature_callback
         elif fullname == 'mypy_extensions._TypedDict.pop':
             return typed_dict_pop_signature_callback
+        elif fullname == 'mypy_extensions._TypedDict.update':
+            return typed_dict_update_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         return None
@@ -670,6 +672,18 @@ def typed_dict_del_callback(ctx: MethodContext) -> Type:
             elif key not in ctx.type.items:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
     return ctx.default_return_type
+
+
+def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
+    """Try to infer a better signature type for TypedDict.update."""
+    signature = ctx.default_signature
+    if (isinstance(ctx.type, TypedDictType)
+            and len(signature.arg_types) == 1):
+        arg_type = signature.arg_types[0]
+        assert isinstance(arg_type, TypedDictType)
+        arg_type = arg_type.copy_modified(required_keys=set())
+        return signature.copy_modified(arg_types=[arg_type])
+    return signature
 
 
 def int_pow_callback(ctx: MethodContext) -> Type:
