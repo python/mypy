@@ -294,7 +294,7 @@ class StubgencSuite(Suite):
         assert_equal(output, ['class C(argparse.Action): ...', ])
         assert_equal(imports, ['import argparse'])
 
-    def test_generate_c_type_with_docstirng(self) -> None:
+    def test_generate_c_type_with_docstring(self) -> None:
         class TestClass:
             def test(self, arg0: str) -> None:
                 """
