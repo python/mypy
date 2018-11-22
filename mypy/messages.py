@@ -1157,11 +1157,11 @@ class MessageBuilder:
                         format_key_list(extra, short=True), self.format(typ)),
                         context)
                     return
-        if not expected_keys:
-            expected = '(no keys)'
-        else:
-            expected = format_key_list(expected_keys)
         found = format_key_list(actual_keys, short=True)
+        if not expected_keys:
+            self.fail('Unexpected TypedDict {}'.format(found), context)
+            return
+        expected = format_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)

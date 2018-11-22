@@ -1502,11 +1502,14 @@ a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 
 a.update({})
 a.update({'x': 1})
+a.update({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 a.update({'x': 1, 'y': []})
 a.update({'x': 1, 'y': [1]})
-a.update({'z': 1}) # E: Extra key 'z' for TypedDict "A"
+a.update({'z': 1}) # E: Unexpected TypedDict key 'z'
+a.update({'z': 1, 'zz': 1}) # E: Unexpected TypedDict keys ('z', 'zz')
+a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key 'x' but found keys ('z', 'x')
 d = {'x': 1}
-a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "A"
+a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: List[int]})"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictNonMappingMethods_python2]

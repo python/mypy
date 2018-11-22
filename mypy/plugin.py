@@ -687,6 +687,7 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
             and len(signature.arg_types) == 1):
         arg_type = signature.arg_types[0]
         assert isinstance(arg_type, TypedDictType)
+        arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
         return signature.copy_modified(arg_types=[arg_type])
     return signature
