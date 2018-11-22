@@ -1172,12 +1172,20 @@ class TupleType(Type):
 
 
 class TypedDictType(Type):
-    """The type of a TypedDict instance. TypedDict(K1=VT1, ..., Kn=VTn)
+    """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
-    A TypedDictType can be either named or anonymous.
-    If it is anonymous then its fallback will be an Instance of Mapping[str, V].
-    If it is named then its fallback will be an Instance of the named type (ex: "Point")
-    whose TypeInfo has a typeddict_type that is anonymous.
+    A TypedDict object is a dictionary with specific string (literal) keys. Each
+    key has a value with a distinct type that depends on the key. TypedDict objects
+    are normal dict objects at runtime.
+
+    A TypedDictType can be either named or anonymous. If it's anonymous, its
+    fallback will mypy_extensions._TypedDict (Instance). _TypedDict is a subclass
+    of Mapping[str, object] and defines all non-mapping dict methods that TypedDict
+    supports. Some dict methods are unsafe and not supported. _TypedDict isn't defined
+    at runtime.
+
+    If a TypedDict is named, its fallback will be an Instance of the named type
+    (ex: "Point") whose TypeInfo has a typeddict_type that is anonymous.
     """
 
     items = None  # type: OrderedDict[str, Type]  # item_name -> item_type
