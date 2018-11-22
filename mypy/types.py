@@ -1235,7 +1235,7 @@ class TypedDictType(Type):
                              Instance.deserialize(data['fallback']))
 
     def is_anonymous(self) -> bool:
-        return self.fallback.type.fullname() == 'typing.Mapping'
+        return self.fallback.type.fullname() == 'mypy_extensions._TypedDict'
 
     def as_anonymous(self) -> 'TypedDictType':
         if self.is_anonymous():
@@ -1258,10 +1258,7 @@ class TypedDictType(Type):
 
     def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
         anonymous = self.as_anonymous()
-        return anonymous.fallback.copy_modified(args=[  # i.e. Mapping
-            anonymous.fallback.args[0],                 # i.e. str
-            value_type
-        ])
+        return anonymous.fallback
 
     def names_are_wider_than(self, other: 'TypedDictType') -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
@@ -1830,13 +1827,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = '{' + ', '.join(item_str(name, typ.accept(self))
                             for name, typ in t.items.items()) + '}'
         prefix = ''
-        suffix = ''
         if t.fallback and t.fallback.type:
-            if t.fallback.type.fullname() != 'typing.Mapping':
+            if t.fallback.type.fullname() != 'mypy_extensions._TypedDict':
                 prefix = repr(t.fallback.type.fullname()) + ', '
-            else:
-                suffix = ', fallback={}'.format(t.fallback.accept(self))
-        return 'TypedDict({}{}{})'.format(prefix, s, suffix)
+        return 'TypedDict({}{})'.format(prefix, s)
 
     def visit_raw_literal_type(self, t: RawLiteralType) -> str:
         return repr(t.value)
