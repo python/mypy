@@ -6,7 +6,7 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=42, y=1337)
 reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
 # Use values() to check fallback value type.
-reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.int*]'
+reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.object*]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -16,7 +16,7 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
 # Use values() to check fallback value type.
-reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.int*]'
+reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.object*]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -26,7 +26,7 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point({'x': 42, 'y': 1337})
 reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
 # Use values() to check fallback value type.
-reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.int*]'
+reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.object*]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -36,7 +36,7 @@ from mypy_extensions import TypedDict
 EmptyDict = TypedDict('EmptyDict', {})
 p = EmptyDict()
 reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.EmptyDict', {})'
-reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[<nothing>]'
+reveal_type(p.values()) # E: Revealed type is 'typing.Iterable[builtins.object*]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -286,16 +286,16 @@ def widen(p: Point) -> Point3D:
 from mypy_extensions import TypedDict
 from typing import Mapping
 Point = TypedDict('Point', {'x': int, 'y': int})
-def as_mapping(p: Point) -> Mapping[str, int]:
+def as_mapping(p: Point) -> Mapping[str, object]:
     return p
 [builtins fixtures/dict.pyi]
 
-[case testCannotConvertTypedDictToCompatibleMapping]
+[case testCannotConvertTypedDictToIncompatibleMapping]
 from mypy_extensions import TypedDict
 from typing import Mapping
 Point = TypedDict('Point', {'x': int, 'y': int})
-def as_mapping(p: Point) -> Mapping[str, str]:
-    return p  # E: Incompatible return value type (got "Point", expected "Mapping[str, str]")
+def as_mapping(p: Point) -> Mapping[str, int]:
+    return p  # E: Incompatible return value type (got "Point", expected "Mapping[str, int]")
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictAcceptsIntForFloatDuckTypes]
@@ -342,8 +342,8 @@ from typing import Dict, MutableMapping
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
     return p  # E: Incompatible return value type (got "Point", expected "Dict[str, int]")
-def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, int]")
+def as_mutable_mapping(p: Point) -> MutableMapping[str, object]:
+    return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, object]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -377,25 +377,29 @@ f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int, 'z
 from typing_extensions import Protocol
 from mypy_extensions import TypedDict
 
+class StrObjectMap(Protocol):
+    def __getitem__(self, key: str) -> object: ...
 class StrIntMap(Protocol):
     def __getitem__(self, key: str) -> int: ...
 
 A = TypedDict('A', {'x': int, 'y': int})
 B = TypedDict('B', {'x': int, 'y': str})
 
-def fun(arg: StrIntMap) -> None: ...
+def fun(arg: StrObjectMap) -> None: ...
+def fun2(arg: StrIntMap) -> None: ...
 a: A
 b: B
 fun(a)
-fun(b)  # Error
+fun(b)
+fun2(a) # Error
 [builtins fixtures/dict.pyi]
 [out]
-main:14: error: Argument 1 to "fun" has incompatible type "B"; expected "StrIntMap"
-main:14: note: Following member(s) of "B" have conflicts:
-main:14: note:     Expected:
-main:14: note:         def __getitem__(self, str) -> int
-main:14: note:     Got:
-main:14: note:         def __getitem__(self, str) -> object
+main:18: error: Argument 1 to "fun2" has incompatible type "A"; expected "StrIntMap"
+main:18: note: Following member(s) of "A" have conflicts:
+main:18: note:     Expected:
+main:18: note:         def __getitem__(self, str) -> int
+main:18: note:     Got:
+main:18: note:         def __getitem__(self, str) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
 from typing_extensions import Protocol
@@ -415,7 +419,7 @@ def fun(arg: StrMap[T]) -> T:
     return arg['whatever']
 a: A
 b: B
-reveal_type(fun(a))  # E: Revealed type is 'builtins.int*'
+reveal_type(fun(a))  # E: Revealed type is 'builtins.object*'
 reveal_type(fun(b))  # E: Revealed type is 'builtins.object*'
 [builtins fixtures/dict.pyi]
 [out]
@@ -430,7 +434,7 @@ p1 = TaggedPoint(type='2d', x=0, y=0)
 p2 = Point3D(x=1, y=1, z=1)
 joined_points = [p1, p2][0]
 reveal_type(p1.values())   # E: Revealed type is 'typing.Iterable[builtins.object*]'
-reveal_type(p2.values())   # E: Revealed type is 'typing.Iterable[builtins.int*]'
+reveal_type(p2.values())   # E: Revealed type is 'typing.Iterable[builtins.object*]'
 reveal_type(joined_points)  # E: Revealed type is 'TypedDict({'x': builtins.int, 'y': builtins.int}, fallback=typing.Mapping[builtins.str, builtins.int])'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
@@ -467,8 +471,8 @@ left = Cell(value=42)
 right = {'score': 999}  # type: Mapping[str, int]
 joined1 = [left, right]
 joined2 = [right, left]
-reveal_type(joined1)  # E: Revealed type is 'builtins.list[typing.Mapping*[builtins.str, builtins.int]]'
-reveal_type(joined2)  # E: Revealed type is 'builtins.list[typing.Mapping*[builtins.str, builtins.int]]'
+reveal_type(joined1)  # E: Revealed type is 'builtins.list[typing.Mapping*[builtins.str, builtins.object]]'
+reveal_type(joined2)  # E: Revealed type is 'builtins.list[typing.Mapping*[builtins.str, builtins.object]]'
 [builtins fixtures/dict.pyi]
 
 [case testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype]
@@ -483,18 +487,6 @@ reveal_type(joined1)  # E: Revealed type is 'builtins.list[typing.Sized*]'
 reveal_type(joined2)  # E: Revealed type is 'builtins.list[typing.Sized*]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
-
-[case testJoinOfTypedDictWithIncompatibleMappingIsObject]
-from mypy_extensions import TypedDict
-from typing import Mapping
-Cell = TypedDict('Cell', {'value': int})
-left = Cell(value=42)
-right = {'score': 'zero'}  # type: Mapping[str, str]
-joined1 = [left, right]
-joined2 = [right, left]
-reveal_type(joined1)  # E: Revealed type is 'builtins.list[builtins.object*]'
-reveal_type(joined2)  # E: Revealed type is 'builtins.list[builtins.object*]'
-[builtins fixtures/dict.pyi]
 
 [case testJoinOfTypedDictWithIncompatibleTypeIsObject]
 from mypy_extensions import TypedDict
@@ -795,13 +787,13 @@ def u(x: T, y: S) -> Union[S, T]: pass
 C = TypedDict('C', {'a': int, 'b': int})
 
 c = C(a=1, b=1)
-m_s_i: Mapping[str, int]
+m_s_o: Mapping[str, object]
 m_s_s: Mapping[str, str]
 m_i_i: Mapping[int, int]
 m_s_a: Mapping[str, Any]
 
-reveal_type(u(c, m_s_i)) # E: Revealed type is 'typing.Mapping*[builtins.str, builtins.int]'
-reveal_type(u(m_s_i, c)) # E: Revealed type is 'typing.Mapping*[builtins.str, builtins.int]'
+reveal_type(u(c, m_s_o)) # E: Revealed type is 'typing.Mapping*[builtins.str, builtins.object]'
+reveal_type(u(m_s_o, c)) # E: Revealed type is 'typing.Mapping*[builtins.str, builtins.object]'
 reveal_type(u(c, m_s_s)) # E: Revealed type is 'Union[typing.Mapping*[builtins.str, builtins.str], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]'
 reveal_type(u(c, m_i_i)) # E: Revealed type is 'Union[typing.Mapping*[builtins.int, builtins.int], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]'
 reveal_type(u(c, m_s_a)) # E: Revealed type is 'Union[typing.Mapping*[builtins.str, Any], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]'
@@ -1297,8 +1289,8 @@ class B: pass
 class C(B): pass
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})'
-m1: Mapping[str, B] = x
-m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, C]")
+m1: Mapping[str, object] = x
+m2: Mapping[str, B] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, B]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceInClassTypedDict]
@@ -1311,8 +1303,8 @@ class B: pass
 class C(B): pass
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})'
-m1: Mapping[str, B] = x
-m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, C]")
+m1: Mapping[str, object] = x
+m2: Mapping[str, B] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, B]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceToTypedDictInTypedDict]

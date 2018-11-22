@@ -1072,8 +1072,8 @@ _testTypedDictMappingMethods.py:6: error: Revealed type is 'typing.Iterator[buil
 _testTypedDictMappingMethods.py:7: error: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:8: error: Revealed type is 'builtins.bool'
 _testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[builtins.str*]'
-_testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.int*]]'
-_testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.int*]'
+_testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.object*]]'
+_testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.object*]'
 
 [case testCrashOnComplexCheckWithNamedTupleNext]
 from typing import NamedTuple
