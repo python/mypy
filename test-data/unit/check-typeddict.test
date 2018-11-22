@@ -1551,4 +1551,7 @@ b: B
 del a['x']
 del a['invalid'] # E: TypedDict "A" has no key 'invalid'
 del b['x'] # E: Key 'x' of TypedDict "B" cannot be deleted
+s = ''
+del a[s] # E: Expected TypedDict key to be string literal
+del b[s] # E: Expected TypedDict key to be string literal
 [builtins fixtures/dict.pyi]

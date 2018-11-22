@@ -677,6 +677,9 @@ def typed_dict_del_callback(ctx: MethodContext) -> Type:
                 ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
             elif key not in ctx.type.items:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+        else:
+            ctx.api.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            return AnyType(TypeOfAny.from_error)
     return ctx.default_return_type
 
 
