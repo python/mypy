@@ -604,7 +604,6 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
                     return value_type
                 elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
                       and len(ctx.args[1]) == 1):
-                    default_arg = ctx.args[1][0]
                     return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
             else:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
