@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
 from mypy.dmypy_os import alive, kill
-from mypy.options import Options
+
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
@@ -367,6 +367,7 @@ def do_daemon(args: argparse.Namespace) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
     if args.options_data:
+        from mypy.options import Options
         options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
