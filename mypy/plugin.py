@@ -16,6 +16,7 @@ from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny, TypeType,
 )
+from mypy import messages
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 import mypy.interpreted_plugin
@@ -610,6 +611,9 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
             else:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
                 return AnyType(TypeOfAny.from_error)
+        else:
+            ctx.api.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            return AnyType(TypeOfAny.from_error)
     return ctx.default_return_type
 
 
@@ -657,6 +661,9 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             else:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
                 return AnyType(TypeOfAny.from_error)
+        else:
+            ctx.api.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            return AnyType(TypeOfAny.from_error)
     return ctx.default_return_type
 
 

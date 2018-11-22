@@ -1497,6 +1497,8 @@ a.setdefault('invalid', 1) # E: TypedDict "A" has no key 'invalid'
 reveal_type(a.setdefault('x', 1)) # E: Revealed type is 'builtins.int'
 reveal_type(a.setdefault('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
 a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]"
+x = ''
+a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 
 a.update({})
 a.update({'x': 1})
@@ -1530,6 +1532,8 @@ reveal_type(a.pop('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
 reveal_type(a.pop('x', '')) # E: Revealed type is 'Union[builtins.int, builtins.str]'
 a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
 b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
+x = ''
+b.pop(x) # E: Expected TypedDict key to be string literal
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictDel]
