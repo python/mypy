@@ -14,7 +14,7 @@ from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
 )
-from mypy.stubgenc import generate_c_type_stub, infer_method_sig
+from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring
@@ -293,3 +293,20 @@ class StubgencSuite(Suite):
         generate_c_type_stub(mod, 'C', TestClass, output, imports)
         assert_equal(output, ['class C(argparse.Action): ...', ])
         assert_equal(imports, ['import argparse'])
+
+    def test_generate_c_type_with_docstirng(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: int)
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, [
+            'def test(self, arg0: int) -> Any: ...'
+        ])
+        assert_equal(imports, [])

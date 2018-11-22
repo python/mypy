@@ -154,14 +154,16 @@ def generate_c_function_stub(module: ModuleType,
 
     if sig:
         sig_types = []
-        # convert signature in form of "self: TestClass, arg0: str" to list [[self, TestClass], [arg0, str]]
-        for arg_type in (arg.split(':', 1) for arg in sig.split(',')):
+        # convert signature in form of "self: TestClass, arg0: str" to
+        # list [[self, TestClass], [arg0, str]]
+        for arg in sig.split(','):
+            arg_type = arg.split(':', 1)
             if len(arg_type) == 1:
                 # there is no type provided in docstring
                 sig_types.append(arg_type[0].strip())
             else:
-                arg_type = strip_or_import(arg_type[1].strip(), module, imports)
-                sig_types.append('%s: %s' % (arg_type[0].strip(), arg_type))
+                arg_type_name = strip_or_import(arg_type[1].strip(), module, imports)
+                sig_types.append('%s: %s' % (arg_type[0].strip(), arg_type_name))
         sig = ", ".join(sig_types)
 
     ret_type = strip_or_import(ret_type, module, imports)
@@ -172,7 +174,8 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
     """
     Strips unnecessary module names from typ.
 
-    If typ represents a type that is inside module or is a type comming from builtins, remove module declaration from it
+    If typ represents a type that is inside module or is a type comming from builtins, remove
+    module declaration from it
 
     :param typ: name of the type
     :param module: in which this type is used
