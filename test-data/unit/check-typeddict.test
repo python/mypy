@@ -379,16 +379,27 @@ from mypy_extensions import TypedDict
 
 class StrObjectMap(Protocol):
     def __getitem__(self, key: str) -> object: ...
+class StrIntMap(Protocol):
+    def __getitem__(self, key: str) -> int: ...
 
 A = TypedDict('A', {'x': int, 'y': int})
 B = TypedDict('B', {'x': int, 'y': str})
 
 def fun(arg: StrObjectMap) -> None: ...
+def fun2(arg: StrIntMap) -> None: ...
 a: A
 b: B
 fun(a)
 fun(b)
+fun2(a) # Error
 [builtins fixtures/dict.pyi]
+[out]
+main:18: error: Argument 1 to "fun2" has incompatible type "A"; expected "StrIntMap"
+main:18: note: Following member(s) of "A" have conflicts:
+main:18: note:     Expected:
+main:18: note:         def __getitem__(self, str) -> int
+main:18: note:     Got:
+main:18: note:         def __getitem__(self, str) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
 from typing_extensions import Protocol
