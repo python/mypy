@@ -81,7 +81,8 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
                                      'mypy_extensions.pyi',
                                      'typing_extensions.pyi',
                                      'abc.pyi',
-                                     'collections.pyi'))
+                                     'collections.pyi',
+                                     'sys.pyi'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
