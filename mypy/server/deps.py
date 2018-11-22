@@ -790,8 +790,8 @@ class DependencyVisitor(TraverserVisitor):
 
         If the target is not given explicitly, use the current target.
         """
-        if trigger.startswith(('<builtins.', '<typing.')):
-            # Don't track dependencies to certain builtins to keep the size of
+        if trigger.startswith(('<builtins.', '<typing.', '<mypy_extensions.')):
+            # Don't track dependencies to certain library modules to keep the size of
             # the dependencies manageable. These dependencies should only
             # change on mypy version updates, which will require a full rebuild
             # anyway.
