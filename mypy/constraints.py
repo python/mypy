@@ -5,7 +5,7 @@ from typing import Iterable, List, Optional, Sequence
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
-    UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny
+    UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -472,6 +472,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return self.infer_against_any(template.items.values(), actual)
         else:
             return []
+
+    def visit_literal_type(self, template: LiteralType) -> List[Constraint]:
+        raise NotImplementedError()
 
     def visit_union_type(self, template: UnionType) -> List[Constraint]:
         assert False, ("Unexpected UnionType in ConstraintBuilderVisitor"

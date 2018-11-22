@@ -15,7 +15,8 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
+    LiteralType,
 )
 
 from mypy.nodes import (
@@ -459,6 +460,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ])
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        raise NotImplementedError()
+
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(self.anal_type(t.type), t.line)
 
@@ -753,6 +757,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         for item_type in t.items.values():
             item_type.accept(self)
+
+    def visit_literal_type(self, t: LiteralType) -> None:
+        raise NotImplementedError()
 
     def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:
