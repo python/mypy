@@ -641,7 +641,6 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
                 # Caller has empty dict {} as default for typed dict.
                 value_type = value_type.copy_modified(required_keys=set())
             # Tweak the signature to include the value type as context.
-            print(value_type)
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0], value_type],
                 ret_type=ret_type)
