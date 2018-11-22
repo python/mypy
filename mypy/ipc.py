@@ -21,7 +21,13 @@ from types import TracebackType
 if sys.platform == 'win32':
     # This may be private, but it is needed for IPC on Windows, and is basically stable
     import _winapi
+    import ctypes
+
     _IPCHandle = int
+
+    kernel32 = ctypes.windll.kernel32
+    DisconnectNamedPipe = kernel32.DisconnectNamedPipe  # type: Callable[[_IPCHandle], int]
+    FlushFileBuffers = kernel32.FlushFileBuffers  # type: Callable[[_IPCHandle], int]
 else:
     import socket
     _IPCHandle = socket.socket
@@ -79,14 +85,6 @@ class IPCBase:
         else:
             self.connection.close()
 
-    def __exit__(self,
-                 exc_ty: 'Optional[Type[BaseException]]' = None,
-                 exc_val: Optional[BaseException] = None,
-                 exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
-        self.close()
-        return False
-
 
 class IPCClient(IPCBase):
     """The client side of an IPC connection."""
@@ -131,6 +129,14 @@ class IPCClient(IPCBase):
     def __enter__(self) -> 'IPCClient':
         return self
 
+    def __exit__(self,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
+                 exc_val: Optional[BaseException] = None,
+                 exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        self.close()
+        return False
+
 
 class IPCServer(IPCBase):
 
@@ -140,7 +146,24 @@ class IPCServer(IPCBase):
         if sys.platform == 'win32':
             name = r'\\.\pipe\{}-{}.pipe'.format(name, os.getpid())
         super().__init__(name)
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
+            self.connection = _winapi.CreateNamedPipe(self.name,
+                _winapi.PIPE_ACCESS_DUPLEX
+                | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
+                _winapi.PIPE_READMODE_MESSAGE
+                | _winapi.PIPE_TYPE_MESSAGE
+                | _winapi.PIPE_WAIT
+                | 0x8,  # PIPE_REJECT_REMOTE_CLIENTS
+                1,  # one instance
+                self.BUFFER_SIZE,
+                self.BUFFER_SIZE,
+                1000,  # Default timeout in milis
+                0,  # Use default security descriptor
+                                                      )
+            if self.connection == -1:  # INVALID_HANDLE_VALUE
+                err = _winapi.GetLastError()
+                raise IPCException('Invalid handle to pipe: {err}'.format(err))
+        else:
             self.sock_directory = tempfile.mkdtemp()
             sockfile = os.path.join(self.sock_directory, self.name)
             self.sock = socket.socket(socket.AF_UNIX)
@@ -151,19 +174,6 @@ class IPCServer(IPCBase):
 
     def __enter__(self) -> 'IPCServer':
         if sys.platform == 'win32':
-            # The NamedPipe needs to be recreated every time we wait for a connection
-            self.connection = _winapi.CreateNamedPipe(self.name,
-                _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
-                _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_WAIT,
-                1,  # one instance
-                self.BUFFER_SIZE,
-                self.BUFFER_SIZE,
-                0,  # PIPE_WAIT, wait for a connection of the client
-                0,  # PIPE_ACCEPT_REMOTE_CLIENTS (this is the default, so I guess?)
-                                                      )
-            if self.connection == -1:  # INVALID_HANDLE_VALUE
-                err = _winapi.GetLastError()
-                raise IPCException('Invalid handle to pipe: {err}'.format(err))
             # NOTE: It is theoretically possible that this will hang forever if the
             # client never connects, though this can be "solved" by killing the server
             try:
@@ -178,8 +188,24 @@ class IPCServer(IPCBase):
                 raise IPCException('The socket timed out')
         return self
 
+    def __exit__(self,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
+                 exc_val: Optional[BaseException] = None,
+                 exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        if sys.platform == 'win32':
+            # Wait for the client to finish reading the last write before disconnecting
+            if not FlushFileBuffers(self.connection):
+                raise IPCException("Failed to flush NamedPipe buffer, maybe the client hung up?")
+            DisconnectNamedPipe(self.connection)
+        else:
+            self.close()
+        return False
+
     def cleanup(self) -> None:
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
+            self.close()
+        else:
             shutil.rmtree(self.sock_directory)
 
     @property
