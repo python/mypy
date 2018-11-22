@@ -79,8 +79,10 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.fallback.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
-        # TODO: Verify this implementation is correct
-        return t.fallback.accept(self)
+        # The fallback for literal types should always be either
+        # something like int or str, or an enum class -- types that
+        # don't contain any TypeVars. So there's no need to visit it.
+        return t
 
     def visit_union_type(self, t: UnionType) -> Type:
         erased_items = [erase_type(item) for item in t.items]
