@@ -327,8 +327,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
-    def visit_literal_type(self, t: LiteralType) -> bool:
-        raise NotImplementedError()
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        if isinstance(self.right, LiteralType):
+            return left == self.right
+        else:
+            return self._is_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
@@ -1172,7 +1175,10 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return self._is_proper_subtype(left.fallback, right)
 
     def visit_literal_type(self, left: LiteralType) -> bool:
-        raise NotImplementedError()
+        if isinstance(self.right, LiteralType):
+            return left == self.right
+        else:
+            return self._is_proper_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         # TODO: What's the right thing to do here?

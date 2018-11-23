@@ -30,6 +30,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-abstractclasses.test',
                  'semanal-namedtuple.test',
                  'semanal-typeddict.test',
+                 'semenal-literal.test',
                  'semanal-classvar.test',
                  'semanal-python2.test']
 
@@ -78,6 +79,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
             if (not f.path.endswith((os.sep + 'builtins.pyi',
                                      'typing.pyi',
                                      'mypy_extensions.pyi',
+                                     'typing_extensions.pyi',
                                      'abc.pyi',
                                      'collections.pyi'))
                     and not os.path.basename(f.path).startswith('_')

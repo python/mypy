@@ -235,6 +235,13 @@ def is_overlapping_types(left: Type,
     elif isinstance(right, CallableType):
         right = right.fallback
 
+    if isinstance(left, LiteralType) and isinstance(right, LiteralType):
+        return left == right
+    elif isinstance(left, LiteralType):
+        left = left.fallback
+    elif isinstance(right, LiteralType):
+        right = right.fallback
+
     # Finally, we handle the case where left and right are instances.
 
     if isinstance(left, Instance) and isinstance(right, Instance):

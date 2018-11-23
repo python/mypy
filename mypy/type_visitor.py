@@ -20,7 +20,7 @@ T = TypeVar('T')
 
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType, LiteralType,
-    Instance, NoneTyp, TypeType, TypeOfAny,
+    RawLiteralType, Instance, NoneTyp, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
 )
@@ -125,6 +125,10 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
 
     @abstractmethod
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_raw_literal_type(self, t: RawLiteralType) -> T:
         pass
 
 
@@ -277,6 +281,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> T:
         return self.query_types(t.items.values())
+
+    def visit_raw_literal_type(self, t: RawLiteralType) -> T:
+        return self.strategy([])
 
     def visit_literal_type(self, t: LiteralType) -> T:
         return self.strategy([])
