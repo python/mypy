@@ -1064,8 +1064,16 @@ reveal_type('value' in c)
 reveal_type(c.keys())
 reveal_type(c.items())
 reveal_type(c.values())
+reveal_type(c.copy())
+reveal_type(c.setdefault('value', False))
+c.update({'value': 2})
+c.update({'invalid': 2})
+c.pop('value')
 c == c
 c != c
+Cell2 = TypedDict('Cell2', {'value': int}, total=False)
+c2 = Cell2()
+reveal_type(c2.pop('value'))
 [out]
 _testTypedDictMappingMethods.py:5: error: Revealed type is 'builtins.str*'
 _testTypedDictMappingMethods.py:6: error: Revealed type is 'typing.Iterator[builtins.str*]'
@@ -1074,6 +1082,11 @@ _testTypedDictMappingMethods.py:8: error: Revealed type is 'builtins.bool'
 _testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[builtins.str*]'
 _testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.object*]]'
 _testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.object*]'
+_testTypedDictMappingMethods.py:12: error: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
+_testTypedDictMappingMethods.py:13: error: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key 'invalid'
+_testTypedDictMappingMethods.py:16: error: Key 'value' of TypedDict "Cell" cannot be deleted
+_testTypedDictMappingMethods.py:21: error: Revealed type is 'builtins.int'
 
 [case testCrashOnComplexCheckWithNamedTupleNext]
 from typing import NamedTuple
