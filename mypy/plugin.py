@@ -574,26 +574,19 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
         key = ctx.args[0][0].value
         value_type = ctx.type.items.get(key)
         if value_type:
-            default_arg = ctx.args[1][0]
-            if (isinstance(value_type, TypedDictType)
-                    and isinstance(default_arg, DictExpr)
-                    and len(default_arg.items) == 0):
-                # Caller has empty dict {} as default for typed dict.
-                value_type = value_type.copy_modified(required_keys=set())
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
             tv = TypeVarType(signature.variables[0])
-            ret_type = UnionType.make_simplified_union([value_type, tv])
+            typ = UnionType.make_simplified_union([value_type, tv])
             return signature.copy_modified(
-                arg_types=[signature.arg_types[0],
-                           UnionType.make_simplified_union([value_type, tv])],
-                ret_type=ret_type)
+                arg_types=[signature.arg_types[0], typ],
+                ret_type=typ)
     return signature
 
 
 def typed_dict_pop_callback(ctx: MethodContext) -> Type:
-    """Infer a precise return type for TypedDict.get with literal first argument."""
+    """Type check and infer a precise return type for TypedDict.pop."""
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) >= 1
             and len(ctx.arg_types[0]) == 1):
@@ -632,23 +625,13 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
             and len(ctx.args[1]) == 1):
         key = ctx.args[0][0].value
         value_type = ctx.type.items.get(key)
-        ret_type = signature.ret_type
         if value_type:
-            default_arg = ctx.args[1][0]
-            if (isinstance(value_type, TypedDictType)
-                    and isinstance(default_arg, DictExpr)
-                    and len(default_arg.items) == 0):
-                # Caller has empty dict {} as default for typed dict.
-                value_type = value_type.copy_modified(required_keys=set())
-            # Tweak the signature to include the value type as context.
-            return signature.copy_modified(
-                arg_types=[signature.arg_types[0], value_type],
-                ret_type=ret_type)
+            return signature.copy_modified(arg_types=[signature.arg_types[0], value_type])
     return signature
 
 
 def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
-    """Infer a precise return type for TypedDict.setdefault with literal first argument."""
+    """Type check TypedDict.setdefault and infer a precise return type."""
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) == 2
             and len(ctx.arg_types[0]) == 1):
@@ -667,7 +650,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
 
 def typed_dict_del_callback(ctx: MethodContext) -> Type:
-    """Type check <TypedDict>.__del__."""
+    """Type check TypedDict.__del__."""
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) == 1
             and len(ctx.arg_types[0]) == 1):
