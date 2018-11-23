@@ -12,9 +12,9 @@ For Python 2 mode, use --py2:
   $ stubgen --py2 textwrap
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
-documentation for extra information. For this, use the --docpath option:
+documentation for extra information. For this, use the --doc-dir option:
 
-  $ scripts/stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+  $ scripts/stubgen --doc-dir <DIR>/Python-3.4.2/Doc/library curses
 
   => Generate out/curses.py.
 
