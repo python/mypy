@@ -63,6 +63,10 @@ class CheckerPluginInterface:
     options = None  # type: Options
 
     @abstractmethod
+    def fail(self, msg: str, ctx: Context) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         raise NotImplementedError
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from os import system
-from sys import argv, exit, platform, executable, version_info
+from sys import argv, exit, platform, executable, version_info, stdout
 
 prog, *args = argv
 
