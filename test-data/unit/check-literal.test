@@ -100,6 +100,38 @@ reveal_type(y)                      # E: Revealed type is 'Union[Tuple[Literal[2
 reveal_type(bar)                    # E: Revealed type is 'def (x: Tuple[Literal[2]])'
 [out]
 
+[case testLiteralRenamingImportWorks]
+from typing_extensions import Literal as Foo
+
+x: Foo[3]
+reveal_type(x)   # E: Revealed type is 'Literal[3]'
+
+y: Foo["hello"]
+reveal_type(y)   # E: Revealed type is 'Literal['hello']'
+[out]
+
+[case testLiteralRenamingImportViaAnotherImportWorks]
+from other_module import Foo, Bar
+
+x: Foo[3]
+y: Bar
+
+reveal_type(x)  # E: Revealed type is 'Literal[3]'
+reveal_type(y)  # E: Revealed type is 'Literal[4]'
+
+[file other_module.py]
+from typing_extensions import Literal as Foo
+Bar = Foo[4]
+[out]
+
+[case testLiteralRenamingImportNameConfusion]
+from typing_extensions import Literal as Foo
+
+x: Foo["Foo"]
+reveal_type(x)  # E: Revealed type is 'Literal['Foo']'
+
+y: Foo[Foo]     # E: Literal[...] must have at least one parameter
+[out]
 
 --
 -- Check to make sure we can construct the correct range of literal
@@ -473,6 +505,25 @@ reveal_type(foo(c))  # E: Revealed type is '__main__.IOLike[Any]'
 foo(d)
 [builtins fixtures/ops.pyi]
 [out]
+
+[case testLiteralRenamingDoesNotChangeTypeChecking]
+from typing_extensions import Literal as Foo
+from other_module import Bar1, Bar2, c
+
+def func(x: Foo[15]) -> None: pass
+
+a: Bar1
+b: Bar2
+func(a)
+func(b)  # E: Argument 1 to "func" has incompatible type "Literal[14]"; expected "Literal[15]"
+func(c)
+
+[file other_module.py]
+from typing_extensions import Literal
+
+Bar1 = Literal[15]
+Bar2 = Literal[14]
+c: Literal[15]
 
 
 --
