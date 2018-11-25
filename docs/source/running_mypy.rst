@@ -146,7 +146,15 @@ If the module is a part of your own codebase, try:
 2.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify
     how you're invoking mypy accordingly.
-3.  Adding the path to that module to the ``MYPYPATH`` environment variable.
+3.  Adding the directory containing that module to either the ``MYPYPATH``
+    environment variable or the ``mypy_path``
+    :ref:`config file option <config-file-import-discovery-global>`.
+
+    Note: if the module you are trying to import is actually a *submodule* of
+    some package, you should add the directory containing the *entire* package
+    to ``MYPYPATH``. For example, suppose you are trying to add the module
+    ``foo.bar.baz``, which is located at ``~/foo-project/src/foo/bar/baz.py``.
+    In this case, you should add ``~/foo-project/src`` to ``MYPYPATH``.
 
 If the module is a third party library, you must make sure that there are
 type hints available for that library. Mypy by default will not attempt to
@@ -198,9 +206,16 @@ type hints nor have to time to write your own, you can *silence* the errors:
     :ref:`import discovery <config-file-import-discovery-per-module>` in config files.
 
 3.  To silence *all* missing import errors for *all* libraries in your codebase,
-    invoke mypy with the ``--ignore-missing-imports`` command line flag. We
-    recommend using this flag only as a last resort: it's equivalent to adding
-    a ``# type: ignore`` to all unresolved imports in your codebase.
+    invoke mypy with the ``--ignore-missing-imports`` command line flag or set
+    the ``ignore_missing_imports``
+    :ref:`config file option <config-file-import-discovery-per-module` to True
+    in the *global* section of your mypy config file::
+
+        [mypy]
+        ignore_missing_imports = True
+
+    We recommend using either option only as a last resort: it's equivalent
+    to adding a ``# type: ignore`` to all unresolved imports in your codebase.
 
 If the module is a part of the standard library, try:
 
