@@ -1065,8 +1065,9 @@ def f(x: 'A B'): pass # E: Invalid type. Try using Literal['A B'] instead?
 [out]
 
 [case testInvalidMultilineLiteralType]
-def f() -> "A\nB": pass # E: Invalid type. Try using Literal['A\nB'] instead?
-[out]
+def f() -> "A\nB": pass
+[out skip-path-normalization]
+main:1: error: Invalid type. Try using Literal['A\nB'] instead?
 
 [case testInconsistentOverload]
 from typing import overload

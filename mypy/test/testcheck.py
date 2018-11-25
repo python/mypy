@@ -178,7 +178,8 @@ class TypeCheckSuite(DataSuite):
             assert sys.path[0] == plugin_dir
             del sys.path[0]
 
-        a = normalize_error_messages(a)
+        if testcase.normalize_output:
+            a = normalize_error_messages(a)
 
         # Make sure error messages match
         if incremental_step == 0:

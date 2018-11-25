@@ -93,7 +93,8 @@ class ASTMergeSuite(DataSuite):
             # Verify that old AST nodes are removed from the expression type map.
             assert expr not in new_types
 
-        a = normalize_error_messages(a)
+        if testcase.normalize_output:
+            a = normalize_error_messages(a)
 
         assert_string_arrays_equal(
             testcase.output, a,
