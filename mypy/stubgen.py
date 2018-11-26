@@ -450,7 +450,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         if self.is_recorded_name(o.name()):
             return
-        if not self._indent and self._state not in (EMPTY, FUNC):
+        if not self._indent and self._state not in (EMPTY, FUNC) and not o.is_awaitable_coroutine:
             self.add('\n')
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
@@ -458,7 +458,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
-        self.add("%sdef %s(" % (self._indent, o.name()))
+        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name()))
         self.record_name(o.name())
         args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
@@ -513,13 +513,36 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self.is_private_name(o.func.name()):
             return
         for decorator in o.decorators:
-            if isinstance(decorator, NameExpr) and decorator.name in ('property',
-                                                                      'staticmethod',
-                                                                      'classmethod'):
-                self.add('%s@%s\n' % (self._indent, decorator.name))
-            elif (isinstance(decorator, MemberExpr) and decorator.name == 'setter' and
-                  isinstance(decorator.expr, NameExpr)):
-                self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+            if isinstance(decorator, NameExpr):
+                if decorator.name in ('property',
+                                      'staticmethod',
+                                      'classmethod'):
+                    self.add('%s@%s\n' % (self._indent, decorator.name))
+                elif self.import_tracker.module_for.get(decorator.name) in ('asyncio',
+                                                                            'asyncio.coroutines',
+                                                                            'types'):
+                    self.add_coroutine_decorator(o.func, decorator.name, decorator.name)
+            elif isinstance(decorator, MemberExpr):
+                if decorator.name == 'setter' and isinstance(decorator.expr, NameExpr):
+                    self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+                elif decorator.name == 'coroutine':
+                    if (isinstance(decorator.expr, MemberExpr) and
+                        decorator.expr.name == 'coroutines' and
+                        isinstance(decorator.expr.expr, NameExpr) and
+                            (decorator.expr.expr.name == 'asyncio' or
+                             self.import_tracker.reverse_alias.get(decorator.expr.expr.name) ==
+                                'asyncio')):
+                        self.add_coroutine_decorator(o.func,
+                                                     '%s.coroutines.coroutine' %
+                                                     (decorator.expr.expr.name,),
+                                                     decorator.expr.expr.name)
+                    elif (isinstance(decorator.expr, NameExpr) and
+                          (decorator.expr.name in ('asyncio', 'types') or
+                           self.import_tracker.reverse_alias.get(decorator.expr.name) in
+                            ('asyncio', 'asyncio.coroutines', 'types'))):
+                        self.add_coroutine_decorator(o.func,
+                                                     decorator.expr.name + '.coroutine',
+                                                     decorator.expr.name)
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -749,6 +772,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Add a line of text to the import section, unless it's already there."""
         if line not in self._import_lines:
             self._import_lines.append(line)
+
+    def add_coroutine_decorator(self, func: FuncDef, name: str, require_name: str) -> None:
+        func.is_awaitable_coroutine = True
+        if not self._indent and self._state not in (EMPTY, FUNC):
+            self.add('\n')
+        self.add('%s@%s\n' % (self._indent, name))
+        self.import_tracker.require_name(require_name)
 
     def output(self) -> str:
         """Return the text for the stub."""
