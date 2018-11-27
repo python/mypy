@@ -863,6 +863,7 @@ a = ()
 from typing import Sized
 a = None  # type: Sized
 a = ()
+[typing fixtures/typing-full.pyi]
 
 [case testTupleWithStarExpr1]
 

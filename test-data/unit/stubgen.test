@@ -725,7 +725,7 @@ async def f(a):
 [out]
 from typing import Any
 
-def f(a: Any) -> None: ...
+async def f(a: Any) -> None: ...
 
 [case testInferOptionalOnlyFunc]
 class A:
@@ -919,3 +919,316 @@ x: Callable[[int, int], int]
 from typing import Callable
 
 x: Callable[[int, int], int]
+
+[case testAwaitDef]
+class F:
+    async def f(self):
+        return 1
+
+async def g():
+    return 2
+[out]
+class F:
+    async def f(self): ...
+
+async def g(): ...
+
+[case testCoroutineImportAsyncio]
+import asyncio
+
+class F:
+    @asyncio.coroutine
+    def f(self):
+        return 1
+
+@asyncio.coroutine
+def g():
+    return 2
+
+@asyncio.coroutine
+def h():
+    return 3
+[out]
+import asyncio
+
+class F:
+    @asyncio.coroutine
+    def f(self): ...
+
+@asyncio.coroutine
+def g(): ...
+@asyncio.coroutine
+def h(): ...
+
+[case testCoroutineImportAsyncioCoroutines]
+import asyncio.coroutines
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self):
+        return 1
+
+@asyncio.coroutines.coroutine
+def g():
+    return 2
+[out]
+import asyncio.coroutines
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self): ...
+
+@asyncio.coroutines.coroutine
+def g(): ...
+
+[case testCoroutineImportAsyncioCoroutinesSub]
+import asyncio
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self):
+        return 1
+
+@asyncio.coroutines.coroutine
+def g():
+    return 2
+[out]
+import asyncio
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self): ...
+
+@asyncio.coroutines.coroutine
+def g(): ...
+
+[case testCoroutineImportTypes]
+import types
+
+class F:
+    @types.coroutine
+    def f(self):
+        return 1
+
+@types.coroutine
+def g():
+    return 2
+[out]
+import types
+
+class F:
+    @types.coroutine
+    def f(self): ...
+
+@types.coroutine
+def g(): ...
+
+[case testCoroutineFromAsyncioImportCoroutine]
+from asyncio import coroutine
+
+class F:
+    @coroutine
+    def f(self):
+        return 1
+
+@coroutine
+def g():
+    return 2
+[out]
+from asyncio import coroutine
+
+class F:
+    @coroutine
+    def f(self): ...
+
+@coroutine
+def g(): ...
+
+[case testCoroutineFromAsyncioCoroutinesImportCoroutine]
+from asyncio.coroutines import coroutine
+
+class F:
+    @coroutine
+    def f(self):
+        return 1
+
+@coroutine
+def g():
+    return 2
+[out]
+from asyncio.coroutines import coroutine
+
+class F:
+    @coroutine
+    def f(self): ...
+
+@coroutine
+def g(): ...
+
+[case testCoroutineFromTypesImportCoroutine]
+from types import coroutine
+
+class F:
+    @coroutine
+    def f(self):
+        return 1
+
+@coroutine
+def g():
+    return 2
+[out]
+from types import coroutine
+
+class F:
+    @coroutine
+    def f(self): ...
+
+@coroutine
+def g(): ...
+
+[case testCoroutineFromAsyncioImportCoroutineAsC]
+from asyncio import coroutine as c
+
+class F:
+    @c
+    def f(self):
+        return 1
+
+@c
+def g():
+    return 2
+[out]
+from asyncio import coroutine as c
+
+class F:
+    @c
+    def f(self): ...
+
+@c
+def g(): ...
+
+[case testCoroutineFromAsyncioCoroutinesImportCoroutineAsC]
+from asyncio.coroutines import coroutine as c
+
+class F:
+    @c
+    def f(self):
+        return 1
+
+@c
+def g():
+    return 2
+[out]
+from asyncio.coroutines import coroutine as c
+
+class F:
+    @c
+    def f(self): ...
+
+@c
+def g(): ...
+
+[case testCoroutineFromTypesImportCoroutineAsC]
+from types import coroutine as c
+
+class F:
+    @c
+    def f(self):
+        return 1
+
+@c
+def g():
+    return 2
+[out]
+from types import coroutine as c
+
+class F:
+    @c
+    def f(self): ...
+
+@c
+def g(): ...
+
+[case testCoroutineImportAsyncioAsA]
+import asyncio as a
+
+class F:
+    @a.coroutine
+    def f(self):
+        return 1
+
+@a.coroutine
+def g():
+    return 2
+[out]
+import asyncio as a
+
+class F:
+    @a.coroutine
+    def f(self): ...
+
+@a.coroutine
+def g(): ...
+
+[case testCoroutineImportAsyncioCoroutinesAsC]
+import asyncio.coroutines as c
+
+class F:
+    @c.coroutine
+    def f(self):
+        return 1
+
+@c.coroutine
+def g():
+    return 2
+[out]
+import asyncio.coroutines as c
+
+class F:
+    @c.coroutine
+    def f(self): ...
+
+@c.coroutine
+def g(): ...
+
+[case testCoroutineImportAsyncioCoroutinesSubAsA]
+import asyncio as a
+
+class F:
+    @a.coroutines.coroutine
+    def f(self):
+        return 1
+
+@a.coroutines.coroutine
+def g():
+    return 2
+[out]
+import asyncio as a
+
+class F:
+    @a.coroutines.coroutine
+    def f(self): ...
+
+@a.coroutines.coroutine
+def g(): ...
+
+[case testCoroutineImportTypesAsT]
+import types as t
+
+class F:
+    @t.coroutine
+    def f(self):
+        return 1
+
+@t.coroutine
+def g():
+    return 2
+[out]
+import types as t
+
+class F:
+    @t.coroutine
+    def f(self): ...
+
+@t.coroutine
+def g(): ...

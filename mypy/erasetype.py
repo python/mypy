@@ -3,7 +3,7 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny
+    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType,
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -77,6 +77,12 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.fallback.accept(self)
+
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        # The fallback for literal types should always be either
+        # something like int or str, or an enum class -- types that
+        # don't contain any TypeVars. So there's no need to visit it.
+        return t
 
     def visit_union_type(self, t: UnionType) -> Type:
         erased_items = [erase_type(item) for item in t.items]

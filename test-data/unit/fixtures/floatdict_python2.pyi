@@ -16,7 +16,7 @@ class str:
     def __add__(self, other: 'str') -> 'str': pass
     def __rmul__(self, n: int) -> str: ...
 
-class bytes: pass
+class unicode: pass
 
 class tuple(Generic[T]): pass
 class slice: pass

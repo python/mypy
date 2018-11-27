@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny
+    FunctionLike, TypeOfAny, LiteralType,
 )
 import mypy.applytype
 import mypy.constraints
@@ -326,6 +326,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         else:
             return False
+
+    def visit_literal_type(self, t: LiteralType) -> bool:
+        raise NotImplementedError()
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
@@ -1167,6 +1170,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     return False
             return True
         return self._is_proper_subtype(left.fallback, right)
+
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        raise NotImplementedError()
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         # TODO: What's the right thing to do here?

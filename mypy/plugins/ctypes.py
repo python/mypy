@@ -9,6 +9,24 @@ from mypy.subtypes import is_subtype
 from mypy.types import AnyType, CallableType, Instance, Type, TypeOfAny, UnionType, union_items
 
 
+def _get_bytes_type(api: 'mypy.plugin.CheckerPluginInterface') -> Instance:
+    """Return the type corresponding to bytes on the current Python version.
+
+    This is bytes in Python 3, and str in Python 2.
+    """
+    return api.named_generic_type(
+        'builtins.bytes' if api.options.python_version >= (3,) else 'builtins.str', [])
+
+
+def _get_text_type(api: 'mypy.plugin.CheckerPluginInterface') -> Instance:
+    """Return the type corresponding to Text on the current Python version.
+
+    This is str in Python 3, and unicode in Python 2.
+    """
+    return api.named_generic_type(
+        'builtins.str' if api.options.python_version >= (3,) else 'builtins.unicode', [])
+
+
 def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInterface'
                                ) -> Optional[Type]:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
@@ -170,13 +188,9 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             if isinstance(tp, AnyType):
                 types.append(AnyType(TypeOfAny.from_another_any, source_any=tp))
             elif isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_char':
-                types.append(ctx.api.named_generic_type('builtins.bytes', []))
+                types.append(_get_bytes_type(ctx.api))
             elif isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_wchar':
-                types.append(ctx.api.named_generic_type(
-                    'builtins.str'
-                    if ctx.api.options.python_version >= (3,)
-                    else 'builtins.unicode',
-                    []))
+                types.append(_get_text_type(ctx.api))
             else:
                 ctx.api.msg.fail(
                     'ctypes.Array attribute "value" is only available'
@@ -195,7 +209,7 @@ def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
         for tp in union_items(et):
             if (isinstance(tp, AnyType)
                     or isinstance(tp, Instance) and tp.type.fullname() == 'ctypes.c_char'):
-                types.append(ctx.api.named_generic_type('builtins.bytes', []))
+                types.append(_get_bytes_type(ctx.api))
             else:
                 ctx.api.msg.fail(
                     'ctypes.Array attribute "raw" is only available'

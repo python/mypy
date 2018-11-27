@@ -27,19 +27,21 @@ def generate_stub_for_c_module(module_name: str,
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
+    imports = []  # type: List[str]
     functions = []  # type: List[str]
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
-            generate_c_function_stub(module, name, obj, functions, sigs=sigs)
+            generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs)
             done.add(name)
     types = []  # type: List[str]
     for name, obj in items:
         if name.startswith('__') and name.endswith('__'):
             continue
         if is_c_type(obj):
-            generate_c_type_stub(module, name, obj, types, sigs=sigs, class_sigs=class_sigs)
+            generate_c_type_stub(module, name, obj, types, imports=imports, sigs=sigs,
+                                 class_sigs=class_sigs)
             done.add(name)
     variables = []
     for name, obj in items:
@@ -51,6 +53,8 @@ def generate_stub_for_c_module(module_name: str,
                 type_str = 'Any'
             variables.append('%s: %s' % (name, type_str))
     output = []
+    for line in sorted(set(imports)):
+        output.append(line)
     for line in variables:
         output.append(line)
     if output and functions:
@@ -111,12 +115,13 @@ def generate_c_function_stub(module: ModuleType,
                              name: str,
                              obj: object,
                              output: List[str],
+                             imports: List[str],
                              self_var: Optional[str] = None,
                              sigs: Dict[str, str] = {},
                              class_name: Optional[str] = None,
                              class_sigs: Dict[str, str] = {},
                              ) -> None:
-    ret_type = 'Any'
+    ret_type = 'None' if name == '__init__' and class_name else 'Any'
 
     if self_var:
         self_arg = '%s, ' % self_var
@@ -146,7 +151,47 @@ def generate_c_function_stub(module: ModuleType,
                 sig = '{},{}'.format(self_var, groups[1]) if len(groups) > 1 else self_var
     else:
         self_arg = self_arg.replace(', ', '')
+
+    if sig:
+        sig_types = []
+        # convert signature in form of "self: TestClass, arg0: str" to
+        # list [[self, TestClass], [arg0, str]]
+        for arg in sig.split(','):
+            arg_type = arg.split(':', 1)
+            if len(arg_type) == 1:
+                # there is no type provided in docstring
+                sig_types.append(arg_type[0].strip())
+            else:
+                arg_type_name = strip_or_import(arg_type[1].strip(), module, imports)
+                sig_types.append('%s: %s' % (arg_type[0].strip(), arg_type_name))
+        sig = ", ".join(sig_types)
+
+    ret_type = strip_or_import(ret_type, module, imports)
     output.append('def %s(%s%s) -> %s: ...' % (name, self_arg, sig, ret_type))
+
+
+def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
+    """
+    Strips unnecessary module names from typ.
+
+    If typ represents a type that is inside module or is a type comming from builtins, remove
+    module declaration from it
+
+    :param typ: name of the type
+    :param module: in which this type is used
+    :param imports: list of import statements. May be modified during the call
+    :return: stripped name of the type
+    """
+    arg_type = typ
+    if module and typ.startswith(module.__name__):
+        arg_type = typ[len(module.__name__) + 1:]
+    elif '.' in typ:
+        arg_module = arg_type[:arg_type.rindex('.')]
+        if arg_module == 'builtins':
+            arg_type = arg_type[len('builtins') + 1:]
+        else:
+            imports.append('import %s' % (arg_module,))
+    return arg_type
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
@@ -166,6 +211,7 @@ def generate_c_type_stub(module: ModuleType,
                          class_name: str,
                          obj: type,
                          output: List[str],
+                         imports: List[str],
                          sigs: Dict[str, str] = {},
                          class_sigs: Dict[str, str] = {},
                          ) -> None:
@@ -193,8 +239,9 @@ def generate_c_type_stub(module: ModuleType,
                         # better signature than __init__() ?
                         continue
                     attr = '__init__'
-                generate_c_function_stub(module, attr, value, methods, self_var, sigs=sigs,
-                                         class_name=class_name, class_sigs=class_sigs)
+                generate_c_function_stub(module, attr, value, methods, imports=imports,
+                                         self_var=self_var, sigs=sigs, class_name=class_name,
+                                         class_sigs=class_sigs)
         elif is_c_property(value):
             done.add(attr)
             generate_c_property_stub(attr, value, properties, is_c_property_readonly(value))
@@ -209,6 +256,10 @@ def generate_c_type_stub(module: ModuleType,
     if all_bases[-1] is object:
         # TODO: Is this always object?
         del all_bases[-1]
+    # remove pybind11_object. All classes generated by pybind11 have pybind11_object in their MRO,
+    # which only overrides a few functions in object type
+    if all_bases and all_bases[-1].__name__ == 'pybind11_object':
+        del all_bases[-1]
     # remove the class itself
     all_bases = all_bases[1:]
     # Remove base classes of other bases as redundant.
@@ -217,7 +268,13 @@ def generate_c_type_stub(module: ModuleType,
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
     if bases:
-        bases_str = '(%s)' % ', '.join(base.__name__ for base in bases)
+        bases_str = '(%s)' % ', '.join(
+            strip_or_import(
+                '%s.%s' % (base.__module__, base.__name__),
+                module,
+                imports
+            ) for base in bases
+        )
     else:
         bases_str = ''
     if not methods and not variables and not properties:

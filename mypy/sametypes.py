@@ -3,7 +3,7 @@ from typing import Sequence
 from mypy.types import (
     Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
-    Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
+    Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
 )
 
 
@@ -111,6 +111,14 @@ class SameTypeVisitor(TypeVisitor[bool]):
                 if not is_same_type(left_item_type, right_item_type):
                     return False
             return True
+        else:
+            return False
+
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        if isinstance(self.right, LiteralType):
+            if left.value != self.right.value:
+                return False
+            return is_same_type(left.fallback, self.right.fallback)
         else:
             return False
 

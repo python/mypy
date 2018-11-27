@@ -47,7 +47,7 @@ MypyFile:1(
   ClassDef:2(
     A
     BaseType(
-      typing.Mapping[builtins.str, builtins.str])
+      typing.Mapping[builtins.str, builtins.object])
     ExpressionStmt:3(
       StrExpr(foo))
     AssignmentStmt:4(

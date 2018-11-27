@@ -183,6 +183,7 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
+        command = None
         try:
             server = IPCServer(CONNECTION_NAME, self.timeout)
             with open(STATUS_FILE, 'w') as f:
@@ -220,7 +221,13 @@ class Server:
                 server.cleanup()  # try to remove the socket dir on Linux
             except OSError:
                 pass
-            os.unlink(STATUS_FILE)
+            # If the final command is something other than a clean
+            # stop, remove the status file. (We can't just
+            # simplify the logic and always remove the file, since
+            # that could cause us to remove a future server's
+            # status file.)
+            if command != 'stop':
+                os.unlink(STATUS_FILE)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
@@ -244,6 +251,11 @@ class Server:
 
     def cmd_stop(self) -> Dict[str, object]:
         """Stop daemon."""
+        # We need to remove the status file *before* we complete the
+        # RPC. Otherwise a race condition exists where a subsequent
+        # command can see a status file from a dying server and think
+        # it is a live one.
+        os.unlink(STATUS_FILE)
         return {}
 
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:

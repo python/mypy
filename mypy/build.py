@@ -341,7 +341,10 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
             plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
                 plugin_error("Can't find plugin '{}'".format(plugin_path))
-            plugin_dir = os.path.dirname(plugin_path)
+            # Use an absolute path to avoid populating the cache entry
+            # for 'tmp' during tests, since it will be different in
+            # different tests.
+            plugin_dir = os.path.abspath(os.path.dirname(plugin_path))
             fnam = os.path.basename(plugin_path)
             module_name = fnam[:-3]
             sys.path.insert(0, plugin_dir)

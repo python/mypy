@@ -80,6 +80,15 @@ reveal_type(ca.value)  # E: Revealed type is 'builtins.bytes'
 reveal_type(ca.raw)  # E: Revealed type is 'builtins.bytes'
 [builtins fixtures/floatdict.pyi]
 
+[case testCtypesCharArrayAttrsPy2]
+# flags: --py2
+import ctypes
+
+ca = (ctypes.c_char * 4)('a', 'b', 'c', '\x00')
+reveal_type(ca.value)  # E: Revealed type is 'builtins.str'
+reveal_type(ca.raw)  # E: Revealed type is 'builtins.str'
+[builtins_py2 fixtures/floatdict_python2.pyi]
+
 [case testCtypesWcharArrayAttrs]
 import ctypes
 
@@ -95,7 +104,7 @@ import ctypes
 wca = (ctypes.c_wchar * 4)(u'a', u'b', u'c', u'\x00')
 reveal_type(wca.value)  # E: Revealed type is 'builtins.unicode'
 wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
-[builtins_py2 fixtures/floatdict.pyi]
+[builtins_py2 fixtures/floatdict_python2.pyi]
 
 [case testCtypesCharUnionArrayAttrs]
 import ctypes
