@@ -159,11 +159,12 @@ If the module is a part of your own codebase, try:
 If the module is a third party library, you must make sure that there are
 type hints available for that library. Mypy by default will not attempt to
 infer the types of any 3rd party libraries you may have installed
-unless they declare themselves to be :ref:`PEP 561 compliant stub package <installed-packages>`
-or have registered themselves on `typeshed <https://github.com/python/typeshed>`_,
+unless they either have declared themselves to be
+:ref:`PEP 561 compliant stub package <installed-packages>` or have registered
+themselves on `typeshed <https://github.com/python/typeshed>`_,
 the repository of types for the standard library and some 3rd party libraries.
 
-If you are getting a "no library stub file" error, this means the library you
+If you are getting an import-related error, this means the library you
 are trying to use has done neither of these things. In that case, you can try:
 
 1.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`.
@@ -214,7 +215,7 @@ type hints nor have to time to write your own, you can *silence* the errors:
         [mypy]
         ignore_missing_imports = True
 
-    We recommend using either option only as a last resort: it's equivalent
+    We recommend using this approach only as a last resort: it's equivalent
     to adding a ``# type: ignore`` to all unresolved imports in your codebase.
 
 If the module is a part of the standard library, try:
@@ -230,8 +231,8 @@ If the module is a part of the standard library, try:
     Changes to typeshed will come bundled with mypy the next time it's released.
     In the meantime, you can add a ``# type: ignore`` to silence any relevant
     errors. After upgrading, we recommend running mypy using the
-    ``--warn-unused-ignores`` flag to help you find any ``# type: ignores``
-    you no longer need.
+    ``--warn-unused-ignores`` flag to help you find any ``# type: ignore``
+    annotations you no longer need.
      
 .. _follow-imports:
 
