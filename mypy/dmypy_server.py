@@ -201,10 +201,11 @@ class Server:
                         reset_global_state()
                         sys.exit(0)
             finally:
-                # If this is something other than a clean stop, remove
-                # the status file. (We can't just simplify the logic
-                # and always remove the file, since that could cause
-                # us to remove a future server's status file.)
+                # If the final command is something other than a clean
+                # stop, remove the status file. (We can't just
+                # simplify the logic and always remove the file, since
+                # that could cause us to remove a future server's
+                # status file.)
                 if command != 'stop':
                     os.unlink(STATUS_FILE)
         finally:
