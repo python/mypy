@@ -153,6 +153,7 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
+        command = None
         try:
             sock = self.create_listening_socket()
             if self.timeout is not None:
@@ -200,7 +201,13 @@ class Server:
                         reset_global_state()
                         sys.exit(0)
             finally:
-                os.unlink(STATUS_FILE)
+                # If the final command is something other than a clean
+                # stop, remove the status file. (We can't just
+                # simplify the logic and always remove the file, since
+                # that could cause us to remove a future server's
+                # status file.)
+                if command != 'stop':
+                    os.unlink(STATUS_FILE)
         finally:
             shutil.rmtree(self.sock_directory)
             exc_info = sys.exc_info()
@@ -235,6 +242,11 @@ class Server:
 
     def cmd_stop(self) -> Dict[str, object]:
         """Stop daemon."""
+        # We need to remove the status file *before* we complete the
+        # RPC. Otherwise a race condition exists where a subsequent
+        # command can see a status file from a dying server and think
+        # it is a live one.
+        os.unlink(STATUS_FILE)
         return {}
 
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
