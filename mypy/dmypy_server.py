@@ -6,10 +6,13 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
+import argparse
+import base64
 import json
 import os
-import shutil
-import socket
+import pickle
+import random
+import subprocess
 import sys
 import tempfile
 import time
@@ -23,6 +26,7 @@ import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.ipc import IPCServer, IPCException
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
@@ -30,66 +34,92 @@ from mypy.options import Options
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 
+
 MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
+if sys.platform == 'win32':
+    def daemonize(options: Options,
+                  timeout: Optional[int] = None,
+                  log_file: Optional[str] = None) -> int:
+        """Create the daemon process via "dmypy daemon" and pass options via command line
 
-def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
-    """Arrange to call func() in a grandchild of the current process.
+        This uses the DETACHED_PROCESS flag to invoke the Server.
+        See https://docs.microsoft.com/en-us/windows/desktop/procthread/process-creation-flags
 
-    Return 0 for success, exit status for failure, negative if
-    subprocess killed by signal.
-    """
-    # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
-    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-    if sys.platform == 'win32' or bool():
-        raise ValueError('Mypy daemon is not supported on Windows yet')
-    sys.stdout.flush()
-    sys.stderr.flush()
-    pid = os.fork()
-    if pid:
-        # Parent process: wait for child in case things go bad there.
-        npid, sts = os.waitpid(pid, 0)
-        sig = sts & 0xff
-        if sig:
-            print("Child killed by signal", sig)
-            return -sig
-        sts = sts >> 8
-        if sts:
-            print("Child exit status", sts)
-        return sts
-    # Child process: do a bunch of UNIX stuff and then fork a grandchild.
-    try:
-        os.setsid()  # Detach controlling terminal
-        os.umask(0o27)
-        devnull = os.open('/dev/null', os.O_RDWR)
-        os.dup2(devnull, 0)
-        os.dup2(devnull, 1)
-        os.dup2(devnull, 2)
-        os.close(devnull)
+        It also pickles the options to be unpickled by mypy.
+        """
+        command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
+        pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
+        command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
+        try:
+            subprocess.Popen(command, creationflags=0x8)  # DETACHED_PROCESS
+            return 0
+        except subprocess.CalledProcessError as e:
+            return e.returncode
+
+else:
+    def _daemonize_cb(func: Callable[[], None], log_file: Optional[str] = None) -> int:
+        """Arrange to call func() in a grandchild of the current process.
+
+        Return 0 for success, exit status for failure, negative if
+        subprocess killed by signal.
+        """
+        # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
+        sys.stdout.flush()
+        sys.stderr.flush()
         pid = os.fork()
         if pid:
-            # Child is done, exit to parent.
-            os._exit(0)
-        # Grandchild: run the server.
-        if log_file:
-            sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
-            fd = sys.stdout.fileno()
-            os.dup2(fd, 2)
-            os.dup2(fd, 1)
-        func()
-    finally:
-        # Make sure we never get back into the caller.
-        os._exit(1)
+            # Parent process: wait for child in case things go bad there.
+            npid, sts = os.waitpid(pid, 0)
+            sig = sts & 0xff
+            if sig:
+                print("Child killed by signal", sig)
+                return -sig
+            sts = sts >> 8
+            if sts:
+                print("Child exit status", sts)
+            return sts
+        # Child process: do a bunch of UNIX stuff and then fork a grandchild.
+        try:
+            os.setsid()  # Detach controlling terminal
+            os.umask(0o27)
+            devnull = os.open('/dev/null', os.O_RDWR)
+            os.dup2(devnull, 0)
+            os.dup2(devnull, 1)
+            os.dup2(devnull, 2)
+            os.close(devnull)
+            pid = os.fork()
+            if pid:
+                # Child is done, exit to parent.
+                os._exit(0)
+            # Grandchild: run the server.
+            if log_file:
+                sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
+                fd = sys.stdout.fileno()
+                os.dup2(fd, 2)
+                os.dup2(fd, 1)
+            func()
+        finally:
+            # Make sure we never get back into the caller.
+            os._exit(1)
 
+    def daemonize(options: Options,
+                  timeout: Optional[int] = None,
+                  log_file: Optional[str] = None) -> int:
+        """Run the mypy daemon in a grandchild of the current process
+
+        Return 0 for success, exit status for failure, negative if
+        subprocess killed by signal.
+        """
+        return _daemonize_cb(Server(options, timeout).serve, log_file)
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'  # type: Final
+CONNECTION_NAME = 'dmypy.sock'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -155,25 +185,13 @@ class Server:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
         try:
-            sock = self.create_listening_socket()
-            if self.timeout is not None:
-                sock.settimeout(self.timeout)
-            try:
-                with open(STATUS_FILE, 'w') as f:
-                    json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
-                    f.write('\n')  # I like my JSON with trailing newline
-                while True:
-                    try:
-                        conn, addr = sock.accept()
-                    except socket.timeout:
-                        print("Exiting due to inactivity.")
-                        reset_global_state()
-                        sys.exit(0)
-                    try:
-                        data = receive(conn)
-                    except OSError:
-                        conn.close()  # Maybe the client hung up
-                        continue
+            server = IPCServer(CONNECTION_NAME, self.timeout)
+            with open(STATUS_FILE, 'w') as f:
+                json.dump({'pid': os.getpid(), 'connection_name': server.connection_name}, f)
+                f.write('\n')  # I like my JSON with a trailing newline
+            while True:
+                with server:
+                    data = receive(server)
                     resp = {}  # type: Dict[str, Any]
                     if 'command' not in data:
                         resp = {'error': "No command found in request"}
@@ -189,39 +207,30 @@ class Server:
                                 # If we are crashing, report the crash to the client
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                conn.sendall(json.dumps(resp).encode('utf8'))
+                                server.write(json.dumps(resp).encode('utf8'))
                                 raise
                     try:
-                        conn.sendall(json.dumps(resp).encode('utf8'))
+                        server.write(json.dumps(resp).encode('utf8'))
                     except OSError:
                         pass  # Maybe the client hung up
-                    conn.close()
                     if command == 'stop':
-                        sock.close()
                         reset_global_state()
                         sys.exit(0)
-            finally:
-                # If the final command is something other than a clean
-                # stop, remove the status file. (We can't just
-                # simplify the logic and always remove the file, since
-                # that could cause us to remove a future server's
-                # status file.)
-                if command != 'stop':
-                    os.unlink(STATUS_FILE)
         finally:
-            shutil.rmtree(self.sock_directory)
+            # If the final command is something other than a clean
+            # stop, remove the status file. (We can't just
+            # simplify the logic and always remove the file, since
+            # that could cause us to remove a future server's
+            # status file.)
+            if command != 'stop':
+                os.unlink(STATUS_FILE)
+            try:
+                server.cleanup()  # try to remove the socket dir on Linux
+            except OSError:
+                pass
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
-
-    def create_listening_socket(self) -> socket.socket:
-        """Create the socket and set it up for listening."""
-        self.sock_directory = tempfile.mkdtemp()
-        sockname = os.path.join(self.sock_directory, SOCKET_NAME)
-        sock = socket.socket(socket.AF_UNIX)
-        sock.bind(sockname)
-        sock.listen(1)
-        return sock
 
     def run_command(self, command: str, data: Mapping[str, object]) -> Dict[str, object]:
         """Run a specific command from the registry."""
@@ -457,17 +466,7 @@ MiB = 2**20  # type: Final
 
 
 def get_meminfo() -> Dict[str, Any]:
-    # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
-    import resource  # Since it doesn't exist on Windows.
     res = {}  # type: Dict[str, Any]
-    rusage = resource.getrusage(resource.RUSAGE_SELF)
-    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-    if sys.platform == 'darwin' or bool():
-        factor = 1
-    else:
-        factor = 1024  # Linux
-    res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
-    # If we can import psutil, use it for some extra data
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:
@@ -481,4 +480,17 @@ def get_meminfo() -> Dict[str, Any]:
         meminfo = process.memory_info()
         res['memory_rss_mib'] = meminfo.rss / MiB
         res['memory_vms_mib'] = meminfo.vms / MiB
+        if sys.platform == 'win32':
+            res['memory_maxrss_mib'] = meminfo.peak_wset / MiB
+        else:
+            # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
+            import resource  # Since it doesn't exist on Windows.
+            rusage = resource.getrusage(resource.RUSAGE_SELF)
+            # mypyc doesn't like unreachable code, so trick mypy into thinking
+            # the branch is reachable
+            if sys.platform == 'darwin' or bool():
+                factor = 1
+            else:
+                factor = 1024  # Linux
+            res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
     return res

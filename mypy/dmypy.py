@@ -7,16 +7,21 @@ rather than having to read it back from disk on each run.
 """
 
 import argparse
+import base64
 import json
 import os
+import pickle
 import signal
-import socket
+import subprocess
 import sys
 import time
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.ipc import IPCClient, IPCException
+from mypy.dmypy_os import alive, kill
+
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
@@ -92,7 +97,7 @@ p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                help="Regular mypy flags (precede with --)")
-
+p.add_argument('--options-data', help=argparse.SUPPRESS)
 help_parser = p = subparsers.add_parser('help')
 
 del p
@@ -179,10 +184,9 @@ def restart_server(args: argparse.Namespace, allow_sources: bool = False) -> Non
 def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import daemonize, Server, process_start_options
-    if daemonize(Server(process_start_options(args.flags, allow_sources),
-                        timeout=args.timeout).serve,
-                 args.log_file) != 0:
+    from mypy.dmypy_server import daemonize, process_start_options
+    start_options = process_start_options(args.flags, allow_sources)
+    if daemonize(start_options, timeout=args.timeout, log_file=args.log_file):
         sys.exit(1)
     wait_for_server()
 
@@ -201,7 +205,7 @@ def wait_for_server(timeout: float = 5.0) -> None:
             time.sleep(0.1)
             continue
         # If the file's content is bogus or the process is dead, fail.
-        pid, sockname = check_status(data)
+        check_status(data)
         print("Daemon started")
         return
     sys.exit("Timed out waiting for daemon to start")
@@ -224,7 +228,6 @@ def do_run(args: argparse.Namespace) -> None:
     if not is_running():
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
-
     t0 = time.time()
     response = request('run', version=__version__, args=args.flags)
     # If the daemon signals that a restart is necessary, do it
@@ -273,9 +276,9 @@ def do_stop(args: argparse.Namespace) -> None:
 @action(kill_parser)
 def do_kill(args: argparse.Namespace) -> None:
     """Kill daemon process with SIGKILL."""
-    pid, sockname = get_status()
+    pid, _ = get_status()
     try:
-        os.kill(pid, signal.SIGKILL)
+        kill(pid)
     except OSError as err:
         sys.exit(str(err))
     else:
@@ -363,7 +366,20 @@ def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
-    Server(process_start_options(args.flags, allow_sources=False), timeout=args.timeout).serve()
+    if args.options_data:
+        from mypy.options import Options
+        options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
+        options_obj = Options()
+        options = options_obj.apply_changes(options_dict)
+        if log_file:
+            sys.stdout = sys.stderr = open(log_file, 'a', buffering=1)
+            fd = sys.stdout.fileno()
+            os.dup2(fd, 2)
+            os.dup2(fd, 1)
+    else:
+        options = process_start_options(args.flags, allow_sources=False)
+        timeout = args.timeout
+    Server(options, timeout=timeout).serve()
 
 
 @action(help_parser)
@@ -375,7 +391,7 @@ def do_help(args: argparse.Namespace) -> None:
 # Client-side infrastructure.
 
 
-def request(command: str, *, timeout: Optional[float] = None,
+def request(command: str, *, timeout: Optional[int] = None,
             **kwds: object) -> Dict[str, Any]:
     """Send a request to the daemon.
 
@@ -384,35 +400,30 @@ def request(command: str, *, timeout: Optional[float] = None,
     Raise BadStatus if there is something wrong with the status file
     or if the process whose pid is in the status file has died.
 
-    Return {'error': <message>} if a socket operation or receive()
+    Return {'error': <message>} if an IPC operation or receive()
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
+    response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args.update(command=command)
     bdata = json.dumps(args).encode('utf8')
-    pid, sockname = get_status()
-    sock = socket.socket(socket.AF_UNIX)
-    if timeout is not None:
-        sock.settimeout(timeout)
+    _, name = get_status()
     try:
-        sock.connect(sockname)
-        sock.sendall(bdata)
-        sock.shutdown(socket.SHUT_WR)
-        response = receive(sock)
-    except OSError as err:
+        with IPCClient(name, timeout) as client:
+                client.write(bdata)
+                response = receive(client)
+    except (OSError, IPCException) as err:
         return {'error': str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
     else:
         return response
-    finally:
-        sock.close()
 
 
 def get_status() -> Tuple[int, str]:
     """Read status file and check if the process is alive.
 
-    Return (pid, sockname) on success.
+    Return (pid, connection_name) on success.
 
     Raise BadStatus if something's wrong.
     """
@@ -423,7 +434,7 @@ def get_status() -> Tuple[int, str]:
 def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     """Check if the process is alive.
 
-    Return (pid, sockname) on success.
+    Return (pid, connection_name) on success.
 
     Raise BadStatus if something's wrong.
     """
@@ -432,16 +443,14 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     pid = data['pid']
     if not isinstance(pid, int):
         raise BadStatus("pid field is not an int")
-    try:
-        os.kill(pid, 0)
-    except OSError:
+    if not alive(pid):
         raise BadStatus("Daemon has died")
-    if 'sockname' not in data:
-        raise BadStatus("Invalid status file (no sockname field)")
-    sockname = data['sockname']
-    if not isinstance(sockname, str):
-        raise BadStatus("sockname field is not a string")
-    return pid, sockname
+    if 'connection_name' not in data:
+        raise BadStatus("Invalid status file (no connection_name field)")
+    connection_name = data['connection_name']
+    if not isinstance(connection_name, str):
+        raise BadStatus("connection_name field is not a string")
+    return pid, connection_name
 
 
 def read_status() -> Dict[str, object]:
