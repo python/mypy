@@ -217,10 +217,6 @@ class Server:
                         reset_global_state()
                         sys.exit(0)
         finally:
-            try:
-                server.cleanup()  # try to remove the socket dir on Linux
-            except OSError:
-                pass
             # If the final command is something other than a clean
             # stop, remove the status file. (We can't just
             # simplify the logic and always remove the file, since
@@ -228,6 +224,10 @@ class Server:
             # status file.)
             if command != 'stop':
                 os.unlink(STATUS_FILE)
+            try:
+                server.cleanup()  # try to remove the socket dir on Linux
+            except OSError:
+                pass
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
