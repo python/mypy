@@ -29,6 +29,7 @@ you'll find errors sooner.
     run multiple mypy daemon processes to type check multiple repositories.
 
 .. note::
+
     On Windows, due to platform limitations, the mypy daemon does not currently
     support a timeout for the server process. The client will still time out if
     a connection to the server cannot be made, but the server will wait forever
