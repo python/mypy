@@ -257,7 +257,7 @@ def do_status(args: argparse.Namespace) -> None:
     if args.verbose or 'error' in response:
         show_stats(response)
     if 'error' in response:
-        sys.exit("Daemon is stuck; consider %s kill" % (sys.argv[0]))
+        sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
     print("Daemon is up and running")
 
 
