@@ -4,6 +4,7 @@ On Unix, this uses AF_UNIX sockets.
 On Windows, this uses NamedPipes.
 """
 
+import base64
 import contextlib
 import os
 import shutil
@@ -144,7 +145,7 @@ class IPCServer(IPCBase):
 
     def __init__(self, name: str, timeout: Optional[int] = None) -> None:
         if sys.platform == 'win32':
-            name = r'\\.\pipe\{}-{}.pipe'.format(name, os.getpid())
+            name = r'\\.\pipe\{}-{}.pipe'.format(name, base64.b64encode(os.urandom(6)))
         super().__init__(name)
         if sys.platform == 'win32':
             self.connection = _winapi.CreateNamedPipe(self.name,
