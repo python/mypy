@@ -198,21 +198,21 @@ import typing
 import m
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -221,7 +221,7 @@ import m
 from .x import y
 [out]
 tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
-tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -231,7 +231,7 @@ import m.a
 from .x import y
 [out]
 tmp/m/a.py:1: error: Cannot find module named 'm.x'
-tmp/m/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleNotImported]
 import typing
@@ -280,7 +280,7 @@ import typing
 import m.n
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Cannot find module named 'm'
 
 [case testMissingPackage2]
@@ -289,7 +289,7 @@ from m.n import x
 from a.b import *
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:3: error: Cannot find module named 'a.b'
 
 [case testErrorInImportedModule]
@@ -319,7 +319,7 @@ m.n.x
 x = 1
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Cannot find module named 'm'
 
 [case testBreakOutsideLoop]

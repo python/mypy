@@ -59,8 +59,8 @@ class SimpleMsg(Enum):
 class NamespaceMsg(Enum):
     cfm_beta = ("{tempfile}:4: error: Cannot find module named "
                 "'typedpkg_ns.ns.dne'")
-    help_note = ('{tempfile}:4: note: (Perhaps setting MYPYPATH or using the '
-                 '"--ignore-missing-imports" flag would help)')
+    help_note = ('{tempfile}:4: note: See https://mypy.readthedocs.io/en/latest/'
+                 'running_mypy.html#missing-imports')
     bool_str = ('{tempfile}:10: error: Argument 1 has incompatible type '
                 '"bool"; expected "str"')
     int_bool = ('{tempfile}:11: error: Argument 1 has incompatible type '

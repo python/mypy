@@ -439,7 +439,7 @@ main:2: note: (Using --follow-imports=error, module not passed on command line)
 from mod import x
 [out]
 main:1: error: Cannot find module named 'mod'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIgnoreMissingImportsTrue]
 # flags: --ignore-missing-imports
@@ -594,7 +594,7 @@ def f(x: MyType) -> None:
     pass
 [out]
 main:2: error: Cannot find module named 'missing'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 
 [case testDisallowImplicitAnyVariableDefinition]
