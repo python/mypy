@@ -17,7 +17,7 @@ from mypy.stubgen import (
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
-    infer_sig_from_docstring, infer_prop_type_from_docstring
+    infer_sig_from_docstring, infer_prop_type_from_docstring, TypedFunctionSig, TypedArgSig
 )
 
 
@@ -103,24 +103,115 @@ class StubgenUtilSuite(Suite):
              ('func3', '(arg, arg2)')])
 
     def test_infer_sig_from_docstring(self) -> None:
-        assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'), ('(x)', 'Any'))
-        assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
-                     ('(x, Y_a=None)', 'Any'))
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x) - y', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x')],
+                ret_type='Any'
+            )
+        )
+
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[
+                    TypedArgSig(name='x'),
+                    TypedArgSig(name='Y_a', default='None')
+                ],
+                ret_type='Any'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x, Y_a=3)', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[
+                    TypedArgSig(name='x'),
+                    TypedArgSig(name='Y_a', default='3')
+                ],
+                ret_type='Any'
+            )
+        )
+
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x, Y_a=[1, 2, 3])', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[
+                    TypedArgSig(name='x'),
+                    TypedArgSig(name='Y_a', default='[1, 2, 3]')
+                ],
+                ret_type='Any'
+            )
+        )
+
         assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x=z(y))', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
         # try to infer signature from type annotation
-        assert_equal(infer_sig_from_docstring('\nfunc(x: int)', 'func'), ('(x: int)', 'Any'))
-        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3)', 'func'), ('(x: int=3)', 'Any'))
-        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
-                     ('(x: int=3)', 'int'))
-        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int   \n', 'func'),
-                     ('(x: int=3)', 'int'))
-        assert_equal(infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
-                     ('(x: Tuple[int, str])', 'str'))
-        assert_equal(infer_sig_from_docstring('\nfunc(x: foo.bar)', 'func'),
-                     ('(x: foo.bar)', 'Any'))
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: int)', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='int')],
+                ret_type='Any'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: int=3)', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='int', default='3')],
+                ret_type='Any'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='int', default='3')],
+                ret_type='int'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: int=3) -> int   \n', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='int', default='3')],
+                ret_type='int'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='Tuple[int, str]')],
+                ret_type='str'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: Tuple[int, Tuple[str, int], str], y: int) -> str',
+                                     'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[
+                    TypedArgSig(name='x', type='Tuple[int, Tuple[str, int], str]'),
+                    TypedArgSig(name='y', type='int'),
+                ],
+                ret_type='str'
+            )
+        )
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: foo.bar)', 'func'),
+            TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='foo.bar')],
+                ret_type='Any'
+            )
+        )
 
     def infer_prop_type_from_docstring(self) -> None:
         assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
@@ -219,22 +310,25 @@ def add_file(path: str, result: List[str]) -> None:
 
 class StubgencSuite(Suite):
     def test_infer_hash_sig(self) -> None:
-        assert_equal(infer_method_sig('__hash__'), '()')
+        assert_equal(infer_method_sig('__hash__'), [])
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_sig('__getitem__'), '(index)')
+        assert_equal(infer_method_sig('__getitem__'), [TypedArgSig(name='index')])
 
     def test_infer_setitem_sig(self) -> None:
-        assert_equal(infer_method_sig('__setitem__'), '(index, object)')
+        assert_equal(infer_method_sig('__setitem__'), [
+            TypedArgSig(name='index'),
+            TypedArgSig(name='object')
+        ])
 
     def test_infer_binary_op_sig(self) -> None:
         for op in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul'):
-            assert_equal(infer_method_sig('__%s__' % op), '(other)')
+            assert_equal(infer_method_sig('__%s__' % op), [TypedArgSig(name='other')])
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ('neg', 'pos'):
-            assert_equal(infer_method_sig('__%s__' % op), '()')
+            assert_equal(infer_method_sig('__%s__' % op), [])
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output = []  # type: List[str]
@@ -310,3 +404,86 @@ class StubgencSuite(Suite):
             'def test(self, arg0: int) -> Any: ...'
         ])
         assert_equal(imports, [])
+
+    def test_generate_c_function_other_module_arg(self) -> None:
+        """
+        Test that if argument references type from other module, module will be imported
+        """
+        # provide different type in python spec than in docstring to make sure, that docstring
+        # information is used
+        def test(arg0: str) -> None:
+            """
+            test(arg0: argparse.Action)
+            """
+            pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(self.__module__, '')
+        generate_c_function_stub(mod, 'test', test, output, imports)
+        assert_equal(output, [
+            'def test(arg0: argparse.Action) -> Any: ...'
+        ])
+        assert_equal(imports, [
+            'import argparse'
+        ])
+
+    def test_generate_c_function_same_module_arg(self) -> None:
+        """
+        Test that if argument references type from same module but using full path, no module will
+        be imported, and type specification will be striped to local reference
+        """
+        # provide different type in python spec than in docstring to make sure, that docstring
+        # information is used
+        def test(arg0: str) -> None:
+            """
+            test(arg0: argparse.Action)
+            """
+            pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('argparse', '')
+        generate_c_function_stub(mod, 'test', test, output, imports)
+        assert_equal(output, [
+            'def test(arg0: Action) -> Any: ...'
+        ])
+        assert_equal(imports, [])
+
+    def test_generate_c_function_other_module_ret(self) -> None:
+        """
+        Test that if return type references type from other module, module will be imported
+        """
+        def test(arg0: str) -> None:
+            """
+            test(arg0: str) -> argparse.Action
+            """
+            pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(self.__module__, '')
+        generate_c_function_stub(mod, 'test', test, output, imports)
+        assert_equal(output, [
+            'def test(arg0: str) -> argparse.Action: ...'
+        ])
+        assert_equal(imports, [
+            'import argparse'
+        ])
+
+    def test_generate_c_function_same_module_ret(self) -> None:
+        """
+        Test that if return type references type from same module but using full path, no module
+        will be imported, and type specification will be striped to local reference
+        """
+        def test(arg0: str) -> None:
+            """
+            test(arg0: str) -> argparse.Action
+            """
+            pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('argparse', '')
+        generate_c_function_stub(mod, 'test', test, output, imports)
+        assert_equal(output, [
+            'def test(arg0: str) -> Action: ...'
+        ])
+        assert_equal(imports, [])
+
