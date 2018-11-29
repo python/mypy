@@ -111,6 +111,20 @@ f(*it1)
 f(*it2) # E: Argument 1 to "f" has incompatible type "*Iterable[str]"; expected "int"
 [builtins fixtures/for.pyi]
 
+[case testCallVarargsFunctionWithTwoTupleStarArgs]
+from typing import TypeVar, Tuple
+
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+T3 = TypeVar('T3')
+T4 = TypeVar('T4')
+
+def f(a: T1, b: T2, c: T3, d: T4) -> Tuple[T1, T2, T3, T4]: ...
+x: Tuple[int, str]
+y: Tuple[float, bool]
+reveal_type(f(*x, *y)) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*, builtins.float*, builtins.bool*]'
+[builtins fixtures/list.pyi]
+
 [case testCallVarargsFunctionWithIterableAndPositional]
 
 from typing import Iterable

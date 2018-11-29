@@ -1064,7 +1064,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Return False if there were any errors. Otherwise return True
         """
         if messages:
-            assert context, "Internal error: messages gives without context"
+            assert context, "Internal error: messages given without context"
         elif context is None:
             context = TempNode(AnyType(TypeOfAny.special_form))  # Avoid "is None" checks
 
@@ -1121,7 +1121,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check for extra actual arguments.
 
         Return tuple (was everything ok,
-                      was there an extra keyword argument error).
+                      was there an extra keyword argument error [used to avoid duplicate errors]).
         """
 
         is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors

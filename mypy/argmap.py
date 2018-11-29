@@ -73,7 +73,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                     elif nodes.ARG_STAR2 in callee_kinds:
                         map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
             else:
-                # We don't exactly which **kwargs are provided by the
+                # We don't exactly know which **kwargs are provided by the
                 # caller. Assume that they will fill the remaining arguments.
                 for j in range(ncallee):
                     # TODO tuple varargs complicate this
@@ -114,8 +114,8 @@ class ArgTypeExpander:
 
     Example:
 
-       . def f(x: int, *args: str) -> None: ...
-       . f(*(1, 'x', 1.1)
+       def f(x: int, *args: str) -> None: ...
+       f(*(1, 'x', 1.1))
 
     We'd call expand_actual_type three times:
 
@@ -123,8 +123,8 @@ class ArgTypeExpander:
       2. The second call would provide 'str' as one of the actual types for '*args'.
       2. The third call would provide 'float' as one of the actual types for '*args'.
 
-    Construct a separate instance for each call since instances have per-call
-    state.
+    A single instance can process all the arguments for a single call. Each call
+    needs a separate instance since instances have per-call state.
     """
 
     def __init__(self) -> None:
@@ -140,11 +140,11 @@ class ArgTypeExpander:
                            formal_kind: int) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
-        If the actual argument is a tuple *args, return the individual tuple item(s) that
-        map(s) to the formal arg.
+        If the actual argument is a tuple *args, return the next individual tuple item that
+        maps to the formal arg.
 
-        If the actual argument is a TypedDict **kwargs, return the matching typed dict dict
-        value type(s) based on formal argument name and kind.
+        If the actual argument is a TypedDict **kwargs, return the next matching typed dict
+        value type based on formal argument name and kind.
 
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
