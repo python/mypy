@@ -126,38 +126,44 @@ def generate_c_function_stub(module: ModuleType,
 
     if (name in ('__new__', '__init__') and name not in sigs and class_name and
             class_name in class_sigs):
-        inferred = TypedFunctionSig(
+        inferred = [TypedFunctionSig(
             name=name,
             args=infer_arg_sig_from_docstring(class_sigs[class_name]),
             ret_type=ret_type
-        )
+        )]  # type: Optional[List[TypedFunctionSig]]
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
         if not inferred:
             if class_name and name not in sigs:
-                inferred = TypedFunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)
+                inferred = [TypedFunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
             else:
-                inferred = TypedFunctionSig(
+                inferred = [TypedFunctionSig(
                     name=name,
                     args=infer_arg_sig_from_docstring(sigs.get(name, '(*args, **kwargs)')),
                     ret_type=ret_type
-                )
+                )]
 
-    sig = []
-    for arg in inferred.args:
-        if arg.name == self_var or not arg.type:
-            # no type
-            sig.append(arg.name)
-        else:
-            # type info
-            sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type, module, imports)))
+    is_overloaded = len(inferred) > 1
+    if is_overloaded:
+        imports.append('from typing import overload')
+    for signature in inferred:
+        sig = []
+        for arg in signature.args:
+            if arg.name == self_var or not arg.type:
+                # no type
+                sig.append(arg.name)
+            else:
+                # type info
+                sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type, module, imports)))
 
-    output.append('def {function}({args}) -> {ret}: ...'.format(
-        function=name,
-        args=", ".join(sig),
-        ret=strip_or_import(inferred.ret_type, module, imports)
-    ))
+        if is_overloaded:
+            output.append('@overload')
+        output.append('def {function}({args}) -> {ret}: ...'.format(
+            function=name,
+            args=", ".join(sig),
+            ret=strip_or_import(signature.ret_type, module, imports)
+        ))
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
@@ -304,31 +310,31 @@ def infer_method_sig(name: str) -> ArgList:
                     'int', 'float', 'trunc', 'complex', 'bool'):
             return []
         if name == 'getitem':
-            return [TypedArgSig(name='index')]
+            return [TypedArgSig(name='index', type=None, default=None)]
         if name == 'setitem':
             return [
-                TypedArgSig(name='index'),
-                TypedArgSig(name='object')
+                TypedArgSig(name='index', type=None, default=None),
+                TypedArgSig(name='object', type=None, default=None)
             ]
         if name in ('delattr', 'getattr'):
-            return [TypedArgSig(name='name')]
+            return [TypedArgSig(name='name', type=None, default=None)]
         if name == 'setattr':
             return [
-                TypedArgSig(name='name'),
-                TypedArgSig(name='value')
+                TypedArgSig(name='name', type=None, default=None),
+                TypedArgSig(name='value', type=None, default=None)
             ]
         if name == 'getstate':
             return []
         if name == 'setstate':
-            return [TypedArgSig(name='state')]
+            return [TypedArgSig(name='state', type=None, default=None)]
         if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                     'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
                     'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
                     'divmod', 'rdivmod', 'pow', 'rpow'):
-            return [TypedArgSig(name='other')]
+            return [TypedArgSig(name='other', type=None, default=None)]
         if name in ('neg', 'pos'):
             return []
     return [
-        TypedArgSig(name='*args'),
-        TypedArgSig(name='**kwargs')
+        TypedArgSig(name='*args', type=None, default=None),
+        TypedArgSig(name='**kwargs', type=None, default=None)
     ]
