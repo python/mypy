@@ -17,6 +17,12 @@ the exit status mypy normally returns to the operating system.
 
 Any pretty formatting is left to the caller.
 
+The 'run_dmypy' function is similar, but instead mimics invocation of
+dmypy.
+
+Note that these APIs don't support incremental generation of error
+messages.
+
 Trivial example of code using this module:
 
 import sys
@@ -33,15 +39,15 @@ if result[1]:
     print(result[1])  # stderr
 
 print ('\nExit status:', result[2])
+
 """
 
 import sys
 from io import StringIO
-from typing import List, Tuple
-from mypy.main import main
+from typing import List, Tuple, Callable
 
 
-def run(args: List[str]) -> Tuple[str, str, int]:
+def _run(f: Callable[[], None]) -> Tuple[str, str, int]:
     old_stdout = sys.stdout
     new_stdout = StringIO()
     sys.stdout = new_stdout
@@ -51,7 +57,7 @@ def run(args: List[str]) -> Tuple[str, str, int]:
     sys.stderr = new_stderr
 
     try:
-        main(None, args=args)
+        f()
         exit_status = 0
     except SystemExit as system_exit:
         exit_status = system_exit.code
@@ -60,3 +66,14 @@ def run(args: List[str]) -> Tuple[str, str, int]:
         sys.stderr = old_stderr
 
     return new_stdout.getvalue(), new_stderr.getvalue(), exit_status
+
+
+def run(args: List[str]) -> Tuple[str, str, int]:
+    # Lazy import to avoid needing to import all of mypy to call run_dmypy
+    from mypy.main import main
+    return _run(lambda: main(None, args=args))
+
+
+def run_dmypy(args: List[str]) -> Tuple[str, str, int]:
+    from mypy.dmypy import main
+    return _run(lambda: main(args))
