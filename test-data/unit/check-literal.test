@@ -226,7 +226,7 @@ reveal_type(a)   # E: Revealed type is 'None'
 from typing import Any
 from typing_extensions import Literal
 from missing_module import BadAlias     # E: Cannot find module named 'missing_module' \
-                                        # N: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+                                        # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 a: Literal[Any]                         # E: Parameter 1 of Literal[...] is of type "Any"
 b: Literal[BadAlias]                    # E: Parameter 1 of Literal[...] is of type "Any"
