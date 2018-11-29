@@ -157,20 +157,20 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 return [m.group(1)]
             return []
 
-    sig_ret_match = find_sig_ret()
-    if sig_ret_match:
+    sig_match_ret_res = find_sig_ret()
+    if sig_match_ret_res:
         ret = []
-        for match in sig_ret_match:
+        for match_ret in sig_match_ret_res:
             ret.append(TypedFunctionSig(
                 name=name,
-                args=infer_arg_sig_from_docstring(match[0]),
-                ret_type=match[1].rstrip()
+                args=infer_arg_sig_from_docstring(match_ret[0]),
+                ret_type=match_ret[1].rstrip()
             ))
         return ret
-    sig_match = find_sig()
-    if sig_match:
+    sig_match_res = find_sig()
+    if sig_match_res:
         ret = []
-        for match in sig_match:
+        for match in sig_match_res:
             ret.append(TypedFunctionSig(
                 name=name,
                 args=infer_arg_sig_from_docstring(match),

@@ -144,26 +144,27 @@ def generate_c_function_stub(module: ModuleType,
                     ret_type=ret_type
                 )]
 
-    is_overloaded = len(inferred) > 1
+    is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
         imports.append('from typing import overload')
-    for signature in inferred:
-        sig = []
-        for arg in signature.args:
-            if arg.name == self_var or not arg.type:
-                # no type
-                sig.append(arg.name)
-            else:
-                # type info
-                sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type, module, imports)))
+    if inferred:
+        for signature in inferred:
+            sig = []
+            for arg in signature.args:
+                if arg.name == self_var or not arg.type:
+                    # no type
+                    sig.append(arg.name)
+                else:
+                    # type info
+                    sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type, module, imports)))
 
-        if is_overloaded:
-            output.append('@overload')
-        output.append('def {function}({args}) -> {ret}: ...'.format(
-            function=name,
-            args=", ".join(sig),
-            ret=strip_or_import(signature.ret_type, module, imports)
-        ))
+            if is_overloaded:
+                output.append('@overload')
+            output.append('def {function}({args}) -> {ret}: ...'.format(
+                function=name,
+                args=", ".join(sig),
+                ret=strip_or_import(signature.ret_type, module, imports)
+            ))
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
