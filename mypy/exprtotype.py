@@ -1,7 +1,7 @@
 """Translate an Expression to a Type value."""
 
 from mypy.nodes import (
-    Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr, IntExpr, UnaryExpr,
+    Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr, IntExpr, FloatExpr, UnaryExpr,
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
     get_member_expr_fullname
 )
@@ -130,6 +130,10 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
             raise TypeTranslationError()
     elif isinstance(expr, IntExpr):
         return RawLiteralType(expr.value, 'builtins.int', line=expr.line, column=expr.column)
+    elif isinstance(expr, FloatExpr):
+        # Floats are not valid parameters for RawLiteralType, so we just
+        # pass in 'None' for now. We'll report the appropriate error at a later stage.
+        return RawLiteralType(None, 'builtins.float', line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     else:

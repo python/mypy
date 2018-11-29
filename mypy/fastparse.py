@@ -1164,6 +1164,10 @@ class TypeConverter:
         numeric_value = n.n
         if isinstance(numeric_value, int):
             return RawLiteralType(numeric_value, 'builtins.int', line=self.line)
+        elif isinstance(numeric_value, float):
+            # Floats and other numbers are not valid parameters for RawLiteralType, so we just
+            # pass in 'None' for now. We'll report the appropriate error at a later stage.
+            return RawLiteralType(None, 'builtins.float', line=self.line)
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType(TypeOfAny.from_error)
