@@ -20,6 +20,9 @@ Any pretty formatting is left to the caller.
 The 'run_dmypy' function is similar, but instead mimics invocation of
 dmypy.
 
+Note that these APIs don't support incremental generation of error
+messages.
+
 Trivial example of code using this module:
 
 import sys
@@ -42,6 +45,7 @@ print ('\nExit status:', result[2])
 import sys
 from io import StringIO
 from typing import List, Tuple, Callable
+
 
 def _run(f: Callable[[], None]) -> Tuple[str, str, int]:
     old_stdout = sys.stdout
