@@ -76,7 +76,8 @@ def map_actuals_to_formals(caller_kinds: List[int],
                 # We don't exactly know which **kwargs are provided by the
                 # caller. Assume that they will fill the remaining arguments.
                 for j in range(ncallee):
-                    # TODO tuple varargs complicate this
+                    # TODO: If there are also tuple varargs, we might be missing some potential
+                    #       matches if the tuple was short enough to not match everything.
                     no_certain_match = (
                         not map[j] or caller_kinds[map[j][0]] == nodes.ARG_STAR)
                     if ((callee_names[j] and no_certain_match)
