@@ -1,12 +1,13 @@
 """Shared code between dmypy.py and dmypy_server.py.
 
-This should be pretty lightweight and not depend on other mypy code.
+This should be pretty lightweight and not depend on other mypy code (other than ipc).
 """
 
 import json
-import socket
 
 from typing import Any
+
+from mypy.ipc import IPCBase
 
 MYPY = False
 if MYPY:
@@ -15,20 +16,13 @@ if MYPY:
 STATUS_FILE = '.dmypy.json'  # type: Final
 
 
-def receive(sock: socket.socket) -> Any:
-    """Receive JSON data from a socket until EOF.
-
-    Raise a subclass of OSError if there's a socket exception.
+def receive(connection: IPCBase) -> Any:
+    """Receive JSON data from a connection until EOF.
 
     Raise OSError if the data received is not valid JSON or if it is
     not a dict.
     """
-    bdata = bytearray()
-    while True:
-        more = sock.recv(100000)
-        if not more:
-            break
-        bdata.extend(more)
+    bdata = connection.read()
     if not bdata:
         raise OSError("No data received")
     try:

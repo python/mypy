@@ -29,15 +29,15 @@ def f(): pass
 $ dmypy run -- foo.py --follow-imports=error
 Daemon started
 $ dmypy run -- foo.py --follow-imports=error
-$ echo '[mypy]' >mypy.ini
-$ echo 'disallow_untyped_defs = True' >>mypy.ini
+$ {python} -c "print('[mypy]')" >mypy.ini
+$ {python} -c "print('disallow_untyped_defs = True')" >>mypy.ini
 $ dmypy run -- foo.py --follow-imports=error
 Restarting: configuration changed
 Daemon stopped
 Daemon started
 foo.py:1: error: Function is missing a type annotation
 == Return code: 1
-$ echo 'def f() -> None: pass' >foo.py
+$ {python} -c "print('def f() -> None: pass')" >foo.py
 $ dmypy run -- foo.py --follow-imports=error
 $ dmypy stop
 Daemon stopped
@@ -47,7 +47,7 @@ def f(): pass
 [case testDaemonRunRestartPluginVersion]
 $ dmypy run -- foo.py
 Daemon started
-$ echo ' ' >>plug.py
+$ {python} -c "print(' ')" >> plug.py
 $ dmypy run -- foo.py
 Restarting: plugins changed
 Daemon stopped

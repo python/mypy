@@ -2082,7 +2082,7 @@ x = 1
 [stale]
 [out2]
 tmp/n.py:1: error: Cannot find module named 'm'
-tmp/n.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/n.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeleteFileWithinCycle]
 import a
@@ -2748,10 +2748,10 @@ a.f() # Comment change
 [stale3 b]
 [out2]
 tmp/b.py:1: error: Cannot find module named 'a'
-tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
 tmp/b.py:1: error: Cannot find module named 'a'
-tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out4]
 
 [case testQuickAndDirtyRenameModule]
@@ -4063,7 +4063,7 @@ import a
 
 [out2]
 main:2: error: Cannot find module named 'a'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
 # flags: --strict-optional
@@ -4206,7 +4206,7 @@ def f(x: int) -> None: pass
 [out]
 [out2]
 main:1: error: Cannot find module named 'p.q'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
 main:2: error: Too few arguments for "f"
 
@@ -4808,10 +4808,10 @@ def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
 tmp/c.py:1: error: Cannot find module named 'a.b.c'
-tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out2]
 tmp/c.py:1: error: Cannot find module named 'a.b.c'
-tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports

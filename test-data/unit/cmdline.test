@@ -295,7 +295,7 @@ baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
 file.py:1: error: Cannot find module named 'no_stubs'
-file.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testIgnoreErrorsConfig]
@@ -440,7 +440,7 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = False
 [out]
 main.py:1: error: Cannot find module named 'missing'
-main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: error: Revealed type is 'Any'
 
 [case testConfigSilentMissingImportsOn]
@@ -487,7 +487,7 @@ import a.b
 whatever
 [out]
 main.py:1: error: Cannot find module named 'a.b'
-main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:1: error: Cannot find module named 'a'
 
 [case testPythonVersionTooOld10]

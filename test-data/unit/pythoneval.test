@@ -1211,7 +1211,7 @@ bar: Type[C]
 bar * 4 + bar + 3  # should not produce more errors
 [out]
 _testMetaclassOpAccessAny.py:2: error: Cannot find module named 'nonexistent'
-_testMetaclassOpAccessAny.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+_testMetaclassOpAccessAny.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testEnumIterationAndPreciseElementType]
 # Regression test for #2305

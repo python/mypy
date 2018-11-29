@@ -14,7 +14,7 @@ from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
 )
-from mypy.stubgenc import generate_c_type_stub, infer_method_sig
+from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring
@@ -239,7 +239,9 @@ class StubgencSuite(Suite):
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output = []  # type: List[str]
         mod = ModuleType('module', '')  # any module is fine
-        generate_c_type_stub(mod, 'alias', object, output)
+        imports = []  # type: List[str]
+        generate_c_type_stub(mod, 'alias', object, output, imports)
+        assert_equal(imports, [])
         assert_equal(output[0], 'class alias:')
 
     def test_generate_c_type_stub_variable_type_annotation(self) -> None:
@@ -248,6 +250,63 @@ class StubgencSuite(Suite):
             x = 1
 
         output = []  # type: List[str]
+        imports = []  # type: List[str]
         mod = ModuleType('module', '')  # any module is fine
-        generate_c_type_stub(mod, 'C', TestClassVariableCls, output)
+        generate_c_type_stub(mod, 'C', TestClassVariableCls, output, imports)
+        assert_equal(imports, [])
         assert_equal(output, ['class C:', '    x: Any = ...'])
+
+    def test_generate_c_type_inheritance(self) -> None:
+        class TestClass(KeyError):
+            pass
+
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('module, ')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(KeyError): ...', ])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_inheritance_same_module(self) -> None:
+        class TestBaseClass:
+            pass
+
+        class TestClass(TestBaseClass):
+            pass
+
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestBaseClass.__module__, '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(TestBaseClass): ...', ])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_inheritance_other_module(self) -> None:
+        import argparse
+
+        class TestClass(argparse.Action):
+            pass
+
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('module', '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(argparse.Action): ...', ])
+        assert_equal(imports, ['import argparse'])
+
+    def test_generate_c_type_with_docstring(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: int)
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, [
+            'def test(self, arg0: int) -> Any: ...'
+        ])
+        assert_equal(imports, [])
