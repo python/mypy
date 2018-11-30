@@ -124,12 +124,17 @@ def main(argv: List[str]) -> None:
         try:
             args.action(args)
         except BadStatus as err:
-            sys.exit(err.args[0])
+            fail(err.args[0])
         except Exception:
             # We do this explicitly to avoid exceptions percolating up
             # through mypy.api invocations
             traceback.print_exc()
             sys.exit(2)
+
+
+def fail(msg: str) -> None:
+    print(msg, file=sys.stderr)
+    sys.exit(2)
 
 
 ActionFunction = Callable[[argparse.Namespace], None]
@@ -163,7 +168,7 @@ def do_start(args: argparse.Namespace) -> None:
         # Bad or missing status file or dead process; good to start.
         pass
     else:
-        sys.exit("Daemon is still alive")
+        fail("Daemon is still alive")
     start_server(args)
 
 
@@ -193,7 +198,7 @@ def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     from mypy.dmypy_server import daemonize, process_start_options
     start_options = process_start_options(args.flags, allow_sources)
     if daemonize(start_options, timeout=args.timeout, log_file=args.log_file):
-        sys.exit(1)
+        sys.exit(2)
     wait_for_server()
 
 
@@ -214,7 +219,7 @@ def wait_for_server(timeout: float = 5.0) -> None:
         check_status(data)
         print("Daemon started")
         return
-    sys.exit("Timed out waiting for daemon to start")
+    fail("Timed out waiting for daemon to start")
 
 
 @action(run_parser)
@@ -263,7 +268,7 @@ def do_status(args: argparse.Namespace) -> None:
     if args.verbose or 'error' in response:
         show_stats(response)
     if 'error' in response:
-        sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
+        fail("Daemon is stuck; consider %s kill" % sys.argv[0])
     print("Daemon is up and running")
 
 
@@ -274,7 +279,7 @@ def do_stop(args: argparse.Namespace) -> None:
     response = request('stop', timeout=5)
     if response:
         show_stats(response)
-        sys.exit("Daemon is stuck; consider %s kill" % sys.argv[0])
+        fail("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
         print("Daemon stopped")
 
@@ -286,7 +291,7 @@ def do_kill(args: argparse.Namespace) -> None:
     try:
         kill(pid)
     except OSError as err:
-        sys.exit(str(err))
+        fail(str(err))
     else:
         print("Daemon killed")
 
@@ -332,11 +337,11 @@ def check_output(response: Dict[str, Any], verbose: bool, junit_xml: Optional[st
     Call sys.exit() unless the status code is zero.
     """
     if 'error' in response:
-        sys.exit(response['error'])
+        fail(response['error'])
     try:
         out, err, status_code = response['out'], response['err'], response['status']
     except KeyError:
-        sys.exit("Response: %s" % str(response))
+        fail("Response: %s" % str(response))
     sys.stdout.write(out)
     sys.stderr.write(err)
     if verbose:
