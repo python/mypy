@@ -1403,3 +1403,81 @@ from mypy_extensions import TypedDict
 tp = TypedDict('tp', {'x': int})
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testTypedDictAsStarStarArg]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+class B: pass
+
+def f1(x: int, y: str) -> None: ...
+def f2(x: int, y: int) -> None: ...
+def f3(x: B, y: str) -> None: ...
+def f4(x: int) -> None: pass
+def f5(x: int, y: str, z: int) -> None: pass
+def f6(x: int, z: str) -> None: pass
+
+a: A
+f1(**a)
+f2(**a) # E: Argument "y" to "f2" has incompatible type "str"; expected "int"
+f3(**a) # E: Argument "x" to "f3" has incompatible type "int"; expected "B"
+f4(**a) # E: Extra argument "y" from **args for "f4"
+f5(**a) # E: Too few arguments for "f5"
+f6(**a) # E: Extra argument "y" from **args for "f6"
+f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
+
+[case testTypedDictAsStarStarArgConstraints]
+from typing import TypeVar, Union
+from mypy_extensions import TypedDict
+
+T = TypeVar('T')
+S = TypeVar('S')
+def f1(x: T, y: S) -> Union[T, S]: ...
+
+A = TypedDict('A', {'y': int, 'x': str})
+a: A
+reveal_type(f1(**a)) # E: Revealed type is 'Union[builtins.str*, builtins.int*]'
+
+[case testTypedDictAsStarStarArgCalleeKwargs]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+B = TypedDict('B', {'x': str, 'y': str})
+
+def f(**kwargs: str) -> None: ...
+def g(x: int, **kwargs: str) -> None: ...
+
+a: A
+b: B
+f(**a) # E: Argument 1 to "f" has incompatible type "**A"; expected "str"
+f(**b)
+g(**a)
+g(**b) # E: Argument "x" to "g" has incompatible type "str"; expected "int"
+g(1, **a) # E: "g" gets multiple values for keyword argument "x"
+g(1, **b) # E: "g" gets multiple values for keyword argument "x" \
+          # E: Argument "x" to "g" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictAsStarStarTwice]
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+B = TypedDict('B', {'z': bytes})
+C = TypedDict('C', {'x': str, 'z': bytes})
+
+def f1(x: int, y: str, z: bytes) -> None: ...
+def f2(x: int, y: float, z: bytes) -> None: ...
+def f3(x: int, y: str, z: float) -> None: ...
+
+a: A
+b: B
+c: C
+f1(**a, **b)
+f1(**b, **a)
+f2(**a, **b) # E: Argument "y" to "f2" has incompatible type "str"; expected "float"
+f3(**a, **b) # E: Argument "z" to "f3" has incompatible type "bytes"; expected "float"
+f3(**b, **a) # E: Argument "z" to "f3" has incompatible type "bytes"; expected "float"
+f1(**a, **c) # E: "f1" gets multiple values for keyword argument "x" \
+             # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
+f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
+             # E: Argument "x" to "f1" has incompatible type "str"; expected "int"

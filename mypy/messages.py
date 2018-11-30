@@ -671,6 +671,18 @@ class MessageBuilder:
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
 
+            if (arg_kind == ARG_STAR2
+                    and isinstance(arg_type, TypedDictType)
+                    and m <= len(callee.arg_names)
+                    and callee.arg_names[m - 1] is not None
+                    and callee.arg_kinds[m - 1] != ARG_STAR2):
+                arg_name = callee.arg_names[m - 1]
+                assert arg_name is not None
+                arg_type_str, expected_type_str = self.format_distinctly(
+                    arg_type.items[arg_name],
+                    expected_type,
+                    bare=True)
+                arg_label = '"{}"'.format(arg_name)
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
@@ -709,6 +721,20 @@ class MessageBuilder:
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
+        self.fail(msg, context)
+
+    def too_many_arguments_from_typed_dict(self,
+                                           callee: CallableType,
+                                           arg_type: TypedDictType,
+                                           context: Context) -> None:
+        # Try to determine the name of the extra argument.
+        for key in arg_type.items:
+            if key not in callee.arg_names:
+                msg = 'Extra argument "{}" from **args'.format(key) + for_function(callee)
+                break
+        else:
+            self.too_many_arguments(callee, context)
+            return
         self.fail(msg, context)
 
     def too_many_positional_arguments(self, callee: CallableType,

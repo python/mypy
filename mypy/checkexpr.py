@@ -51,7 +51,7 @@ from mypy.subtypes import (
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.argmap import get_actual_type, map_actuals_to_formals, map_formals_to_actuals
+from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
@@ -704,8 +704,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)
 
-            self.check_argument_types(arg_types, arg_kinds, callee,
-                                      formal_to_actual, context,
+            self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual, context,
                                       messages=arg_messages)
 
             if (callee.is_type_obj() and (len(arg_types) == 1)
@@ -1049,7 +1048,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # arguments.
         return self.apply_generic_arguments(callee_type, inferred_args, context)
 
-    def check_argument_count(self, callee: CallableType, actual_types: List[Type],
+    def check_argument_count(self,
+                             callee: CallableType,
+                             actual_types: List[Type],
                              actual_kinds: List[int],
                              actual_names: Optional[Sequence[Optional[str]]],
                              formal_to_actual: List[List[int]],
@@ -1062,54 +1063,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Return False if there were any errors. Otherwise return True
         """
+        if messages:
+            assert context, "Internal error: messages given without context"
+        elif context is None:
+            context = TempNode(AnyType(TypeOfAny.special_form))  # Avoid "is None" checks
+
         # TODO(jukka): We could return as soon as we find an error if messages is None.
-        formal_kinds = callee.arg_kinds
 
         # Collect list of all actual arguments matched to formal arguments.
         all_actuals = []  # type: List[int]
         for actuals in formal_to_actual:
             all_actuals.extend(actuals)
 
-        is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors.
-        ok = True  # False if we've found any error.
-        for i, kind in enumerate(actual_kinds):
-            if i not in all_actuals and (
-                    kind != nodes.ARG_STAR or
-                    not is_empty_tuple(actual_types[i])):
-                # Extra actual: not matched by a formal argument.
-                ok = False
-                if kind != nodes.ARG_NAMED:
-                    if messages:
-                        assert context, "Internal error: messages given without context"
-                        messages.too_many_arguments(callee, context)
-                else:
-                    if messages:
-                        assert context, "Internal error: messages given without context"
-                        assert actual_names, "Internal error: named kinds without names given"
-                        act_name = actual_names[i]
-                        assert act_name is not None
-                        messages.unexpected_keyword_argument(
-                            callee, act_name, context)
-                    is_unexpected_arg_error = True
-            elif kind == nodes.ARG_STAR and (
-                    nodes.ARG_STAR not in formal_kinds):
-                actual_type = actual_types[i]
-                if isinstance(actual_type, TupleType):
-                    if all_actuals.count(i) < len(actual_type.items):
-                        # Too many tuple items as some did not match.
-                        if messages:
-                            assert context, "Internal error: messages given without context"
-                            messages.too_many_arguments(callee, context)
-                        ok = False
-                # *args can be applied even if the function takes a fixed
-                # number of positional arguments. This may succeed at runtime.
+        ok, is_unexpected_arg_error = self.check_for_extra_actual_arguments(
+            callee, actual_types, actual_kinds, actual_names, all_actuals, context, messages)
 
-        for i, kind in enumerate(formal_kinds):
+        # Check for too many or few values for formals.
+        for i, kind in enumerate(callee.arg_kinds):
             if kind == nodes.ARG_POS and (not formal_to_actual[i] and
                                           not is_unexpected_arg_error):
                 # No actual for a mandatory positional formal.
                 if messages:
-                    assert context, "Internal error: messages given without context"
                     messages.too_few_arguments(callee, context, actual_names)
                 ok = False
             elif kind == nodes.ARG_NAMED and (not formal_to_actual[i] and
@@ -1118,7 +1092,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if messages:
                     argname = callee.arg_names[i]
                     assert argname is not None
-                    assert context, "Internal error: messages given without context"
                     messages.missing_named_argument(callee, context, argname)
                 ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
@@ -1127,19 +1100,72 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (self.chk.in_checked_function() or
                         isinstance(actual_types[formal_to_actual[i][0]], TupleType)):
                     if messages:
-                        assert context, "Internal error: messages given without context"
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
             elif (kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT) and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
-                    assert context, "Internal error: messages given without context"
                     messages.too_many_positional_arguments(callee, context)
                 ok = False
         return ok
 
-    def check_argument_types(self, arg_types: List[Type], arg_kinds: List[int],
+    def check_for_extra_actual_arguments(self,
+                                         callee: CallableType,
+                                         actual_types: List[Type],
+                                         actual_kinds: List[int],
+                                         actual_names: Optional[Sequence[Optional[str]]],
+                                         all_actuals: List[int],
+                                         context: Context,
+                                         messages: Optional[MessageBuilder]) -> Tuple[bool, bool]:
+        """Check for extra actual arguments.
+
+        Return tuple (was everything ok,
+                      was there an extra keyword argument error [used to avoid duplicate errors]).
+        """
+
+        is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors
+        ok = True  # False if we've found any error
+
+        for i, kind in enumerate(actual_kinds):
+            if i not in all_actuals and (
+                    kind != nodes.ARG_STAR or
+                    not is_empty_tuple(actual_types[i])):
+                # Extra actual: not matched by a formal argument.
+                ok = False
+                if kind != nodes.ARG_NAMED:
+                    if messages:
+                        messages.too_many_arguments(callee, context)
+                else:
+                    if messages:
+                        assert actual_names, "Internal error: named kinds without names given"
+                        act_name = actual_names[i]
+                        assert act_name is not None
+                        messages.unexpected_keyword_argument(callee, act_name, context)
+                    is_unexpected_arg_error = True
+            elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in callee.arg_kinds)
+                  or kind == nodes.ARG_STAR2):
+                actual_type = actual_types[i]
+                if isinstance(actual_type, (TupleType, TypedDictType)):
+                    if all_actuals.count(i) < len(actual_type.items):
+                        # Too many tuple/dict items as some did not match.
+                        if messages:
+                            if (kind != nodes.ARG_STAR2
+                                    or not isinstance(actual_type, TypedDictType)):
+                                messages.too_many_arguments(callee, context)
+                            else:
+                                messages.too_many_arguments_from_typed_dict(callee, actual_type,
+                                                                            context)
+                                is_unexpected_arg_error = True
+                        ok = False
+                # *args/**kwargs can be applied even if the function takes a fixed
+                # number of positional arguments. This may succeed at runtime.
+
+        return ok, is_unexpected_arg_error
+
+    def check_argument_types(self,
+                             arg_types: List[Type],
+                             arg_kinds: List[int],
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
@@ -1152,46 +1178,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         messages = messages or self.msg
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
-        tuple_counter = [0]
+        mapper = ArgTypeExpander()
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
-                arg_type = arg_types[actual]
-                if arg_type is None:
+                actual_type = arg_types[actual]
+                if actual_type is None:
                     continue  # Some kind of error was already reported.
+                actual_kind = arg_kinds[actual]
                 # Check that a *arg is valid as varargs.
-                if (arg_kinds[actual] == nodes.ARG_STAR and
-                        not self.is_valid_var_arg(arg_type)):
-                    messages.invalid_var_arg(arg_type, context)
-                if (arg_kinds[actual] == nodes.ARG_STAR2 and
-                        not self.is_valid_keyword_var_arg(arg_type)):
-                    is_mapping = is_subtype(arg_type, self.chk.named_type('typing.Mapping'))
-                    messages.invalid_keyword_var_arg(arg_type, is_mapping, context)
-                # Get the type of an individual actual argument (for *args
-                # and **args this is the item type, not the collection type).
-                if (isinstance(arg_type, TupleType)
-                        and tuple_counter[0] >= len(arg_type.items)
-                        and arg_kinds[actual] == nodes.ARG_STAR):
-                    # The tuple is exhausted. Continue with further arguments.
-                    continue
-                actual_type = get_actual_type(arg_type, arg_kinds[actual],
-                                              tuple_counter)
-                check_arg(actual_type, arg_type, arg_kinds[actual],
+                if (actual_kind == nodes.ARG_STAR and
+                        not self.is_valid_var_arg(actual_type)):
+                    messages.invalid_var_arg(actual_type, context)
+                if (actual_kind == nodes.ARG_STAR2 and
+                        not self.is_valid_keyword_var_arg(actual_type)):
+                    is_mapping = is_subtype(actual_type, self.chk.named_type('typing.Mapping'))
+                    messages.invalid_keyword_var_arg(actual_type, is_mapping, context)
+                expanded_actual = mapper.expand_actual_type(
+                    actual_type, actual_kind,
+                    callee.arg_names[i], callee.arg_kinds[i])
+                check_arg(expanded_actual, actual_type, arg_kinds[actual],
                           callee.arg_types[i],
                           actual + 1, i + 1, callee, context, messages)
-
-                # There may be some remaining tuple varargs items that haven't
-                # been checked yet. Handle them.
-                tuplet = arg_types[actual]
-                if (callee.arg_kinds[i] == nodes.ARG_STAR and
-                        arg_kinds[actual] == nodes.ARG_STAR and
-                        isinstance(tuplet, TupleType)):
-                    while tuple_counter[0] < len(tuplet.items):
-                        actual_type = get_actual_type(arg_type,
-                                                      arg_kinds[actual],
-                                                      tuple_counter)
-                        check_arg(actual_type, arg_type, arg_kinds[actual],
-                                  callee.arg_types[i],
-                                  actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
                   caller_kind: int,
@@ -1669,8 +1676,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 raise Finished
 
         try:
-            self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                      context=context, check_arg=check_arg)
+            self.check_argument_types(arg_types, arg_kinds, callee,
+                                      formal_to_actual, context=context, check_arg=check_arg)
             return True
         except Finished:
             return False
