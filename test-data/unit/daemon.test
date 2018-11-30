@@ -68,23 +68,23 @@ def plugin(version): return Dummy
 [case testDaemonStatusKillRestartRecheck]
 $ dmypy status
 No status file found
-== Return code: 1
+== Return code: 2
 $ dmypy stop
 No status file found
-== Return code: 1
+== Return code: 2
 $ dmypy kill
 No status file found
-== Return code: 1
+== Return code: 2
 $ dmypy recheck
 No status file found
-== Return code: 1
+== Return code: 2
 $ dmypy start --  --follow-imports=error
 Daemon started
 $ dmypy status
 Daemon is up and running
 $ dmypy start
 Daemon is still alive
-== Return code: 1
+== Return code: 2
 $ dmypy restart --  --follow-imports=error
 Daemon stopped
 Daemon started
@@ -92,17 +92,17 @@ $ dmypy stop
 Daemon stopped
 $ dmypy status
 No status file found
-== Return code: 1
+== Return code: 2
 $ dmypy restart --  --follow-imports=error
 Daemon started
 $ dmypy recheck
 Command 'recheck' is only valid after a 'check' command
-== Return code: 1
+== Return code: 2
 $ dmypy kill
 Daemon killed
 $ dmypy status
 Daemon has died
-== Return code: 1
+== Return code: 2
 
 [case testDaemonRecheck]
 $ dmypy start -- --follow-imports=error
