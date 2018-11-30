@@ -93,7 +93,7 @@ class IPCClient(IPCBase):
     def __init__(self, name: str, timeout: Optional[int]) -> None:
         super().__init__(name)
         if sys.platform == 'win32':
-            timeout = timeout or 1000  # we need to set a timeout
+            timeout = timeout or 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
             except FileNotFoundError:
