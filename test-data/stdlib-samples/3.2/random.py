@@ -362,7 +362,7 @@ class Random(_random.Random):
             u = 1.0 - u
             c = 1.0 - c
             low, high = high, low
-        return low + (high - low) * cast(float, (u * c) ** 0.5
+        return low + (high - low) * cast(float, (u * c) ** 0.5)
 
 ## -------------------- normal distribution --------------------
 
