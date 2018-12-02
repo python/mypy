@@ -18,6 +18,7 @@ from mypy.types import (
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
     LiteralType, RawLiteralType,
 )
+from mypy.fastparse import TYPE_COMMENT_SYNTAX_ERROR
 
 from mypy.nodes import (
     TVAR, MODULE_REF, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
@@ -469,7 +470,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # corresponding to 'Literal'.
         #
         # Note: if at some point in the distant future, we decide to
-        # make signatures like "foo(x: 20) -> None" legal, we change
+        # make signatures like "foo(x: 20) -> None" legal, we can change
         # this method so it generates and returns an actual LiteralType
         # instead.
         if t.base_type_name == 'builtins.int' or t.base_type_name == 'builtins.bool':
@@ -477,12 +478,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # a literal type.
             self.fail("Invalid type: try using Literal[{}] instead?".format(repr(t.value)), t)
         elif t.base_type_name == 'builtins.float':
-            self.fail("Invalid type: floats are not valid types", t)
+            self.fail("Invalid type: float literals cannot be used as a type", t)
         else:
             # For other types like strings, it's unclear if the user meant
             # to construct a literal type or just misspelled a regular type.
             # So, we leave just a generic "syntax error" error.
-            self.fail("Invalid type: syntax error in type hint", t)
+            self.fail('Invalid type: ' + TYPE_COMMENT_SYNTAX_ERROR, t)
 
         return AnyType(TypeOfAny.from_error)
 
@@ -621,20 +622,26 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # (if we haven't already).
         if isinstance(arg, AnyType):
             # Note: We can encounter Literals containing 'Any' under three circumstances:
-            # if the user attempts use an explicit Any as a parameter, if the user
-            # is trying to use an enum value imported from a module with no type hints,
-            # giving it an an implicit type of 'Any', or if there's some other underlying
-            # problem with the parameter.
+            #
+            # 1. If the user attempts use an explicit Any as a parameter
+            # 2. If the user is trying to use an enum value imported from a module with
+            #    no type hints, giving it an an implicit type of 'Any'
+            # 3. If there's some other underlying problem with the parameter.
             #
             # We report an error in only the first two cases. In the third case, we assume
             # some other region of the code has already reported a more relevant error.
+            #
+            # TODO: Once we start adding support for enums, make sure we reprt a custom
+            # error for case 2 as well.
             if arg.type_of_any != TypeOfAny.from_error:
-                self.fail('Parameter {} of Literal[...] is of type "Any"'.format(idx), ctx)
+                self.fail('Parameter {} of Literal[...] cannot be of type "Any"'.format(idx), ctx)
             return None
         elif isinstance(arg, RawLiteralType):
             # A raw literal. Convert it directly into a literal.
             if arg.base_type_name == 'builtins.float':
-                self.fail('Parameter {} of Literal[...] is of type "float"'.format(idx), ctx)
+                self.fail(
+                    'Parameter {} of Literal[...] cannot be of type "float"'.format(idx),
+                    ctx)
                 return None
 
             fallback = self.named_type(arg.base_type_name)

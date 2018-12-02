@@ -5,12 +5,12 @@
 
 [case testLiteralInvalidString]
 from typing_extensions import Literal
-def f1(x: 'A[') -> None: pass  # E: Invalid type: syntax error in type hint
+def f1(x: 'A[') -> None: pass  # E: Invalid type: syntax error in type comment
 def g1(x: Literal['A[']) -> None: pass
 reveal_type(f1)  # E: Revealed type is 'def (x: Any)'
 reveal_type(g1)  # E: Revealed type is 'def (x: Literal['A['])'
 
-def f2(x: 'A B') -> None: pass  # E: Invalid type: syntax error in type hint
+def f2(x: 'A B') -> None: pass  # E: Invalid type: syntax error in type comment
 def g2(x: Literal['A B']) -> None: pass
 reveal_type(f2)  # E: Revealed type is 'def (x: Any)'
 reveal_type(g2)  # E: Revealed type is 'def (x: Literal['A B'])'
@@ -24,7 +24,7 @@ def f(x):  # E: syntax error in type comment
 
 [case testLiteralInvalidTypeComment2]
 from typing_extensions import Literal
-def f(x):  # E: Invalid type: syntax error in type hint
+def f(x):  # E: Invalid type: syntax error in type comment
     # type: ("A[") -> None
     pass
 
@@ -41,7 +41,7 @@ reveal_type(g)  # E: Revealed type is 'def (x: Literal['A['])'
 from typing import Optional
 from typing_extensions import Literal
 
-def f(x):  # E: Invalid type: syntax error in type hint
+def f(x):  # E: Invalid type: syntax error in type comment
     # type: ("A[") -> None
     pass
 
@@ -228,16 +228,19 @@ from typing_extensions import Literal
 from missing_module import BadAlias     # E: Cannot find module named 'missing_module' \
                                         # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
-a: Literal[Any]                         # E: Parameter 1 of Literal[...] is of type "Any"
-b: Literal[BadAlias]                    # E: Parameter 1 of Literal[...] is of type "Any"
+a: Literal[Any]                         # E: Parameter 1 of Literal[...] cannot be of type "Any"
+b: Literal[BadAlias]                    # E: Parameter 1 of Literal[...] cannot be of type "Any"
+
+reveal_type(a)                          # E: Revealed type is 'Any'
+reveal_type(b)                          # E: Revealed type is 'Any'
 [out]
 
 [case testLiteralDisallowFloats]
 from typing_extensions import Literal
-a1: Literal[3.14]    # E: Parameter 1 of Literal[...] is of type "float"
-b1: 3.14             # E: Invalid type: floats are not valid types
+a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
+b1: 3.14             # E: Invalid type: float literals cannot be used as a type
 
-a2t = Literal[3.14]  # E: Parameter 1 of Literal[...] is of type "float"
+a2t = Literal[3.14]  # E: Parameter 1 of Literal[...] cannot be of type "float"
 b2t = 3.14
 
 a2: a2t
