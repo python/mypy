@@ -362,7 +362,7 @@ class Random(_random.Random):
             u = 1.0 - u
             c = 1.0 - c
             low, high = high, low
-        return low + (high - low) * (u * c) ** 0.5
+        return low + (high - low) * cast(float, (u * c) ** 0.5
 
 ## -------------------- normal distribution --------------------
 
@@ -531,12 +531,12 @@ class Random(_random.Random):
                 b = (_e + alpha)/_e
                 p = b*u
                 if p <= 1.0:
-                    x = p ** (1.0/alpha)
+                    x = cast(float, p ** (1.0/alpha))
                 else:
                     x = -_log((b-p)/alpha)
                 u1 = random()
                 if p > 1.0:
-                    if u1 <= x ** (alpha - 1.0):
+                    if u1 <= cast(float, x ** (alpha - 1.0)):
                         break
                 elif u1 <= _exp(-x):
                     break
@@ -620,7 +620,7 @@ class Random(_random.Random):
         # Jain, pg. 495
 
         u = 1.0 - self.random()
-        return 1.0 / u ** (1.0/alpha)
+        return 1.0 / cast(float, u ** (1.0/alpha))
 
 ## -------------------- Weibull --------------------
 
@@ -633,7 +633,7 @@ class Random(_random.Random):
         # Jain, pg. 499; bug fix courtesy Bill Arms
 
         u = 1.0 - self.random()
-        return alpha * (-_log(u)) ** (1.0/beta)
+        return alpha * cast(float, (-_log(u)) ** (1.0/beta))
 
 ## --------------- Operating System Random Source  ------------------
 

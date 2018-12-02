@@ -418,13 +418,13 @@ class MersenneTwister_TestBasicOps(TestBasicOps[random.Random]):
         self.assertTrue(stop < x <= start)
         self.assertEqual((x+stop)%step, 0)
 
-def gamma(z: float, sqrt2pi: float = (2.0*pi)**0.5) -> float:
+def gamma(z: float, sqrt2pi: float = cast(float, (2.0*pi)**0.5)) -> float:
     # Reflection to right half of complex plane
     if z < 0.5:
         return pi / sin(pi*z) / gamma(1.0-z)
     # Lanczos approximation with g=7
     az = z + (7.0 - 0.5)
-    return az ** (z-0.5) / exp(az) * sqrt2pi * fsum([
+    return cast(float, az ** (z-0.5)) / exp(az) * sqrt2pi * fsum([
         0.9999999999995183,
         676.5203681218835 / z,
         -1259.139216722289 / (z+1.0),
