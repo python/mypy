@@ -260,6 +260,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_deleted_type(self, template: DeletedType) -> List[Constraint]:
         return []
 
+    def visit_literal_type(self, template: LiteralType) -> List[Constraint]:
+        return []
+
     # Errors
 
     def visit_partial_type(self, template: PartialType) -> List[Constraint]:
@@ -471,9 +474,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return self.infer_against_any(template.items.values(), actual)
         else:
             return []
-
-    def visit_literal_type(self, template: LiteralType) -> List[Constraint]:
-        raise NotImplementedError()
 
     def visit_union_type(self, template: UnionType) -> List[Constraint]:
         assert False, ("Unexpected UnionType in ConstraintBuilderVisitor"

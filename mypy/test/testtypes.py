@@ -249,11 +249,11 @@ class TypeOpsSuite(Suite):
         fx = self.fx
 
         lit1 = LiteralType(1, fx.a)
-        lit2 = LiteralType("foo", fx.b)
-        lit3 = LiteralType("bar", fx.b)
+        lit2 = LiteralType("foo", fx.d)
+        lit3 = LiteralType("bar", fx.d)
 
         assert_true(is_proper_subtype(lit1, fx.a))
-        assert_false(is_proper_subtype(lit1, fx.b))
+        assert_false(is_proper_subtype(lit1, fx.d))
         assert_false(is_proper_subtype(fx.a, lit1))
         assert_true(is_proper_subtype(fx.uninhabited, lit1))
         assert_false(is_proper_subtype(lit1, fx.uninhabited))
@@ -262,7 +262,7 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(lit2, lit3))
 
         assert_true(is_subtype(lit1, fx.a))
-        assert_false(is_subtype(lit1, fx.b))
+        assert_false(is_subtype(lit1, fx.d))
         assert_false(is_subtype(fx.a, lit1))
         assert_true(is_subtype(fx.uninhabited, lit1))
         assert_false(is_subtype(lit1, fx.uninhabited))
@@ -620,6 +620,29 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
+
+    def test_literal_type(self) -> None:
+        a = self.fx.a
+        d = self.fx.d
+        lit1 = LiteralType(1, a)
+        lit2 = LiteralType(2, a)
+        lit3 = LiteralType("foo", d)
+
+        self.assert_join(lit1, lit1, lit1)
+        self.assert_join(lit1, a, a)
+        self.assert_join(a, lit1, a)
+        self.assert_join(lit1, lit2, a)
+        self.assert_join(lit1, lit3, self.fx.o)
+        self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
+        self.assert_join(self.fx.anyt, lit1, self.fx.anyt)
+
+        self.assert_simple_join(lit1, lit1, lit1)
+        self.assert_simple_join(lit1, a, a)
+        self.assert_simple_join(a, lit1, a)
+        self.assert_simple_join(lit1, lit2, a)
+        self.assert_simple_join(lit1, lit3, self.fx.o)
+        self.assert_simple_join(lit1, self.fx.anyt, self.fx.anyt)
+        self.assert_simple_join(self.fx.anyt, lit1, self.fx.anyt)
 
     # There are additional test cases in check-inference.test.
 
