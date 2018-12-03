@@ -31,6 +31,7 @@ class str:
     def __add__(self, x: 'str') -> 'str': pass
     def __eq__(self, x: object) -> bool: pass
     def startswith(self, x: 'str') -> bool: pass
+    def strip(self) -> 'str': pass
 
 class unicode: pass
 

@@ -18,7 +18,7 @@ from mypy.typeanal import (
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     StarType, is_optional, remove_optional, is_invariant_instance
 )
@@ -323,7 +323,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         type_name = None
         if isinstance(object_type, Instance):
             type_name = object_type.type.fullname()
-        elif isinstance(object_type, TypedDictType):
+        elif isinstance(object_type, (TypedDictType, LiteralType)):
             info = object_type.fallback.type.get_containing_type_info(method_name)
             type_name = info.fullname() if info is not None else None
         elif isinstance(object_type, TupleType):
@@ -3121,7 +3121,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # these two should be carefully kept in sync.
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
-        if isinstance(typ, TupleType):
+        if isinstance(typ, (TupleType, LiteralType)):
             typ = typ.fallback
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
