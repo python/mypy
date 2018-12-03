@@ -66,7 +66,8 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
-    a = normalize_error_messages(a)
+    if testcase.normalize_output:
+        a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,

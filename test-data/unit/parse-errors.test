@@ -121,20 +121,6 @@ def f(**x, y=x):
 [out]
 file:1: error: invalid syntax
 
-[case testInvalidStringLiteralType]
-def f(x:
-     'A['
-     ) -> None: pass
-[out]
-file:1: error: syntax error in type comment
-
-[case testInvalidStringLiteralType2]
-def f(x:
-      'A B'
-      ) -> None: pass
-[out]
-file:1: error: syntax error in type comment
-
 [case testInvalidTypeComment]
 0
 x = 0 # type: A A
@@ -158,11 +144,6 @@ file:2: error: syntax error in type comment
 x = 0 # type: *
 [out]
 file:2: error: syntax error in type comment
-
-[case testInvalidMultilineLiteralType]
-def f() -> "A\nB": pass
-[out]
-file:1: error: syntax error in type comment
 
 [case testInvalidSignatureInComment1]
 def f(): # type: x

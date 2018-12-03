@@ -19,7 +19,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Option
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
@@ -297,6 +297,8 @@ class MessageBuilder:
                                                  self.format_bare(item_type)))
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
+        elif isinstance(typ, LiteralType):
+            return str(typ)
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -

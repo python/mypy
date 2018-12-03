@@ -85,14 +85,19 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
                                                       os.path.abspath(test_temp_dir))
-            if testcase.suite.native_sep and os.path.sep == '\\':
-                normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
-            normalized_output = normalize_error_messages(normalized_output)
+            # We always normalize things like timestamp, but only handle operating-system
+            # specific things if requested.
+            if testcase.normalize_output:
+                if testcase.suite.native_sep and os.path.sep == '\\':
+                    normalized_output = [fix_cobertura_filename(line)
+                                         for line in normalized_output]
+                normalized_output = normalize_error_messages(normalized_output)
             assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
                                        'Output file {} did not match its expected output'.format(
                                            path))
     else:
-        out = normalize_error_messages(err + out)
+        if testcase.normalize_output:
+            out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))

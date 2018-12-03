@@ -1,13 +1,14 @@
 """Translate an Expression to a Type value."""
 
 from mypy.nodes import (
-    Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
+    Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr, IntExpr, FloatExpr, UnaryExpr,
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
     get_member_expr_fullname
 )
 from mypy.fastparse import parse_type_comment
 from mypy.types import (
-    Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny
+    Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny,
+    LiteralType, RawLiteralType,
 )
 
 
@@ -37,7 +38,12 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     name = None  # type: Optional[str]
     if isinstance(expr, NameExpr):
         name = expr.name
-        return UnboundType(name, line=expr.line, column=expr.column)
+        if name == 'True':
+            return RawLiteralType(True, 'builtins.bool', line=expr.line, column=expr.column)
+        elif name == 'False':
+            return RawLiteralType(False, 'builtins.bool', line=expr.line, column=expr.column)
+        else:
+            return UnboundType(name, line=expr.line, column=expr.column)
     elif isinstance(expr, MemberExpr):
         fullname = get_member_expr_fullname(expr)
         if fullname:
@@ -108,11 +114,26 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.
         try:
-            result = parse_type_comment(expr.value, expr.line, None)
-            assert result is not None
+            node = parse_type_comment(expr.value, expr.line, None)
+            assert node is not None
+            if isinstance(node, UnboundType) and node.original_str_expr is None:
+                node.original_str_expr = expr.value
+            return node
         except SyntaxError:
+            return RawLiteralType(expr.value, 'builtins.str', line=expr.line, column=expr.column)
+    elif isinstance(expr, UnaryExpr):
+        typ = expr_to_unanalyzed_type(expr.expr)
+        if isinstance(typ, RawLiteralType) and isinstance(typ.value, int) and expr.op == '-':
+            typ.value *= -1
+            return typ
+        else:
             raise TypeTranslationError()
-        return result
+    elif isinstance(expr, IntExpr):
+        return RawLiteralType(expr.value, 'builtins.int', line=expr.line, column=expr.column)
+    elif isinstance(expr, FloatExpr):
+        # Floats are not valid parameters for RawLiteralType, so we just
+        # pass in 'None' for now. We'll report the appropriate error at a later stage.
+        return RawLiteralType(None, 'builtins.float', line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     else:

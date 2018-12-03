@@ -90,6 +90,9 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     def visit_typeddict_type(self, t: types.TypedDictType) -> Set[str]:
         return self._visit(t.items.values()) | self._visit(t.fallback)
 
+    def visit_raw_literal_type(self, t: types.RawLiteralType) -> Set[str]:
+        assert False, "Unexpected RawLiteralType after semantic analysis phase"
+
     def visit_literal_type(self, t: types.LiteralType) -> Set[str]:
         return self._visit(t.fallback)
 

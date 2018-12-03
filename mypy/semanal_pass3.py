@@ -22,7 +22,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
-    UnionType, TypeType, Overloaded, ForwardRef, TypeTranslator, function_type
+    UnionType, TypeType, Overloaded, ForwardRef, TypeTranslator, function_type, LiteralType,
 )
 from mypy.errors import Errors, report_internal_error
 from mypy.options import Options
@@ -703,6 +703,13 @@ class ForwardReferenceResolver(TypeTranslator):
         fallback = self.visit_instance(t.fallback, from_fallback=True)
         assert isinstance(fallback, Instance)
         return TypedDictType(items, t.required_keys, fallback, t.line, t.column)
+
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        assert isinstance(fallback, Instance)
+        return LiteralType(t.value, fallback, t.line, t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
         if self.check_recursion(t):

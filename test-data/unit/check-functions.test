@@ -1612,7 +1612,7 @@ def WrongArg(x, y): return y
 # something else sensible, because other tests require the stub not have anything
 # that looks like a function call.
 F = Callable[[WrongArg(int, 'x')], int] # E: Invalid argument constructor "__main__.WrongArg"
-G = Callable[[Arg(1, 'x')], int] # E: Invalid type alias # E: Value of type "int" is not indexable
+G = Callable[[Arg(1, 'x')], int] # E: Invalid type: try using Literal[1] instead?
 H = Callable[[VarArg(int, 'x')], int] # E: VarArg arguments should not have names
 I = Callable[[VarArg(int)], int] # ok
 J = Callable[[VarArg(), KwArg()], int] # ok
@@ -1634,7 +1634,7 @@ from mypy_extensions import Arg, VarArg, KwArg
 
 def WrongArg(x, y): return y
 
-def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+def b(f: Callable[[Arg(1, 'x')], int]): pass # Invalid type. Try using Literal[1] instead?
 def d(f: Callable[[VarArg(int)], int]): pass # ok
 def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
 def g(f: Callable[[Arg(name='x', type=int)], int]): pass # ok
@@ -1671,7 +1671,7 @@ e(f1)  # E: Argument 1 to "e" has incompatible type "Callable[[VarArg(Any)], int
 [case testCallableWrongTypeType]
 from typing import Callable
 from mypy_extensions import Arg
-def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+def b(f: Callable[[Arg(1, 'x')], int]): pass # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/dict.pyi]
 
 [case testCallableTooManyVarArg]

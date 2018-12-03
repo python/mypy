@@ -877,7 +877,7 @@ A[TypeVar] # E: Invalid type "typing.TypeVar"
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
-A[1] # E: Type expected within [...]
+A[1] # E: Invalid type: try using Literal[1] instead?
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypes]
@@ -980,7 +980,7 @@ e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): x
 f = TypeVar('f', (int, str), int) # E: Type expected
 g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
 h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): x
-i = TypeVar('i', bound=1)         # E: TypeVar 'bound' must be a type
+i = TypeVar('i', bound=1)         # E: Invalid type: try using Literal[1] instead?
 [out]
 
 [case testMoreInvalidTypevarArguments]
@@ -993,7 +993,7 @@ S = TypeVar('S', covariant=True, contravariant=True) \
 [case testInvalidTypevarValues]
 from typing import TypeVar
 b = TypeVar('b', *[int]) # E: Unexpected argument to TypeVar()
-c = TypeVar('c', int, 2) # E: Type expected
+c = TypeVar('c', int, 2) # E: Invalid type: try using Literal[2] instead?
 [out]
 
 [case testObsoleteTypevarValuesSyntax]
@@ -1056,8 +1056,16 @@ from typing import Generic as t # E: Name 't' already defined on line 2
 def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
 
-[case testInvalidStrLiteralType2]
-def f(x: 'int['): pass # E: syntax error in type comment
+[case testInvalidStrLiteralStrayBrace]
+def f(x: 'int['): pass # E: Invalid type: syntax error in type comment
+[out]
+
+[case testInvalidStrLiteralSpaces]
+def f(x: 'A B'): pass # E: Invalid type: syntax error in type comment
+[out]
+
+[case testInvalidMultilineLiteralType]
+def f() -> "A\nB": pass  # E: Invalid type: syntax error in type comment
 [out]
 
 [case testInconsistentOverload]

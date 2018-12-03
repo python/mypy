@@ -1141,7 +1141,7 @@ Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field
 
 [case testCannotCreateTypedDictTypeWithInvalidItemType]
 from mypy_extensions import TypedDict
-Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid field type
+Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidName]

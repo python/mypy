@@ -32,7 +32,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance,
+    TypeOfAny, Instance, RawLiteralType,
 )
 from mypy import defaults
 from mypy import messages
@@ -53,6 +53,9 @@ try:
         Expression as ast3_Expression,
         Str,
         Index,
+        Num,
+        UnaryOp,
+        USub,
     )
 except ImportError:
     if sys.version_info.minor > 2:
@@ -1138,12 +1141,46 @@ class TypeConverter:
         return UnboundType(n.id, line=self.line)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
-        return UnboundType(str(n.value))
+        if isinstance(n.value, bool):
+            return RawLiteralType(n.value, 'builtins.bool', line=self.line)
+        else:
+            return UnboundType(str(n.value), line=self.line)
+
+    # UnaryOp(op, operand)
+    def visit_UnaryOp(self, n: UnaryOp) -> Type:
+        # We support specifically Literal[-4] and nothing else.
+        # For example, Literal[+4] or Literal[~6] is not supported.
+        typ = self.visit(n.operand)
+        if isinstance(typ, RawLiteralType) and isinstance(n.op, USub):
+            if isinstance(typ.value, int):
+                typ.value *= -1
+                return typ
+        self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
+        return AnyType(TypeOfAny.from_error)
+
+    # Num(number n)
+    def visit_Num(self, n: Num) -> Type:
+        # Could be either float or int
+        numeric_value = n.n
+        if isinstance(numeric_value, int):
+            return RawLiteralType(numeric_value, 'builtins.int', line=self.line)
+        elif isinstance(numeric_value, float):
+            # Floats and other numbers are not valid parameters for RawLiteralType, so we just
+            # pass in 'None' for now. We'll report the appropriate error at a later stage.
+            return RawLiteralType(None, 'builtins.float', line=self.line)
+        else:
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
+            return AnyType(TypeOfAny.from_error)
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        return (parse_type_comment(n.s.strip(), self.line, self.errors) or
-                AnyType(TypeOfAny.from_error))
+        try:
+            node = parse_type_comment(n.s.strip(), self.line, errors=None)
+            if isinstance(node, UnboundType) and node.original_str_expr is None:
+                node.original_str_expr = n.s
+            return node or AnyType(TypeOfAny.from_error)
+        except SyntaxError:
+            return RawLiteralType(n.s, 'builtins.str', line=self.line)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:

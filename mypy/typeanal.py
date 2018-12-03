@@ -16,8 +16,9 @@ from mypy.types import (
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
-    LiteralType,
+    LiteralType, RawLiteralType,
 )
+from mypy.fastparse import TYPE_COMMENT_SYNTAX_ERROR
 
 from mypy.nodes import (
     TVAR, MODULE_REF, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
@@ -283,6 +284,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return item
             elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
                 return UninhabitedType(is_noreturn=True)
+            elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
+                return self.analyze_literal_type(t)
             elif isinstance(sym.node, TypeAlias):
                 self.aliases_used.add(sym.node.fullname())
                 all_vars = sym.node.alias_tvars
@@ -460,8 +463,32 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ])
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
+    def visit_raw_literal_type(self, t: RawLiteralType) -> Type:
+        # We should never see a bare Literal. We synthesize these raw literals
+        # in the earlier stages of semantic analysis, but those
+        # "fake literals" should always be wrapped in an UnboundType
+        # corresponding to 'Literal'.
+        #
+        # Note: if at some point in the distant future, we decide to
+        # make signatures like "foo(x: 20) -> None" legal, we can change
+        # this method so it generates and returns an actual LiteralType
+        # instead.
+        if t.base_type_name == 'builtins.int' or t.base_type_name == 'builtins.bool':
+            # The only time it makes sense to use an int or bool is inside of
+            # a literal type.
+            self.fail("Invalid type: try using Literal[{}] instead?".format(repr(t.value)), t)
+        elif t.base_type_name == 'builtins.float':
+            self.fail("Invalid type: float literals cannot be used as a type", t)
+        else:
+            # For other types like strings, it's unclear if the user meant
+            # to construct a literal type or just misspelled a regular type.
+            # So, we leave just a generic "syntax error" error.
+            self.fail('Invalid type: ' + TYPE_COMMENT_SYNTAX_ERROR, t)
+
+        return AnyType(TypeOfAny.from_error)
+
     def visit_literal_type(self, t: LiteralType) -> Type:
-        raise NotImplementedError()
+        return t
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(self.anal_type(t.type), t.line)
@@ -561,6 +588,81 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
         check_arg_kinds(kinds, [arglist] * len(args), self.fail)
         return args, kinds, names
+
+    def analyze_literal_type(self, t: UnboundType) -> Type:
+        if len(t.args) == 0:
+            self.fail('Literal[...] must have at least one parameter', t)
+            return AnyType(TypeOfAny.from_error)
+
+        output = []  # type: List[Type]
+        for i, arg in enumerate(t.args):
+            analyzed_types = self.analyze_literal_param(i + 1, arg, t)
+            if analyzed_types is None:
+                return AnyType(TypeOfAny.from_error)
+            else:
+                output.extend(analyzed_types)
+        return UnionType.make_union(output, line=t.line)
+
+    def analyze_literal_param(self, idx: int, arg: Type, ctx: Context) -> Optional[List[Type]]:
+        # This UnboundType was originally defined as a string.
+        if isinstance(arg, UnboundType) and arg.original_str_expr is not None:
+            return [LiteralType(
+                value=arg.original_str_expr,
+                fallback=self.named_type('builtins.str'),
+                line=arg.line,
+                column=arg.column,
+            )]
+
+        # If arg is an UnboundType that was *not* originally defined as
+        # a string, try expanding it in case it's a type alias or something.
+        if isinstance(arg, UnboundType):
+            arg = self.anal_type(arg)
+
+        # Literal[...] cannot contain Any. Give up and add an error message
+        # (if we haven't already).
+        if isinstance(arg, AnyType):
+            # Note: We can encounter Literals containing 'Any' under three circumstances:
+            #
+            # 1. If the user attempts use an explicit Any as a parameter
+            # 2. If the user is trying to use an enum value imported from a module with
+            #    no type hints, giving it an an implicit type of 'Any'
+            # 3. If there's some other underlying problem with the parameter.
+            #
+            # We report an error in only the first two cases. In the third case, we assume
+            # some other region of the code has already reported a more relevant error.
+            #
+            # TODO: Once we start adding support for enums, make sure we reprt a custom
+            # error for case 2 as well.
+            if arg.type_of_any != TypeOfAny.from_error:
+                self.fail('Parameter {} of Literal[...] cannot be of type "Any"'.format(idx), ctx)
+            return None
+        elif isinstance(arg, RawLiteralType):
+            # A raw literal. Convert it directly into a literal.
+            if arg.base_type_name == 'builtins.float':
+                self.fail(
+                    'Parameter {} of Literal[...] cannot be of type "float"'.format(idx),
+                    ctx)
+                return None
+
+            fallback = self.named_type(arg.base_type_name)
+            assert isinstance(fallback, Instance)
+            return [LiteralType(arg.value, fallback, line=arg.line, column=arg.column)]
+        elif isinstance(arg, (NoneTyp, LiteralType)):
+            # Types that we can just add directly to the literal/potential union of literals.
+            return [arg]
+        elif isinstance(arg, UnionType):
+            out = []
+            for union_arg in arg.items:
+                union_result = self.analyze_literal_param(idx, union_arg, ctx)
+                if union_result is None:
+                    return None
+                out.extend(union_result)
+            return out
+        elif isinstance(arg, ForwardRef):
+            return [arg]
+        else:
+            self.fail('Parameter {} of Literal[...] is invalid'.format(idx), ctx)
+            return None
 
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
@@ -759,7 +861,18 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             item_type.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> None:
-        raise NotImplementedError()
+        # We've already validated that the LiteralType
+        # contains either some literal expr like int, str, or
+        # bool in the previous pass -- we were able to do this
+        # since we had direct access to the underlying expression
+        # at those stages.
+        #
+        # The only thing we have left to check is to confirm
+        # whether LiteralTypes of the form 'Literal[Foo.bar]'
+        # contain enum members or not.
+        #
+        # TODO: implement this.
+        pass
 
     def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:

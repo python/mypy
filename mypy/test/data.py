@@ -42,6 +42,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
         join = posixpath.join  # type: ignore
 
     out_section_missing = case.suite.required_out_section
+    normalize_output = True
 
     files = []  # type: List[Tuple[str, str]] # path and contents
     output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
@@ -98,8 +99,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
+            if item.arg == 'skip-path-normalization':
+                normalize_output = False
+
             tmp_output = [expand_variables(line) for line in item.data]
-            if os.path.sep == '\\':
+            if os.path.sep == '\\' and normalize_output:
                 tmp_output = [fix_win_path(line) for line in tmp_output]
             if item.id == 'out' or item.id == 'out1':
                 output = tmp_output
@@ -147,6 +151,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.expected_rechecked_modules = rechecked_modules
     case.deleted_paths = deleted_paths
     case.triggered = triggered or []
+    case.normalize_output = normalize_output
 
 
 class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
@@ -167,6 +172,10 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
 
     # Files/directories to clean up after test case; (is directory, path) tuples
     clean_up = None  # type: List[Tuple[bool, str]]
+
+    # Whether or not we should normalize the output to standardize things like
+    # forward vs backward slashes in file paths for Windows vs Linux.
+    normalize_output = True
 
     def __init__(self,
                  parent: 'DataSuiteCollector',

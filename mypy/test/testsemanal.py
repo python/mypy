@@ -30,6 +30,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-abstractclasses.test',
                  'semanal-namedtuple.test',
                  'semanal-typeddict.test',
+                 'semenal-literal.test',
                  'semanal-classvar.test',
                  'semanal-python2.test']
 
@@ -78,6 +79,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
             if (not f.path.endswith((os.sep + 'builtins.pyi',
                                      'typing.pyi',
                                      'mypy_extensions.pyi',
+                                     'typing_extensions.pyi',
                                      'abc.pyi',
                                      'collections.pyi'))
                     and not os.path.basename(f.path).startswith('_')
@@ -86,7 +88,8 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
-    a = normalize_error_messages(a)
+    if testcase.normalize_output:
+        a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
@@ -116,8 +119,10 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
         a = e.messages
+    if testcase.normalize_output:
+        a = normalize_error_messages(a)
     assert_string_arrays_equal(
-        testcase.output, normalize_error_messages(a),
+        testcase.output, a,
         'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
 
 

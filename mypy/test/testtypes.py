@@ -9,7 +9,7 @@ from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneTyp, Overloaded,
-    TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny
+    TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny, LiteralType
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -244,6 +244,37 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(fx.gsaa, fx.gb))
         assert_false(is_proper_subtype(fx.gb, fx.ga))
         assert_false(is_proper_subtype(fx.ga, fx.gb))
+
+    def test_is_proper_subtype_and_subtype_literal_types(self) -> None:
+        fx = self.fx
+
+        lit1 = LiteralType(1, fx.a)
+        lit2 = LiteralType("foo", fx.b)
+        lit3 = LiteralType("bar", fx.b)
+
+        assert_true(is_proper_subtype(lit1, fx.a))
+        assert_false(is_proper_subtype(lit1, fx.b))
+        assert_false(is_proper_subtype(fx.a, lit1))
+        assert_true(is_proper_subtype(fx.uninhabited, lit1))
+        assert_false(is_proper_subtype(lit1, fx.uninhabited))
+        assert_true(is_proper_subtype(lit1, lit1))
+        assert_false(is_proper_subtype(lit1, lit2))
+        assert_false(is_proper_subtype(lit2, lit3))
+
+        assert_true(is_subtype(lit1, fx.a))
+        assert_false(is_subtype(lit1, fx.b))
+        assert_false(is_subtype(fx.a, lit1))
+        assert_true(is_subtype(fx.uninhabited, lit1))
+        assert_false(is_subtype(lit1, fx.uninhabited))
+        assert_true(is_subtype(lit1, lit1))
+        assert_false(is_subtype(lit1, lit2))
+        assert_false(is_subtype(lit2, lit3))
+
+        assert_false(is_proper_subtype(lit1, fx.anyt))
+        assert_false(is_proper_subtype(fx.anyt, lit1))
+
+        assert_true(is_subtype(lit1, fx.anyt))
+        assert_true(is_subtype(fx.anyt, lit1))
 
     # can_be_true / can_be_false
 

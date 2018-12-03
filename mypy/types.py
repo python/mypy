@@ -38,9 +38,14 @@ JsonDict = Dict[str, Any]
 #
 # Note: this type also happens to correspond to types that can be
 # directly converted into JSON. The serialize/deserialize methods
-# of 'LiteralType' rely on this, as well 'server.astdiff.SnapshotTypeVisitor'
-# and 'types.TypeStrVisitor'. If we end up adding any non-JSON-serializable
-# types to this list, we should make sure to edit those methods to match.
+# of 'LiteralType' relies on this, as well as
+# 'server.astdiff.SnapshotTypeVisitor' and 'types.TypeStrVisitor'.
+# If we end up adding any non-JSON-serializable types to this list,
+# we should make sure to edit those methods to match.
+#
+# Alternatively, we should consider getting rid of this alias and
+# moving any shared special serialization/deserialization code into
+# RawLiteralType or something instead.
 LiteralValue = Union[int, str, bool, None]
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -236,48 +241,64 @@ class TypeVarDef(mypy.nodes.Context):
 class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
 
-    __slots__ = ('name', 'args', 'optional', 'empty_tuple_index')
+    __slots__ = ('name', 'args', 'optional', 'empty_tuple_index', 'original_str_expr')
 
     def __init__(self,
-                 name: str,
+                 name: Optional[str],
                  args: Optional[List[Type]] = None,
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
-                 empty_tuple_index: bool = False) -> None:
+                 empty_tuple_index: bool = False,
+                 original_str_expr: Optional[str] = None,
+                 ) -> None:
         super().__init__(line, column)
         if not args:
             args = []
+        assert name is not None
         self.name = name
         self.args = args
         # Should this type be wrapped in an Optional?
         self.optional = optional
         # Special case for X[()]
         self.empty_tuple_index = empty_tuple_index
+        # If this UnboundType was originally defined as a str, keep track of
+        # the original contents of that string. This way, if this UnboundExpr
+        # ever shows up inside of a LiteralType, we can determine whether that
+        # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
+        # (unless 'foo' is an alias for another literal or something) and
+        # Literal["foo"] most likely is.
+        #
+        # We keep track of the entire string instead of just using a boolean flag
+        # so we can distinguish between things like Literal["foo"] vs
+        # Literal["    foo   "].
+        self.original_str_expr = original_str_expr
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
-        return hash((self.name, self.optional, tuple(self.args)))
+        return hash((self.name, self.optional, tuple(self.args), self.original_str_expr))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
             return NotImplemented
         return (self.name == other.name and self.optional == other.optional and
-                self.args == other.args)
+                self.args == other.args and self.original_str_expr == other.original_str_expr)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnboundType',
                 'name': self.name,
                 'args': [a.serialize() for a in self.args],
+                'expr': self.original_str_expr,
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UnboundType':
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
-                           [deserialize_type(a) for a in data['args']])
+                           [deserialize_type(a) for a in data['args']],
+                           original_str_expr=data['expr'])
 
 
 class CallableArgument(Type):
@@ -1256,6 +1277,58 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
+class RawLiteralType(Type):
+    """A synthetic type representing any type that could plausibly be something
+    that lives inside of a literal.
+
+    This synthetic type is only used at the beginning stages of semantic analysis
+    and should be completely removing during the process for mapping UnboundTypes to
+    actual types.
+
+    For example, `Foo[1]` is initially represented as the following:
+
+        UnboundType(
+            name='Foo',
+            args=[
+                RawLiteralType(value=1, base_type_name='builtins.int'),
+            ],
+        )
+
+    As we perform semantic analysis, this type will transform into one of two
+    possible forms.
+
+    If 'Foo' was an alias for 'Literal' all along, this type is transformed into:
+
+        LiteralType(value=1, fallback=int_instance_here)
+
+    Alternatively, if 'Foo' is an unrelated class, we report an error and instead
+    produce something like this:
+
+        Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.from_error))
+    """
+    def __init__(self, value: LiteralValue, base_type_name: str,
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.value = value
+        self.base_type_name = base_type_name
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
+        return visitor.visit_raw_literal_type(self)
+
+    def serialize(self) -> JsonDict:
+        assert False, "Synthetic types don't serialize"
+
+    def __hash__(self) -> int:
+        return hash((self.value, self.base_type_name))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, RawLiteralType):
+            return self.base_type_name == other.base_type_name and self.value == other.value
+        else:
+            return NotImplemented
+
+
 class LiteralType(Type):
     """The type of a Literal instance. Literal[Value]
 
@@ -1756,6 +1829,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             else:
                 suffix = ', fallback={}'.format(t.fallback.accept(self))
         return 'TypedDict({}{}{})'.format(prefix, s, suffix)
+
+    def visit_raw_literal_type(self, t: RawLiteralType) -> str:
+        return repr(t.value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
         return 'Literal[{}]'.format(repr(t.value))
