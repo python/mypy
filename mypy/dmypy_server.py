@@ -42,21 +42,31 @@ if MYPY:
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
 if sys.platform == 'win32':
+    from subprocess import STARTUPINFO
+
     def daemonize(options: Options,
                   timeout: Optional[int] = None,
                   log_file: Optional[str] = None) -> int:
         """Create the daemon process via "dmypy daemon" and pass options via command line
 
-        This uses the DETACHED_PROCESS flag to invoke the Server.
-        See https://docs.microsoft.com/en-us/windows/desktop/procthread/process-creation-flags
+        When creating the daemon grandchild, we create it in a new console, which is
+        started hidden. We cannot use DETACHED_PROCESS since it will cause console windows
+        to pop up when starting. See
+        https://github.com/python/cpython/pull/4150#issuecomment-340215696
+        for more on why we can't have nice things.
 
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
         pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
         command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
+        info = STARTUPINFO(dwFlags=0x1,  # STARTF_USESHOWWINDOW aka use wShowWindow's value
+                           wShowWindow=0,  # SW_HIDE aka make the window invisible
+                           )
         try:
-            subprocess.Popen(command, creationflags=0x8)  # DETACHED_PROCESS
+            subprocess.Popen(command,
+                             creationflags=0x10,  # CREATE_NEW_CONSOLE
+                             startupinfo=info)
             return 0
         except subprocess.CalledProcessError as e:
             return e.returncode
