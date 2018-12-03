@@ -20,8 +20,9 @@ SAMPLES = 'SamplesSuite'
 TYPESHED = 'TypeshedSuite'
 PEP561 = 'TestPEP561'
 EVALUATION = 'PythonEvaluation'
+DAEMON = 'testdaemon'
 
-ALL_NON_FAST = [CMDLINE, SAMPLES, TYPESHED, PEP561, EVALUATION]
+ALL_NON_FAST = [CMDLINE, SAMPLES, TYPESHED, PEP561, EVALUATION, DAEMON]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similiar
@@ -36,7 +37,7 @@ cmds = {
     # Test cases that invoke mypy (with small inputs)
     'pytest-cmdline': 'pytest -k "%s"' % ' or '.join([CMDLINE, EVALUATION]),
     # Test cases that may take seconds to run each
-    'pytest-slow': 'pytest -k "%s"' % ' or '.join([SAMPLES, TYPESHED, PEP561]),
+    'pytest-slow': 'pytest -k "%s"' % ' or '.join([SAMPLES, TYPESHED, PEP561, DAEMON]),
 }
 
 # Stop run immediately if these commands fail
