@@ -887,6 +887,137 @@ reveal_type(a)  # E: Revealed type is 'builtins.dict[builtins.str*, builtins.int
 [builtins fixtures/dict.pyi]
 [out]
 
+[case testLiteralInferredInOverloadContextBasic]
+from typing import overload
+from typing_extensions import Literal
+
+@overload
+def func(x: Literal[1]) -> str: ...
+@overload
+def func(x: Literal[2]) -> int: ...
+@overload
+def func(x: int) -> object: ...
+def func(x: int) -> object: pass
+
+a: Literal[1]
+b: Literal[2]
+c: Literal[1, 2]
+
+reveal_type(func(1))  # E: Revealed type is 'builtins.str'
+reveal_type(func(2))  # E: Revealed type is 'builtins.int'
+reveal_type(func(3))  # E: Revealed type is 'builtins.object'
+reveal_type(func(a))  # E: Revealed type is 'builtins.str'
+reveal_type(func(b))  # E: Revealed type is 'builtins.int'
+
+# Note: the fact that we don't do union math here is consistent
+# with the output we would have gotten if we replaced int and the
+# Literal types here with regular classes/subclasses.
+reveal_type(func(c))  # E: Revealed type is 'builtins.object'
+[out]
+
+[case testLiteralOverloadProhibitUnsafeOverlaps]
+from typing import overload
+from typing_extensions import Literal
+
+@overload
+def func1(x: Literal[1]) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def func1(x: int) -> int: ...
+def func1(x): pass
+
+@overload
+def func2(x: Literal['a']) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def func2(x: str) -> Literal[2]: ...
+def func2(x): pass
+
+# This one is typesafe
+@overload
+def func3(x: Literal['a']) -> Literal[2]: ...
+@overload
+def func3(x: str) -> int: ...
+def func3(x): pass
+[out]
+
+[case testLiteralInferredInOverloadContextUnionMath]
+from typing import overload, Union
+from typing_extensions import Literal
+
+class A: pass
+class B: pass
+class C: pass
+
+@overload
+def func(x: Literal[-40]) -> A: ...
+@overload
+def func(x: Literal[3, 4, 5, 6]) -> B: ...
+@overload
+def func(x: Literal["foo"]) -> C: ...
+def func(x: Union[int, str]) -> Union[A, B, C]: pass
+
+a: Literal[-40, "foo"]
+b: Literal[3]
+c: Literal[3, -40]
+d: Literal[6, 7]
+e: int
+f: Literal[7, "bar"]
+
+reveal_type(func(a))  # E: Revealed type is 'Union[__main__.A, __main__.C]'
+reveal_type(func(b))  # E: Revealed type is '__main__.B'
+reveal_type(func(c))  # E: Revealed type is 'Union[__main__.B, __main__.A]'
+reveal_type(func(d))  # E: Revealed type is '__main__.B' \
+                      # E: Argument 1 to "func" has incompatible type "Union[Literal[6], Literal[7]]"; expected "Union[Literal[3], Literal[4], Literal[5], Literal[6]]"
+
+reveal_type(func(e))  # E: Revealed type is 'Any' \
+                      # E: No overload variant of "func" matches argument type "int" \
+                      # N: Possible overload variants: \
+                      # N:     def func(x: Literal[-40]) -> A \
+                      # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
+                      # N:     def func(x: Literal['foo']) -> C
+
+reveal_type(func(f))  # E: Revealed type is 'Any' \
+                      # E: No overload variant of "func" matches argument type "Union[Literal[7], Literal['bar']]" \
+                      # N: Possible overload variants: \
+                      # N:     def func(x: Literal[-40]) -> A \
+                      # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
+                      # N:     def func(x: Literal['foo']) -> C
+[out]
+
+[case testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType]
+# This test is a transliteration of check-overloading::testUnionMathOverloadingReturnsBestType
+from typing import overload
+from typing_extensions import Literal
+
+@overload
+def f(x: Literal[1, 2]) -> int: ...
+@overload
+def f(x: int) -> object: ...
+def f(x):
+    pass
+
+x: Literal[1, 2]
+reveal_type(f(x))  # E: Revealed type is 'builtins.int'
+[out]
+
+[case testLiteralInferredInOverloadContextUnionMathTrickyOverload]
+# This test is a transliteration of check-overloading::testUnionMathTrickyOverload1
+from typing import overload
+from typing_extensions import Literal
+
+@overload
+def f(x: Literal['a'], y: Literal['a']) -> int: ...
+@overload
+def f(x: str, y: Literal['b']) -> str: ...
+def f(x):
+    pass
+
+x: Literal['a', 'b']
+y: Literal['a', 'b']
+f(x, y)  # E: Argument 1 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
+         # E: Argument 2 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
+[out]
+
+
 --
 -- Here are a few misc tests that deliberately do not work.
 -- I'm including these as skipped tests partly because I wanted to
