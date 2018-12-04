@@ -39,8 +39,8 @@ a type annotation:
    a.x = [1]     # OK
 
 As in Python generally, a variable defined in the class body can be used
-as a class or an instance variable (as discussed in the next section, you
-can override this with a ``ClassVar`` annotation).
+as a class or an instance variable. (As discussed in the next section, you
+can override this with a ``ClassVar`` annotation.)
 
 Type comments work as well, if you need to support Python versions earlier
 than 3.6:
@@ -129,8 +129,9 @@ particular attribute should not be set on instances:
 
 .. note::
 
-   If you need to support Python 3.5.2 or earlier, you have to import
-   ``ClassVar`` from ``typing_extensions`` instead (available on PyPI).
+   If you need to support Python 3 versions 3.5.2 or earlier, you have
+   to import ``ClassVar`` from ``typing_extensions`` instead (available on
+   PyPI). If you use Python 2.7, you can import it from ``typing``.
 
 It's not necessary to annotate all class variables using
 ``ClassVar``. An attribute without the ``ClassVar`` annotation can
@@ -161,10 +162,10 @@ a ``ClassVar`` annotation, but this might not do what you'd expect:
        y: ClassVar = 0  # Type implicitly Any!
 
 In this case the type of the attribute will be implicitly ``Any``.
-This behavior will likely change in the future, since it's surprising.
+This behavior will change in the future, since it's surprising.
 
 .. note::
-   A ``ClassVar`` type parameter cannot include any type variables:
+   A ``ClassVar`` type parameter cannot include type variables:
    ``ClassVar[T]`` and ``ClassVar[List[T]]``
    are both invalid if ``T`` is a type variable (see :ref:`generic-classes`
    for more about type variables).
