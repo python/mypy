@@ -1283,3 +1283,29 @@ def f(x: Optional[T] = None) -> List[T]: ...
 
 y: List[str] = f()  # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[str]")
 [builtins fixtures/list.pyi]
+
+[case testUseCovariantGenericOuterContext]
+from typing import TypeVar, Callable, Tuple
+
+T = TypeVar('T')
+
+def f(x: Callable[..., T]) -> T:
+    return x()
+
+x: Tuple[str, ...] = f(tuple)
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testUseCovariantGenericOuterContextUserDefined]
+from typing import TypeVar, Callable, Generic
+
+T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
+
+class G(Generic[T_co]): ...
+
+def f(x: Callable[..., T]) -> T:
+    return x()
+
+x: G[str] = f(G)
+[out]

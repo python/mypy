@@ -2057,6 +2057,10 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
+def is_generic_instance(tp: Type) -> bool:
+    return isinstance(tp, Instance) and bool(tp.args)
+
+
 def is_invariant_instance(tp: Type) -> bool:
     if not isinstance(tp, Instance) or not tp.args:
         return False
