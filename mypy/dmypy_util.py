@@ -13,7 +13,7 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-STATUS_FILE = '.dmypy.json'  # type: Final
+DEFAULT_STATUS_FILE = '.dmypy.json'  # type: Final
 
 
 def receive(connection: IPCBase) -> Any:
