@@ -37,7 +37,8 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
 parser.set_defaults(action=None)
-parser.add_argument('--status-file', default=DEFAULT_STATUS_FILE, help='status file to retrieve daemon details')
+parser.add_argument('--status-file', default=DEFAULT_STATUS_FILE,
+                    help='status file to retrieve daemon details')
 subparsers = parser.add_subparsers()
 
 start_parser = p = subparsers.add_parser('start', help="Start daemon")
