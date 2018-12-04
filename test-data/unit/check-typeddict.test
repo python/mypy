@@ -1499,6 +1499,8 @@ reveal_type(a.setdefault('y', [])) # E: Revealed type is 'builtins.list[builtins
 a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]"
 x = ''
 a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
+alias = a.setdefault
+alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
 
 a.update({})
 a.update({'x': 1})
@@ -1537,6 +1539,9 @@ a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
 b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
 x = ''
 b.pop(x) # E: Expected TypedDict key to be string literal
+pop = b.pop
+pop('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+pop('invalid') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictDel]

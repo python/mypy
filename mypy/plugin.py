@@ -568,6 +568,7 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
     depends on a TypedDict value type.
     """
     signature = ctx.default_signature
+    str_type = ctx.api.named_generic_type('builtins.str', [])
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.args) == 2
             and len(ctx.args[0]) == 1
@@ -584,9 +585,9 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             tv = TypeVarType(signature.variables[0])
             typ = UnionType.make_simplified_union([value_type, tv])
             return signature.copy_modified(
-                arg_types=[signature.arg_types[0], typ],
+                arg_types=[str_type, typ],
                 ret_type=typ)
-    return signature
+    return signature.copy_modified(arg_types=[str_type, signature.arg_types[1]])
 
 
 def typed_dict_pop_callback(ctx: MethodContext) -> Type:
@@ -621,6 +622,7 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
     depends on a TypedDict value type.
     """
     signature = ctx.default_signature
+    str_type = ctx.api.named_generic_type('builtins.str', [])
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.args) == 2
             and len(ctx.args[0]) == 1
@@ -630,8 +632,8 @@ def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableT
         key = ctx.args[0][0].value
         value_type = ctx.type.items.get(key)
         if value_type:
-            return signature.copy_modified(arg_types=[signature.arg_types[0], value_type])
-    return signature
+            return signature.copy_modified(arg_types=[str_type, value_type])
+    return signature.copy_modified(arg_types=[str_type, signature.arg_types[1]])
 
 
 def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
