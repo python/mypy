@@ -178,27 +178,35 @@ override has a compatible signature:
 
 .. code-block:: python
 
-   class A:
+   class Base:
        def f(self, x: int) -> None:
            ...
 
-   class B(A):
+   class Derived1(Base):
        def f(self, x: str) -> None:   # Error: type of 'x' incompatible
            ...
 
-   class C(A):
+   class Derived2(Base):
        def f(self, x: int, y: int) -> None:  # Error: too many arguments
            ...
 
-   class D(A):
+   class Derived3(Base):
        def f(self, x: int) -> None:   # OK
            ...
+
+   class Derived4(Base):
+       def f(self, x: float) -> None:   # OK: mypy treats int as a subtype of float
+           ...
+
+   class Derived5(Base):
+       def f(self, x: int, y: int = 0) -> None:   # OK: accepts more than the base
+           ...                                    #     class method
 
 .. note::
 
    You can also vary return types **covariantly** in overriding. For
-   example, you could override the return type ``object`` with a subtype
-   such as ``int``. Similarly, you can vary argument types
+   example, you could override the return type ``Iterable[int]`` with a
+   subtype such as ``List[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
 You can also override a statically typed method with a dynamically
@@ -213,50 +221,103 @@ effect at runtime:
 
 .. code-block:: python
 
-   class A:
+   class Base:
        def inc(self, x: int) -> int:
            return x + 1
 
-   class B(A):
+   class Derived(Base):
        def inc(self, x):   # Override, dynamically typed
-           return 'hello'  # Incompatible with 'A', but no mypy error
+           return 'hello'  # Incompatible with 'Base', but no mypy error
 
 Abstract base classes and multiple inheritance
 **********************************************
 
 Mypy supports Python abstract base classes (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
-by a subclass. You can define abstract base classes using the
-``abc.ABCMeta`` metaclass, and the ``abc.abstractmethod`` and
-``abc.abstractproperty`` function decorators. Example:
+by any *concrete* (non-abstract) subclass. You can define abstract base
+classes using the ``abc.ABCMeta`` metaclass and the ``abc.abstractmethod``
+function decorator. Example:
 
 .. code-block:: python
 
    from abc import ABCMeta, abstractmethod
 
-   class A(metaclass=ABCMeta):
+   class Animal(metaclass=ABCMeta):
        @abstractmethod
-       def foo(self, x: int) -> None: pass
+       def eat(self, food: str) -> None: pass
 
+       @property
        @abstractmethod
-       def bar(self) -> str: pass
+       def can_walk(self) -> bool: pass
 
-   class B(A):
-       def foo(self, x: int) -> None: ...
-       def bar(self) -> str:
-           return 'x'
+   class Cat(Animal):
+       def eat(self, food: str) -> None:
+           ...  # Body omitted
 
-   a = A()  # Error: 'A' is abstract
-   b = B()  # OK
+       @property
+       def can_walk(self) -> bool:
+           return True
+
+   x = Animal()  # Error: 'Animal' is abstract due to 'eat' and 'can_walk'
+   y = Cat()     # OK
+
+.. note::
+
+   In Python 2.7 you have to use ``@abc.abstractproperty`` to define
+   an abstract property.
 
 Note that mypy performs checking for unimplemented abstract methods
 even if you omit the ``ABCMeta`` metaclass. This can be useful if the
 metaclass would cause runtime metaclass conflicts.
 
+Since you can't create instances of ABCs, they are most commonly used in
+type annotations. For example, this method accepts arbitrary iterables
+containing arbitrary animals (instances of concrete ``Animal``
+subclasses):
+
+.. code-block:: python
+
+   def feed_all(animals: Iterable[Animal], food: str) -> None:
+       for animal in animals:
+           animal.eat(food)
+
+There is one important peculiarity about how ABCs work in Python --
+whether a particular class is abstract or not is somewhat implicit.
+In the example below, ``Derived`` is treated as an abstract base class
+since ``Derived`` inherits an abstract ``f`` method from ``Base`` and
+doesn't explicitly implement it. The definition of ``Derived``
+generates no errors from mypy, since it's a valid ABC:
+
+.. code-block:: python
+
+   from abc import ABCMeta, abstractmethod
+
+   class Base(metaclass=ABCMeta):
+       @abstractmethod
+       def f(self, x: int) -> None: pass
+
+   class Derived(Base):  # No error -- Derived is implicitly abstract
+       def g(self) -> None:
+           ...
+
+Attempting to create an instance of ``Derived`` will be rejected,
+however:
+
+.. code-block:: python
+
+   d = Derived()  # Error: 'Derived' is abstract
+
+.. note::
+
+   It's a common error to forget to implement an abstract method.
+   As shown above, the class definition will not generate an error
+   in this case, but any attempt to construct an instance will be
+   flagged as an error.
+
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can
-implement a statically typed method defined in any base class,
-including an abstract method defined in an abstract base class.
+override or implement a statically typed method defined in any base
+class, including an abstract method defined in an abstract base class.
 
 You can implement an abstract property using either a normal
 property or an instance variable.
