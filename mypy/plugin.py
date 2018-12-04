@@ -657,7 +657,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def typed_dict_delitem_signature_callback(ctx: MethodContext) -> Type:
+def typed_dict_delitem_signature_callback(ctx: MethodSigContext) -> CallableType:
     # Replace NoReturn as the argument type.
     str_type = ctx.api.named_generic_type('builtins.str', [])
     return ctx.default_signature.copy_modified(arg_types=[str_type])
