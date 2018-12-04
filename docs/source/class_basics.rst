@@ -175,11 +175,19 @@ override has a compatible signature:
        def f(self, x: int) -> None:   # OK
            ...
 
+   class Derived4(Base):
+       def f(self, x: float) -> None:   # OK: mypy treats int as a subtype of float
+           ...
+
+   class Derived5(Base):
+       def f(self, x: int, y: int = 0) -> None:   # OK: accepts more than the base
+           ...                                    #     class method
+
 .. note::
 
    You can also vary return types **covariantly** in overriding. For
-   example, you could override the return type ``object`` with a subtype
-   such as ``int``. Similarly, you can vary argument types
+   example, you could override the return type ``Iterable[int]`` with a
+   subtype such as ``List[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
 You can also override a statically typed method with a dynamically
@@ -208,8 +216,8 @@ Abstract base classes and multiple inheritance
 Mypy supports Python abstract base classes (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by any *concrete* (non-abstract) subclass. You can define abstract base
-classes using the ``abc.ABCMeta`` metaclass, and the ``abc.abstractmethod``
-and ``abc.abstractproperty`` function decorators. Example:
+classes using the ``abc.ABCMeta`` metaclass and the ``abc.abstractmethod``
+function decorator. Example:
 
 .. code-block:: python
 
@@ -219,18 +227,25 @@ and ``abc.abstractproperty`` function decorators. Example:
        @abstractmethod
        def eat(self, food: str) -> None: pass
 
+       @property
        @abstractmethod
        def can_walk(self) -> bool: pass
 
    class Cat(Animal):
        def eat(self, food: str) -> None:
-           ...  # Implementation omitted
+           ...  # Body omitted
 
+       @property
        def can_walk(self) -> bool:
            return True
 
-   x = Animal()  # Error: 'Animal' is abstract
+   x = Animal()  # Error: 'Animal' is abstract due to 'eat' and 'can_walk'
    y = Cat()     # OK
+
+.. note::
+
+   In Python 2.7 you have to use ``@abc.abstractproperty`` to define
+   an abstract property.
 
 Note that mypy performs checking for unimplemented abstract methods
 even if you omit the ``ABCMeta`` metaclass. This can be useful if the
