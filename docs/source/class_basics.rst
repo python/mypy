@@ -39,7 +39,8 @@ a type annotation:
    a.x = [1]     # OK
 
 As in Python generally, a variable defined in the class body can be used
-as a class or an instance variable.
+as a class or an instance variable. (As discussed in the next section, you
+can override this with a ``ClassVar`` annotation.)
 
 Type comments work as well, if you need to support Python versions earlier
 than 3.6:
@@ -77,50 +78,6 @@ to it explicitly using ``self``:
            a = self
            a.x = 1      # Error: 'x' not defined
 
-Class attribute annotations
-***************************
-
-Mypy supports annotations for class and instance
-variables in class bodies and methods. Use ``ClassVar`` to
-indicate to the static type checker that this variable
-should not be set on instances.
-
-A class attribute without the ``ClassVar`` annotation can be used as
-a class variable. Mypy won't prevent it from being used as an
-instance variable.
-
-.. code-block:: python
-
-  class A:
-      y: ClassVar[Dict[str, int]] = {}  # class variable
-      z: int = 10                       # instance variable
-
-The following are worth noting about ``ClassVar``:
-
-- It accepts only types and cannot be further subscribed.
-
-- It is not a class itself, and should not be used with
-  isinstance() or issubclass().
-
-- It does not change Python runtime behavior, but it can
-  be used by third-party type checkers. For example, a type checker
-  might flag the following code as an error:
-
-.. code-block:: python
-
-  a = A(3000)
-  a.y = {}                # Error, setting class variable on instance
-  a.z = {}                # This is OK
-
-
-Also `` y: ClassVar = 0 `` is valid (without square brackets). The type of
-the variable will be implicitly ``Any``. This behavior will change in the future.
-
-.. note::
-   A ``ClassVar`` parameter cannot include any type variables,
-   regardless of the level of nesting: ``ClassVar[T]`` and ``ClassVar[List[Set[T]]]``
-   are both invalid if ``T`` is a type variable.
-
 Annotating `__init__` methods
 *****************************
 
@@ -150,6 +107,68 @@ annotation, it is considered an untyped method:
        def __init__(self):
            # This body is not type checked
            self.var = 42 + 'abc'
+
+Class attribute annotations
+***************************
+
+You can use a ``ClassVar[t]`` annotation to explicitly declare that a
+particular attribute should not be set on instances:
+
+.. code-block:: python
+
+  from typing import ClassVar
+
+  class A:
+      x: ClassVar[int] = 0  # Class variable only
+
+  A.x += 1  # OK
+
+  a = A()
+  a.x = 1  # Error: Cannot assign to class variable "x" via instance
+  print(a.x)  # OK -- can be read through an instance
+
+.. note::
+
+   If you need to support Python 3 versions 3.5.2 or earlier, you have
+   to import ``ClassVar`` from ``typing_extensions`` instead (available on
+   PyPI). If you use Python 2.7, you can import it from ``typing``.
+
+It's not necessary to annotate all class variables using
+``ClassVar``. An attribute without the ``ClassVar`` annotation can
+still be used as a class variable. However, mypy won't prevent it from
+being used as an instance variable, as discussed previously:
+
+.. code-block:: python
+
+  class A:
+      x = 0  # Can be used as a class or instance variable
+
+  A.x += 1  # OK
+
+  a = A()
+  a.x = 1  # Also OK
+
+Note that ``ClassVar`` is not a class, and you can't use it with
+``isinstance()`` or ``issubclass()``. It does not change Python
+runtime behavior -- it's only for type checkers such as mypy (and
+also helpful for human readers).
+
+You can also omit the square brackets and the variable type in
+a ``ClassVar`` annotation, but this might not do what you'd expect:
+
+.. code-block:: python
+
+   class A:
+       y: ClassVar = 0  # Type implicitly Any!
+
+In this case the type of the attribute will be implicitly ``Any``.
+This behavior will change in the future, since it's surprising.
+
+.. note::
+   A ``ClassVar`` type parameter cannot include type variables:
+   ``ClassVar[T]`` and ``ClassVar[List[T]]``
+   are both invalid if ``T`` is a type variable (see :ref:`generic-classes`
+   for more about type variables).
 
 Overriding statically typed methods
 ***********************************
