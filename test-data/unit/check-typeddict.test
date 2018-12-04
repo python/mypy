@@ -1559,4 +1559,7 @@ del b['x'] # E: Key 'x' of TypedDict "B" cannot be deleted
 s = ''
 del a[s] # E: Expected TypedDict key to be string literal
 del b[s] # E: Expected TypedDict key to be string literal
+alias = b.__delitem__
+alias('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias(s) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
 [builtins fixtures/dict.pyi]

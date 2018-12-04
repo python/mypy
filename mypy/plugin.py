@@ -411,6 +411,8 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname == 'mypy_extensions._TypedDict.update':
             return typed_dict_update_signature_callback
+        elif fullname == 'mypy_extensions._TypedDict.__delitem__':
+            return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         return None
@@ -428,7 +430,7 @@ class DefaultPlugin(Plugin):
         elif fullname == 'mypy_extensions._TypedDict.pop':
             return typed_dict_pop_callback
         elif fullname == 'mypy_extensions._TypedDict.__delitem__':
-            return typed_dict_del_callback
+            return typed_dict_delitem_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
@@ -655,8 +657,14 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def typed_dict_del_callback(ctx: MethodContext) -> Type:
-    """Type check TypedDict.__del__."""
+def typed_dict_delitem_signature_callback(ctx: MethodContext) -> Type:
+    # Replace NoReturn as the argument type.
+    str_type = ctx.api.named_generic_type('builtins.str', [])
+    return ctx.default_signature.copy_modified(arg_types=[str_type])
+
+
+def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
+    """Type check TypedDict.__delitem__."""
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) == 1
             and len(ctx.arg_types[0]) == 1):
