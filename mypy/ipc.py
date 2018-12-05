@@ -2,14 +2,13 @@
 
 On Unix, this uses AF_UNIX sockets.
 On Windows, this uses NamedPipes.
+
+Portions of this file were modified from Python's multiprocess.connection module.
 """
 
 import base64
-import contextlib
 import os
-import shutil
 import sys
-import tempfile
 
 from typing import Iterator, Optional, Callable
 
@@ -19,19 +18,25 @@ if MYPY:
 
 from types import TracebackType
 
+from multiprocessing.connection import address_type
+
 if sys.platform == 'win32':
     # This may be private, but it is needed for IPC on Windows, and is basically stable
     import _winapi
-    import ctypes
-
-    _IPCHandle = int
-
-    kernel32 = ctypes.windll.kernel32
-    DisconnectNamedPipe = kernel32.DisconnectNamedPipe  # type: Callable[[_IPCHandle], int]
-    FlushFileBuffers = kernel32.FlushFileBuffers  # type: Callable[[_IPCHandle], int]
+    from multiprocessing.connection import PipeListener as Listener
+    from multiprocessing.connection import PipeClient as Client
+    from multiprocessing.connection import PipeConnection as Connection
 else:
     import socket
-    _IPCHandle = socket.socket
+    from multiprocessing.connection import SocketListener as Listener
+    from multiprocessing.connection import SocketClient as Client
+    from multiprocessing.connection import Connection
+
+
+if sys.platform == 'win32':
+    CONNECTION_FAMILY = 'AF_PIPE'
+else:
+    CONNECTION_FAMILY = 'AF_UNIX'
 
 
 class IPCException(Exception):
@@ -39,96 +44,115 @@ class IPCException(Exception):
     pass
 
 
-class IPCBase:
-    """Base class for communication between the dmypy client and server.
+class IPCClient:
+    """Client side of an IPC connection based on multiprocessing.connection.Client."""
 
-    This contains logic shared between the client and server, such as reading
-    and writing.
-    """
+    def __init__(self, address: str, timeout: Optional[int] = None) -> None:
+        if sys.platform == 'win32':
+            timeout = timeout * 1000 if timeout is not None else _winapi.NMPWAIT_WAIT_FOREVER
+            while 1:
+                try:
+                    _winapi.WaitNamedPipe(address, timeout)
+                    h = _winapi.CreateFile(
+                        address, _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
+                        0, _winapi.NULL, _winapi.OPEN_EXISTING,
+                        _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL
+                    )
+                except FileNotFoundError:
+                    raise IPCException("The NamedPipe at {} was not found.".format(address))
+                except WindowsError as e:
+                    if e.winerror == _winapi.ERROR_PIPE_BUSY:
+                        continue
+                    elif e.winerror == _winapi.ERROR_SEM_TIMEOUT:
+                        raise IPCException("Timed out waiting for connection.")
+                    else:
+                        raise
+                else:
+                    break
 
-    connection = None  # type: _IPCHandle
+            _winapi.SetNamedPipeHandleState(
+                h, _winapi.PIPE_READMODE_MESSAGE, None, None
+            )
+            self.connection = Connection(h)
+        else:
+            family = address_type(address)
+            with socket.socket(getattr(socket, family)) as s:
+                if timeout is not None:
+                    s.settimeout(timeout)
+                s.setblocking(True)
+                s.connect(address)
+            self.connection = Connection(s.detach())
 
-    def __init__(self, name: str) -> None:
-        self.READ_SIZE = 100000
-        self.name = name
+    def __enter__(self) -> Connection:
+        return self.connection
 
-    def read(self) -> bytes:
-        """Read bytes from an IPC connection until its empty."""
-        bdata = bytearray()
-        while True:
-            if sys.platform == 'win32':
-                more, _ = _winapi.ReadFile(self.connection, self.READ_SIZE)
+    def __exit__(self,
+                exc_ty: 'Optional[Type[BaseException]]' = None,
+                exc_val: Optional[BaseException] = None,
+                exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        self.connection.close()
+        return False
+
+
+class IPCServer(Listener):
+    """Server side of an IPC connection based on multiprocessing.connection.Listener."""
+
+    def __init__(self, name: str,
+                 timeout: Optional[int] = None
+                 ) -> None:
+        if sys.platform == 'win32':
+            self._name = r'\\.\pipe\{}-{}.pipe'.format(name,
+                                                       base64.b64encode(os.urandom(6)).decode())
+            super().__init__(self._name, backlog=1)
+            self._timeout = timeout * 1000 if timeout else _winapi.INFINITE
+        else:
+            super().__init__(name, CONNECTION_FAMILY, backlog=1)
+            if timeout is not None:
+                self._sock.settimeout(timeout)
+
+    def accept(self) -> Connection:
+        if sys.platform == 'win32':
+            self._handle_queue.append(self._new_handle())
+            handle = self._handle_queue.pop(0)
+            try:
+                ov = _winapi.ConnectNamedPipe(handle, overlapped=True)
+            except WindowsError as e:
+                if e.winerror != _winapi.ERROR_NO_DATA:
+                    raise
+                # ERROR_NO_DATA can occur if a client has already connected,
+                # written data and then disconnected -- see Python Issue 14725.
             else:
-                more = self.connection.recv(self.READ_SIZE)
-            if not more:
-                break
-            bdata.extend(more)
-        return bytes(bdata)
-
-    def write(self, data: bytes) -> None:
-        """Write bytes to an IPC connection."""
-        if sys.platform == 'win32':
-            try:
-                _winapi.WriteFile(self.connection, data)
-                # this empty write is to copy the behavior of socket.sendall,
-                # which also sends an empty message to signify it is done writing
-                _winapi.WriteFile(self.connection, b'')
-            except WindowsError as e:
-                raise IPCException("Failed to write with error: {}".format(e.winerror))
-        else:
-            self.connection.sendall(data)
-            self.connection.shutdown(socket.SHUT_WR)
-
-    def close(self) -> None:
-        if sys.platform == 'win32':
-            if self.connection != _winapi.NULL:
-                _winapi.CloseHandle(self.connection)
-        else:
-            self.connection.close()
-
-
-class IPCClient(IPCBase):
-    """The client side of an IPC connection."""
-
-    def __init__(self, name: str, timeout: Optional[int]) -> None:
-        super().__init__(name)
-        if sys.platform == 'win32':
-            timeout = timeout or 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
-            try:
-                _winapi.WaitNamedPipe(self.name, timeout)
-            except FileNotFoundError:
-                raise IPCException("The NamedPipe at {} was not found.".format(self.name))
-            except WindowsError as e:
-                if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
-                    raise IPCException("Timed out waiting for connection.")
-                else:
+                try:
+                    _ = _winapi.WaitForMultipleObjects(
+                        [ov.event], True, self._timeout)
+                    print(self._timeout)
+                except Exception:
+                    ov.cancel()
+                    _winapi.CloseHandle(handle)
                     raise
-            try:
-                self.connection = _winapi.CreateFile(
-                    self.name,
-                    _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
-                    0,
-                    _winapi.NULL,
-                    _winapi.OPEN_EXISTING,
-                    0,
-                    _winapi.NULL,
-                )
-            except WindowsError as e:
-                if e.winerror == _winapi.ERROR_PIPE_BUSY:
-                    raise IPCException("The connection is busy.")
-                else:
-                    raise
-            _winapi.SetNamedPipeHandleState(self.connection,
-                                            _winapi.PIPE_READMODE_MESSAGE,
-                                            None,
-                                            None)
+                finally:
+                    _, err = ov.GetOverlappedResult(False)
+                    if err != 0:
+                        raise IPCException('Timed out waiting for client to connect.')
+            return Connection(handle)
         else:
-            self.connection = socket.socket(socket.AF_UNIX)
-            self.connection.settimeout(timeout)
-            self.connection.connect(name)
+            try:
+                s, self._last_accepted = self._socket.accept()
+            except socket.timeout:
+                raise IPCException('Timed out waiting for client to connect.')
+            s.setblocking(True)
+            return Connection(s.detach())
 
-    def __enter__(self) -> 'IPCClient':
-        return self
+    @property
+    def connection_name(self) -> str:
+        if sys.platform == 'win32':
+            return self._name
+        else:
+            return self._sock.getsockname()
+
+    def __enter__(self) -> Connection:
+        return self.accept()
 
     def __exit__(self,
                  exc_ty: 'Optional[Type[BaseException]]' = None,
@@ -137,81 +161,3 @@ class IPCClient(IPCBase):
                  ) -> bool:
         self.close()
         return False
-
-
-class IPCServer(IPCBase):
-
-    BUFFER_SIZE = 2**16
-
-    def __init__(self, name: str, timeout: Optional[int] = None) -> None:
-        if sys.platform == 'win32':
-            name = r'\\.\pipe\{}-{}.pipe'.format(name, base64.b64encode(os.urandom(6)))
-        super().__init__(name)
-        if sys.platform == 'win32':
-            self.connection = _winapi.CreateNamedPipe(self.name,
-                _winapi.PIPE_ACCESS_DUPLEX
-                | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
-                _winapi.PIPE_READMODE_MESSAGE
-                | _winapi.PIPE_TYPE_MESSAGE
-                | _winapi.PIPE_WAIT
-                | 0x8,  # PIPE_REJECT_REMOTE_CLIENTS
-                1,  # one instance
-                self.BUFFER_SIZE,
-                self.BUFFER_SIZE,
-                1000,  # Default timeout in milis
-                0,  # Use default security descriptor
-                                                      )
-            if self.connection == -1:  # INVALID_HANDLE_VALUE
-                err = _winapi.GetLastError()
-                raise IPCException('Invalid handle to pipe: {err}'.format(err))
-        else:
-            self.sock_directory = tempfile.mkdtemp()
-            sockfile = os.path.join(self.sock_directory, self.name)
-            self.sock = socket.socket(socket.AF_UNIX)
-            self.sock.bind(sockfile)
-            self.sock.listen(1)
-            if timeout is not None:
-                self.sock.settimeout(timeout)
-
-    def __enter__(self) -> 'IPCServer':
-        if sys.platform == 'win32':
-            # NOTE: It is theoretically possible that this will hang forever if the
-            # client never connects, though this can be "solved" by killing the server
-            try:
-                _winapi.ConnectNamedPipe(self.connection, _winapi.NULL)
-            except WindowsError as e:
-                if e.winerror == _winapi.ERROR_PIPE_CONNECTED:
-                    pass  # The client already exists, which is fine.
-        else:
-            try:
-                self.connection, _ = self.sock.accept()
-            except socket.timeout:
-                raise IPCException('The socket timed out')
-        return self
-
-    def __exit__(self,
-                 exc_ty: 'Optional[Type[BaseException]]' = None,
-                 exc_val: Optional[BaseException] = None,
-                 exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
-        if sys.platform == 'win32':
-            # Wait for the client to finish reading the last write before disconnecting
-            if not FlushFileBuffers(self.connection):
-                raise IPCException("Failed to flush NamedPipe buffer, maybe the client hung up?")
-            DisconnectNamedPipe(self.connection)
-        else:
-            self.close()
-        return False
-
-    def cleanup(self) -> None:
-        if sys.platform == 'win32':
-            self.close()
-        else:
-            shutil.rmtree(self.sock_directory)
-
-    @property
-    def connection_name(self) -> str:
-        if sys.platform == 'win32':
-            return self.name
-        else:
-            return self.sock.getsockname()

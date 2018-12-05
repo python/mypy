@@ -15,10 +15,9 @@ def server(msg: str, q: 'Queue[str]') -> None:
     q.put(server.connection_name)
     data = b''
     while not data:
-        with server:
-            server.write(msg.encode())
-            data = server.read()
-    server.cleanup()
+        with server as s:
+            s.send_bytes(msg.encode())
+            data = s.recv_bytes()
 
 
 class IPCTests(TestCase):
@@ -28,9 +27,9 @@ class IPCTests(TestCase):
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
-        with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b'test')
+        with IPCClient(connection_name) as client:
+            assert client.recv_bytes() == msg.encode()
+            client.send_bytes(b'test')
         queue.close()
         queue.join_thread()
         p.join()
@@ -41,12 +40,13 @@ class IPCTests(TestCase):
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
-        with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b'')  # don't let the server hang up yet, we want to connect again.
+        with IPCClient(connection_name) as client:
+            assert client.recv_bytes() == msg.encode()
+            client.send_bytes(b'')  # don't let the server hang up yet, we want to connect again.
 
-        with IPCClient(connection_name, timeout=1) as client:
-            client.write(b'test')
+        with IPCClient(connection_name) as client:
+            client.send_bytes(b'test')
+
         queue.close()
         queue.join_thread()
         p.join()

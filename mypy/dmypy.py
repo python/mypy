@@ -422,7 +422,7 @@ def request(command: str, *, timeout: Optional[int] = None,
     _, name = get_status()
     try:
         with IPCClient(name, timeout) as client:
-                client.write(bdata)
+                client.send_bytes(bdata)
                 response = receive(client)
     except (OSError, IPCException) as err:
         return {'error': str(err)}

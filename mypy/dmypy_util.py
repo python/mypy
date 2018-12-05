@@ -4,10 +4,14 @@ This should be pretty lightweight and not depend on other mypy code (other than 
 """
 
 import json
+import sys
 
 from typing import Any
 
-from mypy.ipc import IPCBase
+if sys.platform == 'win32':
+    from multiprocessing.connection import PipeConnection as Connection
+else:
+    from multiprocessing.connection import Connection
 
 MYPY = False
 if MYPY:
@@ -16,13 +20,16 @@ if MYPY:
 STATUS_FILE = '.dmypy.json'  # type: Final
 
 
-def receive(connection: IPCBase) -> Any:
+def receive(connection: Connection) -> Any:
     """Receive JSON data from a connection until EOF.
 
     Raise OSError if the data received is not valid JSON or if it is
     not a dict.
     """
-    bdata = connection.read()
+    try:
+        bdata = connection.recv_bytes()
+    except EOFError:
+        pass
     if not bdata:
         raise OSError("No data received")
     try:

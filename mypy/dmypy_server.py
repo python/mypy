@@ -200,8 +200,8 @@ class Server:
                 json.dump({'pid': os.getpid(), 'connection_name': server.connection_name}, f)
                 f.write('\n')  # I like my JSON with a trailing newline
             while True:
-                with server:
-                    data = receive(server)
+                with server as connection:
+                    data = receive(connection)
                     resp = {}  # type: Dict[str, Any]
                     if 'command' not in data:
                         resp = {'error': "No command found in request"}
@@ -217,12 +217,13 @@ class Server:
                                 # If we are crashing, report the crash to the client
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                                server.write(json.dumps(resp).encode('utf8'))
+                                connection.send_bytes(json.dumps(resp).encode('utf8'))
                                 raise
                     try:
-                        server.write(json.dumps(resp).encode('utf8'))
+                        connection.send_bytes(json.dumps(resp).encode('utf8'))
                     except OSError:
                         pass  # Maybe the client hung up
+                    connection.close()
                     if command == 'stop':
                         reset_global_state()
                         sys.exit(0)
@@ -232,12 +233,9 @@ class Server:
             # simplify the logic and always remove the file, since
             # that could cause us to remove a future server's
             # status file.)
+            server.close()
             if command != 'stop':
                 os.unlink(STATUS_FILE)
-            try:
-                server.cleanup()  # try to remove the socket dir on Linux
-            except OSError:
-                pass
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
