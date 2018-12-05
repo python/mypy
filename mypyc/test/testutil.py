@@ -114,12 +114,14 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
     if data_lines.count(test_slug) != 1:
         return
     start_idx = data_lines.index(test_slug)
-    size = testcase.lastline - testcase.line - 1
+    stop_idx = start_idx + 11
+    while stop_idx < len(data_lines) and not data_lines[stop_idx].startswith('[case '):
+        stop_idx += 1
 
-    test = data_lines[start_idx:start_idx + size]
+    test = data_lines[start_idx:stop_idx]
     out_start = test.index('[out]')
     test[out_start + 1:] = output
-    data_lines[start_idx:start_idx + size] = test
+    data_lines[start_idx:stop_idx] = test + ['']
     data = '\n'.join(data_lines)
 
     with open(testcase_path, 'w') as f:
