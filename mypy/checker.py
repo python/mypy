@@ -31,7 +31,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery,
+    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional
 )
 from mypy.sametypes import is_same_type, is_same_types
@@ -1065,7 +1065,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         forward_inst = reverse_type.arg_types[1]
         if isinstance(forward_inst, TypeVarType):
             forward_inst = forward_inst.upper_bound
-        if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType)):
+        if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType, LiteralType)):
             forward_inst = forward_inst.fallback
         if isinstance(forward_inst, TypeType):
             item = forward_inst.item
