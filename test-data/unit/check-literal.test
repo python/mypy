@@ -1113,6 +1113,11 @@ f(x, y)  # E: Argument 1 to "f" has incompatible type "Union[Literal['a'], Liter
          # E: Argument 2 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
 [out]
 
+
+---
+--- Tests that make sure we're correctly using the fallback
+---
+
 [case testLiteralFallbackOperatorsWorkCorrectly]
 from typing_extensions import Literal
 
