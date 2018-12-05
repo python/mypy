@@ -95,7 +95,7 @@ do **not** work:
       attribute: int
 
     @dataclass_wrapper
-    class DynamicallyDecoarted:
+    class DynamicallyDecorated:
       """
       Mypy doesn't recognize this as a dataclass because it is decorated by a
       function returning `dataclass` rather than by `dataclass` itself.
@@ -103,7 +103,7 @@ do **not** work:
       attribute: int
 
     AliasDecorated(attribute=1) # error: Unexpected keyword argument
-    DynamicallyDecoarted(attribute=1) # error: Unexpected keyword argument
+    DynamicallyDecorated(attribute=1) # error: Unexpected keyword argument
 
 .. _attrs_package:
 
