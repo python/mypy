@@ -820,15 +820,15 @@ arbitrarily complex types. For example, you can define nested
 TypedDicts and containers with TypedDict items.
 Unlike most other types, mypy uses structural compatibility checking
 (or structural subtyping) with TypedDicts. A TypedDict object with
-extra items is compatible with a narrower TypedDict, assuming item
-types are compatible (*totality* also affects
+extra items is a compatible with (a subtype of) a narrower
+TypedDict, assuming item types are compatible (*totality* also affects
 subtyping, as discussed below).
 
-A TypedDict object is not compatible with the regular ``Dict[...]``
-type, since ``Dict`` allows arbitrary keys to be added and removed,
-unlike TypedDict. However, any TypedDict object is compatible with
-the ``Mapping[str, object]`` type, since ``typing.Mapping`` only
-provides read-only access to the dictionary items:
+A TypedDict object is not a subtype of the regular ``Dict[...]``
+type (and vice versa), since ``Dict`` allows arbitrary keys to be
+added and removed, unlike TypedDict. However, any TypedDict object is
+a subtype of (that is, compatible with) ``Mapping[str, object]``, since
+``typing.Mapping`` only provides read-only access to the dictionary items:
 
 .. code-block:: python
 
