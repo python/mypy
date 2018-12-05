@@ -19,7 +19,7 @@ import traceback
 
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
 
-from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
 from mypy.dmypy_os import alive, kill
 
@@ -37,6 +37,8 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
 parser.set_defaults(action=None)
+parser.add_argument('--status-file', default=DEFAULT_STATUS_FILE,
+                    help='status file to retrieve daemon details')
 subparsers = parser.add_subparsers()
 
 start_parser = p = subparsers.add_parser('start', help="Start daemon")
@@ -163,7 +165,7 @@ def do_start(args: argparse.Namespace) -> None:
     since we don't want to duplicate mypy's huge list of flags.
     """
     try:
-        get_status()
+        get_status(args.status_file)
     except BadStatus:
         # Bad or missing status file or dead process; good to start.
         pass
@@ -197,12 +199,12 @@ def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import daemonize, process_start_options
     start_options = process_start_options(args.flags, allow_sources)
-    if daemonize(start_options, timeout=args.timeout, log_file=args.log_file):
+    if daemonize(start_options, args.status_file, timeout=args.timeout, log_file=args.log_file):
         sys.exit(2)
-    wait_for_server()
+    wait_for_server(args.status_file)
 
 
-def wait_for_server(timeout: float = 5.0) -> None:
+def wait_for_server(status_file: str, timeout: float = 5.0) -> None:
     """Wait until the server is up.
 
     Exit if it doesn't happen within the timeout.
@@ -210,7 +212,7 @@ def wait_for_server(timeout: float = 5.0) -> None:
     endtime = time.time() + timeout
     while time.time() < endtime:
         try:
-            data = read_status()
+            data = read_status(status_file)
         except BadStatus:
             # If the file isn't there yet, retry later.
             time.sleep(0.1)
@@ -236,16 +238,16 @@ def do_run(args: argparse.Namespace) -> None:
     since we don't want to duplicate mypy's huge list of flags.
     (The -- is only necessary if flags are specified.)
     """
-    if not is_running():
+    if not is_running(args.status_file):
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
     t0 = time.time()
-    response = request('run', version=__version__, args=args.flags)
+    response = request(args.status_file, 'run', version=__version__, args=args.flags)
     # If the daemon signals that a restart is necessary, do it
     if 'restart' in response:
         print('Restarting: {}'.format(response['restart']))
         restart_server(args, allow_sources=True)
-        response = request('run', version=__version__, args=args.flags)
+        response = request(args.status_file, 'run', version=__version__, args=args.flags)
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
@@ -258,13 +260,13 @@ def do_status(args: argparse.Namespace) -> None:
 
     This verifies that it is responsive to requests.
     """
-    status = read_status()
+    status = read_status(args.status_file)
     if args.verbose:
         show_stats(status)
     # Both check_status() and request() may raise BadStatus,
     # which will be handled by main().
     check_status(status)
-    response = request('status', timeout=5)
+    response = request(args.status_file, 'status', timeout=5)
     if args.verbose or 'error' in response:
         show_stats(response)
     if 'error' in response:
@@ -276,7 +278,7 @@ def do_status(args: argparse.Namespace) -> None:
 def do_stop(args: argparse.Namespace) -> None:
     """Stop daemon via a 'stop' request."""
     # May raise BadStatus, which will be handled by main().
-    response = request('stop', timeout=5)
+    response = request(args.status_file, 'stop', timeout=5)
     if response:
         show_stats(response)
         fail("Daemon is stuck; consider %s kill" % sys.argv[0])
@@ -287,7 +289,7 @@ def do_stop(args: argparse.Namespace) -> None:
 @action(kill_parser)
 def do_kill(args: argparse.Namespace) -> None:
     """Kill daemon process with SIGKILL."""
-    pid, _ = get_status()
+    pid, _ = get_status(args.status_file)
     try:
         kill(pid)
     except OSError as err:
@@ -300,7 +302,7 @@ def do_kill(args: argparse.Namespace) -> None:
 def do_check(args: argparse.Namespace) -> None:
     """Ask the daemon to check a list of files."""
     t0 = time.time()
-    response = request('check', files=args.files)
+    response = request(args.status_file, 'check', files=args.files)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml)
@@ -323,9 +325,9 @@ def do_recheck(args: argparse.Namespace) -> None:
     """
     t0 = time.time()
     if args.remove is not None or args.update is not None:
-        response = request('recheck', remove=args.remove, update=args.update)
+        response = request(args.status_file, 'recheck', remove=args.remove, update=args.update)
     else:
-        response = request('recheck')
+        response = request(args.status_file, 'recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml)
@@ -369,7 +371,7 @@ def show_stats(response: Mapping[str, object]) -> None:
 @action(hang_parser)
 def do_hang(args: argparse.Namespace) -> None:
     """Hang for 100 seconds, as a debug hack."""
-    print(request('hang', timeout=1))
+    print(request(args.status_file, 'hang', timeout=1))
 
 
 @action(daemon_parser)
@@ -390,7 +392,7 @@ def do_daemon(args: argparse.Namespace) -> None:
     else:
         options = process_start_options(args.flags, allow_sources=False)
         timeout = args.timeout
-    Server(options, timeout=timeout).serve()
+    Server(options, args.status_file, timeout=timeout).serve()
 
 
 @action(help_parser)
@@ -402,7 +404,7 @@ def do_help(args: argparse.Namespace) -> None:
 # Client-side infrastructure.
 
 
-def request(command: str, *, timeout: Optional[int] = None,
+def request(status_file: str, command: str, *, timeout: Optional[int] = None,
             **kwds: object) -> Dict[str, Any]:
     """Send a request to the daemon.
 
@@ -419,7 +421,7 @@ def request(command: str, *, timeout: Optional[int] = None,
     args = dict(kwds)
     args.update(command=command)
     bdata = json.dumps(args).encode('utf8')
-    _, name = get_status()
+    _, name = get_status(status_file)
     try:
         with IPCClient(name, timeout) as client:
                 client.write(bdata)
@@ -431,14 +433,14 @@ def request(command: str, *, timeout: Optional[int] = None,
         return response
 
 
-def get_status() -> Tuple[int, str]:
+def get_status(status_file: str) -> Tuple[int, str]:
     """Read status file and check if the process is alive.
 
     Return (pid, connection_name) on success.
 
     Raise BadStatus if something's wrong.
     """
-    data = read_status()
+    data = read_status(status_file)
     return check_status(data)
 
 
@@ -464,15 +466,15 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     return pid, connection_name
 
 
-def read_status() -> Dict[str, object]:
+def read_status(status_file: str) -> Dict[str, object]:
     """Read status file.
 
     Raise BadStatus if the status file doesn't exist or contains
     invalid JSON or the JSON is not a dict.
     """
-    if not os.path.isfile(STATUS_FILE):
+    if not os.path.isfile(status_file):
         raise BadStatus("No status file found")
-    with open(STATUS_FILE) as f:
+    with open(status_file) as f:
         try:
             data = json.load(f)
         except Exception:
@@ -482,10 +484,10 @@ def read_status() -> Dict[str, object]:
     return data
 
 
-def is_running() -> bool:
+def is_running(status_file: str) -> bool:
     """Check if the server is running cleanly"""
     try:
-        get_status()
+        get_status(status_file)
     except BadStatus:
         return False
     return True
