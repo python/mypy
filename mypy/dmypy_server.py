@@ -58,7 +58,7 @@ if sys.platform == 'win32':
 
         It also pickles the options to be unpickled by mypy.
         """
-        command = [sys.executable, '-m', 'mypy.dmypy', '--status_file', status_file, 'daemon']
+        command = [sys.executable, '-m', 'mypy.dmypy', '--status-file', status_file, 'daemon']
         pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
         command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
         info = STARTUPINFO(dwFlags=0x1,  # STARTF_USESHOWWINDOW aka use wShowWindow's value
