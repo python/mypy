@@ -20,7 +20,7 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    StarType, is_optional, remove_optional, is_invariant_instance
+    StarType, is_optional, remove_optional, is_generic_instance
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -885,13 +885,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
-        if isinstance(ret_type, TypeVarType) and not is_invariant_instance(ctx):
+        if isinstance(ret_type, TypeVarType) and not is_generic_instance(ctx):
             # Another special case: the return type is a type variable. If it's unrestricted,
             # we could infer a too general type for the type variable if we use context,
             # and this could result in confusing and spurious type errors elsewhere.
             #
             # Give up and just use function arguments for type inference. As an exception,
-            # if the context is an invariant instance type, actually use it as context, as
+            # if the context is a generic instance type, actually use it as context, as
             # this *seems* to usually be the reasonable thing to do.
             #
             # See also github issues #462 and #360.
