@@ -134,13 +134,14 @@ class IPCServer(Listener):
                     _, err = ov.GetOverlappedResult(False)
                     if err != 0:
                         raise IPCException('Timed out waiting for client to connect.')
-            return Connection(handle)
+            self.connection = Connection(handle)
         else:
             try:
                 s, self._last_accepted = self._socket.accept()
             except socket.timeout:
                 raise IPCException('Timed out waiting for client to connect.')
-            return Connection(s.detach())
+            self.connection = Connection(s.detatch())
+        return self.connection
 
     @property
     def connection_name(self) -> str:
@@ -157,5 +158,5 @@ class IPCServer(Listener):
                  exc_val: Optional[BaseException] = None,
                  exc_tb: Optional[TracebackType] = None,
                  ) -> bool:
-        self.close()
+        self.connection.close()
         return False

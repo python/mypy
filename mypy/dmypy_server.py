@@ -223,7 +223,6 @@ class Server:
                         connection.send_bytes(json.dumps(resp).encode('utf8'))
                     except OSError:
                         pass  # Maybe the client hung up
-                    connection.close()
                     if command == 'stop':
                         reset_global_state()
                         sys.exit(0)
