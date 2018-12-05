@@ -3603,6 +3603,6 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
     elif isinstance(t, LiteralType):
         return True
     elif isinstance(t, UnionType):
-        return any(map(is_literal_type_like, t.items))
+        return any(is_literal_type_like(item) for item in t.items)
     else:
         return False

@@ -630,19 +630,31 @@ class JoinSuite(Suite):
 
         self.assert_join(lit1, lit1, lit1)
         self.assert_join(lit1, a, a)
-        self.assert_join(a, lit1, a)
+        self.assert_join(lit1, d, self.fx.o)
         self.assert_join(lit1, lit2, a)
         self.assert_join(lit1, lit3, self.fx.o)
         self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
-        self.assert_join(self.fx.anyt, lit1, self.fx.anyt)
+        self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
+        self.assert_join(UnionType([lit1, lit2]), a, a)
+        self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
+        self.assert_join(UnionType([d, lit3]), lit3, UnionType([d, lit3]))
+        self.assert_join(UnionType([d, lit3]), d, UnionType([d, lit3]))
+        self.assert_join(UnionType([a, lit1]), lit1, UnionType([a, lit1]))
+        self.assert_join(UnionType([a, lit1]), lit2, UnionType([a, lit1]))
+        self.assert_join(UnionType([lit1, lit2]),
+                         UnionType([lit1, lit2]),
+                         UnionType([lit1, lit2]))
 
-        self.assert_simple_join(lit1, lit1, lit1)
-        self.assert_simple_join(lit1, a, a)
-        self.assert_simple_join(a, lit1, a)
-        self.assert_simple_join(lit1, lit2, a)
-        self.assert_simple_join(lit1, lit3, self.fx.o)
-        self.assert_simple_join(lit1, self.fx.anyt, self.fx.anyt)
-        self.assert_simple_join(self.fx.anyt, lit1, self.fx.anyt)
+        # The order in which we try joining two unions influences the
+        # ordering of the items in the final produced unions. So, we
+        # manually call 'assert_simple_join' and tune the output
+        # after swapping the arguments here.
+        self.assert_simple_join(UnionType([lit1, lit2]),
+                                UnionType([lit2, lit3]),
+                                UnionType([lit1, lit2, lit3]))
+        self.assert_simple_join(UnionType([lit2, lit3]),
+                                UnionType([lit1, lit2]),
+                                UnionType([lit2, lit3, lit1]))
 
     # There are additional test cases in check-inference.test.
 
