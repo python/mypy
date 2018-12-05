@@ -424,6 +424,8 @@ def request(command: str, *, timeout: Optional[int] = None,
         with IPCClient(name, timeout) as client:
                 client.send_bytes(bdata)
                 response = receive(client)
+        if command == 'stop':
+            print(is_running(), file=sys.stderr)
     except (OSError, IPCException) as err:
         return {'error': str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
