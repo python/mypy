@@ -200,7 +200,7 @@ Our first attempt at writing this function might look like this:
 
     from typing import Union, Optional
 
-    def mouse_event(x1: int, 
+    def mouse_event(x1: int,
                     y1: int,
                     x2: Optional[int] = None,
                     y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
@@ -245,7 +245,7 @@ to more accurately describe the function's behavior:
     # Mypy will also check and make sure the signature is
     # consistent with the provided variants.
 
-    def mouse_event(x1: int, 
+    def mouse_event(x1: int,
                     y1: int,
                     x2: Optional[int] = None,
                     y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
@@ -374,7 +374,7 @@ First, if multiple variants match due to an argument being of type
     output2 = summarize(dynamic_var)
 
 Second, if multiple variants match due to one or more of the arguments
-being a union, mypy will make the inferred type be the union of the 
+being a union, mypy will make the inferred type be the union of the
 matching variant returns:
 
 .. code-block:: python
@@ -390,9 +390,9 @@ matching variant returns:
    overload variants can change how mypy type checks your program.
 
    To minimize potential issues, we recommend that you:
-   
+
    1. Make sure your overload variants are listed in the same order as
-      the runtime checks (e.g. ``isinstance`` checks) in your implementation.   
+      the runtime checks (e.g. ``isinstance`` checks) in your implementation.
    2. Order your variants and runtime checks from most to least specific.
       (See the following section for an example).
 
@@ -533,7 +533,7 @@ Type checking the implementation
 The body of an implementation is type-checked against the
 type hints provided on the implementation. For example, in the
 ``MyList`` example up above, the code in the body is checked with
-argument list ``index: Union[int, slice]`` and a return type of 
+argument list ``index: Union[int, slice]`` and a return type of
 ``Union[T, Sequence[T]]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
 force mypy to check the body anyways, use the ``--check-untyped-defs``
@@ -878,6 +878,33 @@ Keys that aren't required are shown with a ``?`` in error messages:
 Totality also affects structural compatibility. You can't use a partial
 TypedDict when a total one is expected. Also, a total TypedDict is not
 valid when a partial one is expected.
+
+Supported operations
+--------------------
+
+TypedDict objects support a subset of dictionary operations and methods:
+
+* Anything included in the mapping protocol, such as indexing,
+  ``get()``, ``keys()`` and ``items()``
+* ``copy()``
+* ``setdefault(k, default)``
+* ``update(d)``
+* ``pop(k[, default])`` (partial TypedDicts only)
+* ``del d[k]`` (partial TypedDicts only)
+
+These methods are also supported in Python 2 code:
+
+* ``has_key(k)``
+* ``viewitems()``
+* ``viewkeys()``
+* ``viervalues()``
+
+You must use string literals as keys when calling most of the above methods,
+as otherwise mypy won't be able to check that the key is valid.
+
+``clear()`` and ``popitem()`` are not supported since they are unsafe
+-- they could delete required TypedDict items that are not visible to
+mypy because of structural subtyping.
 
 Class-based syntax
 ------------------
