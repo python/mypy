@@ -79,7 +79,6 @@ class IPCClient:
             with socket.socket(getattr(socket, family)) as s:
                 if timeout is not None:
                     s.settimeout(timeout)
-                s.setblocking(True)
                 s.connect(address)
             self.connection = Connection(s.detach())
 
@@ -141,7 +140,6 @@ class IPCServer(Listener):
                 s, self._last_accepted = self._socket.accept()
             except socket.timeout:
                 raise IPCException('Timed out waiting for client to connect.')
-            s.setblocking(True)
             return Connection(s.detach())
 
     @property
