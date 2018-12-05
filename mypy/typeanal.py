@@ -1086,6 +1086,8 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return [(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
             return []
+        elif node and node.fullname in ('typing_extensions.Literal', 'typing.Literal'):
+            return []
         else:
             return super().visit_unbound_type(t)
 

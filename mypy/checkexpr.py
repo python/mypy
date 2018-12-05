@@ -210,7 +210,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if var.type:
-            return var.type
+            if is_literal_type_like(self.type_context[-1]) and var.name() in {'True', 'False'}:
+                return LiteralType(var.name() == 'True', self.named_type('builtins.bool'))
+            else:
+                return var.type
         else:
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
@@ -1721,11 +1724,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
-        return self.named_type('builtins.int')
+        typ = self.named_type('builtins.int')
+        if is_literal_type_like(self.type_context[-1]):
+            return LiteralType(value=e.value, fallback=typ)
+        return typ
 
     def visit_str_expr(self, e: StrExpr) -> Type:
         """Type check a string literal (trivial)."""
-        return self.named_type('builtins.str')
+        typ = self.named_type('builtins.str')
+        if is_literal_type_like(self.type_context[-1]):
+            return LiteralType(value=e.value, fallback=typ)
+        return typ
 
     def visit_bytes_expr(self, e: BytesExpr) -> Type:
         """Type check a bytes literal (trivial)."""
@@ -3583,3 +3592,17 @@ def merge_typevars_in_callables_by_name(
         output.append(target)
 
     return output, variables
+
+
+def is_literal_type_like(t: Optional[Type]) -> bool:
+    """Returns 'true' if the given type context is potentially either a LiteralType,
+    a Union of LiteralType, or something similar.
+    """
+    if t is None:
+        return False
+    elif isinstance(t, LiteralType):
+        return True
+    elif isinstance(t, UnionType):
+        return any(is_literal_type_like(item) for item in t.items)
+    else:
+        return False
