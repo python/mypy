@@ -893,6 +893,44 @@ Totality also affects structural compatibility. You can't use a partial
 TypedDict when a total one is expected. Also, a total TypedDict is not
 valid when a partial one is expected.
 
+Supported operations
+--------------------
+
+TypedDict objects support a subset of dictionary operations and methods.
+You must use string literals as keys when calling most of the methods,
+as otherwise mypy won't be able to check that the key is valid. List
+of supported operations:
+
+* Anything included in ``typing.Mapping``:
+
+  * ``d[key]``
+  * ``key in d``
+  * ``len(d)``
+  * ``for key in d`` (iteration)
+  * ``d.get(key[, default])``
+  * ``d.keys()``
+  * ``d.values()``
+  * ``d.items()``
+
+* ``d.copy()``
+* ``d.setdefault(key, default)``
+* ``d1.update(d2)``
+* ``d.pop(key[, default])`` (partial TypedDicts only)
+* ``del d[key]`` (partial TypedDicts only)
+
+In Python 2 code, these methods are also supported:
+
+* ``has_key(key)``
+* ``viewitems()``
+* ``viewkeys()``
+* ``viervalues()``
+
+.. note::
+
+   ``clear()`` and ``popitem()`` are not supported since they are unsafe
+   -- they could delete required TypedDict items that are not visible to
+   mypy because of structural subtyping.
+
 Class-based syntax
 ------------------
 
