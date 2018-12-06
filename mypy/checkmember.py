@@ -238,7 +238,7 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
                     return result
                 else:
                     # We don't want errors on metaclass lookup for classes with Any fallback
-                    msg = ignore_messages
+                    ctx = ctx.copy_modified(messages=ignore_messages)
         if item is not None:
             fallback = item.type.metaclass_type or fallback
         return _analyze_member_access(name, fallback, ctx)
