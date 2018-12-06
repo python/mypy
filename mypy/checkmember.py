@@ -39,8 +39,7 @@ class MemberContext:
                  not_ready_callback: Callable[[str, Context], None],
                  msg: MessageBuilder, *,
                  original_type: Type,
-                 chk: 'mypy.checker.TypeChecker',
-                 override_info: Optional[TypeInfo]) -> None:
+                 chk: 'mypy.checker.TypeChecker') -> None:
         self.node = node
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -50,13 +49,11 @@ class MemberContext:
         self.msg = msg
         self.original_type = original_type
         self.chk = chk
-        self.override_info = override_info
 
     def copy_modified(self, messages: MessageBuilder) -> 'MemberContext':
         return MemberContext(self.node, self.is_lvalue, self.is_super, self.is_operator,
                              self.builtin_type, self.not_ready_callback, messages,
-                             original_type=self.original_type, chk=self.chk,
-                             override_info=self.override_info)
+                             original_type=self.original_type, chk=self.chk)
 
 
 def analyze_member_access(name: str,
@@ -86,11 +83,12 @@ def analyze_member_access(name: str,
     original_type is always the type used in the initial call.
     """
     ctx = MemberContext(node, is_lvalue, is_super, is_operator, builtin_type, not_ready_callback,
-                        msg, original_type=original_type, chk=chk, override_info=override_info)
-    return _analyze_member_access(name, typ, ctx)
+                        msg, original_type=original_type, chk=chk)
+    return _analyze_member_access(name, typ, ctx, override_info)
 
 
-def _analyze_member_access(name: str, typ: Type, ctx: MemberContext) -> Type:
+def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
+                           override_info: Optional[TypeInfo] = None) -> Type:
     # TODO: this and following functions share some logic with subtypes.find_member,
     # consider refactoring.
     if isinstance(typ, Instance):
@@ -103,8 +101,8 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext) -> Type:
         # The base object has an instance type.
 
         info = typ.type
-        if ctx.override_info:
-            info = ctx.override_info
+        if override_info:
+            info = override_info
 
         if (experiments.find_occurrences and
                 info.name() == experiments.find_occurrences[0] and
