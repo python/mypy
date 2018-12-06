@@ -1490,7 +1490,8 @@ A = TypedDict('A', {'x': int, 'y': List[int]})
 a: A
 
 reveal_type(a.copy()) # E: Revealed type is 'TypedDict('__main__.A', {'x': builtins.int, 'y': builtins.list[builtins.int]})'
-a.has_key() # E: "A" has no attribute "has_key"
+a.has_key('x') # E: "A" has no attribute "has_key"
+# TODO: Better error message
 a.clear() # E: "A" has no attribute "clear"
 
 a.setdefault('invalid', 1) # E: TypedDict "A" has no key 'invalid'
@@ -1519,7 +1520,7 @@ from mypy_extensions import TypedDict
 A = TypedDict('A', {'x': int})
 a = A(x=1)
 reveal_type(a.copy()) # E: Revealed type is 'TypedDict('__main__.A', {'x': builtins.int})'
-reveal_type(a.has_key()) # E: Revealed type is 'builtins.bool'
+reveal_type(a.has_key('y')) # E: Revealed type is 'builtins.bool'
 a.clear() # E: "A" has no attribute "clear"
 [builtins_py2 fixtures/dict.pyi]
 
@@ -1535,6 +1536,7 @@ b: B
 reveal_type(a.pop('x')) # E: Revealed type is 'builtins.int'
 reveal_type(a.pop('y', [])) # E: Revealed type is 'builtins.list[builtins.int]'
 reveal_type(a.pop('x', '')) # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(a.pop('x', (1, 2))) # E: Revealed type is 'Union[builtins.int, Tuple[builtins.int, builtins.int]]'
 a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
 b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
 x = ''

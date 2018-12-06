@@ -1185,7 +1185,10 @@ class TypedDictType(Type):
     at runtime.
 
     If a TypedDict is named, its fallback will be an Instance of the named type
-    (ex: "Point") whose TypeInfo has a typeddict_type that is anonymous.
+    (ex: "Point") whose TypeInfo has a typeddict_type that is anonymous. This
+    is similar to how named tuples work.
+
+    TODO: The fallback structure is perhaps overly complicated.
     """
 
     items = None  # type: OrderedDict[str, Type]  # item_name -> item_type
