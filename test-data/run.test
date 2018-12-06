@@ -2884,7 +2884,6 @@ def yield_twice_and_return() -> Generator[int, None, int]:
     yield 1
     yield 2
     return 4
-    yield 3
 
 def yield_while_loop() -> Generator[int, None, int]:
     i = 0

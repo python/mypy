@@ -3373,7 +3373,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.py_get_attr(res, o.name, o.line)
 
     def visit_yield_expr(self, expr: YieldExpr) -> Value:
-        self.goto_new_block()
         if expr.expr:
             retval = self.accept(expr.expr)
         else:
