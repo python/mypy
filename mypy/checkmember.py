@@ -211,8 +211,8 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
         if isinstance(typ.item, Instance):
             item = typ.item
         elif isinstance(typ.item, AnyType):
-            ctx = mx.copy_modified(messages=ignore_messages)
-            return _analyze_member_access(name, fallback, ctx)
+            mx = mx.copy_modified(messages=ignore_messages)
+            return _analyze_member_access(name, fallback, mx)
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
@@ -226,16 +226,16 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
                 item = typ.item.item.type.metaclass_type
         if item and not mx.is_operator:
             # See comment above for why operators are skipped
-            result = analyze_class_attribute_access(item, name, ctx)
+            result = analyze_class_attribute_access(item, name, mx)
             if result:
                 if not (isinstance(result, AnyType) and item.type.fallback_to_any):
                     return result
                 else:
                     # We don't want errors on metaclass lookup for classes with Any fallback
-                    ctx = mx.copy_modified(messages=ignore_messages)
+                    mx = mx.copy_modified(messages=ignore_messages)
         if item is not None:
             fallback = item.type.metaclass_type or fallback
-        return _analyze_member_access(name, fallback, ctx)
+        return _analyze_member_access(name, fallback, mx)
 
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
