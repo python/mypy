@@ -45,6 +45,8 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
+    'typing.Literal',
+    'typing_extensions.Literal',
 }  # type: Final
 
 ARG_KINDS_BY_CONSTRUCTOR = {
