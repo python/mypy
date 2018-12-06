@@ -115,9 +115,7 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
                 first_item = cast(Decorator, method.items[0])
-                return analyze_var(name, first_item.var, typ, info, ctx.node, ctx.is_lvalue,
-                                   ctx.msg, ctx.original_type, ctx.builtin_type,
-                                   ctx.not_ready_callback, chk=ctx.chk)
+                return analyze_var(name, first_item.var, typ, info, ctx)
             if ctx.is_lvalue:
                 ctx.msg.cant_assign_to_method(ctx.node)
             signature = function_type(method, ctx.builtin_type('builtins.function'))
@@ -134,10 +132,7 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
             return member_type
         else:
             # Not a method.
-            return analyze_member_var_access(name, typ, info, ctx.node,
-                                             ctx.is_lvalue, ctx.is_super, ctx.builtin_type,
-                                             ctx.not_ready_callback, ctx.msg,
-                                             original_type=ctx.original_type, chk=ctx.chk)
+            return analyze_member_var_access(name, typ, info, ctx)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType(TypeOfAny.from_another_any, source_any=typ)
@@ -249,12 +244,7 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
 
 
 def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
-                              node: Context, is_lvalue: bool, is_super: bool,
-                              builtin_type: Callable[[str], Instance],
-                              not_ready_callback: Callable[[str, Context], None],
-                              msg: MessageBuilder,
-                              original_type: Type,
-                              chk: 'mypy.checker.TypeChecker') -> Type:
+                              ctx: MemberContext) -> Type:
     """Analyse attribute access that does not target a method.
 
     This is logically part of analyze_member_access and the arguments are similar.
@@ -262,7 +252,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     original_type is the type of E in the expression E.var
     """
     # It was not a method. Try looking up a variable.
-    v = lookup_member_var_or_accessor(info, name, is_lvalue)
+    v = lookup_member_var_or_accessor(info, name, ctx.is_lvalue)
 
     vv = v
     if isinstance(vv, Decorator):
@@ -273,7 +263,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         # If the associated variable is a TypeInfo synthesize a Var node for
         # the purposes of type checking.  This enables us to type check things
         # like accessing class attributes on an inner class.
-        v = Var(name, type=type_object_type(vv, builtin_type))
+        v = Var(name, type=type_object_type(vv, ctx.builtin_type))
         v.info = info
 
     if isinstance(vv, TypeAlias) and isinstance(vv.target, Instance):
@@ -283,7 +273,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         #     class C:
         #         A = List[int]
         #     x = C.A() <- this is OK
-        typ = instance_alias_type(vv, builtin_type)
+        typ = instance_alias_type(vv, ctx.builtin_type)
         v = Var(name, type=typ)
         v.info = info
 
@@ -292,24 +282,22 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
         # An assignment to final attribute is always an error,
         # independently of types.
-        if is_lvalue and not chk.get_final_context():
-            check_final_member(name, info, msg, node)
+        if ctx.is_lvalue and not ctx.chk.get_final_context():
+            check_final_member(name, info, ctx.msg, ctx.node)
 
-        return analyze_var(name, v, itype, info, node, is_lvalue, msg,
-                           original_type, builtin_type, not_ready_callback,
-                           chk=chk, implicit=implicit)
+        return analyze_var(name, v, itype, info, ctx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
-        if not is_lvalue:
+        if not ctx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
                 # __getattribute__ is defined on builtins.object and returns Any, so without
                 # the guard this search will always find object.__getattribute__ and conclude
                 # that the attribute exists
                 if method and method.info.fullname() != 'builtins.object':
-                    function = function_type(method, builtin_type('builtins.function'))
-                    bound_method = bind_self(function, original_type)
+                    function = function_type(method, ctx.builtin_type('builtins.function'))
+                    bound_method = bind_self(function, ctx.original_type)
                     typ = map_instance_to_supertype(itype, method.info)
                     getattr_type = expand_type_by_instance(bound_method, typ)
                     if isinstance(getattr_type, CallableType):
@@ -317,8 +305,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         else:
             setattr_meth = info.get_method('__setattr__')
             if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':
-                setattr_func = function_type(setattr_meth, builtin_type('builtins.function'))
-                bound_type = bind_self(setattr_func, original_type)
+                setattr_func = function_type(setattr_meth, ctx.builtin_type('builtins.function'))
+                bound_type = bind_self(setattr_func, ctx.original_type)
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = expand_type_by_instance(bound_type, typ)
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
@@ -328,13 +316,13 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         return AnyType(TypeOfAny.special_form)
 
     # Could not find the member.
-    if is_super:
-        msg.undefined_in_superclass(name, node)
+    if ctx.is_super:
+        ctx.msg.undefined_in_superclass(name, ctx.node)
         return AnyType(TypeOfAny.from_error)
     else:
-        if chk and chk.should_suppress_optional_error([itype]):
+        if ctx.chk and ctx.chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
-        return msg.has_no_attr(original_type, itype, name, node)
+        return ctx.msg.has_no_attr(ctx.original_type, itype, name, ctx.node)
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
@@ -424,11 +412,8 @@ def instance_alias_type(alias: TypeAlias,
     return expand_type_by_instance(tp, target)
 
 
-def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
-                is_lvalue: bool, msg: MessageBuilder, original_type: Type,
-                builtin_type: Callable[[str], Instance],
-                not_ready_callback: Callable[[str, Context], None], *,
-                chk: 'mypy.checker.TypeChecker', implicit: bool = False) -> Type:
+def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, ctx: MemberContext, *,
+                implicit: bool = False) -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
@@ -442,21 +427,21 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
     typ = var.type
     if typ:
         if isinstance(typ, PartialType):
-            return chk.handle_partial_var_type(typ, is_lvalue, var, node)
+            return ctx.chk.handle_partial_var_type(typ, ctx.is_lvalue, var, ctx.node)
         t = expand_type_by_instance(typ, itype)
-        if is_lvalue and var.is_property and not var.is_settable_property:
+        if ctx.is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
-            msg.read_only_property(name, itype.type, node)
-        if is_lvalue and var.is_classvar:
-            msg.cant_assign_to_classvar(name, node)
+            ctx.msg.read_only_property(name, itype.type, ctx.node)
+        if ctx.is_lvalue and var.is_classvar:
+            ctx.msg.cant_assign_to_classvar(name, ctx.node)
         result = t
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
-            if is_lvalue:
+            if ctx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
-                        msg.read_only_property(name, itype.type, node)
+                        ctx.msg.read_only_property(name, itype.type, ctx.node)
                 else:
-                    msg.cant_assign_to_method(node)
+                    ctx.msg.cant_assign_to_method(ctx.node)
 
             if not var.is_staticmethod:
                 # Class-level function objects and classmethods become bound methods:
@@ -469,9 +454,10 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # * x: Union[A1, B1]
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking agains B
-                dispatched_type = meet.meet_types(original_type, itype)
-                check_self_arg(functype, dispatched_type, var.is_classmethod, node, name, msg)
-                signature = bind_self(functype, original_type, var.is_classmethod)
+                dispatched_type = meet.meet_types(ctx.original_type, itype)
+                check_self_arg(functype, dispatched_type, var.is_classmethod, ctx.node, name,
+                               ctx.msg)
+                signature = bind_self(functype, ctx.original_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(signature, CallableType)
@@ -480,16 +466,16 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                     result = signature
     else:
         if not var.is_ready:
-            not_ready_callback(var.name(), node)
+            ctx.not_ready_callback(var.name(), ctx.node)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
     fullname = '{}.{}'.format(var.info.fullname(), name)
-    hook = chk.plugin.get_attribute_hook(fullname)
-    if result and not is_lvalue and not implicit:
-        result = analyze_descriptor_access(original_type, result, builtin_type,
-                                           msg, node, chk=chk)
+    hook = ctx.chk.plugin.get_attribute_hook(fullname)
+    if result and not ctx.is_lvalue and not implicit:
+        result = analyze_descriptor_access(ctx.original_type, result, ctx.builtin_type,
+                                           ctx.msg, ctx.node, chk=ctx.chk)
     if hook:
-        result = hook(AttributeContext(original_type, result, node, chk))
+        result = hook(AttributeContext(ctx.original_type, result, ctx.node, ctx.chk))
     return result
 
 
