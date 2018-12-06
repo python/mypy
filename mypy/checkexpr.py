@@ -1933,12 +1933,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             member = analyze_member_access(
                 name=op_name,
                 typ=base_type,
-                node=context,
                 is_lvalue=False,
                 is_super=False,
                 is_operator=True,
-                msg=local_errors,
                 original_type=base_type,
+                context=context,
+                msg=local_errors,
                 chk=self.chk,
             )
             if local_errors.is_errors():
@@ -2881,10 +2881,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             'enclosing function', e)
                         return AnyType(TypeOfAny.from_error)
                     declared_self = args[0].variable.type or fill_typevars(e.info)
-                    return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
-                                                 is_lvalue=False, is_super=True, is_operator=False,
-                                                 msg=self.msg, override_info=base,
-                                                 original_type=declared_self, chk=self.chk)
+                    return analyze_member_access(name=e.name,
+                                                 typ=fill_typevars(e.info),
+                                                 is_lvalue=False,
+                                                 is_super=True,
+                                                 is_operator=False,
+                                                 original_type=declared_self,
+                                                 override_info=base,
+                                                 context=e,
+                                                 msg=self.msg,
+                                                 chk=self.chk)
             assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.

@@ -30,20 +30,25 @@ from mypy import experiments
 
 
 class MemberContext:
+    """Information and objects needed to type check attribute access.
+
+    Look at the docstring of analyze_member_access for more information.
+    """
+
     def __init__(self,
-                 context: Context,
                  is_lvalue: bool,
                  is_super: bool,
                  is_operator: bool,
-                 msg: MessageBuilder, *,
                  original_type: Type,
+                 context: Context,
+                 msg: MessageBuilder,
                  chk: 'mypy.checker.TypeChecker') -> None:
-        self.context = context
         self.is_lvalue = is_lvalue
         self.is_super = is_super
         self.is_operator = is_operator
-        self.msg = msg
         self.original_type = original_type
+        self.context = context  # Error context
+        self.msg = msg
         self.chk = chk
 
     def builtin_type(self, name: str) -> Instance:
@@ -53,13 +58,13 @@ class MemberContext:
         self.chk.handle_cannot_determine_type(name, context)
 
     def copy_modified(self, messages: MessageBuilder) -> 'MemberContext':
-        return MemberContext(self.context, self.is_lvalue, self.is_super, self.is_operator,
-                             messages, original_type=self.original_type, chk=self.chk)
+        return MemberContext(self.is_lvalue, self.is_super, self.is_operator,
+                             self.original_type, self.context, messages, self.chk)
 
 
 def analyze_member_access(name: str,
                           typ: Type,
-                          node: Context,
+                          context: Context,
                           is_lvalue: bool,
                           is_super: bool,
                           is_operator: bool,
@@ -81,17 +86,19 @@ def analyze_member_access(name: str,
     the fallback type, for example.
     original_type is always the type used in the initial call.
     """
-    mx = MemberContext(node,
-                       is_lvalue,
+    mx = MemberContext(is_lvalue,
                        is_super,
                        is_operator,
+                       original_type,
+                       context,
                        msg,
-                       original_type=original_type,
                        chk=chk)
     return _analyze_member_access(name, typ, mx, override_info)
 
 
-def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
+def _analyze_member_access(name: str,
+                           typ: Type,
+                           mx: MemberContext,
                            override_info: Optional[TypeInfo] = None) -> Type:
     # TODO: this and following functions share some logic with subtypes.find_member,
     # consider refactoring.
@@ -240,7 +247,9 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
     return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context)
 
 
-def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
+def analyze_member_var_access(name: str,
+                              itype: Instance,
+                              info: TypeInfo,
                               mx: MemberContext) -> Type:
     """Analyse attribute access that does not target a method.
 
@@ -330,7 +339,8 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(instance_type: Type, descriptor_type: Type,
+def analyze_descriptor_access(instance_type: Type,
+                              descriptor_type: Type,
                               builtin_type: Callable[[str], Instance],
                               msg: MessageBuilder,
                               context: Context, *,
@@ -409,7 +419,11 @@ def instance_alias_type(alias: TypeAlias,
     return expand_type_by_instance(tp, target)
 
 
-def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, mx: MemberContext, *,
+def analyze_var(name: str,
+                var: Var,
+                itype: Instance,
+                info: TypeInfo,
+                mx: MemberContext, *,
                 implicit: bool = False) -> Type:
     """Analyze access to an attribute via a Var node.
 
@@ -497,8 +511,11 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classmethod: bool,
-                   context: Context, name: str, msg: MessageBuilder) -> None:
+def check_self_arg(functype: FunctionLike,
+                   dispatched_arg_type: Type,
+                   is_classmethod: bool,
+                   context: Context, name: str,
+                   msg: MessageBuilder) -> None:
     """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
 
     dispatched_arg_type is meet(B, A) in the following example
@@ -683,7 +700,8 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     return type_object_type_from_function(method, info, fallback)
 
 
-def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
+def type_object_type_from_function(init_or_new: FuncBase,
+                                   info: TypeInfo,
                                    fallback: Instance) -> FunctionLike:
     signature = bind_self(function_type(init_or_new, fallback))
 
@@ -728,7 +746,8 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     return c
 
 
-def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
+def map_type_from_supertype(typ: Type,
+                            sub_info: TypeInfo,
                             super_info: TypeInfo) -> Type:
     """Map type variables in a type defined in a supertype context to be valid
     in the subtype context. Assume that the result is unique; if more than
