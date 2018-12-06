@@ -48,7 +48,8 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin, plugin_types
+from mypy.plugin import Plugin, ChainedPlugin, plugin_types
+from mypy.plugins.default import DefaultPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
