@@ -461,12 +461,14 @@ class FuncInfo(object):
     def __init__(self,
                  fitem: FuncItem = INVALID_FUNC_DEF,
                  name: str = '',
+                 class_name: Optional[str] = None,
                  namespace: str = '',
                  is_nested: bool = False,
                  contains_nested: bool = False,
                  is_decorated: bool = False) -> None:
         self.fitem = fitem
         self.name = name if not is_decorated else decorator_helper_name(name)
+        self.class_name = class_name
         self.ns = namespace
         # Callable classes implement the '__call__' method, and are used to represent functions
         # that are nested inside of other functions.
@@ -489,6 +491,9 @@ class FuncInfo(object):
         self.is_decorated = is_decorated
 
         # TODO: add field for ret_type: RType = none_rprimitive
+
+    def namespaced_name(self) -> str:
+        return '_'.join(x for x in [self.name, self.class_name, self.ns] if x)
 
     @property
     def is_generator(self) -> bool:
@@ -1208,7 +1213,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         is_nested = fitem in self.nested_fitems
         contains_nested = fitem in self.encapsulating_fitems
         is_decorated = fitem in self.fdefs_to_decorators
-        self.enter(FuncInfo(fitem, name, self.gen_func_ns(),
+        self.enter(FuncInfo(fitem, name, class_name, self.gen_func_ns(),
                             is_nested, contains_nested, is_decorated))
 
         if self.fn_info.is_nested:
@@ -3751,8 +3756,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def gen_func_ns(self) -> str:
         """Generates a namespace for a nested function using its outer function names."""
-        return '_'.join(env.name for env in self.environments
-                        if env.name and env.name != '<top level>')
+        return '_'.join(info.name + ('' if not info.class_name else '_' + info.class_name)
+                        for info in self.fn_infos
+                        if info.name and info.name != '<top level>')
 
     def setup_callable_class(self) -> None:
         """Generates a callable class representing a nested function and sets up the 'self'
@@ -3776,10 +3782,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         #     else:
         #         def foo():          ---->    foo_obj_0()
         #             return False
-        name = '{}_{}_obj'.format(self.fn_info.name, self.fn_info.ns)
+        name = base_name = '{}_obj'.format(self.fn_info.namespaced_name())
         count = 0
         while name in self.callable_class_names:
-            name += '_' + str(count)
+            name = base_name + '_' + str(count)
+            count += 1
         self.callable_class_names.add(name)
 
         # Define the actual callable class ClassIR, and set its environment to point at the
@@ -3885,7 +3892,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         Returns a ClassIR representing an environment for a function containing a nested function.
         """
-        env_class = ClassIR('{}_{}_env'.format(self.fn_info.name, self.fn_info.ns),
+        env_class = ClassIR('{}_env'.format(self.fn_info.namespaced_name()),
                             self.module_name, is_generated=True)
         env_class.attributes[SELF_NAME] = RInstance(env_class)
         if self.fn_info.is_nested:
@@ -3933,7 +3940,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Return(self.instantiate_generator_class()))
 
     def setup_generator_class(self) -> ClassIR:
-        name = '{}_{}_gen'.format(self.fn_info.name, self.fn_info.ns)
+        name = '{}_gen'.format(self.fn_info.namespaced_name())
 
         generator_class_ir = ClassIR(name, self.module_name, is_generated=True)
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(self.fn_info.env_class)

@@ -3560,3 +3560,25 @@ try:
     assert native.version() == sys.version_info[1]
 except RuntimeError:
     assert version == (3, 5), "only 3.5 should fail!"
+
+[case testGeneratorNameClash]
+class A:
+    def foo(self) -> object:
+        yield
+class B:
+    def foo(self) -> object:
+        yield
+[file driver.py]
+# really I only care it builds
+
+[case testNestedFuncNameClash]
+class A:
+    def foo(self) -> None:
+        def bar(self) -> None:
+            pass
+class B:
+    def foo(self) -> None:
+        def bar(self) -> None:
+            pass
+[file driver.py]
+# really I only care it builds
