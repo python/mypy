@@ -181,11 +181,7 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
                 # This check makes sure that when we encounter an operator, we skip looking up
                 # the corresponding method in the current instance to avoid this edge case.
                 # See https://github.com/python/mypy/pull/1787 for more info.
-                result = analyze_class_attribute_access(ret_type, name, ctx.node, ctx.is_lvalue,
-                                                        ctx.builtin_type, ctx.not_ready_callback,
-                                                        ctx.msg,
-                                                        original_type=ctx.original_type,
-                                                        chk=ctx.chk)
+                result = analyze_class_attribute_access(ret_type, name, ctx)
                 if result:
                     return result
             # Look up from the 'type' type.
@@ -224,10 +220,7 @@ def _analyze_member_access(name: str, typ: Type, ctx: MemberContext,
                 item = typ.item.item.type.metaclass_type
         if item and not ctx.is_operator:
             # See comment above for why operators are skipped
-            result = analyze_class_attribute_access(item, name, ctx.node, ctx.is_lvalue,
-                                                    ctx.builtin_type, ctx.not_ready_callback,
-                                                    ctx.msg,
-                                                    original_type=ctx.original_type, chk=ctx.chk)
+            result = analyze_class_attribute_access(item, name, ctx)
             if result:
                 if not (isinstance(result, AnyType) and item.type.fallback_to_any):
                     return result
@@ -526,13 +519,7 @@ def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classme
 
 def analyze_class_attribute_access(itype: Instance,
                                    name: str,
-                                   context: Context,
-                                   is_lvalue: bool,
-                                   builtin_type: Callable[[str], Instance],
-                                   not_ready_callback: Callable[[str, Context], None],
-                                   msg: MessageBuilder,
-                                   original_type: Type,
-                                   chk: 'mypy.checker.TypeChecker') -> Optional[Type]:
+                                   ctx: MemberContext) -> Optional[Type]:
     """original_type is the type of E in the expression E.var"""
     node = itype.type.get(name)
     if not node:
@@ -542,24 +529,24 @@ def analyze_class_attribute_access(itype: Instance,
 
     is_decorated = isinstance(node.node, Decorator)
     is_method = is_decorated or isinstance(node.node, FuncBase)
-    if is_lvalue:
+    if ctx.is_lvalue:
         if is_method:
-            msg.cant_assign_to_method(context)
+            ctx.msg.cant_assign_to_method(ctx.node)
         if isinstance(node.node, TypeInfo):
-            msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
+            ctx.msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, ctx.node)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        msg.fail('Cannot access final instance '
-                 'attribute "{}" on class object'.format(node.node.name()), context)
+        ctx.msg.fail('Cannot access final instance '
+                     'attribute "{}" on class object'.format(node.node.name()), ctx.node)
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
-    if is_lvalue and not chk.get_final_context():
-        check_final_member(name, itype.type, msg, context)
+    if ctx.is_lvalue and not ctx.chk.get_final_context():
+        check_final_member(name, itype.type, ctx.msg, ctx.node)
 
-    if itype.type.is_enum and not (is_lvalue or is_decorated or is_method):
+    if itype.type.is_enum and not (ctx.is_lvalue or is_decorated or is_method):
         return itype
 
     t = node.type
@@ -567,44 +554,44 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(t, PartialType):
             symnode = node.node
             assert isinstance(symnode, Var)
-            return chk.handle_partial_var_type(t, is_lvalue, symnode, context)
+            return ctx.chk.handle_partial_var_type(t, ctx.is_lvalue, symnode, ctx.node)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
-            msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
+            ctx.msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, ctx.node)
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
-        result = add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
-        if not is_lvalue:
-            result = analyze_descriptor_access(original_type, result, builtin_type,
-                                               msg, context, chk=chk)
+        result = add_class_tvars(t, itype, is_classmethod, ctx.builtin_type, ctx.original_type)
+        if not ctx.is_lvalue:
+            result = analyze_descriptor_access(ctx.original_type, result, ctx.builtin_type,
+                                               ctx.msg, ctx.node, chk=ctx.chk)
         return result
     elif isinstance(node.node, Var):
-        not_ready_callback(name, context)
+        ctx.not_ready_callback(name, ctx.node)
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
-        msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
-                 itype.type.name(), name), context)
+        ctx.msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
+                     itype.type.name(), name), ctx.node)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
-        return type_object_type(node.node, builtin_type)
+        return type_object_type(node.node, ctx.builtin_type)
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
-        return builtin_type('types.ModuleType')
+        return ctx.builtin_type('types.ModuleType')
 
     if isinstance(node.node, TypeAlias) and isinstance(node.node.target, Instance):
-        return instance_alias_type(node.node, builtin_type)
+        return instance_alias_type(node.node, ctx.builtin_type)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
         if node.node.type:
             return node.node.type
         else:
-            not_ready_callback(name, context)
+            ctx.not_ready_callback(name, ctx.node)
             return AnyType(TypeOfAny.from_error)
     else:
-        return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
+        return function_type(cast(FuncBase, node.node), ctx.builtin_type('builtins.function'))
 
 
 def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
