@@ -755,8 +755,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                                  False, False, False, self.named_type,
-                                                  self.msg, original_type=callee, chk=self.chk)
+                                                  False, False, False, self.msg,
+                                                  original_type=callee, chk=self.chk)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -1707,7 +1707,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type = self.accept(e.expr)
             member_type = analyze_member_access(
                 e.name, original_type, e, is_lvalue, False, False,
-                self.named_type, self.msg, original_type=original_type, chk=self.chk)
+                self.msg, original_type=original_type, chk=self.chk)
             return member_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,
@@ -1717,8 +1717,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
-                                     self.named_type, self.msg, original_type=base_type,
-                                     chk=self.chk)
+                                     self.msg, original_type=base_type, chk=self.chk)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -1877,8 +1876,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         local_errors = local_errors or self.msg
         method_type = analyze_member_access(method, base_type, context, False, False, True,
-                                            self.named_type, local_errors,
-                                            original_type=base_type, chk=self.chk)
+                                            local_errors, original_type=base_type, chk=self.chk)
         return self.check_method_call(
             method, base_type, method_type, args, arg_kinds, context, local_errors)
 
@@ -1939,7 +1937,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_lvalue=False,
                 is_super=False,
                 is_operator=True,
-                builtin_type=self.named_type,
                 msg=local_errors,
                 original_type=base_type,
                 chk=self.chk,
@@ -2886,7 +2883,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     declared_self = args[0].variable.type or fill_typevars(e.info)
                     return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
-                                                 builtin_type=self.named_type,
                                                  msg=self.msg, override_info=base,
                                                  original_type=declared_self, chk=self.chk)
             assert False, 'unreachable'

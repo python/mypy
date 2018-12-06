@@ -35,7 +35,6 @@ class MemberContext:
                  is_lvalue: bool,
                  is_super: bool,
                  is_operator: bool,
-                 builtin_type: Callable[[str], Instance],
                  msg: MessageBuilder, *,
                  original_type: Type,
                  chk: 'mypy.checker.TypeChecker') -> None:
@@ -43,18 +42,19 @@ class MemberContext:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
         self.is_operator = is_operator
-        self.builtin_type = builtin_type
         self.msg = msg
         self.original_type = original_type
         self.chk = chk
+
+    def builtin_type(self, name: str) -> Instance:
+        return self.chk.named_type(name)
 
     def not_ready_callback(self, name: str, context: Context) -> None:
         self.chk.handle_cannot_determine_type(name, context)
 
     def copy_modified(self, messages: MessageBuilder) -> 'MemberContext':
         return MemberContext(self.context, self.is_lvalue, self.is_super, self.is_operator,
-                             self.builtin_type, messages, original_type=self.original_type,
-                             chk=self.chk)
+                             messages, original_type=self.original_type, chk=self.chk)
 
 
 def analyze_member_access(name: str,
@@ -63,7 +63,6 @@ def analyze_member_access(name: str,
                           is_lvalue: bool,
                           is_super: bool,
                           is_operator: bool,
-                          builtin_type: Callable[[str], Instance],
                           msg: MessageBuilder, *,
                           original_type: Type,
                           chk: 'mypy.checker.TypeChecker',
@@ -86,7 +85,6 @@ def analyze_member_access(name: str,
                        is_lvalue,
                        is_super,
                        is_operator,
-                       builtin_type,
                        msg,
                        original_type=original_type,
                        chk=chk)
