@@ -1157,11 +1157,11 @@ class MessageBuilder:
                         format_key_list(extra, short=True), self.format(typ)),
                         context)
                     return
-        if not expected_keys:
-            expected = '(no keys)'
-        else:
-            expected = format_key_list(expected_keys)
         found = format_key_list(actual_keys, short=True)
+        if not expected_keys:
+            self.fail('Unexpected TypedDict {}'.format(found), context)
+            return
+        expected = format_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
@@ -1184,6 +1184,18 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
+
+    def typeddict_key_cannot_be_deleted(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+                      context)
+        else:
+            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+                item_name, self.format(typ)), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)

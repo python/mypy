@@ -3830,11 +3830,12 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
     elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
         return UnionType.make_simplified_union(tp.items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
-        # TypedDict always has non-optional string keys.
-        if tp.fallback.type.fullname() == 'typing.Mapping':
-            return tp.fallback.args[0]
-        elif tp.fallback.type.bases[0].type.fullname() == 'typing.Mapping':
-            return tp.fallback.type.bases[0].args[0]
+        # TypedDict always has non-optional string keys. Find the key type from the Mapping
+        # base class.
+        for base in tp.fallback.type.mro:
+            if base.fullname() == 'typing.Mapping':
+                return map_instance_to_supertype(tp.fallback, base).args[0]
+        assert False, 'No Mapping base class found for TypedDict fallback'
     return None
 
 
