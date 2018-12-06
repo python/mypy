@@ -560,7 +560,7 @@ def analyze_class_attribute_access(itype: Instance,
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
         mx.msg.fail('Cannot access final instance '
-                     'attribute "{}" on class object'.format(node.node.name()), mx.context)
+                    'attribute "{}" on class object'.format(node.node.name()), mx.context)
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
@@ -591,7 +591,7 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, TypeVarExpr):
         mx.msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
-                     itype.type.name(), name), mx.context)
+                    itype.type.name(), name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
