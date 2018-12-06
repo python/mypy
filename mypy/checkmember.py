@@ -31,7 +31,7 @@ from mypy import experiments
 
 class MemberContext:
     def __init__(self,
-                 node: Context,
+                 context: Context,
                  is_lvalue: bool,
                  is_super: bool,
                  is_operator: bool,
@@ -40,7 +40,7 @@ class MemberContext:
                  msg: MessageBuilder, *,
                  original_type: Type,
                  chk: 'mypy.checker.TypeChecker') -> None:
-        self.node = node
+        self.context = context
         self.is_lvalue = is_lvalue
         self.is_super = is_super
         self.is_operator = is_operator
@@ -51,7 +51,7 @@ class MemberContext:
         self.chk = chk
 
     def copy_modified(self, messages: MessageBuilder) -> 'MemberContext':
-        return MemberContext(self.node, self.is_lvalue, self.is_super, self.is_operator,
+        return MemberContext(self.context, self.is_lvalue, self.is_super, self.is_operator,
                              self.builtin_type, self.not_ready_callback, messages,
                              original_type=self.original_type, chk=self.chk)
 
@@ -102,7 +102,7 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
         if name == '__init__' and not mx.is_super:
             # Accessing __init__ in statically typed code would compromise
             # type safety unless used via super().
-            mx.msg.fail(messages.CANNOT_ACCESS_INIT, mx.node)
+            mx.msg.fail(messages.CANNOT_ACCESS_INIT, mx.context)
             return AnyType(TypeOfAny.from_error)
 
         # The base object has an instance type.
@@ -114,7 +114,7 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
         if (experiments.find_occurrences and
                 info.name() == experiments.find_occurrences[0] and
                 name == experiments.find_occurrences[1]):
-            mx.msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), mx.node)
+            mx.msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), mx.context)
 
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)
@@ -124,7 +124,7 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
                 first_item = cast(Decorator, method.items[0])
                 return analyze_var(name, first_item.var, typ, info, mx)
             if mx.is_lvalue:
-                mx.msg.cant_assign_to_method(mx.node)
+                mx.msg.cant_assign_to_method(mx.context)
             signature = function_type(method, mx.builtin_type('builtins.function'))
             signature = freshen_function_type_vars(signature)
             if name == '__new__':
@@ -201,7 +201,7 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
     elif isinstance(typ, TypeVarType):
         return _analyze_member_access(name, typ.upper_bound, mx)
     elif isinstance(typ, DeletedType):
-        mx.msg.deleted_as_rvalue(typ, mx.node)
+        mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
     elif isinstance(typ, TypeType):
         # Similar to FunctionLike + is_type_obj() above.
@@ -240,7 +240,7 @@ def _analyze_member_access(name: str, typ: Type, mx: MemberContext,
 
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
-    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.node)
+    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context)
 
 
 def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
@@ -283,7 +283,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         # An assignment to final attribute is always an error,
         # independently of types.
         if mx.is_lvalue and not mx.chk.get_final_context():
-            check_final_member(name, info, mx.msg, mx.node)
+            check_final_member(name, info, mx.msg, mx.context)
 
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
@@ -317,12 +317,12 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
     # Could not find the member.
     if mx.is_super:
-        mx.msg.undefined_in_superclass(name, mx.node)
+        mx.msg.undefined_in_superclass(name, mx.context)
         return AnyType(TypeOfAny.from_error)
     else:
         if mx.chk and mx.chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
-        return mx.msg.has_no_attr(mx.original_type, itype, name, mx.node)
+        return mx.msg.has_no_attr(mx.original_type, itype, name, mx.context)
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
@@ -427,21 +427,21 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, mx: Member
     typ = var.type
     if typ:
         if isinstance(typ, PartialType):
-            return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.node)
+            return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
         t = expand_type_by_instance(typ, itype)
         if mx.is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
-            mx.msg.read_only_property(name, itype.type, mx.node)
+            mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
-            mx.msg.cant_assign_to_classvar(name, mx.node)
+            mx.msg.cant_assign_to_classvar(name, mx.context)
         result = t
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
-                        mx.msg.read_only_property(name, itype.type, mx.node)
+                        mx.msg.read_only_property(name, itype.type, mx.context)
                 else:
-                    mx.msg.cant_assign_to_method(mx.node)
+                    mx.msg.cant_assign_to_method(mx.context)
 
             if not var.is_staticmethod:
                 # Class-level function objects and classmethods become bound methods:
@@ -455,7 +455,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, mx: Member
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking agains B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
-                check_self_arg(functype, dispatched_type, var.is_classmethod, mx.node, name,
+                check_self_arg(functype, dispatched_type, var.is_classmethod, mx.context, name,
                                mx.msg)
                 signature = bind_self(functype, mx.original_type, var.is_classmethod)
                 if var.is_property:
@@ -466,16 +466,16 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, mx: Member
                     result = signature
     else:
         if not var.is_ready:
-            mx.not_ready_callback(var.name(), mx.node)
+            mx.not_ready_callback(var.name(), mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
     fullname = '{}.{}'.format(var.info.fullname(), name)
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:
         result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
-                                           mx.msg, mx.node, chk=mx.chk)
+                                           mx.msg, mx.context, chk=mx.chk)
     if hook:
-        result = hook(AttributeContext(mx.original_type, result, mx.node, mx.chk))
+        result = hook(AttributeContext(mx.original_type, result, mx.context, mx.chk))
     return result
 
 
@@ -538,20 +538,20 @@ def analyze_class_attribute_access(itype: Instance,
     is_method = is_decorated or isinstance(node.node, FuncBase)
     if mx.is_lvalue:
         if is_method:
-            mx.msg.cant_assign_to_method(mx.node)
+            mx.msg.cant_assign_to_method(mx.context)
         if isinstance(node.node, TypeInfo):
-            mx.msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, mx.node)
+            mx.msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, mx.context)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
         mx.msg.fail('Cannot access final instance '
-                     'attribute "{}" on class object'.format(node.node.name()), mx.node)
+                     'attribute "{}" on class object'.format(node.node.name()), mx.context)
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
     if mx.is_lvalue and not mx.chk.get_final_context():
-        check_final_member(name, itype.type, mx.msg, mx.node)
+        check_final_member(name, itype.type, mx.msg, mx.context)
 
     if itype.type.is_enum and not (mx.is_lvalue or is_decorated or is_method):
         return itype
@@ -561,23 +561,23 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(t, PartialType):
             symnode = node.node
             assert isinstance(symnode, Var)
-            return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.node)
+            return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
-            mx.msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.node)
+            mx.msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         result = add_class_tvars(t, itype, is_classmethod, mx.builtin_type, mx.original_type)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
-                                               mx.msg, mx.node, chk=mx.chk)
+                                               mx.msg, mx.context, chk=mx.chk)
         return result
     elif isinstance(node.node, Var):
-        mx.not_ready_callback(name, mx.node)
+        mx.not_ready_callback(name, mx.context)
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
         mx.msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
-                     itype.type.name(), name), mx.node)
+                     itype.type.name(), name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
@@ -595,7 +595,7 @@ def analyze_class_attribute_access(itype: Instance,
         if node.node.type:
             return node.node.type
         else:
-            mx.not_ready_callback(name, mx.node)
+            mx.not_ready_callback(name, mx.context)
             return AnyType(TypeOfAny.from_error)
     else:
         return function_type(cast(FuncBase, node.node), mx.builtin_type('builtins.function'))
