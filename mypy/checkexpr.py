@@ -635,8 +635,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                callable_name=callable_name,
                                object_type=object_type)[0]
 
-    def check_call(self, callee: Type, args: List[Expression],
-                   arg_kinds: List[int], context: Context,
+    def check_call(self,
+                   callee: Type,
+                   args: List[Expression],
+                   arg_kinds: List[int],
+                   context: Context,
                    arg_names: Optional[Sequence[Optional[str]]] = None,
                    callable_node: Optional[Expression] = None,
                    arg_messages: Optional[MessageBuilder] = None,
@@ -665,94 +668,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_messages = arg_messages or self.msg
 
         if isinstance(callee, CallableType):
-            if callable_name is None and callee.name:
-                callable_name = callee.name
-            if callee.is_type_obj() and isinstance(callee.ret_type, Instance):
-                callable_name = callee.ret_type.type.fullname()
-            if (isinstance(callable_node, RefExpr)
-                and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
-                                               'enum.Flag', 'enum.IntFlag')):
-                # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
-                return callee.ret_type, callee
-
-            if (callee.is_type_obj() and callee.type_object().is_abstract
-                    # Exception for Type[...]
-                    and not callee.from_type_type
-                    and not callee.type_object().fallback_to_any):
-                type = callee.type_object()
-                self.msg.cannot_instantiate_abstract_class(
-                    callee.type_object().name(), type.abstract_attributes,
-                    context)
-            elif (callee.is_type_obj() and callee.type_object().is_protocol
-                  # Exception for Type[...]
-                  and not callee.from_type_type):
-                self.chk.fail('Cannot instantiate protocol class "{}"'
-                              .format(callee.type_object().name()), context)
-
-            formal_to_actual = map_actuals_to_formals(
-                arg_kinds, arg_names,
-                callee.arg_kinds, callee.arg_names,
-                lambda i: self.accept(args[i]))
-
-            if callee.is_generic():
-                callee = freshen_function_type_vars(callee)
-                callee = self.infer_function_type_arguments_using_context(
-                    callee, context)
-                callee = self.infer_function_type_arguments(
-                    callee, args, arg_kinds, formal_to_actual, context)
-
-            arg_types = self.infer_arg_types_in_context(
-                callee, args, arg_kinds, formal_to_actual)
-
-            self.check_argument_count(callee, arg_types, arg_kinds,
-                                      arg_names, formal_to_actual, context, self.msg)
-
-            self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual, context,
-                                      messages=arg_messages)
-
-            if (callee.is_type_obj() and (len(arg_types) == 1)
-                    and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
-                callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
-
-            if callable_node:
-                # Store the inferred callable type.
-                self.chk.store_type(callable_node, callee)
-
-            if (callable_name
-                    and ((object_type is None and self.plugin.get_function_hook(callable_name))
-                         or (object_type is not None
-                             and self.plugin.get_method_hook(callable_name)))):
-                ret_type = self.apply_function_plugin(
-                    arg_types, callee.ret_type, arg_kinds, formal_to_actual,
-                    args, len(callee.arg_types), callable_name, object_type, context)
-                callee = callee.copy_modified(ret_type=ret_type)
-            return callee.ret_type, callee
+            return self.check_callable_call(callee, args, arg_kinds, context, arg_names,
+                                            callable_node, arg_messages, callable_name,
+                                            object_type)
         elif isinstance(callee, Overloaded):
-            arg_types = self.infer_arg_types_in_empty_context(args)
-            return self.check_overload_call(callee=callee,
-                                            args=args,
-                                            arg_types=arg_types,
-                                            arg_kinds=arg_kinds,
-                                            arg_names=arg_names,
-                                            callable_name=callable_name,
-                                            object_type=object_type,
-                                            context=context,
-                                            arg_messages=arg_messages)
+            return self.check_overload_call(callee, args, arg_kinds, arg_names, callable_name,
+                                            object_type, context, arg_messages)
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
-            self.infer_arg_types_in_empty_context(args)
-            if isinstance(callee, AnyType):
-                return (AnyType(TypeOfAny.from_another_any, source_any=callee),
-                        AnyType(TypeOfAny.from_another_any, source_any=callee))
-            else:
-                return AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)
+            return self.check_any_type_call(args, callee)
         elif isinstance(callee, UnionType):
-            self.msg.disable_type_names += 1
-            results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
-                                       arg_messages=arg_messages)
-                       for subtype in callee.relevant_items()]
-            self.msg.disable_type_names -= 1
-            return (UnionType.make_simplified_union([res[0] for res in results]),
-                    callee)
+            return self.check_union_call(callee, args, arg_kinds, arg_names, context, arg_messages)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
                                                   False, False, False, self.named_type,
@@ -774,6 +699,83 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    object_type)
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
+
+    def check_callable_call(self,
+                            callee: CallableType,
+                            args: List[Expression],
+                            arg_kinds: List[int],
+                            context: Context,
+                            arg_names: Optional[Sequence[Optional[str]]],
+                            callable_node: Optional[Expression],
+                            arg_messages: MessageBuilder,
+                            callable_name: Optional[str],
+                            object_type: Optional[Type]) -> Tuple[Type, Type]:
+        """Type check a call that targets a callable value.
+
+        See the docstring of check_call for more information.
+        """
+        if callable_name is None and callee.name:
+            callable_name = callee.name
+        if callee.is_type_obj() and isinstance(callee.ret_type, Instance):
+            callable_name = callee.ret_type.type.fullname()
+        if (isinstance(callable_node, RefExpr)
+            and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
+                                           'enum.Flag', 'enum.IntFlag')):
+            # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
+            return callee.ret_type, callee
+
+        if (callee.is_type_obj() and callee.type_object().is_abstract
+                # Exception for Type[...]
+                and not callee.from_type_type
+                and not callee.type_object().fallback_to_any):
+            type = callee.type_object()
+            self.msg.cannot_instantiate_abstract_class(
+                callee.type_object().name(), type.abstract_attributes,
+                context)
+        elif (callee.is_type_obj() and callee.type_object().is_protocol
+              # Exception for Type[...]
+              and not callee.from_type_type):
+            self.chk.fail('Cannot instantiate protocol class "{}"'
+                          .format(callee.type_object().name()), context)
+
+        formal_to_actual = map_actuals_to_formals(
+            arg_kinds, arg_names,
+            callee.arg_kinds, callee.arg_names,
+            lambda i: self.accept(args[i]))
+
+        if callee.is_generic():
+            callee = freshen_function_type_vars(callee)
+            callee = self.infer_function_type_arguments_using_context(
+                callee, context)
+            callee = self.infer_function_type_arguments(
+                callee, args, arg_kinds, formal_to_actual, context)
+
+        arg_types = self.infer_arg_types_in_context(
+            callee, args, arg_kinds, formal_to_actual)
+
+        self.check_argument_count(callee, arg_types, arg_kinds,
+                                  arg_names, formal_to_actual, context, self.msg)
+
+        self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual, context,
+                                  messages=arg_messages)
+
+        if (callee.is_type_obj() and (len(arg_types) == 1)
+                and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
+            callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
+
+        if callable_node:
+            # Store the inferred callable type.
+            self.chk.store_type(callable_node, callee)
+
+        if (callable_name
+                and ((object_type is None and self.plugin.get_function_hook(callable_name))
+                     or (object_type is not None
+                         and self.plugin.get_method_hook(callable_name)))):
+            ret_type = self.apply_function_plugin(
+                arg_types, callee.ret_type, arg_kinds, formal_to_actual,
+                args, len(callee.arg_types), callable_name, object_type, context)
+            callee = callee.copy_modified(ret_type=ret_type)
+        return callee.ret_type, callee
 
     def analyze_type_type_callee(self, item: Type, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
@@ -1234,7 +1236,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_overload_call(self,
                             callee: Overloaded,
                             args: List[Expression],
-                            arg_types: List[Type],
                             arg_kinds: List[int],
                             arg_names: Optional[Sequence[Optional[str]]],
                             callable_name: Optional[str],
@@ -1242,6 +1243,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             context: Context,
                             arg_messages: MessageBuilder) -> Tuple[Type, Type]:
         """Checks a call to an overloaded function."""
+        arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(arg_types, arg_kinds,
                                                                  arg_names, callee)
@@ -1690,6 +1692,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(callable, types, self.msg, context,
                                                  skip_unsatisfied=skip_unsatisfied)
+
+    def check_any_type_call(self, args: List[Expression], callee: Type) -> Tuple[Type, Type]:
+        self.infer_arg_types_in_empty_context(args)
+        if isinstance(callee, AnyType):
+            return (AnyType(TypeOfAny.from_another_any, source_any=callee),
+                    AnyType(TypeOfAny.from_another_any, source_any=callee))
+        else:
+            return AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)
+
+    def check_union_call(self,
+                         callee: UnionType,
+                         args: List[Expression],
+                         arg_kinds: List[int],
+                         arg_names: Optional[Sequence[Optional[str]]],
+                         context: Context,
+                         arg_messages: MessageBuilder) -> Tuple[Type, Type]:
+        self.msg.disable_type_names += 1
+        results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
+                                   arg_messages=arg_messages)
+                   for subtype in callee.relevant_items()]
+        self.msg.disable_type_names -= 1
+        return (UnionType.make_simplified_union([res[0] for res in results]),
+                callee)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
