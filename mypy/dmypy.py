@@ -492,6 +492,9 @@ def is_running() -> bool:
 
 
 # Run main().
+def console_entry() -> None:
+    main(sys.argv[1:])
+
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    console_entry()
