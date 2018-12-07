@@ -796,6 +796,9 @@ def process_options(args: List[str],
 
     # Process --cache-map.
     if special_opts.cache_map:
+        if options.sqlite_cache:
+            parser.error("--cache-map is incompatible with --sqlite-cache")
+
         process_cache_map(parser, special_opts, options)
 
     # Let quick_and_dirty imply incremental.

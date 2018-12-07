@@ -822,7 +822,13 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     """
     pair = manager.options.cache_map.get(path)
     if pair is not None:
-        return (pair[0], pair[1], None)
+        # The cache map paths were specified relative to the base directory,
+        # but the filesystem metastore APIs operates relative to the cache
+        # prefix directory.
+        # Solve this by rewriting the paths as relative to the root dir.
+        # This only makes sense when using the filesystem backed cache.
+        root = _cache_dir_prefix(manager)
+        return (os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None)
     prefix = os.path.join(*id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
