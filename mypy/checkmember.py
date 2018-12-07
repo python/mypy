@@ -96,6 +96,10 @@ def analyze_member_access(name: str,
     return _analyze_member_access(name, typ, mx, override_info)
 
 
+# The several functions that follow implement analyze_member_access for various
+# types and aren't documented individually.
+
+
 def _analyze_member_access(name: str,
                            typ: Type,
                            mx: MemberContext,
