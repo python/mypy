@@ -100,44 +100,24 @@ def _analyze_member_access(name: str,
                            typ: Type,
                            mx: MemberContext,
                            override_info: Optional[TypeInfo] = None) -> Type:
-    # TODO: this and following functions share some logic with subtypes.find_member,
-    # consider refactoring.
+    # TODO: This and following functions share some logic with subtypes.find_member;
+    #       consider refactoring.
     if isinstance(typ, Instance):
         return analyze_instance_member_access(name, typ, mx, override_info)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType(TypeOfAny.from_another_any, source_any=typ)
-    elif isinstance(typ, NoneTyp):
-        if mx.chk.should_suppress_optional_error([typ]):
-            return AnyType(TypeOfAny.from_error)
-        is_python_3 = mx.chk.options.python_version[0] >= 3
-        # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
-        # extra attribute, "__bool__".
-        if is_python_3 and name == '__bool__':
-            return CallableType(arg_types=[],
-                                arg_kinds=[],
-                                arg_names=[],
-                                ret_type=mx.builtin_type('builtins.bool'),
-                                fallback=mx.builtin_type('builtins.function'))
-        else:
-            return _analyze_member_access(name, mx.builtin_type('builtins.object'), mx)
     elif isinstance(typ, UnionType):
-        # The base object has dynamic type.
-        mx.msg.disable_type_names += 1
-        results = [_analyze_member_access(name, subtype, mx)
-                   for subtype in typ.relevant_items()]
-        mx.msg.disable_type_names -= 1
-        return UnionType.make_simplified_union(results)
-    elif isinstance(typ, (TupleType, TypedDictType, LiteralType)):
+        return analyze_union_member_access(name, typ, mx)
+    elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+        return analyze_type_callable_member_access(name, typ, mx)
+    elif isinstance(typ, TypeType):
+        return analyze_type_type_member_access(name, typ, mx)
+    elif isinstance(typ, (TupleType, TypedDictType, LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, typ.fallback, mx)
-    elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-        return analyze_type_callable_attribute_access(name, typ, mx)
-    elif isinstance(typ, TypeType):
-        return analyze_type_type_attribute_access(name, typ, mx)
-    elif isinstance(typ, FunctionLike):
-        # Look up from the 'function' type.
-        return _analyze_member_access(name, typ.fallback, mx)
+    elif isinstance(typ, NoneTyp):
+        return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarType):
         return _analyze_member_access(name, typ.upper_bound, mx)
     elif isinstance(typ, DeletedType):
@@ -195,9 +175,9 @@ def analyze_instance_member_access(name: str,
         return analyze_member_var_access(name, typ, info, mx)
 
 
-def analyze_type_callable_attribute_access(name: str,
-                                           typ: FunctionLike,
-                                           mx: MemberContext) -> Type:
+def analyze_type_callable_member_access(name: str,
+                                        typ: FunctionLike,
+                                        mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
     ret_type = typ.items()[0].ret_type
@@ -227,7 +207,7 @@ def analyze_type_callable_attribute_access(name: str,
         assert False, 'Unexpected type {}'.format(repr(ret_type))
 
 
-def analyze_type_type_attribute_access(name: str, typ: TypeType, mx: MemberContext) -> Type:
+def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext) -> Type:
     # Similar to analyze_type_callable_attribute_access.
     item = None
     fallback = mx.builtin_type('builtins.type')
@@ -261,6 +241,30 @@ def analyze_type_type_attribute_access(name: str, typ: TypeType, mx: MemberConte
     if item is not None:
         fallback = item.type.metaclass_type or fallback
     return _analyze_member_access(name, fallback, mx)
+
+
+def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
+    mx.msg.disable_type_names += 1
+    results = [_analyze_member_access(name, subtype, mx)
+               for subtype in typ.relevant_items()]
+    mx.msg.disable_type_names -= 1
+    return UnionType.make_simplified_union(results)
+
+
+def analyze_none_member_access(name: str, typ: NoneTyp, mx: MemberContext) -> Type:
+    if mx.chk.should_suppress_optional_error([typ]):
+        return AnyType(TypeOfAny.from_error)
+    is_python_3 = mx.chk.options.python_version[0] >= 3
+    # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
+    # extra attribute, "__bool__".
+    if is_python_3 and name == '__bool__':
+        return CallableType(arg_types=[],
+                            arg_kinds=[],
+                            arg_names=[],
+                            ret_type=mx.builtin_type('builtins.bool'),
+                            fallback=mx.builtin_type('builtins.function'))
+    else:
+        return _analyze_member_access(name, mx.builtin_type('builtins.object'), mx)
 
 
 def analyze_member_var_access(name: str,
