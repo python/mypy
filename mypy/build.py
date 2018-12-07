@@ -699,7 +699,7 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
     per-file fine grained dependency caches.
     """
     metastore = manager.metastore
-    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    proto_meta, proto_cache = get_protocol_deps_cache_name()
     meta_snapshot = {}  # type: Dict[str, str]
     error = False
     for id, st in graph.items():
@@ -725,10 +725,12 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
                               blocker=True)
 
 
+PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
+
+
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
-    name = '@plugins_snapshot.json'
-    if not manager.metastore.write(name, json.dumps(manager.plugins_snapshot)):
+    if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
         manager.errors.set_file(_cache_dir_prefix(manager), None)
         manager.errors.report(0, 0, "Error writing plugins snapshot",
                               blocker=True)
@@ -736,8 +738,7 @@ def write_plugins_snapshot(manager: BuildManager) -> None:
 
 def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     """Read cached snapshot of versions and hashes of plugins from previous run."""
-    name = '@plugins_snapshot.json'
-    snapshot = _load_json_file(name, manager,
+    snapshot = _load_json_file(PLUGIN_SNAPSHOT_FILE, manager,
                                log_sucess='Plugins snapshot ',
                                log_error='Could not load plugins snapshot: ')
     if snapshot is None:
@@ -756,7 +757,7 @@ def read_protocol_cache(manager: BuildManager,
     See docstring for write_protocol_cache for details about which kinds of
     dependencies are read.
     """
-    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    proto_meta, proto_cache = get_protocol_deps_cache_name()
     meta_snapshot = _load_json_file(proto_meta, manager,
                                     log_sucess='Proto meta ',
                                     log_error='Could not load protocol metadata: ')
@@ -833,7 +834,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
 
-def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+def get_protocol_deps_cache_name() -> Tuple[str, str]:
     """Return file names for fine grained protocol dependencies cache.
 
     Since these dependencies represent a global state of the program, they
