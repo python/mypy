@@ -680,8 +680,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_union_call(callee, args, arg_kinds, arg_names, context, arg_messages)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                                  False, False, False, self.named_type,
-                                                  self.not_ready_callback, self.msg,
+                                                  False, False, False, self.msg,
                                                   original_type=callee, chk=self.chk)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
@@ -1733,8 +1732,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type = self.accept(e.expr)
             member_type = analyze_member_access(
                 e.name, original_type, e, is_lvalue, False, False,
-                self.named_type, self.not_ready_callback, self.msg,
-                original_type=original_type, chk=self.chk)
+                self.msg, original_type=original_type, chk=self.chk)
             return member_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,
@@ -1744,8 +1742,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
-                                     self.named_type, self.not_ready_callback, self.msg,
-                                     original_type=base_type, chk=self.chk)
+                                     self.msg, original_type=base_type, chk=self.chk)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -1904,8 +1901,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         local_errors = local_errors or self.msg
         method_type = analyze_member_access(method, base_type, context, False, False, True,
-                                            self.named_type, self.not_ready_callback, local_errors,
-                                            original_type=base_type, chk=self.chk)
+                                            local_errors, original_type=base_type, chk=self.chk)
         return self.check_method_call(
             method, base_type, method_type, args, arg_kinds, context, local_errors)
 
@@ -1962,14 +1958,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             member = analyze_member_access(
                 name=op_name,
                 typ=base_type,
-                node=context,
                 is_lvalue=False,
                 is_super=False,
                 is_operator=True,
-                builtin_type=self.named_type,
-                not_ready_callback=self.not_ready_callback,
-                msg=local_errors,
                 original_type=base_type,
+                context=context,
+                msg=local_errors,
                 chk=self.chk,
             )
             if local_errors.is_errors():
@@ -2912,12 +2906,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             'enclosing function', e)
                         return AnyType(TypeOfAny.from_error)
                     declared_self = args[0].variable.type or fill_typevars(e.info)
-                    return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
-                                                 is_lvalue=False, is_super=True, is_operator=False,
-                                                 builtin_type=self.named_type,
-                                                 not_ready_callback=self.not_ready_callback,
-                                                 msg=self.msg, override_info=base,
-                                                 original_type=declared_self, chk=self.chk)
+                    return analyze_member_access(name=e.name,
+                                                 typ=fill_typevars(e.info),
+                                                 is_lvalue=False,
+                                                 is_super=True,
+                                                 is_operator=False,
+                                                 original_type=declared_self,
+                                                 override_info=base,
+                                                 context=e,
+                                                 msg=self.msg,
+                                                 chk=self.chk)
             assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.
