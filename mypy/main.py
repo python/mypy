@@ -570,6 +570,9 @@ def process_options(args: List[str],
         '--cache-dir', action='store', metavar='DIR',
         help="Store module cache info in the given folder in incremental mode "
              "(defaults to '{}')".format(defaults.CACHE_DIR))
+    add_invertible_flag('--sqlite-cache', default=False,
+                        help="Use a sqlite database to store the cache",
+                        group=incremental_group)
     incremental_group.add_argument(
         '--cache-fine-grained', action='store_true',
         help="Include fine-grained dependency information in the cache for the mypy daemon")
