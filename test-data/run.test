@@ -3217,6 +3217,39 @@ caught exception with value some other string
 exception
 goodbye
 
+[case testYieldSend]
+from typing import Generator
+
+def basic() -> Generator[int, int, int]:
+    x = yield 1
+    y = yield (x + 1)
+    return y
+
+[file driver.py]
+from typing import Generator, Tuple, TypeVar, Sequence, Optional, List
+from native import basic
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def run_generator(gen: Generator[T, V, U],
+                  inputs: Optional[List[V]] = None) -> Tuple[Sequence[T], U]:
+    res = []
+    i = -1
+    while True:
+        try:
+            if i >= 0 and inputs:
+                val = gen.send(inputs[i])
+            else:
+                val = next(gen)
+        except StopIteration as e:
+            return (tuple(res), e.value)
+        res.append(val)
+        i += 1
+
+assert run_generator(basic(), [5, 50]) == ((1, 6), 50)
+
 [case testDecorators1]
 from typing import Generator, Callable, Iterator
 from contextlib import contextmanager

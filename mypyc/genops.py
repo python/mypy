@@ -588,6 +588,9 @@ class GeneratorClass(ImplicitClass):
         # 'throw' function is called.
         self.exc_regs = None  # type: Optional[Tuple[Value, Value, Value]]
 
+        # Holds the arg passed to send
+        self.send_arg_reg = None  # type: Optional[Value]
+
         # The switch block is used to decide which instruction to go using the value held in the
         # next-label register.
         self.switch_block = BasicBlock()
@@ -1260,6 +1263,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if fn_info.is_generator:
             helper_fn_decl = self.add_helper_to_generator_class(blocks, sig, env, fn_info)
             self.add_next_to_generator_class(fn_info, helper_fn_decl, sig)
+            self.add_send_to_generator_class(fn_info, helper_fn_decl, sig)
             self.add_iter_to_generator_class(fn_info)
             self.add_throw_to_generator_class(fn_info, helper_fn_decl, sig)
         else:
@@ -3397,9 +3401,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.add_raise_exception_blocks_to_generator_class(expr.line)
 
-        # TODO: Replace this value with the value that is sent into the generator when we support
-        #       the 'send' function.
-        return self.none()
+        assert cls.send_arg_reg is not None
+        return cls.send_arg_reg
 
     def visit_ellipsis(self, o: EllipsisExpr) -> Value:
         return self.primitive_op(ellipsis_op, [], o.line)
@@ -3719,8 +3722,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         exc_type = self.environment.add_local(Var('type'), object_rprimitive, is_arg=True)
         exc_val = self.environment.add_local(Var('value'), object_rprimitive, is_arg=True)
         exc_tb = self.environment.add_local(Var('traceback'), object_rprimitive, is_arg=True)
+        # TODO: Use the right type here instead of object?
+        exc_arg = self.environment.add_local(Var('arg'), object_rprimitive, is_arg=True)
 
         cls.exc_regs = (exc_type, exc_val, exc_tb)
+        cls.send_arg_reg = exc_arg
 
         cls.self_reg = self.read(self_target, fitem.line)
         cls.curr_env_reg = self.load_outer_env(cls.self_reg, self.environment)
@@ -3959,7 +3965,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
                              RuntimeArg('type', object_rprimitive),
                              RuntimeArg('value', object_rprimitive),
-                             RuntimeArg('traceback', object_rprimitive)), sig.ret_type)
+                             RuntimeArg('traceback', object_rprimitive),
+                             RuntimeArg('arg', object_rprimitive)
+                             ), sig.ret_type)
         helper_fn_decl = FuncDecl('__mypyc_generator_helper__', fn_info.generator_class.ir.name,
                                   self.module_name, sig)
         helper_fn_ir = FuncIR(helper_fn_decl, blocks, env)
@@ -3991,7 +3999,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         none_reg = self.none_object()
 
         # Call the helper function with error flags set to Py_None, and return that result.
-        result = self.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg],
+        result = self.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, none_reg],
                                fn_info.fitem.line))
         self.add(Return(result))
         blocks, env, _, fn_info = self.leave()
@@ -4000,6 +4008,30 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, self.module_name, sig)
         next_fn_ir = FuncIR(next_fn_decl, blocks, env)
         fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
+        self.functions.append(next_fn_ir)
+
+    def add_send_to_generator_class(self,
+                                    fn_info: FuncInfo,
+                                    fn_decl: FuncDecl,
+                                    sig: FuncSignature) -> None:
+        """Generates the 'send' method for a generator class."""
+        # FIXME: this is basically the same as add_next...
+        self.enter(fn_info)
+        self_reg = self.read(self.add_self_to_env(fn_info.generator_class.ir))
+        arg = self.environment.add_local_reg(Var('arg'), object_rprimitive, True)
+        none_reg = self.none_object()
+
+        # Call the helper function with error flags set to Py_None, and return that result.
+        result = self.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, self.read(arg)],
+                               fn_info.fitem.line))
+        self.add(Return(result))
+        blocks, env, _, fn_info = self.leave()
+
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
+                             RuntimeArg('arg', object_rprimitive),), sig.ret_type)
+        next_fn_decl = FuncDecl('send', fn_info.generator_class.ir.name, self.module_name, sig)
+        next_fn_ir = FuncIR(next_fn_decl, blocks, env)
+        fn_info.generator_class.ir.methods['send'] = next_fn_ir
         self.functions.append(next_fn_ir)
 
     def add_throw_to_generator_class(self,
@@ -4022,7 +4054,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.assign_if_null(tb, lambda: none_reg, self.fn_info.fitem.line)
 
         # Call the helper function using the arguments passed in, and return that result.
-        result = self.add(Call(fn_decl, [self_reg, self.read(typ), self.read(val), self.read(tb)],
+        result = self.add(Call(fn_decl,
+                               [self_reg, self.read(typ), self.read(val), self.read(tb), none_reg],
                                fn_info.fitem.line))
         self.add(Return(result))
         blocks, env, _, fn_info = self.leave()
