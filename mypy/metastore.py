@@ -69,7 +69,6 @@ class FilesystemMetadataStore(MetadataStore):
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(tmp_filename, 'w') as f:
                 f.write(data)
-                f.write('\n')
             os.replace(tmp_filename, path)
             if mtime is not None:
                 os.utime(path, times=(mtime, mtime))
