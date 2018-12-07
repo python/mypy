@@ -71,19 +71,34 @@ def random_string() -> str:
 
 class FilesystemMetadataStore(MetadataStore):
     def __init__(self, cache_dir_prefix: str) -> None:
-        self.cache_dir_prefix = cache_dir_prefix
+        # We check startswith instead of equality because the version
+        # will have already been appended by the time the cache dir is
+        # passed here.
+        if cache_dir_prefix.startswith(os.devnull):
+            self.cache_dir_prefix = cache_dir_prefix  # type: Optional[str]
+        else:
+            self.cache_dir_prefix = None
 
     def getmtime(self, name: str) -> float:
+        if not self.cache_dir_prefix:
+            raise FileNotFoundError()
+
         return int(os.path.getmtime(os.path.join(self.cache_dir_prefix, name)))
 
     def read(self, name: str) -> str:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
+
+        if not self.cache_dir_prefix:
+            raise FileNotFoundError()
 
         with open(os.path.join(self.cache_dir_prefix, name), 'r') as f:
             return f.read()
 
     def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
+
+        if not self.cache_dir_prefix:
+            return False
 
         path = os.path.join(self.cache_dir_prefix, name)
         tmp_filename = path + '.' + random_string()
@@ -100,12 +115,18 @@ class FilesystemMetadataStore(MetadataStore):
         return True
 
     def remove(self, name: str) -> None:
+        if not self.cache_dir_prefix:
+            raise FileNotFoundError()
+
         os.remove(os.path.join(self.cache_dir_prefix, name))
 
     def commit(self) -> None:
         pass
 
     def list_all(self) -> Iterable[str]:
+        if not self.cache_dir_prefix:
+            return
+
         for dir, _, files in os.walk(self.cache_dir_prefix):
             dir = os.path.relpath(dir, self.cache_dir_prefix)
             for file in files:
