@@ -75,9 +75,9 @@ class FilesystemMetadataStore(MetadataStore):
         # will have already been appended by the time the cache dir is
         # passed here.
         if cache_dir_prefix.startswith(os.devnull):
-            self.cache_dir_prefix = cache_dir_prefix  # type: Optional[str]
-        else:
             self.cache_dir_prefix = None
+        else:
+            self.cache_dir_prefix = cache_dir_prefix
 
     def getmtime(self, name: str) -> float:
         if not self.cache_dir_prefix:
