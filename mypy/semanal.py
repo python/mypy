@@ -1344,8 +1344,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     defn.info.metaclass_type.type.fullname() == 'builtins.type'):
                 # All protocols and their subclasses have ABCMeta metaclass by default.
                 abc_meta = self.named_type_or_none('abc.ABCMeta', [])
-                assert abc_meta is not None, "abc.ABCMeta not found"
-                defn.info.metaclass_type = abc_meta
+                if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
+                    defn.info.metaclass_type = abc_meta
         if defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage

@@ -1,6 +1,5 @@
 # Stub for typing module. Many of the definitions have special handling in
 # the type checker, so they can just be initialized to anything.
-import abc  # like in real typeshed
 
 cast = 0
 overload = 0
@@ -9,7 +8,7 @@ Union = 0
 Optional = 0
 TypeVar = 0
 Generic = 0
-Protocol = 0  # This is not yet defined in typeshed, see PR typeshed/#1220
+Protocol = 0
 Tuple = 0
 Callable = 0
 NamedTuple = 0
