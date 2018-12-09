@@ -1,5 +1,6 @@
 # Stub for typing module. Many of the definitions have special handling in
 # the type checker, so they can just be initialized to anything.
+import abc  # like in real typeshed
 
 cast = 0
 overload = 0
