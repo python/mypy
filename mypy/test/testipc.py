@@ -1,10 +1,7 @@
-import os
-import sys
-import time
 from unittest import TestCase, main
 from multiprocessing import Process, Queue
 
-from mypy.ipc import IPCClient, IPCServer, IPCException
+from mypy.ipc import IPCClient, IPCServer
 
 
 CONNECTION_NAME = 'dmypy-test-ipc.sock'

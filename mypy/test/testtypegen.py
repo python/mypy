@@ -9,9 +9,7 @@ from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.visitors import SkippedNodeSearcher, ignore_node
 from mypy.util import short_type
-from mypy.nodes import (
-    NameExpr, TypeVarExpr, CallExpr, Expression, MypyFile, AssignmentStmt, IntExpr
-)
+from mypy.nodes import NameExpr
 from mypy.errors import CompileError
 from mypy.options import Options
 

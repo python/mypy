@@ -33,8 +33,7 @@ To run this script starting from the commit id 2a432b:
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from argparse import (ArgumentParser, RawDescriptionHelpFormatter,
-                      ArgumentDefaultsHelpFormatter, Namespace)
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, Namespace
 import base64
 import json
 import os

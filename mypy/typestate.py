@@ -3,7 +3,7 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Any, Dict, Set, Tuple, Optional
+from typing import Dict, Set, Tuple, Optional
 
 MYPY = False
 if MYPY:

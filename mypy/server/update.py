@@ -127,7 +127,7 @@ from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
-    OverloadedFuncDef, SymbolTable, LambdaExpr
+    OverloadedFuncDef, SymbolTable
 )
 from mypy.options import Options
 from mypy.fscache import FileSystemCache
