@@ -41,7 +41,7 @@ import contextlib
 from typing import Union, Iterator, Optional, List
 
 from mypy.nodes import (
-    Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
+    Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
     ListExpr, ForStmt, Block, SymbolNode,
