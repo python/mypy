@@ -1,6 +1,6 @@
 """Test cases for mypy types and type operations."""
 
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
 from mypy.erasetype import erase_type
@@ -913,7 +913,7 @@ class SameTypeSuite(Suite):
         # Literals are not allowed to contain floats, but we're going to
         # test them anyways, just to make sure the semantics are robust
         # against these kinds of things.
-        lit0 = LiteralType(1.0, a)
+        lit0 = LiteralType(cast(int, 1.0), a)
         lit1 = LiteralType(1, b)
         lit2 = LiteralType(2, b)
         lit3 = LiteralType("foo", d)
@@ -929,11 +929,11 @@ class SameTypeSuite(Suite):
         self.assert_not_same(lit1, self.fx.anyt)
         self.assert_not_same(lit1, self.fx.nonet)
 
-    def assert_same(self, s: Type, t: Type, strict=True) -> None:
+    def assert_same(self, s: Type, t: Type, strict: bool = True) -> None:
         self.assert_simple_is_same(s, t, expected=True, strict=strict)
         self.assert_simple_is_same(t, s, expected=True, strict=strict)
 
-    def assert_not_same(self, s: Type, t: Type, strict=True) -> None:
+    def assert_not_same(self, s: Type, t: Type, strict: bool = True) -> None:
         self.assert_simple_is_same(s, t, False, strict=strict)
         self.assert_simple_is_same(t, s, False, strict=strict)
 
