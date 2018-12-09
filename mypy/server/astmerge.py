@@ -58,7 +58,8 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType
+    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
+    RawLiteralType,
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -389,6 +390,12 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
         for value_type in typ.items.values():
             value_type.accept(self)
+        typ.fallback.accept(self)
+
+    def visit_raw_literal_type(self, t: RawLiteralType) -> None:
+        assert False, "Unexpected RawLiteralType after semantic analysis phase"
+
+    def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)
 
     def visit_unbound_type(self, typ: UnboundType) -> None:

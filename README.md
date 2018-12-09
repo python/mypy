@@ -250,6 +250,20 @@ tracker:
 Feel free to also ask questions on the tracker.
 
 
+mypy_mypyc
+----------
+
+We have built an experimental compiled version of mypy using the
+[mypyc compiler](https://github.com/mypyc/mypyc) for mypy-annotated
+Python code. It is approximately 4 times faster than interpreted mypy.
+
+If you wish to test out the compiled version of mypy, and are running
+OS X or Linux, you can directly install a binary from
+https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
+
+Compiled mypy packages on PyPI are Coming Soon.
+
+
 Help wanted
 -----------
 

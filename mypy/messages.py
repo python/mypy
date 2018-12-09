@@ -19,7 +19,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Option
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
@@ -298,6 +298,8 @@ class MessageBuilder:
                                                  self.format_bare(item_type)))
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
+        elif isinstance(typ, LiteralType):
+            return str(typ)
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
@@ -672,6 +674,18 @@ class MessageBuilder:
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
 
+            if (arg_kind == ARG_STAR2
+                    and isinstance(arg_type, TypedDictType)
+                    and m <= len(callee.arg_names)
+                    and callee.arg_names[m - 1] is not None
+                    and callee.arg_kinds[m - 1] != ARG_STAR2):
+                arg_name = callee.arg_names[m - 1]
+                assert arg_name is not None
+                arg_type_str, expected_type_str = self.format_distinctly(
+                    arg_type.items[arg_name],
+                    expected_type,
+                    bare=True)
+                arg_label = '"{}"'.format(arg_name)
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
@@ -710,6 +724,20 @@ class MessageBuilder:
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
+        self.fail(msg, context)
+
+    def too_many_arguments_from_typed_dict(self,
+                                           callee: CallableType,
+                                           arg_type: TypedDictType,
+                                           context: Context) -> None:
+        # Try to determine the name of the extra argument.
+        for key in arg_type.items:
+            if key not in callee.arg_names:
+                msg = 'Extra argument "{}" from **args'.format(key) + for_function(callee)
+                break
+        else:
+            self.too_many_arguments(callee, context)
+            return
         self.fail(msg, context)
 
     def too_many_positional_arguments(self, callee: CallableType,
@@ -1130,11 +1158,11 @@ class MessageBuilder:
                         format_key_list(extra, short=True), self.format(typ)),
                         context)
                     return
-        if not expected_keys:
-            expected = '(no keys)'
-        else:
-            expected = format_key_list(expected_keys)
         found = format_key_list(actual_keys, short=True)
+        if not expected_keys:
+            self.fail('Unexpected TypedDict {}'.format(found), context)
+            return
+        expected = format_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
@@ -1157,6 +1185,18 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
+
+    def typeddict_key_cannot_be_deleted(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+                      context)
+        else:
+            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+                item_name, self.format(typ)), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)

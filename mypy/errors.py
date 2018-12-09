@@ -612,4 +612,5 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
         print('{}: note: use --pdb to drop into pdb'.format(prefix), file=sys.stderr)
 
     # Exit.  The caller has nothing more to say.
-    raise SystemExit(1)
+    # We use exit code 2 to signal that this is no ordinary error.
+    raise SystemExit(2)

@@ -852,8 +852,7 @@ class I: pass
 <m.P> -> m.P
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
-<mod.I> -> <m.P>, m, m.P
-<mypy_extensions.TypedDict> -> m
+<mod.I> -> <m.P>, m
 
 [case testAliasDepsTypedDictFunctional]
 # __dump_all__
@@ -872,7 +871,8 @@ class I: pass
 <mod.I.__init__> -> a
 <mod.I.__new__> -> a
 <mod.I> -> <m.P>, a, mod.I
-<mypy_extensions.TypedDict> -> m
+<sys.platform> -> sys
+<sys.version_info> -> sys
 
 [case testAliasDepsClassInFunction]
 from mod import I

@@ -59,7 +59,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType
+    UnionType, Overloaded, PartialType, TypeType, LiteralType,
 )
 from mypy.util import get_prefix
 
@@ -314,6 +314,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                       for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
         return ('TypedDictType', items, required)
+
+    def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
+        return ('LiteralType', typ.value, snapshot_type(typ.fallback))
 
     def visit_union_type(self, typ: UnionType) -> SnapshotItem:
         # Sort and remove duplicates so that we can use equality to test for

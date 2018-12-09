@@ -112,6 +112,20 @@ f(*it1)
 f(*it2) # E: Argument 1 to "f" has incompatible type "*Iterable[str]"; expected "int"
 [builtins fixtures/for.pyi]
 
+[case testCallVarargsFunctionWithTwoTupleStarArgs]
+from typing import TypeVar, Tuple
+
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+T3 = TypeVar('T3')
+T4 = TypeVar('T4')
+
+def f(a: T1, b: T2, c: T3, d: T4) -> Tuple[T1, T2, T3, T4]: ...
+x: Tuple[int, str]
+y: Tuple[float, bool]
+reveal_type(f(*x, *y)) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*, builtins.float*, builtins.bool*]'
+[builtins fixtures/list.pyi]
+
 [case testCallVarargsFunctionWithIterableAndPositional]
 
 from typing import Iterable
@@ -126,8 +140,10 @@ f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 
 def f(*x: int) -> None: pass
 it1 = (1, 2)
+it2 = ('',)
 f(*it1, 1, 2)
 f(*it1, 1, *it1, 2)
+f(*it1, 1, *it2, 2)  # E: Argument 3 to "f" has incompatible type "*Tuple[str]"; expected "int"
 f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/for.pyi]
 
@@ -590,6 +606,18 @@ class G(Generic[T]):
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
+
+[case testCallerTupleVarArgsAndGenericCalleeVarArg]
+# flags: --strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(*args: T) -> T: ...
+reveal_type(f(*(1, None)))  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(1, *(None, 1)))  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(1, *(1, None)))  # E: Revealed type is 'Union[builtins.int, None]'
+[builtins fixtures/tuple.pyi]
 
 
 -- Comment signatures

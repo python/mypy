@@ -9,7 +9,7 @@ from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneTyp, Overloaded,
-    TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny
+    TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny, LiteralType
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -244,6 +244,37 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(fx.gsaa, fx.gb))
         assert_false(is_proper_subtype(fx.gb, fx.ga))
         assert_false(is_proper_subtype(fx.ga, fx.gb))
+
+    def test_is_proper_subtype_and_subtype_literal_types(self) -> None:
+        fx = self.fx
+
+        lit1 = LiteralType(1, fx.a)
+        lit2 = LiteralType("foo", fx.d)
+        lit3 = LiteralType("bar", fx.d)
+
+        assert_true(is_proper_subtype(lit1, fx.a))
+        assert_false(is_proper_subtype(lit1, fx.d))
+        assert_false(is_proper_subtype(fx.a, lit1))
+        assert_true(is_proper_subtype(fx.uninhabited, lit1))
+        assert_false(is_proper_subtype(lit1, fx.uninhabited))
+        assert_true(is_proper_subtype(lit1, lit1))
+        assert_false(is_proper_subtype(lit1, lit2))
+        assert_false(is_proper_subtype(lit2, lit3))
+
+        assert_true(is_subtype(lit1, fx.a))
+        assert_false(is_subtype(lit1, fx.d))
+        assert_false(is_subtype(fx.a, lit1))
+        assert_true(is_subtype(fx.uninhabited, lit1))
+        assert_false(is_subtype(lit1, fx.uninhabited))
+        assert_true(is_subtype(lit1, lit1))
+        assert_false(is_subtype(lit1, lit2))
+        assert_false(is_subtype(lit2, lit3))
+
+        assert_false(is_proper_subtype(lit1, fx.anyt))
+        assert_false(is_proper_subtype(fx.anyt, lit1))
+
+        assert_true(is_subtype(lit1, fx.anyt))
+        assert_true(is_subtype(fx.anyt, lit1))
 
     # can_be_true / can_be_false
 
@@ -589,6 +620,41 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
+
+    def test_literal_type(self) -> None:
+        a = self.fx.a
+        d = self.fx.d
+        lit1 = LiteralType(1, a)
+        lit2 = LiteralType(2, a)
+        lit3 = LiteralType("foo", d)
+
+        self.assert_join(lit1, lit1, lit1)
+        self.assert_join(lit1, a, a)
+        self.assert_join(lit1, d, self.fx.o)
+        self.assert_join(lit1, lit2, a)
+        self.assert_join(lit1, lit3, self.fx.o)
+        self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
+        self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
+        self.assert_join(UnionType([lit1, lit2]), a, a)
+        self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
+        self.assert_join(UnionType([d, lit3]), lit3, UnionType([d, lit3]))
+        self.assert_join(UnionType([d, lit3]), d, UnionType([d, lit3]))
+        self.assert_join(UnionType([a, lit1]), lit1, UnionType([a, lit1]))
+        self.assert_join(UnionType([a, lit1]), lit2, UnionType([a, lit1]))
+        self.assert_join(UnionType([lit1, lit2]),
+                         UnionType([lit1, lit2]),
+                         UnionType([lit1, lit2]))
+
+        # The order in which we try joining two unions influences the
+        # ordering of the items in the final produced unions. So, we
+        # manually call 'assert_simple_join' and tune the output
+        # after swapping the arguments here.
+        self.assert_simple_join(UnionType([lit1, lit2]),
+                                UnionType([lit2, lit3]),
+                                UnionType([lit1, lit2, lit3]))
+        self.assert_simple_join(UnionType([lit2, lit3]),
+                                UnionType([lit1, lit2]),
+                                UnionType([lit2, lit3, lit1]))
 
     # There are additional test cases in check-inference.test.
 

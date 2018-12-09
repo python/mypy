@@ -156,10 +156,14 @@ class FindModuleCache:
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == 'partial':
                             runtime_path = os.path.join(pkg_dir, dir_chain)
-                        third_party_inline_dirs.append((runtime_path, True))
-                        # if the package is partial, we don't verify the module, as
-                        # the partial stub package may not have a __init__.pyi
-                        third_party_stubs_dirs.append((path, False))
+                            third_party_inline_dirs.append((runtime_path, True))
+                            # if the package is partial, we don't verify the module, as
+                            # the partial stub package may not have a __init__.pyi
+                            third_party_stubs_dirs.append((path, False))
+                        else:
+                            # handle the edge case where people put a py.typed file
+                            # in a stub package, but it isn't partial
+                            third_party_stubs_dirs.append((path, True))
                     else:
                         third_party_stubs_dirs.append((path, True))
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
@@ -401,7 +405,10 @@ def compute_search_paths(sources: List[BuildSource],
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).  This is a test-only feature, so assume our files are laid out
         # as in the source tree.
-        root_dir = os.path.dirname(os.path.dirname(__file__))
+        # We also need to allow overriding where to look for it. Argh.
+        root_dir = os.getenv('MYPY_TEST_PREFIX', None)
+        if not root_dir:
+            root_dir = os.path.dirname(os.path.dirname(__file__))
         lib_path.appendleft(os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.

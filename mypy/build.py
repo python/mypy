@@ -48,7 +48,8 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin, plugin_types
+from mypy.plugin import Plugin, ChainedPlugin, plugin_types
+from mypy.plugins.default import DefaultPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
@@ -341,7 +342,10 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
             plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
                 plugin_error("Can't find plugin '{}'".format(plugin_path))
-            plugin_dir = os.path.dirname(plugin_path)
+            # Use an absolute path to avoid populating the cache entry
+            # for 'tmp' during tests, since it will be different in
+            # different tests.
+            plugin_dir = os.path.abspath(os.path.dirname(plugin_path))
             fnam = os.path.basename(plugin_path)
             module_name = fnam[:-3]
             sys.path.insert(0, plugin_dir)
@@ -2128,10 +2132,9 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.report(line, 0, "No library stub file for module '{}'".format(target))
         errors.report(line, 0, stub_msg, severity='note', only_once=True)
     else:
+        note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         errors.report(line, 0, "Cannot find module named '{}'".format(target))
-        errors.report(line, 0, '(Perhaps setting MYPYPATH '
-                      'or using the "--ignore-missing-imports" flag would help)',
-                      severity='note', only_once=True)
+        errors.report(line, 0, note, severity='note', only_once=True)
     errors.set_import_context(save_import_context)
 
 

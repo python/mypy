@@ -1669,6 +1669,7 @@ b = None  # type: B
 if int():
     b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = b
+[typing fixtures/typing-full.pyi]
 
 [case testDucktypeTransitivityDecorator]
 from typing import _promote
@@ -1682,6 +1683,7 @@ c = None  # type: C
 if int():
     c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
     a = c
+[typing fixtures/typing-full.pyi]
 
 
 -- Hard coded type promotions
@@ -4534,7 +4536,9 @@ class Bar(TypedDict):
 
 def foo(node: NodeType) -> int:
     x = node
-    return x['x']
+    # TODO: This is incorrect (https://github.com/python/mypy/issues/5930), but ensure that it
+    #       doesn't crash at least
+    return x['x']  # E: Incompatible return value type (got "object", expected "int")
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -4962,12 +4966,13 @@ class D(B, C):
 class C1(object):
     t = 'a'
     y = 3.0
+    class Inner(object): pass
     reveal_locals()
 
 [out]
-main:4: error: Revealed local types are:
-main:4: error: t: builtins.str
-main:4: error: y: builtins.float
+main:5: error: Revealed local types are:
+main:5: error: t: builtins.str
+main:5: error: y: builtins.float
 
 [case testAbstractClasses]
 import a

@@ -15,7 +15,7 @@ from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
-from mypy.version import __version__, base_version
+import mypy.version
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -85,14 +85,19 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
                                                       os.path.abspath(test_temp_dir))
-            if testcase.suite.native_sep and os.path.sep == '\\':
-                normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
-            normalized_output = normalize_error_messages(normalized_output)
+            # We always normalize things like timestamp, but only handle operating-system
+            # specific things if requested.
+            if testcase.normalize_output:
+                if testcase.suite.native_sep and os.path.sep == '\\':
+                    normalized_output = [fix_cobertura_filename(line)
+                                         for line in normalized_output]
+                normalized_output = normalize_error_messages(normalized_output)
             assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
                                        'Output file {} did not match its expected output'.format(
                                            path))
     else:
-        out = normalize_error_messages(err + out)
+        if testcase.normalize_output:
+            out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))
@@ -122,7 +127,11 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
     """Normalize file output for comparison."""
     timestamp_regex = re.compile(r'\d{10}')
     result = [x.replace(current_abs_path, '$PWD') for x in content]
-    result = [re.sub(r'\b' + re.escape(__version__) + r'\b', '$VERSION', x) for x in result]
+    version = mypy.version.__version__
+    result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
+    # We generate a new mypy.version when building mypy wheels that
+    # lacks base_version, so handle that case.
+    base_version = getattr(mypy.version, 'base_version', version)
     result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result

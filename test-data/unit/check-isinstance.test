@@ -1731,6 +1731,7 @@ isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with clas
 isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testIsinstanceTypeArgsAliases]
 from typing import Iterable, TypeVar
@@ -1744,6 +1745,7 @@ isinstance(x, It)
 isinstance(x, It2[int])  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, It2)  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testIssubclassTypeArgs]
 from typing import Iterable, TypeVar
@@ -1754,6 +1756,7 @@ issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with cl
 issubclass(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
 issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
 from typing import TypeVar

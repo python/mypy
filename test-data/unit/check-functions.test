@@ -890,6 +890,7 @@ from typing import no_type_check
 @no_type_check
 def foo(x: 'bar', y: {'x': 4}) -> 42:
     1 + 'x'
+[typing fixtures/typing-full.pyi]
 
 [case testNoTypeCheckDecoratorOnMethod2]
 import typing
@@ -901,6 +902,7 @@ def foo(x: 's', y: {'x': 4}) -> 42:
 @typing.no_type_check
 def bar() -> None:
     1 + 'x'
+[typing fixtures/typing-full.pyi]
 
 [case testCallingNoTypeCheckFunction]
 import typing
@@ -911,6 +913,7 @@ def foo(x: {1:2}) -> [1]:
 
 foo()
 foo(1, 'b')
+[typing fixtures/typing-full.pyi]
 
 [case testCallingNoTypeCheckFunction2]
 import typing
@@ -921,6 +924,7 @@ def f() -> None:
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     1 + 'x'
+[typing fixtures/typing-full.pyi]
 
 [case testNoTypeCheckDecoratorSemanticError]
 import typing
@@ -928,6 +932,7 @@ import typing
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     x = y
+[typing fixtures/typing-full.pyi]
 
 
 -- Forward references to decorated functions
@@ -1695,7 +1700,7 @@ def WrongArg(x, y): return y
 # something else sensible, because other tests require the stub not have anything
 # that looks like a function call.
 F = Callable[[WrongArg(int, 'x')], int] # E: Invalid argument constructor "__main__.WrongArg"
-G = Callable[[Arg(1, 'x')], int] # E: Invalid type alias # E: Value of type "int" is not indexable
+G = Callable[[Arg(1, 'x')], int] # E: Invalid type: try using Literal[1] instead?
 H = Callable[[VarArg(int, 'x')], int] # E: VarArg arguments should not have names
 I = Callable[[VarArg(int)], int] # ok
 J = Callable[[VarArg(), KwArg()], int] # ok
@@ -1717,7 +1722,7 @@ from mypy_extensions import Arg, VarArg, KwArg
 
 def WrongArg(x, y): return y
 
-def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+def b(f: Callable[[Arg(1, 'x')], int]): pass # Invalid type. Try using Literal[1] instead?
 def d(f: Callable[[VarArg(int)], int]): pass # ok
 def e(f: Callable[[VarArg(), KwArg()], int]): pass # ok
 def g(f: Callable[[Arg(name='x', type=int)], int]): pass # ok
@@ -1754,7 +1759,7 @@ e(f1)  # E: Argument 1 to "e" has incompatible type "Callable[[VarArg(Any)], int
 [case testCallableWrongTypeType]
 from typing import Callable
 from mypy_extensions import Arg
-def b(f: Callable[[Arg(1, 'x')], int]): pass # E: invalid type comment or annotation
+def b(f: Callable[[Arg(1, 'x')], int]): pass # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/dict.pyi]
 
 [case testCallableTooManyVarArg]
@@ -2390,23 +2395,26 @@ main:2: error: Revealed type is 'def () -> builtins.int'
 [case testRevealLocalsFunction]
 a = 1.0
 
+class A: pass
+
 def f(a: int, b: int) -> int:
     reveal_locals()
     c = a + b
+    class C: pass
     reveal_locals()
     return c
 
 reveal_locals()
 [out]
-main:4: error: Revealed local types are:
-main:4: error: a: builtins.int
-main:4: error: b: builtins.int
 main:6: error: Revealed local types are:
 main:6: error: a: builtins.int
 main:6: error: b: builtins.int
-main:6: error: c: builtins.int
 main:9: error: Revealed local types are:
-main:9: error: a: builtins.float
+main:9: error: a: builtins.int
+main:9: error: b: builtins.int
+main:9: error: c: builtins.int
+main:12: error: Revealed local types are:
+main:12: error: a: builtins.float
 
 [case testNoComplainOverloadNone]
 # flags: --no-strict-optional

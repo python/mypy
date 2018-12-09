@@ -5,7 +5,7 @@ from typing import Iterable, List, Optional, Sequence
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
-    UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny
+    UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -13,6 +13,7 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
+from mypy.argmap import ArgTypeExpander
 
 MYPY = False
 if MYPY:
@@ -53,7 +54,7 @@ def infer_constraints_for_callable(
     Return a list of constraints.
     """
     constraints = []  # type: List[Constraint]
-    tuple_counter = [0]
+    mapper = ArgTypeExpander()
 
     for i, actuals in enumerate(formal_to_actual):
         for actual in actuals:
@@ -61,47 +62,12 @@ def infer_constraints_for_callable(
             if actual_arg_type is None:
                 continue
 
-            actual_type = get_actual_type(actual_arg_type, arg_kinds[actual],
-                                          tuple_counter)
-            c = infer_constraints(callee.arg_types[i], actual_type,
-                                  SUPERTYPE_OF)
+            actual_type = mapper.expand_actual_type(actual_arg_type, arg_kinds[actual],
+                                                    callee.arg_names[i], callee.arg_kinds[i])
+            c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
             constraints.extend(c)
 
     return constraints
-
-
-def get_actual_type(arg_type: Type, kind: int,
-                    tuple_counter: List[int]) -> Type:
-    """Return the type of an actual argument with the given kind.
-
-    If the argument is a *arg, return the individual argument item.
-    """
-
-    if kind == nodes.ARG_STAR:
-        if isinstance(arg_type, Instance):
-            if arg_type.type.fullname() == 'builtins.list':
-                # List *arg.
-                return arg_type.args[0]
-            elif arg_type.args:
-                # TODO try to map type arguments to Iterable
-                return arg_type.args[0]
-            else:
-                return AnyType(TypeOfAny.from_error)
-        elif isinstance(arg_type, TupleType):
-            # Get the next tuple item of a tuple *arg.
-            tuple_counter[0] += 1
-            return arg_type.items[tuple_counter[0] - 1]
-        else:
-            return AnyType(TypeOfAny.from_error)
-    elif kind == nodes.ARG_STAR2:
-        if isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
-            # Dict **arg. TODO more general (Mapping)
-            return arg_type.args[1]
-        else:
-            return AnyType(TypeOfAny.from_error)
-    else:
-        # No translation for other kinds.
-        return arg_type
 
 
 def infer_constraints(template: Type, actual: Type,
@@ -292,6 +258,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return []
 
     def visit_deleted_type(self, template: DeletedType) -> List[Constraint]:
+        return []
+
+    def visit_literal_type(self, template: LiteralType) -> List[Constraint]:
         return []
 
     # Errors

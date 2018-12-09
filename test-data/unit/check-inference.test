@@ -1310,6 +1310,7 @@ if int():
 if int():
     a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testListWithDucktypeCompatibilityAndTransitivity]
 from typing import List, _promote
@@ -1329,6 +1330,7 @@ if int():
 if int():
     a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 -- Inferring type of variable when initialized to an empty collection
@@ -2037,8 +2039,8 @@ T = TypeVar('T')
 class C(Sequence[T], Generic[T]): pass
 C[0] = 0
 [out]
-main:4: error: Type expected within [...]
 main:4: error: Unsupported target for indexed assignment
+main:4: error: Invalid type: try using Literal[0] instead?
 
 [case testNoCrashOnPartialMember]
 class C:

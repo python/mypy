@@ -1330,6 +1330,7 @@ f(C()) # E: No overload variant of "f" matches argument type "C" \
        # N:     def f(x: P1) -> int \
        # N:     def f(x: P2) -> str
 [builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Unions of protocol types
 -- ------------------------
@@ -1507,6 +1508,7 @@ if isinstance(x, R):
     reveal_type(x)  # E: Revealed type is '__main__.R'
     reveal_type(x.meth())  # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRuntimeIterableProtocolCheck]
 from typing import Iterable, List, Union
@@ -1516,6 +1518,7 @@ x: Union[int, List[str]]
 if isinstance(x, Iterable):
     reveal_type(x) # E: Revealed type is 'builtins.list[builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
 from typing import Protocol, runtime, TypeVar, Generic
@@ -1575,6 +1578,7 @@ else:
     reveal_type(c2) # E: Revealed type is '__main__.C2'
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesUnionInProtocolsIsInstance]
 from typing import Protocol, runtime, TypeVar, Generic, Union
@@ -1608,6 +1612,7 @@ if isinstance(x, P2):
 else:
     reveal_type(x) # E: Revealed type is '__main__.C1[builtins.int]'
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Non-Instances and protocol types (Callable vs __call__ etc.)
 -- ------------------------------------------------------------
@@ -2211,6 +2216,7 @@ if issubclass(cls, P):
 else:
     reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
 [builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testCallableImplementsProtocol]
