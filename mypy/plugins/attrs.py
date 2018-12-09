@@ -8,18 +8,18 @@ from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
-    is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
+    is_class_var, TempNode, Decorator, MemberExpr, Expression,
+    SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
 )
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
-    Overloaded, Instance, UnionType, FunctionLike
+    Overloaded, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
-from mypy.server.trigger import make_trigger, make_wildcard_trigger
+from mypy.server.trigger import make_wildcard_trigger
 
 MYPY = False
 if MYPY:

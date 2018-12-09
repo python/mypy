@@ -3,15 +3,13 @@ from typing import Dict, List, Set, Tuple
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
-    Context, Decorator, Expression, FuncDef, JsonDict, NameExpr,
-    OverloadedFuncDef, SymbolTableNode, TempNode, TypeInfo, Var,
+    Context, Expression, FuncDef, JsonDict, NameExpr,
+    SymbolTableNode, TempNode, TypeInfo, Var,
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
-from mypy.types import (
-    CallableType, Instance, NoneTyp, Overloaded, TypeVarDef, TypeVarType,
-)
-from mypy.server.trigger import make_trigger, make_wildcard_trigger
+from mypy.types import Instance, NoneTyp, TypeVarDef, TypeVarType
+from mypy.server.trigger import make_wildcard_trigger
 
 MYPY = False
 if MYPY:

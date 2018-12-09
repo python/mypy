@@ -5,13 +5,12 @@ On Windows, this uses NamedPipes.
 """
 
 import base64
-import contextlib
 import os
 import shutil
 import sys
 import tempfile
 
-from typing import Iterator, Optional, Callable
+from typing import Optional, Callable
 
 MYPY = False
 if MYPY:
