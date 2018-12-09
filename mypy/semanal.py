@@ -868,6 +868,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if hook:
                     hook(ClassDefContext(defn, base_expr, self))
 
+        for base in defn.info.bases:
+            hook = self.plugin.get_base_class_info_hook(base.type)
+            if hook:
+                hook(ClassDefContext(defn, TempNode(base), self))
+
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
             value.accept(self)

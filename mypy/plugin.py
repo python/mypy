@@ -6,7 +6,9 @@ from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
-from mypy.nodes import Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
+from mypy.nodes import (
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, TypeInfo
+)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
 from mypy.messages import MessageBuilder
@@ -240,6 +242,10 @@ class Plugin:
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
+    def get_base_class_info_hook(self, info: TypeInfo,
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
@@ -298,6 +304,10 @@ class WrapperPlugin(Plugin):
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self.plugin.get_base_class_hook(fullname)
+
+    def get_base_class_info_hook(self, info: TypeInfo
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_base_class_info_hook(info)
 
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
@@ -359,6 +369,10 @@ class ChainedPlugin(Plugin):
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
+
+    def get_base_class_info_hook(self, info: TypeInfo
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_base_class_info_hook(info))
 
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
