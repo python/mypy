@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, Generator, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from collections import Counter
 
 import os

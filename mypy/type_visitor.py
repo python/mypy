@@ -13,15 +13,15 @@ other modules refer to them.
 
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable
 from mypy_extensions import trait
 
 T = TypeVar('T')
 
 from mypy.types import (
-    Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType, LiteralType,
-    RawLiteralType, Instance, NoneTyp, TypeType, TypeOfAny,
-    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
+    RawLiteralType, Instance, NoneTyp, TypeType,
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
 )
 

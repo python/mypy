@@ -14,7 +14,7 @@ from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
 from mypy import messages, experiments
 from mypy.nodes import (
-    Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
+    Node, Expression, MypyFile, FuncDef, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
     TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,

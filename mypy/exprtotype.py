@@ -8,7 +8,7 @@ from mypy.nodes import (
 from mypy.fastparse import parse_type_comment
 from mypy.types import (
     Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny,
-    LiteralType, RawLiteralType,
+    RawLiteralType,
 )
 
 

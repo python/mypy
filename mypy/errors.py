@@ -9,9 +9,12 @@ from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
-allowed_duplicates = ['@overload', 'Got:', 'Expected:']
+allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
 
 
 class ErrorInfo:

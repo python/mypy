@@ -8,7 +8,6 @@ from mypy.types import (
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy import nodes
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
