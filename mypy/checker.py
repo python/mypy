@@ -1787,7 +1787,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif (isinstance(lvalue, MemberExpr) and
                         lvalue.kind is None):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
-                    rvalue_type, infer_lvalue_type = self.check_member_assignment(
+                    rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
                         instance_type, lvalue_type, rvalue, lvalue)
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
@@ -2491,59 +2491,80 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
-                                rvalue: Expression, context: Context) -> Tuple[Type, bool]:
+                                rvalue: Expression, context: Context) -> Tuple[Type, Type, bool]:
         """Type member assignment.
 
         This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
-        Return the inferred rvalue_type and whether to infer anything about the attribute type.
+        Return the inferred rvalue_type, inferred lvalue_type, and whether to use the binder
+        for this assignment.
+
+        Note: this method exists here and not in checkmember.py, because we need to take
+        care about interaction between binder and __set__().
         """
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
                 isinstance(instance_type, TypeType)):
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, True
+            return rvalue_type, attribute_type, True
 
         if not isinstance(attribute_type, Instance):
+            # TODO: support __set__() for union types.
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, True
+            return rvalue_type, attribute_type, True
 
+        get_type = analyze_descriptor_access(
+            instance_type, attribute_type, self.named_type,
+            self.msg, context, chk=self)
         if not attribute_type.type.has_readable_member('__set__'):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            if attribute_type.type.has_readable_member('__get__'):
-                attribute_type = analyze_descriptor_access(
-                    instance_type, attribute_type, self.named_type,
-                    self.msg, context, chk=self)
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, True
+            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
+            return rvalue_type, get_type, True
 
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
             self.msg.fail("{}.__set__ is not callable".format(attribute_type), context)
-            return AnyType(TypeOfAny.from_error), False
+            return AnyType(TypeOfAny.from_error), get_type, False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
         bound_method = bind_self(function, attribute_type)
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
+        # Here we just infer the type, the result should be type-checked like a normal assignment.
+        # For this we use the rvalue as type context.
+        self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
             dunder_set_type, [TempNode(instance_type), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
+        self.msg.enable_errors()
+
+        # And now we type check the call second time, to show errors related
+        # to wrong arguments count, etc.
+        self.expr_checker.check_call(
+            dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
         if not isinstance(inferred_dunder_set_type, CallableType):
             self.fail("__set__ is not callable", context)
-            return AnyType(TypeOfAny.from_error), True
+            return AnyType(TypeOfAny.from_error), get_type, True
 
         if len(inferred_dunder_set_type.arg_types) < 2:
             # A message already will have been recorded in check_call
-            return AnyType(TypeOfAny.from_error), False
+            return AnyType(TypeOfAny.from_error), get_type, False
 
-        return inferred_dunder_set_type.arg_types[1], False
+        set_type = inferred_dunder_set_type.arg_types[1]
+        # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
+        # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
+        # by this assignment. Technically, this is not safe, but in practice this is
+        # what a user expects.
+        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
+        infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
+        return rvalue_type if infer else set_type, get_type, infer
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Expression, context: Context) -> None:
@@ -2566,9 +2587,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             method_type = self.expr_checker.analyze_external_member_access(
                 '__setitem__', basetype, context)
         lvalue.method_type = method_type
-        self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
-                                     [nodes.ARG_POS, nodes.ARG_POS],
-                                     context)
+        self.expr_checker.check_method_call(
+            '__setitem__', basetype, method_type, [lvalue.index, rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
 
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Expression) -> None:
@@ -2939,10 +2960,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-        method = echk.analyze_external_member_access('__aiter__', iterable, expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
-        method = echk.analyze_external_member_access('__anext__', iterator, expr)
-        awaitable = echk.check_call(method, [], [], expr)[0]
+        iterator = echk.check_method_call_by_name('__aiter__', iterable, [], [], expr)[0]
+        awaitable = echk.check_method_call_by_name('__anext__', iterator, [], [], expr)[0]
         item_type = echk.check_awaitable_expr(awaitable, expr,
                                               messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
         return iterator, item_type
@@ -2951,8 +2970,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-        method = echk.analyze_external_member_access('__iter__', iterable, expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
+        iterator = echk.check_method_call_by_name('__iter__', iterable, [], [], expr)[0]
 
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
@@ -2965,9 +2983,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
-            method = echk.analyze_external_member_access(nextmethod, iterator,
-                                                         expr)
-            return iterator, echk.check_call(method, [], [], expr)[0]
+            return iterator, echk.check_method_call_by_name(nextmethod, iterator, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
@@ -3067,15 +3083,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = echk.accept(expr)
-        enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
-        obj = echk.check_call(enter, [], [], expr)[0]
+        obj = echk.check_method_call_by_name('__aenter__', ctx, [], [], expr)[0]
         obj = echk.check_awaitable_expr(
             obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
-        exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+        res = echk.check_method_call_by_name(
+            '__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
         echk.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
@@ -3083,13 +3098,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = echk.accept(expr)
-        enter = echk.analyze_external_member_access('__enter__', ctx, expr)
-        obj = echk.check_call(enter, [], [], expr)[0]
+        obj = echk.check_method_call_by_name('__enter__', ctx, [], [], expr)[0]
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
-        exit = echk.analyze_external_member_access('__exit__', ctx, expr)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        echk.check_method_call_by_name('__exit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:

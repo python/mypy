@@ -174,6 +174,8 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
         self.add_type_alias_deps(self.scope.current_target())
+        for trigger, targets in o.plugin_deps.items():
+            self.map.setdefault(trigger, set()).update(targets)
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -203,12 +205,13 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
-        # We don't need to recheck outer scope for an overload, only overload itself.
-        # Also if any decorator is nested, it is not externally visible, so we don't need to
-        # generate dependency.
-        if not o.func.is_overload and self.scope.current_function_name() is None:
-            self.add_dependency(make_trigger(o.func.fullname()))
-        if self.use_logical_deps():
+        if not self.use_logical_deps():
+            # We don't need to recheck outer scope for an overload, only overload itself.
+            # Also if any decorator is nested, it is not externally visible, so we don't need to
+            # generate dependency.
+            if not o.func.is_overload and self.scope.current_function_name() is None:
+                self.add_dependency(make_trigger(o.func.fullname()))
+        else:
             # Add logical dependencies from decorators to the function. For example,
             # if we have
             #     @dec
@@ -330,6 +333,9 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(id), self.scope.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
+        if self.use_logical_deps():
+            # Just importing a name doesn't create a logical dependency.
+            return
         module_id, _ = correct_relative_import(self.scope.current_module_id(),
                                                o.relative,
                                                o.id,
@@ -566,8 +572,8 @@ class DependencyVisitor(TraverserVisitor):
 
         # If this is a reference to a type, generate a dependency to its
         # constructor.
-        # TODO: avoid generating spurious dependencies for isinstance checks,
-        # except statements, class attribute reference, etc, if perf problem.
+        # IDEA: Avoid generating spurious dependencies for except statements,
+        #       class attribute references, etc., if performance is a problem.
         typ = self.type_map.get(o)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
@@ -586,15 +592,23 @@ class DependencyVisitor(TraverserVisitor):
         self.process_global_ref_expr(o)
 
     def visit_member_expr(self, e: MemberExpr) -> None:
-        super().visit_member_expr(e)
+        if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, TypeInfo):
+            # Special case class attribute so that we don't depend on "__init__".
+            self.add_dependency(make_trigger(e.expr.node.fullname()))
+        else:
+            super().visit_member_expr(e)
         if e.kind is not None:
             # Reference to a module attribute
             self.process_global_ref_expr(e)
         else:
-            # Reference to a non-module attribute
+            # Reference to a non-module (or missing) attribute
             if e.expr not in self.type_map:
                 # No type available -- this happens for unreachable code. Since it's unreachable,
                 # it wasn't type checked and we don't need to generate dependencies.
+                return
+            if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, MypyFile):
+                # Special case: reference to a missing module attribute.
+                self.add_dependency(make_trigger(e.expr.node.fullname() + '.' + e.name))
                 return
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)
@@ -637,11 +651,38 @@ class DependencyVisitor(TraverserVisitor):
         return None
 
     def visit_super_expr(self, e: SuperExpr) -> None:
-        super().visit_super_expr(e)
+        # Arguments in "super(C, self)" won't generate useful logical deps.
+        if not self.use_logical_deps():
+            super().visit_super_expr(e)
         if e.info is not None:
-            self.add_dependency(make_trigger(e.info.fullname() + '.' + e.name))
+            name = e.name
+            for base in non_trivial_bases(e.info):
+                self.add_dependency(make_trigger(base.fullname() + '.' + name))
+                if name in base.names:
+                    # No need to depend on further base classes, since we found
+                    # the target.  This is safe since if the target gets
+                    # deleted or modified, we'll trigger it.
+                    break
 
     def visit_call_expr(self, e: CallExpr) -> None:
+        if isinstance(e.callee, RefExpr) and e.callee.fullname == 'builtins.isinstance':
+            self.process_isinstance_call(e)
+        else:
+            super().visit_call_expr(e)
+
+    def process_isinstance_call(self, e: CallExpr) -> None:
+        """Process "isinstance(...)" in a way to avoid some extra dependencies."""
+        if len(e.args) == 2:
+            arg = e.args[1]
+            if (isinstance(arg, RefExpr)
+                    and arg.kind == GDEF
+                    and isinstance(arg.node, TypeInfo)
+                    and arg.fullname):
+                # Special case to avoid redundant dependencies from "__init__".
+                self.add_dependency(make_trigger(arg.fullname))
+                return
+        # In uncommon cases generate normal dependencies. These will include
+        # spurious dependencies, but the performance impact is small.
         super().visit_call_expr(e)
 
     def visit_cast_expr(self, e: CastExpr) -> None:

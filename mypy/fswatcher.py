@@ -1,7 +1,7 @@
 """Watch parts of the file system for changes."""
 
 from mypy.fscache import FileSystemCache
-from typing import NamedTuple, Set, AbstractSet, Iterable, Dict, Optional
+from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set
 
 
 FileData = NamedTuple('FileData', [('st_mtime', float),
@@ -32,10 +32,6 @@ class FileSystemWatcher:
         self._paths = set()  # type: Set[str]
         self._file_data = {}  # type: Dict[str, Optional[FileData]]
 
-    @property
-    def paths(self) -> AbstractSet[str]:
-        return self._paths
-
     def set_file_data(self, path: str, data: FileData) -> None:
         self._file_data[path] = data
 
@@ -58,10 +54,9 @@ class FileSystemWatcher:
         md5 = self.fs.md5(path)
         self._file_data[path] = FileData(st.st_mtime, st.st_size, md5)
 
-    def find_changed(self) -> Set[str]:
-        """Return paths that have changes since the last call, in the watched set."""
+    def _find_changed(self, paths: Iterable[str]) -> AbstractSet[str]:
         changed = set()
-        for path in self._paths:
+        for path in paths:
             old = self._file_data[path]
             try:
                 st = self.fs.stat(path)
@@ -85,3 +80,23 @@ class FileSystemWatcher:
                         # Changed file.
                         changed.add(path)
         return changed
+
+    def find_changed(self) -> AbstractSet[str]:
+        """Return paths that have changes since the last call, in the watched set."""
+        return self._find_changed(self._paths)
+
+    def update_changed(self,
+                       remove: List[str],
+                       update: List[str],
+                       ) -> AbstractSet[str]:
+        """Alternative to find_changed() given explicit changes.
+
+        This only calls self.fs.stat() on added or updated files, not
+        on all files.  It believes all other files are unchanged!
+
+        Implies add_watched_paths() for add and update, and
+        remove_watched_paths() for remove.
+        """
+        self.remove_watched_paths(remove)
+        self.add_watched_paths(update)
+        return self._find_changed(update)

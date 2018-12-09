@@ -474,10 +474,9 @@ def process_options(args: List[str],
     disallow_any_group.add_argument(
         '--disallow-any-explicit', default=False, action='store_true',
         help='Disallow explicit Any in type positions')
-    disallow_any_group.add_argument(
-        '--disallow-any-generics', default=False, action='store_true',
-        help='Disallow usage of generic types that do not specify explicit '
-             'type parameters')
+    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
+                        help='Disallow usage of generic types that do not specify explicit type '
+                        'parameters', group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
         title='Untyped definitions and calls',
@@ -586,6 +585,9 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--show-traceback', '--tb', action='store_true',
         help="Show traceback on fatal error")
+    internals_group.add_argument(
+        '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
+    )
     internals_group.add_argument(
         '--custom-typing', metavar='MODULE', dest='custom_typing_module',
         help="Use a custom typing module")

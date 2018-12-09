@@ -51,7 +51,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"quick_and_dirty", "platform", "bazel"})
+                            {"quick_and_dirty", "platform", "bazel", "plugins"})
                            - {"debug_cache"})  # type: Final
 
 
@@ -192,6 +192,7 @@ class Options:
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
         self.show_traceback = False
+        self.raise_exceptions = False
         self.dump_type_stats = False
         self.dump_inference_stats = False
 

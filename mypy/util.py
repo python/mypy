@@ -150,6 +150,12 @@ def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) ->
         xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
     else:
         xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+
+    # checks for a directory structure in path and creates folders if needed
+    xml_dirs = os.path.dirname(os.path.abspath(path))
+    if not os.path.isdir(xml_dirs):
+        os.makedirs(xml_dirs)
+
     with open(path, 'wb') as f:
         f.write(xml.encode('utf-8'))
 
@@ -209,7 +215,7 @@ def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
     return fields_cache[cls]
 
 
-def replace_object_state(new: object, old: object, copy_dict: bool=False) -> None:
+def replace_object_state(new: object, old: object, copy_dict: bool = False) -> None:
     """Copy state of old node to the new node.
 
     This handles cases where there is __dict__ and/or attribute descriptors

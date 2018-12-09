@@ -629,6 +629,378 @@ class M(type):
 ==
 a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testDataclassUpdate1]
+# flags: --python-version 3.7
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[file b.py]
+from dataclasses import dataclass
+
+from a import A
+@dataclass
+class B(A):
+    y: int
+
+B(1, 2)
+
+[file a.py.2]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: str
+
+[file a.py.3]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[out]
+==
+b.py:8: error: Argument 1 to "B" has incompatible type "int"; expected "str"
+==
+[builtins fixtures/list.pyi]
+
+[case testDataclassUpdate2]
+# flags: --python-version 3.7
+[file c.py]
+Foo = int
+
+[file c.py.2]
+Foo = str
+
+[file a.py]
+from dataclasses import dataclass
+from c import Foo
+
+@dataclass
+class A:
+    x: Foo
+
+[file b.py]
+from dataclasses import dataclass
+
+from a import A
+@dataclass
+class B(A):
+    y: int
+
+B(1, 2)
+
+[out]
+==
+b.py:8: error: Argument 1 to "B" has incompatible type "int"; expected "str"
+[builtins fixtures/list.pyi]
+
+[case testDataclassUpdate3]
+# flags: --python-version 3.7
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "B"
+
+[case testDataclassUpdate4]
+# flags: --python-version 3.7
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "B"
+
+[case testDataclassUpdate5]
+# flags: --python-version 3.7
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+    other: int
+
+[file a.py.3]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "B"
+==
+
+[case testDataclassUpdate6]
+# flags: --python-version 3.7
+from b import B
+B(1, 2) < B(1, 2)
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass(order=True)
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Unsupported left operand type for < ("B")
+
+[case testDataclassUpdate8]
+# flags: --python-version 3.7
+from c import C
+C(1, 2, 3)
+[file c.py]
+from b import B
+from dataclasses import dataclass
+@dataclass
+class C(B):
+    c: int
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "C"
+
+[case testDataclassUpdate9]
+# flags: --python-version 3.7
+from c import C
+C(1, 2, 3)
+[file c.py]
+from b import B
+from dataclasses import dataclass
+@dataclass
+class C(B):
+    c: int
+[file b.py]
+from a import A
+from dataclasses import dataclass
+@dataclass
+class B(A):
+    b: int
+[file a.py]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+    other: int
+
+[file a.py.3]
+from dataclasses import dataclass
+@dataclass(init=False)
+class A:
+    a: int
+
+[builtins fixtures/list.pyi]
+[out]
+==
+main:3: error: Too few arguments for "C"
+==
+
+[case testAttrsUpdate1]
+[file a.py]
+import attr
+@attr.s
+class A:
+    a = attr.ib()   # type: int
+
+[file b.py]
+from a import A
+import attr
+@attr.s
+class B(A):
+    b = attr.ib()   # type: int
+
+B(1, 2)
+
+[file a.py.2]
+import attr
+@attr.s
+class A:
+    a = attr.ib()   # type: int
+    other = attr.ib()   # type: int
+[builtins fixtures/list.pyi]
+[out]
+==
+b.py:7: error: Too few arguments for "B"
+
+[case testAttrsUpdate2]
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+import attr
+@attr.s
+class B(A):
+    b = attr.ib()   # type: int
+[file a.py]
+import attr
+@attr.s(init=False)
+class A:
+    a = attr.ib()   # type: int
+
+[file a.py.2]
+import attr
+@attr.s(init=False)
+class A:
+    a = attr.ib()   # type: int
+    other = attr.ib()   # type: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:2: error: Too few arguments for "B"
+
+[case testAttrsUpdate3]
+from b import B
+B(1, 2)
+[file b.py]
+from a import A
+import attr
+@attr.s(auto_attribs=True)
+class B(A):
+    x: int
+[file a.py]
+import attr
+@attr.s(auto_attribs=True, init=False)
+class A:
+    a: int
+
+[file a.py.2]
+import attr
+@attr.s(auto_attribs=True, init=False)
+class A:
+    a: int
+    other: int
+[builtins fixtures/list.pyi]
+
+[file a.py.3]
+import attr
+@attr.s(auto_attribs=True, init=False)
+class A:
+    a: int
+[builtins fixtures/list.pyi]
+
+[out]
+==
+main:2: error: Too few arguments for "B"
+==
+
+[case testAttrsUpdate4]
+from b import B
+B(1, 2) < B(1, 2)
+[file b.py]
+from a import A
+import attr
+@attr.s(cmp=False)
+class B(A):
+    b = attr.ib()   # type: int
+[file a.py]
+import attr
+@attr.s(init=False)
+class A:
+    a = attr.ib()   # type: int
+
+[file a.py.2]
+import attr
+@attr.s(cmp=False, init=False)
+class A:
+    a = attr.ib()   # type: int
+[builtins fixtures/list.pyi]
+[out]
+==
+main:2: error: Unsupported left operand type for < ("B")
+
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m
 class B(m.A):

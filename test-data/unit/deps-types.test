@@ -186,8 +186,6 @@ class M(type):
 class C(metaclass=M):
     pass
 [out]
-<mod.C.__init__> -> m.f
-<mod.C.__new__> -> m.f
 <mod.C.x> -> m.f
 <mod.C> -> m, m.f
 <mod.M.x> -> m.f
@@ -928,8 +926,6 @@ def g() -> None:
 class B: pass
 [out]
 <m.A.X> -> m.g
-<m.A.__init__> -> m.g
-<m.A.__new__> -> m.g
 <m.A> -> <m.f>, m.f, m.g
 <mod.B> -> m
 

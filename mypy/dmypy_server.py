@@ -1,6 +1,6 @@
 """Server for mypy daemon mode.
 
-Highly experimental!  Only supports UNIX-like systems.
+Only supports UNIX-like systems.
 
 This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
@@ -15,10 +15,11 @@ import tempfile
 import time
 import traceback
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 import mypy.build
 import mypy.errors
+import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
@@ -92,7 +93,6 @@ SOCKET_NAME = 'dmypy.sock'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
-    import mypy.main
     sources, options = mypy.main.process_options(['-i'] + flags,
                                                  require_targets=False,
                                                  server_options=True)
@@ -112,6 +112,11 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     if options.follow_imports not in ('skip', 'error'):
         sys.exit("dmypy: follow-imports must be 'skip' or 'error'")
     return options
+
+
+ModulePathPair = Tuple[str, str]
+ModulePathPairs = List[ModulePathPair]
+ChangesAndRemovals = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
@@ -165,7 +170,7 @@ class Server:
                         sys.exit(0)
                     try:
                         data = receive(conn)
-                    except OSError as err:
+                    except OSError:
                         conn.close()  # Maybe the client hung up
                         continue
                     resp = {}  # type: Dict[str, Any]
@@ -187,7 +192,7 @@ class Server:
                                 raise
                     try:
                         conn.sendall(json.dumps(resp).encode('utf8'))
-                    except OSError as err:
+                    except OSError:
                         pass  # Maybe the client hung up
                     conn.close()
                     if command == 'stop':
@@ -232,12 +237,10 @@ class Server:
         """Stop daemon."""
         return {}
 
-    last_sources = None  # type: List[BuildSource]
-
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
-            self.last_sources, options = mypy.main.process_options(
+            sources, options = mypy.main.process_options(
                 ['-i'] + list(args),
                 require_targets=True,
                 server_options=True,
@@ -247,23 +250,53 @@ class Server:
                 return {'restart': 'configuration changed'}
             if __version__ != version:
                 return {'restart': 'mypy version changed'}
+            if self.fine_grained_manager:
+                manager = self.fine_grained_manager.manager
+                start_plugins_snapshot = manager.plugins_snapshot
+                _, current_plugins_snapshot = mypy.build.load_plugins(options, manager.errors)
+                if current_plugins_snapshot != start_plugins_snapshot:
+                    return {'restart': 'plugins changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(self.last_sources)
+        return self.check(sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
         try:
-            self.last_sources = create_source_list(files, self.options, self.fscache)
+            sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(self.last_sources)
+        return self.check(sources)
 
-    def cmd_recheck(self) -> Dict[str, object]:
-        """Check the same list of files we checked most recently."""
-        if not self.last_sources:
+    def cmd_recheck(self,
+                    remove: Optional[List[str]] = None,
+                    update: Optional[List[str]] = None) -> Dict[str, object]:
+        """Check the same list of files we checked most recently.
+
+        If remove/update is given, they modify the previous list;
+        if all are None, stat() is called for each file in the previous list.
+        """
+        t0 = time.time()
+        if not self.fine_grained_manager:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        return self.check(self.last_sources)
+        sources = self.previous_sources
+        if remove:
+            removals = set(remove)
+            sources = [s for s in sources if s.path and s.path not in removals]
+        if update:
+            known = {s.path for s in sources if s.path}
+            added = [p for p in update if p not in known]
+            try:
+                added_sources = create_source_list(added, self.options, self.fscache)
+            except InvalidSourceList as err:
+                return {'out': '', 'err': str(err), 'status': 2}
+            sources = sources + added_sources  # Make a copy!
+        t1 = time.time()
+        manager = self.fine_grained_manager.manager
+        manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
+        res = self.fine_grained_increment(sources, remove, update)
+        self.fscache.flush()
+        return res
 
     def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
@@ -327,20 +360,30 @@ class Server:
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
-    def fine_grained_increment(self, sources: List[BuildSource]) -> Dict[str, Any]:
+    def fine_grained_increment(self,
+                               sources: List[BuildSource],
+                               remove: Optional[List[str]] = None,
+                               update: Optional[List[str]] = None,
+                               ) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
 
         t0 = time.time()
-        self.update_sources(sources)
-        changed, removed = self.find_changed(sources)
+        if remove is None and update is None:
+            # Use the fswatcher to determine which files were changed
+            # (updated or added) or removed.
+            self.update_sources(sources)
+            changed, removed = self.find_changed(sources)
+        else:
+            # Use the remove/update lists to update fswatcher.
+            # This avoids calling stat() for unchanged files.
+            changed, removed = self.update_changed(sources, remove or [], update or [])
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
+        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        manager.log(
-            "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
-                t1 - t0, t2 - t1))
+        manager.log("fine-grained increment: update: {:.3f}s".format(t2 - t1))
         status = 1 if messages else 0
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
@@ -349,13 +392,25 @@ class Server:
         paths = [source.path for source in sources if source.path is not None]
         self.fswatcher.add_watched_paths(paths)
 
-    def find_changed(self, sources: List[BuildSource]) -> Tuple[List[Tuple[str, str]],
-                                                                List[Tuple[str, str]]]:
+    def update_changed(self,
+                       sources: List[BuildSource],
+                       remove: List[str],
+                       update: List[str],
+                       ) -> ChangesAndRemovals:
+
+        changed_paths = self.fswatcher.update_changed(remove, update)
+        return self._find_changed(sources, changed_paths)
+
+    def find_changed(self, sources: List[BuildSource]) -> ChangesAndRemovals:
         changed_paths = self.fswatcher.find_changed()
+        return self._find_changed(sources, changed_paths)
+
+    def _find_changed(self, sources: List[BuildSource],
+                      changed_paths: AbstractSet[str]) -> ChangesAndRemovals:
         # Find anything that has been added or modified
         changed = [(source.module, source.path)
                    for source in sources
-                   if source.path in changed_paths]
+                   if source.path and source.path in changed_paths]
 
         # Now find anything that has been removed from the build
         modules = {source.module for source in sources}

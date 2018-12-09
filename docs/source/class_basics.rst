@@ -8,7 +8,7 @@ rules.
 Instance and class attributes
 *****************************
 
-Mypy type checker detects if you are trying to access a missing
+The mypy type checker detects if you are trying to access a missing
 attribute, which is a very common programming error. For this to work
 correctly, instance and class attributes must be defined or
 initialized within the class. Mypy infers the types of attributes:
@@ -38,7 +38,7 @@ a type annotation:
    a = A()
    a.x = [1]     # OK
 
-As in Python generally, a variable defined in the class body can used
+As in Python generally, a variable defined in the class body can be used
 as a class or an instance variable.
 
 Type comments work as well, if you need to support Python versions earlier
@@ -76,6 +76,80 @@ to it explicitly using ``self``:
            self.y = 1   # Define 'y'
            a = self
            a.x = 1      # Error: 'x' not defined
+
+Class attribute annotations
+***************************
+
+Mypy supports annotations for class and instance
+variables in class bodies and methods. Use ``ClassVar`` to
+indicate to the static type checker that this variable
+should not be set on instances.
+
+A class attribute without the ``ClassVar`` annotation can be used as
+a class variable. Mypy won't prevent it from being used as an
+instance variable.
+
+.. code-block:: python
+
+  class A:
+      y: ClassVar[Dict[str, int]] = {}  # class variable
+      z: int = 10                       # instance variable
+
+The following are worth noting about ``ClassVar``:
+
+- It accepts only types and cannot be further subscribed.
+
+- It is not a class itself, and should not be used with
+  isinstance() or issubclass().
+
+- It does not change Python runtime behavior, but it can
+  be used by third-party type checkers. For example, a type checker
+  might flag the following code as an error:
+
+.. code-block:: python
+
+  a = A(3000)
+  a.y = {}                # Error, setting class variable on instance
+  a.z = {}                # This is OK
+
+
+Also `` y: ClassVar = 0 `` is valid (without square brackets). The type of
+the variable will be implicitly ``Any``. This behavior will change in the future.
+
+.. note::
+   A ``ClassVar`` parameter cannot include any type variables,
+   regardless of the level of nesting: ``ClassVar[T]`` and ``ClassVar[List[Set[T]]]``
+   are both invalid if ``T`` is a type variable.
+
+Annotating `__init__` methods
+*****************************
+
+The ``__init__`` method is somewhat special -- it doesn't return a
+value.  This is best expressed as ``-> None``.  However, since many feel
+this is redundant, it is allowed to omit the return type declaration
+on ``__init__`` methods **if at least one argument is annotated**.  For
+example, in the following classes ``__init__`` is considered fully
+annotated:
+
+.. code-block:: python
+
+   class C1:
+       def __init__(self) -> None:
+           self.var = 42
+
+   class C2:
+       def __init__(self, arg: int):
+           self.var = arg
+
+However, if ``__init__`` has no annotated arguments and no return type
+annotation, it is considered an untyped method:
+
+.. code-block:: python
+
+   class C3:
+       def __init__(self):
+           # This body is not type checked
+           self.var = 42 + 'abc'
 
 Overriding statically typed methods
 ***********************************
