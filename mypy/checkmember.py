@@ -72,19 +72,22 @@ def analyze_member_access(name: str,
                           original_type: Type,
                           chk: 'mypy.checker.TypeChecker',
                           override_info: Optional[TypeInfo] = None) -> Type:
-    """Return the type of attribute `name` of typ.
+    """Return the type of attribute 'name' of 'typ'.
+
+    The actual implementation is in '_analyze_member_access' and this docstring
+    also applies to it.
 
     This is a general operation that supports various different variations:
 
-      1. lvalue or non-lvalue access (i.e. setter or getter access)
-      2. supertype access (when using super(); is_super == True and
-         override_info should refer to the supertype)
+      1. lvalue or non-lvalue access (setter or getter access)
+      2. supertype access when using super() (is_super == True and
+         'override_info' should refer to the supertype)
 
-    original_type is the most precise inferred or declared type of the base object
-    that we have available. typ is generally a supertype of original_type.
-    When looking for an attribute of typ, we may perform recursive calls targeting
-    the fallback type, for example.
-    original_type is always the type used in the initial call.
+    'original_type' is the most precise inferred or declared type of the base object
+    that we have available. When looking for an attribute of 'typ', we may perform
+    recursive calls targeting the fallback type, and 'typ' may become some supertype
+    of 'original_type'. 'original_type' is always preserved as the 'typ' type used in
+    the initial, non-recursive call.
     """
     mx = MemberContext(is_lvalue,
                        is_super,
@@ -94,10 +97,6 @@ def analyze_member_access(name: str,
                        msg,
                        chk=chk)
     return _analyze_member_access(name, typ, mx, override_info)
-
-
-# The several functions that follow implement analyze_member_access for various
-# types and aren't documented individually.
 
 
 def _analyze_member_access(name: str,
@@ -130,6 +129,10 @@ def _analyze_member_access(name: str,
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
     return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context)
+
+
+# The several functions that follow implement analyze_member_access for various
+# types and aren't documented individually.
 
 
 def analyze_instance_member_access(name: str,
