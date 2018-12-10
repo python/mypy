@@ -37,6 +37,9 @@ parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
 parser.set_defaults(action=None)
 parser.add_argument('--status-file', default=DEFAULT_STATUS_FILE,
                     help='status file to retrieve daemon details')
+parser.add_argument('-V', '--version', action='version',
+                    version='%(prog)s ' + __version__,
+                    help="Show program's version number and exit")
 subparsers = parser.add_subparsers()
 
 start_parser = p = subparsers.add_parser('start', help="Start daemon")
