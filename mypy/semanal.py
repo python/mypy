@@ -817,8 +817,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 self.setup_class_def_analysis(defn)
                 self.analyze_base_classes(defn)
-                self.analyze_metaclass(defn)
                 defn.info.is_protocol = is_protocol
+                self.analyze_metaclass(defn)
                 defn.info.runtime_protocol = False
                 for decorator in defn.decorators:
                     self.analyze_class_decorator(defn, decorator)
@@ -1339,6 +1339,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert isinstance(inst, Instance)
             defn.info.declared_metaclass = inst
         defn.info.metaclass_type = defn.info.calculate_metaclass_type()
+        if any(info.is_protocol for info in defn.info.mro):
+            if (not defn.info.metaclass_type or
+                    defn.info.metaclass_type.type.fullname() == 'builtins.type'):
+                # All protocols and their subclasses have ABCMeta metaclass by default.
+                # TODO: add a metaclass conflict check if there is another metaclass.
+                abc_meta = self.named_type_or_none('abc.ABCMeta', [])
+                if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
+                    defn.info.metaclass_type = abc_meta
         if defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage

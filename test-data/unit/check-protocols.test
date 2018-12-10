@@ -2395,3 +2395,13 @@ reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (x: def (__main__.
 reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
 [builtins fixtures/list.pyi]
 [out]
+
+[case testProtocolsAlwaysABCs]
+from typing import Protocol
+
+class P(Protocol): ...
+class C(P): ...
+
+reveal_type(C.register(int))  # E: Revealed type is 'def () -> builtins.int'
+[typing fixtures/typing-full.pyi]
+[out]
