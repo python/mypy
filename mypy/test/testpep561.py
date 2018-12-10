@@ -87,7 +87,7 @@ class ExampleProg(object):
     def create(self) -> None:
         self._temp_dir = tempfile.TemporaryDirectory()
         self._full_fname = os.path.join(self._temp_dir.name, self._fname)
-        with open(self._full_fname, 'w+') as f:
+        with open(self._full_fname, 'w+', encoding='utf8') as f:
             f.write(self._source_code)
 
     def cleanup(self) -> None:
