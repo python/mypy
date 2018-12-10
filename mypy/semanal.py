@@ -1343,6 +1343,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if (not defn.info.metaclass_type or
                     defn.info.metaclass_type.type.fullname() == 'builtins.type'):
                 # All protocols and their subclasses have ABCMeta metaclass by default.
+                # TODO: add a metaclass conflict check if there is another metaclass.
                 abc_meta = self.named_type_or_none('abc.ABCMeta', [])
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
                     defn.info.metaclass_type = abc_meta
