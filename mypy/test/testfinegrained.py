@@ -75,7 +75,7 @@ class FineGrainedSuite(DataSuite):
 
         main_src = '\n'.join(testcase.input)
         main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
+        with open(main_path, 'w', encoding='utf8') as f:
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)

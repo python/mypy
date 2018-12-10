@@ -213,7 +213,7 @@ def load_output(dirname: str) -> List[str]:
 
 
 def add_file(path: str, result: List[str]) -> None:
-    with open(path) as file:
+    with open(path, encoding='utf8') as file:
         result.extend(file.read().splitlines())
 
 

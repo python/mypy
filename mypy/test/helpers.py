@@ -128,7 +128,7 @@ def assert_module_equivalence(name: str,
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    with open(testcase_path) as f:
+    with open(testcase_path, encoding='utf8') as f:
         data_lines = f.read().splitlines()
     test = '\n'.join(data_lines[testcase.line:testcase.lastline])
 
@@ -152,7 +152,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
 
     data_lines[testcase.line:testcase.lastline] = [test]
     data = '\n'.join(data_lines)
-    with open(testcase_path, 'w') as f:
+    with open(testcase_path, 'w', encoding='utf8') as f:
         print(data, file=f)
 
 
