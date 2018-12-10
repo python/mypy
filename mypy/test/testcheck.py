@@ -127,7 +127,7 @@ class TypeCheckSuite(DataSuite):
             # In run 1, copy program text to program file.
             for module_name, program_path, program_text in module_data:
                 if module_name == '__main__':
-                    with open(program_path, 'w') as f:
+                    with open(program_path, 'w', encoding='utf8') as f:
                         f.write(program_text)
                     break
         elif incremental_step > 1:
@@ -301,7 +301,7 @@ class TypeCheckSuite(DataSuite):
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
                 assert path is not None, "Can't find ad hoc case file"
-                with open(path) as f:
+                with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))
             return out

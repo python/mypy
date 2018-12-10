@@ -50,7 +50,6 @@ from mypy.types import Type
 from mypy.version import __version__
 from mypy.plugin import Plugin, ChainedPlugin, plugin_types
 from mypy.plugins.default import DefaultPlugin
-from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
 from mypy.typestate import TypeState, reset_global_state

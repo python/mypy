@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict, Union
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict
 
 from itertools import chain
 
@@ -45,6 +45,8 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
+    'typing.Literal',
+    'typing_extensions.Literal',
 }  # type: Final
 
 ARG_KINDS_BY_CONSTRUCTOR = {

@@ -40,7 +40,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
-    with open(program_path, 'w') as file:
+    with open(program_path, 'w', encoding='utf8') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
     args = parse_args(testcase.input[0])
@@ -81,7 +81,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
             if not os.path.exists(path):
                 raise AssertionError(
                     'Expected file {} was not produced by test case'.format(path))
-            with open(path, 'r') as output_file:
+            with open(path, 'r', encoding='utf8') as output_file:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
                                                       os.path.abspath(test_temp_dir))

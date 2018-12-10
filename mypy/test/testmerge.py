@@ -109,7 +109,7 @@ class ASTMergeSuite(DataSuite):
         options.show_traceback = True
         options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
+        with open(main_path, 'w', encoding='utf8') as f:
             f.write(source)
         try:
             result = build.build(sources=[BuildSource(main_path, None, None)],
