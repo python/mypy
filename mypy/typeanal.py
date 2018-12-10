@@ -212,13 +212,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.special_form)
             fullname = sym.node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)
-            if hook:
+            if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
                     not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
-            if self.tvar_scope:
+            if self.tvar_scope is not None:
                 tvar_def = self.tvar_scope.get_binding(sym)
             else:
                 tvar_def = None
@@ -231,7 +231,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
                 return TypeVarType(tvar_def, t.line)
-            special = self.try_bind_special_unbound_type(t, fullname)
+            special = self.try_analyze_special_unbound_type(t, fullname)
             if special is not None:
                 return special
             if isinstance(sym.node, TypeAlias):
@@ -241,19 +241,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 an_args = self.anal_array(t.args)
                 return expand_type_alias(target, all_vars, an_args, self.fail, sym.node.no_args, t)
             if not isinstance(sym.node, TypeInfo):
-                return self.bind_unbound_type_without_type_info(t, sym)
+                return self.analyze_unbound_type_without_type_info(t, sym)
             info = sym.node  # type: TypeInfo
-            return self.bind_unbound_type_with_type_info(t, info)
+            return self.analyze_unbound_type_with_type_info(t, info)
         else:  # sym is None
             if self.third_pass:
                 self.fail('Invalid type "{}"'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
             return AnyType(TypeOfAny.special_form)
 
-    def try_bind_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
-        """Bind special type that is recognized through special name such as 'typing.Any'.
+    def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
+        """Bind special type that is recognized through magic name such as 'typing.Any'.
 
-        Return the bound type if successful and return None if the type is a normal type.
+        Return the bound type if successful, and return None if the type is a normal type.
         """
         if fullname == 'builtins.None':
             return NoneTyp()
@@ -314,7 +314,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.analyze_literal_type(t)
         return None
 
-    def bind_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
+    def analyze_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
         """Figure out what an unbound type that doesn't refer to a TypeInfo node means.
 
         This is something unusual. We try our best to find out what it is.
@@ -366,8 +366,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # are more detailed, on the other hand, some of them may be bogus.
         return t
 
-    def bind_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
-        """Bind unbound type when were able to find target TypeInfo."""
+    def analyze_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
+        """Bind unbound type when were able to find target TypeInfo.
+
+        This handles simple cases like 'int', 'modname.UserClass[str]', etc.
+        """
         if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
             return TupleType(self.anal_array(t.args), fallback, t.line)
