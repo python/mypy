@@ -226,35 +226,35 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
-            elif sym.kind == TVAR and tvar_def is not None:
+            if sym.kind == TVAR and tvar_def is not None:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
                 return TypeVarType(tvar_def, t.line)
-            special = self.process_special_named_type(t, fullname)
+            special = self.try_bind_special_unbound_type(t, fullname)
             if special is not None:
                 return special
-            elif isinstance(sym.node, TypeAlias):
+            if isinstance(sym.node, TypeAlias):
                 self.aliases_used.add(sym.node.fullname())
                 all_vars = sym.node.alias_tvars
                 target = sym.node.target
                 an_args = self.anal_array(t.args)
                 return expand_type_alias(target, all_vars, an_args, self.fail, sym.node.no_args, t)
-            elif not isinstance(sym.node, TypeInfo):
-                return self.process_unbound_not_type_info(t, sym)
+            if not isinstance(sym.node, TypeInfo):
+                return self.bind_unbound_type_without_type_info(t, sym)
             info = sym.node  # type: TypeInfo
-            if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
-                return TupleType(self.anal_array(t.args), fallback, t.line)
-            else:
-                return self.bind_unbound_type_with_type_info(t, info)
-        else:
+            return self.bind_unbound_type_with_type_info(t, info)
+        else:  # sym is None
             if self.third_pass:
                 self.fail('Invalid type "{}"'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
             return AnyType(TypeOfAny.special_form)
 
-    def process_special_named_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
+    def try_bind_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
+        """Bind special type that is recognized through special name such as 'typing.Any'.
+
+        Return the bound type if successful and return None if the type is a normal type.
+        """
         if fullname == 'builtins.None':
             return NoneTyp()
         elif fullname == 'typing.Any' or fullname == 'builtins.Any':
@@ -314,8 +314,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.analyze_literal_type(t)
         return None
 
-    def process_unbound_not_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
-        # Something unusual. We try our best to find out what it is.
+    def bind_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
+        """Figure out what an unbound type that doesn't refer to a TypeInfo node means.
+
+        This is something unusual. We try our best to find out what it is.
+        """
         name = sym.fullname
         if name is None:
             assert sym.node is not None
@@ -364,7 +367,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def bind_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
-        # Analyze arguments and construct Instance type. The
+        """Bind unbound type when were able to find target TypeInfo."""
+        if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
+            fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
+            return TupleType(self.anal_array(t.args), fallback, t.line)
+        # Analyze arguments and (usually) construct Instance type. The
         # number of type arguments and their values are
         # checked only later, since we do not always know the
         # valid count at this point. Thus we may construct an
