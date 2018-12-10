@@ -424,7 +424,7 @@ mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in posi
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
-[case testDecodeErrorBlockerOnInitialRun]
+[case testDecodeErrorBlockerOnInitialRun-posix]
 import a
 a.f(1)
 [file a.py]
@@ -434,5 +434,18 @@ a.f(1)
 def f(x: str) -> None: ...
 [out]
 mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testDecodeErrorBlockerOnInitialRun-windows]
+import a
+a.f(1)
+[file a.py]
+# coding: ascii
+ä
+[file a.py.2]
+def f(x: str) -> None: ...
+[out]
+mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 17: ordinal not in range(128)
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
