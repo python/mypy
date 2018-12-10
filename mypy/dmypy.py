@@ -11,8 +11,6 @@ import base64
 import json
 import os
 import pickle
-import signal
-import subprocess
 import sys
 import time
 import traceback
@@ -494,6 +492,9 @@ def is_running(status_file: str) -> bool:
 
 
 # Run main().
+def console_entry() -> None:
+    main(sys.argv[1:])
+
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    console_entry()

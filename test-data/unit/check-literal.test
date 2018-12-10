@@ -336,8 +336,7 @@ d: 3j + 2            # E: invalid type comment or annotation
 
 [case testLiteralDisallowComplexNumbersTypeAlias]
 from typing_extensions import Literal
-at = Literal[3j]        # E: Invalid type alias \
-                        # E: The type "Type[Literal]" is not generic and not indexable
+at = Literal[3j]        # E: Invalid type alias
 a: at                   # E: Invalid type "__main__.at"
 [builtins fixtures/complex.pyi]
 [out]
@@ -367,8 +366,7 @@ c: [1, 2, 3]                    # E: Invalid type
 
 [case testLiteralDisallowCollectionsTypeAlias]
 from typing_extensions import Literal
-at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias \
-                                # E: The type "Type[Literal]" is not generic and not indexable
+at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias
 bt = {"a": 1, "b": 2}
 a: at                           # E: Invalid type "__main__.at"
 b: bt                           # E: Invalid type "__main__.bt"
@@ -377,8 +375,7 @@ b: bt                           # E: Invalid type "__main__.bt"
 
 [case testLiteralDisallowCollectionsTypeAlias2]
 from typing_extensions import Literal
-at = Literal[{1, 2, 3}]         # E: Invalid type alias \
-                                # E: The type "Type[Literal]" is not generic and not indexable
+at = Literal[{1, 2, 3}]         # E: Invalid type alias
 bt = {1, 2, 3}
 a: at                           # E: Invalid type "__main__.at"
 b: bt                           # E: Invalid type "__main__.bt"
@@ -1180,3 +1177,66 @@ b = b * a
 c = c.strip()  # E: Incompatible types in assignment (expression has type "str", variable has type "Literal['foo']")
 [builtins fixtures/ops.pyi]
 [out]
+
+
+--
+-- Tests that check we report errors when we try using Literal[...]
+-- in invalid places.
+--
+
+[case testLiteralErrorsWithIsInstanceAndIsSubclass]
+from typing_extensions import Literal
+from typing_extensions import Literal as Renamed
+import typing_extensions as indirect
+
+Alias = Literal[3]
+
+isinstance(3, Literal[3])           # E: Cannot use isinstance() with a Literal type
+isinstance(3, Alias)                # E: Cannot use isinstance() with a Literal type \
+                                    # E: The type alias to Literal is invalid in runtime context
+isinstance(3, Renamed[3])           # E: Cannot use isinstance() with a Literal type
+isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with a Literal type
+
+issubclass(int, Literal[3])           # E: Cannot use issubclass() with a Literal type
+issubclass(int, Alias)                # E: Cannot use issubclass() with a Literal type \
+                                      # E: The type alias to Literal is invalid in runtime context
+issubclass(int, Renamed[3])           # E: Cannot use issubclass() with a Literal type
+issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Literal type
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testLiteralErrorsWhenSubclassed]
+from typing_extensions import Literal
+from typing_extensions import Literal as Renamed
+import typing_extensions as indirect
+
+Alias = Literal[3]
+
+class Bad1(Literal[3]): pass            # E: Invalid base class
+class Bad2(Renamed[3]): pass            # E: Invalid base class
+class Bad3(indirect.Literal[3]): pass   # E: Invalid base class
+class Bad4(Alias): pass                 # E: Invalid base class
+[out]
+
+[case testLiteralErrorsWhenInvoked-skip]
+# TODO: We don't seem to correctly handle invoking types like
+# 'Final' and 'Protocol' as well. When fixing this, also fix
+# those types?
+from typing_extensions import Literal
+from typing_extensions import Literal as Renamed
+import typing_extensions as indirect
+
+Alias = Literal[3]
+
+Literal[3]()           # E: The type "Type[Literal]" is not generic and not indexable
+Renamed[3]()           # E: The type "Type[Literal]" is not generic and not indexable
+indirect.Literal[3]()  # E: The type "Type[Literal]" is not generic and not indexable
+Alias()                # E: The type alias to Literal is invalid in runtime context
+
+# TODO: Add appropriate error messages to the following lines
+Literal()
+Renamed()
+indirect.Literal()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+

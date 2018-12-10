@@ -7,7 +7,7 @@ testFullCoroutineMatrix in test-data/unit/check-async-await.test.
 
 import sys
 from types import coroutine
-from typing import Any, AsyncIterator, Awaitable, Generator, Iterator
+from typing import Any, Awaitable, Generator, Iterator
 
 # The various things you might try to use in `await` or `yield from`.
 

@@ -15,7 +15,7 @@ from mypy.erasetype import erase_type
 from mypy import messages, sametypes
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance

@@ -6,7 +6,7 @@ from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
-from mypy.nodes import Expression, Context, ClassDef, TypeInfo, SymbolTableNode, MypyFile, CallExpr
+from mypy.nodes import Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
 from mypy.messages import MessageBuilder

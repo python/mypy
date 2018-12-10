@@ -248,6 +248,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     except KeyError:
                         # Undefined names should already be reported in semantic analysis.
                         pass
+                if is_expr_literal_type(typ):
+                    self.msg.cannot_use_function_with_type(e.callee.name, "Literal", e)
+                    continue
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         or (isinstance(typ, NameExpr) and node and
@@ -255,9 +258,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.type_arguments_not_allowed(e)
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
                     if typ.node.typeddict_type:
-                        self.msg.fail(messages.CANNOT_ISINSTANCE_TYPEDDICT, e)
+                        self.msg.cannot_use_function_with_type(e.callee.name, "TypedDict", e)
                     elif typ.node.is_newtype:
-                        self.msg.fail(messages.CANNOT_ISINSTANCE_NEWTYPE, e)
+                        self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
         self.try_infer_partial_type(e)
         type_context = None
         if isinstance(e.callee, LambdaExpr):
@@ -3629,3 +3632,15 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
         return any(is_literal_type_like(item) for item in t.items)
     else:
         return False
+
+
+def is_expr_literal_type(node: Expression) -> bool:
+    """Returns 'true' if the given node is a Literal"""
+    valid = ('typing.Literal', 'typing_extensions.Literal')
+    if isinstance(node, IndexExpr):
+        base = node.base
+        return isinstance(base, RefExpr) and base.fullname in valid
+    if isinstance(node, NameExpr):
+        underlying = node.node
+        return isinstance(underlying, TypeAlias) and isinstance(underlying.target, LiteralType)
+    return False

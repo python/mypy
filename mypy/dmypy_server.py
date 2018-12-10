@@ -6,15 +6,12 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
-import argparse
 import base64
 import json
 import os
 import pickle
-import random
 import subprocess
 import sys
-import tempfile
 import time
 import traceback
 
@@ -26,7 +23,7 @@ import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import receive
-from mypy.ipc import IPCServer, IPCException
+from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths

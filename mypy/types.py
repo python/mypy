@@ -4,8 +4,8 @@ import sys
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
-    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator,
+    Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
+    Sequence, Iterator,
 )
 
 MYPY = False
@@ -17,7 +17,7 @@ import mypy.nodes
 from mypy import experiments
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncBase, FuncDef,
+    FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper, replace_object_state
@@ -53,7 +53,7 @@ LiteralValue = Union[int, str, bool, None]
 # import cycle issues, so we do it at the top while typechecking and
 # then again in the middle at runtime.
 if MYPY:
-    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor
 
 
 class TypeOfAny:
