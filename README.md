@@ -34,7 +34,7 @@ Quick Start for Contributors
 
 First clone the mypyc git repository *and git submodules*:
 
-    $ git clone --recurse-submodules https://github.com/JukkaL/mypyc.git
+    $ git clone --recurse-submodules https://github.com/mypyc/mypyc.git
     $ cd mypyc
 
 Optionally create a virtualenv (recommended):
