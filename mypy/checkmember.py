@@ -72,19 +72,22 @@ def analyze_member_access(name: str,
                           original_type: Type,
                           chk: 'mypy.checker.TypeChecker',
                           override_info: Optional[TypeInfo] = None) -> Type:
-    """Return the type of attribute `name` of typ.
+    """Return the type of attribute 'name' of 'typ'.
+
+    The actual implementation is in '_analyze_member_access' and this docstring
+    also applies to it.
 
     This is a general operation that supports various different variations:
 
-      1. lvalue or non-lvalue access (i.e. setter or getter access)
-      2. supertype access (when using super(); is_super == True and
-         override_info should refer to the supertype)
+      1. lvalue or non-lvalue access (setter or getter access)
+      2. supertype access when using super() (is_super == True and
+         'override_info' should refer to the supertype)
 
-    original_type is the most precise inferred or declared type of the base object
-    that we have available. typ is generally a supertype of original_type.
-    When looking for an attribute of typ, we may perform recursive calls targeting
-    the fallback type, for example.
-    original_type is always the type used in the initial call.
+    'original_type' is the most precise inferred or declared type of the base object
+    that we have available. When looking for an attribute of 'typ', we may perform
+    recursive calls targeting the fallback type, and 'typ' may become some supertype
+    of 'original_type'. 'original_type' is always preserved as the 'typ' type used in
+    the initial, non-recursive call.
     """
     mx = MemberContext(is_lvalue,
                        is_super,
@@ -100,151 +103,175 @@ def _analyze_member_access(name: str,
                            typ: Type,
                            mx: MemberContext,
                            override_info: Optional[TypeInfo] = None) -> Type:
-    # TODO: this and following functions share some logic with subtypes.find_member,
-    # consider refactoring.
+    # TODO: This and following functions share some logic with subtypes.find_member;
+    #       consider refactoring.
     if isinstance(typ, Instance):
-        if name == '__init__' and not mx.is_super:
-            # Accessing __init__ in statically typed code would compromise
-            # type safety unless used via super().
-            mx.msg.fail(messages.CANNOT_ACCESS_INIT, mx.context)
-            return AnyType(TypeOfAny.from_error)
-
-        # The base object has an instance type.
-
-        info = typ.type
-        if override_info:
-            info = override_info
-
-        if (experiments.find_occurrences and
-                info.name() == experiments.find_occurrences[0] and
-                name == experiments.find_occurrences[1]):
-            mx.msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), mx.context)
-
-        # Look up the member. First look up the method dictionary.
-        method = info.get_method(name)
-        if method:
-            if method.is_property:
-                assert isinstance(method, OverloadedFuncDef)
-                first_item = cast(Decorator, method.items[0])
-                return analyze_var(name, first_item.var, typ, info, mx)
-            if mx.is_lvalue:
-                mx.msg.cant_assign_to_method(mx.context)
-            signature = function_type(method, mx.builtin_type('builtins.function'))
-            signature = freshen_function_type_vars(signature)
-            if name == '__new__':
-                # __new__ is special and behaves like a static method -- don't strip
-                # the first argument.
-                pass
-            else:
-                signature = bind_self(signature, mx.original_type)
-            typ = map_instance_to_supertype(typ, method.info)
-            member_type = expand_type_by_instance(signature, typ)
-            freeze_type_vars(member_type)
-            return member_type
-        else:
-            # Not a method.
-            return analyze_member_var_access(name, typ, info, mx)
+        return analyze_instance_member_access(name, typ, mx, override_info)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType(TypeOfAny.from_another_any, source_any=typ)
-    elif isinstance(typ, NoneTyp):
-        if mx.chk.should_suppress_optional_error([typ]):
-            return AnyType(TypeOfAny.from_error)
-        is_python_3 = mx.chk.options.python_version[0] >= 3
-        # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
-        # extra attribute, "__bool__".
-        if is_python_3 and name == '__bool__':
-            return CallableType(arg_types=[],
-                                arg_kinds=[],
-                                arg_names=[],
-                                ret_type=mx.builtin_type('builtins.bool'),
-                                fallback=mx.builtin_type('builtins.function'))
-        else:
-            return _analyze_member_access(name, mx.builtin_type('builtins.object'), mx)
     elif isinstance(typ, UnionType):
-        # The base object has dynamic type.
-        mx.msg.disable_type_names += 1
-        results = [_analyze_member_access(name, subtype, mx)
-                   for subtype in typ.relevant_items()]
-        mx.msg.disable_type_names -= 1
-        return UnionType.make_simplified_union(results)
-    elif isinstance(typ, (TupleType, TypedDictType, LiteralType)):
+        return analyze_union_member_access(name, typ, mx)
+    elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+        return analyze_type_callable_member_access(name, typ, mx)
+    elif isinstance(typ, TypeType):
+        return analyze_type_type_member_access(name, typ, mx)
+    elif isinstance(typ, (TupleType, TypedDictType, LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, typ.fallback, mx)
-    elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-        # Class attribute.
-        # TODO super?
-        ret_type = typ.items()[0].ret_type
-        if isinstance(ret_type, TupleType):
-            ret_type = ret_type.fallback
-        if isinstance(ret_type, Instance):
-            if not mx.is_operator:
-                # When Python sees an operator (eg `3 == 4`), it automatically translates that
-                # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
-                # optimization.
-                #
-                # While it normally it doesn't matter which of the two versions are used, it
-                # does cause inconsistencies when working with classes. For example, translating
-                # `int == int` to `int.__eq__(int)` would not work since `int.__eq__` is meant to
-                # compare two int _instances_. What we really want is `type(int).__eq__`, which
-                # is meant to compare two types or classes.
-                #
-                # This check makes sure that when we encounter an operator, we skip looking up
-                # the corresponding method in the current instance to avoid this edge case.
-                # See https://github.com/python/mypy/pull/1787 for more info.
-                result = analyze_class_attribute_access(ret_type, name, mx)
-                if result:
-                    return result
-            # Look up from the 'type' type.
-            return _analyze_member_access(name, typ.fallback, mx)
-        else:
-            assert False, 'Unexpected type {}'.format(repr(ret_type))
-    elif isinstance(typ, FunctionLike):
-        # Look up from the 'function' type.
-        return _analyze_member_access(name, typ.fallback, mx)
+    elif isinstance(typ, NoneTyp):
+        return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarType):
         return _analyze_member_access(name, typ.upper_bound, mx)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
-    elif isinstance(typ, TypeType):
-        # Similar to FunctionLike + is_type_obj() above.
-        item = None
-        fallback = mx.builtin_type('builtins.type')
-        ignore_messages = mx.msg.copy()
-        ignore_messages.disable_errors()
-        if isinstance(typ.item, Instance):
-            item = typ.item
-        elif isinstance(typ.item, AnyType):
-            mx = mx.copy_modified(messages=ignore_messages)
-            return _analyze_member_access(name, fallback, mx)
-        elif isinstance(typ.item, TypeVarType):
-            if isinstance(typ.item.upper_bound, Instance):
-                item = typ.item.upper_bound
-        elif isinstance(typ.item, TupleType):
-            item = typ.item.fallback
-        elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
-            item = typ.item.fallback
-        elif isinstance(typ.item, TypeType):
-            # Access member on metaclass object via Type[Type[C]]
-            if isinstance(typ.item.item, Instance):
-                item = typ.item.item.type.metaclass_type
-        if item and not mx.is_operator:
-            # See comment above for why operators are skipped
-            result = analyze_class_attribute_access(item, name, mx)
-            if result:
-                if not (isinstance(result, AnyType) and item.type.fallback_to_any):
-                    return result
-                else:
-                    # We don't want errors on metaclass lookup for classes with Any fallback
-                    mx = mx.copy_modified(messages=ignore_messages)
-        if item is not None:
-            fallback = item.type.metaclass_type or fallback
-        return _analyze_member_access(name, fallback, mx)
-
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
     return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context)
+
+
+# The several functions that follow implement analyze_member_access for various
+# types and aren't documented individually.
+
+
+def analyze_instance_member_access(name: str,
+                                   typ: Instance,
+                                   mx: MemberContext,
+                                   override_info: Optional[TypeInfo]) -> Type:
+    if name == '__init__' and not mx.is_super:
+        # Accessing __init__ in statically typed code would compromise
+        # type safety unless used via super().
+        mx.msg.fail(messages.CANNOT_ACCESS_INIT, mx.context)
+        return AnyType(TypeOfAny.from_error)
+
+    # The base object has an instance type.
+
+    info = typ.type
+    if override_info:
+        info = override_info
+
+    if (experiments.find_occurrences and
+            info.name() == experiments.find_occurrences[0] and
+            name == experiments.find_occurrences[1]):
+        mx.msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), mx.context)
+
+    # Look up the member. First look up the method dictionary.
+    method = info.get_method(name)
+    if method:
+        if method.is_property:
+            assert isinstance(method, OverloadedFuncDef)
+            first_item = cast(Decorator, method.items[0])
+            return analyze_var(name, first_item.var, typ, info, mx)
+        if mx.is_lvalue:
+            mx.msg.cant_assign_to_method(mx.context)
+        signature = function_type(method, mx.builtin_type('builtins.function'))
+        signature = freshen_function_type_vars(signature)
+        if name == '__new__':
+            # __new__ is special and behaves like a static method -- don't strip
+            # the first argument.
+            pass
+        else:
+            signature = bind_self(signature, mx.original_type)
+        typ = map_instance_to_supertype(typ, method.info)
+        member_type = expand_type_by_instance(signature, typ)
+        freeze_type_vars(member_type)
+        return member_type
+    else:
+        # Not a method.
+        return analyze_member_var_access(name, typ, info, mx)
+
+
+def analyze_type_callable_member_access(name: str,
+                                        typ: FunctionLike,
+                                        mx: MemberContext) -> Type:
+    # Class attribute.
+    # TODO super?
+    ret_type = typ.items()[0].ret_type
+    if isinstance(ret_type, TupleType):
+        ret_type = ret_type.fallback
+    if isinstance(ret_type, Instance):
+        if not mx.is_operator:
+            # When Python sees an operator (eg `3 == 4`), it automatically translates that
+            # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
+            # optimization.
+            #
+            # While it normally it doesn't matter which of the two versions are used, it
+            # does cause inconsistencies when working with classes. For example, translating
+            # `int == int` to `int.__eq__(int)` would not work since `int.__eq__` is meant to
+            # compare two int _instances_. What we really want is `type(int).__eq__`, which
+            # is meant to compare two types or classes.
+            #
+            # This check makes sure that when we encounter an operator, we skip looking up
+            # the corresponding method in the current instance to avoid this edge case.
+            # See https://github.com/python/mypy/pull/1787 for more info.
+            result = analyze_class_attribute_access(ret_type, name, mx)
+            if result:
+                return result
+        # Look up from the 'type' type.
+        return _analyze_member_access(name, typ.fallback, mx)
+    else:
+        assert False, 'Unexpected type {}'.format(repr(ret_type))
+
+
+def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext) -> Type:
+    # Similar to analyze_type_callable_attribute_access.
+    item = None
+    fallback = mx.builtin_type('builtins.type')
+    ignore_messages = mx.msg.copy()
+    ignore_messages.disable_errors()
+    if isinstance(typ.item, Instance):
+        item = typ.item
+    elif isinstance(typ.item, AnyType):
+        mx = mx.copy_modified(messages=ignore_messages)
+        return _analyze_member_access(name, fallback, mx)
+    elif isinstance(typ.item, TypeVarType):
+        if isinstance(typ.item.upper_bound, Instance):
+            item = typ.item.upper_bound
+    elif isinstance(typ.item, TupleType):
+        item = typ.item.fallback
+    elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
+        item = typ.item.fallback
+    elif isinstance(typ.item, TypeType):
+        # Access member on metaclass object via Type[Type[C]]
+        if isinstance(typ.item.item, Instance):
+            item = typ.item.item.type.metaclass_type
+    if item and not mx.is_operator:
+        # See comment above for why operators are skipped
+        result = analyze_class_attribute_access(item, name, mx)
+        if result:
+            if not (isinstance(result, AnyType) and item.type.fallback_to_any):
+                return result
+            else:
+                # We don't want errors on metaclass lookup for classes with Any fallback
+                mx = mx.copy_modified(messages=ignore_messages)
+    if item is not None:
+        fallback = item.type.metaclass_type or fallback
+    return _analyze_member_access(name, fallback, mx)
+
+
+def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
+    mx.msg.disable_type_names += 1
+    results = [_analyze_member_access(name, subtype, mx)
+               for subtype in typ.relevant_items()]
+    mx.msg.disable_type_names -= 1
+    return UnionType.make_simplified_union(results)
+
+
+def analyze_none_member_access(name: str, typ: NoneTyp, mx: MemberContext) -> Type:
+    if mx.chk.should_suppress_optional_error([typ]):
+        return AnyType(TypeOfAny.from_error)
+    is_python_3 = mx.chk.options.python_version[0] >= 3
+    # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
+    # extra attribute, "__bool__".
+    if is_python_3 and name == '__bool__':
+        return CallableType(arg_types=[],
+                            arg_kinds=[],
+                            arg_names=[],
+                            ret_type=mx.builtin_type('builtins.bool'),
+                            fallback=mx.builtin_type('builtins.function'))
+    else:
+        return _analyze_member_access(name, mx.builtin_type('builtins.object'), mx)
 
 
 def analyze_member_var_access(name: str,
