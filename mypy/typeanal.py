@@ -199,22 +199,24 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             #    type check below.
             sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
-            if isinstance(sym.node, ImportedName):
+            node = sym.node
+            if isinstance(node, ImportedName):
                 # Forward reference to an imported name that hasn't been processed yet.
                 # To maintain backward compatibility, these get translated to Any.
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
-            if sym.node is None:
+            if node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType(TypeOfAny.special_form)
-            fullname = sym.node.fullname()
+            fullname = node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
-            if (fullname in nongen_builtins and t.args and
+            if (fullname in nongen_builtins
+                    and t.args and
                     not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
@@ -228,22 +230,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             if sym.kind == TVAR and tvar_def is not None:
                 if len(t.args) > 0:
-                    self.fail('Type variable "{}" used with arguments'.format(
-                        t.name), t)
+                    self.fail('Type variable "{}" used with arguments'.format(t.name), t)
                 return TypeVarType(tvar_def, t.line)
             special = self.try_analyze_special_unbound_type(t, fullname)
             if special is not None:
                 return special
-            if isinstance(sym.node, TypeAlias):
-                self.aliases_used.add(sym.node.fullname())
-                all_vars = sym.node.alias_tvars
-                target = sym.node.target
+            if isinstance(node, TypeAlias):
+                self.aliases_used.add(fullname)
+                all_vars = node.alias_tvars
+                target = node.target
                 an_args = self.anal_array(t.args)
-                return expand_type_alias(target, all_vars, an_args, self.fail, sym.node.no_args, t)
-            if not isinstance(sym.node, TypeInfo):
+                return expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
+            elif isinstance(node, TypeInfo):
+                return self.analyze_unbound_type_with_type_info(t, node)
+            else:
                 return self.analyze_unbound_type_without_type_info(t, sym)
-            info = sym.node  # type: TypeInfo
-            return self.analyze_unbound_type_with_type_info(t, info)
         else:  # sym is None
             if self.third_pass:
                 self.fail('Invalid type "{}"'.format(t.name), t)
@@ -314,6 +315,54 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.analyze_literal_type(t)
         return None
 
+    def analyze_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
+        """Bind unbound type when were able to find target TypeInfo.
+
+        This handles simple cases like 'int', 'modname.UserClass[str]', etc.
+        """
+        if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
+            fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
+            return TupleType(self.anal_array(t.args), fallback, t.line)
+        # Analyze arguments and (usually) construct Instance type. The
+        # number of type arguments and their values are
+        # checked only later, since we do not always know the
+        # valid count at this point. Thus we may construct an
+        # Instance with an invalid number of type arguments.
+        instance = Instance(info, self.anal_array(t.args), t.line, t.column)
+        if not t.args and self.options.disallow_any_generics and not self.defining_alias:
+            # We report/patch invalid built-in instances already during second pass.
+            # This is done to avoid storing additional state on instances.
+            # All other (including user defined) generics will be patched/reported
+            # in the third pass.
+            if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
+                alternative = nongen_builtins[info.fullname()]
+                self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                any_type = AnyType(TypeOfAny.from_error, line=t.line)
+            else:
+                any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
+            instance.args = [any_type] * len(info.type_vars)
+
+        tup = info.tuple_type
+        if tup is not None:
+            # The class has a Tuple[...] base class so it will be
+            # represented as a tuple type.
+            if t.args:
+                self.fail('Generic tuple types not supported', t)
+                return AnyType(TypeOfAny.from_error)
+            return tup.copy_modified(items=self.anal_array(tup.items),
+                                     fallback=instance)
+        td = info.typeddict_type
+        if td is not None:
+            # The class has a TypedDict[...] base class so it will be
+            # represented as a typeddict type.
+            if t.args:
+                self.fail('Generic TypedDict types not supported', t)
+                return AnyType(TypeOfAny.from_error)
+            # Create a named TypedDictType
+            return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
+                                    fallback=instance)
+        return instance
+
     def analyze_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
         """Figure out what an unbound type that doesn't refer to a TypeInfo node means.
 
@@ -365,54 +414,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # in case of an error? On one hand, UnboundType has a name so error messages
         # are more detailed, on the other hand, some of them may be bogus.
         return t
-
-    def analyze_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
-        """Bind unbound type when were able to find target TypeInfo.
-
-        This handles simple cases like 'int', 'modname.UserClass[str]', etc.
-        """
-        if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-            fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
-            return TupleType(self.anal_array(t.args), fallback, t.line)
-        # Analyze arguments and (usually) construct Instance type. The
-        # number of type arguments and their values are
-        # checked only later, since we do not always know the
-        # valid count at this point. Thus we may construct an
-        # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(t.args), t.line, t.column)
-        if not t.args and self.options.disallow_any_generics and not self.defining_alias:
-            # We report/patch invalid built-in instances already during second pass.
-            # This is done to avoid storing additional state on instances.
-            # All other (including user defined) generics will be patched/reported
-            # in the third pass.
-            if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
-                alternative = nongen_builtins[info.fullname()]
-                self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
-                any_type = AnyType(TypeOfAny.from_error, line=t.line)
-            else:
-                any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
-            instance.args = [any_type] * len(info.type_vars)
-
-        tup = info.tuple_type
-        if tup is not None:
-            # The class has a Tuple[...] base class so it will be
-            # represented as a tuple type.
-            if t.args:
-                self.fail('Generic tuple types not supported', t)
-                return AnyType(TypeOfAny.from_error)
-            return tup.copy_modified(items=self.anal_array(tup.items),
-                                     fallback=instance)
-        td = info.typeddict_type
-        if td is not None:
-            # The class has a TypedDict[...] base class so it will be
-            # represented as a typeddict type.
-            if t.args:
-                self.fail('Generic TypedDict types not supported', t)
-                return AnyType(TypeOfAny.from_error)
-            # Create a named TypedDictType
-            return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
-                                    fallback=instance)
-        return instance
 
     def visit_any(self, t: AnyType) -> Type:
         return t
