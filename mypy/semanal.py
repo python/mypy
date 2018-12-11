@@ -545,6 +545,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # implementation (if outside a stub), and any missing @overload
             # decorators.
             types, impl, non_overload_indexes = self.find_overload_sigs_and_impl(defn)
+            defn.impl = impl
             if non_overload_indexes:
                 self.handle_missing_overload_decorators(defn, non_overload_indexes,
                                                         some_overload_decorators=len(types) > 0)
@@ -552,7 +553,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # special.
             if impl is not None:
                 assert impl is defn.items[-1]
-                defn.impl = impl
                 defn.items = defn.items[:-1]
             elif not non_overload_indexes:
                 self.handle_missing_overload_implementation(defn)
