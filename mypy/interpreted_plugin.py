@@ -3,8 +3,6 @@
 from typing import Optional, Callable, Any
 from mypy.options import Options
 from mypy.types import Type, CallableType
-from mypy.nodes import TypeInfo
-
 
 MYPY = False
 if MYPY:
@@ -62,10 +60,6 @@ class InterpretedPlugin:
 
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[['mypy.plugin.ClassDefContext'], None]]:
-        return None
-
-    def get_base_class_info_hook(self, info: TypeInfo
-                                 ) -> Optional[Callable[['mypy.plugin.ClassDefContext'], None]]:
         return None
 
     def get_customize_class_mro_hook(self, fullname: str

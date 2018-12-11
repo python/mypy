@@ -1767,6 +1767,7 @@ class State:
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         patches = []  # type: List[Tuple[int, Callable[[], None]]]
+        self.manager.plugin.set_common_api(self.manager.semantic_analyzer)
         with self.wrap_context():
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
@@ -1787,6 +1788,7 @@ class State:
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
             return
+        self.manager.plugin.set_common_api(self.type_checker())
         with self.wrap_context():
             self.type_checker().check_first_pass()
 

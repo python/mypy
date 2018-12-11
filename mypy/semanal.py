@@ -868,11 +868,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if hook:
                     hook(ClassDefContext(defn, base_expr, self))
 
-        for base in defn.info.bases:
-            hook = self.plugin.get_base_class_info_hook(base.type)
-            if hook:
-                hook(ClassDefContext(defn, TempNode(base), self))
-
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
             value.accept(self)
@@ -3479,6 +3474,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         Note that this can't be used for names nested in class namespaces.
         """
+        # TODO: unify/clean-up/simplify lookup methods, see #4157.
+        # TODO: support nested classes.
         assert '.' in fullname
         module, name = fullname.rsplit('.', maxsplit=1)
         if module not in self.modules:

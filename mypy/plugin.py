@@ -7,7 +7,7 @@ from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, TypeInfo
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
@@ -49,8 +49,18 @@ AnalyzeTypeContext = NamedTuple(
         ('api', TypeAnalyzerPluginInterface)])
 
 
+class CommonPluginApi:
+    """
+    A common plugin API (shared between semantic analysis and type checking phases)
+    that all plugin hooks get independently of the context.
+    """
+    @abstractmethod
+    def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+
 @trait
-class CheckerPluginInterface:
+class CheckerPluginInterface(CommonPluginApi):
     """Interface for accessing type checker functionality in plugins."""
 
     msg = None  # type: MessageBuilder
@@ -66,7 +76,7 @@ class CheckerPluginInterface:
 
 
 @trait
-class SemanticAnalyzerPluginInterface:
+class SemanticAnalyzerPluginInterface(CommonPluginApi):
     """Interface for accessing semantic analyzer functionality in plugins."""
 
     modules = None  # type: Dict[str, MypyFile]
@@ -105,10 +115,6 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        raise NotImplementedError
-
-    @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
     @abstractmethod
@@ -206,9 +212,18 @@ class Plugin:
     various hooks.
     """
 
+    # A common API implementation. This can't be set in __init__
+    # because it is executed too soon in build.py.
+    # Therefore, build.py _must_ call set_common_api() with an instance
+    # of semantic analyzer or type checker before the corresponding pass starts.
+    common_api = None  # type: CommonPluginApi
+
     def __init__(self, options: Options) -> None:
         self.options = options
         self.python_version = options.python_version
+
+    def set_common_api(self, api: CommonPluginApi) -> None:
+        self.common_api = api
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
@@ -240,10 +255,6 @@ class Plugin:
 
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
-        return None
-
-    def get_base_class_info_hook(self, info: TypeInfo,
-                                 ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
     def get_customize_class_mro_hook(self, fullname: str
@@ -305,10 +316,6 @@ class WrapperPlugin(Plugin):
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self.plugin.get_base_class_hook(fullname)
 
-    def get_base_class_info_hook(self, info: TypeInfo
-                                 ) -> Optional[Callable[[ClassDefContext], None]]:
-        return self.plugin.get_base_class_info_hook(info)
-
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
         return self.plugin.get_customize_class_mro_hook(fullname)
@@ -337,6 +344,10 @@ class ChainedPlugin(Plugin):
         """
         super().__init__(options)
         self._plugins = plugins
+
+    def set_common_api(self, api: CommonPluginApi) -> None:
+        for plugin in self._plugins:
+            plugin.set_common_api(api)
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
@@ -369,10 +380,6 @@ class ChainedPlugin(Plugin):
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
-
-    def get_base_class_info_hook(self, info: TypeInfo
-                                 ) -> Optional[Callable[[ClassDefContext], None]]:
-        return self._find_hook(lambda plugin: plugin.get_base_class_info_hook(info))
 
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
