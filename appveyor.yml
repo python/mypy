@@ -1,0 +1,36 @@
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
+
+environment:
+  matrix:
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "64"
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "64"
+    - PYTHON: "C:\\Python35-x64"
+      PYTHON_VERSION: "3.5.x"
+      PYTHON_ARCH: "64"
+
+install:
+    - "git submodule update --init --recursive"
+    - "%PYTHON%\\python.exe -m pip install -U pip setuptools wheel"
+    - "%PYTHON%\\python.exe -m pip install -U -r external/mypy/test-requirements.txt"
+
+build: off
+
+test_script:
+    - "SET PYTHONPATH=%CD%\\external\\mypy"
+    - "%PYTHON%\\python.exe -m pytest mypyc"
+
+skip_commits:
+  files:
+    - doc/**/*
+    - '**/*.rst'
+    - '**/*.md'
+    - .gitignore
+    - .travis.yml
+    - LICENSE
+
+skip_branch_with_pr: true
