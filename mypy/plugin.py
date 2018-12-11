@@ -168,7 +168,7 @@ MethodContext = NamedTuple(
 # A context for an attribute type hook that infers the type of an attribute.
 AttributeContext = NamedTuple(
     'AttributeContext', [
-        ('type', Type),                # Type of object with attribute
+        ('type', Type),               # Type of object with attribute
         ('default_attr_type', Type),  # Original attribute type
         ('context', Context),
         ('api', CheckerPluginInterface)])
@@ -186,7 +186,7 @@ ClassDefContext = NamedTuple(
 DynamicClassDefContext = NamedTuple(
     'DynamicClassDefContext', [
         ('call', CallExpr),      # The r.h.s. of dynamic class definition
-        ('name', str),  # The name this class is being assigned to
+        ('name', str),           # The name this class is being assigned to
         ('api', SemanticAnalyzerPluginInterface)
     ])
 
@@ -198,9 +198,10 @@ class Plugin:
     provide some actual functionality.
 
     All get_ methods are treated as pure functions (you should assume that
-    results might be cached).
+    results might be cached). A plugin should return None from a get_ method
+    to give way to other plugins.
 
-    Look at the comments of various *Context objects for descriptions of
+    Look at the comments of various *Context objects for additional information on
     various hooks.
     """
 
@@ -210,42 +211,155 @@ class Plugin:
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
+        """Customize behaviour of the type analyzer for given full names.
+
+        This method is called during the semantic analysis pass whenever mypy sees an
+        unbound type. For example, while analysing this code:
+
+            from lib import Special, Other
+
+            var: Special
+            def func(x: Other[int]) -> None:
+                ...
+
+        this method will be called with 'lib.Special', and then with 'lib.Other'.
+        The callback returned by plugin must return an analyzed type,
+        i.e. an instance of `mypy.types.Type`.
+        """
         return None
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
+        """Adjust the return type of a function call.
+
+        This method is called after type checking a call. Plugin may adjust the return
+        type inferred by mypy, and/or emmit some error messages. Note, this hook is also
+        called for class instantiation calls, so that in this example:
+
+            from lib import Class, do_stuff
+
+            do_stuff(42)
+            Class()
+
+        This method will be called with 'lib.do_stuff' and then with 'lib.Class'.
+        """
         return None
 
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+        """Adjust the signature of a method.
+
+        This method is called before type checking a method call. Plugin
+        may infer a better type for the method. The hook is called for both special and
+        user-defined methods. This function is called with the method full name using
+        the class where it was _defined_. For example, in this code:
+
+            from lib import Special
+
+            class Base:
+                def method(self, arg: Any) -> Any:
+                    ...
+            class Derived(Base):
+                ...
+
+            var: Derived
+            var.method(42)
+
+            x: Special
+            y = x[0]
+
+        this method is called with '__main__.Base.method', and then with
+        'lib.Special.__getitem__'.
+        """
         return None
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
+        """Adjust return type of a method call.
+
+        This is the same as get_function_hook(), but is called with the
+        method full name (again, using the class where the method is defined).
+        """
         return None
 
     def get_attribute_hook(self, fullname: str
                            ) -> Optional[Callable[[AttributeContext], Type]]:
+        """Adjust type of a class attribute.
+
+        This method is called with attribute full name using the class where the attribute was
+        defined (or Var.info.fullname() for generated attributes). Currently, this hook is only
+        called for names that exist in the class MRO, for example in:
+
+            class Base:
+                x: Any
+                def __getattr__(self, attr: str) -> Any: ...
+
+            class Derived(Base):
+                ...
+
+            var: Derived
+            var.x
+            var.y
+
+        this method is only called with '__main__.Base.x'.
+        """
         return None
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
+        """Update class definition for given class decorators.
+
+        The plugin can modify a TypeInfo _in place_ (for example add some generated
+        methods to the symbol table). This hook is called after the class body was
+        semantically analyzed.
+
+        The hook is called with full names of all class decorators, for example
+        """
         return None
 
     def get_metaclass_hook(self, fullname: str
                            ) -> Optional[Callable[[ClassDefContext], None]]:
+        """Update class definition for given declared metaclasses.
+
+        Same as get_class_decorator_hook() but for metaclasses. Note:
+        this hook will be only called for explicit metaclasses, not for
+        inherited ones.
+        """
         return None
 
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
+        """Update class definition for given base classes.
+
+        Same as get_class_decorator_hook() but for base classes. Base classes
+        don't need to refer to TypeInfo's, if a base class refers to a variable with
+        Any type, this hook will still be called.
+        """
         return None
 
     def get_customize_class_mro_hook(self, fullname: str
                                      ) -> Optional[Callable[[ClassDefContext], None]]:
+        """Customize MRO for given classes.
+
+        The plugin can modify the class MRO _in place_. This method is called
+        with the class full name before its body was semantically analyzed.
+        """
         return None
 
     def get_dynamic_class_hook(self, fullname: str
                                ) -> Optional[Callable[[DynamicClassDefContext], None]]:
+        """Semantically analyze a dynamic class definition.
+
+        This plugin hook allows to semantically analyze dynamic class definitions like:
+
+            from lib import dynamic_class
+
+            X = dynamic_class('X', [])
+
+        For such definition, this hook will be called with 'lib.dynamic_class'.
+        The plugin should create the corresponding TypeInfo, and place it into a relevant
+        symbol table.
+        """
         return None
 
 
