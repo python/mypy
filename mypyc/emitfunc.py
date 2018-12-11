@@ -140,10 +140,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             func_name = self.func_name
             if func_name == TOP_LEVEL_NAME:
                 func_name = '<module>'  # Like normal Python tracebacks
-            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (self.source_path,
-                                                                      func_name,
-                                                                      op.line,
-                                                                      globals_static))
+            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
+                self.source_path.replace("\\", "\\\\"),
+                func_name,
+                op.line,
+                globals_static))
             if DEBUG_ERRORS:
                 self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
