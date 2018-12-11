@@ -54,7 +54,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
@@ -527,100 +527,142 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # with a @property with a setter or a deleter, and for a classic
         # @overload.
 
-        # Decide whether to analyze this as a property or an overload.  If an
-        # overload, and we're outside a stub, find the impl and set it.  Remove
-        # the impl from the item list, it's special.
-        types = []  # type: List[CallableType]
-        non_overload_indexes = []
+        defn._fullname = self.qualified_name(defn.name())
 
-        # See if the first item is a property (and not an overload)
         first_item = defn.items[0]
         first_item.is_overload = True
         first_item.accept(self)
 
-        defn._fullname = self.qualified_name(defn.name())
-
         if isinstance(first_item, Decorator) and first_item.func.is_property:
+            # This is a property.
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)
             typ = function_type(first_item.func, self.builtin_type('builtins.function'))
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
-            for i, item in enumerate(defn.items):
-                if i != 0:
-                    # The first item was already visited
-                    item.is_overload = True
-                    item.accept(self)
-                # TODO: support decorated overloaded functions properly
-                if isinstance(item, Decorator):
-                    callable = function_type(item.func, self.builtin_type('builtins.function'))
-                    assert isinstance(callable, CallableType)
-                    if not any(refers_to_fullname(dec, 'typing.overload')
-                               for dec in item.decorators):
-                        if i == len(defn.items) - 1 and not self.is_stub_file:
-                            # Last item outside a stub is impl
-                            defn.impl = item
-                        else:
-                            # Oops it wasn't an overload after all. A clear error
-                            # will vary based on where in the list it is, record
-                            # that.
-                            non_overload_indexes.append(i)
-                    else:
-                        item.func.is_overload = True
-                        types.append(callable)
-                elif isinstance(item, FuncDef):
-                    if i == len(defn.items) - 1 and not self.is_stub_file:
-                        defn.impl = item
-                    else:
-                        non_overload_indexes.append(i)
+            # This is an a normal overload. Find the item signatures, the
+            # implementation (if outside a stub), and any missing @overload
+            # decorators.
+            types, impl, non_overload_indexes = self.find_overload_sigs_and_impl(defn)
+            defn.impl = impl
             if non_overload_indexes:
-                if types:
-                    # Some of them were overloads, but not all.
-                    for idx in non_overload_indexes:
-                        if self.is_stub_file:
-                            self.fail("An implementation for an overloaded function "
-                                      "is not allowed in a stub file", defn.items[idx])
-                        else:
-                            self.fail("The implementation for an overloaded function "
-                                      "must come last", defn.items[idx])
-                else:
-                    for idx in non_overload_indexes[1:]:
-                        self.name_already_defined(defn.name(), defn.items[idx], first_item)
-                    if defn.impl:
-                        self.name_already_defined(defn.name(), defn.impl, first_item)
-                # Remove the non-overloads
-                for idx in reversed(non_overload_indexes):
-                    del defn.items[idx]
-            # If we found an implementation, remove it from the overloads to
-            # consider.
-            if defn.impl is not None:
-                assert defn.impl is defn.items[-1]
+                self.handle_missing_overload_decorators(defn, non_overload_indexes,
+                                                        some_overload_decorators=len(types) > 0)
+            # If we found an implementation, remove it from the overload item list,
+            # as it's special.
+            if impl is not None:
+                assert impl is defn.items[-1]
                 defn.items = defn.items[:-1]
-            elif not self.is_stub_file and not non_overload_indexes:
-                if not (self.type and not self.is_func_scope() and self.type.is_protocol):
-                    self.fail(
-                        "An overloaded function outside a stub file must have an implementation",
-                        defn)
-                else:
-                    for item in defn.items:
-                        if isinstance(item, Decorator):
-                            item.func.is_abstract = True
-                        else:
-                            item.is_abstract = True
+            elif not non_overload_indexes:
+                self.handle_missing_overload_implementation(defn)
 
         if types:
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
         if not defn.items:
-            # It was not any kind of overload def after all. We've visited the
-            # redefinitions already.
+            # It was not a real overload after all, but function redefinition. We've
+            # visited the redefinition(s) already.
             return
 
-        # Check final status, if the implementation is marked
-        # as @final (or the first overload in stubs), then the whole overloaded
-        # definition if @final.
+        # We know this is an overload def. Infer properties and perform some checks.
+        self.process_final_in_overload(defn)
+        self.process_static_or_class_method_in_overload(defn)
+
+        if self.type and not self.is_func_scope():
+            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+            defn.info = self.type
+        elif self.is_func_scope():
+            self.add_local(defn, defn)
+
+    def find_overload_sigs_and_impl(
+            self,
+            defn: OverloadedFuncDef) -> Tuple[List[CallableType],
+                                              Optional[OverloadPart],
+                                              List[int]]:
+        """Find overload signatures, the implementation, and items with missing @overload.
+
+        Assume that the first was already analyzed. As a side effect:
+        analyzes remaining items and updates 'is_overload' flags.
+        """
+        types = []
+        non_overload_indexes = []
+        impl = None  # type: Optional[OverloadPart]
+        for i, item in enumerate(defn.items):
+            if i != 0:
+                # Assume that the first item was already visited
+                item.is_overload = True
+                item.accept(self)
+            # TODO: support decorated overloaded functions properly
+            if isinstance(item, Decorator):
+                callable = function_type(item.func, self.builtin_type('builtins.function'))
+                assert isinstance(callable, CallableType)
+                if not any(refers_to_fullname(dec, 'typing.overload')
+                           for dec in item.decorators):
+                    if i == len(defn.items) - 1 and not self.is_stub_file:
+                        # Last item outside a stub is impl
+                        impl = item
+                    else:
+                        # Oops it wasn't an overload after all. A clear error
+                        # will vary based on where in the list it is, record
+                        # that.
+                        non_overload_indexes.append(i)
+                else:
+                    item.func.is_overload = True
+                    types.append(callable)
+            elif isinstance(item, FuncDef):
+                if i == len(defn.items) - 1 and not self.is_stub_file:
+                    impl = item
+                else:
+                    non_overload_indexes.append(i)
+        return types, impl, non_overload_indexes
+
+    def handle_missing_overload_decorators(self,
+                                           defn: OverloadedFuncDef,
+                                           non_overload_indexes: List[int],
+                                           some_overload_decorators: bool) -> None:
+        """Generate errors for overload items without @overload.
+
+        Side effect: remote non-overload items.
+        """
+        if some_overload_decorators:
+            # Some of them were overloads, but not all.
+            for idx in non_overload_indexes:
+                if self.is_stub_file:
+                    self.fail("An implementation for an overloaded function "
+                              "is not allowed in a stub file", defn.items[idx])
+                else:
+                    self.fail("The implementation for an overloaded function "
+                              "must come last", defn.items[idx])
+        else:
+            for idx in non_overload_indexes[1:]:
+                self.name_already_defined(defn.name(), defn.items[idx], defn.items[0])
+            if defn.impl:
+                self.name_already_defined(defn.name(), defn.impl, defn.items[0])
+        # Remove the non-overloads
+        for idx in reversed(non_overload_indexes):
+            del defn.items[idx]
+
+    def handle_missing_overload_implementation(self, defn: OverloadedFuncDef) -> None:
+        """Generate error about missing overload implementation (only if needed)."""
+        if not self.is_stub_file:
+            if self.type and self.type.is_protocol and not self.is_func_scope():
+                # An overloded protocol method doesn't need an implementation.
+                for item in defn.items:
+                    if isinstance(item, Decorator):
+                        item.func.is_abstract = True
+                    else:
+                        item.is_abstract = True
+            else:
+                self.fail(
+                    "An overloaded function outside a stub file must have an implementation",
+                    defn)
+
+    def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
+        """Detect the @final status of an overloaded function (and perform checks)."""
+        # If the implementation is marked as @final (or the first overload in
+        # stubs), then the whole overloaded definition if @final.
         if any(item.is_final for item in defn.items):
             # We anyway mark it as final because it was probably the intention.
             defn.is_final = True
@@ -636,7 +678,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if defn.impl is not None and defn.impl.is_final:
             defn.is_final = True
 
-        # We know this is an overload def -- let's handle classmethod and staticmethod
+    def process_static_or_class_method_in_overload(self, defn: OverloadedFuncDef) -> None:
         class_status = []
         static_status = []
         for item in defn.items:
@@ -666,12 +708,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             defn.is_class = class_status[0]
             defn.is_static = static_status[0]
-
-        if self.type and not self.is_func_scope():
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            defn.info = self.type
-        elif self.is_func_scope():
-            self.add_local(defn, defn)
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
