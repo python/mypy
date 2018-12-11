@@ -575,23 +575,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     else:
                         non_overload_indexes.append(i)
             if non_overload_indexes:
-                if types:
-                    # Some of them were overloads, but not all.
-                    for idx in non_overload_indexes:
-                        if self.is_stub_file:
-                            self.fail("An implementation for an overloaded function "
-                                      "is not allowed in a stub file", defn.items[idx])
-                        else:
-                            self.fail("The implementation for an overloaded function "
-                                      "must come last", defn.items[idx])
-                else:
-                    for idx in non_overload_indexes[1:]:
-                        self.name_already_defined(defn.name(), defn.items[idx], first_item)
-                    if defn.impl:
-                        self.name_already_defined(defn.name(), defn.impl, first_item)
-                # Remove the non-overloads
-                for idx in reversed(non_overload_indexes):
-                    del defn.items[idx]
+                self.handle_missing_overload_decorators(defn, non_overload_indexes,
+                                                        some_overload_decorators=len(types) > 0)
             # If we found an implementation, remove it from the overloads to
             # consider.
             if defn.impl is not None:
@@ -618,6 +603,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.info = self.type
         elif self.is_func_scope():
             self.add_local(defn, defn)
+
+    def handle_missing_overload_decorators(self,
+                                           defn: OverloadedFuncDef,
+                                           non_overload_indexes: List[int],
+                                           some_overload_decorators: bool) -> None:
+        if some_overload_decorators:
+            # Some of them were overloads, but not all.
+            for idx in non_overload_indexes:
+                if self.is_stub_file:
+                    self.fail("An implementation for an overloaded function "
+                              "is not allowed in a stub file", defn.items[idx])
+                else:
+                    self.fail("The implementation for an overloaded function "
+                              "must come last", defn.items[idx])
+        else:
+            for idx in non_overload_indexes[1:]:
+                self.name_already_defined(defn.name(), defn.items[idx], defn.items[0])
+            if defn.impl:
+                self.name_already_defined(defn.name(), defn.impl, defn.items[0])
+        # Remove the non-overloads
+        for idx in reversed(non_overload_indexes):
+            del defn.items[idx]
 
     def handle_missing_overload_implementation(self, defn: OverloadedFuncDef) -> None:
         if not self.is_stub_file:
