@@ -581,13 +581,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn: OverloadedFuncDef) -> Tuple[List[CallableType],
                                               Optional[FuncDef],
                                               List[int]]:
-        """Find overload signatures, the implementation, and items with missing @overload."""
+        """Find overload signatures, the implementation, and items with missing @overload.
+
+        Assume that the first was already analyzed. As a side effect:
+        analyzes remaining items and updates 'is_overload' flags.
+        """
         types = []
         non_overload_indexes = []
         impl = None
         for i, item in enumerate(defn.items):
             if i != 0:
-                # The first item was already visited
+                # Assume that the first item was already visited
                 item.is_overload = True
                 item.accept(self)
             # TODO: support decorated overloaded functions properly
@@ -598,7 +602,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                            for dec in item.decorators):
                     if i == len(defn.items) - 1 and not self.is_stub_file:
                         # Last item outside a stub is impl
-                        defn.impl = item
+                        impl = item
                     else:
                         # Oops it wasn't an overload after all. A clear error
                         # will vary based on where in the list it is, record
