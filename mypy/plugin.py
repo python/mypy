@@ -55,26 +55,38 @@ import mypy.interpreted_plugin
 
 @trait
 class TypeAnalyzerPluginInterface:
-    """Interface for accessing semantic analyzer functionality in plugins."""
+    """Interface for accessing semantic analyzer functionality in plugins.
 
+    Methods docstrings contain only basic info. Look for corresponding implementation
+    docstrings in typeanal.py for more details.
+    """
+
+    # An options object. Note: these are the cloned options for the current file.
+    # This might be different from Plugin.options (that contains default/global options)
+    # if there are per-file options in the config. This applies to all other interfaces
+    # in this file.
     options = None  # type: Options
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context) -> None:
+        """Emmit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
     def named_type(self, name: str, args: List[Type]) -> Instance:
+        """Construct an instance of a builtin type with given name."""
         raise NotImplementedError
 
     @abstractmethod
     def analyze_type(self, typ: Type) -> Type:
+        """Ananlyze an unbound type using the default mypy logic."""
         raise NotImplementedError
 
     @abstractmethod
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
                                                                          List[int],
                                                                          List[Optional[str]]]]:
+        """Find types, kinds, and names of arguments from extended callable syntax."""
         raise NotImplementedError
 
 
@@ -82,46 +94,62 @@ class TypeAnalyzerPluginInterface:
 AnalyzeTypeContext = NamedTuple(
     'AnalyzeTypeContext', [
         ('type', UnboundType),  # Type to analyze
-        ('context', Context),
+        ('context', Context),   # Relevant location context (e.g. for error messages)
         ('api', TypeAnalyzerPluginInterface)])
 
 
 @trait
 class CheckerPluginInterface:
-    """Interface for accessing type checker functionality in plugins."""
+    """Interface for accessing type checker functionality in plugins.
+
+    Methods docstrings contain only basic info. Look for corresponding implementation
+    docstrings in checker.py for more details.
+    """
 
     msg = None  # type: MessageBuilder
     options = None  # type: Options
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context) -> None:
+        """Emmit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
+        """Construct an instance of a builtin type with given type arguments."""
         raise NotImplementedError
 
 
 @trait
 class SemanticAnalyzerPluginInterface:
-    """Interface for accessing semantic analyzer functionality in plugins."""
+    """Interface for accessing semantic analyzer functionality in plugins.
+
+    Methods docstrings contain only basic info. Look for corresponding implementation
+    docstrings in semanal.py for more details.
+
+    # TODO: clean-up lookup functions.
+    """
 
     modules = None  # type: Dict[str, MypyFile]
+    # Options for current file.
     options = None  # type: Options
     cur_mod_id = None  # type: str
     msg = None  # type: MessageBuilder
 
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+        """Construct an instance of a builtin type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod
     def parse_bool(self, expr: Expression) -> Optional[bool]:
+        """Parse True/False literals."""
         raise NotImplementedError
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
+        """Emmit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
@@ -130,31 +158,54 @@ class SemanticAnalyzerPluginInterface:
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   third_pass: bool = False) -> Type:
+        """Analyze an unbound type."""
         raise NotImplementedError
 
     @abstractmethod
     def class_type(self, self_type: Type) -> Type:
+        """Generate type of first argument of class methods from type of self."""
         raise NotImplementedError
 
     @abstractmethod
     def builtin_type(self, fully_qualified_name: str) -> Instance:
+        """Deprecated: use named_type instead."""
         raise NotImplementedError
 
     @abstractmethod
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        """Lookup a symbol by its fully qualified name.
+
+        Raise an error if not found.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+        """Lookup a symbol by its fully qualified name.
+
+        Return None if not found.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        """Lookup symbol using a name in current scope.
+
+        This follows Python local->non-local->global->builtins rules.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Specify semantic dependencies for generated methods/variables.
+
+        If the symbol with full name given by trigger is found to be stale by mypy,
+        then the body of node with full name given by target will be re-checked.
+        By default, this is the node that is currently analyzed.
+
+        This is used by fine-grained incremental mode (mypy daemon).
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -164,6 +215,7 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def qualified_name(self, n: str) -> str:
+        """Make qualified name using current module and enclosing class (if any)."""
         raise NotImplementedError
 
 
@@ -177,7 +229,7 @@ FunctionContext = NamedTuple(
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         ('default_return_type', Type),     # Return type inferred from signature
         ('args', List[List[Expression]]),  # Actual expressions for each formal argument
-        ('context', Context),
+        ('context', Context),              # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])
 
 # A context for a method signature hook that infers a better signature for a
@@ -188,7 +240,7 @@ MethodSigContext = NamedTuple(
         ('type', Type),                       # Base object type for method call
         ('args', List[List[Expression]]),     # Actual expressions for each formal argument
         ('default_signature', CallableType),  # Original signature of the method
-        ('context', Context),
+        ('context', Context),                 # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])
 
 # A context for a method hook that infers the return type of a method with a
@@ -198,10 +250,10 @@ MethodSigContext = NamedTuple(
 MethodContext = NamedTuple(
     'MethodContext', [
         ('type', Type),                    # Base object type for method call
-        ('arg_types', List[List[Type]]),
-        ('default_return_type', Type),
-        ('args', List[List[Expression]]),
-        ('context', Context),
+        ('arg_types', List[List[Type]]),   # Lists of actual argument types for every formal param
+        ('default_return_type', Type),     # Return type inferred by mypy
+        ('args', List[List[Expression]]),  # Lists of actual expressions for every formal argument
+        ('context', Context),              # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])
 
 # A context for an attribute type hook that infers the type of an attribute.
@@ -209,7 +261,7 @@ AttributeContext = NamedTuple(
     'AttributeContext', [
         ('type', Type),               # Type of object with attribute
         ('default_attr_type', Type),  # Original attribute type
-        ('context', Context),
+        ('context', Context),         # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])
 
 # A context for a class hook that modifies the class definition.
@@ -397,7 +449,7 @@ class Plugin:
 
         For such definition, this hook will be called with 'lib.dynamic_class'.
         The plugin should create the corresponding TypeInfo, and place it into a relevant
-        symbol table.
+        symbol table, e.g. using ctx.api.add_symbol_table_node().
         """
         return None
 
