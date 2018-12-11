@@ -54,7 +54,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
@@ -579,7 +579,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def find_overload_sigs_and_impl(
             self,
             defn: OverloadedFuncDef) -> Tuple[List[CallableType],
-                                              Optional[FuncDef],
+                                              Optional[OverloadPart],
                                               List[int]]:
         """Find overload signatures, the implementation, and items with missing @overload.
 
@@ -588,7 +588,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """
         types = []
         non_overload_indexes = []
-        impl = None
+        impl = None  # type: Optional[OverloadPart]
         for i, item in enumerate(defn.items):
             if i != 0:
                 # Assume that the first item was already visited
