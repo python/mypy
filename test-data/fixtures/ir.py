@@ -2,7 +2,7 @@
 # test cases.
 
 from typing import (
-    TypeVar, Generic, List, Iterator, Iterable, Sized, Dict, Optional, Tuple, Any, Set,
+    TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable, Sequence,
 )
 
@@ -69,7 +69,7 @@ class bool:
     def __init__(self, o: object = ...) -> None: ...
 
 
-class tuple(Generic[T_co], Sized):
+class tuple(Generic[T_co]):
     def __init__(self, i: Iterable[T_co]) -> None: pass
     def __getitem__(self, i: int) -> T_co: pass
     def __len__(self) -> int: pass
@@ -77,7 +77,7 @@ class tuple(Generic[T_co], Sized):
 
 class function: pass
 
-class list(Generic[T], Sequence[T], Iterable[T], Sized):
+class list(Generic[T], Sequence[T], Iterable[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
     @overload
     def __getitem__(self, i: int) -> T: ...
@@ -166,7 +166,8 @@ def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
 def reversed(object: Sequence[T]) -> Iterator[T]: ...
 def id(o: object) -> int: pass
-def len(o: Sized) -> int: pass
+# This type is obviously wrong but the test stubs don't have Sized anymore
+def len(o: object) -> int: pass
 def print(*object) -> None: pass
 def range(x: int, y: int = ..., z: int = ...) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
