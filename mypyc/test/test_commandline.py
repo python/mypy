@@ -46,14 +46,17 @@ class TestCommandLine(MypycDataSuite):
 
         try:
             # Compile program
-            subprocess.check_call(['%s/scripts/mypyc' % base_path] + args, cwd='tmp')
+            subprocess.check_call([sys.executable,
+                                   os.path.join(base_path, 'scripts', 'mypyc')] + args,
+                                  cwd='tmp')
 
             # Run main program
             out = subprocess.check_output(
                 [python3_path, program],
                 cwd='tmp')
         finally:
-            so_paths = glob.glob('tmp/**/*.so', recursive=True)
+            suffix = 'pyd' if sys.platform == 'win32' else 'so'
+            so_paths = glob.glob('tmp/**/*.{}'.format(suffix), recursive=True)
             for path in so_paths:
                 os.remove(path)
 

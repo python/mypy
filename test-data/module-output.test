@@ -9,19 +9,22 @@ def f(x: int) -> int:
 #include <CPy.h>
 
 static CPyModule *CPyStatic_module_internal = NULL;
-static CPyModule *CPyStatic_module = Py_None;
+static CPyModule *CPyStatic_module;
 static PyObject *CPyStatic_globals;
 static CPyModule *CPyStatic_builtins_module_internal = NULL;
-static CPyModule *CPyStatic_builtins_module = Py_None;
+static CPyModule *CPyStatic_builtins_module;
 static PyObject *CPyStatic_unicode_0;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
 static char CPyDef___top_level__(void);
-static int CPyLiteralsInit(void)
+static int CPyGlobalsInit(void)
 {
     static int is_initialized = 0;
     if (is_initialized) return 0;
     
+    CPy_Init();
+    CPyStatic_module = Py_None;
+    CPyStatic_builtins_module = Py_None;
     CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
     if (unlikely(CPyStatic_unicode_0 == NULL))
         return -1;
@@ -43,6 +46,7 @@ static struct PyModuleDef module = {
     module_methods
 };
 
+CPy_dllexport
 PyMODINIT_FUNC PyInit_prog(void)
 {
     if (CPyStatic_module_internal) {
@@ -56,7 +60,7 @@ PyMODINIT_FUNC PyInit_prog(void)
     CPyStatic_globals = PyModule_GetDict(CPyStatic_module_internal);
     if (unlikely(CPyStatic_globals == NULL))
         return NULL;
-    if (CPyLiteralsInit() < 0)
+    if (CPyGlobalsInit() < 0)
         return NULL;
     char result = CPyDef___top_level__();
     if (result == 2)

@@ -186,7 +186,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))
-    emitter.emit_line("PyVarObject_HEAD_INIT(&PyType_Type, 0)")
+    emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
     for field, value in fields.items():
         emitter.emit_line(".{} = {},".format(field, value))
     emitter.emit_line("};")
@@ -305,6 +305,9 @@ def generate_vtable(entries: VTableEntries,
             cl, attr, is_setter = entry
             namer = native_setter_name if is_setter else native_getter_name
             emitter.emit_line('(CPyVTableItem){},'.format(namer(cl, attr, emitter.names)))
+    # msvc doesn't allow empty arrays; maybe allowing them at all is an extension?
+    if not entries:
+        emitter.emit_line('NULL')
     emitter.emit_line('};')
 
 

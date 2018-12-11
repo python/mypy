@@ -46,7 +46,7 @@ class TestCompiler(MypycDataSuite):
                     options=options,
                     alt_lib_path=test_temp_dir)
                 ctext = emitmodule.compile_modules_to_c(
-                    result, module_names=['prog'], use_shared_lib=False)
+                    result, module_names=['prog'], shared_lib_name=None)
                 out = ctext.splitlines()
             except CompileError as e:
                 out = e.messages

@@ -27,7 +27,9 @@ Linux Requirements
 Windows Requirements
 --------------------
 
-Windows is currently unsupported.
+* Windows has been tested with Windows 10 and MSVC 2017.
+
+* Python 3.5+ (64-bit)
 
 Quick Start for Contributors
 ----------------------------

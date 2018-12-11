@@ -64,6 +64,12 @@ static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
     PyObject *bases = NULL;
     PyObject *slots;
 
+    // If the type of the class (the metaclass) is NULL, we default it
+    // to being type.  (This allows us to avoid needing to initialize
+    // it explicitly on windows.)
+    if (!Py_TYPE(template_)) {
+        Py_TYPE(template_) = &PyType_Type;
+    }
     PyTypeObject *metaclass = Py_TYPE(template_);
 
     if (orig_bases) {
@@ -897,7 +903,7 @@ static void CPy_AddTraceback(const char *filename, const char *funcname, int lin
 // exception APIs that might want to return NULL pointers instead
 // return properly refcounted pointers to this dummy object.
 struct ExcDummyStruct { PyObject_HEAD };
-static struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(&PyBaseObject_Type) };
+static struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
 static PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
 
 static inline void _CPy_ToDummy(PyObject **p) {
@@ -1012,6 +1018,14 @@ static void CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_t
     _CPy_ToNone(p_type);
     _CPy_ToNone(p_value);
     _CPy_ToNone(p_traceback);
+}
+
+// Because its dynamic linker is more restricted than linux/OS X,
+// Windows doesn't allow initializing globals with values from
+// other dynamic libraries. This means we need to initialize
+// things at load time.
+static void CPy_Init(void) {
+    _CPy_ExcDummyStruct.ob_base.ob_type = &PyBaseObject_Type;
 }
 
 #ifdef __cplusplus

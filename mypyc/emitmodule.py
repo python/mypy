@@ -42,7 +42,7 @@ def parse_and_typecheck(sources: List[BuildSource], options: Options,
 
 
 def compile_modules_to_c(result: BuildResult, module_names: List[str],
-                         use_shared_lib: bool,
+                         shared_lib_name: Optional[str],
                          ops: Optional[List[str]] = None) -> str:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
 
@@ -70,7 +70,7 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
-    generator = ModuleGenerator(literals, modules, source_paths, use_shared_lib)
+    generator = ModuleGenerator(literals, modules, source_paths, shared_lib_name)
     return generator.generate_c_for_modules()
 
 
@@ -100,13 +100,17 @@ class ModuleGenerator:
                  literals: LiteralsMap,
                  modules: List[Tuple[str, ModuleIR]],
                  source_paths: Dict[str, str],
-                 use_shared_lib: bool) -> None:
+                 shared_lib_name: Optional[str]) -> None:
         self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext([name for name, _ in modules])
         self.names = self.context.names
-        self.use_shared_lib = use_shared_lib
+        # Initializations of globals to simple values that we can't
+        # do statically because the windows loader is bad.
+        self.simple_inits = []  # type: List[Tuple[str, str]]
+        self.shared_lib_name = shared_lib_name
+        self.use_shared_lib = shared_lib_name is not None
 
     def generate_c_for_modules(self) -> str:
         emitter = Emitter(self.context)
@@ -133,7 +137,7 @@ class ModuleGenerator:
             for fn in module.functions:
                 generate_function_declaration(fn, emitter)
 
-        self.generate_literals(emitter)
+        self.generate_globals_init(emitter)
 
         classes = []
         for module_name, module in self.modules:
@@ -159,6 +163,18 @@ class ModuleGenerator:
                     emitter.emit_line()
                     generate_wrapper_function(fn, emitter)
 
+        # Generate a dummy initialization function for the shared lib,
+        # since the windows linker gets mad if it isn't present.
+        if self.shared_lib_name:
+            emitter.emit_line()
+            emitter.emit_lines(
+                'PyMODINIT_FUNC PyInit_lib{}(void)'.format(self.shared_lib_name),
+                '{',
+                'PyErr_SetString(PyExc_RuntimeError, "mypyc shared lib is not to be imported");',
+                'return NULL;',
+                '}',
+            )
+
         declarations = Emitter(self.context)
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
@@ -172,14 +188,18 @@ class ModuleGenerator:
 
         return ''.join(declarations.fragments + emitter.fragments)
 
-    def generate_literals(self, emitter: Emitter) -> None:
+    def generate_globals_init(self, emitter: Emitter) -> None:
         emitter.emit_lines(
-            'static int CPyLiteralsInit(void)',
+            'static int CPyGlobalsInit(void)',
             '{',
             'static int is_initialized = 0;',
             'if (is_initialized) return 0;',
             ''
         )
+
+        emitter.emit_line('CPy_Init();')
+        for symbol, fixup in self.simple_inits:
+            emitter.emit_line('{} = {};'.format(symbol, fixup))
 
         for (_, literal), identifier in self.literals.items():
             symbol = emitter.static_name(identifier, None)
@@ -258,7 +278,8 @@ class ModuleGenerator:
             declaration = 'PyMODINIT_FUNC PyInit_{}(void)'.format(module_name)
         else:
             declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
-        emitter.emit_lines(declaration,
+        emitter.emit_lines('CPy_dllexport',
+                           declaration,
                            '{')
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
@@ -294,7 +315,7 @@ class ModuleGenerator:
                 emitter.emit_lines('if (unlikely(!{}))'.format(type_struct),
                                    '    return NULL;')
 
-        emitter.emit_lines('if (CPyLiteralsInit() < 0)',
+        emitter.emit_lines('if (CPyGlobalsInit() < 0)',
                            '    return NULL;')
 
         self.generate_top_level_call(module, emitter)
@@ -371,7 +392,8 @@ class ModuleGenerator:
         internal_static_name = self.module_internal_static_name(module_name, emitter)
         self.declare_global('CPyModule *', internal_static_name, initializer='NULL')
         static_name = emitter.static_name('module', module_name)
-        self.declare_global('CPyModule *', static_name, initializer='Py_None')
+        self.declare_global('CPyModule *', static_name)
+        self.simple_inits.append((static_name, 'Py_None'))
 
     def declare_imports(self, imps: Iterable[str], emitter: Emitter) -> None:
         for imp in imps:

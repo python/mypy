@@ -57,7 +57,7 @@ else:
     from distutils.core import setup, Extension
     from distutils.command.build_ext import build_ext  # type: ignore
 
-from distutils import sysconfig
+from distutils import sysconfig, ccompiler
 
 
 def setup_mypycify_vars() -> None:
@@ -126,7 +126,7 @@ def get_mypy_config(paths: List[str],
     return sources, options
 
 
-shim_template = """\
+shim_template_unix = """\
 #include <Python.h>
 
 PyObject *CPyInit_{full_modname}(void);
@@ -138,6 +138,68 @@ PyInit_{modname}(void)
 }}
 """
 
+# As far as I could tell, Windows lacks the rpath style features we
+# would need in automatically load the shared library (located
+# relative to the module library) when a module library is loaded,
+# which means that instead we get to do it dynamically.
+#
+# We do this by, at module initialization time, finding the location
+# of the module dll and using it to compute the location of the shared
+# library. We then load the shared library with LoadLibrary, find the
+# appropriate CPyInit_ routine using GetProcAddress, and call it.
+#
+# The relative path of the shared library (from the shim library) is provided
+# as the preprocessor define MYPYC_LIBRARY.
+shim_template_windows = r"""\
+#include <Python.h>
+#include <windows.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+
+typedef PyObject *(__cdecl *INITPROC)();
+
+PyMODINIT_FUNC
+PyInit_{modname}(void)
+{{
+    char path[MAX_PATH];
+    char drive[MAX_PATH];
+    char directory[MAX_PATH];
+    HINSTANCE hinstLib;
+    INITPROC proc;
+
+    // get the file name of this dll
+    DWORD res = GetModuleFileName((HINSTANCE)&__ImageBase, path, sizeof(path));
+    if (res == 0 || res == sizeof(path)) {{
+        PyErr_SetString(PyExc_RuntimeError, "GetModuleFileName failed");
+        return NULL;
+    }}
+
+    // find the directory this dll is in
+    _splitpath(path, drive, directory, NULL, NULL);
+    // and use it to construct a path to the shared library
+    snprintf(path, sizeof(path), "%s%s%s", drive, directory, MYPYC_LIBRARY);
+
+    hinstLib = LoadLibrary(path);
+    if (!hinstLib) {{
+        PyErr_SetString(PyExc_RuntimeError, "LoadLibrary failed");
+        return NULL;
+    }}
+    proc = (INITPROC)GetProcAddress(hinstLib, "CPyInit_{full_modname}");
+    if (!proc) {{
+        PyErr_SetString(PyExc_RuntimeError, "GetProcAddress failed");
+        return NULL;
+    }}
+
+    return proc();
+}}
+
+// distutils sometimes spuriously tells cl to export CPyInit___init__,
+// so provide that so it chills out
+PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}
+"""
+
 
 def generate_c_extension_shim(full_module_name: str, module_name: str, dirname: str) -> str:
     """Create a C extension shim with a passthrough PyInit function."""
@@ -145,6 +207,7 @@ def generate_c_extension_shim(full_module_name: str, module_name: str, dirname: 
     cpath = os.path.join(dirname, cname)
 
     with open(cpath, 'w') as f:
+        shim_template = shim_template_windows if sys.platform == 'win32' else shim_template_unix
         f.write(shim_template.format(modname=module_name,
                                      full_modname=exported_name(full_module_name)))
 
@@ -164,7 +227,7 @@ def include_dir() -> str:
 
 
 def generate_c(sources: List[BuildSource], options: Options,
-               use_shared_lib: bool) -> Tuple[str, str]:
+               shared_lib_name: Optional[str]) -> Tuple[str, str]:
     """Drive the actual core compilation step.
 
     Returns the C source code and (for debugging) the pretty printed IR.
@@ -184,7 +247,7 @@ def generate_c(sources: List[BuildSource], options: Options,
     print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
 
     ops = []  # type: List[str]
-    ctext = emitmodule.compile_modules_to_c(result, module_names, use_shared_lib, ops=ops)
+    ctext = emitmodule.compile_modules_to_c(result, module_names, shared_lib_name, ops=ops)
 
     t2 = time.time()
     print("Compiled to C in {:.3f}s".format(t2 - t1))
@@ -272,6 +335,12 @@ def mypycify(paths: List[str],
 
     setup_mypycify_vars()
 
+    # Create a compiler object so we can make decisions based on what
+    # compiler is being used. typeshed is missing some attribues on the
+    # compiler object so we give it type Any
+    compiler = ccompiler.new_compiler()  # type: Any
+    sysconfig.customize_compiler(compiler)
+
     expanded_paths = []
     for path in paths:
         expanded_paths.extend(glob.glob(path))
@@ -289,29 +358,38 @@ def mypycify(paths: List[str],
     use_shared_lib = len(sources) > 1 or any('.' in x.module for x in sources)
     cfile = os.path.join(build_dir, '__native.c')
 
+    lib_name = shared_lib_name([source.module for source in sources]) if use_shared_lib else None
+
     # We let the test harness make us skip doing the full compilation
     # so that it can do a corner-cutting version without full stubs.
     # TODO: Be able to do this based on file mtimes?
     if not skip_cgen:
-        ctext, ops_text = generate_c(sources, options, use_shared_lib)
+        ctext, ops_text = generate_c(sources, options, lib_name)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)
-        with open(cfile, 'w') as f:
+        with open(cfile, 'w', encoding='utf-8') as f:
             f.write(ctext)
 
-    cflags = [
-        '-O{}'.format(opt_level),
-        '-Werror', '-Wno-unused-function', '-Wno-unused-label',
-        '-Wno-unreachable-code', '-Wno-unused-variable', '-Wno-trigraphs',
-        '-Wno-unused-command-line-argument'
-    ]
-    if sys.platform == 'linux' and 'clang' not in os.getenv('CC', ''):
-        # This flag is needed for gcc but does not exist on clang.
-        cflags += ['-Wno-unused-but-set-variable']
+    cflags = []  # type: List[str]
+    if compiler.compiler_type == 'unix':
+        cflags += [
+            '-O{}'.format(opt_level), '-Werror', '-Wno-unused-function', '-Wno-unused-label',
+            '-Wno-unreachable-code', '-Wno-unused-variable', '-Wno-trigraphs',
+            '-Wno-unused-command-line-argument'
+        ]
+        if 'gcc' in compiler.compiler[0]:
+            # This flag is needed for gcc but does not exist on clang.
+            cflags += ['-Wno-unused-but-set-variable']
+    elif compiler.compiler_type == 'msvc':
+        if opt_level == '3':
+            opt_level = '2'
+        cflags += [
+            '/O{}'.format(opt_level)
+        ]
 
     if use_shared_lib:
-        lib_name = shared_lib_name([source.module for source in sources])
+        assert lib_name
         extensions = build_using_shared_lib(sources, lib_name, cfile, build_dir, cflags)
     else:
         extensions = build_single_module(sources, cfile, cflags)
@@ -358,8 +436,18 @@ class MypycifyBuildExt(build_ext):
             shared_dir, shared_file = os.path.split(
                 self.get_ext_fullpath(ext.mypyc_shared_target.name))
             shared_name = os.path.splitext(shared_file)[0][3:]
-            ext.libraries.append(shared_name)
-            ext.library_dirs.append(shared_dir)
+            if sys.platform == 'win32':
+                # On windows, instead of linking against the shared library,
+                # we dynamically load it at runtime. We generate our C shims
+                # before we have found out what the library filename is, so
+                # pass it in as a preprocessor define.
+                path = os.path.join(relative_lib_path, shared_file)
+                ext.extra_compile_args.append(
+                    '/DMYPYC_LIBRARY=\\"{}\\"'.format(path.replace('\\', '\\\\')))
+            else:
+                # On other platforms we link against the library normally
+                ext.libraries.append(shared_name)
+                ext.library_dirs.append(shared_dir)
             if sys.platform == 'linux':
                 ext.runtime_library_dirs.append('$ORIGIN/{}'.format(
                     relative_lib_path))

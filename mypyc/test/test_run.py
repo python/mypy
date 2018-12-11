@@ -6,7 +6,7 @@ import platform
 import subprocess
 import contextlib
 import sys
-from typing import List, Iterator
+from typing import List, Iterator, Optional
 
 from mypy import build
 from mypy.test.data import DataDrivenTestCase
@@ -17,6 +17,7 @@ from mypy.options import Options
 from mypyc import genops
 from mypyc import emitmodule
 from mypyc.test.config import prefix
+from mypyc.build import shared_lib_name
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output,
     heading, show_c
@@ -91,9 +92,9 @@ class TestRun(MypycDataSuite):
             os.mkdir(workdir)
 
             source_path = 'native.py'
-            with open(source_path, 'w') as f:
+            with open(source_path, 'w', encoding='utf-8') as f:
                 f.write(text)
-            with open('interpreted.py', 'w') as f:
+            with open('interpreted.py', 'w', encoding='utf-8') as f:
                 f.write(text)
 
             source = build.BuildSource(source_path, 'native', text)
@@ -116,6 +117,11 @@ class TestRun(MypycDataSuite):
             for source in sources:
                 options.per_module_options.setdefault(source.module, {})['mypyc'] = True
 
+            if len(module_names) == 1:
+                lib_name = None  # type: Optional[str]
+            else:
+                lib_name = shared_lib_name([source.module for source in sources])
+
             try:
                 result = emitmodule.parse_and_typecheck(
                     sources=sources,
@@ -124,14 +130,14 @@ class TestRun(MypycDataSuite):
                 ctext = emitmodule.compile_modules_to_c(
                     result,
                     module_names=module_names,
-                    use_shared_lib=len(module_names) > 1)
+                    shared_lib_name=lib_name)
             except CompileError as e:
                 for line in e.messages:
                     print(line)
                 assert False, 'Compile error'
 
             cpath = os.path.abspath(os.path.join(workdir, '__native.c'))
-            with open(cpath, 'w') as f:
+            with open(cpath, 'w', encoding='utf-8') as f:
                 f.write(ctext)
 
             setup_file = os.path.abspath(os.path.join(workdir, 'setup.py'))
@@ -141,7 +147,8 @@ class TestRun(MypycDataSuite):
             run_setup(setup_file, ['build_ext', '--inplace'])
             # Oh argh run_setup doesn't propagate failure. For now we'll just assert
             # that the file is there.
-            if not glob.glob('native.*.so'):
+            suffix = 'pyd' if sys.platform == 'win32' else 'so'
+            if not glob.glob('native.*.{}'.format(suffix)):
                 show_c(ctext)
                 assert False, "Compilation failed"
 

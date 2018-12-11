@@ -10,12 +10,13 @@ base_dir = os.path.join(os.path.dirname(__file__), '..', '..')
 
 
 class TestExternal(unittest.TestCase):
+    # TODO: Get this to work on Windows.
+    # (Or don't. It is probably not a good use of time.)
+    @unittest.skipIf(sys.platform.startswith("win"), "rt tests don't work on windows")
     def test_c_unit_test(self) -> None:
         """Run C unit tests in a subprocess."""
         # Build Google Test, the C++ framework we use for testing C code.
         # The source code for Google Test is copied to this repository.
-        #
-        # TODO: Get this to work on Windows.
         if sys.platform == 'darwin':
             env = {'CPPFLAGS': '-mmacosx-version-min=10.10'}
         else:
@@ -38,8 +39,9 @@ class TestExternal(unittest.TestCase):
         mypy_dir = os.path.join(base_dir, 'external', 'mypy')
         if not os.path.exists(os.path.join(mypy_dir, 'mypy', 'typeshed', 'stdlib')):
             raise AssertionError('Submodule mypy/mypy/typeshed not ready')
-        env = {'PYTHONPATH': mypy_dir,
-               'MYPYPATH': '%s:%s' % (mypy_dir, base_dir)}
+        env = os.environ.copy()
+        env['PYTHONPATH'] = mypy_dir
+        env['MYPYPATH'] = os.pathsep.join((mypy_dir, base_dir))
         status = subprocess.call(
             [sys.executable,
              '-m', 'mypy',
