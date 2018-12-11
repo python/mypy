@@ -210,7 +210,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if var.type:
-            if self.context_contains_literal_like_type() and var.name() in {'True', 'False'}:
+            if is_literal_type_like(self.type_context[-1]) and var.name() in {'True', 'False'}:
                 return LiteralType(var.name() == 'True', self.named_type('builtins.bool'))
             else:
                 return var.type
@@ -1750,14 +1750,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
         typ = self.named_type('builtins.int')
-        if self.context_contains_literal_like_type():
+        if is_literal_type_like(self.type_context[-1]):
             return LiteralType(value=e.value, fallback=typ)
         return typ
 
     def visit_str_expr(self, e: StrExpr) -> Type:
         """Type check a string literal (trivial)."""
         typ = self.named_type('builtins.str')
-        if self.context_contains_literal_like_type():
+        if is_literal_type_like(self.type_context[-1]):
             return LiteralType(value=e.value, fallback=typ)
         return typ
 
@@ -3348,10 +3348,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
-
-    def context_contains_literal_like_type(self) -> bool:
-        """Returns 'true' if the context contains anything that resembles a LiteralType"""
-        return any(is_literal_type_like(item) for item in self.type_context)
 
 
 def has_any_type(t: Type) -> bool:
