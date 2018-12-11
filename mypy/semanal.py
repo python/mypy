@@ -549,8 +549,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if non_overload_indexes:
                 self.handle_missing_overload_decorators(defn, non_overload_indexes,
                                                         some_overload_decorators=len(types) > 0)
-            # If we found an implementation, remove it from the overload item list, as it's
-            # special.
+            # If we found an implementation, remove it from the overload item list,
+            # as it's special.
             if impl is not None:
                 assert impl is defn.items[-1]
                 defn.items = defn.items[:-1]
@@ -562,8 +562,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.type.line = defn.line
 
         if not defn.items:
-            # It was not any kind of overload def after all. We've visited the
-            # redefinitions already.
+            # It was not a real overload after all, but function redefinition. We've
+            # visited the redefinition(s) already.
             return
 
         # We know this is an overload def. Infer properties and perform some checks.
@@ -622,7 +622,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                            defn: OverloadedFuncDef,
                                            non_overload_indexes: List[int],
                                            some_overload_decorators: bool) -> None:
-        """Generate errors for overload items without @overload."""
+        """Generate errors for overload items without @overload.
+
+        Side effect: remote non-overload items.
+        """
         if some_overload_decorators:
             # Some of them were overloads, but not all.
             for idx in non_overload_indexes:
