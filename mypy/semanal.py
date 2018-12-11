@@ -597,17 +597,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if defn.impl is not None:
                 assert defn.impl is defn.items[-1]
                 defn.items = defn.items[:-1]
-            elif not self.is_stub_file and not non_overload_indexes:
-                if not (self.type and not self.is_func_scope() and self.type.is_protocol):
-                    self.fail(
-                        "An overloaded function outside a stub file must have an implementation",
-                        defn)
-                else:
-                    for item in defn.items:
-                        if isinstance(item, Decorator):
-                            item.func.is_abstract = True
-                        else:
-                            item.is_abstract = True
+            elif not non_overload_indexes:
+                self.handle_missing_overload_implementation(defn)
 
         if types:
             defn.type = Overloaded(types)
@@ -656,6 +647,20 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.info = self.type
         elif self.is_func_scope():
             self.add_local(defn, defn)
+
+    def handle_missing_overload_implementation(self, defn: OverloadedFuncDef) -> None:
+        if not self.is_stub_file:
+            if self.type and self.type.is_protocol and not self.is_func_scope():
+                # An overloded protocol method doesn't need an implementation.
+                for item in defn.items:
+                    if isinstance(item, Decorator):
+                        item.func.is_abstract = True
+                    else:
+                        item.is_abstract = True
+            else:
+                self.fail(
+                    "An overloaded function outside a stub file must have an implementation",
+                    defn)
 
     def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
         # Check final status, if the implementation is marked
