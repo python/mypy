@@ -67,184 +67,130 @@ Configuring mypy to use plugins
 *******************************
 
 Plugins can be specified using a :ref:`config file <config-file>` using one
-of the two formats: full path to the plugin file
+of the two formats: full path to the plugin file, or a module name (if the plugin
+is installed using ``pip install`` in the same virtual environment
+where mypy is running). The two formats can be mixed, for example:
 
 .. code-block:: ini
 
     [mypy]
-    plugins = /path/to/plugin.py
+    plugins = /one/plugin.py, other.plugin
+
+Mypy will try to import the plugins and will look for an entry point function
+named ``plugin``. If the plugin entry point function has a different name, it
+can be specified after colon:
+
+.. code-block:: ini
+
+    [mypy]
+    plugins = custom_plugin:custom_entry_point
+
+In following sections we describe basics of the plugin system with
+some examples. For more technical details please read docstrings
+in ``mypy/plugin.py``. Also you can find good examples in the bundled
+plugins located in ``mypy/plugins``.
 
 Large scale overview
 ********************
 
-Plugins are collected from the corresponding config option
-  (either a paths to Python files, or installed Python modules)
-  and imported using importlib
-* Every module should get an entry point function (called 'plugin' by default,
-  but may be overridden in the config file), that should accept a single string
-  argument that is a full mypy version (includes git commit hash for dev versions)
-  and return a subclass of mypy.plugins.Plugin
-* All plugin class constructors should match the signature of mypy.plugin.Plugin
-  (i.e. should accept an mypy.options.Options object), and *must* call super().__init__
-* At several steps during semantic analysis and type checking mypy calls special `get_xxx`
-  methods on user plugins with a single string argument that is a full name of a relevant
-  node (see mypy.plugin.Plugin method docstrings for details)
-* The plugins are called in the order they are passed in the config option. Every plugin must
-  decide whether to act on a given full name. The first plugin that returns non-None object
-  will be used
-* The above decision should be made using the limited common API specified by
-  mypy.plugin.CommonPluginApi
-* The callback returned by the plugin will be called with a larger context that includes
-  relevant current state (e.g. a default return type, or a default attribute type) and
-  a wider relevant API provider (e.g. SemanticAnalyzerPluginInterface or
-  CheckerPluginInterface)
-* The result of this is used for further processing. See various `XxxContext` named tuples
-  for details about which information is given to each hook.
+Every entry point function should accept a single string argument
+that is a full mypy version and return a subclass of ``mypy.plugins.Plugin``.
+At several steps during semantic analysis and type checking mypy calls special
+``get_xxx`` methods listed :ref:`below <plugin-hooks>` on user plugins.
+The first plugin that returns non-None object will be used to customize the
+corresponding aspect of analyzing/checking the current abstract syntax tree node.
 
-The above two-step plugin choice procedure exists to allow effectively coordinate
-multiple plugins.
+The callback returned by the ``get_xxx`` method will be given a detailed
+current context and an API to create new nodes, new types, emit error messages
+etc., and the result will be used for further processing. Such two-step plugin
+choice procedure exists to allow effectively coordinate multiple plugins.
 
 Plugin developers should ensure that their plugins work well in incremental and
-daemon modes. In particular, plugins should not hold global state, and should always call
-add_plugin_dependency() in plugin hooks called during semantic analysis.
+daemon modes. In particular, plugins should not hold global state, and should
+always add semantic dependencies for generated nodes.
 
-There is no dedicated cache storage for plugins, but plugins can store per-TypeInfo data
-in a special .metadata attribute that is serialized to cache between incremental runs.
-To avoid collisions between plugins they are encouraged to store their state
-under a dedicated key coinciding with plugin name in the metadata dictionary.
-Every value stored there must be JSON-serializable.
-
+.. _plugin_hooks:
 
 Current list of plugin hooks
 ****************************
 
-get_type_analyze_hook()
-    """Customize behaviour of the type analyzer for given full names.
+**get_type_analyze_hook()** customizes behaviour of the type analyzer.
+For example, PEP 484 doesn't support definig variadic generic types:
 
-    This method is called during the semantic analysis pass whenever mypy sees an
-    unbound type. For example, while analysing this code:
+.. code-block:: python
 
-        from lib import Special, Other
+    from lib import Vector
 
-        var: Special
-        def func(x: Other[int]) -> None:
-            ...
+    a: Vector[int, int]
+    b: Vector[int, int, int]
 
-    this method will be called with 'lib.Special', and then with 'lib.Other'.
-    The callback returned by plugin must return an analyzed type,
-    i.e. an instance of `mypy.types.Type`.
+When analyzing this code, mypy will call ``get_type_analyze_hook("lib.Vector")``,
+so the plugin can return some valid type for each variable.
 
-get_function_hook()
-    """Adjust the return type of a function call.
+**get_function_hook()** is used to adjust the return type of a function call.
+This is a good choice if the return type of some function depends on *values*
+of some arguments. This hook will be also called for instantiation of classes.
+For example:
 
-    This method is called after type checking a call. Plugin may adjust the return
-    type inferred by mypy, and/or emmit some error messages. Note, this hook is also
-    called for class instantiation calls, so that in this example:
+.. code-block:: python
 
-        from lib import Class, do_stuff
+   from orm import Property
 
-        do_stuff(42)
-        Class()
+   p = Property()  # a plugin can infer orm.Property[orm.Null]
 
-    This method will be called with 'lib.do_stuff' and then with 'lib.Class'.
+**get_method_hook()** is the same as ``get_function_hook()`` but for methods
+instead of module level functions.
 
-get_method_signature_hook()
-    """Adjust the signature of a method.
+**get_method_signature_hook()** is used to adjust the signature of a method.
+This includes special Python methods. For example in this code:
 
-    This method is called before type checking a method call. Plugin
-    may infer a better type for the method. The hook is called for both special and
-    user-defined methods. This function is called with the method full name using
-    the class where it was _defined_. For example, in this code:
+.. code-block:: python
 
-        from lib import Special
+   from lib import MagicCollection
 
-        class Base:
-            def method(self, arg: Any) -> Any:
-                ...
-        class Derived(Base):
-            ...
+   var: MagicCollection
+   x = var[0]
 
-        var: Derived
-        var.method(42)
+mypy will call ``get_method_signature_hook("lib.MagicCollection.__getitem__")``.
 
-        x: Special
-        y = x[0]
+**get_attribute_hook** can be used to give more precise type of an instance
+attribute. Note however, that this method is only called for variables that
+already exist in the class symbol table. If you want to add some generated
+variables/methods to the symbol table you can use one of the three hooks
+below.
 
-    this method is called with '__main__.Base.method', and then with
-    'lib.Special.__getitem__'.
+**get_class_decorator_hook()** can bu used to update class definition for
+given class decorators. For example, you can add some attributes to the class
+to match runtime behaviour:
 
-def get_method_hook(self, fullname: str
-                    ) -> Optional[Callable[[MethodContext], Type]]:
-    """Adjust return type of a method call.
+.. code-block:: python
 
-    This is the same as get_function_hook(), but is called with the
-    method full name (again, using the class where the method is defined).
+   from lib import customize
 
-def get_attribute_hook(self, fullname: str
-                       ) -> Optional[Callable[[AttributeContext], Type]]:
-    """Adjust type of a class attribute.
+   @customize
+   class UserDefined:
+       pass
 
-    This method is called with attribute full name using the class where the attribute was
-    defined (or Var.info.fullname() for generated attributes). Currently, this hook is only
-    called for names that exist in the class MRO, for example in:
+   var = UserDefined
+   var.customized  # mypy can understand this using a plugin
 
-        class Base:
-            x: Any
-            def __getattr__(self, attr: str) -> Any: ...
+**get_metaclass_hook()** is similar to above, but for metaclasses.
 
-        class Derived(Base):
-            ...
+**get_base_class_hook()** is similar to above, but for base classes.
 
-        var: Derived
-        var.x
-        var.y
+**get_dynamic_class_hook()** can be used to allow dynamic class definitions
+in mypy. This plugin hook is called for every assignment to a simple name
+where right hand side is a function call:
 
-    this method is only called with '__main__.Base.x'.
+.. code-block:: python
 
-def get_class_decorator_hook(self, fullname: str
-                             ) -> Optional[Callable[[ClassDefContext], None]]:
-    """Update class definition for given class decorators.
+   from lib import dynamic_class
 
-    The plugin can modify a TypeInfo _in place_ (for example add some generated
-    methods to the symbol table). This hook is called after the class body was
-    semantically analyzed.
+   X = dynamic_class('X', [])
 
-    The hook is called with full names of all class decorators, for example
+For such definition, mypy will call ``get_dynamic_class_hook("lib.dynamic_class")``.
+The plugin should create the corresponding ``mypy.nodes.TypeInfo`` object, and
+place it into a relevant symbol table.
 
-def get_metaclass_hook(self, fullname: str
-                       ) -> Optional[Callable[[ClassDefContext], None]]:
-    """Update class definition for given declared metaclasses.
-
-    Same as get_class_decorator_hook() but for metaclasses. Note:
-    this hook will be only called for explicit metaclasses, not for
-    inherited ones.
-
-def get_base_class_hook(self, fullname: str
-                        ) -> Optional[Callable[[ClassDefContext], None]]:
-    """Update class definition for given base classes.
-
-    Same as get_class_decorator_hook() but for base classes. Base classes
-    don't need to refer to TypeInfo's, if a base class refers to a variable with
-    Any type, this hook will still be called.
-
-def get_customize_class_mro_hook(self, fullname: str
-                                 ) -> Optional[Callable[[ClassDefContext], None]]:
-    """Customize MRO for given classes.
-
-    The plugin can modify the class MRO _in place_. This method is called
-    with the class full name before its body was semantically analyzed.
-
-def get_dynamic_class_hook(self, fullname: str
-                           ) -> Optional[Callable[[DynamicClassDefContext], None]]:
-    """Semantically analyze a dynamic class definition.
-
-    This plugin hook allows to semantically analyze dynamic class definitions like:
-
-        from lib import dynamic_class
-
-        X = dynamic_class('X', [])
-
-    For such definition, this hook will be called with 'lib.dynamic_class'.
-    The plugin should create the corresponding TypeInfo, and place it into a relevant
-    symbol table, e.g. using ctx.api.add_symbol_table_node().
-
+**get_customize_class_mro_hook()** can be used to modify class MRO (for example
+insert some entries there) before the class body is analyzed.
