@@ -1,4 +1,43 @@
-"""Plugin system for extending mypy."""
+"""Plugin system for extending mypy.
+
+At large scale the plugin system works as following:
+* Plugins are collected from the corresponding config option
+  (either a paths to Python files, or installed Python modules)
+  and imported using importlib
+* Every module should get an entry point function (called 'plugin' by default,
+  but may be overridden in the config file), that should accept a single string
+  argument that is a full mypy version (includes git commit hash for dev versions)
+  and return a subclass of mypy.plugins.Plugin
+* All plugin class constructors should match the signature of mypy.plugin.Plugin
+  (i.e. should accept an mypy.options.Options object), and *must* call super().__init__
+* At several steps during semantic analysis and type checking mypy calls special `get_xxx`
+  methods on user plugins with a single string argument that is a full name of a relevant
+  node (see mypy.plugin.Plugin method docstrings for details)
+* The plugins are called in the order they are passed in the config option. Every plugin must
+  decide whether to act on a given full name. The first plugin that returns non-None object
+  will be used
+* The above decision should be made using the limited common API specified by
+  mypy.plugin.CommonPluginApi
+* The callback returned by the plugin will be called with a larger context that includes
+  relevant current state (e.g. a default return type, or a default attribute type) and
+  a wider relevant API provider (e.g. SemanticAnalyzerPluginInterface or
+  CheckerPluginInterface)
+* The result of this is used for further processing. See various `XxxContext` named tuples
+  for details about which information is given to each hook.
+
+The above two-step plugin choice procedure exists to allow effectively coordinate
+multiple plugins.
+
+Plugin developers should ensure that their plugins work well in incremental and
+daemon modes. In particular, plugins should not hold global state, and should always call
+add_plugin_dependency() in plugin hooks called during semantic analysis.
+
+There is no dedicated cache storage for plugins, but plugins can store per-TypeInfo data
+in a special .metadata attribute that is serialized to cache between incremental runs.
+To avoid collisions between plugins they are encouraged to store their state
+under a dedicated key coinciding with plugin name in the metadata dictionary.
+Every value stored there must be JSON-serializable.
+"""
 
 import types
 
