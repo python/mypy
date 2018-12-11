@@ -19,6 +19,9 @@ class InterpretedPlugin:
     that proxies to this interpreted version.
     """
 
+    # See mypy.plugin.Plugin for the docs.
+    common_api = None  # type: mypy.plugin.CommonPluginApi
+
     def __new__(cls, *args: Any, **kwargs: Any) -> 'mypy.plugin.Plugin':
         from mypy.plugin import WrapperPlugin
         plugin = object.__new__(cls)  # type: ignore
@@ -28,6 +31,9 @@ class InterpretedPlugin:
     def __init__(self, options: Options) -> None:
         self.options = options
         self.python_version = options.python_version
+
+    def set_common_api(self, api: 'mypy.plugin.CommonPluginApi') -> None:
+        self.common_api = api
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[['mypy.plugin.AnalyzeTypeContext'], Type]]:

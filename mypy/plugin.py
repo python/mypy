@@ -284,6 +284,9 @@ class WrapperPlugin(Plugin):
         super().__init__(plugin.options)
         self.plugin = plugin
 
+    def set_common_api(self, api: CommonPluginApi) -> None:
+        self.plugin.common_api = api
+
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
         return self.plugin.get_type_analyze_hook(fullname)
