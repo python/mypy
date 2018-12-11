@@ -618,23 +618,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
-        # Check final status, if the implementation is marked
-        # as @final (or the first overload in stubs), then the whole overloaded
-        # definition if @final.
-        if any(item.is_final for item in defn.items):
-            # We anyway mark it as final because it was probably the intention.
-            defn.is_final = True
-            # Only show the error once per overload
-            bad_final = next(ov for ov in defn.items if ov.is_final)
-            if not self.is_stub_file:
-                self.fail("@final should be applied only to overload implementation",
-                          bad_final)
-            elif any(item.is_final for item in defn.items[1:]):
-                bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
-                self.fail("In a stub file @final must be applied only to the first overload",
-                          bad_final)
-        if defn.impl is not None and defn.impl.is_final:
-            defn.is_final = True
+        self.process_final_in_overload(defn)
 
         # We know this is an overload def -- let's handle classmethod and staticmethod
         class_status = []
@@ -672,6 +656,25 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.info = self.type
         elif self.is_func_scope():
             self.add_local(defn, defn)
+
+    def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
+        # Check final status, if the implementation is marked
+        # as @final (or the first overload in stubs), then the whole overloaded
+        # definition if @final.
+        if any(item.is_final for item in defn.items):
+            # We anyway mark it as final because it was probably the intention.
+            defn.is_final = True
+            # Only show the error once per overload
+            bad_final = next(ov for ov in defn.items if ov.is_final)
+            if not self.is_stub_file:
+                self.fail("@final should be applied only to overload implementation",
+                          bad_final)
+            elif any(item.is_final for item in defn.items[1:]):
+                bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
+                self.fail("In a stub file @final must be applied only to the first overload",
+                          bad_final)
+        if defn.impl is not None and defn.impl.is_final:
+            defn.is_final = True
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
