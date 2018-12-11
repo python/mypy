@@ -1245,8 +1245,8 @@ indirect.Literal()
 -- Other misc interactions
 --
 
-[case testLiteralMeetsWithCallablesInLists]
-from typing import List, Callable, Union
+[case testLiteralMeets]
+from typing import TypeVar, List, Callable, Union
 from typing_extensions import Literal
 
 a: Callable[[Literal[1]], int]
@@ -1267,19 +1267,10 @@ reveal_type(arr3)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> buil
 reveal_type(arr4)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
 reveal_type(arr5)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
 
+# Inspect just only one interesting one
 lit: Literal[1]
-reveal_type(arr1[0](lit))  # E: Revealed type is 'builtins.int'
 reveal_type(arr2[0](lit))  # E: Revealed type is 'Any' \
                            # E: Cannot call function of unknown type
-reveal_type(arr3[0](lit))  # E: Revealed type is 'builtins.object'
-reveal_type(arr4[0](lit))  # E: Revealed type is 'builtins.object'
-reveal_type(arr5[0](lit))  # E: Revealed type is 'builtins.object'
-[builtins fixtures/list.pyi]
-[out]
-
-[case testLiteralMeetsWithTypeVars]
-from typing import TypeVar, Callable, Union
-from typing_extensions import Literal
 
 T = TypeVar('T')
 def unify(func: Callable[[T, T], None]) -> T: pass
@@ -1295,6 +1286,7 @@ reveal_type(unify(f2))  # E: Revealed type is 'None'
 reveal_type(unify(f3))  # E: Revealed type is 'Literal[1]'
 reveal_type(unify(f4))  # E: Revealed type is 'Literal[1]'
 reveal_type(unify(f5))  # E: Revealed type is 'Literal[1]'
+[builtins fixtures/list.pyi]
 [out]
 
 [case testLiteralMeetsWithStrictOptional]
