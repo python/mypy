@@ -25,12 +25,10 @@ At large scale the plugin system works as following:
 * The result of this is used for further processing. See various `XxxContext` named tuples
   for details about which information is given to each hook.
 
-The above two-step plugin choice procedure exists to allow effectively coordinate
-multiple plugins.
-
 Plugin developers should ensure that their plugins work well in incremental and
 daemon modes. In particular, plugins should not hold global state, and should always call
-add_plugin_dependency() in plugin hooks called during semantic analysis.
+add_plugin_dependency() in plugin hooks called during semantic analysis, see the method
+docstring for more details.
 
 There is no dedicated cache storage for plugins, but plugins can store per-TypeInfo data
 in a special .metadata attribute that is serialized to cache between incremental runs.
@@ -204,7 +202,13 @@ class SemanticAnalyzerPluginInterface:
         then the body of node with full name given by target will be re-checked.
         By default, this is the node that is currently analyzed.
 
-        This is used by fine-grained incremental mode (mypy daemon).
+        For example, the dataclass plugin adds a generated __init__ method with
+        a signature that depends on types of attributes in ancestor classes. If any
+        attribute in an ancestor class gets stale (modified), we need to reprocess
+        the subclasses (and thus regenerate __init__ methods).
+
+        This is used by fine-grained incremental mode (mypy daemon). See mypy/server/deps.py
+        for more details.
         """
         raise NotImplementedError
 
@@ -341,8 +345,9 @@ class Plugin:
         """Adjust the signature of a method.
 
         This method is called before type checking a method call. Plugin
-        may infer a better type for the method. The hook is called for both special and
-        user-defined methods. This function is called with the method full name using
+        may infer a better type for the method. The hook is also called for special
+        Python dunder methods except __init__ and __new__ (use get_function_hook to customize
+        class instantiation). This function is called with the method full name using
         the class where it was _defined_. For example, in this code:
 
             from lib import Special
@@ -415,6 +420,8 @@ class Plugin:
         Same as get_class_decorator_hook() but for metaclasses. Note:
         this hook will be only called for explicit metaclasses, not for
         inherited ones.
+
+        TODO: probably it should also be called on inherited metaclasses.
         """
         return None
 
@@ -423,7 +430,7 @@ class Plugin:
         """Update class definition for given base classes.
 
         Same as get_class_decorator_hook() but for base classes. Base classes
-        don't need to refer to TypeInfo's, if a base class refers to a variable with
+        don't need to refer to TypeInfos, if a base class refers to a variable with
         Any type, this hook will still be called.
         """
         return None
