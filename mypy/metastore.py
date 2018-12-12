@@ -10,6 +10,7 @@ We provide two implementations.
 
 import binascii
 import sqlite3
+import sqlite3.dbapi2
 import os
 import time
 
