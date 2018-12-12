@@ -2223,7 +2223,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.log("Falling back to full run -- reloading graph...")
             return dispatch(sources, manager)
 
-
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the graph---we
     # just want to load in all of the cache information.
