@@ -359,7 +359,7 @@ class ChainedPlugin(Plugin):
         super().__init__(options)
         self._plugins = plugins
 
-    def set_modules(self, modules: Dict[str, MypyFile]):
+    def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         for plugin in self._plugins:
             plugin.set_modules(modules)
 
