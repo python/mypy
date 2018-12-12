@@ -48,11 +48,10 @@ dynamic patterns is impractical and often just impossible.
 
 Mypy supports a plugin system that lets you customize the way mypy type checks
 code. This can be useful if you want to extend mypy so it can type check code
-that uses a library that is difficult to express using just PEP 484 types, for
-example.
+that uses a library that is difficult to express using just PEP 484 types.
 
 The plugin system is focused on improving mypy's understanding
-of *semantics* of third party frameworks; there is currently no way to define
+of *semantics* of third party frameworks. There is currently no way to define
 new first class kinds of types.
 
 .. note::
