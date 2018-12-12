@@ -11,7 +11,7 @@ class DynPlugin(Plugin):
         return None
 
     def get_base_class_hook(self, fullname: str):
-        sym = self.common_api.lookup_fully_qualified_or_none(fullname)
+        sym = self.lookup_fully_qualified(fullname)
         if sym and isinstance(sym.node, TypeInfo):
             if sym.node.metadata.get('magic'):
                 return add_magic_hook

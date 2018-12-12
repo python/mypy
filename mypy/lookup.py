@@ -25,7 +25,7 @@ def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
     # 1. Find a module tree in modules dictionary.
     while True:
         if '.' not in head:
-            if not raise_on_missing:
+            if raise_on_missing:
                 assert '.' in head, "Cannot find module for %s" % (name,)
             return None
         head, tail = head.rsplit('.', maxsplit=1)
@@ -37,13 +37,13 @@ def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
     # 2. Find the symbol in the module tree.
     if not rest:
         # Looks like a module, don't use this to avoid confusions.
-        if not raise_on_missing:
+        if raise_on_missing:
             assert rest, "Cannot find %s, got a module symbol" % (name,)
         return None
     while True:
         key = rest.pop()
         if key not in names:
-            if not raise_on_missing:
+            if raise_on_missing:
                 assert key in names, "Cannot find %s for %s" % (key, name)
             return None
         stnode = names[key]
@@ -53,7 +53,7 @@ def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
         # In fine-grained mode, could be a cross-reference to a deleted module
         # or a Var made up for a missing module.
         if not isinstance(node, TypeInfo):
-            if not raise_on_missing:
+            if raise_on_missing:
                 assert node, "Cannot find %s" % (name,)
             return None
         names = node.names

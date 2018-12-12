@@ -1767,7 +1767,6 @@ class State:
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        self.manager.plugin.set_common_api(self.manager.semantic_analyzer)
         with self.wrap_context():
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
@@ -1788,7 +1787,6 @@ class State:
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
             return
-        self.manager.plugin.set_common_api(self.type_checker())
         with self.wrap_context():
             self.type_checker().check_first_pass()
 
@@ -2225,6 +2223,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.log("Falling back to full run -- reloading graph...")
             return dispatch(sources, manager)
 
+
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the graph---we
     # just want to load in all of the cache information.
@@ -2401,6 +2400,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 if dep in st.suppressed:
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
+    manager.plugin.set_modules(manager.modules)
     return graph
 
 
