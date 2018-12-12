@@ -726,7 +726,7 @@ static CPyTagged CPyObject_Hash(PyObject *o) {
     }
 }
 
-static inline int CPyObject_Size(PyObject *obj) {
+static inline CPyTagged CPyObject_Size(PyObject *obj) {
     Py_ssize_t s = PyObject_Size(obj);
     if (s < 0) {
         return CPY_INT_TAG;
