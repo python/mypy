@@ -3568,20 +3568,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 msg = "Failed qualified lookup: '{}' (fullname = '{}')."
                 raise KeyError(msg.format(last, name))
 
-    def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
-        """Lookup a fully qualified name that refers to a module-level definition.
-
-        This mirrors SemanticAnalyzerPass2.lookup_fully_qualified_or_none().
-        """
-        # TODO: unify/clean-up/simplify lookup methods, see #4157.
-        # TODO: support nested classes.
-        assert '.' in fullname
-        module, name = fullname.rsplit('.', maxsplit=1)
-        if module not in self.modules:
-            return None
-        filenode = self.modules[module]
-        return filenode.names.get(name)
-
     @contextmanager
     def enter_partial_types(self, *, is_function: bool = False,
                             is_class: bool = False) -> Iterator[None]:

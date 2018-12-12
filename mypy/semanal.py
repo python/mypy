@@ -92,6 +92,7 @@ from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.typestate import TypeState
+from mypy.lookup import lookup_fully_qualified
 
 MYPY = False
 if MYPY:
@@ -3466,22 +3467,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return n.names[parts[-1]]
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
-        """Lookup a fully qualified name that refers to a module-level definition.
-
-        Don't assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored. This does not dereference indirect
-        refs.
-
-        Note that this can't be used for names nested in class namespaces.
-        """
-        # TODO: unify/clean-up/simplify lookup methods, see #4157.
-        # TODO: support nested classes.
-        assert '.' in fullname
-        module, name = fullname.rsplit('.', maxsplit=1)
-        if module not in self.modules:
-            return None
-        filenode = self.modules[module]
-        return filenode.names.get(name)
+        """Lookup a fully qualified name."""
+        return lookup_fully_qualified(fullname, self.modules)
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
