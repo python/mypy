@@ -408,7 +408,7 @@ a.py:1: error: invalid syntax
 b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==
 
-[case testDecodeErrorBlocker]
+[case testDecodeErrorBlocker-posix]
 import a
 a.f(1)
 [file a.py]
@@ -424,7 +424,24 @@ mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in posi
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
+[case testDecodeErrorBlocker-windows]
+import a
+a.f(1)
+[file a.py]
+def f(x: int) -> None: ...
+[file a.py.2]
+# coding: ascii
+ä
+[file a.py.3]
+def f(x: str) -> None: ...
+[out]
+==
+mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 17: ordinal not in range(128)
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
 [case testDecodeErrorBlockerOnInitialRun-posix]
+# Note that there's no test variant for Windows, since the above Windows test case is good enough.
 import a
 a.f(1)
 [file a.py]
@@ -435,17 +452,4 @@ def f(x: str) -> None: ...
 [out]
 mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
 ==
-main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
-
-[case testDecodeErrorBlockerOnInitialRun-windows]
-import a
-a.f(1)
-[file a.py]
-# coding: ascii
-ä
-[file a.py.2]
-def f(x: str) -> None: ...
-[out]
-mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 17: ordinal not in range(128)
-==
-main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
