@@ -3482,7 +3482,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 tree.names.pop(name, None)
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a fully qualified name that refers to a module-level definition.
+        """Lookup a fully qualified name.
 
         Assume that the name is defined. This happens in the global namespace -- the local
         module namespace is ignored.
@@ -3496,7 +3496,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return n.names[parts[-1]]
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
-        """Lookup a fully qualified name.
+        """Lookup a fully qualified name that refers to a module-level definition.
 
         Don't assume that the name is defined. This happens in the global namespace --
         the local module namespace is ignored. This does not dereference indirect
