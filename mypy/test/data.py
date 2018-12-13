@@ -8,6 +8,7 @@ import re
 from os import remove, rmdir
 import shutil
 from abc import abstractmethod
+import sys
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
@@ -183,6 +184,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
                  name: str,
                  writescache: bool,
                  only_when: str,
+                 platform: Optional[str],
                  skip: bool,
                  data: str,
                  line: int) -> None:
@@ -191,6 +193,9 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.file = file
         self.writescache = writescache
         self.only_when = only_when
+        if ((platform == 'windows' and sys.platform != 'win32')
+                or (platform == 'posix' and sys.platform == 'win32')):
+            skip = True
         self.skip = skip
         self.data = data
         self.line = line
@@ -583,16 +588,20 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
                      r'(-writescache)?'
                      r'(-only_when_cache|-only_when_nocache)?'
+                     r'(-posix|-windows)?'
                      r'(-skip)?'
-                     r'\][ \t]*$\n', data,
+                     r'\][ \t]*$\n',
+                     data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    for i in range(1, len(cases), 5):
-        name, writescache, only_when, skip, data = cases[i:i + 5]
+    for i in range(1, len(cases), 6):
+        name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
+        platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase(parent, suite, file,
                                  name=add_test_name_suffix(name, suite.test_name_suffix),
                                  writescache=bool(writescache),
                                  only_when=only_when,
+                                 platform=platform,
                                  skip=bool(skip),
                                  data=data,
                                  line=line_no)

@@ -1240,3 +1240,73 @@ indirect.Literal()
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+
+--
+-- Other misc interactions
+--
+
+[case testLiteralMeets]
+from typing import TypeVar, List, Callable, Union
+from typing_extensions import Literal
+
+a: Callable[[Literal[1]], int]
+b: Callable[[Literal[2]], str]
+c: Callable[[int], str]
+d: Callable[[object], str]
+e: Callable[[Union[Literal[1], Literal[2]]], str]
+
+arr1 = [a, a]
+arr2 = [a, b]
+arr3 = [a, c]
+arr4 = [a, d]
+arr5 = [a, e]
+
+reveal_type(arr1)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.int]'
+reveal_type(arr2)  # E: Revealed type is 'builtins.list[builtins.function*]'
+reveal_type(arr3)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
+reveal_type(arr4)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
+reveal_type(arr5)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
+
+# Inspect just only one interesting one
+lit: Literal[1]
+reveal_type(arr2[0](lit))  # E: Revealed type is 'Any' \
+                           # E: Cannot call function of unknown type
+
+T = TypeVar('T')
+def unify(func: Callable[[T, T], None]) -> T: pass
+
+def f1(x: Literal[1], y: Literal[1]) -> None: pass
+def f2(x: Literal[1], y: Literal[2]) -> None: pass
+def f3(x: Literal[1], y: int) -> None: pass
+def f4(x: Literal[1], y: object) -> None: pass
+def f5(x: Literal[1], y: Union[Literal[1], Literal[2]]) -> None: pass
+
+reveal_type(unify(f1))  # E: Revealed type is 'Literal[1]'
+reveal_type(unify(f2))  # E: Revealed type is 'None'
+reveal_type(unify(f3))  # E: Revealed type is 'Literal[1]'
+reveal_type(unify(f4))  # E: Revealed type is 'Literal[1]'
+reveal_type(unify(f5))  # E: Revealed type is 'Literal[1]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testLiteralMeetsWithStrictOptional]
+# flags: --strict-optional
+from typing import TypeVar, Callable, Union
+from typing_extensions import Literal
+
+a: Callable[[Literal[1]], int]
+b: Callable[[Literal[2]], str]
+lit: Literal[1]
+
+arr = [a, b]
+reveal_type(arr)  # E: Revealed type is 'builtins.list[builtins.function*]'
+reveal_type(arr[0](lit))  # E: Revealed type is 'Any' \
+                          # E: Cannot call function of unknown type
+
+T = TypeVar('T')
+def unify(func: Callable[[T, T], None]) -> T: pass
+def func(x: Literal[1], y: Literal[2]) -> None: pass
+
+reveal_type(unify(func))  # E: Revealed type is '<nothing>'
+[builtins fixtures/list.pyi]
+[out]

@@ -570,6 +570,9 @@ def process_options(args: List[str],
         '--cache-dir', action='store', metavar='DIR',
         help="Store module cache info in the given folder in incremental mode "
              "(defaults to '{}')".format(defaults.CACHE_DIR))
+    add_invertible_flag('--sqlite-cache', default=False,
+                        help="Use a sqlite database to store the cache",
+                        group=incremental_group)
     incremental_group.add_argument(
         '--cache-fine-grained', action='store_true',
         help="Include fine-grained dependency information in the cache for the mypy daemon")
@@ -793,6 +796,9 @@ def process_options(args: List[str],
 
     # Process --cache-map.
     if special_opts.cache_map:
+        if options.sqlite_cache:
+            parser.error("--cache-map is incompatible with --sqlite-cache")
+
         process_cache_map(parser, special_opts, options)
 
     # Let quick_and_dirty imply incremental.
