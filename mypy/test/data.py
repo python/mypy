@@ -194,7 +194,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.writescache = writescache
         self.only_when = only_when
         if ((platform == 'windows' and sys.platform != 'win32')
-                or (platform == 'posix' and sys.platform not in ('linux', 'darwin'))):
+                or (platform == 'posix' and sys.platform == 'win32')):
             skip = True
         self.skip = skip
         self.data = data
@@ -590,7 +590,8 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                      r'(-only_when_cache|-only_when_nocache)?'
                      r'(-posix|-windows)?'
                      r'(-skip)?'
-                     r'\][ \t]*$\n', data,
+                     r'\][ \t]*$\n',
+                     data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
     for i in range(1, len(cases), 6):
