@@ -848,7 +848,12 @@ static inline bool CPyFloat_Check(PyObject *o) {
 }
 
 static PyObject *CPyLong_FromFloat(PyObject *o) {
-    return PyLong_Check(o) ? o : PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
+    if (PyLong_Check(o)) {
+        CPy_INCREF(o);
+        return o;
+    } else {
+        return PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
+    }
 }
 
 static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
