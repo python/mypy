@@ -906,14 +906,9 @@ class SameTypeSuite(Suite):
         self.fx = TypeFixture()
 
     def test_literal_type(self) -> None:
-        a = self.fx.a
         b = self.fx.b  # Reminder: b is a subclass of a
         d = self.fx.d
 
-        # Literals are not allowed to contain floats, but we're going to
-        # test them anyways, just to make sure the semantics are robust
-        # against these kinds of things.
-        lit0 = LiteralType(cast(int, 1.0), a)
         lit1 = LiteralType(1, b)
         lit2 = LiteralType(2, b)
         lit3 = LiteralType("foo", d)
@@ -922,7 +917,6 @@ class SameTypeSuite(Suite):
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit1, lit2]))
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit2, lit1]))
         self.assert_not_same(lit1, b)
-        self.assert_not_same(lit0, lit1)
         self.assert_not_same(lit1, lit2)
         self.assert_not_same(lit1, lit3)
 
