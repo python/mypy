@@ -106,11 +106,18 @@ class CommonPluginApi:
     that all plugin hooks get independently of the context.
     """
 
-    # Global mypy options
+    # Global mypy options.
+    # Per-file options can be only accessed on various
+    # XxxPluginInterface classes.
     options = None  # type: Options
 
     @abstractmethod
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
+        """Lookup a symbol by its full name (including module).
+
+        This lookup function available for all plugins. Return None if a name
+        is not found. This function doesn't support lookup from current scope.
+        Use SemanticAnalyzerPluginInterface.lookup_qualified() for this."""
         raise NotImplementedError
 
 

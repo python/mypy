@@ -93,7 +93,6 @@ from mypy.reachability import (
     infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE
 )
 from mypy.typestate import TypeState
-from mypy.lookup import lookup_fully_qualified
 
 MYPY = False
 if MYPY:
@@ -3483,7 +3482,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 tree.names.pop(name, None)
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a fully qualified name.
+        """Lookup a fully qualified name that refers to a module-level definition.
 
         Assume that the name is defined. This happens in the global namespace -- the local
         module namespace is ignored.
@@ -3497,8 +3496,23 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return n.names[parts[-1]]
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
-        """Lookup a fully qualified name."""
-        return lookup_fully_qualified(fullname, self.modules)
+        """Lookup a fully qualified name.
+
+        Don't assume that the name is defined. This happens in the global namespace --
+        the local module namespace is ignored. This does not dereference indirect
+        refs.
+
+        Note that this can't be used for names nested in class namespaces.
+        """
+        # TODO: unify/clean-up/simplify lookup methods, see #4157.
+        # TODO: support nested classes (but consider performance impact,
+        #       we might keep the module level only lookup for thing like 'builtins.int').
+        assert '.' in fullname
+        module, name = fullname.rsplit('.', maxsplit=1)
+        if module not in self.modules:
+            return None
+        filenode = self.modules[module]
+        return filenode.names.get(name)
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
