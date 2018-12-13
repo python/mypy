@@ -1,12 +1,13 @@
 """Test cases for mypy types and type operations."""
 
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
+from mypy.sametypes import is_same_type
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneTyp, Overloaded,
     TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny, LiteralType
@@ -14,6 +15,7 @@ from mypy.types import (
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
+from mypy.experiments import strict_optional_set
 
 
 class TypesSuite(Suite):
@@ -846,7 +848,30 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.type_type, self.fx.type_any, self.fx.type_any)
         self.assert_meet(self.fx.type_b, self.fx.anyt, self.fx.type_b)
 
+    def test_literal_type(self) -> None:
+        a = self.fx.a
+        d = self.fx.d
+        lit1 = LiteralType(1, a)
+        lit2 = LiteralType(2, a)
+        lit3 = LiteralType("foo", d)
+
+        self.assert_meet(lit1, lit1, lit1)
+        self.assert_meet(lit1, a, lit1)
+        self.assert_meet_uninhabited(lit1, lit3)
+        self.assert_meet_uninhabited(lit1, lit2)
+        self.assert_meet(UnionType([lit1, lit2]), lit1, lit1)
+        self.assert_meet(UnionType([lit1, lit2]), UnionType([lit2, lit3]), lit2)
+        self.assert_meet(UnionType([lit1, lit2]), UnionType([lit1, lit2]), UnionType([lit1, lit2]))
+        self.assert_meet(lit1, self.fx.anyt, lit1)
+        self.assert_meet(lit1, self.fx.o, lit1)
+
     # FIX generic interfaces + ranges
+
+    def assert_meet_uninhabited(self, s: Type, t: Type) -> None:
+        with strict_optional_set(False):
+            self.assert_meet(s, t, self.fx.nonet)
+        with strict_optional_set(True):
+            self.assert_meet(s, t, self.fx.uninhabited)
 
     def assert_meet(self, s: Type, t: Type, meet: Type) -> None:
         self.assert_simple_meet(s, t, meet)
@@ -874,3 +899,52 @@ class MeetSuite(Suite):
         return CallableType(list(a[:-1]),
                             [ARG_POS] * n, [None] * n,
                             a[-1], self.fx.function)
+
+
+class SameTypeSuite(Suite):
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def test_literal_type(self) -> None:
+        a = self.fx.a
+        b = self.fx.b  # Reminder: b is a subclass of a
+        d = self.fx.d
+
+        # Literals are not allowed to contain floats, but we're going to
+        # test them anyways, just to make sure the semantics are robust
+        # against these kinds of things.
+        lit0 = LiteralType(cast(int, 1.0), a)
+        lit1 = LiteralType(1, b)
+        lit2 = LiteralType(2, b)
+        lit3 = LiteralType("foo", d)
+
+        self.assert_same(lit1, lit1)
+        self.assert_same(UnionType([lit1, lit2]), UnionType([lit1, lit2]))
+        self.assert_same(UnionType([lit1, lit2]), UnionType([lit2, lit1]))
+        self.assert_not_same(lit1, b)
+        self.assert_not_same(lit0, lit1)
+        self.assert_not_same(lit1, lit2)
+        self.assert_not_same(lit1, lit3)
+
+        self.assert_not_same(lit1, self.fx.anyt)
+        self.assert_not_same(lit1, self.fx.nonet)
+
+    def assert_same(self, s: Type, t: Type, strict: bool = True) -> None:
+        self.assert_simple_is_same(s, t, expected=True, strict=strict)
+        self.assert_simple_is_same(t, s, expected=True, strict=strict)
+
+    def assert_not_same(self, s: Type, t: Type, strict: bool = True) -> None:
+        self.assert_simple_is_same(s, t, False, strict=strict)
+        self.assert_simple_is_same(t, s, False, strict=strict)
+
+    def assert_simple_is_same(self, s: Type, t: Type, expected: bool, strict: bool) -> None:
+        actual = is_same_type(s, t)
+        assert_equal(actual, expected,
+                     'is_same_type({}, {}) is {{}} ({{}} expected)'.format(s, t))
+
+        if strict:
+            actual2 = (s == t)
+            assert_equal(actual2, expected,
+                         '({} == {}) is {{}} ({{}} expected)'.format(s, t))
+            assert_equal(hash(s) == hash(t), expected,
+                         '(hash({}) == hash({}) is {{}} ({{}} expected)'.format(s, t))

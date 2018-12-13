@@ -73,7 +73,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     program = '_' + testcase.name + '.py'
     program_path = os.path.join(test_temp_dir, program)
     mypy_cmdline.append(program_path)
-    with open(program_path, 'w') as file:
+    with open(program_path, 'w', encoding='utf8') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
     mypy_cmdline.append('--cache-dir={}'.format(cache_dir))

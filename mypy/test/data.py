@@ -70,13 +70,13 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             assert item.arg is not None
             mpath = join(os.path.dirname(case.file), item.arg)
             fnam = 'builtins.pyi' if item.id == 'builtins' else '__builtin__.pyi'
-            with open(mpath) as f:
+            with open(mpath, encoding='utf8') as f:
                 files.append((join(base_path, fnam), f.read()))
         elif item.id == 'typing':
             # Use an alternative stub file for the typing module.
             assert item.arg is not None
             src_path = join(os.path.dirname(case.file), item.arg)
-            with open(src_path) as f:
+            with open(src_path, encoding='utf8') as f:
                 files.append((join(base_path, 'typing.pyi'), f.read()))
         elif re.match(r'stale[0-9]*$', item.id):
             passnum = 1 if item.id == 'stale' else int(item.id[len('stale'):])
@@ -234,7 +234,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf8') as f:
                 f.write(content)
             if path not in encountered_files:
                 self.clean_up.append((False, path))

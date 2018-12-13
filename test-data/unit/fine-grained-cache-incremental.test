@@ -169,6 +169,7 @@ a.py:8: note: Following member(s) of "C" have conflicts:
 a.py:8: note:     x: expected "int", got "str"
 
 [case testIncrCacheBustedProtocol]
+# flags: --no-sqlite-cache
 [file a.py]
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
@@ -185,6 +186,7 @@ a.py:8: note:     x: expected "int", got "str"
 ==
 
 [case testInvalidateCachePart]
+# flags: --no-sqlite-cache
 # cmd: mypy a1.py a2.py b.py p/__init__.py p/c.py
 [file a1.py]
 import p

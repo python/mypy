@@ -199,26 +199,28 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             #    type check below.
             sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
-            if isinstance(sym.node, ImportedName):
+            node = sym.node
+            if isinstance(node, ImportedName):
                 # Forward reference to an imported name that hasn't been processed yet.
                 # To maintain backward compatibility, these get translated to Any.
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
-            if sym.node is None:
+            if node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType(TypeOfAny.special_form)
-            fullname = sym.node.fullname()
+            fullname = node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)
-            if hook:
+            if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
-            if (fullname in nongen_builtins and t.args and
+            if (fullname in nongen_builtins
+                    and t.args and
                     not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
-            if self.tvar_scope:
+            if self.tvar_scope is not None:
                 tvar_def = self.tvar_scope.get_binding(sym)
             else:
                 tvar_def = None
@@ -226,170 +228,192 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
-            elif sym.kind == TVAR and tvar_def is not None:
+            if sym.kind == TVAR and tvar_def is not None:
                 if len(t.args) > 0:
-                    self.fail('Type variable "{}" used with arguments'.format(
-                        t.name), t)
+                    self.fail('Type variable "{}" used with arguments'.format(t.name), t)
                 return TypeVarType(tvar_def, t.line)
-            elif fullname == 'builtins.None':
-                return NoneTyp()
-            elif fullname == 'typing.Any' or fullname == 'builtins.Any':
-                return AnyType(TypeOfAny.explicit)
-            elif fullname in ('typing.Final', 'typing_extensions.Final'):
-                self.fail("Final can be only used as an outermost qualifier"
-                          " in a variable annotation", t)
-                return AnyType(TypeOfAny.from_error)
-            elif fullname == 'typing.Tuple':
-                if len(t.args) == 0 and not t.empty_tuple_index:
-                    # Bare 'Tuple' is same as 'tuple'
-                    if self.options.disallow_any_generics and not self.is_typeshed_stub:
-                        self.fail(messages.BARE_GENERIC, t)
-                    return self.named_type('builtins.tuple', line=t.line, column=t.column)
-                if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
-                    # Tuple[T, ...] (uniform, variable-length tuple)
-                    instance = self.named_type('builtins.tuple', [self.anal_type(t.args[0])])
-                    instance.line = t.line
-                    return instance
-                return self.tuple_type(self.anal_array(t.args))
-            elif fullname == 'typing.Union':
-                items = self.anal_array(t.args)
-                return UnionType.make_union(items)
-            elif fullname == 'typing.Optional':
-                if len(t.args) != 1:
-                    self.fail('Optional[...] must have exactly one type argument', t)
-                    return AnyType(TypeOfAny.from_error)
-                item = self.anal_type(t.args[0])
-                return make_optional_type(item)
-            elif fullname == 'typing.Callable':
-                return self.analyze_callable_type(t)
-            elif fullname == 'typing.Type':
-                if len(t.args) == 0:
-                    any_type = AnyType(TypeOfAny.from_omitted_generics,
-                                       line=t.line, column=t.column)
-                    return TypeType(any_type, line=t.line, column=t.column)
-                if len(t.args) != 1:
-                    self.fail('Type[...] must have exactly one type argument', t)
-                item = self.anal_type(t.args[0])
-                return TypeType.make_normalized(item, line=t.line)
-            elif fullname == 'typing.ClassVar':
-                if self.nesting_level > 0:
-                    self.fail('Invalid type: ClassVar nested inside other type', t)
-                if len(t.args) == 0:
-                    return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
-                if len(t.args) != 1:
-                    self.fail('ClassVar[...] must have at most one type argument', t)
-                    return AnyType(TypeOfAny.from_error)
-                item = self.anal_type(t.args[0])
-                if isinstance(item, TypeVarType) or get_type_vars(item):
-                    self.fail('Invalid type: ClassVar cannot be generic', t)
-                    return AnyType(TypeOfAny.from_error)
-                return item
-            elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
-                return UninhabitedType(is_noreturn=True)
-            elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
-                return self.analyze_literal_type(t)
-            elif isinstance(sym.node, TypeAlias):
-                self.aliases_used.add(sym.node.fullname())
-                all_vars = sym.node.alias_tvars
-                target = sym.node.target
+            special = self.try_analyze_special_unbound_type(t, fullname)
+            if special is not None:
+                return special
+            if isinstance(node, TypeAlias):
+                self.aliases_used.add(fullname)
+                all_vars = node.alias_tvars
+                target = node.target
                 an_args = self.anal_array(t.args)
-                return expand_type_alias(target, all_vars, an_args, self.fail, sym.node.no_args, t)
-            elif not isinstance(sym.node, TypeInfo):
-                # Something unusual. We try our best to find out what it is.
-                name = sym.fullname
-                if name is None:
-                    name = sym.node.name()
-                # Option 1:
-                # Something with an Any type -- make it an alias for Any in a type
-                # context. This is slightly problematic as it allows using the type 'Any'
-                # as a base class -- however, this will fail soon at runtime so the problem
-                # is pretty minor.
-                if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
-                    return AnyType(TypeOfAny.from_unimported_type,
-                                   missing_import_name=sym.node.type.missing_import_name)
-                # Option 2:
-                # Unbound type variable. Currently these may be still valid,
-                # for example when defining a generic type alias.
-                unbound_tvar = ((sym.kind == TVAR) and
-                                (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
-                if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
-                    return t
-                # Option 3:
-                # If it is not something clearly bad (like a known function, variable,
-                # type variable, or module), and it is still not too late, we try deferring
-                # this type using a forward reference wrapper. It will be revisited in
-                # the third pass.
-                allow_forward_ref = not (self.third_pass or
-                                         isinstance(sym.node, (FuncDef, Decorator)) or
-                                         isinstance(sym.node, Var) and sym.node.is_ready or
-                                         sym.kind in (MODULE_REF, TVAR))
-                if allow_forward_ref:
-                    # We currently can't support subscripted forward refs in functions;
-                    # see https://github.com/python/mypy/pull/3952#discussion_r139950690
-                    # for discussion.
-                    if t.args and not self.global_scope:
-                        if not self.in_dynamic_func:
-                            self.fail('Unsupported forward reference to "{}"'.format(t.name), t)
-                        return AnyType(TypeOfAny.from_error)
-                    return ForwardRef(t)
-                # None of the above options worked, we give up.
-                self.fail('Invalid type "{}"'.format(name), t)
-                if self.third_pass and sym.kind == TVAR:
-                    self.note_func("Forward references to type variables are prohibited", t)
-                    return AnyType(TypeOfAny.from_error)
-                # TODO: Would it be better to always return Any instead of UnboundType
-                # in case of an error? On one hand, UnboundType has a name so error messages
-                # are more detailed, on the other hand, some of them may be bogus.
-                return t
-            info = sym.node  # type: TypeInfo
-            if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-                fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
-                return TupleType(self.anal_array(t.args), fallback, t.line)
+                return expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
+            elif isinstance(node, TypeInfo):
+                return self.analyze_unbound_type_with_type_info(t, node)
             else:
-                # Analyze arguments and construct Instance type. The
-                # number of type arguments and their values are
-                # checked only later, since we do not always know the
-                # valid count at this point. Thus we may construct an
-                # Instance with an invalid number of type arguments.
-                instance = Instance(info, self.anal_array(t.args), t.line, t.column)
-                if not t.args and self.options.disallow_any_generics and not self.defining_alias:
-                    # We report/patch invalid built-in instances already during second pass.
-                    # This is done to avoid storing additional state on instances.
-                    # All other (including user defined) generics will be patched/reported
-                    # in the third pass.
-                    if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
-                        alternative = nongen_builtins[info.fullname()]
-                        self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
-                        any_type = AnyType(TypeOfAny.from_error, line=t.line)
-                    else:
-                        any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
-                    instance.args = [any_type] * len(info.type_vars)
-
-                tup = info.tuple_type
-                if tup is not None:
-                    # The class has a Tuple[...] base class so it will be
-                    # represented as a tuple type.
-                    if t.args:
-                        self.fail('Generic tuple types not supported', t)
-                        return AnyType(TypeOfAny.from_error)
-                    return tup.copy_modified(items=self.anal_array(tup.items),
-                                             fallback=instance)
-                td = info.typeddict_type
-                if td is not None:
-                    # The class has a TypedDict[...] base class so it will be
-                    # represented as a typeddict type.
-                    if t.args:
-                        self.fail('Generic TypedDict types not supported', t)
-                        return AnyType(TypeOfAny.from_error)
-                    # Create a named TypedDictType
-                    return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
-                                            fallback=instance)
-                return instance
-        else:
+                return self.analyze_unbound_type_without_type_info(t, sym)
+        else:  # sym is None
             if self.third_pass:
                 self.fail('Invalid type "{}"'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
             return AnyType(TypeOfAny.special_form)
+
+    def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
+        """Bind special type that is recognized through magic name such as 'typing.Any'.
+
+        Return the bound type if successful, and return None if the type is a normal type.
+        """
+        if fullname == 'builtins.None':
+            return NoneTyp()
+        elif fullname == 'typing.Any' or fullname == 'builtins.Any':
+            return AnyType(TypeOfAny.explicit)
+        elif fullname in ('typing.Final', 'typing_extensions.Final'):
+            self.fail("Final can be only used as an outermost qualifier"
+                      " in a variable annotation", t)
+            return AnyType(TypeOfAny.from_error)
+        elif fullname == 'typing.Tuple':
+            if len(t.args) == 0 and not t.empty_tuple_index:
+                # Bare 'Tuple' is same as 'tuple'
+                if self.options.disallow_any_generics and not self.is_typeshed_stub:
+                    self.fail(messages.BARE_GENERIC, t)
+                return self.named_type('builtins.tuple', line=t.line, column=t.column)
+            if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
+                # Tuple[T, ...] (uniform, variable-length tuple)
+                instance = self.named_type('builtins.tuple', [self.anal_type(t.args[0])])
+                instance.line = t.line
+                return instance
+            return self.tuple_type(self.anal_array(t.args))
+        elif fullname == 'typing.Union':
+            items = self.anal_array(t.args)
+            return UnionType.make_union(items)
+        elif fullname == 'typing.Optional':
+            if len(t.args) != 1:
+                self.fail('Optional[...] must have exactly one type argument', t)
+                return AnyType(TypeOfAny.from_error)
+            item = self.anal_type(t.args[0])
+            return make_optional_type(item)
+        elif fullname == 'typing.Callable':
+            return self.analyze_callable_type(t)
+        elif fullname == 'typing.Type':
+            if len(t.args) == 0:
+                any_type = AnyType(TypeOfAny.from_omitted_generics,
+                                   line=t.line, column=t.column)
+                return TypeType(any_type, line=t.line, column=t.column)
+            if len(t.args) != 1:
+                self.fail('Type[...] must have exactly one type argument', t)
+            item = self.anal_type(t.args[0])
+            return TypeType.make_normalized(item, line=t.line)
+        elif fullname == 'typing.ClassVar':
+            if self.nesting_level > 0:
+                self.fail('Invalid type: ClassVar nested inside other type', t)
+            if len(t.args) == 0:
+                return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
+            if len(t.args) != 1:
+                self.fail('ClassVar[...] must have at most one type argument', t)
+                return AnyType(TypeOfAny.from_error)
+            item = self.anal_type(t.args[0])
+            if isinstance(item, TypeVarType) or get_type_vars(item):
+                self.fail('Invalid type: ClassVar cannot be generic', t)
+                return AnyType(TypeOfAny.from_error)
+            return item
+        elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
+            return UninhabitedType(is_noreturn=True)
+        elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
+            return self.analyze_literal_type(t)
+        return None
+
+    def analyze_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
+        """Bind unbound type when were able to find target TypeInfo.
+
+        This handles simple cases like 'int', 'modname.UserClass[str]', etc.
+        """
+        if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
+            fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
+            return TupleType(self.anal_array(t.args), fallback, t.line)
+        # Analyze arguments and (usually) construct Instance type. The
+        # number of type arguments and their values are
+        # checked only later, since we do not always know the
+        # valid count at this point. Thus we may construct an
+        # Instance with an invalid number of type arguments.
+        instance = Instance(info, self.anal_array(t.args), t.line, t.column)
+        if not t.args and self.options.disallow_any_generics and not self.defining_alias:
+            # We report/patch invalid built-in instances already during second pass.
+            # This is done to avoid storing additional state on instances.
+            # All other (including user defined) generics will be patched/reported
+            # in the third pass.
+            if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
+                alternative = nongen_builtins[info.fullname()]
+                self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                any_type = AnyType(TypeOfAny.from_error, line=t.line)
+            else:
+                any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
+            instance.args = [any_type] * len(info.type_vars)
+
+        tup = info.tuple_type
+        if tup is not None:
+            # The class has a Tuple[...] base class so it will be
+            # represented as a tuple type.
+            if t.args:
+                self.fail('Generic tuple types not supported', t)
+                return AnyType(TypeOfAny.from_error)
+            return tup.copy_modified(items=self.anal_array(tup.items),
+                                     fallback=instance)
+        td = info.typeddict_type
+        if td is not None:
+            # The class has a TypedDict[...] base class so it will be
+            # represented as a typeddict type.
+            if t.args:
+                self.fail('Generic TypedDict types not supported', t)
+                return AnyType(TypeOfAny.from_error)
+            # Create a named TypedDictType
+            return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
+                                    fallback=instance)
+        return instance
+
+    def analyze_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
+        """Figure out what an unbound type that doesn't refer to a TypeInfo node means.
+
+        This is something unusual. We try our best to find out what it is.
+        """
+        name = sym.fullname
+        if name is None:
+            assert sym.node is not None
+            name = sym.node.name()
+        # Option 1:
+        # Something with an Any type -- make it an alias for Any in a type
+        # context. This is slightly problematic as it allows using the type 'Any'
+        # as a base class -- however, this will fail soon at runtime so the problem
+        # is pretty minor.
+        if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
+            return AnyType(TypeOfAny.from_unimported_type,
+                           missing_import_name=sym.node.type.missing_import_name)
+        # Option 2:
+        # Unbound type variable. Currently these may be still valid,
+        # for example when defining a generic type alias.
+        unbound_tvar = ((sym.kind == TVAR) and
+                        (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
+        if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
+            return t
+        # Option 3:
+        # If it is not something clearly bad (like a known function, variable,
+        # type variable, or module), and it is still not too late, we try deferring
+        # this type using a forward reference wrapper. It will be revisited in
+        # the third pass.
+        allow_forward_ref = not (self.third_pass or
+                                 isinstance(sym.node, (FuncDef, Decorator)) or
+                                 isinstance(sym.node, Var) and sym.node.is_ready or
+                                 sym.kind in (MODULE_REF, TVAR))
+        if allow_forward_ref:
+            # We currently can't support subscripted forward refs in functions;
+            # see https://github.com/python/mypy/pull/3952#discussion_r139950690
+            # for discussion.
+            if t.args and not self.global_scope:
+                if not self.in_dynamic_func:
+                    self.fail('Unsupported forward reference to "{}"'.format(t.name), t)
+                return AnyType(TypeOfAny.from_error)
+            return ForwardRef(t)
+        # None of the above options worked, we give up.
+        self.fail('Invalid type "{}"'.format(name), t)
+        if self.third_pass and sym.kind == TVAR:
+            self.note_func("Forward references to type variables are prohibited", t)
+            return AnyType(TypeOfAny.from_error)
+        # TODO: Would it be better to always return Any instead of UnboundType
+        # in case of an error? On one hand, UnboundType has a name so error messages
+        # are more detailed, on the other hand, some of them may be bogus.
+        return t
 
     def visit_any(self, t: AnyType) -> Type:
         return t
