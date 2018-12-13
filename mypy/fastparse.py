@@ -1177,7 +1177,9 @@ class TypeConverter:
             node = parse_type_comment(n.s.strip(), self.line, errors=None)
             if isinstance(node, UnboundType) and node.original_str_expr is None:
                 node.original_str_expr = n.s
-            return node or AnyType(TypeOfAny.from_error)
+                return node
+            else:
+                return RawLiteralType(n.s, 'builtins.str', line=self.line)
         except SyntaxError:
             return RawLiteralType(n.s, 'builtins.str', line=self.line)
 

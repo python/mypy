@@ -118,9 +118,11 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
             assert node is not None
             if isinstance(node, UnboundType) and node.original_str_expr is None:
                 node.original_str_expr = expr.value
-            return node
+                return node
+            else:
+                return RawLiteralType(expr.value, 'builtins.str', expr.line, expr.column)
         except SyntaxError:
-            return RawLiteralType(expr.value, 'builtins.str', line=expr.line, column=expr.column)
+            return RawLiteralType(expr.value, 'builtins.str', expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr)
         if isinstance(typ, RawLiteralType) and isinstance(typ.value, int) and expr.op == '-':
