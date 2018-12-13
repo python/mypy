@@ -906,7 +906,6 @@ class SameTypeSuite(Suite):
         self.fx = TypeFixture()
 
     def test_literal_type(self) -> None:
-        a = self.fx.a
         b = self.fx.b  # Reminder: b is a subclass of a
         d = self.fx.d
 
