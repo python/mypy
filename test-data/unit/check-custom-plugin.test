@@ -358,9 +358,6 @@ def declarative_base() -> Any: ...
 [[mypy]
 python_version=3.6
 plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
-
-[file base_plugin.py]
-
 [out]
 [out2]
 tmp/a.py:3: error: Revealed type is 'builtins.str'
