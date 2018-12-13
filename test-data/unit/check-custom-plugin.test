@@ -331,3 +331,34 @@ class Instr(Generic[T]): ...
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testBaseClassPluginHookWorksIncremental]
+# flags: --config-file tmp/mypy.ini
+import a
+
+[file a.py]
+from base import Base
+class C(Base): ...
+
+[file a.py.2]
+from base import Base
+class C(Base): ...
+reveal_type(C().__magic__)
+Base.__magic__
+
+[file base.py]
+from lib import declarative_base
+Base = declarative_base()
+
+[file lib.py]
+from typing import Any
+def declarative_base() -> Any: ...
+
+[file mypy.ini]
+[[mypy]
+python_version=3.6
+plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'builtins.str'
+tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"

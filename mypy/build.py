@@ -2386,6 +2386,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 if dep in st.suppressed:
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
+    manager.plugin.set_modules(manager.modules)
     return graph
 
 

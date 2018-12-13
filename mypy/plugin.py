@@ -43,11 +43,14 @@ from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
-from mypy.nodes import Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
+from mypy.nodes import (
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
+)
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
+from mypy.lookup import lookup_fully_qualified
 import mypy.interpreted_plugin
 
 
@@ -94,6 +97,28 @@ AnalyzeTypeContext = NamedTuple(
         ('type', UnboundType),  # Type to analyze
         ('context', Context),   # Relevant location context (e.g. for error messages)
         ('api', TypeAnalyzerPluginInterface)])
+
+
+@trait
+class CommonPluginApi:
+    """
+    A common plugin API (shared between semantic analysis and type checking phases)
+    that all plugin hooks get independently of the context.
+    """
+
+    # Global mypy options.
+    # Per-file options can be only accessed on various
+    # XxxPluginInterface classes.
+    options = None  # type: Options
+
+    @abstractmethod
+    def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
+        """Lookup a symbol by its full name (including module).
+
+        This lookup function available for all plugins. Return None if a name
+        is not found. This function doesn't support lookup from current scope.
+        Use SemanticAnalyzerPluginInterface.lookup_qualified() for this."""
+        raise NotImplementedError
 
 
 @trait
@@ -286,7 +311,7 @@ DynamicClassDefContext = NamedTuple(
     ])
 
 
-class Plugin:
+class Plugin(CommonPluginApi):
     """Base class of all type checker plugins.
 
     This defines a no-op plugin.  Subclasses can override some methods to
@@ -303,6 +328,17 @@ class Plugin:
     def __init__(self, options: Options) -> None:
         self.options = options
         self.python_version = options.python_version
+        # This can't be set in __init__ because it is executed too soon in build.py.
+        # Therefore, build.py *must* set it later before graph processing starts
+        # by calling set_modules().
+        self._modules = None  # type: Optional[Dict[str, MypyFile]]
+
+    def set_modules(self, modules: Dict[str, MypyFile]) -> None:
+        self._modules = modules
+
+    def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
+        assert self._modules is not None
+        return lookup_fully_qualified(fullname, self._modules)
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
@@ -479,6 +515,12 @@ class WrapperPlugin(Plugin):
         super().__init__(plugin.options)
         self.plugin = plugin
 
+    def set_modules(self, modules: Dict[str, MypyFile]) -> None:
+        self.plugin.set_modules(modules)
+
+    def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
+        return self.plugin.lookup_fully_qualified(fullname)
+
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
         return self.plugin.get_type_analyze_hook(fullname)
@@ -539,6 +581,10 @@ class ChainedPlugin(Plugin):
         """
         super().__init__(options)
         self._plugins = plugins
+
+    def set_modules(self, modules: Dict[str, MypyFile]) -> None:
+        for plugin in self._plugins:
+            plugin.set_modules(modules)
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:

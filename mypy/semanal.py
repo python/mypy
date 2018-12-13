@@ -3504,6 +3504,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         Note that this can't be used for names nested in class namespaces.
         """
+        # TODO: unify/clean-up/simplify lookup methods, see #4157.
+        # TODO: support nested classes (but consider performance impact,
+        #       we might keep the module level only lookup for thing like 'builtins.int').
         assert '.' in fullname
         module, name = fullname.rsplit('.', maxsplit=1)
         if module not in self.modules:
