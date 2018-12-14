@@ -908,8 +908,8 @@ static void CPy_AddTraceback(const char *filename, const char *funcname, int lin
 // exception APIs that might want to return NULL pointers instead
 // return properly refcounted pointers to this dummy object.
 struct ExcDummyStruct { PyObject_HEAD };
-static struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
-static PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
+extern struct ExcDummyStruct _CPy_ExcDummyStruct;
+extern PyObject *_CPy_ExcDummy;
 
 static inline void _CPy_ToDummy(PyObject **p) {
     if (*p == NULL) {
@@ -1025,13 +1025,8 @@ static void CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_t
     _CPy_ToNone(p_traceback);
 }
 
-// Because its dynamic linker is more restricted than linux/OS X,
-// Windows doesn't allow initializing globals with values from
-// other dynamic libraries. This means we need to initialize
-// things at load time.
-static void CPy_Init(void) {
-    _CPy_ExcDummyStruct.ob_base.ob_type = &PyBaseObject_Type;
-}
+void CPy_Init(void);
+
 
 #ifdef __cplusplus
 }

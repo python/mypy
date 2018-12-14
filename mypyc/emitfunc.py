@@ -39,7 +39,7 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
     for arg in fn.sig.args:
         args.append('{}{}{}'.format(emitter.ctype_spaced(arg.type), REG_PREFIX, arg.name))
 
-    return 'static {ret_type}{name}({args})'.format(
+    return '{ret_type}{name}({args})'.format(
         ret_type=emitter.ctype_spaced(fn.sig.ret_type),
         name=emitter.native_function_name(fn),
         args=', '.join(args) or 'void')

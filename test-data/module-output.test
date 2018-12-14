@@ -5,33 +5,8 @@
 def f(x: int) -> int:
     return x
 [out]
-#include <Python.h>
-#include <CPy.h>
-
-static CPyModule *CPyStatic_module_internal = NULL;
-static CPyModule *CPyStatic_module;
-static PyObject *CPyStatic_globals;
-static CPyModule *CPyStatic_builtins_module_internal = NULL;
-static CPyModule *CPyStatic_builtins_module;
-static PyObject *CPyStatic_unicode_0;
-static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
-static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
-static char CPyDef___top_level__(void);
-static int CPyGlobalsInit(void)
-{
-    static int is_initialized = 0;
-    if (is_initialized) return 0;
-    
-    CPy_Init();
-    CPyStatic_module = Py_None;
-    CPyStatic_builtins_module = Py_None;
-    CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
-    if (unlikely(CPyStatic_unicode_0 == NULL))
-        return -1;
-    is_initialized = 1;
-    return 0;
-}
-
+== __native.c ==
+#include "__native.h"
 static PyMethodDef module_methods[] = {
     {"f", (PyCFunction)CPyPy_f, METH_VARARGS | METH_KEYWORDS, NULL /* docstring */},
     {NULL, NULL, 0, NULL}
@@ -69,13 +44,13 @@ PyMODINIT_FUNC PyInit_prog(void)
     return CPyStatic_module_internal;
 }
 
-static CPyTagged CPyDef_f(CPyTagged cpy_r_x) {
+CPyTagged CPyDef_f(CPyTagged cpy_r_x) {
 CPyL0: ;
     CPyTagged_IncRef(cpy_r_x);
     return cpy_r_x;
 }
 
-static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
+PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     static char *kwlist[] = {"x", 0};
     PyObject *obj_x;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "O:f", kwlist, &obj_x)) {
@@ -96,7 +71,7 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     return retbox;
 }
 
-static char CPyDef___top_level__(void) {
+char CPyDef___top_level__(void) {
     PyObject *cpy_r_r0;
     PyObject *cpy_r_r1;
     char cpy_r_r2;
@@ -132,6 +107,39 @@ CPyL4: ;
     cpy_r_r6 = 2;
     return cpy_r_r6;
 }
+
+int CPyGlobalsInit(void)
+{
+    static int is_initialized = 0;
+    if (is_initialized) return 0;
+    
+    CPy_Init();
+    CPyStatic_module = Py_None;
+    CPyStatic_builtins_module = Py_None;
+    CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
+    if (unlikely(CPyStatic_unicode_0 == NULL))
+        return -1;
+    is_initialized = 1;
+    return 0;
+}
+CPyModule *CPyStatic_module_internal = NULL;
+CPyModule *CPyStatic_builtins_module_internal = NULL;
+
+== __native.h ==
+#include <Python.h>
+#include <CPy.h>
+
+int CPyGlobalsInit(void);
+
+PyObject *CPyStatic_unicode_0;
+CPyModule *CPyStatic_module_internal;
+CPyModule *CPyStatic_module;
+PyObject *CPyStatic_globals;
+CPyModule *CPyStatic_builtins_module_internal;
+CPyModule *CPyStatic_builtins_module;
+CPyTagged CPyDef_f(CPyTagged cpy_r_x);
+PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
+char CPyDef___top_level__(void);
 
 [case testError]
 def f(x: List[int]) -> None: pass

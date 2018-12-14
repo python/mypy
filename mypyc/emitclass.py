@@ -72,7 +72,14 @@ def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str,
 
 
 def generate_class_type_decl(cl: ClassIR, emitter: Emitter) -> None:
-    emitter.emit_line('static PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
+    emitter.emit_line('PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
+    emitter.emit_line()
+    generate_object_struct(cl, emitter)
+    emitter.emit_line()
+    declare_native_getters_and_setters(cl, emitter)
+    generate_full = not cl.is_trait and not cl.builtin_base
+    if generate_full:
+        emitter.emit_line('{};'.format(native_function_header(cl.ctor, emitter)))
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -111,8 +118,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     def emit_line() -> None:
         emitter.emit_line()
 
-    emit_line()
-    generate_object_struct(cl, emitter)
     emit_line()
 
     # If the class has a method to initialize default attribute
@@ -222,6 +227,18 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
             for attr, rtype in base.attributes.items():
                 emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype), attr))
     emitter.emit_line('}} {};'.format(cl.struct_name(emitter.names)))
+
+
+def declare_native_getters_and_setters(cl: ClassIR,
+                                       emitter: Emitter) -> None:
+    for attr, rtype in cl.attributes.items():
+        emitter.emit_line('{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
+                                                   native_getter_name(cl, attr, emitter.names),
+                                                   cl.struct_name(emitter.names)))
+        emitter.emit_line(
+            'bool {}({} *self, {}value);'.format(native_setter_name(cl, attr, emitter.names),
+                                                 cl.struct_name(emitter.names),
+                                                 emitter.ctype_spaced(rtype)))
 
 
 def generate_native_getters_and_setters(cl: ClassIR,

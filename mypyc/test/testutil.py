@@ -4,7 +4,7 @@ import contextlib
 import os.path
 import re
 import shutil
-from typing import List, Callable, Iterator, Optional
+from typing import List, Callable, Iterator, Optional, Tuple
 
 from mypy import build
 from mypy.errors import CompileError
@@ -173,7 +173,9 @@ def heading(text: str) -> None:
     print('=' * 20 + ' ' + text + ' ' + '=' * 20)
 
 
-def show_c(ctext: str) -> None:
+def show_c(cfiles: List[Tuple[str, str]]) -> None:
     heading('Generated C')
-    print_with_line_numbers(ctext)
+    for cfile, ctext in cfiles:
+        print('== {} =='.format(cfile))
+        print_with_line_numbers(ctext)
     heading('End C')

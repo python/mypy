@@ -218,18 +218,26 @@ Traceback (most recent call last):
 IndexError: list assignment index out of range
 
 [case testMultiModuleCycle]
+if False:
+    from typing import Final
 import other
 
+x = int('0')  # type: Final
+
 def f1() -> int:
-    return other.f2()
+    return other.f2() + other.x
 
 def f3() -> int:
     return 5
 [file other.py]
+if False:
+    from typing import Final
 import native
 
+x = int('0')  # type: Final
+
 def f2() -> int:
-    return native.f3()
+    return native.f3() + native.x
 [file driver.py]
 from native import f1
 assert f1() == 5
