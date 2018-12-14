@@ -46,6 +46,7 @@ import subprocess
 import sys
 import textwrap
 import traceback
+import argparse
 from collections import defaultdict
 
 from typing import (
@@ -969,65 +970,67 @@ def main() -> None:
                 print("Stub generation failed for", module, file=sys.stderr)
 
 
+HEADER = """%(prog)s [--py2] [--no-import] [--doc-dir PATH]
+                     [--search-path PATH] [--python-executable PATH] [-o PATH] MODULE ..."""
+
+DESCRIPTION = """
+Generate draft stubs for modules.
+
+Stubs are generated in directory ./out, to avoid overriding files with
+manual changes.  This directory is assumed to exist.
+"""
+
+
 def parse_options(args: List[str]) -> Options:
-    # TODO: why not use click and reduce the amount of code to maintain
-    # within this module.
-    pyversion = defaults.PYTHON3_VERSION
-    no_import = False
-    recursive = False
-    ignore_errors = False
-    doc_dir = ''
-    search_path = []  # type: List[str]
-    interpreter = ''
-    include_private = False
-    output_dir = 'out'
-    while args and args[0].startswith('-'):
-        if args[0] in '-o':
-            output_dir = args[1]
-            args = args[1:]
-        elif args[0] == '--doc-dir':
-            doc_dir = args[1]
-            args = args[1:]
-        elif args[0] == '--search-path':
-            if not args[1]:
-                usage()
-            search_path = args[1].split(':')
-            args = args[1:]
-        elif args[0] == '-p':
-            interpreter = args[1]
-            args = args[1:]
-        elif args[0] == '--recursive':
-            recursive = True
-        elif args[0] == '--ignore-errors':
-            ignore_errors = True
-        elif args[0] == '--py2':
-            pyversion = defaults.PYTHON2_VERSION
-        elif args[0] == '--no-import':
-            no_import = True
-        elif args[0] == '--include-private':
-            include_private = True
-        elif args[0] in ('-h', '--help'):
-            usage(exit_nonzero=False)
-        else:
-            raise SystemExit('Unrecognized option %s' % args[0])
-        args = args[1:]
-    if not args:
-        usage()
-    if not interpreter:
-        interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
+    parser = argparse.ArgumentParser(prog='stubgen',
+                                     usage=HEADER,
+                                     description=DESCRIPTION)
+
+    parser.add_argument('--py2', action='store_true',
+                        help="run in Python 2 mode (default: Python 3 mode)")
+    parser.add_argument('--recursive', action='store_true',
+                        help="traverse listed modules to generate inner package modules as well")
+    parser.add_argument('--ignore-errors', action='store_true',
+                        help="ignore errors when trying to generate stubs for modules")
+    parser.add_argument('--no-import', action='store_true',
+                        help="don't import the modules, just parse and analyze them "
+                             "(doesn't work with C extension modules and doesn't "
+                             "respect __all__)")
+    parser.add_argument('--include-private', action='store_true',
+                        help="generate stubs for objects and members considered private "
+                             "(single leading underscore and no trailing underscores)")
+    parser.add_argument('--doc-dir', metavar='PATH', default='',
+                        help="use .rst documentation in PATH (this may result in "
+                             "better stubs in some cases; consider setting this to "
+                             "DIR/Python-X.Y.Z/Doc/library)")
+    parser.add_argument('--search-path', metavar='PATH', default='',
+                        help="specify module search directories, separated by ':' "
+                             "(currently only used if --no-import is given)")
+    parser.add_argument('--python-executable', metavar='PATH', dest='interpreter', default='',
+                        help="use Python interpreter at PATH (only works for "
+                             "Python 2 right now)")
+    parser.add_argument('-o', metavar='PATH', dest='output_dir', default='out',
+                        help="Change the output folder [default: %(default)s]")
+    parser.add_argument(metavar='modules', nargs='+', dest='modules')
+
+    ns = parser.parse_args(args)
+
+    pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
+    if not ns.interpreter:
+        ns.interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
     # Create the output folder if it doesn't already exist.
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not os.path.exists(ns.output_dir):
+        os.makedirs(ns.output_dir)
     return Options(pyversion=pyversion,
-                   no_import=no_import,
-                   doc_dir=doc_dir,
-                   search_path=search_path,
-                   interpreter=interpreter,
-                   modules=args,
-                   ignore_errors=ignore_errors,
-                   recursive=recursive,
-                   include_private=include_private,
-                   output_dir=output_dir)
+                   no_import=ns.no_import,
+                   doc_dir=ns.doc_dir,
+                   search_path=ns.search_path.split(':'),
+                   interpreter=ns.interpreter,
+                   modules=ns.modules,
+                   ignore_errors=ns.ignore_errors,
+                   recursive=ns.recursive,
+                   include_private=ns.include_private,
+                   output_dir=ns.output_dir)
 
 
 def default_python2_interpreter() -> str:
@@ -1040,48 +1043,6 @@ def default_python2_interpreter() -> str:
         if b'Python 2' in output:
             return candidate
     raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
-
-
-def usage(exit_nonzero: bool = True) -> None:
-    usage = textwrap.dedent("""\
-        usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
-                       [--search-path PATH] [-p PATH] [-o PATH]
-                       MODULE ...
-
-        Generate draft stubs for modules.
-
-        Stubs are generated in directory ./out, to avoid overriding files with
-        manual changes.  This directory is assumed to exist.
-
-        Options:
-          --py2           run in Python 2 mode (default: Python 3 mode)
-          --recursive     traverse listed modules to generate inner package modules as well
-          --ignore-errors ignore errors when trying to generate stubs for modules
-          --no-import     don't import the modules, just parse and analyze them
-                          (doesn't work with C extension modules and doesn't
-                          respect __all__)
-          --include-private
-                          generate stubs for objects and members considered private
-                          (single leading underscore and no trailing underscores)
-          --doc-dir PATH  use .rst documentation in PATH (this may result in
-                          better stubs in some cases; consider setting this to
-                          DIR/Python-X.Y.Z/Doc/library)
-          --search-path PATH
-                          specify module search directories, separated by ':'
-                          (currently only used if --no-import is given)
-          -p PATH         use Python interpreter at PATH (only works for
-                          Python 2 right now)
-          -o PATH         Change the output folder [default: out]
-          -h, --help      print this help message and exit
-    """.rstrip())
-
-    if exit_nonzero:
-        # The user made a mistake, so we should return with an error code
-        raise SystemExit(usage)
-    else:
-        # The user asked for help specifically, so we should exit with success
-        print(usage, file=sys.stderr)
-        sys.exit()
 
 
 if __name__ == '__main__':
