@@ -43,6 +43,7 @@ from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
+from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
@@ -50,7 +51,6 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
-from mypy.lookup import lookup_fully_qualified
 import mypy.interpreted_plugin
 
 
@@ -255,10 +255,27 @@ class SemanticAnalyzerPluginInterface:
 # callback at least sometimes can infer a more precise type.
 FunctionContext = NamedTuple(
     'FunctionContext', [
-        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
-        ('default_return_type', Type),     # Return type inferred from signature
-        ('args', List[List[Expression]]),  # Actual expressions for each formal argument
-        ('context', Context),              # Relevant location context (e.g. for error messages)
+        # Names of parameters from the callee definition, in most cases
+        # it will have more information than arg_names, and one should use this parameter.
+        ('callee_arg_names', List[Optional[str]]),
+        # Names of parameters from caller definition. It differs from the callee_arg_names in
+        # case of definition like
+        #     def func(**kwargs):
+        #         pass
+        # and call
+        #     func(kw1=1, kw2=2)
+        # Here, callee_arg_names will be ['kwargs'] and arg_names will be ['kw1', 'kw2']
+        ('arg_names', List[List[Optional[str]]]),
+        # List of ints which define how argument have been passed,
+        # like 0 = positional, 4 = kwargs, see nodes.ARG_* constants
+        ('arg_kinds', List[List[int]]),
+        # List of actual caller types for each formal argument
+        ('arg_types', List[List[Type]]),
+        # Return type inferred from signature
+        ('default_return_type', Type),
+        # Actual expressions for each formal argument
+        ('args', List[List[Expression]]),
+        ('context', Context),
         ('api', CheckerPluginInterface)])
 
 # A context for a method signature hook that infers a better signature for a
@@ -279,10 +296,13 @@ MethodSigContext = NamedTuple(
 MethodContext = NamedTuple(
     'MethodContext', [
         ('type', Type),                    # Base object type for method call
-        ('arg_types', List[List[Type]]),   # Lists of actual argument types for every formal param
-        ('default_return_type', Type),     # Return type inferred by mypy
-        ('args', List[List[Expression]]),  # Lists of actual expressions for every formal argument
-        ('context', Context),              # Relevant location context (e.g. for error messages)
+        ('callee_arg_names', List[Optional[str]]),
+        ('arg_names', List[List[Optional[str]]]),
+        ('arg_kinds', List[List[int]]),
+        ('arg_types', List[List[Type]]),  # List of actual caller types for each formal argument
+        ('default_return_type', Type),
+        ('args', List[List[Expression]]),
+        ('context', Context),
         ('api', CheckerPluginInterface)])
 
 # A context for an attribute type hook that infers the type of an attribute.
