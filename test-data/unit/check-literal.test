@@ -108,6 +108,113 @@ reveal_type(y)                      # E: Revealed type is 'Union[Tuple[Literal[2
 reveal_type(bar)                    # E: Revealed type is 'def (x: Tuple[Literal[2]])'
 [out]
 
+[case testLiteralValidExpressionsInStringsPython3]
+from wrapper import *
+
+[file wrapper.pyi]
+from typing_extensions import Literal
+
+alias_1 = Literal['a+b']
+alias_2 = Literal['1+2']
+alias_3 = Literal['3']
+alias_4 = Literal['True']
+alias_5 = Literal['None']
+alias_6 = Literal['"foo"']
+expr_of_alias_1: alias_1
+expr_of_alias_2: alias_2
+expr_of_alias_3: alias_3
+expr_of_alias_4: alias_4
+expr_of_alias_5: alias_5
+expr_of_alias_6: alias_6
+reveal_type(expr_of_alias_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_of_alias_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_of_alias_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_of_alias_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_of_alias_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_of_alias_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_ann_1: Literal['a+b']
+expr_ann_2: Literal['1+2']
+expr_ann_3: Literal['3']
+expr_ann_4: Literal['True']
+expr_ann_5: Literal['None']
+expr_ann_6: Literal['"foo"']
+reveal_type(expr_ann_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_ann_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_ann_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_ann_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_ann_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_ann_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_str_1: "Literal['a+b']"
+expr_str_2: "Literal['1+2']"
+expr_str_3: "Literal['3']"
+expr_str_4: "Literal['True']"
+expr_str_5: "Literal['None']"
+expr_str_6: "Literal['\"foo\"']"
+reveal_type(expr_str_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_str_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_str_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_str_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_str_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_str_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_com_1 = ...   # type: Literal['a+b']
+expr_com_2 = ...   # type: Literal['1+2']
+expr_com_3 = ...   # type: Literal['3']
+expr_com_4 = ...   # type: Literal['True']
+expr_com_5 = ...   # type: Literal['None']
+expr_com_6 = ...   # type: Literal['"foo"']
+reveal_type(expr_com_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_com_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_com_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_com_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_com_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_com_6)  # E: Revealed type is 'Literal['"foo"']'
+[builtins fixtures/bool.pyi]
+[out]
+
+[case testLiteralValidExpressionsInStringsPython2]
+# flags: --python-version=2.7
+from wrapper import *
+
+[file wrapper.pyi]
+from typing_extensions import Literal
+
+alias_1 = Literal['a+b']
+alias_2 = Literal['1+2']
+alias_3 = Literal['3']
+alias_4 = Literal['True']
+alias_5 = Literal['None']
+alias_6 = Literal['"foo"']
+expr_of_alias_1: alias_1
+expr_of_alias_2: alias_2
+expr_of_alias_3: alias_3
+expr_of_alias_4: alias_4
+expr_of_alias_5: alias_5
+expr_of_alias_6: alias_6
+reveal_type(expr_of_alias_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_of_alias_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_of_alias_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_of_alias_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_of_alias_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_of_alias_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_com_1 = ...   # type: Literal['a+b']
+expr_com_2 = ...   # type: Literal['1+2']
+expr_com_3 = ...   # type: Literal['3']
+expr_com_4 = ...   # type: Literal['True']
+expr_com_5 = ...   # type: Literal['None']
+expr_com_6 = ...   # type: Literal['"foo"']
+reveal_type(expr_com_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_com_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_com_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_com_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_com_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_com_6)  # E: Revealed type is 'Literal['"foo"']'
+[builtins fixtures/bool.pyi]
+[out]
+
 [case testLiteralRenamingImportWorks]
 from typing_extensions import Literal as Foo
 
