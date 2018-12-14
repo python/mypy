@@ -1024,7 +1024,7 @@ def parse_options(args: List[str]) -> Options:
     return Options(pyversion=pyversion,
                    no_import=ns.no_import,
                    doc_dir=ns.doc_dir,
-                   search_path=ns.search_path.spli(':'),
+                   search_path=ns.search_path.split(':'),
                    interpreter=ns.interpreter,
                    modules=ns.modules,
                    ignore_errors=ns.ignore_errors,
