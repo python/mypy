@@ -415,7 +415,7 @@ a.f(1)
 def f(x: int) -> None: ...
 [file a.py.2]
 # coding: ascii
-ä
+ä = 1
 [file a.py.3]
 def f(x: str) -> None: ...
 [out]
@@ -431,7 +431,7 @@ a.f(1)
 def f(x: int) -> None: ...
 [file a.py.2]
 # coding: ascii
-ä
+ä = 1
 [file a.py.3]
 def f(x: str) -> None: ...
 [out]
@@ -446,7 +446,7 @@ import a
 a.f(1)
 [file a.py]
 # coding: ascii
-ä
+ä = 1
 [file a.py.2]
 def f(x: str) -> None: ...
 [out]
