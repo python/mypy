@@ -43,7 +43,6 @@ from abc import abstractmethod
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
-from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
@@ -51,6 +50,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
+from mypy.lookup import lookup_fully_qualified
 import mypy.interpreted_plugin
 
 
