@@ -124,7 +124,14 @@ if USE_MYPYC:
 
     from mypyc.build import mypycify, MypycifyBuildExt
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
-    ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
+    ext_modules = mypycify(
+        mypyc_targets,
+        ['--config-file=mypy_bootstrap.ini'],
+        opt_level=opt_level,
+        # Use multi-file compliation mode on windows because without it
+        # our Appveyor builds run out of memory sometimes.
+        multi_file=sys.platform == 'win32',
+    )
     cmdclass['build_ext'] = MypycifyBuildExt
     description += " (mypyc-compiled version)"
 else:
