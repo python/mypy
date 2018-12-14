@@ -155,7 +155,11 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
 
 
 def parse_type_string(expr_string: str, line: int, column: int) -> Type:
-    """Parses a type that was originally present inside of an explicit string."""
+    """Parses a type that was originally present inside of an explicit string.
+    
+    For example, suppose we have the type `Foo["blah"]`. We should parse the
+    string expression "blah" using this function.
+    """
     try:
         node = parse_type_comment(expr_string.strip(), line=line, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
