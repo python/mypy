@@ -1688,10 +1688,12 @@ class State:
                     # tests have predictable output.)
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(
-                            self.path, os.strerror(ioerr.errno))])
+                            self.path, os.strerror(ioerr.errno))],
+                        module_with_blocker=self.id)
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
-                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
+                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))],
+                        module_with_blocker=self.id)
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
