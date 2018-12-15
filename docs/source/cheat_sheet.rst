@@ -46,9 +46,13 @@ Built-in types
 
    # Use Optional[] for values that could be None
    x = some_function()  # type: Optional[str]
+   # To indicate to mypy that the value is not None, 2 cases:
+   # If it still may be None sometimes, use an if-statement
    if x is not None:
-      print x
-
+       print x.upper()
+   # If it can never be None (e.g. due to some invariants), use an assert
+   assert x is not None
+   print x.upper()
 
 Functions
 *********
