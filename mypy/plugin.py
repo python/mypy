@@ -255,27 +255,21 @@ class SemanticAnalyzerPluginInterface:
 # callback at least sometimes can infer a more precise type.
 FunctionContext = NamedTuple(
     'FunctionContext', [
-        # Names of parameters from the callee definition, in most cases
-        # it will have more information than arg_names, and one should use this parameter.
+        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
+        ('arg_kinds', List[List[int]]),    # Ditto for argument kinds, see nodes.ARG_* constants
+        # Names of formal parameters from the callee definition,
+        # these will be sufficient in most cases.
         ('callee_arg_names', List[Optional[str]]),
-        # Names of parameters from caller definition. It differs from the callee_arg_names in
-        # case of definition like
-        #     def func(**kwargs):
+        # Names of actual arguments in the call expression. For example,
+        # in a situation like this:
+        #     def func(**kwargs) -> None:
         #         pass
-        # and call
         #     func(kw1=1, kw2=2)
-        # Here, callee_arg_names will be ['kwargs'] and arg_names will be ['kw1', 'kw2']
+        # callee_arg_names will be ['kwargs'] and arg_names will be [['kw1', 'kw2']].
         ('arg_names', List[List[Optional[str]]]),
-        # List of ints which define how argument have been passed,
-        # like 0 = positional, 4 = kwargs, see nodes.ARG_* constants
-        ('arg_kinds', List[List[int]]),
-        # List of actual caller types for each formal argument
-        ('arg_types', List[List[Type]]),
-        # Return type inferred from signature
-        ('default_return_type', Type),
-        # Actual expressions for each formal argument
-        ('args', List[List[Expression]]),
-        ('context', Context),
+        ('default_return_type', Type),     # Return type inferred from signature
+        ('args', List[List[Expression]]),  # Actual expressions for each formal argument
+        ('context', Context),              # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])
 
 # A context for a method signature hook that infers a better signature for a
@@ -296,12 +290,13 @@ MethodSigContext = NamedTuple(
 MethodContext = NamedTuple(
     'MethodContext', [
         ('type', Type),                    # Base object type for method call
+        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
+        # see FunctionContext for details about names and kinds
         ('callee_arg_names', List[Optional[str]]),
         ('arg_names', List[List[Optional[str]]]),
         ('arg_kinds', List[List[int]]),
-        ('arg_types', List[List[Type]]),  # List of actual caller types for each formal argument
-        ('default_return_type', Type),
-        ('args', List[List[Expression]]),
+        ('default_return_type', Type),     # Return type inferred by mypy
+        ('args', List[List[Expression]]),  # Lists of actual expressions for every formal argument
         ('context', Context),
         ('api', CheckerPluginInterface)])
 
