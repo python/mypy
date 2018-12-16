@@ -15,18 +15,18 @@ class ArgKindsPlugin(Plugin):
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
-        if  'Class.method' in fullname:
+        if 'Class.method' in fullname:
             return extract_arg_kinds_from_method
         return None
 
 
 def extract_arg_kinds_from_function(ctx: FunctionContext) -> Type:
-    ctx.api.fail(str(ctx.arg_kinds), Context())
+    ctx.api.fail(str(ctx.arg_kinds), ctx.context)
     return ctx.default_return_type
 
 
 def extract_arg_kinds_from_method(ctx: MethodContext) -> Type:
-    ctx.api.fail(str(ctx.arg_kinds), Context())
+    ctx.api.fail(str(ctx.arg_kinds), ctx.context)
     return ctx.default_return_type
 
 

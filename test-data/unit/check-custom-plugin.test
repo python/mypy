@@ -520,23 +520,19 @@ class Class:
     def method(self, *args, **kwargs):
         pass
 
-Class().method(1, *[2], **{'a': 1})
+Class().method(1, *[2], **{'a': 1})  # E: [[0, 2], [4]]
 [builtins fixtures/dict.pyi]
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
-[out]
-main: error: [[0, 2], [4]]
 
 [case testArgKindsFunction]
 # flags: --config-file tmp/mypy.ini
 def func(*args, **kwargs):
     pass
 
-func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})
+func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})  # E: [[0, 0, 0, 2], [4]]
 [builtins fixtures/dict.pyi]
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
-[out]
-main: error: [[0, 0, 0, 2], [4]]

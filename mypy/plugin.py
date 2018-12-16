@@ -292,9 +292,9 @@ MethodContext = NamedTuple(
         ('type', Type),                    # Base object type for method call
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         # see FunctionContext for details about names and kinds
+        ('arg_kinds', List[List[int]]),
         ('callee_arg_names', List[Optional[str]]),
         ('arg_names', List[List[Optional[str]]]),
-        ('arg_kinds', List[List[int]]),
         ('default_return_type', Type),     # Return type inferred by mypy
         ('args', List[List[Expression]]),  # Lists of actual expressions for every formal argument
         ('context', Context),

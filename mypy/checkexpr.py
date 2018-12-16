@@ -558,17 +558,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callback = self.plugin.get_function_hook(fullname)
             assert callback is not None  # Assume that caller ensures this
             return callback(
-                FunctionContext(callee.arg_names, formal_arg_names, formal_arg_kinds,
-                                formal_arg_types, callee.ret_type, formal_arg_exprs,
-                                context, self.chk))
+                FunctionContext(formal_arg_types, formal_arg_kinds,
+                                callee.arg_names, formal_arg_names,
+                                callee.ret_type, formal_arg_exprs, context, self.chk))
         else:
             # Apply method plugin
             method_callback = self.plugin.get_method_hook(fullname)
             assert method_callback is not None  # Assume that caller ensures this
             return method_callback(
-                MethodContext(object_type, callee.arg_names, formal_arg_names, formal_arg_kinds,
-                              formal_arg_types, callee.ret_type, formal_arg_exprs,
-                              context, self.chk))
+                MethodContext(object_type, formal_arg_types, formal_arg_kinds,
+                              callee.arg_names, formal_arg_names,
+                              callee.ret_type, formal_arg_exprs, context, self.chk))
 
     def apply_method_signature_hook(
             self, callee: FunctionLike, args: List[Expression],
