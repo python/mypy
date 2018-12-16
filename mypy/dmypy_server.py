@@ -58,9 +58,9 @@ if sys.platform == 'win32':
         command = [sys.executable, '-m', 'mypy.dmypy', '--status-file', status_file, 'daemon']
         pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
         command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
-        info = STARTUPINFO(dwFlags=0x1,  # STARTF_USESHOWWINDOW aka use wShowWindow's value
-                           wShowWindow=0,  # SW_HIDE aka make the window invisible
-                           )
+        info = STARTUPINFO()
+        info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
+        info.wShowWindow = 0  # SW_HIDE aka make the window invisible
         try:
             subprocess.Popen(command,
                              creationflags=0x10,  # CREATE_NEW_CONSOLE

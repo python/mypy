@@ -102,13 +102,13 @@ if USE_MYPYC:
 
     everything = find_package_data('mypy', ['*.py'])
     # Start with all the .py files
-    all_real_pys = [x for x in everything if not x.startswith('typeshed/')]
+    all_real_pys = [x for x in everything if not x.startswith('typeshed' + os.sep)]
     # Strip out anything in our blacklist
     mypyc_targets = [x for x in all_real_pys if x not in MYPYC_BLACKLIST]
     # Strip out any test code
-    mypyc_targets = [x for x in mypyc_targets if not x.startswith('test/')]
+    mypyc_targets = [x for x in mypyc_targets if not x.startswith('test' + os.sep)]
     # ... and add back in the one test module we need
-    mypyc_targets.append('test/visitors.py')
+    mypyc_targets.append(os.path.join('test', 'visitors.py'))
 
     # Fix the paths to be full
     mypyc_targets = [os.path.join('mypy', x) for x in mypyc_targets]
@@ -124,7 +124,14 @@ if USE_MYPYC:
 
     from mypyc.build import mypycify, MypycifyBuildExt
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
-    ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
+    ext_modules = mypycify(
+        mypyc_targets,
+        ['--config-file=mypy_bootstrap.ini'],
+        opt_level=opt_level,
+        # Use multi-file compliation mode on windows because without it
+        # our Appveyor builds run out of memory sometimes.
+        multi_file=sys.platform == 'win32',
+    )
     cmdclass['build_ext'] = MypycifyBuildExt
     description += " (mypyc-compiled version)"
 else:

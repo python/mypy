@@ -5,7 +5,7 @@ from mypy.nodes import (
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
     get_member_expr_fullname
 )
-from mypy.fastparse import parse_type_comment
+from mypy.fastparse import parse_type_comment, parse_type_string
 from mypy.types import (
     Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny,
     RawLiteralType,
@@ -112,15 +112,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
         return TypeList([expr_to_unanalyzed_type(t, expr) for t in expr.items],
                         line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
-        # Parse string literal type.
-        try:
-            node = parse_type_comment(expr.value, expr.line, None)
-            assert node is not None
-            if isinstance(node, UnboundType) and node.original_str_expr is None:
-                node.original_str_expr = expr.value
-            return node
-        except SyntaxError:
-            return RawLiteralType(expr.value, 'builtins.str', line=expr.line, column=expr.column)
+        return parse_type_string(expr.value, expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr)
         if isinstance(typ, RawLiteralType) and isinstance(typ.value, int) and expr.op == '-':

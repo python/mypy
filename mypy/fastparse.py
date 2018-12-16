@@ -154,6 +154,23 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
         return TypeConverter(errors, line=line).visit(typ.body)
 
 
+def parse_type_string(expr_string: str, line: int, column: int) -> Type:
+    """Parses a type that was originally present inside of an explicit string.
+
+    For example, suppose we have the type `Foo["blah"]`. We should parse the
+    string expression "blah" using this function.
+    """
+    try:
+        node = parse_type_comment(expr_string.strip(), line=line, errors=None)
+        if isinstance(node, UnboundType) and node.original_str_expr is None:
+            node.original_str_expr = expr_string
+            return node
+        else:
+            return RawLiteralType(expr_string, 'builtins.str', line, column)
+    except SyntaxError:
+        return RawLiteralType(expr_string, 'builtins.str', line, column)
+
+
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     if isinstance(expr, Name):
         return expr.id == 'no_type_check'
@@ -1173,13 +1190,7 @@ class TypeConverter:
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        try:
-            node = parse_type_comment(n.s.strip(), self.line, errors=None)
-            if isinstance(node, UnboundType) and node.original_str_expr is None:
-                node.original_str_expr = n.s
-            return node or AnyType(TypeOfAny.from_error)
-        except SyntaxError:
-            return RawLiteralType(n.s, 'builtins.str', line=self.line)
+        return parse_type_string(n.s, line=self.line, column=-1)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:

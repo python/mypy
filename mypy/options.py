@@ -167,6 +167,7 @@ class Options:
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
+        self.sqlite_cache = False
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False

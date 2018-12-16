@@ -4327,7 +4327,7 @@ def foo() -> None:
 tmp/main.py:2: error: "int" has no attribute "foo"
 
 [case testIncrementalBustedFineGrainedCache1]
-# flags: --cache-fine-grained
+# flags: --cache-fine-grained --no-sqlite-cache
 import a
 import b
 [file a.py]
@@ -4355,7 +4355,7 @@ import b
 [rechecked a, b, builtins]
 
 [case testIncrementalBustedFineGrainedCache3]
-# flags: --cache-fine-grained
+# flags: --cache-fine-grained --no-sqlite-cache
 import a
 import b
 [file a.py]
