@@ -230,6 +230,157 @@ def decorator2() -> Callable[..., Callable[..., int]]: pass
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/named_callable.py
 
+[case testFunctionMethodContextsHasArgNames]
+# flags: --config-file tmp/mypy.ini
+from mod import Class, func
+
+reveal_type(Class().method(arg1=1, arg2=2, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(Class.myclassmethod(arg1=1, arg2=2, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(Class.mystaticmethod(arg1=1, arg2=2, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(Class.method(self=Class(), arg1=1, arg2=2, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(func(arg1=1, arg2=2, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class Class:
+    def method(self, classname: str, arg1: Any, arg2: Any) -> Any:
+        pass
+    @classmethod
+    def myclassmethod(cls, classname: str, arg1: Any, arg2: Any):
+        pass
+    @staticmethod
+    def mystaticmethod(classname: str, arg1: Any, arg2: Any):
+        pass
+def func(classname: str, arg1: Any, arg2: Any) -> Any:
+    pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+[builtins fixtures/classmethod.pyi]
+
+[case testFunctionMethodContextsHasArgNamesPositionals]
+# flags: --config-file tmp/mypy.ini
+from mod import Class, func
+
+reveal_type(Class().method('builtins.str', arg1=1, arg2=2))  # E: Revealed type is 'builtins.str'
+reveal_type(Class.myclassmethod('builtins.str', arg1=1, arg2=2))  # E: Revealed type is 'builtins.str'
+reveal_type(Class.mystaticmethod('builtins.str', arg1=1, arg2=2))  # E: Revealed type is 'builtins.str'
+reveal_type(Class.method(Class(), 'builtins.str', arg1=1, arg2=2))  # E: Revealed type is 'builtins.str'
+reveal_type(func('builtins.str', arg1=1, arg2=2))  # E: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class Class:
+    def method(self, classname: str, arg1: Any, arg2: Any) -> Any:
+        pass
+    @classmethod
+    def myclassmethod(cls, classname: str, arg1: Any, arg2: Any):
+        pass
+    @staticmethod
+    def mystaticmethod(classname: str, arg1: Any, arg2: Any):
+        pass
+def func(classname: str, arg1: Any, arg2: Any) -> Any:
+    pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+[builtins fixtures/classmethod.pyi]
+
+[case testFunctionMethodContextsHasArgNamesInitMethod]
+# flags: --config-file tmp/mypy.ini
+from mod import ClassInit, Outer
+
+reveal_type(ClassInit('builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassInit(classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(Outer.NestedClassInit(classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+[file mod.py]
+from typing import Any
+class ClassInit:
+    def __init__(self, classname: str):
+        pass
+class Outer:
+    class NestedClassInit:
+        def __init__(self, classname: str):
+            pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+
+[case testFunctionMethodContextsHasArgNamesUnfilledArguments]
+# flags: --config-file tmp/mypy.ini
+from mod import ClassUnfilled, func_unfilled
+
+reveal_type(ClassUnfilled().method(classname='builtins.str', arg1=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassUnfilled().method(arg2=1, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassUnfilled().method('builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(func_unfilled(classname='builtins.str', arg1=1))  # E: Revealed type is 'builtins.str'
+reveal_type(func_unfilled(arg2=1, classname='builtins.str'))  # E: Revealed type is 'builtins.str'
+reveal_type(func_unfilled('builtins.str'))  # E: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class ClassUnfilled:
+    def method(self, classname: str, arg1: Any = None, arg2: Any = None) -> Any:
+        pass
+def func_unfilled(classname: str, arg1: Any = None, arg2: Any = None) -> Any:
+    pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+
+[case testFunctionMethodContextsHasArgNamesStarExpressions]
+# flags: --config-file tmp/mypy.ini
+from mod import ClassStarExpr, func_star_expr
+
+reveal_type(ClassStarExpr().method(classname='builtins.str', arg1=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method('builtins.str', arg1=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method('builtins.str', arg1=1, arg2=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method('builtins.str', 2, 3, 4, arg1=1, arg2=1))  # E: Revealed type is 'builtins.str'
+reveal_type(func_star_expr(classname='builtins.str', arg1=1))  # E: Revealed type is 'builtins.str'
+reveal_type(func_star_expr('builtins.str', arg1=1))  # E: Revealed type is 'builtins.str'
+reveal_type(func_star_expr('builtins.str', 2, 3, 4, arg1=1, arg2=2))  # E: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class ClassStarExpr:
+    def method(self, classname: str, *args, **kwargs) -> Any:
+        pass
+def func_star_expr(classname: str, *args, **kwargs) -> Any:
+    pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+[builtins fixtures/dict.pyi]
+
+[case testFunctionMethodContextArgNamesForInheritedMethods]
+# flags: --config-file tmp/mypy.ini
+from mod import ClassChild
+
+reveal_type(ClassChild().method(classname='builtins.str', arg1=1, arg2=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassChild().method(arg1=1, classname='builtins.str', arg2=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassChild().method('builtins.str', arg1=1, arg2=1))  # E: Revealed type is 'builtins.str'
+reveal_type(ClassChild.myclassmethod('builtins.str'))  # E: Revealed type is 'builtins.str'
+[file mod.py]
+from typing import Any
+class Base:
+    def method(self, classname: str, arg1: Any, arg2: Any) -> Any:
+        pass
+    @classmethod
+    def myclassmethod(cls, classname: str) -> Any:
+        pass
+class ClassChild(Base):
+    pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+[builtins fixtures/classmethod.pyi]
+
 [case testMethodSignatureHook]
 # flags: --config-file tmp/mypy.ini
 from typing import Iterator
@@ -362,3 +513,26 @@ plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
 [out2]
 tmp/a.py:3: error: Revealed type is 'builtins.str'
 tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"
+
+[case testArgKindsMethod]
+# flags: --config-file tmp/mypy.ini
+class Class:
+    def method(self, *args, **kwargs):
+        pass
+
+Class().method(1, *[2], **{'a': 1})  # E: [[0, 2], [4]]
+[builtins fixtures/dict.pyi]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
+
+[case testArgKindsFunction]
+# flags: --config-file tmp/mypy.ini
+def func(*args, **kwargs):
+    pass
+
+func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})  # E: [[0, 0, 0, 2], [4]]
+[builtins fixtures/dict.pyi]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py

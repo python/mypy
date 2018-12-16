@@ -520,12 +520,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                 del partial_types[var]
 
     def apply_function_plugin(self,
-                              arg_types: List[Type],
-                              inferred_ret_type: Type,
+                              callee: CallableType,
                               arg_kinds: List[int],
+                              arg_types: List[Type],
+                              arg_names: Optional[Sequence[Optional[str]]],
                               formal_to_actual: List[List[int]],
                               args: List[Expression],
-                              num_formals: int,
                               fullname: str,
                               object_type: Optional[Type],
                               context: Context) -> Type:
@@ -540,27 +540,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Return the inferred return type.
         """
+        num_formals = len(callee.arg_types)
         formal_arg_types = [[] for _ in range(num_formals)]  # type: List[List[Type]]
         formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
+        formal_arg_names = [[] for _ in range(num_formals)]  # type: List[List[Optional[str]]]
+        formal_arg_kinds = [[] for _ in range(num_formals)]  # type: List[List[int]]
         for formal, actuals in enumerate(formal_to_actual):
             for actual in actuals:
                 formal_arg_types[formal].append(arg_types[actual])
                 formal_arg_exprs[formal].append(args[actual])
+                if arg_names:
+                    formal_arg_names[formal].append(arg_names[actual])
+                formal_arg_kinds[formal].append(arg_kinds[actual])
+
         if object_type is None:
             # Apply function plugin
             callback = self.plugin.get_function_hook(fullname)
             assert callback is not None  # Assume that caller ensures this
             return callback(
-                FunctionContext(formal_arg_types, inferred_ret_type, formal_arg_exprs,
-                                context, self.chk))
+                FunctionContext(formal_arg_types, formal_arg_kinds,
+                                callee.arg_names, formal_arg_names,
+                                callee.ret_type, formal_arg_exprs, context, self.chk))
         else:
             # Apply method plugin
             method_callback = self.plugin.get_method_hook(fullname)
             assert method_callback is not None  # Assume that caller ensures this
             return method_callback(
-                MethodContext(object_type, formal_arg_types,
-                              inferred_ret_type, formal_arg_exprs,
-                              context, self.chk))
+                MethodContext(object_type, formal_arg_types, formal_arg_kinds,
+                              callee.arg_names, formal_arg_names,
+                              callee.ret_type, formal_arg_exprs, context, self.chk))
 
     def apply_method_signature_hook(
             self, callee: FunctionLike, args: List[Expression],
@@ -774,8 +782,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                      or (object_type is not None
                          and self.plugin.get_method_hook(callable_name)))):
             ret_type = self.apply_function_plugin(
-                arg_types, callee.ret_type, arg_kinds, formal_to_actual,
-                args, len(callee.arg_types), callable_name, object_type, context)
+                callee, arg_kinds, arg_types, arg_names, formal_to_actual, args,
+                callable_name, object_type, context)
             callee = callee.copy_modified(ret_type=ret_type)
         return callee.ret_type, callee
 

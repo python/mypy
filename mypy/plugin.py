@@ -256,6 +256,17 @@ class SemanticAnalyzerPluginInterface:
 FunctionContext = NamedTuple(
     'FunctionContext', [
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
+        ('arg_kinds', List[List[int]]),    # Ditto for argument kinds, see nodes.ARG_* constants
+        # Names of formal parameters from the callee definition,
+        # these will be sufficient in most cases.
+        ('callee_arg_names', List[Optional[str]]),
+        # Names of actual arguments in the call expression. For example,
+        # in a situation like this:
+        #     def func(**kwargs) -> None:
+        #         pass
+        #     func(kw1=1, kw2=2)
+        # callee_arg_names will be ['kwargs'] and arg_names will be [['kw1', 'kw2']].
+        ('arg_names', List[List[Optional[str]]]),
         ('default_return_type', Type),     # Return type inferred from signature
         ('args', List[List[Expression]]),  # Actual expressions for each formal argument
         ('context', Context),              # Relevant location context (e.g. for error messages)
@@ -279,10 +290,14 @@ MethodSigContext = NamedTuple(
 MethodContext = NamedTuple(
     'MethodContext', [
         ('type', Type),                    # Base object type for method call
-        ('arg_types', List[List[Type]]),   # Lists of actual argument types for every formal param
+        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
+        # see FunctionContext for details about names and kinds
+        ('arg_kinds', List[List[int]]),
+        ('callee_arg_names', List[Optional[str]]),
+        ('arg_names', List[List[Optional[str]]]),
         ('default_return_type', Type),     # Return type inferred by mypy
         ('args', List[List[Expression]]),  # Lists of actual expressions for every formal argument
-        ('context', Context),              # Relevant location context (e.g. for error messages)
+        ('context', Context),
         ('api', CheckerPluginInterface)])
 
 # A context for an attribute type hook that infers the type of an attribute.
