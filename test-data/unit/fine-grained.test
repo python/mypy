@@ -8155,3 +8155,80 @@ x = 'no way'
 ==
 ==
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testLiteralFineGrainedVarConversion]
+import mod
+reveal_type(mod.x)
+[file mod.py]
+x = 1
+[file mod.py.2]
+from typing_extensions import Literal
+x: Literal[1] = 1
+[file mod.py.3]
+from typing_extensions import Literal
+x: Literal[1] = 2
+[out]
+main:2: error: Revealed type is 'builtins.int'
+==
+main:2: error: Revealed type is 'Literal[1]'
+==
+mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+main:2: error: Revealed type is 'Literal[1]'
+
+[case testLiteralFineGrainedFunctionConversion]
+from mod import foo
+foo(3)
+[file mod.py]
+def foo(x: int) -> None: pass
+[file mod.py.2]
+from typing_extensions import Literal
+def foo(x: Literal[3]) -> None: pass
+[file mod.py.3]
+from typing_extensions import Literal
+def foo(x: Literal[4]) -> None: pass
+[out]
+==
+==
+main:2: error: Argument 1 to "foo" has incompatible type "Literal[3]"; expected "Literal[4]"
+
+[case testLiteralFineGrainedAlias]
+from mod import Alias
+a: Alias = 1
+[file mod.py]
+Alias = int
+[file mod.py.2]
+from typing_extensions import Literal
+Alias = Literal[1]
+[file mod.py.3]
+from typing_extensions import Literal
+Alias = Literal[2]
+[out]
+==
+==
+main:2: error: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[2]")
+
+[case testLiteralFineGrainedOverload]
+from mod import foo
+reveal_type(foo(4))
+[file mod.py]
+from typing import overload
+from typing_extensions import Literal
+@overload
+def foo(x: int) -> str: ...
+@overload
+def foo(x: Literal['bar']) -> int: ...
+def foo(x): pass
+[file mod.py.2]
+from typing import overload
+from typing_extensions import Literal
+@overload
+def foo(x: Literal[4]) -> Literal['foo']: ...
+@overload
+def foo(x: int) -> str: ...
+@overload
+def foo(x: Literal['bar']) -> int: ...
+def foo(x): pass
+[out]
+main:2: error: Revealed type is 'builtins.str'
+==
+main:2: error: Revealed type is 'Literal['foo']'
