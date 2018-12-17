@@ -393,7 +393,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.fallback.accept(self)
 
     def visit_raw_literal_type(self, t: RawLiteralType) -> None:
-        assert False, "Unexpected RawLiteralType after semantic analysis phase"
+        pass
 
     def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)
