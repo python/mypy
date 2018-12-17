@@ -12,7 +12,7 @@ import pytest  # type: ignore
 from mypy.test.helpers import Suite, assert_equal
 from mypy.options import Options
 from mypy.main import (process_options, PythonExecutableInferenceError,
-                       infer_python_version_and_executable)
+                       infer_python_executable)
 
 
 class ArgSuite(Suite):
@@ -47,22 +47,30 @@ class ArgSuite(Suite):
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
-        # test that we error if the version mismatch
-        # argparse sys.exits on a parser.error, we need to check the raw inference function
-        options = Options()
-
-        special_opts = argparse.Namespace()
-        special_opts.python_executable = sys.executable
-        special_opts.python_version = (2, 10)  # obviously wrong
-        special_opts.no_executable = None
-        with pytest.raises(PythonExecutableInferenceError) as e:
-            infer_python_version_and_executable(options, special_opts)
-        assert str(e.value) == 'Python version (2, 10) did not match executable {}, got' \
-                               ' version {}.'.format(sys.executable, sys.version_info[:2])
-
         # test that --no-site-packages will disable executable inference
         matching_version = base + ['--python-version={}'.format(sys_ver_str),
                                    '--no-site-packages']
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable is None
+
+        # Test setting python_version/executable from config file
+        special_opts = argparse.Namespace()
+        special_opts.python_executable = None
+        special_opts.python_version = None
+        special_opts.no_executable = None
+
+        # first test inferring executable from version
+        options = Options()
+        options.python_executable = None
+        options.python_version = sys.version_info[:2]
+        infer_python_executable(options, special_opts)
+        assert options.python_version == sys.version_info[:2]
+        assert options.python_executable == sys.executable
+
+        # then test inferring version from executable
+        options = Options()
+        options.python_executable = sys.executable
+        infer_python_executable(options, special_opts)
+        assert options.python_version == sys.version_info[:2]
+        assert options.python_executable == sys.executable

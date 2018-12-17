@@ -227,17 +227,6 @@ def python_executable_prefix(v: str) -> List[str]:
         return ['python{}'.format(v)]
 
 
-def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
-    try:
-        check = subprocess.check_output([python_executable, '-c',
-                                         'import sys; print(repr(sys.version_info[:2]))'],
-                                        stderr=subprocess.STDOUT).decode()
-        return ast.literal_eval(check)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise PythonExecutableInferenceError(
-            'invalid Python executable {}'.format(python_executable))
-
-
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
@@ -253,37 +242,25 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
             ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
-def infer_python_version_and_executable(options: Options,
-                                        special_opts: argparse.Namespace) -> None:
-    """Infer the Python version or executable from each other. Check they are consistent.
+def infer_python_executable(options: Options,
+                            special_opts: argparse.Namespace) -> None:
+    """Infer the Python executable from the given version.
 
-    This function mutates options based on special_opts to infer the correct Python version and
-    executable to use.
+    This function mutates options based on special_opts to infer the correct Python executable
+    to use.
     """
-    # Infer Python version and/or executable if one is not given
-
     # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
     # one subprocess call for speed.
-    if special_opts.python_executable is not None and special_opts.python_version is not None:
-        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-        if py_exe_ver != special_opts.python_version:
-            raise PythonExecutableInferenceError(
-                'Python version {} did not match executable {}, got version {}.'.format(
-                    special_opts.python_version, special_opts.python_executable, py_exe_ver
-                ))
-        else:
-            options.python_version = special_opts.python_version
-            options.python_executable = special_opts.python_executable
-    elif special_opts.python_executable is None and special_opts.python_version is not None:
-        options.python_version = special_opts.python_version
-        py_exe = None
+
+    # Use the command line specified executable, or fall back to one set in the
+    # config file. If an executable is not specified, infer it from the version
+    # (unless no_executable is set)
+    python_executable = special_opts.python_executable or options.python_executable
+
+    if python_executable is None:
         if not special_opts.no_executable:
-            py_exe = _python_executable_from_version(special_opts.python_version)
-        options.python_executable = py_exe
-    elif special_opts.python_version is None and special_opts.python_executable is not None:
-        options.python_version = _python_version_from_executable(
-            special_opts.python_executable)
-        options.python_executable = special_opts.python_executable
+            python_executable = _python_executable_from_version(options.python_version)
+    options.python_executable = python_executable
 
 
 HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
@@ -747,8 +724,11 @@ def process_options(args: List[str],
         print("Warning: --quick-and-dirty is deprecated.  It will disappear in the next release.",
               file=sys.stderr)
 
+    # The python_version is either the default, which can be overridden via a config file,
+    # or stored in special_opts and is passed via the command line.
+    options.python_version = special_opts.python_version or options.python_version
     try:
-        infer_python_version_and_executable(options, special_opts)
+        infer_python_executable(options, special_opts)
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
