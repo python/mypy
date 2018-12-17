@@ -32,10 +32,20 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_python_cmdline(testcase)
+        if testcase.output2:
+            for step in [1] + sorted(testcase.output2):
+                try:
+                    test_python_cmdline(testcase, step)
+                except AssertionError as ex:
+                    if ex.args:
+                        new_msg = '(step {}) {}'.format(step, ex.args[0])
+                        ex.args = (new_msg,) + ex.args[1:]
+                    raise
+        else:
+            test_python_cmdline(testcase)
 
 
-def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
+def test_python_cmdline(testcase: DataDrivenTestCase, step: int = 1) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
@@ -101,7 +111,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
         obvious_result = 1 if out else 0
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))
-        assert_string_arrays_equal(testcase.output, out,
+        expected_out = testcase.output if step == 1 else testcase.output2[step]
+        assert_string_arrays_equal(expected_out, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))
 
