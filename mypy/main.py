@@ -670,10 +670,6 @@ def process_options(args: List[str],
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
 
-    # deprecated options
-    parser.add_argument('--quick-and-dirty', action='store_true',
-                        help=argparse.SUPPRESS)
-
     # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
@@ -718,11 +714,6 @@ def process_options(args: List[str],
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
-
-    # Process deprecated options
-    if options.quick_and_dirty:
-        print("Warning: --quick-and-dirty is deprecated.  It will disappear in the next release.",
-              file=sys.stderr)
 
     # The python_version is either the default, which can be overridden via a config file,
     # or stored in special_opts and is passed via the command line.
@@ -780,10 +771,6 @@ def process_options(args: List[str],
             parser.error("--cache-map is incompatible with --sqlite-cache")
 
         process_cache_map(parser, special_opts, options)
-
-    # Let quick_and_dirty imply incremental.
-    if options.quick_and_dirty:
-        options.incremental = True
 
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:

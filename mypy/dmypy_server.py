@@ -144,8 +144,6 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
                  "pass it to check/recheck instead")
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
-    if options.quick_and_dirty:
-        sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
     # Our file change tracking can't yet handle changes to files that aren't
     # specified in the sources list.
     if options.follow_imports not in ('skip', 'error'):

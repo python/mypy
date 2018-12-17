@@ -221,11 +221,8 @@ class TypeCheckSuite(DataSuite):
         # for those that had an error in themselves or one of their
         # dependencies.
         error_paths = self.find_error_message_paths(a)
-        if manager.options.quick_and_dirty:
-            busted_paths = error_paths
-        else:
-            busted_paths = {m.path for id, m in manager.modules.items()
-                            if graph[id].transitive_error}
+        busted_paths = {m.path for id, m in manager.modules.items()
+                        if graph[id].transitive_error}
         modules = self.find_module_files(manager)
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
