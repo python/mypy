@@ -898,9 +898,6 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Note that it's fine to mutilate cached_options since it's only used here.
     cached_options = m.options
     current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
-    if manager.options.quick_and_dirty:
-        # In quick_and_dirty mode allow non-quick_and_dirty cache files.
-        cached_options['quick_and_dirty'] = True
     if manager.options.skip_version_check:
         # When we're lax about version we're also lax about platform.
         cached_options['platform'] = current_options['platform']
@@ -1598,7 +1595,6 @@ class State:
         # We need to set quick_and_dirty when doing a fine grained
         # cache load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
-                     self.manager.options.quick_and_dirty or
                      self.options.use_fine_grained_cache)
 
     def patch_dependency_parents(self) -> None:
@@ -1866,10 +1862,7 @@ class State:
                 or self.options.cache_dir == os.devnull
                 or self.options.fine_grained_incremental):
             return
-        if self.manager.options.quick_and_dirty:
-            is_errors = self.manager.errors.is_errors_for_file(self.path)
-        else:
-            is_errors = self.transitive_error
+        is_errors = self.transitive_error
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
             self.meta = None
@@ -2431,8 +2424,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             deps.update(graph[id].dependencies)
         deps -= ascc
         stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
-        if not manager.options.quick_and_dirty:
-            fresh = fresh and not stale_deps
+        fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
@@ -2466,9 +2458,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
-            if manager.options.quick_and_dirty and stale_deps:
-                fresh_msg = "fresh(ish)"
-            elif oldest_in_scc < newest_in_deps:
+            if oldest_in_scc < newest_in_deps:
                 fresh = False
                 fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
             else:
@@ -2608,19 +2598,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
-    if manager.options.quick_and_dirty:
-        fresh = [id for id in scc if graph[id].is_fresh()]
-        fresh_set = set(fresh)  # To avoid running into O(N**2)
-        stale = [id for id in scc if id not in fresh_set]
-        if fresh:
-            manager.log("  Fresh ids: %s" % (", ".join(fresh)))
-        if stale:
-            manager.log("  Stale ids: %s" % (", ".join(stale)))
-    else:
-        fresh = []
-        stale = scc
-    for id in fresh:
-        graph[id].load_tree()
+    stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
@@ -2633,8 +2611,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
         manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    for id in fresh:
-        graph[id].fix_cross_refs()
     for id in stale:
         graph[id].semantic_analysis()
     for id in stale:

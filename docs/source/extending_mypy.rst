@@ -114,7 +114,7 @@ During different phases of analyzing the code (first in semantic analysis,
 and then in type checking) mypy calls plugin methods such as
 ``get_type_analyze_hook()`` on user plugins. This particular method for example
 can return a callback that mypy will use to analyze unbound types with given
-full name. See full plugin hook methods list :ref:`below <plugin-hooks>`.
+full name. See full plugin hook methods list :ref:`below <plugin_hooks>`.
 
 Mypy maintains a list of plugins it gets from the config file plus the default
 (built-in) plugin that is always enabled. Mypy calls a method once for each
