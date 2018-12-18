@@ -900,17 +900,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
-        if isinstance(ret_type, TypeVarType) and not is_generic_instance(ctx):
+        if isinstance(ret_type, TypeVarType):
             # Another special case: the return type is a type variable. If it's unrestricted,
             # we could infer a too general type for the type variable if we use context,
             # and this could result in confusing and spurious type errors elsewhere.
             #
-            # Give up and just use function arguments for type inference. As an exception,
-            # if the context is a generic instance type, actually use it as context, as
-            # this *seems* to usually be the reasonable thing to do.
+            # So we give up and just use function arguments for type inference, with just two
+            # exceptions:
             #
-            # See also github issues #462 and #360.
-            return callable.copy_modified()
+            # 1. If the context is a generic instance type, actually use it as context, as
+            #    this *seems* to usually be the reasonable thing to do.
+            #
+            #    See also github issues #462 and #360.
+            #
+            # 2. If the context is some literal type, we want to "propagate" that information
+            #    down so that we infer a more precise type for literal expressions. For example,
+            #    the expression `3` normally has an inferred type of `builtins.int`: but if it's
+            #    in a literal context like below, we want it to infer `Literal[3]` instead.
+            #
+            #        def expects_literal(x: Literal[3]) -> None: pass
+            #        def identity(x: T) -> T: return x
+            #
+            #        expects_literal(identity(3))  # Should type-check
+            if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
+                return callable.copy_modified()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
@@ -3638,6 +3651,9 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
         return True
     elif isinstance(t, UnionType):
         return any(is_literal_type_like(item) for item in t.items)
+    elif isinstance(t, TypeVarType):
+        return (is_literal_type_like(t.upper_bound)
+                or any(is_literal_type_like(item) for item in t.values))
     else:
         return False
 
