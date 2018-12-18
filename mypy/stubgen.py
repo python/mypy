@@ -420,7 +420,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._import_lines = []  # type: List[str]
         self._indent = ''
         self._vars = [[]]  # type: List[List[str]]
-        self._state = EMPTY
+        self._state = EMPTY  # type: str
         self._toplevel_names = []  # type: List[str]
         self._pyversion = pyversion
         self._include_private = include_private

@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
-    CallableType, Overloaded, Instance, Type, AnyType,
+    CallableType, Overloaded, Instance, Type, AnyType, LiteralType,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
@@ -1756,9 +1756,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.type and self.type.is_protocol and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
                 if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1896,8 +1896,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return True if e.name == 'True' else False
         return None
 
-    def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
-        """Return builtins.int if rvalue is an int literal, etc."""
+    def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
+        """Return builtins.int if rvalue is an int literal, etc.
+
+        If this is a 'Final' context, we return "Literal[...]" instead."""
         if self.options.semantic_analysis_only or self.function_stack:
             # Skip this if we're only doing the semantic analysis pass.
             # This is mostly to avoid breaking unit tests.
@@ -1907,15 +1909,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # AnyStr).
             return None
         if isinstance(rvalue, IntExpr):
-            return self.named_type_or_none('builtins.int')
+            typ = self.named_type_or_none('builtins.int')
+            if typ and is_final:
+                return LiteralType(rvalue.value, typ, rvalue.line, rvalue.column)
+            return typ
         if isinstance(rvalue, FloatExpr):
             return self.named_type_or_none('builtins.float')
         if isinstance(rvalue, StrExpr):
-            return self.named_type_or_none('builtins.str')
+            typ = self.named_type_or_none('builtins.str')
+            if typ and is_final:
+                return LiteralType(rvalue.value, typ, rvalue.line, rvalue.column)
+            return typ
         if isinstance(rvalue, BytesExpr):
             return self.named_type_or_none('builtins.bytes')
         if isinstance(rvalue, UnicodeExpr):
             return self.named_type_or_none('builtins.unicode')
+
         return None
 
     def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],

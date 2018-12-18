@@ -2012,7 +2012,7 @@ reveal_type(func1(identity(a)))  # E: Revealed type is 'Literal[19]'
 reveal_type(func1(identity(b)))  # E: Revealed type is 'builtins.int'
 
 --
--- Other misc interactions
+-- Interactions with meets
 --
 
 [case testLiteralMeets]
@@ -2079,4 +2079,126 @@ def func(x: Literal[1], y: Literal[2]) -> None: pass
 
 reveal_type(unify(func))  # E: Revealed type is '<nothing>'
 [builtins fixtures/list.pyi]
+[out]
+
+
+--
+-- Interactions with 'Final'
+--
+
+[case testLiteralFinalInferredAsLiteral]
+from typing_extensions import Final
+
+var1: Final = 1
+var2: Final = "foo"
+var3: Final = True
+var4: Final = None
+
+class Foo:
+    classvar1: Final = 1
+    classvar2: Final = "foo"
+    classvar3: Final = True
+    classvar4: Final = None
+
+    def __init__(self) -> None:
+        self.instancevar1: Final = 1
+        self.instancevar2: Final = "foo"
+        self.instancevar3: Final = True
+        self.instancevar4: Final = None
+
+reveal_type(var1)            # E: Revealed type is 'Literal[1]'
+reveal_type(var2)            # E: Revealed type is 'Literal['foo']'
+reveal_type(var3)            # E: Revealed type is 'Literal[True]'
+reveal_type(var4)            # E: Revealed type is 'None'
+
+reveal_type(Foo.classvar1)   # E: Revealed type is 'Literal[1]'
+reveal_type(Foo.classvar2)   # E: Revealed type is 'Literal['foo']'
+reveal_type(Foo.classvar3)   # E: Revealed type is 'Literal[True]'
+reveal_type(Foo.classvar4)   # E: Revealed type is 'None'
+
+f = Foo()
+reveal_type(f.instancevar1)  # E: Revealed type is 'Literal[1]'
+reveal_type(f.instancevar2)  # E: Revealed type is 'Literal['foo']'
+reveal_type(f.instancevar3)  # E: Revealed type is 'Literal[True]'
+reveal_type(f.instancevar4)  # E: Revealed type is 'None'
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalDirectTypesSupercededInferredLiteral]
+from typing_extensions import Final
+
+var1: Final[int] = 1
+var2: Final[str] = "foo"
+var3: Final[bool] = True
+var4: Final[None] = None
+
+class Foo:
+    classvar1: Final[int] = 1
+    classvar2: Final[str] = "foo"
+    classvar3: Final[bool] = True
+    classvar4: Final[None] = None
+
+    def __init__(self) -> None:
+        self.instancevar1: Final[int] = 1
+        self.instancevar2: Final[str] = "foo"
+        self.instancevar3: Final[bool] = True
+        self.instancevar4: Final[None] = None
+
+reveal_type(var1)            # E: Revealed type is 'builtins.int'
+reveal_type(var2)            # E: Revealed type is 'builtins.str'
+reveal_type(var3)            # E: Revealed type is 'builtins.bool'
+reveal_type(var4)            # E: Revealed type is 'None'
+
+reveal_type(Foo.classvar1)   # E: Revealed type is 'builtins.int'
+reveal_type(Foo.classvar2)   # E: Revealed type is 'builtins.str'
+reveal_type(Foo.classvar3)   # E: Revealed type is 'builtins.bool'
+reveal_type(Foo.classvar4)   # E: Revealed type is 'None'
+
+f = Foo()
+reveal_type(f.instancevar1)  # E: Revealed type is 'builtins.int'
+reveal_type(f.instancevar2)  # E: Revealed type is 'builtins.str'
+reveal_type(f.instancevar3)  # E: Revealed type is 'builtins.bool'
+reveal_type(f.instancevar4)  # E: Revealed type is 'None'
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalMismatchCausesError]
+from typing_extensions import Final, Literal
+
+var1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
+var2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
+var3: Final[Literal[False]] = True   # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
+
+class Foo:
+    classvar1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
+    classvar2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
+    classvar3: Final[Literal[False]] = True   # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
+
+    def __init__(self) -> None:
+        self.instancevar1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
+        self.instancevar2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
+        self.instancevar3: Final[Literal[False]] = True    # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
+
+# TODO: Fix the order in which these error messages are shown to be more consistent.
+var1 = 10                # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]") \
+                         # E: Cannot assign to final name "var1"
+
+Foo.classvar1 = 10       # E: Cannot assign to final attribute "classvar1" \
+                         # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
+
+Foo().instancevar1 = 10  # E: Cannot assign to final attribute "instancevar1" \
+                         # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalGoesOnlyOneLevelDown]
+from typing import Tuple
+from typing_extensions import Final
+
+a: Final = 1
+b: Final = (1, 2)
+
+reveal_type(a)  # E: Revealed type is 'Literal[1]'
+reveal_type(b)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[builtins fixtures/tuple.pyi]
 [out]

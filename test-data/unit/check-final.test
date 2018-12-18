@@ -338,7 +338,7 @@ class C:
 [case testFinalReassignModuleVar]
 from typing import Final
 
-x: Final = 1
+x: Final[int] = 1
 x  # Dummy reference to allow renaming once implemented
 x = 2  # E: Cannot assign to final name "x"
 def f() -> int:
@@ -358,7 +358,7 @@ y: Final = 2  # E: Name 'y' already defined on line 17 \
               # E: Cannot redefine an existing name as final
 y = 3  # No error here, first definition wins
 
-z: Final = 1
+z: Final[int] = 1
 z: Final = 2  # E: Name 'z' already defined on line 22 \
               # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
@@ -395,11 +395,11 @@ main:8: error: Cannot assign to final name "ID"
 from typing import Final
 
 def f() -> None:
-    nl: Final = 0
+    nl: Final[int] = 0
     x: Final = 1
     x = 1  # E: Cannot assign to final name "x"
 
-    y: Final = 1
+    y: Final[int] = 1
     y: Final = 2  # E: Cannot redefine an existing name as final
     def nested() -> None:
         nonlocal nl
@@ -418,7 +418,7 @@ x: Final[int]
 from typing import Final
 
 class C:
-    x: Final = 1
+    x: Final[int] = 1
     x = 2  # E: Cannot assign to final name "x"
 
     y = 1
@@ -430,9 +430,9 @@ from typing import Final
 
 class C:
     def __init__(self) -> None:
-        self.x: Final = 1
+        self.x: Final[int] = 1
         self.y = 1
-        self.y: Final = 2  # E: Cannot redefine an existing name as final
+        self.y: Final[int] = 2  # E: Cannot redefine an existing name as final
     def meth(self) -> None:
         self.x = 2  # E: Cannot assign to final attribute "x"
 [out]
@@ -441,9 +441,9 @@ class C:
 from typing import Final
 
 class C:
-    y: Final = 1
+    y: Final[int] = 1
     def __init__(self) -> None:
-        self.x: Final = 1
+        self.x: Final[int] = 1
         self.y = 2  # E: Cannot assign to final attribute "y"
     x = 2  # E: Cannot assign to final name "x"
 [out]
@@ -452,9 +452,9 @@ class C:
 from typing import Final
 
 class C:
-    x: Final = 1
+    x: Final[int] = 1
     def __init__(self) -> None:
-        self.y: Final = 1
+        self.y: Final[int] = 1
     def meth(self) -> None:
         self.x = 2  # E: Cannot assign to final attribute "x"
         self.y = 2  # E: Cannot assign to final attribute "y"
@@ -472,9 +472,9 @@ class C:
 from typing import Final
 
 class C:
-    x: Final = 1
+    x: Final[int] = 1
     def __init__(self) -> None:
-        self.y: Final = 1
+        self.y: Final[int] = 1
 
 class D(C): pass
 
@@ -494,9 +494,14 @@ class C:
 
 class D(C): pass
 
-C().x = 2  # E: Cannot assign to final attribute "x"
-D().x = 2  # E: Cannot assign to final attribute "x"
-D().y = 2  # E: Cannot assign to final attribute "y"
+C().x = 2  # E: Cannot assign to final attribute "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+
+D().x = 2  # E: Cannot assign to final attribute "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+
+D().y = 2  # E: Cannot assign to final attribute "y" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 [out]
 
 [case testFinalWorksWithComplexTargets]
@@ -546,9 +551,9 @@ class A:
     def y(self) -> int: ...
 
 class B(A):
-    x: Final = 1
+    x: Final[int] = 1
     def __init__(self) -> None:
-        self.y: Final = 1
+        self.y: Final[int] = 1
 class C(B):
     x: int = 2  # E: Cannot assign to final name "x"
     y: int = 2  # E: Cannot assign to final name "y"
@@ -570,9 +575,9 @@ class A:
     @property
     def y(self) -> int: ...
 class B(A):
-    x: Final = 1
+    x: Final[int] = 1
     def __init__(self) -> None:
-        self.y: Final = 1
+        self.y: Final[int] = 1
 class C(B):
     x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B")
     y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B")
@@ -593,11 +598,15 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x = 2  # E: Cannot assign to final attribute "x"
-        self.y = 2  # E: Cannot assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+        self.y = 2  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
     def meth(self) -> None:
-        self.x = 3  # E: Cannot assign to final attribute "x"
-        self.y = 3  # E: Cannot assign to final attribute "y"
+        self.x = 3  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
+        self.y = 3  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -615,8 +624,10 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B")
-        self.y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B")
+        self.x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B") \
+                           # E: Incompatible types in assignment (expression has type "Literal[2]", base class "B" defined the type as "Literal[1]")
+        self.y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B") \
+                           # E: Incompatible types in assignment (expression has type "Literal[2]", base class "B" defined the type as "Literal[1]")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -634,8 +645,10 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def meth(self) -> None:
-        self.x: int = 2    # E: Cannot assign to final attribute "x"
-        self.y: int = 2    # E: Cannot assign to final attribute "y"
+        self.x: int = 2    # E: Cannot assign to final attribute "x" \
+                           # E: Incompatible types in assignment (expression has type "int", base class "B" defined the type as "Literal[1]")
+        self.y: int = 2    # E: Cannot assign to final attribute "y" \
+                           # E: Incompatible types in assignment (expression has type "int", base class "B" defined the type as "Literal[1]")
 
         self.x = 3  # E: Cannot assign to final attribute "x"
         self.y = 3  # E: Cannot assign to final attribute "y"
@@ -680,7 +693,7 @@ C().x = 4  # E: Cannot assign to final attribute "x"
 from typing import Final
 
 class A:
-    x: Final = 1
+    x: Final[int] = 1
 class B:
     def __init__(self) -> None:
         self.x = 2
@@ -962,11 +975,11 @@ class D(B):
 [case testFinalCanUseTypingExtensions]
 from typing_extensions import final, Final
 
-x: Final = 1
+x: Final[int] = 1
 x = 2  # E: Cannot assign to final name "x"
 
 class S:
-    x: Final = 1
+    x: Final[int] = 1
 S.x = 2  # E: Cannot assign to final attribute "x"
 
 class B:
@@ -984,11 +997,13 @@ class E(F): ...  # E: Cannot inherit from final class "F"
 from typing_extensions import final as f, Final as F
 
 x: F = 1
-x = 2  # E: Cannot assign to final name "x"
+x = 2   # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]") \
+        # E: Cannot assign to final name "x"
 
 class S:
     x: F = 1
-S.x = 2  # E: Cannot assign to final attribute "x"
+S.x = 2  # E: Cannot assign to final attribute "x" \
+         # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 class B:
     @f

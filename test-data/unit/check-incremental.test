@@ -4239,11 +4239,11 @@ class C:
 [file mod.py.2]
 from typing import Final
 
-x: Final = 1
+x: Final[int] = 1
 class C:
-    y: Final = 1
+    y: Final[int] = 1
     def __init__(self) -> None:
-        self.z: Final = 1
+        self.z: Final[int] = 1
 [out]
 [out2]
 main:5: error: Cannot assign to final name "x"
@@ -4274,9 +4274,9 @@ class C:
 from typing import Final
 
 class C:
-    x: Final = 1
+    x: Final[int] = 1
     def __init__(self) -> None:
-        self.y: Final = 1
+        self.y: Final[int] = 1
 [out]
 [out2]
 main:4: error: Cannot assign to final name "x"

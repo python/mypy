@@ -139,6 +139,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.plugin = plugin
         self.type_context = [None]
+        self.infer_literal = False
         # Temporary overrides for expression types. This is currently
         # used by the union math in overloads.
         # TODO: refactor this to use a pattern similar to one in
@@ -210,7 +211,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if var.type:
-            if is_literal_type_like(self.type_context[-1]) and var.name() in {'True', 'False'}:
+            if self.is_literal_context() and var.name() in {'True', 'False'}:
                 return LiteralType(var.name() == 'True', self.named_type('builtins.bool'))
             else:
                 return var.type
@@ -1771,14 +1772,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
         typ = self.named_type('builtins.int')
-        if is_literal_type_like(self.type_context[-1]):
+        if self.is_literal_context():
             return LiteralType(value=e.value, fallback=typ)
         return typ
 
     def visit_str_expr(self, e: StrExpr) -> Type:
         """Type check a string literal (trivial)."""
         typ = self.named_type('builtins.str')
-        if is_literal_type_like(self.type_context[-1]):
+        if self.is_literal_context():
             return LiteralType(value=e.value, fallback=typ)
         return typ
 
@@ -3112,6 +3113,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                type_context: Optional[Type] = None,
                allow_none_return: bool = False,
                always_allow_any: bool = False,
+               infer_literal: bool = False,
                ) -> Type:
         """Type check a node in the given type context.  If allow_none_return
         is True and this expression is a call, allow it to return None.  This
@@ -3119,6 +3121,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if node in self.type_overrides:
             return self.type_overrides[node]
+        old_infer_literal = self.infer_literal
+        self.infer_literal = infer_literal
         self.type_context.append(type_context)
         try:
             if allow_none_return and isinstance(node, CallExpr):
@@ -3131,6 +3135,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             report_internal_error(err, self.chk.errors.file,
                                   node.line, self.chk.errors, self.chk.options)
         self.type_context.pop()
+        self.infer_literal = old_infer_literal
         assert typ is not None
         self.chk.store_type(node, typ)
 
@@ -3375,6 +3380,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
+
+    def is_literal_context(self) -> bool:
+        return self.infer_literal or is_literal_type_like(self.type_context[-1])
 
 
 def has_any_type(t: Type) -> bool:

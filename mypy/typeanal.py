@@ -1073,7 +1073,7 @@ def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
 def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, implicit: bool = True) -> Type:
     if implicit:
-        type_of_any = TypeOfAny.from_omitted_generics
+        type_of_any = TypeOfAny.from_omitted_generics  # type: int
     else:
         type_of_any = TypeOfAny.special_form
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
