@@ -210,7 +210,9 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 accumulator = ""
                 state.append(State.RETURN_VALUE)
 
-            elif token.type == tokenize.NEWLINE and state[-1] in (State.INIT, State.RETURN_VALUE):
+            # ENDMAKER is necessary for python 3.4 and 3.5
+            elif token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and state[-1] in (
+                    State.INIT, State.RETURN_VALUE):
                 if state[-1] == State.RETURN_VALUE:
                     ret_type = accumulator
                     accumulator = ""
