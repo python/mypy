@@ -141,16 +141,23 @@ class StubgenUtilSuite(Suite):
                 name='func',
                 args=[
                     TypedArgSig(name='x', type=None, default=None),
-                    TypedArgSig(name='Y_a', type=None, default='[1, 2, 3]')
+                    TypedArgSig(name='Y_a', type=None, default='[1,2,3]')
                 ],
                 ret_type='Any'
             )]
         )
 
-        assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), None)
-        assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), None)
-        assert_equal(infer_sig_from_docstring('\nfunc(x=z(y))', 'func'), None)
-        assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
+        assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), [])
+        assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), [])
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x=z(y))', 'func'),
+            [TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type=None, default='z(y)')],
+                ret_type='Any'
+            )]
+        )
+        assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), [])
         # try to infer signature from type annotation
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int)', 'func'),
@@ -188,7 +195,7 @@ class StubgenUtilSuite(Suite):
             infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
             [TypedFunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='Tuple[int, str]', default=None)],
+                args=[TypedArgSig(name='x', type='Tuple[int,str]', default=None)],
                 ret_type='str'
             )]
         )
@@ -198,7 +205,7 @@ class StubgenUtilSuite(Suite):
             [TypedFunctionSig(
                 name='func',
                 args=[
-                    TypedArgSig(name='x', type='Tuple[int, Tuple[str, int], str]', default=None),
+                    TypedArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=None),
                     TypedArgSig(name='y', type='int', default=None),
                 ],
                 ret_type='str'
@@ -509,6 +516,8 @@ class StubgencSuite(Suite):
         generate_c_function_stub(mod, '__init__', TestClass.__init__, output, imports,
                                  self_var='self', class_name='TestClass')
         assert_equal(output, [
+            '@overload',
+            'def __init__(*args, **kwargs) -> Any: ...',
             '@overload',
             'def __init__(self, arg0: str) -> None: ...',
             '@overload',

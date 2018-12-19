@@ -156,7 +156,9 @@ def generate_c_function_stub(module: ModuleType,
                     sig.append(arg.name)
                 else:
                     # type info
-                    sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type, module, imports)))
+                    sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type,
+                                                                         module,
+                                                                         imports)))
 
             if is_overloaded:
                 output.append('@overload')
