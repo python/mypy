@@ -1784,11 +1784,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_bytes_expr(self, e: BytesExpr) -> Type:
         """Type check a bytes literal (trivial)."""
-        return self.named_type('builtins.bytes')
+        typ = self.named_type('builtins.bytes')
+        if is_literal_type_like(self.type_context[-1]):
+            return LiteralType(value=e.value, fallback=typ)
+        return typ
 
     def visit_unicode_expr(self, e: UnicodeExpr) -> Type:
         """Type check a unicode literal (trivial)."""
-        return self.named_type('builtins.unicode')
+        typ = self.named_type('builtins.unicode')
+        if is_literal_type_like(self.type_context[-1]):
+            return LiteralType(value=e.value, fallback=typ)
+        return typ
 
     def visit_float_expr(self, e: FloatExpr) -> Type:
         """Type check a float literal (trivial)."""

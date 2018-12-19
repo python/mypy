@@ -1231,10 +1231,12 @@ class StrExpr(Expression):
     """String literal"""
 
     value = ''
+    from_python_2 = False
 
-    def __init__(self, value: str) -> None:
+    def __init__(self, value: str, from_python_2: bool = False) -> None:
         super().__init__()
         self.value = value
+        self.from_python_2 = from_python_2
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1243,7 +1245,16 @@ class StrExpr(Expression):
 class BytesExpr(Expression):
     """Bytes literal"""
 
-    value = ''  # TODO use bytes
+    # Note: we deliberately do NOT use bytes here because it ends up
+    # unnecessarily complicating a lot of the result logic. For example,
+    # we'd have to worry about converting the bytes into a format we can
+    # easily serialize/deserialize to and from JSON, would have to worry
+    # about turning the bytes into a human-readable representation in
+    # error messages...
+    #
+    # It's more convenient to just store the human-readable representation
+    # from the very start.
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
@@ -1256,7 +1267,7 @@ class BytesExpr(Expression):
 class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
-    value = ''  # TODO use bytes
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
