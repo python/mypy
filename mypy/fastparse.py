@@ -180,6 +180,8 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
         else:
             return RawLiteralType(expr_string, expr_fallback_name, line, column)
     except (SyntaxError, ValueError):
+        # Note: the parser will raise a `ValueError` instead of a SyntaxError if
+        # the string happens to contain things like \x00.
         return RawLiteralType(expr_string, expr_fallback_name, line, column)
 
 

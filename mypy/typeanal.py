@@ -795,6 +795,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return a
 
     def named_type_with_normalized_str(self, fully_qualified_name: str) -> Instance:
+        """Does almost the same thing as `named_type`, except that we immediately
+        unalias `builtins.bytes` and `builtins.unicode` to `builtins.str` as appropriate.
+        """
         python_version = self.options.python_version
         if python_version[0] == 2 and fully_qualified_name == 'builtins.bytes':
             fully_qualified_name = 'builtins.str'
