@@ -108,6 +108,113 @@ reveal_type(y)                      # E: Revealed type is 'Union[Tuple[Literal[2
 reveal_type(bar)                    # E: Revealed type is 'def (x: Tuple[Literal[2]])'
 [out]
 
+[case testLiteralValidExpressionsInStringsPython3]
+from wrapper import *
+
+[file wrapper.pyi]
+from typing_extensions import Literal
+
+alias_1 = Literal['a+b']
+alias_2 = Literal['1+2']
+alias_3 = Literal['3']
+alias_4 = Literal['True']
+alias_5 = Literal['None']
+alias_6 = Literal['"foo"']
+expr_of_alias_1: alias_1
+expr_of_alias_2: alias_2
+expr_of_alias_3: alias_3
+expr_of_alias_4: alias_4
+expr_of_alias_5: alias_5
+expr_of_alias_6: alias_6
+reveal_type(expr_of_alias_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_of_alias_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_of_alias_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_of_alias_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_of_alias_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_of_alias_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_ann_1: Literal['a+b']
+expr_ann_2: Literal['1+2']
+expr_ann_3: Literal['3']
+expr_ann_4: Literal['True']
+expr_ann_5: Literal['None']
+expr_ann_6: Literal['"foo"']
+reveal_type(expr_ann_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_ann_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_ann_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_ann_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_ann_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_ann_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_str_1: "Literal['a+b']"
+expr_str_2: "Literal['1+2']"
+expr_str_3: "Literal['3']"
+expr_str_4: "Literal['True']"
+expr_str_5: "Literal['None']"
+expr_str_6: "Literal['\"foo\"']"
+reveal_type(expr_str_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_str_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_str_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_str_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_str_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_str_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_com_1 = ...   # type: Literal['a+b']
+expr_com_2 = ...   # type: Literal['1+2']
+expr_com_3 = ...   # type: Literal['3']
+expr_com_4 = ...   # type: Literal['True']
+expr_com_5 = ...   # type: Literal['None']
+expr_com_6 = ...   # type: Literal['"foo"']
+reveal_type(expr_com_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_com_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_com_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_com_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_com_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_com_6)  # E: Revealed type is 'Literal['"foo"']'
+[builtins fixtures/bool.pyi]
+[out]
+
+[case testLiteralValidExpressionsInStringsPython2]
+# flags: --python-version=2.7
+from wrapper import *
+
+[file wrapper.pyi]
+from typing_extensions import Literal
+
+alias_1 = Literal['a+b']
+alias_2 = Literal['1+2']
+alias_3 = Literal['3']
+alias_4 = Literal['True']
+alias_5 = Literal['None']
+alias_6 = Literal['"foo"']
+expr_of_alias_1: alias_1
+expr_of_alias_2: alias_2
+expr_of_alias_3: alias_3
+expr_of_alias_4: alias_4
+expr_of_alias_5: alias_5
+expr_of_alias_6: alias_6
+reveal_type(expr_of_alias_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_of_alias_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_of_alias_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_of_alias_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_of_alias_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_of_alias_6)  # E: Revealed type is 'Literal['"foo"']'
+
+expr_com_1 = ...   # type: Literal['a+b']
+expr_com_2 = ...   # type: Literal['1+2']
+expr_com_3 = ...   # type: Literal['3']
+expr_com_4 = ...   # type: Literal['True']
+expr_com_5 = ...   # type: Literal['None']
+expr_com_6 = ...   # type: Literal['"foo"']
+reveal_type(expr_com_1)  # E: Revealed type is 'Literal['a+b']'
+reveal_type(expr_com_2)  # E: Revealed type is 'Literal['1+2']'
+reveal_type(expr_com_3)  # E: Revealed type is 'Literal['3']'
+reveal_type(expr_com_4)  # E: Revealed type is 'Literal['True']'
+reveal_type(expr_com_5)  # E: Revealed type is 'Literal['None']'
+reveal_type(expr_com_6)  # E: Revealed type is 'Literal['"foo"']'
+[builtins fixtures/bool.pyi]
+[out]
+
 [case testLiteralRenamingImportWorks]
 from typing_extensions import Literal as Foo
 
@@ -336,8 +443,7 @@ d: 3j + 2            # E: invalid type comment or annotation
 
 [case testLiteralDisallowComplexNumbersTypeAlias]
 from typing_extensions import Literal
-at = Literal[3j]        # E: Invalid type alias \
-                        # E: The type "Type[Literal]" is not generic and not indexable
+at = Literal[3j]        # E: Invalid type alias
 a: at                   # E: Invalid type "__main__.at"
 [builtins fixtures/complex.pyi]
 [out]
@@ -367,8 +473,7 @@ c: [1, 2, 3]                    # E: Invalid type
 
 [case testLiteralDisallowCollectionsTypeAlias]
 from typing_extensions import Literal
-at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias \
-                                # E: The type "Type[Literal]" is not generic and not indexable
+at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias
 bt = {"a": 1, "b": 2}
 a: at                           # E: Invalid type "__main__.at"
 b: bt                           # E: Invalid type "__main__.bt"
@@ -377,12 +482,23 @@ b: bt                           # E: Invalid type "__main__.bt"
 
 [case testLiteralDisallowCollectionsTypeAlias2]
 from typing_extensions import Literal
-at = Literal[{1, 2, 3}]         # E: Invalid type alias \
-                                # E: The type "Type[Literal]" is not generic and not indexable
+at = Literal[{1, 2, 3}]         # E: Invalid type alias
 bt = {1, 2, 3}
 a: at                           # E: Invalid type "__main__.at"
 b: bt                           # E: Invalid type "__main__.bt"
 [builtins fixtures/set.pyi]
+[out]
+
+[case testLiteralDisallowTypeVar]
+from typing import TypeVar
+from typing_extensions import Literal
+
+T = TypeVar('T')
+
+at = Literal[T]  # E: Parameter 1 of Literal[...] is invalid
+a: at
+
+def foo(b: Literal[T]) -> T: pass   # E: Parameter 1 of Literal[...] is invalid
 [out]
 
 
@@ -1180,4 +1296,352 @@ if int():
 
     c = c.strip()  # E: Incompatible types in assignment (expression has type "str", variable has type "Literal['foo']")
 [builtins fixtures/ops.pyi]
+[out]
+
+
+--
+-- Tests that check we report errors when we try using Literal[...]
+-- in invalid places.
+--
+
+[case testLiteralErrorsWithIsInstanceAndIsSubclass]
+from typing_extensions import Literal
+from typing_extensions import Literal as Renamed
+import typing_extensions as indirect
+
+Alias = Literal[3]
+
+isinstance(3, Literal[3])           # E: Cannot use isinstance() with a Literal type
+isinstance(3, Alias)                # E: Cannot use isinstance() with a Literal type \
+                                    # E: The type alias to Literal is invalid in runtime context
+isinstance(3, Renamed[3])           # E: Cannot use isinstance() with a Literal type
+isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with a Literal type
+
+issubclass(int, Literal[3])           # E: Cannot use issubclass() with a Literal type
+issubclass(int, Alias)                # E: Cannot use issubclass() with a Literal type \
+                                      # E: The type alias to Literal is invalid in runtime context
+issubclass(int, Renamed[3])           # E: Cannot use issubclass() with a Literal type
+issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Literal type
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+[case testLiteralErrorsWhenSubclassed]
+from typing_extensions import Literal
+from typing_extensions import Literal as Renamed
+import typing_extensions as indirect
+
+Alias = Literal[3]
+
+class Bad1(Literal[3]): pass            # E: Invalid base class
+class Bad2(Renamed[3]): pass            # E: Invalid base class
+class Bad3(indirect.Literal[3]): pass   # E: Invalid base class
+class Bad4(Alias): pass                 # E: Invalid base class
+[out]
+
+[case testLiteralErrorsWhenInvoked-skip]
+# TODO: We don't seem to correctly handle invoking types like
+# 'Final' and 'Protocol' as well. When fixing this, also fix
+# those types?
+from typing_extensions import Literal
+from typing_extensions import Literal as Renamed
+import typing_extensions as indirect
+
+Alias = Literal[3]
+
+Literal[3]()           # E: The type "Type[Literal]" is not generic and not indexable
+Renamed[3]()           # E: The type "Type[Literal]" is not generic and not indexable
+indirect.Literal[3]()  # E: The type "Type[Literal]" is not generic and not indexable
+Alias()                # E: The type alias to Literal is invalid in runtime context
+
+# TODO: Add appropriate error messages to the following lines
+Literal()
+Renamed()
+indirect.Literal()
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
+
+--
+-- Test to make sure literals interact with generics as expected
+--
+
+[case testLiteralAndGenericsWithSimpleFunctions]
+from typing import TypeVar
+from typing_extensions import Literal
+
+T = TypeVar('T')
+def foo(x: T) -> T: pass
+def expects_literal(x: Literal[3]) -> None: pass
+def expects_int(x: int) -> None: pass
+
+a: Literal[3]
+reveal_type(foo(3))  # E: Revealed type is 'builtins.int*'
+reveal_type(foo(a))  # E: Revealed type is 'Literal[3]'
+
+expects_literal(3)
+expects_literal(foo(3))
+expects_literal(foo(foo(3)))
+
+expects_literal(a)
+expects_literal(foo(a))
+expects_literal(foo(foo(a)))
+
+expects_literal(5)              # E: Argument 1 to "expects_literal" has incompatible type "Literal[5]"; expected "Literal[3]"
+expects_literal(foo(5))         # E: Argument 1 to "foo" has incompatible type "Literal[5]"; expected "Literal[3]"
+expects_literal(foo(foo(5)))    # E: Argument 1 to "foo" has incompatible type "Literal[5]"; expected "Literal[3]"
+
+expects_int(a)
+expects_int(foo(a))
+expects_int(foo(foo(a)))
+[out]
+
+[case testLiteralAndGenericWithUnion]
+from typing import TypeVar, Union
+from typing_extensions import Literal
+
+T = TypeVar('T')
+def identity(x: T) -> T: return x
+
+a: Union[int, Literal['foo']] = identity('foo')
+b: Union[int, Literal['foo']] = identity('bar')  # E: Argument 1 to "identity" has incompatible type "Literal['bar']"; expected "Union[int, Literal['foo']]"
+[out]
+
+[case testLiteralAndGenericsNoMatch]
+from typing import TypeVar, Union, List
+from typing_extensions import Literal
+
+def identity(x: T) -> T:
+    return x
+
+Ok1 = Union[List[int], Literal['bad']]
+Ok2 = Union[List[Literal[42]], Literal['bad']]
+Bad = Union[List[Literal[43]], Literal['bad']]
+
+x: Ok1 = identity([42])
+y: Ok2 = identity([42])
+z: Bad = identity([42])  # E: List item 0 has incompatible type "Literal[42]"; expected "Literal[43]"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testLiteralAndGenericsWithSimpleClasses]
+from typing import TypeVar, Generic
+from typing_extensions import Literal
+
+T = TypeVar('T')
+class Wrapper(Generic[T]):
+    def __init__(self, val: T) -> None:
+        self.val = val
+    def inner(self) -> T:
+        return self.val
+
+def expects_literal(a: Literal[3]) -> None: pass
+def expects_literal_wrapper(x: Wrapper[Literal[3]]) -> None: pass
+
+a: Literal[3]
+reveal_type(Wrapper(3))              # E: Revealed type is '__main__.Wrapper[builtins.int*]'
+reveal_type(Wrapper[Literal[3]](3))  # E: Revealed type is '__main__.Wrapper[Literal[3]]'
+reveal_type(Wrapper(a))              # E: Revealed type is '__main__.Wrapper[Literal[3]]'
+
+expects_literal(Wrapper(a).inner())
+
+# Note: the following probably ought to type-check: it's reasonable to infer
+# Wrapper[Literal[3]] here.
+# TODO: Consider finding a way to handle this edge case better
+expects_literal(Wrapper(3).inner())  # E: Argument 1 to "expects_literal" has incompatible type "int"; expected "Literal[3]"
+
+# Note: if we handle the edge case above, we should make sure this error
+# message switches to warning about an incompatible type 'Literal[5]' rather
+# then an incompatible type 'int'
+expects_literal(Wrapper(5).inner())  # E: Argument 1 to "expects_literal" has incompatible type "int"; expected "Literal[3]"
+
+expects_literal_wrapper(Wrapper(a))
+expects_literal_wrapper(Wrapper(3))
+expects_literal_wrapper(Wrapper(5))  # E: Argument 1 to "Wrapper" has incompatible type "Literal[5]"; expected "Literal[3]"
+[out]
+
+[case testLiteralAndGenericsRespectsUpperBound]
+from typing import TypeVar
+from typing_extensions import Literal
+
+TLiteral = TypeVar('TLiteral', bound=Literal[3])
+TInt = TypeVar('TInt', bound=int)
+
+def func1(x: TLiteral) -> TLiteral: pass
+def func2(x: TInt) -> TInt: pass
+
+def func3(x: TLiteral) -> TLiteral:
+    y = func2(x)
+    return y
+def func4(x: TInt) -> TInt:
+    y = func1(x)  # E: Value of type variable "TLiteral" of "func1" cannot be "TInt"
+    return y
+
+a: Literal[3]
+b: Literal[4]
+c: int
+
+reveal_type(func1)      # E: Revealed type is 'def [TLiteral <: Literal[3]] (x: TLiteral`-1) -> TLiteral`-1'
+
+reveal_type(func1(3))   # E: Revealed type is 'Literal[3]'
+reveal_type(func1(a))   # E: Revealed type is 'Literal[3]'
+reveal_type(func1(4))   # E: Revealed type is 'Literal[4]' \
+                        # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(b))   # E: Revealed type is 'Literal[4]' \
+                        # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(c))   # E: Revealed type is 'builtins.int*' \
+                        # E: Value of type variable "TLiteral" of "func1" cannot be "int"
+
+reveal_type(func2(3))   # E: Revealed type is 'builtins.int*'
+reveal_type(func2(a))   # E: Revealed type is 'Literal[3]'
+reveal_type(func2(4))   # E: Revealed type is 'builtins.int*'
+reveal_type(func2(b))   # E: Revealed type is 'Literal[4]'
+reveal_type(func2(c))   # E: Revealed type is 'builtins.int*'
+[out]
+
+[case testLiteralAndGenericsRespectsValueRestriction]
+from typing import TypeVar
+from typing_extensions import Literal
+
+TLiteral = TypeVar('TLiteral', Literal[3], Literal['foo'])
+TNormal = TypeVar('TNormal', int, str)
+
+def func1(x: TLiteral) -> TLiteral: pass
+def func2(x: TNormal) -> TNormal: pass
+
+def func3(x: TLiteral) -> TLiteral:
+    y = func2(x)
+    return y      # E: Incompatible return value type (got "int", expected "Literal[3]") \
+                  # E: Incompatible return value type (got "str", expected "Literal['foo']")
+def func4(x: TNormal) -> TNormal:
+    y = func1(x)  # E: Value of type variable "TLiteral" of "func1" cannot be "int" \
+                  # E: Value of type variable "TLiteral" of "func1" cannot be "str"
+    return y
+
+i1: Literal[3]
+i2: Literal[4]
+i: int
+
+s1: Literal['foo']
+s2: Literal['bar']
+s: str
+
+reveal_type(func1)          # E: Revealed type is 'def [TLiteral in (Literal[3], Literal['foo'])] (x: TLiteral`-1) -> TLiteral`-1'
+
+reveal_type(func1(3))       # E: Revealed type is 'Literal[3]'
+reveal_type(func1(i1))      # E: Revealed type is 'Literal[3]'
+reveal_type(func1(4))       # E: Revealed type is 'Literal[4]' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(i2))      # E: Revealed type is 'Literal[4]' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(i))       # E: Revealed type is 'builtins.int*' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "int"
+
+reveal_type(func1("foo"))   # E: Revealed type is 'Literal['foo']'
+reveal_type(func1(s1))      # E: Revealed type is 'Literal['foo']'
+reveal_type(func1("bar"))   # E: Revealed type is 'Literal['bar']' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']"
+reveal_type(func1(s2))      # E: Revealed type is 'Literal['bar']' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']"
+reveal_type(func1(s))       # E: Revealed type is 'builtins.str*' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "str"
+
+reveal_type(func2(3))       # E: Revealed type is 'builtins.int*'
+reveal_type(func2(i1))      # E: Revealed type is 'builtins.int*'
+reveal_type(func2(4))       # E: Revealed type is 'builtins.int*'
+reveal_type(func2(i2))      # E: Revealed type is 'builtins.int*'
+reveal_type(func2("foo"))   # E: Revealed type is 'builtins.str*'
+reveal_type(func2(s1))      # E: Revealed type is 'builtins.str*'
+reveal_type(func2("bar"))   # E: Revealed type is 'builtins.str*'
+reveal_type(func2(s2))      # E: Revealed type is 'builtins.str*'
+[out]
+
+[case testLiteralAndGenericsWithOverloads]
+from typing import TypeVar, overload, Union
+from typing_extensions import Literal
+
+@overload
+def func1(x: Literal[4]) -> Literal[19]: ...
+@overload
+def func1(x: int) -> int: ...
+def func1(x: int) -> int: pass
+
+T = TypeVar('T')
+def identity(x: T) -> T: pass
+
+a: Literal[4]
+b: Literal[5]
+
+reveal_type(func1(identity(4)))  # E: Revealed type is 'Literal[19]'
+reveal_type(func1(identity(5)))  # E: Revealed type is 'builtins.int'
+reveal_type(func1(identity(a)))  # E: Revealed type is 'Literal[19]'
+reveal_type(func1(identity(b)))  # E: Revealed type is 'builtins.int'
+
+--
+-- Other misc interactions
+--
+
+[case testLiteralMeets]
+from typing import TypeVar, List, Callable, Union
+from typing_extensions import Literal
+
+a: Callable[[Literal[1]], int]
+b: Callable[[Literal[2]], str]
+c: Callable[[int], str]
+d: Callable[[object], str]
+e: Callable[[Union[Literal[1], Literal[2]]], str]
+
+arr1 = [a, a]
+arr2 = [a, b]
+arr3 = [a, c]
+arr4 = [a, d]
+arr5 = [a, e]
+
+reveal_type(arr1)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.int]'
+reveal_type(arr2)  # E: Revealed type is 'builtins.list[builtins.function*]'
+reveal_type(arr3)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
+reveal_type(arr4)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
+reveal_type(arr5)  # E: Revealed type is 'builtins.list[def (Literal[1]) -> builtins.object]'
+
+# Inspect just only one interesting one
+lit: Literal[1]
+reveal_type(arr2[0](lit))  # E: Revealed type is 'Any' \
+                           # E: Cannot call function of unknown type
+
+T = TypeVar('T')
+def unify(func: Callable[[T, T], None]) -> T: pass
+
+def f1(x: Literal[1], y: Literal[1]) -> None: pass
+def f2(x: Literal[1], y: Literal[2]) -> None: pass
+def f3(x: Literal[1], y: int) -> None: pass
+def f4(x: Literal[1], y: object) -> None: pass
+def f5(x: Literal[1], y: Union[Literal[1], Literal[2]]) -> None: pass
+
+reveal_type(unify(f1))  # E: Revealed type is 'Literal[1]'
+reveal_type(unify(f2))  # E: Revealed type is 'None'
+reveal_type(unify(f3))  # E: Revealed type is 'Literal[1]'
+reveal_type(unify(f4))  # E: Revealed type is 'Literal[1]'
+reveal_type(unify(f5))  # E: Revealed type is 'Literal[1]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testLiteralMeetsWithStrictOptional]
+# flags: --strict-optional
+from typing import TypeVar, Callable, Union
+from typing_extensions import Literal
+
+a: Callable[[Literal[1]], int]
+b: Callable[[Literal[2]], str]
+lit: Literal[1]
+
+arr = [a, b]
+reveal_type(arr)  # E: Revealed type is 'builtins.list[builtins.function*]'
+reveal_type(arr[0](lit))  # E: Revealed type is 'Any' \
+                          # E: Cannot call function of unknown type
+
+T = TypeVar('T')
+def unify(func: Callable[[T, T], None]) -> T: pass
+def func(x: Literal[1], y: Literal[2]) -> None: pass
+
+reveal_type(unify(func))  # E: Revealed type is '<nothing>'
+[builtins fixtures/list.pyi]
 [out]

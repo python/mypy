@@ -34,7 +34,7 @@ from mypy.types import (
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional
 )
-from mypy.sametypes import is_same_type, is_same_types
+from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import (

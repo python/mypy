@@ -6,15 +6,12 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
-import argparse
 import base64
 import json
 import os
 import pickle
-import random
 import subprocess
 import sys
-import tempfile
 import time
 import traceback
 
@@ -26,7 +23,7 @@ import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import receive
-from mypy.ipc import IPCServer, IPCException
+from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
@@ -61,9 +58,9 @@ if sys.platform == 'win32':
         command = [sys.executable, '-m', 'mypy.dmypy', '--status-file', status_file, 'daemon']
         pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
         command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
-        info = STARTUPINFO(dwFlags=0x1,  # STARTF_USESHOWWINDOW aka use wShowWindow's value
-                           wShowWindow=0,  # SW_HIDE aka make the window invisible
-                           )
+        info = STARTUPINFO()
+        info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
+        info.wShowWindow = 0  # SW_HIDE aka make the window invisible
         try:
             subprocess.Popen(command,
                              creationflags=0x10,  # CREATE_NEW_CONSOLE
@@ -147,8 +144,6 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
                  "pass it to check/recheck instead")
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
-    if options.quick_and_dirty:
-        sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
     # Our file change tracking can't yet handle changes to files that aren't
     # specified in the sources list.
     if options.follow_imports not in ('skip', 'error'):

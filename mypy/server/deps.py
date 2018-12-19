@@ -79,7 +79,7 @@ dependency map significantly without significant benefit.
 Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
-from typing import Dict, List, Set, Optional, Tuple, Union
+from typing import Dict, List, Set, Optional, Tuple
 
 MYPY = False
 if MYPY:

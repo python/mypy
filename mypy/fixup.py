@@ -13,6 +13,7 @@ from mypy.types import (
     TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
+from mypy.lookup import lookup_fully_qualified
 
 
 # N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
@@ -257,40 +258,7 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str,
 
 def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
                             quick_and_dirty: bool) -> Optional[SymbolTableNode]:
-    head = name
-    rest = []
-    while True:
-        if '.' not in head:
-            if not quick_and_dirty:
-                assert '.' in head, "Cannot find %s" % (name,)
-            return None
-        head, tail = head.rsplit('.', 1)
-        rest.append(tail)
-        mod = modules.get(head)
-        if mod is not None:
-            break
-    names = mod.names
-    while True:
-        if not rest:
-            if not quick_and_dirty:
-                assert rest, "Cannot find %s" % (name,)
-            return None
-        key = rest.pop()
-        if key not in names:
-            if not quick_and_dirty:
-                assert key in names, "Cannot find %s for %s" % (key, name)
-            return None
-        stnode = names[key]
-        if not rest:
-            return stnode
-        node = stnode.node
-        # In fine-grained mode, could be a cross-reference to a deleted module
-        # or a Var made up for a missing module.
-        if not isinstance(node, TypeInfo):
-            if not quick_and_dirty:
-                assert node, "Cannot find %s" % (name,)
-            return None
-        names = node.names
+    return lookup_fully_qualified(name, modules, raise_on_missing=not quick_and_dirty)
 
 
 def stale_info(modules: Dict[str, MypyFile]) -> TypeInfo:

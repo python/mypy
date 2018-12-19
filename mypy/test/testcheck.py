@@ -128,7 +128,7 @@ class TypeCheckSuite(DataSuite):
             # In run 1, copy program text to program file.
             for module_name, program_path, program_text in module_data:
                 if module_name == '__main__':
-                    with open(program_path, 'w') as f:
+                    with open(program_path, 'w', encoding='utf8') as f:
                         f.write(program_text)
                     break
         elif incremental_step > 1:
@@ -222,11 +222,8 @@ class TypeCheckSuite(DataSuite):
         # for those that had an error in themselves or one of their
         # dependencies.
         error_paths = self.find_error_message_paths(a)
-        if manager.options.quick_and_dirty:
-            busted_paths = error_paths
-        else:
-            busted_paths = {m.path for id, m in manager.modules.items()
-                            if graph[id].transitive_error}
+        busted_paths = {m.path for id, m in manager.modules.items()
+                        if graph[id].transitive_error}
         modules = self.find_module_files(manager)
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
@@ -302,7 +299,7 @@ class TypeCheckSuite(DataSuite):
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
                 assert path is not None, "Can't find ad hoc case file"
-                with open(path) as f:
+                with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))
             return out

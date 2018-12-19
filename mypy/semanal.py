@@ -54,15 +54,13 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
 )
-from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
-from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
@@ -91,6 +89,9 @@ from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NA
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
+from mypy.reachability import (
+    infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE
+)
 from mypy.typestate import TypeState
 
 MYPY = False
@@ -99,21 +100,6 @@ if MYPY:
 
 T = TypeVar('T')
 
-
-# Inferred truth value of an expression.
-ALWAYS_TRUE = 1  # type: Final
-MYPY_TRUE = 2  # type: Final  # True in mypy, False at runtime
-ALWAYS_FALSE = 3  # type: Final
-MYPY_FALSE = 4  # type: Final  # False in mypy, True at runtime
-TRUTH_VALUE_UNKNOWN = 5  # type: Final
-
-inverted_truth_mapping = {
-    ALWAYS_TRUE: ALWAYS_FALSE,
-    ALWAYS_FALSE: ALWAYS_TRUE,
-    TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
-    MYPY_TRUE: MYPY_FALSE,
-    MYPY_FALSE: MYPY_TRUE,
-}  # type: Final
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -542,100 +528,142 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # with a @property with a setter or a deleter, and for a classic
         # @overload.
 
-        # Decide whether to analyze this as a property or an overload.  If an
-        # overload, and we're outside a stub, find the impl and set it.  Remove
-        # the impl from the item list, it's special.
-        types = []  # type: List[CallableType]
-        non_overload_indexes = []
+        defn._fullname = self.qualified_name(defn.name())
 
-        # See if the first item is a property (and not an overload)
         first_item = defn.items[0]
         first_item.is_overload = True
         first_item.accept(self)
 
-        defn._fullname = self.qualified_name(defn.name())
-
         if isinstance(first_item, Decorator) and first_item.func.is_property:
+            # This is a property.
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)
             typ = function_type(first_item.func, self.builtin_type('builtins.function'))
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
-            for i, item in enumerate(defn.items):
-                if i != 0:
-                    # The first item was already visited
-                    item.is_overload = True
-                    item.accept(self)
-                # TODO: support decorated overloaded functions properly
-                if isinstance(item, Decorator):
-                    callable = function_type(item.func, self.builtin_type('builtins.function'))
-                    assert isinstance(callable, CallableType)
-                    if not any(refers_to_fullname(dec, 'typing.overload')
-                               for dec in item.decorators):
-                        if i == len(defn.items) - 1 and not self.is_stub_file:
-                            # Last item outside a stub is impl
-                            defn.impl = item
-                        else:
-                            # Oops it wasn't an overload after all. A clear error
-                            # will vary based on where in the list it is, record
-                            # that.
-                            non_overload_indexes.append(i)
-                    else:
-                        item.func.is_overload = True
-                        types.append(callable)
-                elif isinstance(item, FuncDef):
-                    if i == len(defn.items) - 1 and not self.is_stub_file:
-                        defn.impl = item
-                    else:
-                        non_overload_indexes.append(i)
+            # This is an a normal overload. Find the item signatures, the
+            # implementation (if outside a stub), and any missing @overload
+            # decorators.
+            types, impl, non_overload_indexes = self.find_overload_sigs_and_impl(defn)
+            defn.impl = impl
             if non_overload_indexes:
-                if types:
-                    # Some of them were overloads, but not all.
-                    for idx in non_overload_indexes:
-                        if self.is_stub_file:
-                            self.fail("An implementation for an overloaded function "
-                                      "is not allowed in a stub file", defn.items[idx])
-                        else:
-                            self.fail("The implementation for an overloaded function "
-                                      "must come last", defn.items[idx])
-                else:
-                    for idx in non_overload_indexes[1:]:
-                        self.name_already_defined(defn.name(), defn.items[idx], first_item)
-                    if defn.impl:
-                        self.name_already_defined(defn.name(), defn.impl, first_item)
-                # Remove the non-overloads
-                for idx in reversed(non_overload_indexes):
-                    del defn.items[idx]
-            # If we found an implementation, remove it from the overloads to
-            # consider.
-            if defn.impl is not None:
-                assert defn.impl is defn.items[-1]
+                self.handle_missing_overload_decorators(defn, non_overload_indexes,
+                                                        some_overload_decorators=len(types) > 0)
+            # If we found an implementation, remove it from the overload item list,
+            # as it's special.
+            if impl is not None:
+                assert impl is defn.items[-1]
                 defn.items = defn.items[:-1]
-            elif not self.is_stub_file and not non_overload_indexes:
-                if not (self.type and not self.is_func_scope() and self.type.is_protocol):
-                    self.fail(
-                        "An overloaded function outside a stub file must have an implementation",
-                        defn)
-                else:
-                    for item in defn.items:
-                        if isinstance(item, Decorator):
-                            item.func.is_abstract = True
-                        else:
-                            item.is_abstract = True
+            elif not non_overload_indexes:
+                self.handle_missing_overload_implementation(defn)
 
         if types:
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
         if not defn.items:
-            # It was not any kind of overload def after all. We've visited the
-            # redefinitions already.
+            # It was not a real overload after all, but function redefinition. We've
+            # visited the redefinition(s) already.
             return
 
-        # Check final status, if the implementation is marked
-        # as @final (or the first overload in stubs), then the whole overloaded
-        # definition if @final.
+        # We know this is an overload def. Infer properties and perform some checks.
+        self.process_final_in_overload(defn)
+        self.process_static_or_class_method_in_overload(defn)
+
+        if self.type and not self.is_func_scope():
+            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+            defn.info = self.type
+        elif self.is_func_scope():
+            self.add_local(defn, defn)
+
+    def find_overload_sigs_and_impl(
+            self,
+            defn: OverloadedFuncDef) -> Tuple[List[CallableType],
+                                              Optional[OverloadPart],
+                                              List[int]]:
+        """Find overload signatures, the implementation, and items with missing @overload.
+
+        Assume that the first was already analyzed. As a side effect:
+        analyzes remaining items and updates 'is_overload' flags.
+        """
+        types = []
+        non_overload_indexes = []
+        impl = None  # type: Optional[OverloadPart]
+        for i, item in enumerate(defn.items):
+            if i != 0:
+                # Assume that the first item was already visited
+                item.is_overload = True
+                item.accept(self)
+            # TODO: support decorated overloaded functions properly
+            if isinstance(item, Decorator):
+                callable = function_type(item.func, self.builtin_type('builtins.function'))
+                assert isinstance(callable, CallableType)
+                if not any(refers_to_fullname(dec, 'typing.overload')
+                           for dec in item.decorators):
+                    if i == len(defn.items) - 1 and not self.is_stub_file:
+                        # Last item outside a stub is impl
+                        impl = item
+                    else:
+                        # Oops it wasn't an overload after all. A clear error
+                        # will vary based on where in the list it is, record
+                        # that.
+                        non_overload_indexes.append(i)
+                else:
+                    item.func.is_overload = True
+                    types.append(callable)
+            elif isinstance(item, FuncDef):
+                if i == len(defn.items) - 1 and not self.is_stub_file:
+                    impl = item
+                else:
+                    non_overload_indexes.append(i)
+        return types, impl, non_overload_indexes
+
+    def handle_missing_overload_decorators(self,
+                                           defn: OverloadedFuncDef,
+                                           non_overload_indexes: List[int],
+                                           some_overload_decorators: bool) -> None:
+        """Generate errors for overload items without @overload.
+
+        Side effect: remote non-overload items.
+        """
+        if some_overload_decorators:
+            # Some of them were overloads, but not all.
+            for idx in non_overload_indexes:
+                if self.is_stub_file:
+                    self.fail("An implementation for an overloaded function "
+                              "is not allowed in a stub file", defn.items[idx])
+                else:
+                    self.fail("The implementation for an overloaded function "
+                              "must come last", defn.items[idx])
+        else:
+            for idx in non_overload_indexes[1:]:
+                self.name_already_defined(defn.name(), defn.items[idx], defn.items[0])
+            if defn.impl:
+                self.name_already_defined(defn.name(), defn.impl, defn.items[0])
+        # Remove the non-overloads
+        for idx in reversed(non_overload_indexes):
+            del defn.items[idx]
+
+    def handle_missing_overload_implementation(self, defn: OverloadedFuncDef) -> None:
+        """Generate error about missing overload implementation (only if needed)."""
+        if not self.is_stub_file:
+            if self.type and self.type.is_protocol and not self.is_func_scope():
+                # An overloded protocol method doesn't need an implementation.
+                for item in defn.items:
+                    if isinstance(item, Decorator):
+                        item.func.is_abstract = True
+                    else:
+                        item.is_abstract = True
+            else:
+                self.fail(
+                    "An overloaded function outside a stub file must have an implementation",
+                    defn)
+
+    def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
+        """Detect the @final status of an overloaded function (and perform checks)."""
+        # If the implementation is marked as @final (or the first overload in
+        # stubs), then the whole overloaded definition if @final.
         if any(item.is_final for item in defn.items):
             # We anyway mark it as final because it was probably the intention.
             defn.is_final = True
@@ -651,7 +679,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if defn.impl is not None and defn.impl.is_final:
             defn.is_final = True
 
-        # We know this is an overload def -- let's handle classmethod and staticmethod
+    def process_static_or_class_method_in_overload(self, defn: OverloadedFuncDef) -> None:
         class_status = []
         static_status = []
         for item in defn.items:
@@ -681,12 +709,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             defn.is_class = class_status[0]
             defn.is_static = static_status[0]
-
-        if self.type and not self.is_func_scope():
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            defn.info = self.type
-        elif self.is_func_scope():
-            self.add_local(defn, defn)
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
@@ -818,8 +840,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 self.setup_class_def_analysis(defn)
                 self.analyze_base_classes(defn)
-                self.analyze_metaclass(defn)
                 defn.info.is_protocol = is_protocol
+                self.analyze_metaclass(defn)
                 defn.info.runtime_protocol = False
                 for decorator in defn.decorators:
                     self.analyze_class_decorator(defn, decorator)
@@ -1340,6 +1362,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert isinstance(inst, Instance)
             defn.info.declared_metaclass = inst
         defn.info.metaclass_type = defn.info.calculate_metaclass_type()
+        if any(info.is_protocol for info in defn.info.mro):
+            if (not defn.info.metaclass_type or
+                    defn.info.metaclass_type.type.fullname() == 'builtins.type'):
+                # All protocols and their subclasses have ABCMeta metaclass by default.
+                # TODO: add a metaclass conflict check if there is another metaclass.
+                abc_meta = self.named_type_or_none('abc.ABCMeta', [])
+                if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
+                    defn.info.metaclass_type = abc_meta
         if defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
@@ -3510,6 +3540,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         Note that this can't be used for names nested in class namespaces.
         """
+        # TODO: unify/clean-up/simplify lookup methods, see #4157.
+        # TODO: support nested classes (but consider performance impact,
+        #       we might keep the module level only lookup for thing like 'builtins.int').
         assert '.' in fullname
         module, name = fullname.rsplit('.', maxsplit=1)
         if module not in self.modules:
@@ -3816,274 +3849,6 @@ def remove_imported_names_from_symtable(names: SymbolTable,
             removed.append(name)
     for name in removed:
         del names[name]
-
-
-def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
-    for i in range(len(s.expr)):
-        result = infer_condition_value(s.expr[i], options)
-        if result in (ALWAYS_FALSE, MYPY_FALSE):
-            # The condition is considered always false, so we skip the if/elif body.
-            mark_block_unreachable(s.body[i])
-        elif result in (ALWAYS_TRUE, MYPY_TRUE):
-            # This condition is considered always true, so all of the remaining
-            # elif/else bodies should not be checked.
-            if result == MYPY_TRUE:
-                # This condition is false at runtime; this will affect
-                # import priorities.
-                mark_block_mypy_only(s.body[i])
-            for body in s.body[i + 1:]:
-                mark_block_unreachable(body)
-
-            # Make sure else body always exists and is marked as
-            # unreachable so the type checker always knows that
-            # all control flow paths will flow through the if
-            # statement body.
-            if not s.else_body:
-                s.else_body = Block([])
-            mark_block_unreachable(s.else_body)
-            break
-
-
-def assert_will_always_fail(s: AssertStmt, options: Options) -> bool:
-    return infer_condition_value(s.expr, options) in (ALWAYS_FALSE, MYPY_FALSE)
-
-
-def infer_condition_value(expr: Expression, options: Options) -> int:
-    """Infer whether the given condition is always true/false.
-
-    Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
-    MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
-    false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
-    """
-    pyversion = options.python_version
-    name = ''
-    negated = False
-    alias = expr
-    if isinstance(alias, UnaryExpr):
-        if alias.op == 'not':
-            expr = alias.expr
-            negated = True
-    result = TRUTH_VALUE_UNKNOWN
-    if isinstance(expr, NameExpr):
-        name = expr.name
-    elif isinstance(expr, MemberExpr):
-        name = expr.name
-    elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
-        left = infer_condition_value(expr.left, options)
-        if ((left == ALWAYS_TRUE and expr.op == 'and') or
-                (left == ALWAYS_FALSE and expr.op == 'or')):
-            # Either `True and <other>` or `False or <other>`: the result will
-            # always be the right-hand-side.
-            return infer_condition_value(expr.right, options)
-        else:
-            # The result will always be the left-hand-side (e.g. ALWAYS_* or
-            # TRUTH_VALUE_UNKNOWN).
-            return left
-    else:
-        result = consider_sys_version_info(expr, pyversion)
-        if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, options.platform)
-    if result == TRUTH_VALUE_UNKNOWN:
-        if name == 'PY2':
-            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
-        elif name == 'PY3':
-            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-        elif name == 'MYPY' or name == 'TYPE_CHECKING':
-            result = MYPY_TRUE
-        elif name in options.always_true:
-            result = MYPY_TRUE
-        elif name in options.always_false:
-            result = MYPY_FALSE
-    if negated:
-        result = inverted_truth_mapping[result]
-    return result
-
-
-def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> int:
-    """Consider whether expr is a comparison involving sys.version_info.
-
-    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
-    """
-    # Cases supported:
-    # - sys.version_info[<int>] <compare_op> <int>
-    # - sys.version_info[:<int>] <compare_op> <tuple_of_n_ints>
-    # - sys.version_info <compare_op> <tuple_of_1_or_2_ints>
-    #   (in this case <compare_op> must be >, >=, <, <=, but cannot be ==, !=)
-    if not isinstance(expr, ComparisonExpr):
-        return TRUTH_VALUE_UNKNOWN
-    # Let's not yet support chained comparisons.
-    if len(expr.operators) > 1:
-        return TRUTH_VALUE_UNKNOWN
-    op = expr.operators[0]
-    if op not in ('==', '!=', '<=', '>=', '<', '>'):
-        return TRUTH_VALUE_UNKNOWN
-    thing = contains_int_or_tuple_of_ints(expr.operands[1])
-    if thing is None:
-        return TRUTH_VALUE_UNKNOWN
-    index = contains_sys_version_info(expr.operands[0])
-    if isinstance(index, int) and isinstance(thing, int):
-        # sys.version_info[i] <compare_op> k
-        if 0 <= index <= 1:
-            return fixed_comparison(pyversion[index], op, thing)
-        else:
-            return TRUTH_VALUE_UNKNOWN
-    elif isinstance(index, tuple) and isinstance(thing, tuple):
-        lo, hi = index
-        if lo is None:
-            lo = 0
-        if hi is None:
-            hi = 2
-        if 0 <= lo < hi <= 2:
-            val = pyversion[lo:hi]
-            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
-                return fixed_comparison(val, op, thing)
-    return TRUTH_VALUE_UNKNOWN
-
-
-def consider_sys_platform(expr: Expression, platform: str) -> int:
-    """Consider whether expr is a comparison involving sys.platform.
-
-    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
-    """
-    # Cases supported:
-    # - sys.platform == 'posix'
-    # - sys.platform != 'win32'
-    # - sys.platform.startswith('win')
-    if isinstance(expr, ComparisonExpr):
-        # Let's not yet support chained comparisons.
-        if len(expr.operators) > 1:
-            return TRUTH_VALUE_UNKNOWN
-        op = expr.operators[0]
-        if op not in ('==', '!='):
-            return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.operands[0], 'platform'):
-            return TRUTH_VALUE_UNKNOWN
-        right = expr.operands[1]
-        if not isinstance(right, (StrExpr, UnicodeExpr)):
-            return TRUTH_VALUE_UNKNOWN
-        return fixed_comparison(platform, op, right.value)
-    elif isinstance(expr, CallExpr):
-        if not isinstance(expr.callee, MemberExpr):
-            return TRUTH_VALUE_UNKNOWN
-        if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
-            return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.callee.expr, 'platform'):
-            return TRUTH_VALUE_UNKNOWN
-        if expr.callee.name != 'startswith':
-            return TRUTH_VALUE_UNKNOWN
-        if platform.startswith(expr.args[0].value):
-            return ALWAYS_TRUE
-        else:
-            return ALWAYS_FALSE
-    else:
-        return TRUTH_VALUE_UNKNOWN
-
-
-Targ = TypeVar('Targ', int, str, Tuple[int, ...])
-
-
-def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
-    rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
-    if op == '==':
-        return rmap[left == right]
-    if op == '!=':
-        return rmap[left != right]
-    if op == '<=':
-        return rmap[left <= right]
-    if op == '>=':
-        return rmap[left >= right]
-    if op == '<':
-        return rmap[left < right]
-    if op == '>':
-        return rmap[left > right]
-    return TRUTH_VALUE_UNKNOWN
-
-
-def contains_int_or_tuple_of_ints(expr: Expression
-                                  ) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
-    if isinstance(expr, IntExpr):
-        return expr.value
-    if isinstance(expr, TupleExpr):
-        if literal(expr) == LITERAL_YES:
-            thing = []
-            for x in expr.items:
-                if not isinstance(x, IntExpr):
-                    return None
-                thing.append(x.value)
-            return tuple(thing)
-    return None
-
-
-def contains_sys_version_info(expr: Expression
-                              ) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
-    if is_sys_attr(expr, 'version_info'):
-        return (None, None)  # Same as sys.version_info[:]
-    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
-        index = expr.index
-        if isinstance(index, IntExpr):
-            return index.value
-        if isinstance(index, SliceExpr):
-            if index.stride is not None:
-                if not isinstance(index.stride, IntExpr) or index.stride.value != 1:
-                    return None
-            begin = end = None
-            if index.begin_index is not None:
-                if not isinstance(index.begin_index, IntExpr):
-                    return None
-                begin = index.begin_index.value
-            if index.end_index is not None:
-                if not isinstance(index.end_index, IntExpr):
-                    return None
-                end = index.end_index.value
-            return (begin, end)
-    return None
-
-
-def is_sys_attr(expr: Expression, name: str) -> bool:
-    # TODO: This currently doesn't work with code like this:
-    # - import sys as _sys
-    # - from sys import version_info
-    if isinstance(expr, MemberExpr) and expr.name == name:
-        if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
-            # TODO: Guard against a local named sys, etc.
-            # (Though later passes will still do most checking.)
-            return True
-    return False
-
-
-def mark_block_unreachable(block: Block) -> None:
-    block.is_unreachable = True
-    block.accept(MarkImportsUnreachableVisitor())
-
-
-class MarkImportsUnreachableVisitor(TraverserVisitor):
-    """Visitor that flags all imports nested within a node as unreachable."""
-
-    def visit_import(self, node: Import) -> None:
-        node.is_unreachable = True
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        node.is_unreachable = True
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        node.is_unreachable = True
-
-
-def mark_block_mypy_only(block: Block) -> None:
-    block.accept(MarkImportsMypyOnlyVisitor())
-
-
-class MarkImportsMypyOnlyVisitor(TraverserVisitor):
-    """Visitor that sets is_mypy_only (which affects priority)."""
-
-    def visit_import(self, node: Import) -> None:
-        node.is_mypy_only = True
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        node.is_mypy_only = True
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        node.is_mypy_only = True
 
 
 def make_any_non_explicit(t: Type) -> Type:
