@@ -65,9 +65,9 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 map[formal_kinds.index(nodes.ARG_STAR2)].append(i)
         else:
             assert actual_kind == nodes.ARG_STAR2
-            argt = actual_arg_type(i)
-            if isinstance(argt, TypedDictType):
-                for name, value in argt.items.items():
+            actualt = actual_arg_type(i)
+            if isinstance(actualt, TypedDictType):
+                for name, value in actualt.items.items():
                     if name in formal_names:
                         map[formal_names.index(name)].append(i)
                     elif nodes.ARG_STAR2 in formal_kinds:
