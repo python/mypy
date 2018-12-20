@@ -20,12 +20,12 @@ def map_actuals_to_formals(actual_kinds: List[int],
     The caller_arg_type argument should evaluate to the type of the actual
     argument type with the given index.
     """
-    ncallee = len(formal_kinds)
-    map = [[] for i in range(ncallee)]  # type: List[List[int]]
+    nformals = len(formal_kinds)
+    map = [[] for i in range(nformals)]  # type: List[List[int]]
     j = 0
     for i, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
-            if j < ncallee:
+            if j < nformals:
                 if formal_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
                                        nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
                     map[j].append(i)
@@ -38,7 +38,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
             if isinstance(argt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
                 for _ in range(len(argt.items)):
-                    if j < ncallee:
+                    if j < nformals:
                         if formal_kinds[j] != nodes.ARG_STAR2:
                             map[j].append(i)
                         else:
@@ -48,7 +48,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
             else:
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
-                while j < ncallee:
+                while j < nformals:
                     if formal_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
                         break
                     else:
@@ -75,7 +75,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
             else:
                 # We don't exactly know which **kwargs are provided by the
                 # caller. Assume that they will fill the remaining arguments.
-                for j in range(ncallee):
+                for j in range(nformals):
                     # TODO: If there are also tuple varargs, we might be missing some potential
                     #       matches if the tuple was short enough to not match everything.
                     no_certain_match = (
