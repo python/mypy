@@ -84,8 +84,8 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         name = expr.name
     elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
         left = infer_condition_value(expr.left, options)
-        if ((left == ALWAYS_TRUE and expr.op == 'and') or
-                (left == ALWAYS_FALSE and expr.op == 'or')):
+        if ((left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'and') or
+                (left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'or')):
             # Either `True and <other>` or `False or <other>`: the result will
             # always be the right-hand-side.
             return infer_condition_value(expr.right, options)
@@ -105,9 +105,9 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         elif name == 'MYPY' or name == 'TYPE_CHECKING':
             result = MYPY_TRUE
         elif name in options.always_true:
-            result = MYPY_TRUE
+            result = ALWAYS_TRUE
         elif name in options.always_false:
-            result = MYPY_FALSE
+            result = ALWAYS_FALSE
     if negated:
         result = inverted_truth_mapping[result]
     return result
