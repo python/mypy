@@ -934,3 +934,89 @@ T = TypeVar("T", bytes, str)
 class A(Generic[T]):
     v: T
 [builtins fixtures/attr.pyi]
+
+[case testAttrsKwOnlyAttrib]
+import attr
+@attr.s
+class A:
+    a = attr.ib(kw_only=True)
+A()  # E: Missing named argument "a" for "A"
+A(15) # E: Too many positional arguments for "A"
+A(a=15)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsKwOnlyClass]
+import attr
+@attr.s(kw_only=True, auto_attribs=True)
+class A:
+    a: int
+    b: bool
+A()  # E: Missing named argument "a" for "A" # E: Missing named argument "b" for "A"
+A(b=True, a=15)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsKwOnlyClassNoInit]
+import attr
+@attr.s(kw_only=True)
+class B:
+    a = attr.ib(init=False)
+    b = attr.ib()
+B(b=True)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsKwOnlyWithDefault]
+import attr
+@attr.s
+class C:
+    a = attr.ib(0)
+    b = attr.ib(kw_only=True)
+    c = attr.ib(16, kw_only=True)
+C(b=17)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsKwOnlyClassWithMixedDefaults]
+import attr
+@attr.s(kw_only=True)
+class D:
+    a = attr.ib(10)
+    b = attr.ib()
+    c = attr.ib(15)
+D(b=17)
+[builtins fixtures/attr.pyi]
+
+
+[case testAttrsKwOnlySubclass]
+import attr
+@attr.s
+class A2:
+     a = attr.ib(default=0)
+@attr.s
+class B2(A2):
+    b = attr.ib(kw_only=True)
+B2(b=1)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsNonKwOnlyAfterKwOnly]
+import attr
+@attr.s(kw_only=True)
+class A:
+     a = attr.ib(default=0)
+@attr.s
+class B(A):
+    b = attr.ib()  # E: Non keyword-only attributes are not allowed after a keyword-only attribute.
+@attr.s
+class C:
+    a = attr.ib(kw_only=True)
+    b = attr.ib(15)  # E: Non keyword-only attributes are not allowed after a keyword-only attribute.
+[builtins fixtures/attr.pyi]
+
+[case testAttrsKwOnlyPy2]
+# flags: --py2
+import attr
+@attr.s(kw_only=True)  # E: kw_only is not supported in Python 2
+class A(object):
+    x = attr.ib()
+@attr.s
+class B(object):
+    x = attr.ib(kw_only=True)  # E: kw_only is not supported in Python 2
+[builtins_py2 fixtures/bool.pyi]
