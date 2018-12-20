@@ -75,7 +75,8 @@ strict2: int = None  # E: Incompatible types in assignment (expression has type 
 # flags: --strict-optional --python-version 3.6
 def f() -> None:
     x: int
-    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+    if int():
+        x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxWithStrictOptionalClasses]
@@ -150,4 +151,3 @@ v = 1
 reveal_type(f'{v}') # E: Revealed type is 'builtins.str'
 reveal_type(f'{1}') # E: Revealed type is 'builtins.str'
 [builtins fixtures/f_string.pyi]
-

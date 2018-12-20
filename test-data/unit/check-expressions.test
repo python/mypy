@@ -33,26 +33,34 @@ class B(A): pass
 [case testIntLiteral]
 a = 0
 b = None # type: A
-b = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
-a = 1
+if int():
+    b = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+if int():
+    a = 1
 class A:
     pass
 
 [case testStrLiteral]
 a = ''
 b = None # type: A
-b = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
-a = 'x'
-a = r"x"
-a = """foo"""
+if int():
+    b = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
+if int():
+    a = 'x'
+if int():
+    a = r"x"
+if int():
+    a = """foo"""
 class A:
     pass
 
 [case testFloatLiteral]
 a = 0.0
 b = None # type: A
-b = 1.1 # E: Incompatible types in assignment (expression has type "float", variable has type "A")
-a = 1.1
+if str():
+    b = 1.1 # E: Incompatible types in assignment (expression has type "float", variable has type "A")
+if str():
+    a = 1.1
 class A:
     pass
 [file builtins.py]
@@ -66,8 +74,10 @@ class str: pass
 [case testComplexLiteral]
 a = 0.0j
 b = None # type: A
-b = 1.1j # E: Incompatible types in assignment (expression has type "complex", variable has type "A")
-a = 1.1j
+if str():
+    b = 1.1j # E: Incompatible types in assignment (expression has type "complex", variable has type "A")
+if str():
+    a = 1.1j
 class A:
     pass
 [file builtins.py]
@@ -80,10 +90,14 @@ class str: pass
 
 [case testBytesLiteral]
 b, a = None, None # type: (bytes, A)
-b = b'foo'
-b = br"foo"
-b = b'''foo'''
-a = b'foo' # E: Incompatible types in assignment (expression has type "bytes", variable has type "A")
+if str():
+    b = b'foo'
+if str():
+    b = br"foo"
+if str():
+    b = b'''foo'''
+if str():
+    a = b'foo' # E: Incompatible types in assignment (expression has type "bytes", variable has type "A")
 class A: pass
 [file builtins.py]
 class object:
@@ -96,9 +110,11 @@ class str: pass
 
 [case testUnicodeLiteralInPython3]
 s = None  # type: str
-s = u'foo'
+if int():
+    s = u'foo'
 b = None  # type: bytes
-b = u'foo' # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
+if int():
+    b = u'foo' # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
 [builtins fixtures/primitives.pyi]
 
 
@@ -107,28 +123,15 @@ b = u'foo' # E: Incompatible types in assignment (expression has type "str", var
 
 
 [case testAdd]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a + c  # Fail
-a = a + b  # Fail
-c = b + a  # Fail
-c = a + b
-
-class A:
-    def __add__(self, x: 'B') -> 'C': pass
-class B: pass
-class C: pass
-[out]
-main:3: error: Unsupported operand types for + ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for + ("B")
-[case testAdd]
-
-a, b, c = None, None, None # type: (A, B, C)
-c = a + c  # Fail
-a = a + b  # Fail
-c = b + a  # Fail
-c = a + b
+if int():
+    c = a + c  # E: Unsupported operand types for + ("A" and "C")
+if int():
+    a = a + b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b + a  # E: Unsupported left operand type for + ("B")
+if int():
+    c = a + b
 
 class A:
     def __add__(self, x: 'B') -> 'C':
@@ -137,18 +140,17 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for + ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for + ("B")
 
 [case testSub]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a - c  # Fail
-a = a - b  # Fail
-c = b - a  # Fail
-c = a - b
+if int():
+    c = a - c  # E: Unsupported operand types for - ("A" and "C")
+if int():
+    a = a - b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b - a  # E: Unsupported left operand type for - ("B")
+if int():
+    c = a - b
 
 class A:
     def __sub__(self, x: 'B') -> 'C':
@@ -157,18 +159,17 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for - ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for - ("B")
 
 [case testMul]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a * c  # Fail
-a = a * b  # Fail
-c = b * a  # Fail
-c = a * b
+if int():
+    c = a * c  # E: Unsupported operand types for * ("A" and "C")
+if int():
+    a = a * b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b * a  # E: Unsupported left operand type for * ("B")
+if int():
+    c = a * b
 
 class A:
     def __mul__(self, x: 'B') -> 'C':
@@ -177,17 +178,17 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for * ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for * ("B")
 
 [case testMatMul]
 a, b, c = None, None, None # type: (A, B, C)
-c = a @ c  # E: Unsupported operand types for @ ("A" and "C")
-a = a @ b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
-c = b @ a  # E: Unsupported left operand type for @ ("B")
-c = a @ b
+if int():
+    c = a @ c  # E: Unsupported operand types for @ ("A" and "C")
+if int():
+    a = a @ b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b @ a  # E: Unsupported left operand type for @ ("B")
+if int():
+    c = a @ b
 
 class A:
     def __matmul__(self, x: 'B') -> 'C':
@@ -198,12 +199,14 @@ class C:
     pass
 
 [case testDiv]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a / c  # Fail
-a = a / b  # Fail
-c = b / a  # Fail
-c = a / b
+if int():
+    c = a / c  # E: Unsupported operand types for / ("A" and "C")
+    a = a / b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b / a  # E: Unsupported left operand type for / ("B")
+if int():
+    c = a / b
 
 class A:
     def __truediv__(self, x: 'B') -> 'C':
@@ -212,18 +215,16 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for / ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for / ("B")
 
 [case testIntDiv]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a // c  # Fail
-a = a // b  # Fail
-c = b // a  # Fail
-c = a // b
+if int():
+    c = a // c  # E: Unsupported operand types for // ("A" and "C")
+    a = a // b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b // a  # E: Unsupported left operand type for // ("B")
+if int():
+    c = a // b
 
 class A:
     def __floordiv__(self, x: 'B') -> 'C':
@@ -232,18 +233,17 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for // ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for // ("B")
 
 [case testMod]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a % c  # Fail
-a = a % b  # Fail
-c = b % a  # Fail
-c = a % b
+if int():
+    c = a % c  # E: Unsupported operand types for % ("A" and "C")
+if int():
+    a = a % b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b % a  # E: Unsupported left operand type for % ("B")
+if int():
+    c = a % b
 
 class A:
     def __mod__(self, x: 'B') -> 'C':
@@ -252,18 +252,17 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for % ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for % ("B")
 
 [case testPow]
-
 a, b, c = None, None, None # type: (A, B, C)
-c = a ** c  # Fail
-a = a ** b  # Fail
-c = b ** a  # Fail
-c = a ** b
+if int():
+    c = a ** c  # E: Unsupported operand types for ** ("A" and "C")
+if int():
+    a = a ** b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b ** a  # E: Unsupported left operand type for ** ("B")
+if int():
+    c = a ** b
 
 class A:
     def __pow__(self, x: 'B') -> 'C':
@@ -272,10 +271,6 @@ class B:
     pass
 class C:
     pass
-[out]
-main:3: error: Unsupported operand types for ** ("A" and "C")
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Unsupported left operand type for ** ("B")
 
 [case testMiscBinaryOperators]
 
@@ -306,14 +301,19 @@ main:6: error: Unsupported operand types for << ("A" and "B")
 main:7: error: Unsupported operand types for >> ("A" and "A")
 
 [case testBooleanAndOr]
-
 a, b = None, None # type: (A, bool)
-b = b and b
-b = b or b
-b = b and a # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
-b = a and b # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
-b = b or a  # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
-b = a or b  # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
+if int():
+    b = b and b
+if int():
+    b = b or b
+if int():
+    b = b and a # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
+if int():
+    b = a and b # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
+if int():
+    b = b or a  # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
+if int():
+    b = a or b  # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
 class A: pass
 
 [builtins fixtures/bool.pyi]
@@ -344,14 +344,19 @@ reveal_type(s and b or b)  # E: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
 [case testNonBooleanOr]
-
 c, d, b = None, None, None # type: (C, D, bool)
-c = c or c
-c = c or d
-c = d or c
-b = c or c # E: Incompatible types in assignment (expression has type "C", variable has type "bool")
-d = c or d # E: Incompatible types in assignment (expression has type "C", variable has type "D")
-d = d or c # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+if int():
+    c = c or c
+if int():
+    c = c or d
+if int():
+    c = d or c
+if int():
+    b = c or c # E: Incompatible types in assignment (expression has type "C", variable has type "bool")
+if int():
+    d = c or d # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+if int():
+    d = d or c # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 class C: pass
 class D(C): pass
 [builtins fixtures/bool.pyi]
@@ -359,14 +364,22 @@ class D(C): pass
 [case testInOperator]
 from typing import Iterator, Iterable, Any
 a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
-c = c in a  # Fail
-a = b in a  # Fail
-c = a in b  # Fail
-c = b in d  # Fail
-c = b in a
-c = a in d
-c = e in d
-c = a in e
+if int():
+    c = c in a  # E: Unsupported operand types for in ("bool" and "A")
+if int():
+    a = b in a  # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    c = a in b  # E: Unsupported right operand type for in ("B")
+if int():
+    c = b in d  # E: Unsupported operand types for in ("B" and "D")
+if int():
+    c = b in a
+if int():
+    c = a in d
+if int():
+    c = e in d
+if int():
+    c = a in e
 
 class A:
     def __contains__(self, x: 'B') -> bool: pass
@@ -374,23 +387,26 @@ class B: pass
 class D(Iterable[A]):
     def __iter__(self) -> Iterator[A]: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Unsupported operand types for in ("bool" and "A")
-main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:5: error: Unsupported right operand type for in ("B")
-main:6: error: Unsupported operand types for in ("B" and "D")
 
 [case testNotInOperator]
 from typing import Iterator, Iterable, Any
 a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
-c = c not in a  # Fail
-a = b not in a  # Fail
-c = a not in b  # Fail
-c = b not in d  # Fail
-c = b not in a
-c = a not in d
-c = e in d
-c = a in e
+if int():
+    c = c not in a  # E: Unsupported operand types for in ("bool" and "A")
+if int():
+    a = b not in a  # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    c = a not in b  # E: Unsupported right operand type for in ("B")
+if int():
+    c = b not in d  # E: Unsupported operand types for in ("B" and "D")
+if int():
+    c = b not in a
+if int():
+    c = a not in d
+if int():
+    c = e in d
+if int():
+    c = a in e
 
 class A:
     def __contains__(self, x: 'B') -> bool: pass
@@ -398,47 +414,45 @@ class B: pass
 class D(Iterable[A]):
     def __iter__(self) -> Iterator[A]: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Unsupported operand types for in ("bool" and "A")
-main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:5: error: Unsupported right operand type for in ("B")
-main:6: error: Unsupported operand types for in ("B" and "D")
 
 [case testNonBooleanContainsReturnValue]
-
 a, b = None, None # type: (A, bool)
-b = a not in a
-b = a in a
+if int():
+    b = a not in a
+if int():
+    b = a in a # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
 
 class A:
   def __contains__(self, x: 'A') -> object: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:4: error: Incompatible types in assignment (expression has type "object", variable has type "bool")
 
 [case testEq]
 
 a, b = None, None # type: (A, bool)
-a = a == b # Fail
-a = a != b # Fail
-b = a == b
-b = a != b
+if int():
+    a = a == b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    a = a != b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    b = a == b
+if int():
+    b = a != b
 
 class A:
   def __eq__(self, o: object) -> bool: pass
   def __ne__(self, o: object) -> bool: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testLtAndGt]
-
 a, b, bo = None, None, None # type: (A, B, bool)
-a = a < b # Fail
-a = a > b # Fail
-bo = a < b
-bo = a > b
+if int():
+    a = a < b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    a = a > b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    bo = a < b
+if int():
+    bo = a > b
 
 class A:
     def __lt__(self, o: 'B') -> bool: pass
@@ -447,9 +461,6 @@ class B:
     def __lt__(self, o: 'B') -> bool: pass
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testCmp_python2]
 
@@ -504,12 +515,15 @@ class B:
 [builtins fixtures/bool.pyi]
 
 [case testLeAndGe]
-
 a, b, bo = None, None, None # type: (A, B, bool)
-a = a <= b # Fail
-a = a >= b # Fail
-bo = a <= b
-bo = a >= b
+if int():
+    a = a <= b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    a = a >= b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    bo = a <= b
+if int():
+    bo = a >= b
 
 class A:
     def __le__(self, o: 'B') -> bool: pass
@@ -518,9 +532,6 @@ class B:
     def __le__(self, o: 'B') -> bool: pass
     def __ge__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testChainedComp]
 
@@ -543,10 +554,11 @@ main:5: error: Unsupported operand types for > ("A" and "A")
 
 
 [case testChainedCompBoolRes]
-
 a, b, bo = None, None, None # type: (A, B, bool)
-bo = a < b < b
-a = a < b < b # Fail
+if int():
+    bo = a < b < b
+if int():
+    a = a < b < b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 class A:
     def __lt__(self, o: 'B') -> bool: pass
@@ -555,19 +567,21 @@ class B:
     def __lt__(self, o: 'B') -> bool: pass
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 
 [case testChainedCompResTyp]
-
 x, y = None, None # type: (X, Y)
 a, b, p, bo = None, None, None, None # type: (A, B, P, bool)
-b = y == y == y
-bo = y == y == y # Fail
-a = x < y
-a = x < y == y # Fail
-p = x < y == y
+if int():
+    b = y == y == y
+if int():
+    bo = y == y == y # E: Incompatible types in assignment (expression has type "B", variable has type "bool")
+if int():
+    a = x < y
+if int():
+    a = x < y == y # E: Incompatible types in assignment (expression has type "P", variable has type "A")
+if int():
+    p = x < y == y
 
 class P:
     pass
@@ -584,34 +598,33 @@ class Y:
     def __gt__(self, o: 'Y') -> A: pass
     def __eq__(self, o: 'Y') -> B: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "bool")
-main:7: error: Incompatible types in assignment (expression has type "P", variable has type "A")
 
 
 [case testIs]
-
 a, b = None, None # type: (A, bool)
-a = a is b # Fail
-b = a is b
-b = b is a
-b = a is None
+if int():
+    a = a is b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    b = a is b
+if int():
+    b = b is a
+if int():
+    b = a is None
 class A: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testIsNot]
-
 a, b = None, None # type: (A, bool)
-a = a is not b # Fail
-b = a is not b
-b = b is not a
-b = a is not None
+if int():
+    a = a is not b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    b = a is not b
+if int():
+    b = b is not a
+if int():
+    b = a is not None
 class A: pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testIsRightOperand]
 
@@ -628,20 +641,23 @@ class B:
     def __radd__(self, x: A) -> str: pass
 s = None  # type: str
 n = None  # type: int
-n = A() + 1
-s = A() + B()
-n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    n = A() + 1
+if int():
+    s = A() + B()
+if int():
+    n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReverseBinaryOperator2]
-
 class A:
     def __add__(self, x: 'A') -> object: pass
 class B:
     def __radd__(self, x: A) -> str: pass
 s = None  # type: str
 n = None  # type: int
-s = A() + B()
-n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    s = A() + B()
+    n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReverseBinaryOperator3]
 
@@ -660,7 +676,6 @@ class A: pass
 A() + cast(Any, 1)
 
 [case testReverseComparisonOperator]
-
 class C:
     def __gt__(self, x: 'A') -> object: pass
 class A:
@@ -669,10 +684,12 @@ class B:
     def __gt__(self, x: A) -> str: pass
 s = None  # type: str
 n = None  # type: int
-n = A() < C()
-s = A() < B()
-n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-s = object() < B() # E: Unsupported operand types for > ("B" and "object")
+if int():
+    n = A() < C()
+    s = A() < B()
+if int():
+    n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    s = object() < B() # E: Unsupported operand types for > ("B" and "object")
 
 [case testReversibleComparisonWithExtraArgument]
 class C:
@@ -762,62 +779,60 @@ divmod('foo', d)  # E: Unsupported operand types for divmod ("str" and "Decimal"
 [case testUnaryMinus]
 
 a, b = None, None # type: (A, B)
-a = -a   # Fail
-b = -b   # Fail
-b = -a
+if int():
+    a = -a   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = -b   # E: Unsupported operand type for unary - ("B")
+if int():
+    b = -a
 
 class A:
     def __neg__(self) -> 'B':
         pass
 class B:
     pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:4: error: Unsupported operand type for unary - ("B")
 
 [case testUnaryPlus]
-
 a, b = None, None # type: (A, B)
-a = +a   # Fail
-b = +b   # Fail
-b = +a
+if int():
+    a = +a   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = +b   # E: Unsupported operand type for unary + ("B")
+if int():
+    b = +a
 
 class A:
     def __pos__(self) -> 'B':
         pass
 class B:
     pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:4: error: Unsupported operand type for unary + ("B")
 
 [case testUnaryNot]
-
 a, b = None, None # type: (A, bool)
-a = not b  # Fail
-b = not a
-b = not b
+if int():
+    a = not b  # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    b = not a
+if int():
+    b = not b
 class A:
     pass
 [builtins fixtures/bool.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testUnaryBitwiseNeg]
-
 a, b = None, None # type: (A, B)
-a = ~a   # Fail
-b = ~b   # Fail
-b = ~a
+if int():
+    a = ~a   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = ~b   # E: Unsupported operand type for ~ ("B")
+if int():
+    b = ~a
 
 class A:
     def __invert__(self) -> 'B':
         pass
 class B:
     pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:4: error: Unsupported operand type for ~ ("B")
 
 
 -- Indexing
@@ -827,20 +842,20 @@ main:4: error: Unsupported operand type for ~ ("B")
 [case testIndexing]
 
 a, b, c = None, None, None # type: (A, B, C)
-c = a[c]  # Fail
-a = a[b]  # Fail
-c = b[a]  # Fail
-c = a[b]
+if int():
+    c = a[c]  # E: Invalid index type "C" for "A"; expected type "B"
+if int():
+    a = a[b]  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+if int():
+    c = b[a]  # E: Value of type "B" is not indexable
+if int():
+    c = a[b]
 
 class A:
     def __getitem__(self, x: 'B') -> 'C':
         pass
 class B: pass
 class C: pass
-[out]
-main:3: error: Invalid index type "C" for "A"; expected type "B"
-main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
-main:5: error: Value of type "B" is not indexable
 
 [case testIndexingAsLvalue]
 
@@ -876,10 +891,14 @@ a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "in
       # N:     def __getitem__(self, C) -> str
 
 i, s = None, None  # type: (int, str)
-i = a[b]
-s = a[b]  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-i = a[c]  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-s = a[c]
+if int():
+    i = a[b]
+if int():
+    s = a[b]  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    i = a[c]  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    s = a[c]
 
 class A:
     @overload
@@ -904,16 +923,22 @@ class B: pass
 class C(A): pass
 a, b, c = None, None, None # type: (A, B, C)
 
-a = cast(A, a())       # E: "A" not callable
-a = cast(Any, a())     # E: "A" not callable
-b = cast(A, a)         # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = cast(A, a())       # E: "A" not callable
+if int():
+    a = cast(Any, a())     # E: "A" not callable
+    b = cast(A, a)         # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-a = cast(A, b)
-a = cast(A, a)
-c = cast(C, a)
-a = cast(A, c)
-a = cast(Any, b)
-b = cast(Any, a)
+if int():
+    a = cast(A, b)
+if int():
+    a = cast(A, a)
+    c = cast(C, a)
+if int():
+    a = cast(A, c)
+if int():
+    a = cast(Any, b)
+    b = cast(Any, a)
 [out]
 
 [case testAnyCast]
@@ -933,12 +958,15 @@ main:3: error: "A" not callable
 
 
 [case testNoneReturnTypeBasics]
-
 a, o = None, None # type: (A, object)
-a = f()         # E: "f" does not return a value
-o = a()         # E: Function does not return a value
-o = A().g(a)    # E: "g" of "A" does not return a value
-o = A.g(a, a)   # E: "g" of "A" does not return a value
+if int():
+    a = f()         # E: "f" does not return a value
+if int():
+    o = a()         # E: Function does not return a value
+if int():
+    o = A().g(a)    # E: "g" of "A" does not return a value
+if int():
+    o = A.g(a, a)   # E: "g" of "A" does not return a value
 A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
 f()
@@ -1014,17 +1042,24 @@ class A:
 
 
 [case testGetSlice]
-
 a, b = None, None # type: (A, B)
-a = a[1:2] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-a = a[1:]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-a = a[:2]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-a = a[:]   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = a[1:2] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = a[1:]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = a[:2]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = a[:]   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
-b = a[1:2]
-b = a[1:]
-b = a[:2]
-b = a[:]
+if int():
+    b = a[1:2]
+if int():
+    b = a[1:]
+if int():
+    b = a[:2]
+if int():
+    b = a[:]
 
 class A:
   def __getitem__(self, s: slice) -> 'B': pass
@@ -1254,12 +1289,12 @@ u'%s' % (u'abc',)
 [case testTrivialLambda]
 from typing import Callable
 f = lambda: 1 # type: Callable[[], int]
-f = lambda: ''.x
-f = lambda: ''
-[out]
-main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "Callable[[], int]")
-main:4: error: Incompatible return value type (got "str", expected "int")
+if int():
+    f = lambda: ''.x # E: "str" has no attribute "x"
+if int():
+    f = lambda: '' \
+        # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "Callable[[], int]") \
+        # E: Incompatible return value type (got "str", expected "int")
 
 [case testVoidLambda]
 import typing
@@ -1315,10 +1350,12 @@ def f(x: int): pass
 
 [case testListComprehensionWithNonDirectMapping]
 from typing import List
-a = None # type: List[A]
-b = None # type: List[B]
-b = [f(x) for x in a]
-a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]; expected List[A]
+a: List[A]
+b: List[B]
+if int():
+    b = [f(x) for x in a]
+if int():
+    a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]; expected List[A]
 ([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 class A: pass
 class B: pass
@@ -1386,7 +1423,7 @@ main:6: error: Incompatible types in assignment (expression has type "Dict[A, B]
 
 [case testDictionaryComprehensionWithNonDirectMapping]
 from typing import Dict, List, Tuple
-abd = None # type: Dict[A, B]
+abd: Dict[A, B]
 abl = None # type: List[Tuple[A, B]]
 abd = {a: f(b) for a, b in abl}
 class A: pass
@@ -1408,9 +1445,11 @@ from typing import Iterator
 # The implementation is mostly identical to list comprehensions, so only a few
 # test cases is ok.
 a = None # type: Iterator[int]
-a = (x for x in a)
+if int():
+    a = (x for x in a)
 b = None # type: Iterator[str]
-b = (x for x in a) # E: Generator has incompatible item type "int"; expected "str"
+if int():
+    b = (x for x in a) # E: Generator has incompatible item type "int"; expected "str"
 [builtins fixtures/for.pyi]
 
 [case testGeneratorIncompatibleErrorMessage]
@@ -1418,7 +1457,8 @@ from typing import Callable, Iterator, List
 
 a = []  # type: List[Callable[[], str]]
 b = None  # type: Iterator[Callable[[], int]]
-b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
+if int():
+    b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
 -- Conditional expressions
@@ -1429,8 +1469,10 @@ b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]
 import typing
 y = ''
 x = 1 if y else 2
-x = 3
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    x = 3
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testConditionalExpressionWithEmptyCondition]
 import typing
@@ -1442,18 +1484,24 @@ import typing
 class A: pass
 class B(A): pass
 x = B() if bool() else A()
-x = A()
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
+if int():
+    x = A()
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 y = A() if bool() else B()
-y = A()
-y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
+if int():
+    y = A()
+if int():
+    y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 [builtins fixtures/bool.pyi]
 
 [case testConditionalExpressionAndTypeContext]
 import typing
 x = [1] if bool() else []
-x = [1]
-x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
+if int():
+    x = [1]
+if int():
+    x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testConditionalExpressionUnion]
@@ -1564,10 +1612,12 @@ class C(B):
 [case testEllipsis]
 
 a = None # type: A
-a = ...  # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "A")
+if str():
+    a = ...  # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "A")
 b = ...
 c = ...
-b = c
+if str():
+    b = c
 ....__class__
 ....a  # E: "ellipsis" has no attribute "a"
 

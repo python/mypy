@@ -64,9 +64,10 @@ else:
 [file m.py]
 import typing
 x = 1
-x = 'a'
+if int():
+    x = 'a'
 [out]
-tmp/m.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/m.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNegatedMypyConditional]
 import typing
@@ -636,13 +637,14 @@ class Child(Parent):
         return 3
 
     def bar(self) -> int:
-        self = super(Child, self).something()
-        reveal_type(self)       # E: Revealed type is '__main__.Child'
-        if self is None:
-            reveal_type(self)
-            return None
-        reveal_type(self)       # E: Revealed type is '__main__.Child'
-        return 3
+        if 1:
+            self = super(Child, self).something()
+            reveal_type(self)       # E: Revealed type is '__main__.Child'
+            if self is None:
+                reveal_type(self)
+                return None
+            reveal_type(self)       # E: Revealed type is '__main__.Child'
+            return 3
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableWhenSuperclassIsAnyNoStrictOptional]
