@@ -23,8 +23,8 @@ def map_actuals_to_formals(caller_kinds: List[int],
     ncallee = len(callee_kinds)
     map = [[] for i in range(ncallee)]  # type: List[List[int]]
     j = 0
-    for i, kind in enumerate(caller_kinds):
-        if kind == nodes.ARG_POS:
+    for i, actual_kind in enumerate(caller_kinds):
+        if actual_kind == nodes.ARG_POS:
             if j < ncallee:
                 if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
                                        nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
@@ -32,7 +32,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                     j += 1
                 elif callee_kinds[j] == nodes.ARG_STAR:
                     map[j].append(i)
-        elif kind == nodes.ARG_STAR:
+        elif actual_kind == nodes.ARG_STAR:
             # We need to know the actual type to map varargs.
             argt = caller_arg_type(i)
             if isinstance(argt, TupleType):
@@ -56,7 +56,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                     if callee_kinds[j] == nodes.ARG_STAR:
                         break
                     j += 1
-        elif kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+        elif actual_kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
             assert caller_names is not None, "Internal error: named kinds without names given"
             name = caller_names[i]
             if name in callee_names:
@@ -64,7 +64,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
             elif nodes.ARG_STAR2 in callee_kinds:
                 map[callee_kinds.index(nodes.ARG_STAR2)].append(i)
         else:
-            assert kind == nodes.ARG_STAR2
+            assert actual_kind == nodes.ARG_STAR2
             argt = caller_arg_type(i)
             if isinstance(argt, TypedDictType):
                 for name, value in argt.items.items():
@@ -80,6 +80,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                     #       matches if the tuple was short enough to not match everything.
                     no_certain_match = (
                         not map[j] or caller_kinds[map[j][0]] == nodes.ARG_STAR)
+                    print(no_certain_match, callee_names[j], callee_kinds[j])
                     if ((callee_names[j] and no_certain_match)
                             or callee_kinds[j] == nodes.ARG_STAR2):
                         map[j].append(i)
