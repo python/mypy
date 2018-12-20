@@ -423,8 +423,26 @@ x  # Reference to variable
 x = ''
 
 [case testNoRedefinitionIfNoValueAssigned]
-# flags: --allow-redefinitions --no-strict-optional
+# flags: --allow-redefinitions
 x: int
 x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 reveal_type(x) # E: Revealed type is 'builtins.int'
 x: object
+
+[case testNoRedefinitionIfExplicitlyDisallowed]
+# flags: --disallow-redefinitions
+x = 0
+x = 2
+x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+def f() -> None:
+    y = 0
+    y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+class C:
+    y = 0
+    y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+def g() -> None:
+    # _ is a special case
+    _ = 0
+    _ = ''
+    x, _ = 0, C()
+[builtins fixtures/tuple.pyi]
