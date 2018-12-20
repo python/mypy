@@ -403,3 +403,16 @@ class A:
 tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
 main:2: error: Unexpected keyword argument "x" for "A"
 tmp/m.py:3: note: "A" defined here
+
+[case testStarArgsAndKwArgsSpecialCase]
+from typing import Dict, Mapping
+
+def f(*vargs: int, **kwargs: object) -> None:
+	pass
+
+d = {} # type: Dict[str, object]
+f(**d)
+
+m = {} # type: Mapping[str, object]
+f(**m)
+[builtins fixtures/dict.pyi]
