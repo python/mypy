@@ -3114,7 +3114,7 @@ def new(uc: Type[U]) -> U:
     uc.foo()
     u = uc()
     u.foo()
-    if int():
+    if 1:
         u = uc(0)
         u.foo()
         u = uc('')  # Error

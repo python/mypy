@@ -136,7 +136,7 @@ if int():
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
-    if int(): # Without this, the assignment below would create a new variable "x" of type "int"
+    if 1: # Without this, the assignment below could create a new variable "x" of type "int"
         x = 1
         if x:
             x = 'a'
