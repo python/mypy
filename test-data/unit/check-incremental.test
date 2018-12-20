@@ -1340,7 +1340,7 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        if int():
+        if 1:
             val = "str"   # deliberately triggering error
             return C()
 
@@ -1380,7 +1380,7 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        if int():
+        if 1:
             val = "str"   # deliberately triggering error
             return C()
 
@@ -1420,7 +1420,7 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        if int():
+        if 1:
             val = "str"   # deliberately triggering error
             return C()
 

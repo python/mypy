@@ -399,7 +399,7 @@ class A(Generic[T]):
         p_t_t = None  # type: p[T, T]
         if t:
             return p_t_t # E: Incompatible return value type (got "p[T, T]", expected "p[S, T]")
-        if int():
+        if 1:
             t = t
             s = s
             p_s_t = None  # type: p[S, T]
