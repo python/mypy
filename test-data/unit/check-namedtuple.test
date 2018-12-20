@@ -231,7 +231,7 @@ class B(A):
         self.f(self.b)  # E: Argument 1 to "f" of "B" has incompatible type "str"; expected "int"
         i = 0
         s = ''
-        if 1:
+        if int():
             i, s = self
             i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                               variable has type "int")
@@ -246,7 +246,7 @@ class B(A):
     def f(self, x: 'B') -> None:
         i = 0
         s = ''
-        if 1:
+        if int():
             self = x
             i, s = x
             i, s = x.a, x.b
@@ -565,7 +565,7 @@ import a
 
 def f(x: a.N) -> None:
     reveal_type(x)
-    if 1:
+    if int():
         x = a.N(1)
         reveal_type(x)
 [out]

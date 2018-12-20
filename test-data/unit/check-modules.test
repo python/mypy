@@ -81,7 +81,7 @@ def f() -> None: pass
 import typing
 def f() -> None:
     from m import a, b, f, A, B
-    if 1:
+    if int():
         a = b \
             # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = a
@@ -103,7 +103,7 @@ import typing
 class C:
     def f(self) -> None:
         from m import *
-        if 1:
+        if int():
             a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
             a = a
             f()

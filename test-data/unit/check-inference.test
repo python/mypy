@@ -22,7 +22,7 @@ import typing
 def f() -> None:
     x = A()
     y = B()
-    if 1:
+    if int():
         x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         x = A()
         x = y   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -44,7 +44,7 @@ def g() -> None: pass
 import typing
 def f(a: 'A') -> None:
     b = a
-    if 1:
+    if int():
         b = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         b = a
         a = b
@@ -59,7 +59,7 @@ g = None # type: B
 
 def f() -> None:
     a = g
-    if 1:
+    if int():
         a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         a = B()
 
@@ -98,7 +98,7 @@ def f() -> None:
     a = A(), B()
     aa = None # type: A
     bb = None # type: B
-    if 1:
+    if int():
         bb = a[0] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         aa = a[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         aa = a[0]
@@ -129,7 +129,7 @@ a_s = None # type: A[str]
 def f() -> None:
     a_int = A() # type: A[int]
     a = a_int
-    if 1:
+    if int():
         a = a_s # E: Incompatible types in assignment (expression has type "A[str]", variable has type "A[int]")
         a = a_i
 [builtins fixtures/tuple.pyi]
@@ -168,7 +168,7 @@ class A: pass
 import typing
 def f() -> None:
     a, b = A(), B()
-    if 1:
+    if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -185,7 +185,7 @@ from typing import Tuple
 def f() -> None:
     t = None # type: Tuple[A, B]
     a, b = t
-    if 1:
+    if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -202,7 +202,7 @@ from typing import Tuple
 def f() -> None:
     t = None # type: Tuple[A, B]
     a1, (a, b) = A(), t
-    if 1:
+    if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -218,7 +218,7 @@ class B: pass
 import typing
 def f() -> None:
     a, (b, c) = A(), (B(), C())
-    if 1:
+    if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -237,7 +237,7 @@ class C: pass
 import typing
 def f() -> None:
     a, (b, c) = A(), [B(), C()]
-    if 1:
+    if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -311,7 +311,7 @@ def f() -> None:
     list_d = [D()]
     a, b = list_c
     c, d, e = list_d
-    if 1:
+    if int():
         a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
         b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
         c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
@@ -340,7 +340,7 @@ def f() -> None:
     list_d = [D()]
     c1, (a, b) = C(), list_c
     c2, (c, d, e) = C(), list_d
-    if 1:
+    if int():
         a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
         b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
         c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
@@ -423,7 +423,7 @@ def f() -> None:
     a = id
     b = None # type: int
     c = None # type: str
-    if 1:
+    if int():
         b = a(c) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         b = a(b)
         c = a(c)

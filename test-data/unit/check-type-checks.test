@@ -17,7 +17,7 @@ if int():
 [case testSimpleIsinstance2]
 import typing
 def f(x: object, n: int, s: str) -> None:
-    if 1:
+    if int():
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
         if isinstance(x, int):
             n = x
@@ -75,7 +75,7 @@ def f(x: object, y: object, n: int, s: str) -> None:
 [case testIsinstanceAndElif]
 import typing
 def f(x: object, n: int, s: str) -> None:
-    if 1:
+    if int():
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
         if isinstance(x, int):
             n = x
@@ -93,7 +93,7 @@ def f(x: object, n: int, s: str) -> None:
 [case testIsinstanceAndAnyType]
 from typing import Any
 def f(x: Any, n: int, s: str) -> None:
-    if 1:
+    if int():
         s = x
         if isinstance(x, int):
             n = x

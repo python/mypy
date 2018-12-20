@@ -125,7 +125,7 @@ main:4: error: Too many arguments for "f"
 def f() -> None:
   x = None # type: A
   y = None # type: B
-  if 1:
+  if int():
       x = x
       x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
@@ -144,7 +144,7 @@ class B: pass
 [case testFunctionArguments]
 import typing
 def f(x: 'A', y: 'B') -> None:
-  if 1:
+  if int():
     x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     x = x
     y = B()
@@ -239,12 +239,12 @@ a = __file__ # type: int  # E: Incompatible types in assignment (expression has 
 [case testLocalVariableShadowing]
 
 a = None # type: A
-if 1:
+if int():
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     a = A()
 def f() -> None:
   a = None # type: B
-  if 1:
+  if int():
       a = A()     # E: Incompatible types in assignment (expression has type "A", variable has type "B")
       a = B()
 a = B()       # E: Incompatible types in assignment (expression has type "B", variable has type "A")
