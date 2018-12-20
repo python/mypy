@@ -214,13 +214,13 @@ class A(Generic[S, T]):
     def f(self) -> None:
         s = None # type: S
         t = None # type: T
-        if 1:
+        if int():
             s = t # E: Incompatible types in assignment (expression has type "T", variable has type "S")
             t = s # E: Incompatible types in assignment (expression has type "S", variable has type "T")
         a = self # type: A[S, B] # E: Incompatible types in assignment (expression has type "A[S, T]", variable has type "A[S, B]")
         b = self # type: A[T, T] # E: Incompatible types in assignment (expression has type "A[S, T]", variable has type "A[T, T]")
         c = self # type: A[S, T]
-        if 1:
+        if int():
             t = t
 
 class B: pass
@@ -241,10 +241,10 @@ T = TypeVar('T')
 class A(Generic[T]):
     def f(self) -> T:
         a = object() # type: T  # E: Incompatible types in assignment (expression has type "object", variable has type "T")
-        if 1:
+        if int():
             a = object()    # E: Incompatible types in assignment (expression has type "object", variable has type "T")
         b = self.f() # type: object
-        if 1:
+        if int():
             b = self.f()
         return None
 [out]
@@ -372,7 +372,7 @@ class p(Generic[T, S]):
     def __init__(self, t: T, a: S) -> None: pass
 def f(s: S, t: T) -> p[T, A]:
     a = t # type: S # E: Incompatible types in assignment (expression has type "T", variable has type "S")
-    if 1:
+    if int():
         s = t           # E: Incompatible types in assignment (expression has type "T", variable has type "S")
     p_s_a = None  # type: p[S, A]
     if s:
@@ -391,7 +391,7 @@ class p(Generic[T, S]):
     def __init__(self, t: T, a: S) -> None: pass
 class A(Generic[T]):
     def f(self, s: S, t: T) -> p[S, T]:
-        if 1:
+        if int():
             s = t # E: Incompatible types in assignment (expression has type "T", variable has type "S")
         p_s_s = None  # type: p[S, S]
         if s:
@@ -399,7 +399,7 @@ class A(Generic[T]):
         p_t_t = None  # type: p[T, T]
         if t:
             return p_t_t # E: Incompatible return value type (got "p[T, T]", expected "p[S, T]")
-        if 1:
+        if int():
             t = t
             s = s
             p_s_t = None  # type: p[S, T]
@@ -759,7 +759,7 @@ if not isinstance(x, int):
    x.x = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 def f(x: T) -> UNode[T]:
-    if 1:
+    if int():
         return Node(x)
     else:
         return 1
@@ -1440,7 +1440,7 @@ def f() -> None:
     T = TypeVar('T')
     def g(x: T) -> T: pass
     a = g(1)
-    if 1:
+    if int():
         a = 1
         a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
@@ -1559,32 +1559,32 @@ def outer(t: T) -> None:
     def f5(x: T) -> T: ...
 
     y1 = f1
-    if 1:
+    if int():
         y1 = f2
         y1 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A]", variable has type "Callable[[A], A]")
         y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A], T]", variable has type "Callable[[A], A]")
         y1 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], A]")
 
     y2 = f2
-    if 1:
+    if int():
         y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], B]")
 
     y3 = f3
-    if 1:
+    if int():
         y3 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[T], A]")
         y3 = f2
         y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A], T]", variable has type "Callable[[T], A]")
         y3 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[T], A]")
 
     y4 = f4
-    if 1:
+    if int():
         y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[A], T]")
         y4 = f2
         y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A]", variable has type "Callable[[A], T]")
         y4 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], T]")
 
     y5 = f5
-    if 1:
+    if int():
         y5 = f1
         y5 = f2
         y5 = f3

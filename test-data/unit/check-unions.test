@@ -27,11 +27,11 @@ from typing import Union
 def f(x: Union[int, str]) -> None:
     if isinstance(x, int):
         y = 1
-        if 1:
+        if int():
             y = x
     else:
         z = 2
-        if 1:
+        if int():
             z = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]

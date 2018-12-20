@@ -73,7 +73,7 @@ main:4: error: Incompatible types in assignment (expression has type "object", v
 import typing
 class A:
     def f(self, a: 'A', b: 'B') -> None:
-        if 1:
+        if int():
             a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
             b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
             a = A()
@@ -952,7 +952,7 @@ class A:
         class B:
             def __init__(self, a: 'A') -> None: pass
         b = B(A())
-        if 1:
+        if int():
             b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
             b = B() # E: Too few arguments for "B"
 [out]
@@ -962,7 +962,7 @@ class A:
 def f() -> None:
     class A: pass
     a = None # type: A
-    if 1:
+    if int():
         a = A()
         a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [out]
@@ -3114,7 +3114,7 @@ def new(uc: Type[U]) -> U:
     uc.foo()
     u = uc()
     u.foo()
-    if 1:
+    if int():
         u = uc(0)
         u.foo()
         u = uc('')  # Error
@@ -4403,7 +4403,7 @@ def parse_ast(name_dict: NameDict) -> None:
         pass
     x = name_dict['']
     reveal_type(x) # E: Revealed type is '__main__.NameInfo*'
-    if 1:
+    if int():
         x = NameInfo(Base()) # OK
         x = Base() # E: Incompatible types in assignment (expression has type "Base", variable has type "NameInfo")
 [builtins fixtures/isinstancelist.pyi]

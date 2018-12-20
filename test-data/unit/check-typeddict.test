@@ -809,7 +809,7 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
 def f(p: Point) -> None:
-    if 1:
+    if int():
         p = {'x': 2, 'y': 3}
         p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
         p = dict(x=2, y=3)

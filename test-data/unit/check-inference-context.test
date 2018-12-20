@@ -86,11 +86,11 @@ def g() -> None:
     b = None # type: B
 
     x = f(o)
-    if 1:
+    if int():
         ab = x # E: Incompatible types in assignment (expression has type "A[object]", variable has type "A[B]")
         ao = x
     y = f(b)
-    if 1:
+    if int():
         ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
         ab = y
 
@@ -118,7 +118,7 @@ def g() -> None:
     ab = None # type: A[B]
     b = None # type: B
     x, y = f(b), f(b)
-    if 1:
+    if int():
         ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
         ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
         ab = x
@@ -137,7 +137,7 @@ def h() -> None:
     ab = None # type: A[B]
     b = None # type: B
     x, y = g(f(b))
-    if 1:
+    if int():
         ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
         ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
         ab = x
@@ -428,7 +428,7 @@ def f() -> None:
     a = []     # E: Need type annotation for 'a'
     b = [None]
     c = [B()]
-    if 1:
+    if int():
         c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
         c = [B()]
 class B: pass
