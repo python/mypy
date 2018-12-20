@@ -530,7 +530,7 @@ def process_options(args: List[str],
                         help="Suppress toplevel errors caused by missing annotations",
                         group=strictness_group)
 
-    add_invertible_flag('--allow-redefinitions', default=False, strict_flag=False,
+    add_invertible_flag('--allow-redefinition', default=False, strict_flag=False,
                         help="Allow unconditional variable redefinition with a new type",
                         group=strictness_group)
 

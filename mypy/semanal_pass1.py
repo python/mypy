@@ -62,7 +62,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         and these will get resolved in later phases of semantic
         analysis.
         """
-        if options.allow_redefinitions:
+        if options.allow_redefinition:
             # Perform renaming across the AST to allow variable redefinitions
             file.accept(VariableRenameVisitor())
         sem = self.sem
