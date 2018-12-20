@@ -343,7 +343,7 @@ x
 x = 2  # E: Cannot assign to final name "x"
 def f() -> int:
     global x
-    x = 3  # No error here is okay since we reported an error above
+    x = 3  # E: Cannot assign to final name "x"
     return x
 
 x2: Final = 1
@@ -354,8 +354,9 @@ def f2() -> None:
 
 y = 1
 y
-y: Final = 2  # E: Cannot redefine an existing name as final
-y = 3  # E: Cannot assign to final name "y"
+y: Final = 2  # E: Name 'y' already defined on line 17 \
+              # E: Cannot redefine an existing name as final
+y = 3  # No error here, first definition wins
 
 z: Final = 1
 z: Final = 2  # E: Name 'z' already defined on line 22 \
@@ -420,7 +421,7 @@ class C:
     x: Final = 1
     x = 2  # E: Cannot assign to final name "x"
 
-    y = 1  # E: Cannot assign to final name "y"
+    y = 1
     y: Final = 2  # E: Cannot redefine an existing name as final
 [out]
 
