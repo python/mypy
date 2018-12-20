@@ -21,17 +21,17 @@ def map_actuals_to_formals(actual_kinds: List[int],
     argument type with the given index.
     """
     nformals = len(formal_kinds)
-    map = [[] for i in range(nformals)]  # type: List[List[int]]
+    formal_to_actual = [[] for i in range(nformals)]  # type: List[List[int]]
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
             if fi < nformals:
                 if formal_kinds[fi] in [nodes.ARG_POS, nodes.ARG_OPT,
                                         nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
-                    map[fi].append(ai)
+                    formal_to_actual[fi].append(ai)
                     fi += 1
                 elif formal_kinds[fi] == nodes.ARG_STAR:
-                    map[fi].append(ai)
+                    formal_to_actual[fi].append(ai)
         elif actual_kind == nodes.ARG_STAR:
             # We need to know the actual type to map varargs.
             actualt = actual_arg_type(ai)
@@ -40,7 +40,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 for _ in range(len(actualt.items)):
                     if fi < nformals:
                         if formal_kinds[fi] != nodes.ARG_STAR2:
-                            map[fi].append(ai)
+                            formal_to_actual[fi].append(ai)
                         else:
                             break
                         if formal_kinds[fi] != nodes.ARG_STAR:
@@ -52,7 +52,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
                     if formal_kinds[fi] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
                         break
                     else:
-                        map[fi].append(ai)
+                        formal_to_actual[fi].append(ai)
                     if formal_kinds[fi] == nodes.ARG_STAR:
                         break
                     fi += 1
@@ -60,18 +60,18 @@ def map_actuals_to_formals(actual_kinds: List[int],
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
             if name in formal_names:
-                map[formal_names.index(name)].append(ai)
+                formal_to_actual[formal_names.index(name)].append(ai)
             elif nodes.ARG_STAR2 in formal_kinds:
-                map[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
+                formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
         else:
             assert actual_kind == nodes.ARG_STAR2
             actualt = actual_arg_type(ai)
             if isinstance(actualt, TypedDictType):
                 for name, value in actualt.items.items():
                     if name in formal_names:
-                        map[formal_names.index(name)].append(ai)
+                        formal_to_actual[formal_names.index(name)].append(ai)
                     elif nodes.ARG_STAR2 in formal_kinds:
-                        map[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
+                        formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
             else:
                 # We don't exactly know which **kwargs are provided by the
                 # caller. Assume that they will fill the remaining arguments.
@@ -79,11 +79,12 @@ def map_actuals_to_formals(actual_kinds: List[int],
                     # TODO: If there are also tuple varargs, we might be missing some potential
                     #       matches if the tuple was short enough to not match everything.
                     no_certain_match = (
-                        not map[fi] or actual_kinds[map[fi][0]] == nodes.ARG_STAR)
+                        not formal_to_actual[fi]
+                        or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
                     if ((formal_names[fi] and no_certain_match)
                             or formal_kinds[fi] == nodes.ARG_STAR2):
-                        map[fi].append(ai)
-    return map
+                        formal_to_actual[fi].append(ai)
+    return formal_to_actual
 
 
 def map_formals_to_actuals(actual_kinds: List[int],
