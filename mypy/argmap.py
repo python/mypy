@@ -22,67 +22,67 @@ def map_actuals_to_formals(actual_kinds: List[int],
     """
     nformals = len(formal_kinds)
     map = [[] for i in range(nformals)]  # type: List[List[int]]
-    j = 0
-    for i, actual_kind in enumerate(actual_kinds):
+    fi = 0
+    for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
-            if j < nformals:
-                if formal_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
-                                       nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
-                    map[j].append(i)
-                    j += 1
-                elif formal_kinds[j] == nodes.ARG_STAR:
-                    map[j].append(i)
+            if fi < nformals:
+                if formal_kinds[fi] in [nodes.ARG_POS, nodes.ARG_OPT,
+                                        nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
+                    map[fi].append(ai)
+                    fi += 1
+                elif formal_kinds[fi] == nodes.ARG_STAR:
+                    map[fi].append(ai)
         elif actual_kind == nodes.ARG_STAR:
             # We need to know the actual type to map varargs.
-            actualt = actual_arg_type(i)
+            actualt = actual_arg_type(ai)
             if isinstance(actualt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
                 for _ in range(len(actualt.items)):
-                    if j < nformals:
-                        if formal_kinds[j] != nodes.ARG_STAR2:
-                            map[j].append(i)
+                    if fi < nformals:
+                        if formal_kinds[fi] != nodes.ARG_STAR2:
+                            map[fi].append(ai)
                         else:
                             break
-                        if formal_kinds[j] != nodes.ARG_STAR:
-                            j += 1
+                        if formal_kinds[fi] != nodes.ARG_STAR:
+                            fi += 1
             else:
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
-                while j < nformals:
-                    if formal_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
+                while fi < nformals:
+                    if formal_kinds[fi] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
                         break
                     else:
-                        map[j].append(i)
-                    if formal_kinds[j] == nodes.ARG_STAR:
+                        map[fi].append(ai)
+                    if formal_kinds[fi] == nodes.ARG_STAR:
                         break
-                    j += 1
+                    fi += 1
         elif actual_kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
             assert actual_names is not None, "Internal error: named kinds without names given"
-            name = actual_names[i]
+            name = actual_names[ai]
             if name in formal_names:
-                map[formal_names.index(name)].append(i)
+                map[formal_names.index(name)].append(ai)
             elif nodes.ARG_STAR2 in formal_kinds:
-                map[formal_kinds.index(nodes.ARG_STAR2)].append(i)
+                map[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
         else:
             assert actual_kind == nodes.ARG_STAR2
-            actualt = actual_arg_type(i)
+            actualt = actual_arg_type(ai)
             if isinstance(actualt, TypedDictType):
                 for name, value in actualt.items.items():
                     if name in formal_names:
-                        map[formal_names.index(name)].append(i)
+                        map[formal_names.index(name)].append(ai)
                     elif nodes.ARG_STAR2 in formal_kinds:
-                        map[formal_kinds.index(nodes.ARG_STAR2)].append(i)
+                        map[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
             else:
                 # We don't exactly know which **kwargs are provided by the
                 # caller. Assume that they will fill the remaining arguments.
-                for j in range(nformals):
+                for fi in range(nformals):
                     # TODO: If there are also tuple varargs, we might be missing some potential
                     #       matches if the tuple was short enough to not match everything.
                     no_certain_match = (
-                        not map[j] or actual_kinds[map[j][0]] == nodes.ARG_STAR)
-                    if ((formal_names[j] and no_certain_match)
-                            or formal_kinds[j] == nodes.ARG_STAR2):
-                        map[j].append(i)
+                        not map[fi] or actual_kinds[map[fi][0]] == nodes.ARG_STAR)
+                    if ((formal_names[fi] and no_certain_match)
+                            or formal_kinds[fi] == nodes.ARG_STAR2):
+                        map[fi].append(ai)
     return map
 
 
