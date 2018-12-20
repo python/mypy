@@ -162,7 +162,8 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 # reset state, function name not followed by '('
                 state.pop()
 
-            elif token.type == tokenize.OP and token.string in ('[', '(', '{'):
+            elif token.type == tokenize.OP and token.string in ('[', '(', '{') and \
+                    state[-1] != State.INIT:
                 accumulator += token.string
                 state.append(State.OPEN_BRACKET)
 
@@ -206,7 +207,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 arg_default = None
                 accumulator = ""
 
-            elif token.type == tokenize.OP and token.string == '->':
+            elif token.type == tokenize.OP and token.string == '->' and state[-1] == State.INIT:
                 accumulator = ""
                 state.append(State.RETURN_VALUE)
 
