@@ -80,6 +80,13 @@ reveal_type(ca.value)  # E: Revealed type is 'builtins.bytes'
 reveal_type(ca.raw)  # E: Revealed type is 'builtins.bytes'
 [builtins fixtures/floatdict.pyi]
 
+[case testCtypesCharPArrayDoesNotCrash]
+import ctypes
+
+# The following line used to crash with "Could not find builtin symbol 'NoneType'"
+ca = (ctypes.c_char_p * 0)()
+[builtins fixtures/floatdict.pyi]
+
 [case testCtypesCharArrayAttrsPy2]
 # flags: --py2
 import ctypes
