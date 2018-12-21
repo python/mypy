@@ -469,10 +469,12 @@ import standard, optional
 
 [file standard.py]
 x = 0
-x = None
+if int():
+    x = None
 [file optional.py]
 x = 0
-x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+if int():
+    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [file mypy.ini]
 [[mypy]

@@ -1,6 +1,7 @@
 [case testForcedAssignment]
 x = 1 # type: object
 y = 1
+def f(): x, y  # Prevent independent redefinition
 y = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 x = 2
 y = x
@@ -108,11 +109,12 @@ class B(A):
 def foo(): pass
 
 x = A()
-x = B()
-x.z
-x = foo()
-x.z          # E: "A" has no attribute "z"
-x.y
+if int():
+    x = B()
+    x.z
+    x = foo()
+    x.z          # E: "A" has no attribute "z"
+    x.y
 
 [case testSingleMultiAssignment-skip]
 x = 'a'
@@ -121,22 +123,25 @@ x = 'a'
 [case testUnionMultiAssignment]
 from typing import Union
 x = None # type: Union[int, str]
-x = 1
-x = 'a'
-x + 1    # E: Unsupported operand types for + ("str" and "int")
-x = 1
-(x, y) = ('a', 1)
-x + 1    # E: Unsupported operand types for + ("str" and "int")
+if int():
+    x = 1
+    x = 'a'
+    x + 1    # E: Unsupported operand types for + ("str" and "int")
+    x = 1
+    (x, y) = ('a', 1)
+    x + 1    # E: Unsupported operand types for + ("str" and "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionIfZigzag]
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
-    x = 1
-    if x:
-        x = 'a'
+    if 1: # Without this, the assignment below could create a new variable "x" of type "int"
         x = 1
+        if x:
+            x = 'a'
+            x = 1
+        x + 1
     x + 1
 [builtins fixtures/isinstancelist.pyi]
 
@@ -201,6 +206,7 @@ class B(A):
     z = 1
 
 x = A()
+def f(): x # Prevent redefinition of x
 x = B()
 x.z
 try:
@@ -241,6 +247,7 @@ class B(A):
     z = 1
 
 x = A()
+def f(): x # Prevent redefinition of x
 x = B()
 try:
     raise BaseException()
@@ -300,6 +307,7 @@ class B(A):
     b = 1
 
 x = A()
+def f(): x  # Prevent redefinition
 x = B()
 try:
     x = A()
@@ -316,6 +324,7 @@ class B(A):
     b = 1
 
 x = A()
+def f(): x  # Prevent redefinition
 x = B()
 try:
     x = A()
@@ -333,6 +342,7 @@ class B(A):
     b = 1
 
 x = A()
+def f(): x  # Prevent redefinition
 x = B()
 try:
     x = A()
@@ -351,6 +361,7 @@ class B(A):
 
 while 2:
     x = A()
+    def f(): x  # Prevents redefinition
     x = B()
     try:
         x = A()
@@ -447,11 +458,12 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x = 1
-x = x + 1
-x = foo()
-x = x + 1                # E: Unsupported operand types for + ("str" and "int") \
-                         # N: Left operand is of type "Union[int, str]"
+if int():
+    x = 1
+    x = x + 1
+    x = foo()
+    x = x + 1                # E: Unsupported operand types for + ("str" and "int") \
+                             # N: Left operand is of type "Union[int, str]"
 if isinstance(x, str):
    x = x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
@@ -709,6 +721,7 @@ from typing import Union, List
 
 while bool():
     x = None # type: Union[int, str, List[int]]
+    def f(): x  # Prevent redefinition
     x = 1
     if isinstance(x, int):
         x + 1
@@ -760,6 +773,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x  # Prevent redefinition
 x + 1     # E: Unsupported operand types for + ("str" and "int") \
           # N: Left operand is of type "Union[int, str]"
 x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
@@ -786,6 +800,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x  # Prevent redefinition
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
            # N: Left operand is of type "Union[int, str]"
 x = 'a'
@@ -805,6 +820,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x  # Prevent redefinition
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
            # N: Left operand is of type "Union[int, str]"
 x = 'a'
@@ -825,6 +841,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x  # Prevent redefinition
 x = 1
 
 while bool():
@@ -852,6 +869,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x  # Prevent redefinition
 x = 1
 
 while bool():
@@ -883,6 +901,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x # Prevent redefinition
 x = 1
 
 for y in [1]:
@@ -914,6 +933,7 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
+def f(): x  # Prevent redefinition
 x = 1
 
 for y in [1]:

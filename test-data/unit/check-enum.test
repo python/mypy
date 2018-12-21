@@ -8,7 +8,8 @@ class Medal(Enum):
     bronze = 3
 reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
-m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+if int():
+    m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
 [case testEnumFromEnumMetaBasics]
 from enum import EnumMeta
@@ -21,7 +22,8 @@ class Medal(metaclass=EnumMeta):
     def __init__(self, *args): pass
 reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
-m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+if int():
+    m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
 [case testEnumFromEnumMetaSubclass]
 from enum import EnumMeta
@@ -34,7 +36,8 @@ class Medal(Achievement):
     def __init__(self, *args): pass
 reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
-m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+if int():
+    m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
 [case testEnumFromEnumMetaGeneric]
 from enum import EnumMeta
@@ -74,11 +77,11 @@ class N(IntEnum):
     x = 1
     y = 1
 n = 1
-n = N.x  # Subclass of int, so it's okay
+if int():
+    n = N.x  # Subclass of int, so it's okay
 s = ''
-s = N.y
-[out]
-main:8: error: Incompatible types in assignment (expression has type "N", variable has type "str")
+if int():
+    s = N.y # E: Incompatible types in assignment (expression has type "N", variable has type "str")
 
 [case testIntEnum_functionTakingIntEnum]
 from enum import IntEnum
@@ -220,10 +223,10 @@ class C(Flag):
     a = 1
     b = 2
 x = C.a
-x = 1
-x = x | C.b
-[out]
-main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+if int():
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "C")
+if int():
+    x = x | C.b
 
 [case testEnumIntFlag]
 from enum import IntFlag
@@ -231,10 +234,10 @@ class C(IntFlag):
     a = 1
     b = 2
 x = C.a
-x = 1
-x = x | C.b
-[out]
-main:6: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+if int():
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "C")
+if int():
+    x = x | C.b
 
 [case testAnonymousEnum]
 from enum import Enum
@@ -258,9 +261,8 @@ class B:
         a = 1
 x = A.E.a
 y = B.E.a
-x = y
-[out]
-main:10: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+if int():
+    x = y # E: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
 
 [case testFunctionalEnumString]
 from enum import Enum, IntEnum
@@ -389,9 +391,8 @@ class B:
     E = Enum('E', 'a b')
 x = A.E.a
 y = B.E.a
-x = y
-[out]
-main:8: error: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
+if int():
+    x = y # E: Incompatible types in assignment (expression has type "__main__.B.E", variable has type "__main__.A.E")
 
 [case testFunctionalEnumProtocols]
 from enum import IntEnum

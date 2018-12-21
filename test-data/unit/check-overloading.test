@@ -186,7 +186,8 @@ def f(x: 'B') -> 'A': ...
 
 def f(x: Any) -> Any:
     foo = 1
-    foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    if int():
+        foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 @overload
 def g(x: 'A') -> 'B': ...
@@ -195,7 +196,8 @@ def g(x: 'B') -> 'A': ...
 
 def g(x):
     foo = 1
-    foo = "bar"
+    if int():
+        foo = "bar"
 
 reveal_type(f(A()))  # E: Revealed type is '__main__.B'
 reveal_type(f(B()))  # E: Revealed type is '__main__.A'
@@ -398,12 +400,14 @@ from foo import *
 from typing import overload
 @overload
 def f(x: 'A'):
-    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    x = A()
+    if int():
+        x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        x = A()
 @overload
 def f(x: 'B'):
-    x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    x = B()
+    if int():
+        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        x = B()
 class A: pass
 class B: pass
 [out]
@@ -415,12 +419,14 @@ from typing import overload
 class A:
     @overload
     def f(self, x: 'A'):
-        x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        x = A()
+        if int():
+            x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+            x = A()
     @overload
     def f(self, x: 'B'):
-        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-        x = B()
+        if int():
+            x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+            x = B()
 class B: pass
 [out]
 
@@ -449,10 +455,14 @@ from foo import *
 [file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
-b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-a = f(a)
-b = f(b)
+if int():
+    b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = f(a)
+if int():
+    b = f(b)
 
 @overload
 def f(x: 'A') -> 'A': pass
@@ -486,10 +496,14 @@ from foo import *
 [file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
-b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = a.f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-a = a.f(a)
-b = a.f(b)
+if int():
+    b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = a.f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = a.f(a)
+if int():
+    b = a.f(b)
 
 class A:
   @overload
@@ -503,14 +517,18 @@ from foo import *
 [file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
-a = f(a)
-b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = f(a)
+if int():
+    b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 f(b)     # E: No overload variant of "f" matches argument type "B" \
          # N: Possible overload variant: \
          # N:     def f(x: A) -> A \
          # N:     <1 more non-matching overload not shown>
-b = f(b, a)
-a = f(b, a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = f(b, a)
+if int():
+    a = f(b, a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 f(a, a)     # E: No overload variant of "f" matches argument types "A", "A" \
             # N: Possible overload variant: \
             # N:     def f(x: B, y: A) -> B \
@@ -533,11 +551,12 @@ from foo import *
 from typing import overload, TypeVar, Generic
 t = TypeVar('t')
 ab, ac, b, c = None, None, None, None # type: (A[B], A[C], B, C)
-b = f(ab)
-c = f(ac)
-b = f(ac) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
-b = f(b)
-c = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
+if int():
+    b = f(ab)
+    c = f(ac)
+    b = f(ac) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+    b = f(b)
+    c = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
 @overload
 def f(x: 'A[t]') -> t: pass
 @overload
@@ -572,8 +591,10 @@ from typing import overload, Callable
 o = None # type: object
 a = None # type: A
 
-a = f # E: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
-o = f
+if int():
+    a = f # E: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
+if int():
+    o = f
 
 @overload
 def f(a: 'A') -> None: pass
@@ -587,8 +608,9 @@ from foo import *
 from typing import overload
 t, a = None, None # type: (type, A)
 
-a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
-t = A
+if int():
+    a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
+    t = A
 
 class A:
     @overload
@@ -602,10 +624,14 @@ from foo import *
 [file foo.pyi]
 from typing import overload
 a, b = None, None # type: int, str
-a = A()[a]
-b = A()[a] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-b = A()[b]
-a = A()[b] # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    a = A()[a]
+if int():
+    b = A()[a] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    b = A()[b]
+if int():
+    a = A()[b] # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 class A:
     @overload
@@ -619,10 +645,12 @@ from foo import *
 from typing import TypeVar, Generic, overload
 t = TypeVar('t')
 a, b, c = None, None, None # type: (A, B, C[A])
-a = c[a]
-b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = c[b]
-b = c[b] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = c[a]
+    b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = c[b]
+    b = c[b] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 class C(Generic[t]):
     @overload
@@ -730,10 +758,14 @@ def f(t: type) -> 'A': pass
 @overload
 def f(t: 'A') -> 'B': pass
 a, b = None, None # type: (A, B)
-a = f(A)
-b = f(a)
-b = f(A) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f(a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    a = f(A)
+if int():
+    b = f(a)
+if int():
+    b = f(A) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = f(a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A:
    @overload
    def __init__(self) -> None: pass
@@ -755,6 +787,7 @@ list_str = [] # type: List[str]
 list_object = [] # type: List[object]
 n = f(list_int)
 m = f(list_str)
+def p(): n, m # Prevent redefinition
 n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -3546,17 +3579,20 @@ def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
 
 def test_narrow_int() -> None:
     a: Union[int, str]
-    a = narrow_int(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_int(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_int(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_int(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: str
-    c = narrow_int(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                    # TODO: maybe we should make mypy report a warning instead?
+    if int():
+        c = narrow_int(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                        # TODO: maybe we should make mypy report a warning instead?
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3575,17 +3611,20 @@ def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
 
 def test_narrow_int() -> None:
     a: Union[int, str]
-    a = narrow_int(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_int(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_int(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_int(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: str
-    c = narrow_int(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                    # TODO: maybe we should make mypy report a warning instead?
+    if int():
+        c = narrow_int(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                        # TODO: maybe we should make mypy report a warning instead?
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3605,16 +3644,19 @@ def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
 
 def test_narrow_none() -> None:
     a: Optional[int]
-    a = narrow_none(a)
-    reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
+    if int():
+        a = narrow_none(a)
+        reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
 
     b: int
-    b = narrow_none(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+    if int():
+        c = narrow_none(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3634,16 +3676,19 @@ def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
 
 def test_narrow_none() -> None:
     a: Optional[int]
-    a = narrow_none(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_none(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_none(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none(c)
-    reveal_type(c)  # Branch is now dead
+    if int():
+        c = narrow_none(c)
+        reveal_type(c)  # Branch is now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3663,16 +3708,19 @@ def narrow_none_v2(x: Optional[T]) -> T:
 
 def test_narrow_none_v2() -> None:
     a: Optional[int]
-    a = narrow_none_v2(a)
-    reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
+    if int():
+        a = narrow_none_v2(a)
+        reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
 
     b: int
-    b = narrow_none_v2(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none_v2(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none_v2(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+    if int():
+        c = narrow_none_v2(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3691,16 +3739,19 @@ def narrow_none_v2(x: Optional[T]) -> T:
 
 def test_narrow_none_v2() -> None:
     a: Optional[int]
-    a = narrow_none_v2(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_none_v2(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_none_v2(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none_v2(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none_v2(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+    if int():
+        c = narrow_none_v2(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3723,12 +3774,14 @@ def narrow_to_not_a(x: T) -> Union[NoReturn, T]:
 
 def test() -> None:
     val: Union[A, B]
-    val = narrow_to_not_a(val)
-    reveal_type(val)   # E: Revealed type is '__main__.B'
+    if int():
+        val = narrow_to_not_a(val)
+        reveal_type(val)   # E: Revealed type is '__main__.B'
 
     val2: A
-    val2 = narrow_to_not_a(val2)
-    reveal_type(val2)  # Branch now dead
+    if int():
+        val2 = narrow_to_not_a(val2)
+        reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3749,14 +3802,14 @@ def narrow_to_not_a_v2(x: T) -> T:
     assert not isinstance(x, A)
     return x
 
-def test_v2() -> None:
-    val: Union[A, B]
-    val = narrow_to_not_a_v2(val)
-    reveal_type(val)   # E: Revealed type is '__main__.B'
+def test_v2(val: Union[A, B], val2: A) -> None:
+    if int():
+        val = narrow_to_not_a_v2(val)
+        reveal_type(val)   # E: Revealed type is '__main__.B'
 
-    val2: A
-    val2 = narrow_to_not_a_v2(val2)
-    reveal_type(val2)  # Branch now dead
+    if int():
+        val2 = narrow_to_not_a_v2(val2)
+        reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]

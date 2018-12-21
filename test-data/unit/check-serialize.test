@@ -663,13 +663,14 @@ import b
 import b
 t: type
 t = b.A
-t = b.f # E
+if int():
+    t = b.f # E
 [file b.py]
 class A: pass
 def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:4: error: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
+tmp/a.py:5: error: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 
 [case testSerializeOverloadedVsTypeObjectDistinction]
 import a
@@ -679,7 +680,8 @@ import b
 import b
 t: type
 t = b.A
-t = b.f # E
+if int():
+    t = b.f # E
 [file b.pyi]
 from typing import overload
 class A:
@@ -693,7 +695,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:4: error: Incompatible types in assignment (expression has type overloaded function, variable has type "type")
+tmp/a.py:5: error: Incompatible types in assignment (expression has type overloaded function, variable has type "type")
 
 [case testSerializeNamedTupleInMethod4]
 from ntcrash import C

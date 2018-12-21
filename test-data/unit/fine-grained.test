@@ -1036,14 +1036,16 @@ import m
 class B(m.A):
     def a(self) -> None:
         x = 1
-        x = self.x
+        if int():
+            x = self.x
 
     def f(self) -> None:
         self.x = 1
 
     def z(self) -> None:
         x = 1
-        x = self.x
+        if int():
+            x = self.x
 [file m.py]
 class A: pass
 [file m.py.2]
@@ -1052,9 +1054,9 @@ class A:
         self.x = 'a'
 [out]
 ==
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testChangeBaseClassAttributeType]
 import m
@@ -1208,14 +1210,15 @@ m/__init__.py:3: error: Too few arguments for "g"
 import m
 def f() -> None:
     x = 1
-    x = m.x
+    if int():
+        x = m.x
 [file m.py]
 x = 1
 [file m.py.2]
 x = ''
 [out]
 ==
-main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testTwoStepsDueToModuleAttribute]
 import m
@@ -1223,37 +1226,8 @@ x = m.f()
 
 def g() -> None:
     y = 1
-    y = x # E
-[file m.py]
-def f() -> int: pass
-[file m.py.2]
-def f() -> str: pass
-[out]
-==
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-[case testTwoStepsDueToMultipleNamespaces]
-import m
-
-x = m.f()
-
-def g() -> None:
-    xx = 1
-    xx = x
-
-class A:
-    def a(self) -> None:
-        self.y = m.f()
-    def b(self) -> None:
-        yy = 1
-        yy = self.y
-
-class B:
-    def c(self) -> None:
-        self.z = m.f()
-    def b(self) -> None:
-        zz = 1
-        zz = self.z
+    if int():
+        y = x # E
 [file m.py]
 def f() -> int: pass
 [file m.py.2]
@@ -1261,8 +1235,40 @@ def f() -> str: pass
 [out]
 ==
 main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:21: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTwoStepsDueToMultipleNamespaces]
+import m
+x = m.f()
+
+def g() -> None:
+    xx = 1
+    if int():
+        xx = x # E
+
+class A:
+    def a(self) -> None:
+        self.y = m.f()
+    def b(self) -> None:
+        yy = 1
+        if int():
+            yy = self.y
+
+class B:
+    def c(self) -> None:
+        self.z = m.f()
+    def b(self) -> None:
+        zz = 1
+        if int():
+            zz = self.z
+[file m.py]
+def f() -> int: pass
+[file m.py.2]
+def f() -> str: pass
+[out]
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:15: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:23: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testConstructorSignatureChanged]
 import m
@@ -1420,14 +1426,15 @@ from m import x
 
 def f() -> None:
     y = 1
-    y = x
+    if int():
+        y = x
 [file m.py]
 x = 1
 [file m.py.2]
 x = ''
 [out]
 ==
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testImportFromSubmoduleOfPackage]
 from m import n
@@ -1480,7 +1487,8 @@ from m import A
 
 def f(x: A.B) -> None:
     z = 1
-    z = x.y
+    if int():
+        z = x.y
 [file m.py]
 class A:
     class B:
@@ -1493,7 +1501,7 @@ class A:
             self.y = ''
 [out]
 ==
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReprocessMethodInNestedClass]
 from m import f
@@ -1502,7 +1510,8 @@ class A:
     class B:
         def g(self) -> None:
             x = 1
-            x = f()
+            if int():
+                x = f()
 [file m.py]
 def f() -> int: pass
 [file m.py.2]
@@ -1510,9 +1519,9 @@ def f() -> str: pass
 [file n.py.3]
 [out]
 ==
-main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 ==
-main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReprocessMethodInNestedClassSemanal]
 import a
@@ -3517,10 +3526,11 @@ A = str
 [file b.py]
 import a
 def f(x: a.A):
-    x = int()
+    if int():
+        x = int()
 [out]
 ==
-b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+b.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAliasFineNormalClass]
 import b
@@ -3613,11 +3623,12 @@ def f(x: A):
 A = int
 [file b.py.2]
 def f(x: A):
-    x = int()
+    if int():
+        x = int()
 A = str
 [out]
 ==
-b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAliasFineChainedFunc]
 import b
@@ -3631,10 +3642,11 @@ B = a.A
 [file b.py]
 import aa
 def f(x: aa.B):
-    x = int()
+    if int():
+        x = int()
 [out]
 ==
-b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+b.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAliasFineChainedClass]
 import b
@@ -3669,11 +3681,12 @@ import a
 B = Dict[str, a.A]
 [file b.py]
 import aa
+
 x: aa.B = {'first': {str(): int()}}
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
 [case testAliasFineNestedFunc]
 import b
@@ -3690,11 +3703,12 @@ B = Dict[str, a.A]
 [file b.py]
 import aa
 def f(x: aa.B):
-    x = {'first': {str(): int()}}
+    if int():
+        x = {'first': {str(): int()}}
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+b.py:4: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
 [case testAliasFineNestedFuncDirect]
 import b
@@ -3711,11 +3725,12 @@ E = Dict
 [file b.py]
 import aa
 def f(x: aa.E[str, aa.a.A]):
-    x = {'first': {str(): int()}}
+    if int():
+        x = {'first': {str(): int()}}
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+b.py:4: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
 [case testAliasFineNonGenericToGeneric]
 import b
@@ -5066,11 +5081,12 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
+if int():
+    c = 1
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testRefreshClassBasedIntEnum]
 import aa
@@ -5092,14 +5108,16 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
-n: int
-n = C.X
-n = c
+if int():
+    c = 1
+    n: int
+    n = C.X
+    if int():
+        n = c
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testClassBasedEnumPropagation1]
 import a
@@ -5164,11 +5182,12 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
+if int():
+   c = 1
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testRefreshFuncBasedIntEnum]
 import aa
@@ -5189,14 +5208,15 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
-n: int
-n = C.X
+if int():
+    c = 1  # Error
+    n: int
+    n = C.X
 n = c
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testFuncBasedEnumPropagation1]
 import a
@@ -7073,7 +7093,8 @@ from a import f
 
 def g() -> Iterator[int]:
     a = "string"
-    a = yield from f()
+    if int():
+        a = yield from f()
 
 [file a.py]
 from typing import Generator
@@ -7093,7 +7114,7 @@ def f() -> Generator[int, None, A]:
 
 [out]
 ==
-main:6: error: Incompatible types in assignment (expression has type "A", variable has type "str")
+main:7: error: Incompatible types in assignment (expression has type "A", variable has type "str")
 
 [case testFString]
 from a import g

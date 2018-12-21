@@ -12,11 +12,16 @@
 from typing import Callable
 f = None # type: Callable[[A], B]
 a, b = None, None # type: (A, B)
-a = f(a)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
-b = f()     # E: Too few arguments
-b = f(a, a) # E: Too many arguments
-b = f(a)
+if int():
+    a = f(a)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
+if int():
+    b = f()     # E: Too few arguments
+if int():
+    b = f(a, a) # E: Too many arguments
+if int():
+    b = f(a)
 
 class A: pass
 class B: pass
@@ -65,15 +70,24 @@ class B(A): pass
 f = None # type: Callable[[B], A]
 g = None # type: Callable[[A], A]  # subtype of f
 h = None # type: Callable[[B], B]  # subtype of f
-g = h  # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[A], A]")
-h = f  # E: Incompatible types in assignment (expression has type "Callable[[B], A]", variable has type "Callable[[B], B]")
-h = g  # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[B], B]")
-g = f  # E: Incompatible types in assignment (expression has type "Callable[[B], A]", variable has type "Callable[[A], A]")
-f = g
-f = h
-f = f
-g = g
-h = h
+if int():
+    g = h  # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[A], A]")
+if int():
+    h = f  # E: Incompatible types in assignment (expression has type "Callable[[B], A]", variable has type "Callable[[B], B]")
+if int():
+    h = g  # E: Incompatible types in assignment (expression has type "Callable[[A], A]", variable has type "Callable[[B], B]")
+if int():
+    g = f  # E: Incompatible types in assignment (expression has type "Callable[[B], A]", variable has type "Callable[[A], A]")
+if int():
+    f = g
+if int():
+    f = h
+if int():
+    f = f
+if int():
+    g = g
+if int():
+    h = h
 
 [case testSubtypingFunctionsDoubleCorrespondence]
 
@@ -112,13 +126,20 @@ ff = f
 gg = g
 hh = h
 
-ff = gg
-ff_nonames = ff
-ff_nonames = f_nonames # reset
-ff = ff_nonames # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
-ff = f # reset
-gg = ff # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
-gg = hh # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
+if int():
+    ff = gg
+if int():
+    ff_nonames = ff
+if int():
+    ff_nonames = f_nonames # reset
+if int():
+    ff = ff_nonames # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
+if int():
+    ff = f # reset
+if int():
+    gg = ff # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
+if int():
+    gg = hh # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
 
 [case testSubtypingFunctionsArgsKwargs]
 from typing import Any, Callable
@@ -134,17 +155,27 @@ ss_2 = specific_2
 ee_def = everything
 ee_var = everywhere
 
-ss_1 = ee_def
-ss_1 = specific_1
-ss_2 = ee_def
-ss_2 = specific_2
-ee_def = everywhere
-ee_def = everything
-ee_var = everything
-ee_var = everywhere
+if int():
+    ss_1 = ee_def
+if int():
+    ss_1 = specific_1
+if int():
+    ss_2 = ee_def
+if int():
+    ss_2 = specific_2
+if int():
+    ee_def = everywhere
+if int():
+    ee_def = everything
+if int():
+    ee_var = everything
+if int():
+    ee_var = everywhere
 
-ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
-ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[VarArg(Any), KwArg(Any)], None]")
+if int():
+    ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
+if int():
+    ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[VarArg(Any), KwArg(Any)], None]")
 
 [builtins fixtures/dict.pyi]
 
@@ -174,33 +205,42 @@ def g(a: int, b: str) -> None: pass
 ff = f
 gg = g
 
-ff = g
-gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
+if int():
+    ff = g
+if int():
+    gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
 
 [case testLackOfNamesFastparse]
-
-
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
 
 ff = f
 gg = g
 
-ff = g
-gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
+if int():
+    ff = g
+if int():
+    gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Callable
 f = None # type: Callable[[], None]
 a, o = None, None # type: (A, object)
-a = f   # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "A")
-f = a   # E: Incompatible types in assignment (expression has type "A", variable has type "Callable[[], None]")
-f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
-f = f() # E: Function does not return a value
+if int():
+    a = f   # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "A")
+if int():
+    f = a   # E: Incompatible types in assignment (expression has type "A", variable has type "Callable[[], None]")
+if int():
+    f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
+if int():
+    f = f() # E: Function does not return a value
 
-f = f
-f = None
-o = f
+if int():
+    f = f
+if int():
+    f = None
+if int():
+    o = f
 
 class A: pass
 
@@ -208,26 +248,39 @@ class A: pass
 from typing import Callable
 f = None # type: Callable[[], None]
 g = None # type: Callable[[], object]
-f = g  # E: Incompatible types in assignment (expression has type "Callable[[], object]", variable has type "Callable[[], None]")
-g = f  # OK
+if int():
+    f = g  # E: Incompatible types in assignment (expression has type "Callable[[], object]", variable has type "Callable[[], None]")
+if int():
+    g = f  # OK
 
-f = f
-g = g
+if int():
+    f = f
+if int():
+    g = g
 
 [case testFunctionSubtypingWithMultipleArgs]
 from typing import Callable
 f = None # type: Callable[[A, A], None]
 g = None # type: Callable[[A, B], None]
 h = None # type: Callable[[B, B], None]
-f = g  # E: Incompatible types in assignment (expression has type "Callable[[A, B], None]", variable has type "Callable[[A, A], None]")
-f = h  # E: Incompatible types in assignment (expression has type "Callable[[B, B], None]", variable has type "Callable[[A, A], None]")
-g = h  # E: Incompatible types in assignment (expression has type "Callable[[B, B], None]", variable has type "Callable[[A, B], None]")
-g = f
-h = f
-h = g
-f = f
-g = g
-h = h
+if int():
+    f = g  # E: Incompatible types in assignment (expression has type "Callable[[A, B], None]", variable has type "Callable[[A, A], None]")
+if int():
+    f = h  # E: Incompatible types in assignment (expression has type "Callable[[B, B], None]", variable has type "Callable[[A, A], None]")
+if int():
+    g = h  # E: Incompatible types in assignment (expression has type "Callable[[B, B], None]", variable has type "Callable[[A, B], None]")
+if int():
+    g = f
+if int():
+    h = f
+if int():
+    h = g
+if int():
+    f = f
+if int():
+    g = g
+if int():
+    h = h
 
 class A: pass
 class B(A): pass
@@ -238,26 +291,35 @@ f = None # type: Callable[[], None]
 g = None # type: Callable[[A], None]
 h = None # type: Callable[[A, A], None]
 
-f = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[], None]")
-f = h   # E: Incompatible types in assignment (expression has type "Callable[[A, A], None]", variable has type "Callable[[], None]")
-h = f   # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Callable[[A, A], None]")
-h = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[A, A], None]")
+if int():
+    f = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[], None]")
+if int():
+    f = h   # E: Incompatible types in assignment (expression has type "Callable[[A, A], None]", variable has type "Callable[[], None]")
+if int():
+    h = f   # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Callable[[A, A], None]")
+if int():
+    h = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[A, A], None]")
 
-f = f
-g = g
-h = h
+if int():
+    f = f
+if int():
+    g = g
+if int():
+    h = h
 
 class A: pass
 [out]
 
 [case testCompatibilityOfSimpleTypeObjectWithStdType]
-
 t = None # type: type
 a = None # type: A
 
-a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
-t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
-t = A
+if int():
+    a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
+if int():
+    t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
+if int():
+    t = A
 
 class A:
     def __init__(self, a: 'A') -> None: pass
@@ -272,12 +334,17 @@ f = None # type: Callable[[AA], A]
 g = None # type: Callable[[B], B]
 h = None # type: Callable[[A], AA]
 
-h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], AA]")
-f = j
+if int():
+    h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], AA]")
+if int():
+    f = j
 
-f = i
-g = i
-g = j
+if int():
+    f = i
+if int():
+    g = i
+if int():
+    g = j
 
 class A: pass
 class AA(A): pass
@@ -308,17 +375,27 @@ g3 = None # type: Callable[[C], C]
 g4 = None # type: Callable[[A], B]
 a, b, c = None, None, None # type: (A, B, C)
 
-b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(c)  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
-g4 = f    # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], B]")
+if int():
+    b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = f(c)  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+if int():
+    g4 = f    # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], B]")
 
-g1 = f
-g2 = f
-g3 = f
-a = f(a)
-b = f(b)
-c = f(c)
+if int():
+    g1 = f
+if int():
+    g2 = f
+if int():
+    g3 = f
+if int():
+    a = f(a)
+if int():
+    b = f(b)
+if int():
+    c = f(c)
 
 class A: pass
 class B: pass
@@ -353,7 +430,8 @@ from typing import Callable, Type
 class A: pass
 x = None  # type: Callable[..., A]
 y = None  # type: Type[A]
-y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "Type[A]")
+if int():
+    y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "Type[A]")
 
 -- Default argument values
 -- -----------------------
@@ -362,13 +440,19 @@ y = x  # E: Incompatible types in assignment (expression has type "Callable[...,
 [case testCallingFunctionsWithDefaultArgumentValues]
 
 a, b = None, None # type: (A, B)
-a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
-b = f(a, a) # E: Too many arguments for "f"
+if int():
+    a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
+if int():
+    b = f(a, a) # E: Too many arguments for "f"
 
-b = f()
-b = f(a)
-b = f(AA())
+if int():
+    b = f()
+if int():
+    b = f(a)
+if int():
+    b = f(AA())
 
 def f(x: 'A'  =  None) -> 'B': pass
 
@@ -607,16 +691,15 @@ a.g(a) # E: Too many arguments
 import typing
 def f(a: 'A') -> None:
     def g(b: 'B') -> None:
-         b = a # fail
-         aa = a # type: A # ok
-         b = B()
-    g(a) # fail
+        if int():
+            b = a \
+            # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+            aa = a # type: A # ok
+            b = B()
+    g(a) # E: Argument 1 to "g" has incompatible type "A"; expected "B"
     g(B())
 class A: pass
 class B: pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:7: error: Argument 1 to "g" has incompatible type "A"; expected "B"
 
 [case testReturnAndNestedFunction]
 import typing
@@ -752,7 +835,8 @@ def dec(f): pass
 @dec
 def f(x: 'A') -> None:
     a = x # type: A
-    x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    if int():
+        x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [out]
 
@@ -1202,8 +1286,9 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(x: int) -> None:
-        x = 1
-        x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        if int():
+            x = 1
+            x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 
 [case testCallConditionalFunction]
@@ -1221,18 +1306,20 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(x: int) -> None:
-        x = 'x'   # fail
-        x = 1
+        'x' + x   # fail
+        if int():
+            x = 1
 else:
     def f(x: int) -> None:
         x + 'x'   # fail
-        x = 1
+        if int():
+            x = 1
 f(1)
 f('x') # fail
 [out]
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:9: error: Unsupported operand types for + ("int" and "str")
-main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:5: error: Unsupported operand types for + ("str" and "int")
+main:10: error: Unsupported operand types for + ("int" and "str")
+main:14: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testNestedConditionalFunctionDefinitionWithIfElse]
 from typing import Any
@@ -1240,18 +1327,16 @@ x = None # type: Any
 def top() -> None:
     if x:
         def f(x: int) -> None:
-            x = 'x'   # fail
-            x = 1
+            if int():
+                x = 'x'  # E: Incompatible types in assignment \
+                          (expression has type "str", variable has type "int")
+                x = 1
     else:
         def f(x: int) -> None:
-            x + 'x'   # fail
+            x + 'x'   # E: Unsupported operand types for + ("int" and "str")
             x = 1
     f(1)
-    f('x') # fail
-[out]
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10: error: Unsupported operand types for + ("int" and "str")
-main:13: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+    f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
 from typing import Any
@@ -1448,8 +1533,9 @@ x = None # type: Any
 class A:
     if x:
         def f(self, x: int) -> None:
-            x = 1
-            x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+            if int():
+                x = 1
+                x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 
 [case testCallConditionalMethodInClassBody]
@@ -1479,18 +1565,20 @@ x = None # type: Any
 class A:
     if x:
         def f(self, x: int) -> None:
-            x = 'x'   # fail
-            x = 1
+            'x' + x   # fail
+            if int():
+                x = 1
     else:
         def f(self, x: int) -> None:
             x + 'x'   # fail
-            x = 1
+            if int():
+                x = 1
 A().f(1)
 A().f('x') # fail
 [out]
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10: error: Unsupported operand types for + ("int" and "str")
-main:13: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main:6: error: Unsupported operand types for + ("str" and "int")
+main:11: error: Unsupported operand types for + ("int" and "str")
+main:15: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]
 from typing import Any
@@ -1822,7 +1910,8 @@ f(x=4) + '' # E: Unsupported operand types for + ("int" and "str")
 [case testCallableWithArbitraryArgsInErrorMessage]
 from typing import Callable
 def f(x: Callable[..., int]) -> None:
-    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[..., int]")
+    if int():
+        x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[..., int]")
 [out]
 
 [case testCallableWithArbitraryArgsInGenericFunction]
