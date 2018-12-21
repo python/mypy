@@ -422,6 +422,9 @@ x = object() # E: Incompatible types in assignment (expression has type "object"
 x  # Reference to variable
 x = ''
 
+y = 0
+y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testNoRedefinitionIfNoValueAssigned]
 # flags: --allow-redefinition
 x: int
