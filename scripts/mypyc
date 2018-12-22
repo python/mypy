@@ -13,14 +13,12 @@ mypycify, suitable for prototyping and testing.
 
 import os
 import os.path
+import subprocess
 import sys
 import tempfile
 import time
 
 base_path = os.path.join(os.path.dirname(__file__), '..')
-sys.path.append(base_path)
-
-from distutils.core import run_setup
 
 setup_format = """\
 from distutils.core import setup
@@ -45,7 +43,14 @@ def main() -> None:
     with open(setup_file, 'w') as f:
         f.write(setup_format.format(sys.argv[1:], opt_level))
 
-    run_setup(setup_file, ['build_ext', '--inplace'])
+    # We don't use run_setup (like we do in the test suite) because it throws
+    # away the error code from distutils, and we don't care about the slight
+    # performance loss here.
+    env = os.environ.copy()
+    base_path = os.path.join(os.path.dirname(__file__), '..')
+    env['PYTHONPATH'] = base_path + os.pathsep + env.get('PYTHONPATH', '')
+    cmd = subprocess.run([sys.executable, setup_file, 'build_ext', '--inplace'], env=env)
+    sys.exit(cmd.returncode)
 
 if __name__ == '__main__':
     main()
