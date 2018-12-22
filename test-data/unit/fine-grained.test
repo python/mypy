@@ -8145,6 +8145,8 @@ NT = NamedTuple('NT', [('x', B)])
 def func(x): pass
 B = func
 [out]
+==
+main:5: error: Invalid type "b.B"
 
 [case testNamedTupleForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8159,6 +8161,8 @@ A = B
 def func(x): pass
 B = func
 [out]
+==
+main:5: error: Invalid type "a.A"
 
 [case testAliasForwardFunctionDirect]
 # flags: --ignore-missing-imports
@@ -8170,6 +8174,8 @@ Alias = Optional[B]
 def func(x): pass
 B = int()
 [out]
+==
+main:5: error: Invalid type "b.B"
 
 [case testAliasForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8184,3 +8190,5 @@ A = B
 def func(x): pass
 B = func
 [out]
+==
+main:5: error: Invalid type "a.A"
