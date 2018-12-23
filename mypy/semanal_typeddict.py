@@ -12,12 +12,11 @@ from mypy.nodes import (
     ClassDef, RefExpr, TypeInfo, AssignmentStmt, PassStmt, ExpressionStmt, EllipsisExpr, TempNode,
     SymbolTableNode, DictExpr, GDEF, ARG_POS, ARG_NAMED
 )
-from mypy.semanal_shared import SemanticAnalyzerInterface, PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
-from mypy import join
 
 MYPY = False
 if MYPY:
@@ -276,10 +275,8 @@ class TypedDictAnalyzer:
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type],
                                  required_keys: Set[str]) -> TypeInfo:
-        fallback = (self.api.named_type_or_none('typing.Mapping',
-                                                [self.api.named_type('__builtins__.str'),
-                                                 self.api.named_type('__builtins__.object')])
-                    or self.api.named_type('__builtins__.object'))
+        fallback = self.api.named_type_or_none('mypy_extensions._TypedDict', [])
+        assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
                                             fallback)

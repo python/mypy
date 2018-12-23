@@ -453,6 +453,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return meet_types(t, self.s)
         elif isinstance(self.s, TupleType):
             return meet_types(t, self.s)
+        elif isinstance(self.s, LiteralType):
+            return meet_types(t, self.s)
         return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
@@ -528,7 +530,12 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
-        raise NotImplementedError()
+        if isinstance(self.s, LiteralType) and self.s == t:
+            return t
+        elif isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
+            return t
+        else:
+            return self.default(self.s)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         # We can't determine the meet of partial types. We should never get here.

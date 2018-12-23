@@ -51,7 +51,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"quick_and_dirty", "platform", "bazel", "plugins"})
+                            {"platform", "bazel", "plugins"})
                            - {"debug_cache"})  # type: Final
 
 
@@ -167,8 +167,8 @@ class Options:
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
+        self.sqlite_cache = False
         self.debug_cache = False
-        self.quick_and_dirty = False
         self.skip_version_check = False
         self.fine_grained_incremental = False
         # Include fine-grained dependencies in written cache files

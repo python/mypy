@@ -64,9 +64,10 @@ else:
 [file m.py]
 import typing
 x = 1
-x = 'a'
+if int():
+    x = 'a'
 [out]
-tmp/m.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/m.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNegatedMypyConditional]
 import typing
@@ -567,6 +568,42 @@ else:
 reveal_type(y)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 
+[case testShortCircuitNoEvaluation]
+# flags: --platform linux --always-false COMPILE_TIME_FALSE
+import sys
+
+if sys.platform == 'darwin':
+    mac_only = 'junk'
+
+# `mac_only` should not be evaluated
+if sys.platform == 'darwin' and mac_only:
+    pass
+if sys.platform == 'linux' or mac_only:
+    pass
+
+COMPILE_TIME_FALSE = 'junk'
+
+if COMPILE_TIME_FALSE:
+    compile_time_false_only = 'junk'
+
+# `compile_time_false_only` should not be evaluated
+if COMPILE_TIME_FALSE and compile_time_false_only:
+    pass
+if not COMPILE_TIME_FALSE or compile_time_false_only:
+    pass
+
+MYPY = False
+
+if not MYPY:
+    mypy_only = 'junk'
+
+# `mypy_only` should not be evaluated
+if not MYPY and mypy_only:
+    pass
+if MYPY or mypy_only:
+    pass
+[builtins fixtures/ops.pyi]
+
 [case testConditionalAssertWithoutElse]
 import typing
 
@@ -600,13 +637,14 @@ class Child(Parent):
         return 3
 
     def bar(self) -> int:
-        self = super(Child, self).something()
-        reveal_type(self)       # E: Revealed type is '__main__.Child'
-        if self is None:
-            reveal_type(self)
-            return None
-        reveal_type(self)       # E: Revealed type is '__main__.Child'
-        return 3
+        if 1:
+            self = super(Child, self).something()
+            reveal_type(self)       # E: Revealed type is '__main__.Child'
+            if self is None:
+                reveal_type(self)
+                return None
+            reveal_type(self)       # E: Revealed type is '__main__.Child'
+            return 3
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableWhenSuperclassIsAnyNoStrictOptional]

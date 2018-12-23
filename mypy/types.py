@@ -4,8 +4,8 @@ import sys
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
-    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator,
+    Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
+    Sequence, Iterator,
 )
 
 MYPY = False
@@ -17,7 +17,7 @@ import mypy.nodes
 from mypy import experiments
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncBase, FuncDef,
+    FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper, replace_object_state
@@ -53,7 +53,7 @@ LiteralValue = Union[int, str, bool, None]
 # import cycle issues, so we do it at the top while typechecking and
 # then again in the middle at runtime.
 if MYPY:
-    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor
 
 
 class TypeOfAny:
@@ -551,7 +551,6 @@ class Instance(Type):
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
         super().__init__(line, column)
-        assert not typ or typ.fullname() not in ["builtins.Any", "typing.Any"]
         self.type = typ
         self.args = args
         self.erased = erased  # True if result of type variable substitution
@@ -1172,12 +1171,23 @@ class TupleType(Type):
 
 
 class TypedDictType(Type):
-    """The type of a TypedDict instance. TypedDict(K1=VT1, ..., Kn=VTn)
+    """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
-    A TypedDictType can be either named or anonymous.
-    If it is anonymous then its fallback will be an Instance of Mapping[str, V].
-    If it is named then its fallback will be an Instance of the named type (ex: "Point")
-    whose TypeInfo has a typeddict_type that is anonymous.
+    A TypedDict object is a dictionary with specific string (literal) keys. Each
+    key has a value with a distinct type that depends on the key. TypedDict objects
+    are normal dict objects at runtime.
+
+    A TypedDictType can be either named or anonymous. If it's anonymous, its
+    fallback will mypy_extensions._TypedDict (Instance). _TypedDict is a subclass
+    of Mapping[str, object] and defines all non-mapping dict methods that TypedDict
+    supports. Some dict methods are unsafe and not supported. _TypedDict isn't defined
+    at runtime.
+
+    If a TypedDict is named, its fallback will be an Instance of the named type
+    (ex: "Point") whose TypeInfo has a typeddict_type that is anonymous. This
+    is similar to how named tuples work.
+
+    TODO: The fallback structure is perhaps overly complicated.
     """
 
     items = None  # type: OrderedDict[str, Type]  # item_name -> item_type
@@ -1227,7 +1237,7 @@ class TypedDictType(Type):
                              Instance.deserialize(data['fallback']))
 
     def is_anonymous(self) -> bool:
-        return self.fallback.type.fullname() == 'typing.Mapping'
+        return self.fallback.type.fullname() == 'mypy_extensions._TypedDict'
 
     def as_anonymous(self) -> 'TypedDictType':
         if self.is_anonymous():
@@ -1250,10 +1260,7 @@ class TypedDictType(Type):
 
     def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
         anonymous = self.as_anonymous()
-        return anonymous.fallback.copy_modified(args=[  # i.e. Mapping
-            anonymous.fallback.args[0],                 # i.e. str
-            value_type
-        ])
+        return anonymous.fallback
 
     def names_are_wider_than(self, other: 'TypedDictType') -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
@@ -1822,13 +1829,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = '{' + ', '.join(item_str(name, typ.accept(self))
                             for name, typ in t.items.items()) + '}'
         prefix = ''
-        suffix = ''
         if t.fallback and t.fallback.type:
-            if t.fallback.type.fullname() != 'typing.Mapping':
+            if t.fallback.type.fullname() != 'mypy_extensions._TypedDict':
                 prefix = repr(t.fallback.type.fullname()) + ', '
-            else:
-                suffix = ', fallback={}'.format(t.fallback.accept(self))
-        return 'TypedDict({}{}{})'.format(prefix, s, suffix)
+        return 'TypedDict({}{})'.format(prefix, s)
 
     def visit_raw_literal_type(self, t: RawLiteralType) -> str:
         return repr(t.value)
@@ -2055,6 +2059,10 @@ def union_items(typ: Type) -> List[Type]:
         return items
     else:
         return [typ]
+
+
+def is_generic_instance(tp: Type) -> bool:
+    return isinstance(tp, Instance) and bool(tp.args)
 
 
 def is_invariant_instance(tp: Type) -> bool:

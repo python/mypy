@@ -104,8 +104,6 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # ty
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
-CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'  # type: Final
-CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
     'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
@@ -892,7 +890,9 @@ class MessageBuilder:
     def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
         kind = (' to Callable' if isinstance(item, CallableType) else
                 ' to Tuple' if isinstance(item, TupleType) else
-                ' to Union' if isinstance(item, UnionType) else '')
+                ' to Union' if isinstance(item, UnionType) else
+                ' to Literal' if isinstance(item, LiteralType) else
+                '')
         self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
@@ -1157,11 +1157,11 @@ class MessageBuilder:
                         format_key_list(extra, short=True), self.format(typ)),
                         context)
                     return
-        if not expected_keys:
-            expected = '(no keys)'
-        else:
-            expected = format_key_list(expected_keys)
         found = format_key_list(actual_keys, short=True)
+        if not expected_keys:
+            self.fail('Unexpected TypedDict {}'.format(found), context)
+            return
+        expected = format_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
@@ -1184,6 +1184,18 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
+
+    def typeddict_key_cannot_be_deleted(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+                      context)
+        else:
+            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+                item_name, self.format(typ)), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
@@ -1225,6 +1237,10 @@ class MessageBuilder:
     def concrete_only_call(self, typ: Type, context: Context) -> None:
         self.fail("Only concrete class can be given where {} is expected"
                   .format(self.format(typ)), context)
+
+    def cannot_use_function_with_type(
+            self, method_name: str, type_name: str, context: Context) -> None:
+        self.fail("Cannot use {}() with a {} type".format(method_name, type_name), context)
 
     def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
                                    context: Context) -> None:

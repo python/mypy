@@ -156,10 +156,14 @@ class FindModuleCache:
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == 'partial':
                             runtime_path = os.path.join(pkg_dir, dir_chain)
-                        third_party_inline_dirs.append((runtime_path, True))
-                        # if the package is partial, we don't verify the module, as
-                        # the partial stub package may not have a __init__.pyi
-                        third_party_stubs_dirs.append((path, False))
+                            third_party_inline_dirs.append((runtime_path, True))
+                            # if the package is partial, we don't verify the module, as
+                            # the partial stub package may not have a __init__.pyi
+                            third_party_stubs_dirs.append((path, False))
+                        else:
+                            # handle the edge case where people put a py.typed file
+                            # in a stub package, but it isn't partial
+                            third_party_stubs_dirs.append((path, True))
                     else:
                         third_party_stubs_dirs.append((path, True))
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)

@@ -15,6 +15,8 @@ a = None # type: A
 b = None # type: B
 c = None # type: C
 
+def f(): i, j, a, b, c # Prevent redefinition
+
 j = c  # E: Incompatible types in assignment (expression has type "C", variable has type "J")
 a = i  # E: Incompatible types in assignment (expression has type "I", variable has type "A")
 a = j  # E: Incompatible types in assignment (expression has type "J", variable has type "A")
@@ -46,6 +48,8 @@ j = None # type: J
 a = None # type: A
 o = None # type: object
 
+def f(): i, j, a, o # Prevent redefinition
+
 j = i # E: Incompatible types in assignment (expression has type "I", variable has type "J")
 a = i # E: Incompatible types in assignment (expression has type "I", variable has type "A")
 a = j # E: Incompatible types in assignment (expression has type "J", variable has type "A")
@@ -65,18 +69,21 @@ class J(I): pass
 class A(J): pass
 
 [case testInheritingAbstractClassInSubclass]
-
 from abc import abstractmethod, ABCMeta
 
 i = None # type: I
 a = None # type: A
 b = None # type: B
 
-i = a # E: Incompatible types in assignment (expression has type "A", variable has type "I")
-b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    i = a # E: Incompatible types in assignment (expression has type "A", variable has type "I")
+if int():
+    b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-a = b
-i = b
+if int():
+    a = b
+if int():
+    i = b
 
 class I(metaclass=ABCMeta):
   @abstractmethod
@@ -116,12 +123,17 @@ class B: pass
 i, a, b = None, None, None # type: (I, A, B)
 o = None # type: object
 
-a = cast(I, o) # E: Incompatible types in assignment (expression has type "I", variable has type "A")
-b = cast(B, i) # Ok; a subclass of B might inherit I
-i = cast(I, b) # Ok; a subclass of B might inherit I
+if int():
+    a = cast(I, o) # E: Incompatible types in assignment (expression has type "I", variable has type "A")
+if int():
+    b = cast(B, i) # Ok; a subclass of B might inherit I
+if int():
+    i = cast(I, b) # Ok; a subclass of B might inherit I
 
-i = cast(I, o)
-i = cast(I, a)
+if int():
+    i = cast(I, o)
+if int():
+    i = cast(I, a)
 
 [case testInstantiatingClassThatImplementsAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -218,15 +230,21 @@ class C(B):
 
 var: Type[A]
 var()
-var = A # E: Can only assign concrete classes to a variable of type "Type[A]"
-var = B # E: Can only assign concrete classes to a variable of type "Type[A]"
-var = C # OK
+if int():
+    var = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+if int():
+    var = B # E: Can only assign concrete classes to a variable of type "Type[A]"
+if int():
+    var = C # OK
 
 var_old = None # type: Type[A] # Old syntax for variable annotations
 var_old()
-var_old = A # E: Can only assign concrete classes to a variable of type "Type[A]"
-var_old = B # E: Can only assign concrete classes to a variable of type "Type[A]"
-var_old = C # OK
+if int():
+    var_old = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+if int():
+    var_old = B # E: Can only assign concrete classes to a variable of type "Type[A]"
+if int():
+    var_old = C # OK
 [out]
 
 [case testInstantiationAbstractsInTypeForClassMethods]
@@ -362,7 +380,6 @@ main:11: error: Return type of "h" incompatible with supertype "I"
 
 
 [case testAccessingAbstractMethod]
-
 from abc import abstractmethod, ABCMeta
 
 class I(metaclass=ABCMeta):
@@ -371,14 +388,16 @@ class I(metaclass=ABCMeta):
 
 i, a, b = None, None, None # type: (I, int, str)
 
-a = i.f(a) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
+if int():
+    a = i.f(a) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
 i.g()      # E: "I" has no attribute "g"
 
-b = i.f(a)
+if int():
+    b = i.f(a)
 
 [case testAccessingInheritedAbstractMethod]
-
 from abc import abstractmethod, ABCMeta
 
 class J(metaclass=ABCMeta):
@@ -388,8 +407,10 @@ class I(J): pass
 
 i, a, b = None, None, None # type: (I, int, str)
 
-a = i.f(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-b = i.f(1)
+if int():
+    a = i.f(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    b = i.f(1)
 
 
 -- Any (dynamic) types

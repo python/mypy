@@ -48,10 +48,11 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin, plugin_types
-from mypy.defaults import PYTHON3_VERSION_MIN
+from mypy.plugin import Plugin, ChainedPlugin, plugin_types
+from mypy.plugins.default import DefaultPlugin
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
+from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
 
 from mypy.mypyc_hacks import BuildManagerBase
@@ -208,6 +209,7 @@ def _build(sources: List[BuildSource],
             TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
+        manager.metastore.commit()
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
                     (time.time() - manager.start_time,
                      len(manager.modules),
@@ -502,10 +504,16 @@ class BuildManager(BuildManagerBase):
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.flush_errors = flush_errors
-        self.cache_enabled = options.incremental and (
-            not options.fine_grained_incremental or options.use_fine_grained_cache)
+        self.cache_enabled = (options.incremental
+                              and (not options.fine_grained_incremental
+                                   or options.use_fine_grained_cache)
+                              and not reports.reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
+        if options.sqlite_cache:
+            self.metastore = SqliteMetadataStore(_cache_dir_prefix(self))  # type: MetadataStore
+        else:
+            self.metastore = FilesystemMetadataStore(_cache_dir_prefix(self))
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -551,7 +559,7 @@ class BuildManager(BuildManagerBase):
         if self.options.bazel:
             return 0
         else:
-            return int(os.path.getmtime(path))
+            return int(self.metastore.getmtime(path))
 
     def normpath(self, path: str) -> str:
         """Convert path to absolute; but to relative in bazel mode.
@@ -691,7 +699,8 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
     (i.e. <SuperProto[wildcard]>, <Proto[wildcard]> -> <Proto>) are written to the normal
     per-file fine grained dependency caches.
     """
-    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    metastore = manager.metastore
+    proto_meta, proto_cache = get_protocol_deps_cache_name()
     meta_snapshot = {}  # type: Dict[str, str]
     error = False
     for id, st in graph.items():
@@ -704,11 +713,11 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
             assert st.meta, "Module must be either parsed or cached"
             meta_snapshot[id] = st.meta.hash
 
-    if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
+    if not metastore.write(proto_meta, json.dumps(meta_snapshot)):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
         error = True
     listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
-    if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
+    if not metastore.write(proto_cache, json.dumps(listed_proto_deps)):
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
         error = True
     if error:
@@ -717,10 +726,12 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
                               blocker=True)
 
 
+PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
+
+
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
-    name = os.path.join(_cache_dir_prefix(manager), '@plugins_snapshot.json')
-    if not atomic_write(name, json.dumps(manager.plugins_snapshot), '\n'):
+    if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
         manager.errors.set_file(_cache_dir_prefix(manager), None)
         manager.errors.report(0, 0, "Error writing plugins snapshot",
                               blocker=True)
@@ -728,8 +739,7 @@ def write_plugins_snapshot(manager: BuildManager) -> None:
 
 def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     """Read cached snapshot of versions and hashes of plugins from previous run."""
-    name = os.path.join(_cache_dir_prefix(manager), '@plugins_snapshot.json')
-    snapshot = _load_json_file(name, manager,
+    snapshot = _load_json_file(PLUGIN_SNAPSHOT_FILE, manager,
                                log_sucess='Plugins snapshot ',
                                log_error='Could not load plugins snapshot: ')
     if snapshot is None:
@@ -748,7 +758,7 @@ def read_protocol_cache(manager: BuildManager,
     See docstring for write_protocol_cache for details about which kinds of
     dependencies are read.
     """
-    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    proto_meta, proto_cache = get_protocol_deps_cache_name()
     meta_snapshot = _load_json_file(proto_meta, manager,
                                     log_sucess='Proto meta ',
                                     log_error='Could not load protocol metadata: ')
@@ -781,8 +791,7 @@ def _load_json_file(file: str, manager: BuildManager,
                     log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
     try:
-        with open(file, 'r') as f:
-            data = f.read()
+        data = manager.metastore.read(file)
     except IOError:
         manager.log(log_error + file)
         return None
@@ -791,14 +800,12 @@ def _load_json_file(file: str, manager: BuildManager,
     return result
 
 
-def _cache_dir_prefix(manager: BuildManager, id: Optional[str] = None) -> str:
+def _cache_dir_prefix(manager: BuildManager) -> str:
     """Get current cache directory (or file if id is given)."""
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
-    if id is None:
-        return base
-    return os.path.join(base, *id.split('.'))
+    return base
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
@@ -816,8 +823,14 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     """
     pair = manager.options.cache_map.get(path)
     if pair is not None:
-        return (pair[0], pair[1], None)
-    prefix = _cache_dir_prefix(manager, id)
+        # The cache map paths were specified relative to the base directory,
+        # but the filesystem metastore APIs operates relative to the cache
+        # prefix directory.
+        # Solve this by rewriting the paths as relative to the root dir.
+        # This only makes sense when using the filesystem backed cache.
+        root = _cache_dir_prefix(manager)
+        return (os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None)
+    prefix = os.path.join(*id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
@@ -828,7 +841,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
 
-def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+def get_protocol_deps_cache_name() -> Tuple[str, str]:
     """Return file names for fine grained protocol dependencies cache.
 
     Since these dependencies represent a global state of the program, they
@@ -838,7 +851,7 @@ def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
     contains hashes of all source files at the time the protocol dependencies
     were written, and data file contains the protocol dependencies.
     """
-    name = os.path.join(_cache_dir_prefix(manager), '@proto_deps')
+    name = '@proto_deps'
     return name + '.meta.json', name + '.data.json'
 
 
@@ -887,9 +900,6 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Note that it's fine to mutilate cached_options since it's only used here.
     cached_options = m.options
     current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
-    if manager.options.quick_and_dirty:
-        # In quick_and_dirty mode allow non-quick_and_dirty cache files.
-        cached_options['quick_and_dirty'] = True
     if manager.options.skip_version_check:
         # When we're lax about version we're also lax about platform.
         cached_options['platform'] = current_options['platform']
@@ -912,23 +922,6 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
 
     manager.add_stats(fresh_metas=1)
     return m
-
-
-def random_string() -> str:
-    return binascii.hexlify(os.urandom(8)).decode('ascii')
-
-
-def atomic_write(filename: str, line1: str, line2: str) -> bool:
-    lines = [line1, line2]
-    tmp_filename = filename + '.' + random_string()
-    try:
-        with open(tmp_filename, 'w') as f:
-            for line in lines:
-                f.write(line)
-        os.replace(tmp_filename, filename)
-    except os.error:
-        return False
-    return True
 
 
 def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
@@ -1044,7 +1037,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             meta_json, _, _ = get_cache_names(id, path, manager)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
-            atomic_write(meta_json, meta_str, '\n')  # Ignore errors, it's just an optimization.
+            manager.metastore.write(meta_json, meta_str)  # Ignore errors, just an optimization.
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
@@ -1097,6 +1090,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
       corresponding to the metadata that was written (the latter may
       be None if the cache could not be written).
     """
+    metastore = manager.metastore
     # For Bazel we use relative paths and zero mtimes.
     bazel = manager.options.bazel
 
@@ -1111,10 +1105,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
     if bazel:
         tree.path = path
 
-    # Make sure directory for cache files exists
-    parent = os.path.dirname(data_json)
-    assert os.path.dirname(meta_json) == parent
-
     # Serialize data and analyze interface
     data = tree.serialize()
     data_str = json_dumps(data, manager.options.debug_cache)
@@ -1122,8 +1112,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Obtain and set up metadata
     try:
-        if parent:
-            os.makedirs(parent, exist_ok=True)
         st = manager.get_stat(path)
     except OSError as err:
         manager.log("Cannot get stat for {}: {}".format(path, err))
@@ -1146,7 +1134,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
-        if not atomic_write(data_json, data_str, '\n'):
+        if not metastore.write(data_json, data_str):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
             manager.log("Error writing data JSON file {}".format(data_json))
@@ -1164,7 +1152,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     deps_mtime = None
     if deps_json:
         deps_str = json_dumps(serialized_fine_grained_deps, manager.options.debug_cache)
-        if not atomic_write(deps_json, deps_str, '\n'):
+        if not metastore.write(deps_json, deps_str):
             manager.log("Error writing deps JSON file {}".format(deps_json))
             return interface_hash, None
         deps_mtime = manager.getmtime(deps_json)
@@ -1193,7 +1181,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Write meta cache file
     meta_str = json_dumps(meta, manager.options.debug_cache)
-    if not atomic_write(meta_json, meta_str, '\n'):
+    if not metastore.write(meta_json, meta_str):
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
@@ -1216,7 +1204,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     for filename in cache_paths:
         try:
             if filename:
-                os.remove(filename)
+                manager.metastore.remove(filename)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
@@ -1590,16 +1578,14 @@ class State:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
         assert self.meta.deps_json
-        with open(self.meta.deps_json) as f:
-            deps = json.load(f)
+        deps = json.loads(self.manager.metastore.read(self.meta.deps_json))
         # TODO: Assert deps file wasn't changed.
         self.fine_grained_deps = {k: set(v) for k, v in deps.items()}
 
     def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
-        with open(self.meta.data_json) as f:
-            data = json.load(f)
+        data = json.loads(self.manager.metastore.read(self.meta.data_json))
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
         if not temporary:
@@ -1611,7 +1597,6 @@ class State:
         # We need to set quick_and_dirty when doing a fine grained
         # cache load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
-                     self.manager.options.quick_and_dirty or
                      self.options.use_fine_grained_cache)
 
     def patch_dependency_parents(self) -> None:
@@ -1701,10 +1686,12 @@ class State:
                     # tests have predictable output.)
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(
-                            self.path, os.strerror(ioerr.errno))])
+                            self.path, os.strerror(ioerr.errno))],
+                        module_with_blocker=self.id)
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
-                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
+                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))],
+                        module_with_blocker=self.id)
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
@@ -1877,10 +1864,7 @@ class State:
                 or self.options.cache_dir == os.devnull
                 or self.options.fine_grained_incremental):
             return
-        if self.manager.options.quick_and_dirty:
-            is_errors = self.manager.errors.is_errors_for_file(self.path)
-        else:
-            is_errors = self.transitive_error
+        is_errors = self.transitive_error
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
             self.meta = None
@@ -2399,6 +2383,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 if dep in st.suppressed:
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
+    manager.plugin.set_modules(manager.modules)
     return graph
 
 
@@ -2441,8 +2426,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             deps.update(graph[id].dependencies)
         deps -= ascc
         stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
-        if not manager.options.quick_and_dirty:
-            fresh = fresh and not stale_deps
+        fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
@@ -2476,9 +2460,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
-            if manager.options.quick_and_dirty and stale_deps:
-                fresh_msg = "fresh(ish)"
-            elif oldest_in_scc < newest_in_deps:
+            if oldest_in_scc < newest_in_deps:
                 fresh = False
                 fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
             else:
@@ -2618,19 +2600,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
-    if manager.options.quick_and_dirty:
-        fresh = [id for id in scc if graph[id].is_fresh()]
-        fresh_set = set(fresh)  # To avoid running into O(N**2)
-        stale = [id for id in scc if id not in fresh_set]
-        if fresh:
-            manager.log("  Fresh ids: %s" % (", ".join(fresh)))
-        if stale:
-            manager.log("  Stale ids: %s" % (", ".join(stale)))
-    else:
-        fresh = []
-        stale = scc
-    for id in fresh:
-        graph[id].load_tree()
+    stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
@@ -2643,8 +2613,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
         manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    for id in fresh:
-        graph[id].fix_cross_refs()
     for id in stale:
         graph[id].semantic_analysis()
     for id in stale:

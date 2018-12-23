@@ -48,21 +48,21 @@ A().f(1, 'hello', 'hi') # E:1: Too many arguments for "f" of "A"
 # flags: --show-column-numbers
 x = 15
 y = 'hello'
-x = 2; y = x; y += 1
+if int():
+    x = 2; y = x; y += 1
 [out]
-main:4:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:4:15: error: Unsupported operand types for + ("str" and "int")
+main:5:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:5:19: error: Unsupported operand types for + ("str" and "int")
 
 [case testColumnsSimpleIsinstance]
 # flags: --show-column-numbers
 import typing
 def f(x: object, n: int, s: str) -> None:
-    n = x # E:5: Incompatible types in assignment (expression has type "object", variable has type "int")
-    if isinstance(x, int):
-        n = x
-        s = x # E:9: Incompatible types in assignment (expression has type "int", variable has type "str")
-    n = x # E:5: Incompatible types in assignment (expression has type "object", variable has type "int")
+    if int():
+        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
+        if isinstance(x, int):
+            n = x
+            s = x # E:13: Incompatible types in assignment (expression has type "int", variable has type "str")
+        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-
-

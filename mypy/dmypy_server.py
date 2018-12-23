@@ -6,15 +6,12 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
-import argparse
 import base64
 import json
 import os
 import pickle
-import random
 import subprocess
 import sys
-import tempfile
 import time
 import traceback
 
@@ -25,8 +22,8 @@ import mypy.errors
 import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
-from mypy.dmypy_util import STATUS_FILE, receive
-from mypy.ipc import IPCServer, IPCException
+from mypy.dmypy_util import receive
+from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
@@ -45,6 +42,7 @@ if sys.platform == 'win32':
     from subprocess import STARTUPINFO
 
     def daemonize(options: Options,
+                  status_file: str,
                   timeout: Optional[int] = None,
                   log_file: Optional[str] = None) -> int:
         """Create the daemon process via "dmypy daemon" and pass options via command line
@@ -57,12 +55,12 @@ if sys.platform == 'win32':
 
         It also pickles the options to be unpickled by mypy.
         """
-        command = [sys.executable, '-m', 'mypy.dmypy', 'daemon']
+        command = [sys.executable, '-m', 'mypy.dmypy', '--status-file', status_file, 'daemon']
         pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
         command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
-        info = STARTUPINFO(dwFlags=0x1,  # STARTF_USESHOWWINDOW aka use wShowWindow's value
-                           wShowWindow=0,  # SW_HIDE aka make the window invisible
-                           )
+        info = STARTUPINFO()
+        info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
+        info.wShowWindow = 0  # SW_HIDE aka make the window invisible
         try:
             subprocess.Popen(command,
                              creationflags=0x10,  # CREATE_NEW_CONSOLE
@@ -118,6 +116,7 @@ else:
             os._exit(1)
 
     def daemonize(options: Options,
+                  status_file: str,
                   timeout: Optional[int] = None,
                   log_file: Optional[str] = None) -> int:
         """Run the mypy daemon in a grandchild of the current process
@@ -125,7 +124,7 @@ else:
         Return 0 for success, exit status for failure, negative if
         subprocess killed by signal.
         """
-        return _daemonize_cb(Server(options, timeout).serve, log_file)
+        return _daemonize_cb(Server(options, status_file, timeout).serve, log_file)
 
 # Server code.
 
@@ -145,8 +144,6 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
                  "pass it to check/recheck instead")
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
-    if options.quick_and_dirty:
-        sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
     # Our file change tracking can't yet handle changes to files that aren't
     # specified in the sources list.
     if options.follow_imports not in ('skip', 'error'):
@@ -165,6 +162,7 @@ class Server:
     # serve() is called in the grandchild (by daemonize()).
 
     def __init__(self, options: Options,
+                 status_file: str,
                  timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.options = options
@@ -173,8 +171,8 @@ class Server:
         self.timeout = timeout
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
-        if os.path.isfile(STATUS_FILE):
-            os.unlink(STATUS_FILE)
+        if os.path.isfile(status_file):
+            os.unlink(status_file)
 
         self.fscache = FileSystemCache()
 
@@ -190,13 +188,14 @@ class Server:
         # Fine-grained incremental doesn't support general partial types
         # (details in https://github.com/python/mypy/issues/4492)
         options.local_partial_types = True
+        self.status_file = status_file
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
         try:
             server = IPCServer(CONNECTION_NAME, self.timeout)
-            with open(STATUS_FILE, 'w') as f:
+            with open(self.status_file, 'w') as f:
                 json.dump({'pid': os.getpid(), 'connection_name': server.connection_name}, f)
                 f.write('\n')  # I like my JSON with a trailing newline
             while True:
@@ -233,7 +232,7 @@ class Server:
             # that could cause us to remove a future server's
             # status file.)
             if command != 'stop':
-                os.unlink(STATUS_FILE)
+                os.unlink(self.status_file)
             try:
                 server.cleanup()  # try to remove the socket dir on Linux
             except OSError:
@@ -265,7 +264,7 @@ class Server:
         # RPC. Otherwise a race condition exists where a subsequent
         # command can see a status file from a dying server and think
         # it is a live one.
-        os.unlink(STATUS_FILE)
+        os.unlink(self.status_file)
         return {}
 
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:

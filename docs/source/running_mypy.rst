@@ -209,7 +209,7 @@ type hints nor have to time to write your own, you can *silence* the errors:
 3.  To silence *all* missing import errors for *all* libraries in your codebase,
     invoke mypy with the ``--ignore-missing-imports`` command line flag or set
     the ``ignore_missing_imports``
-    :ref:`config file option <config-file-import-discovery-per-module` to True
+    :ref:`config file option <config-file-import-discovery-per-module>` to True
     in the *global* section of your mypy config file::
 
         [mypy]

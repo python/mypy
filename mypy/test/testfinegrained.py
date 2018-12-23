@@ -29,6 +29,7 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
 )
 from mypy.server.mergecheck import check_consistency
+from mypy.dmypy_util import DEFAULT_STATUS_FILE
 from mypy.dmypy_server import Server
 from mypy.main import parse_config_file
 from mypy.find_sources import create_source_list
@@ -74,12 +75,12 @@ class FineGrainedSuite(DataSuite):
 
         main_src = '\n'.join(testcase.input)
         main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
+        with open(main_path, 'w', encoding='utf8') as f:
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
         build_options = self.get_options(main_src, testcase, build_cache=True)
-        server = Server(options)
+        server = Server(options, DEFAULT_STATUS_FILE)
 
         num_regular_incremental_steps = self.get_build_steps(main_src)
         step = 1

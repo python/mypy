@@ -163,6 +163,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return join_types(t, self.s)
         elif isinstance(self.s, TypedDictType):
             return join_types(t, self.s)
+        elif isinstance(self.s, LiteralType):
+            return join_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -268,7 +270,13 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
-        raise NotImplementedError()
+        if isinstance(self.s, LiteralType):
+            if t == self.s:
+                return t
+            else:
+                return join_types(self.s.fallback, t.fallback)
+        else:
+            return join_types(self.s, t.fallback)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         # We only have partial information so we can't decide the join result. We should
