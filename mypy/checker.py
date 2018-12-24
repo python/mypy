@@ -49,7 +49,7 @@ from mypy.subtypes import (
 )
 from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars, has_no_typevars
+from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -1637,8 +1637,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if first_type.is_type_obj() and second_type.is_type_obj():
                 # For class objects only check the subtype relationship of the classes,
                 # since we allow incompatible overrides of '__init__'/'__new__'
-                ok = is_subtype(left=fill_typevars(first_type.type_object()),
-                                right=fill_typevars(second_type.type_object()))
+                ok = is_subtype(left=fill_typevars_with_any(first_type.type_object()),
+                                right=fill_typevars_with_any(second_type.type_object()))
             else:
                 first_sig = bind_self(first_type)
                 second_sig = bind_self(second_type)

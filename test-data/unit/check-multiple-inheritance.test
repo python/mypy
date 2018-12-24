@@ -401,6 +401,37 @@ class A(Base1, Base2):
 [out]
 main:11: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
 
+[case testMultipleInheritance_GenericSubclasses_SuperclassFirst]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class ParentGeneric(Generic[T]):
+    pass
+class ChildGeneric(ParentGeneric, Generic[T]):
+    pass
+class Base1:
+    Nested = ParentGeneric
+class Base2:
+    Nested = ChildGeneric
+class A(Base1, Base2):
+    pass
+[out]
+main:11: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_GenericSubclasses_SubclassFirst]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class ParentGeneric(Generic[T]):
+    pass
+class ChildGeneric(ParentGeneric, Generic[T]):
+    pass
+class Base1:
+    Nested = ParentGeneric
+class Base2:
+    Nested = ChildGeneric
+class A(Base2, Base1):
+    pass
+[out]
+
 [case testMultipleInheritance_RefersToNamedTuples]
 from typing import NamedTuple
 class NamedTuple1:
