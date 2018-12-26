@@ -203,6 +203,14 @@ class MessageBuilder:
         self.report(msg, context, 'note', file=file, origin=origin,
                     offset=offset, strip_msg=strip_msg)
 
+    def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
+             origin: Optional[Context] = None, offset: int = 0,
+             strip_msg: bool = True) -> None:
+        """Report as many notes as lines in the message (unless disabled)."""
+        for msg in messages.splitlines():
+            self.report(msg, context, 'note', file=file, origin=origin,
+                        offset=offset, strip_msg=strip_msg)
+
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None, strip_msg: bool = True) -> None:
         """Report a warning message (unless disabled)."""
@@ -862,6 +870,21 @@ class MessageBuilder:
         target = self.override_target(name, name_in_supertype, supertype)
         self.fail('Argument {} of "{}" incompatible with {}'
                   .format(arg_num, name, target), context)
+
+        if name in ("__eq__", "__ne__"):
+            multiline_msg = self.comparison_method_example_msg(name)
+            self.note_multiline(multiline_msg, context, strip_msg=False)
+
+    def comparison_method_example_msg(self, method_name: str) -> str:
+        return '''It is recommended for "{method_name}" to work with arbitrary objects.
+The snippet below shows an example of how you can implement "{method_name}":
+
+class Foo(...):
+    ...
+    def {method_name}(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            raise NotImplementedError
+        return <logic to compare two Foo instances>'''.format(method_name=method_name)
 
     def return_type_incompatible_with_supertype(
             self, name: str, name_in_supertype: str, supertype: str,
