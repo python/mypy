@@ -182,28 +182,31 @@ class MessageBuilder:
 
     def report(self, msg: str, context: Optional[Context], severity: str,
                file: Optional[str] = None, origin: Optional[Context] = None,
-               offset: int = 0) -> None:
+               offset: int = 0, strip_msg: bool = True) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
+            msg = msg.strip() if strip_msg else msg
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file, offset=offset,
+                               msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
+             origin: Optional[Context] = None, strip_msg: bool = True) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file, origin=origin)
+        self.report(msg, context, 'error', file=file, origin=origin, strip_msg=strip_msg)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None, offset: int = 0) -> None:
+             origin: Optional[Context] = None, offset: int = 0,
+             strip_msg: bool = True) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin, offset=offset)
+        self.report(msg, context, 'note', file=file, origin=origin,
+                    offset=offset, strip_msg=strip_msg)
 
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
+             origin: Optional[Context] = None, strip_msg: bool = True) -> None:
         """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
+        self.report(msg, context, 'warning', file=file, origin=origin, strip_msg=strip_msg)
 
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
