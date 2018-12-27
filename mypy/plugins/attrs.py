@@ -25,6 +25,7 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
+KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers = {
@@ -200,7 +201,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.fail("attrs only works with new-style classes", info.defn)
             return
         if kw_only:
-            ctx.api.fail("kw_only is not supported in Python 2", ctx.reason)
+            ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
             return
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
@@ -234,7 +235,11 @@ def _get_frozen(ctx: 'mypy.plugin.ClassDefContext') -> bool:
 def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
                    auto_attribs: bool,
                    kw_only: bool) -> List[Attribute]:
-    """Analyze the class body of an attr maker, its parents, and return the Attributes found."""
+    """Analyze the class body of an attr maker, its parents, and return the Attributes found.
+
+    auto_attribs=True means we'll generate attributes from type annotations also.
+    kw_only=True means that all attributes created here will be keyword only args in __init__.
+    """
     own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
     # Walk the body looking for assignments and decorators.
     for stmt in ctx.cls.defs.body:
@@ -398,9 +403,11 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
 
     # Read all the arguments from the call.
     init = _get_bool_argument(ctx, rvalue, 'init', True)
+    # Note: If the class decorator says kw_only=True the attribute is ignored.
+    # See https://github.com/python-attrs/attrs/issues/481 for explanation.
     kw_only |= _get_bool_argument(ctx, rvalue, 'kw_only', False)
     if kw_only and ctx.api.options.python_version[0] < 3:
-        ctx.api.fail("kw_only is not supported in Python 2", stmt)
+        ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, stmt)
         return None
 
     # TODO: Check for attr.NOTHING
