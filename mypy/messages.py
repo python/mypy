@@ -13,6 +13,7 @@ checker but we are moving away from this convention.
 from collections import OrderedDict
 import re
 import difflib
+from textwrap import dedent
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 
@@ -868,20 +869,19 @@ class MessageBuilder:
         self.fail('Argument {} of "{}" incompatible with {}'
                   .format(arg_num, name, target), context)
 
-        if name in ("__eq__", "__ne__"):
-            multiline_msg = self.comparison_method_example_msg(name)
+        if name == "__eq__":
+            assert isinstance(context, FuncDef)
+            multiline_msg = self.comparison_method_example_msg(class_name=context.info.name())
             self.note_multiline(multiline_msg, context)
 
-    def comparison_method_example_msg(self, method_name: str) -> str:
-        return '''It is recommended for "{method_name}" to work with arbitrary objects.
-The snippet below shows an example of how you can implement "{method_name}":
-
-class Foo(...):
-    ...
-    def {method_name}(self, other: object) -> bool:
-        if not isinstance(other, Foo):
-            raise NotImplementedError
-        return <logic to compare two Foo instances>'''.format(method_name=method_name)
+    def comparison_method_example_msg(self, class_name: str) -> str:
+        return dedent('''\
+        It is recommended for "__eq__" to work with arbitrary objects, for example:
+            def __eq__(self, other: object) -> bool:
+                if not isinstance(other, {class_name}):
+                    raise NotImplementedError
+                return <logic to compare two {class_name} instances>
+        '''.format(class_name=class_name))
 
     def return_type_incompatible_with_supertype(
             self, name: str, name_in_supertype: str, supertype: str,
