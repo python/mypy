@@ -600,14 +600,14 @@ from typing_extensions import Literal
 a1: Literal["\x00\xAC\x62 \u2227 \u03bb(p)"]
 b1: Literal["\x00¬b ∧ λ(p)"]
 c1: Literal["¬b ∧ λ(p)"]
-d1: Literal["\U0001F600\U0001F643"]
-e1: Literal["😀🙃"]
+d1: Literal["\U0001F600\U0001F641"]
+e1: Literal["😀🙁"]
 
 Alias1 = Literal["\x00\xAC\x62 \u2227 \u03bb(p)"]
 Alias2 = Literal["\x00¬b ∧ λ(p)"]
 Alias3 = Literal["¬b ∧ λ(p)"]
-Alias4 = Literal["\U0001F600\U0001F643"]
-Alias5 = Literal["😀🙃"]
+Alias4 = Literal["\U0001F600\U0001F641"]
+Alias5 = Literal["😀🙁"]
 a2: Alias1
 b2: Alias2
 c2: Alias3
@@ -618,26 +618,26 @@ blah: Any
 a3 = blah  # type: Literal["\x00\xAC\x62 \u2227 \u03bb(p)"]
 b3 = blah  # type: Literal["\x00¬b ∧ λ(p)"]
 c3 = blah  # type: Literal["¬b ∧ λ(p)"]
-d3 = blah  # type: Literal["\U0001F600\U0001F643"]
-e3 = blah  # type: Literal["😀🙃"]
+d3 = blah  # type: Literal["\U0001F600\U0001F641"]
+e3 = blah  # type: Literal["😀🙁"]
 
 reveal_type(a1)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
 reveal_type(b1)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
 reveal_type(c1)  # E: Revealed type is 'Literal['¬b ∧ λ(p)']'
-reveal_type(d1)  # E: Revealed type is 'Literal['😀🙃']'
-reveal_type(e1)  # E: Revealed type is 'Literal['😀🙃']'
+reveal_type(d1)  # E: Revealed type is 'Literal['😀🙁']'
+reveal_type(e1)  # E: Revealed type is 'Literal['😀🙁']'
 
 reveal_type(a2)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
 reveal_type(b2)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
 reveal_type(c2)  # E: Revealed type is 'Literal['¬b ∧ λ(p)']'
-reveal_type(d2)  # E: Revealed type is 'Literal['😀🙃']'
-reveal_type(e2)  # E: Revealed type is 'Literal['😀🙃']'
+reveal_type(d2)  # E: Revealed type is 'Literal['😀🙁']'
+reveal_type(e2)  # E: Revealed type is 'Literal['😀🙁']'
 
 reveal_type(a3)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
 reveal_type(b3)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
 reveal_type(c3)  # E: Revealed type is 'Literal['¬b ∧ λ(p)']'
-reveal_type(d3)  # E: Revealed type is 'Literal['😀🙃']'
-reveal_type(e3)  # E: Revealed type is 'Literal['😀🙃']'
+reveal_type(d3)  # E: Revealed type is 'Literal['😀🙁']'
+reveal_type(e3)  # E: Revealed type is 'Literal['😀🙁']'
 
 a1 = b1
 a1 = c1  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
