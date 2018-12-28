@@ -51,6 +51,7 @@ try:
         NameConstant,
         Expression as ast3_Expression,
         Str,
+        Bytes,
         Index,
         Num,
         UnaryOp,
@@ -140,7 +141,11 @@ def parse(source: Union[str, bytes],
     return tree
 
 
-def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -> Optional[Type]:
+def parse_type_comment(type_comment: str,
+                       line: int,
+                       errors: Optional[Errors],
+                       assume_str_is_unicode: bool = True,
+                       ) -> Optional[Type]:
     try:
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
@@ -151,24 +156,39 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
             raise
     else:
         assert isinstance(typ, ast3_Expression)
-        return TypeConverter(errors, line=line).visit(typ.body)
+        return TypeConverter(errors, line=line,
+                             assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
 
 
-def parse_type_string(expr_string: str, line: int, column: int) -> Type:
-    """Parses a type that was originally present inside of an explicit string.
+def parse_type_string(expr_string: str, expr_fallback_name: str,
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+    """Parses a type that was originally present inside of an explicit string,
+    byte string, or unicode string.
 
     For example, suppose we have the type `Foo["blah"]`. We should parse the
     string expression "blah" using this function.
+
+    If `assume_str_is_unicode` is set to true, this function will assume that
+    `Foo["blah"]` is equivalent to `Foo[u"blah"]`. Otherwise, it assumes it's
+    equivalent to `Foo[b"blah"]`.
+
+    The caller is responsible for keeping track of the context in which the
+    type string was encountered (e.g. in Python 3 code, Python 2 code, Python 2
+    code with unicode_literals...) and setting `assume_str_is_unicode` accordingly.
     """
     try:
-        node = parse_type_comment(expr_string.strip(), line=line, errors=None)
+        node = parse_type_comment(expr_string.strip(), line=line, errors=None,
+                                  assume_str_is_unicode=assume_str_is_unicode)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
+            node.original_str_fallback = expr_fallback_name
             return node
         else:
-            return RawLiteralType(expr_string, 'builtins.str', line, column)
-    except SyntaxError:
-        return RawLiteralType(expr_string, 'builtins.str', line, column)
+            return RawLiteralType(expr_string, expr_fallback_name, line, column)
+    except (SyntaxError, ValueError):
+        # Note: the parser will raise a `ValueError` instead of a SyntaxError if
+        # the string happens to contain things like \x00.
+        return RawLiteralType(expr_string, expr_fallback_name, line, column)
 
 
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
@@ -966,10 +986,7 @@ class ASTConverter:
 
     # Bytes(bytes s)
     def visit_Bytes(self, n: ast3.Bytes) -> Union[BytesExpr, StrExpr]:
-        # The following line is a bit hacky, but is the best way to maintain
-        # compatibility with how mypy currently parses the contents of bytes literals.
-        contents = str(n.s)[2:-1]
-        e = BytesExpr(contents)
+        e = BytesExpr(bytes_to_human_readable_repr(n.s))
         return self.set_line(e, n)
 
     # NameConstant(singleton value)
@@ -1042,10 +1059,15 @@ class ASTConverter:
 
 
 class TypeConverter:
-    def __init__(self, errors: Optional[Errors], line: int = -1) -> None:
+    def __init__(self,
+                 errors: Optional[Errors],
+                 line: int = -1,
+                 assume_str_is_unicode: bool = True,
+                 ) -> None:
         self.errors = errors
         self.line = line
         self.node_stack = []  # type: List[AST]
+        self.assume_str_is_unicode = assume_str_is_unicode
 
     @overload
     def visit(self, node: ast3.expr) -> Type: ...
@@ -1090,8 +1112,11 @@ class TypeConverter:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `Str` object.
-        return (parse_type_comment(s.strip(), self.line, self.errors) or
-                AnyType(TypeOfAny.from_error))
+        return (parse_type_comment(s.strip(),
+                                   self.line,
+                                   self.errors,
+                                   self.assume_str_is_unicode)
+                or AnyType(TypeOfAny.from_error))
 
     def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
@@ -1190,7 +1215,22 @@ class TypeConverter:
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        return parse_type_string(n.s, line=self.line, column=-1)
+        # Note: we transform these fallback types into the correct types in
+        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
+        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
+        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
+        # translate 'builtins.bytes' in the method below into 'builtins.str'.
+        if 'u' in n.kind or self.assume_str_is_unicode:
+            return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
+        else:
+            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
+
+    # Bytes(bytes s)
+    def visit_Bytes(self, n: Bytes) -> Type:
+        contents = bytes_to_human_readable_repr(n.s)
+        return RawLiteralType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
@@ -1246,3 +1286,17 @@ def stringify_name(n: AST) -> Optional[str]:
         if sv is not None:
             return "{}.{}".format(sv, n.attr)
     return None  # Can't do it.
+
+
+def bytes_to_human_readable_repr(b: bytes) -> str:
+    """Converts bytes into some human-readable representation. Unprintable
+    bytes such as the nul byte are escaped. For example:
+
+        >>> b = bytes([102, 111, 111, 10, 0])
+        >>> s = bytes_to_human_readable_repr(b)
+        >>> print(s)
+        foo\n\x00
+        >>> print(repr(s))
+        'foo\\n\\x00'
+    """
+    return str(b)[2:-1]
