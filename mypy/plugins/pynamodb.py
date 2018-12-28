@@ -7,7 +7,7 @@ from mypy.types import Instance, Type
 ATTR_FULL_NAME = 'pynamodb.attributes.Attribute'
 
 
-class MypyPlugin(Plugin):
+class PynamodbPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Optional[Callable[[MethodContext], Type]]:
         return _function_hook_callback
 
@@ -38,4 +38,4 @@ def _function_hook_callback(ctx: MethodContext) -> Type:
 
 
 def plugin(version: str):
-    return MypyPlugin
+    return PynamodbPlugin
