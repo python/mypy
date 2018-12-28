@@ -182,39 +182,36 @@ class MessageBuilder:
 
     def report(self, msg: str, context: Optional[Context], severity: str,
                file: Optional[str] = None, origin: Optional[Context] = None,
-               offset: int = 0, strip_msg: bool = True) -> None:
+               offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
-            msg = msg.strip() if strip_msg else msg
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
-             origin: Optional[Context] = None, strip_msg: bool = True) -> None:
+             origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file, origin=origin, strip_msg=strip_msg)
+        self.report(msg, context, 'error', file=file, origin=origin)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None, offset: int = 0,
-             strip_msg: bool = True) -> None:
+             origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin,
-                    offset=offset, strip_msg=strip_msg)
+                    offset=offset)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None, offset: int = 0,
-             strip_msg: bool = True) -> None:
+             origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(msg, context, 'note', file=file, origin=origin,
-                        offset=offset, strip_msg=strip_msg)
+                        offset=offset)
 
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None, strip_msg: bool = True) -> None:
+             origin: Optional[Context] = None) -> None:
         """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin, strip_msg=strip_msg)
+        self.report(msg, context, 'warning', file=file, origin=origin)
 
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
@@ -873,7 +870,7 @@ class MessageBuilder:
 
         if name in ("__eq__", "__ne__"):
             multiline_msg = self.comparison_method_example_msg(name)
-            self.note_multiline(multiline_msg, context, strip_msg=False)
+            self.note_multiline(multiline_msg, context)
 
     def comparison_method_example_msg(self, method_name: str) -> str:
         return '''It is recommended for "{method_name}" to work with arbitrary objects.
@@ -1136,8 +1133,6 @@ class Foo(...):
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
         self.fail("Revealed local types are:", context)
-        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
-        # for indentation
         for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
             self.fail(line, context)
 
