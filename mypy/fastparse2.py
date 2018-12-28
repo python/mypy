@@ -323,7 +323,7 @@ class ASTConverter:
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
         lineno = n.lineno
         converter = TypeConverter(self.errors, line=lineno,
-                                  unicode_literals=self.unicode_literals)
+                                  assume_str_is_unicode=self.unicode_literals)
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
         arg_kinds = [arg.kind for arg in args]
@@ -430,7 +430,8 @@ class ASTConverter:
                        line: int,
                        ) -> Tuple[List[Argument], List[Statement]]:
         type_comments = n.type_comments  # type: Sequence[Optional[str]]
-        converter = TypeConverter(self.errors, line=line, unicode_literals=self.unicode_literals)
+        converter = TypeConverter(self.errors, line=line,
+                                  assume_str_is_unicode=self.unicode_literals)
         decompose_stmts = []  # type: List[Statement]
 
         n_args = n.args
@@ -550,7 +551,7 @@ class ASTConverter:
         typ = None
         if n.type_comment:
             typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
-                                     unicode_literals=self.unicode_literals)
+                                     assume_str_is_unicode=self.unicode_literals)
 
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
@@ -568,7 +569,7 @@ class ASTConverter:
     def visit_For(self, n: ast27.For) -> ForStmt:
         if n.type_comment is not None:
             target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
-                                             unicode_literals=self.unicode_literals)
+                                             assume_str_is_unicode=self.unicode_literals)
         else:
             target_type = None
         stmt = ForStmt(self.visit(n.target),
@@ -596,7 +597,7 @@ class ASTConverter:
     def visit_With(self, n: ast27.With) -> WithStmt:
         if n.type_comment is not None:
             target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
-                                             unicode_literals=self.unicode_literals)
+                                             assume_str_is_unicode=self.unicode_literals)
         else:
             target_type = None
         stmt = WithStmt([self.visit(n.context_expr)],
@@ -933,7 +934,7 @@ class ASTConverter:
         # to be unicode.
         if isinstance(n.s, bytes):
             contents = bytes_to_human_readable_repr(n.s)
-            e = StrExpr(contents, from_python_2=True)  # type: Union[StrExpr, UnicodeExpr]
+            e = StrExpr(contents, from_python_3=False)  # type: Union[StrExpr, UnicodeExpr]
             return self.set_line(e, n)
         else:
             e = UnicodeExpr(n.s)

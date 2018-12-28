@@ -1384,6 +1384,12 @@ class LiteralType(Type):
             return NotImplemented
 
     def value_repr(self) -> str:
+        """Returns the string representation of the underlying type.
+
+        This function is almost equivalent to running `repr(self.value)`,
+        except it includes some additional logic to correctly handle cases
+        where the value is a string, byte string, or a unicode string.
+        """
         raw = repr(self.value)
         fallback_name = self.fallback.type.fullname()
         if fallback_name == 'builtins.bytes':

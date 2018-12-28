@@ -113,13 +113,13 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
                         line=expr.line, column=expr.column)
     elif isinstance(expr, StrExpr):
         return parse_type_string(expr.value, 'builtins.str', expr.line, expr.column,
-                                 unicode_literals=not expr.from_python_2)
+                                 assume_str_is_unicode=expr.from_python_3)
     elif isinstance(expr, BytesExpr):
         return parse_type_string(expr.value, 'builtins.bytes', expr.line, expr.column,
-                                 unicode_literals=False)
+                                 assume_str_is_unicode=False)
     elif isinstance(expr, UnicodeExpr):
         return parse_type_string(expr.value, 'builtins.unicode', expr.line, expr.column,
-                                 unicode_literals=True)
+                                 assume_str_is_unicode=True)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr)
         if isinstance(typ, RawLiteralType) and isinstance(typ.value, int) and expr.op == '-':

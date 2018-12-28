@@ -1231,12 +1231,25 @@ class StrExpr(Expression):
     """String literal"""
 
     value = ''
-    from_python_2 = False
 
-    def __init__(self, value: str, from_python_2: bool = False) -> None:
+    # Keeps track of whether this string originated from Python 2 source code vs
+    # Python 3 source code. We need to keep track of this information so we can
+    # correctly handle types that have "nested strings". For example, consider this
+    # type alias, where we have a forward reference to a literal type:
+    #
+    #     Alias = List["Literal['foo']"]
+    #
+    # When parsing this, we need to know whether the outer string and alias came from
+    # Python 2 code vs Python 3 code so we can determine whether the inner `Literal['foo']`
+    # is meant to be `Literal[u'foo']` or `Literal[b'foo']`.
+    #
+    # This field keeps track of that information.
+    from_python_3 = True
+
+    def __init__(self, value: str, from_python_3: bool = False) -> None:
         super().__init__()
         self.value = value
-        self.from_python_2 = from_python_2
+        self.from_python_3 = from_python_3
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)

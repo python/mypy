@@ -144,7 +144,7 @@ def parse(source: Union[str, bytes],
 def parse_type_comment(type_comment: str,
                        line: int,
                        errors: Optional[Errors],
-                       unicode_literals: bool = True,
+                       assume_str_is_unicode: bool = True,
                        ) -> Optional[Type]:
     try:
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
@@ -156,23 +156,29 @@ def parse_type_comment(type_comment: str,
             raise
     else:
         assert isinstance(typ, ast3_Expression)
-        return TypeConverter(errors, line=line, unicode_literals=unicode_literals).visit(typ.body)
+        return TypeConverter(errors, line=line,
+                             assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
 
 
 def parse_type_string(expr_string: str, expr_fallback_name: str,
-                      line: int, column: int, unicode_literals: bool = True) -> Type:
-    """Parses a type that was originally present inside of an explicit string.
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+    """Parses a type that was originally present inside of an explicit string,
+    byte string, or unicode string.
 
     For example, suppose we have the type `Foo["blah"]`. We should parse the
     string expression "blah" using this function.
 
-    If 'unicode_literals' is true, we assume that `Foo["blah"]` is equivalent
-    to `Foo[u"blah"]` (for both Python 2 and 3). Otherwise, we assume it's
+    If `assume_str_is_unicode` is set to true, this function will assume that
+    `Foo["blah"]` is equivalent to `Foo[u"blah"]`. Otherwise, it assumes it's
     equivalent to `Foo[b"blah"]`.
+
+    The caller is responsible for keeping track of the context in which the
+    type string was encountered (e.g. in Python 3 code, Python 2 code, Python 2
+    code with unicode_literals...) and setting `assume_str_is_unicode` accordingly.
     """
     try:
         node = parse_type_comment(expr_string.strip(), line=line, errors=None,
-                                  unicode_literals=unicode_literals)
+                                  assume_str_is_unicode=assume_str_is_unicode)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -1056,12 +1062,12 @@ class TypeConverter:
     def __init__(self,
                  errors: Optional[Errors],
                  line: int = -1,
-                 unicode_literals: bool = True,
+                 assume_str_is_unicode: bool = True,
                  ) -> None:
         self.errors = errors
         self.line = line
         self.node_stack = []  # type: List[AST]
-        self.unicode_literals = unicode_literals
+        self.assume_str_is_unicode = assume_str_is_unicode
 
     @overload
     def visit(self, node: ast3.expr) -> Type: ...
@@ -1106,8 +1112,11 @@ class TypeConverter:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `Str` object.
-        return (parse_type_comment(s.strip(), self.line, self.errors, self.unicode_literals) or
-                AnyType(TypeOfAny.from_error))
+        return (parse_type_comment(s.strip(),
+                                   self.line,
+                                   self.errors,
+                                   self.assume_str_is_unicode)
+                or AnyType(TypeOfAny.from_error))
 
     def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
@@ -1211,12 +1220,12 @@ class TypeConverter:
         # If we're analyzing Python 3, that function will translate 'builtins.unicode'
         # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
-        if 'u' in n.kind or self.unicode_literals:
+        if 'u' in n.kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
-                                     unicode_literals=self.unicode_literals)
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
         else:
             return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
-                                     unicode_literals=self.unicode_literals)
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
 
     # Bytes(bytes s)
     def visit_Bytes(self, n: Bytes) -> Type:
