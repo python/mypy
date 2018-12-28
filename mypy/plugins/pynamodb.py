@@ -1,23 +1,24 @@
 from typing import Callable, Optional
 
-from mypy.nodes import NameExpr, CallExpr
-from mypy.plugin import MethodContext, Plugin
+from mypy.nodes import NameExpr, CallExpr, TypeInfo
+from mypy.plugin import Plugin, FunctionContext
 from mypy.types import Instance, Type
 
 ATTR_FULL_NAME = 'pynamodb.attributes.Attribute'
 
 
 class PynamodbPlugin(Plugin):
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[MethodContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
         return _function_hook_callback
 
 
-def _function_hook_callback(ctx: MethodContext) -> Type:
+def _function_hook_callback(ctx: FunctionContext) -> Type:
     if (
         not isinstance(ctx.default_return_type, Instance) or
         not ctx.default_return_type.type.has_base(ATTR_FULL_NAME) or
         # TODO: any better way to tell apart a construction from other functions?
         not isinstance(ctx.context, CallExpr) or
+        not isinstance(ctx.default_return_type.type, TypeInfo) or
         not ctx.context.callee.fullname == ctx.default_return_type.type.fullname()
     ):
         return ctx.default_return_type
@@ -42,5 +43,5 @@ def _function_hook_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def plugin(version: str):
+def plugin(version: str) -> PynamodbPlugin:
     return PynamodbPlugin
