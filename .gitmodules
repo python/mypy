@@ -1,3 +1,4 @@
 [submodule "typeshed"]
 	path = mypy/typeshed
-	url = https://github.com/python/typeshed
+	url = https://github.com/ikonst/typeshed
+	branch = pynamodb-attr-nullable
