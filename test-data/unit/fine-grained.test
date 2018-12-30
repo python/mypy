@@ -8232,3 +8232,43 @@ def foo(x): pass
 main:2: error: Revealed type is 'builtins.str'
 ==
 main:2: error: Revealed type is 'Literal['foo']'
+
+[case testLiteralFineGrainedChainedDefinitions]
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar
+[file mod2.py]
+from mod3 import qux as bar
+[file mod3.py]
+from typing_extensions import Literal
+qux: Literal[3]
+[file mod3.py.2]
+from typing_extensions import Literal
+qux: Literal[4]
+[out]
+main:2: error: Revealed type is 'Literal[3]'
+==
+main:2: error: Revealed type is 'Literal[4]'
+
+[case testLiteralFineGrainedChainedAliases]
+from mod1 import Alias1
+x: Alias1
+reveal_type(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing_extensions import Literal
+Alias3 = Literal[3]
+[file mod3.py.2]
+from typing_extensions import Literal
+Alias3 = Literal[4]
+[out]
+main:3: error: Revealed type is 'Literal[3]'
+==
+main:3: error: Revealed type is 'Literal[4]'
