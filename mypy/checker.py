@@ -885,7 +885,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     msg = messages.INVALID_SELF_TYPE_OR_EXTRA_ARG
                                     note = '(Hint: typically annotations omit the type for self)'
                                 else:
-                                    msg = messages.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(erased, ref_type)
+                                    msg = messages.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                                        erased, ref_type)
                             else:
                                 msg = messages.MISSING_OR_INVALID_SELF_TYPE
                             self.fail(msg, defn)

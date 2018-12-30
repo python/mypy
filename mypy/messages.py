@@ -120,9 +120,11 @@ CANNOT_INHERIT_FROM_FINAL = 'Cannot inherit from final class "{}"'  # type: Fina
 DEPENDENT_FINAL_IN_CLASS_BODY = \
     "Final name declared in class body cannot depend on type variables"  # type: Final
 CANNOT_OVERRIDE_INSTANCE_VAR = \
-    'Cannot override instance variable (previously declared on base class "{}") with class variable'  # type: Final
+    'Cannot override instance variable (previously declared on base class "{}") with class ' \
+    'variable'  # type: Final
 CANNOT_OVERRIDE_CLASS_VAR = \
-    'Cannot override class variable (previously declared on base class "{}") with instance variable'  # type: Final
+    'Cannot override class variable (previously declared on base class "{}") with instance ' \
+    'variable'  # type: Final
 DESCRIPTOR_SET_NOT_CALLABLE = "__set__ is not callable"  # type: Final
 RETURN_IN_GENERATOR = "'return' with value in async generator is not allowed"  # type: Final
 
