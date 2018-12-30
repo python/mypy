@@ -109,6 +109,22 @@ IMPLICIT_GENERIC_ANY_BUILTIN = \
     'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
 UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
+MULTIPLE_OVERLOADS_REQUIRED = 'Single overload definition, multiple required'  # type: Final
+MISSING_OR_INVALID_SELF_TYPE = \
+    "Self argument missing for a non-static method (or an invalid type for self)"  # type: Final
+ERASED_SELF_TYPE_NOT_SUPERTYPE = \
+    "The erased type of self '{}' is not a supertype of its class '{}'"  # type: Final
+INVALID_SELF_TYPE_OR_EXTRA_ARG = \
+    "Invalid type for self, or extra argument type in function annotation"  # type: Final
+CANNOT_INHERIT_FROM_FINAL = 'Cannot inherit from final class "{}"'  # type: Final
+DEPENDENT_FINAL_IN_CLASS_BODY = \
+    "Final name declared in class body cannot depend on type variables"  # type: Final
+CANNOT_OVERRIDE_INSTANCE_VAR = \
+    'Cannot override instance variable (previously declared on base class "{}") with class variable'  # type: Final
+CANNOT_OVERRIDE_CLASS_VAR = \
+    'Cannot override class variable (previously declared on base class "{}") with instance variable'  # type: Final
+DESCRIPTOR_SET_NOT_CALLABLE = "__set__ is not callable"  # type: Final
+RETURN_IN_GENERATOR = "'return' with value in async generator is not allowed"  # type: Final
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
