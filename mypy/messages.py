@@ -879,7 +879,7 @@ class MessageBuilder:
         It is recommended for "__eq__" to work with arbitrary objects, for example:
             def __eq__(self, other: object) -> bool:
                 if not isinstance(other, {class_name}):
-                    raise NotImplementedError
+                    return NotImplemented
                 return <logic to compare two {class_name} instances>
         '''.format(class_name=class_name))
 
