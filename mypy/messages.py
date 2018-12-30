@@ -203,7 +203,7 @@ class MessageBuilder:
                     offset=offset)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None, offset: int = 0) -> None:
+                       origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(msg, context, 'note', file=file, origin=origin,
