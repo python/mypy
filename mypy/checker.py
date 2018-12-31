@@ -1218,7 +1218,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if len(self.scope.stack) == 1:
             # module scope
             if name == '__getattribute__':
-                self.msg.fail('__getattribute__ is not valid at the module level', context)
+                self.msg.fail(messages.MODULE_LEVEL_GETATTRIBUTE, context)
                 return
             # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
             # show an error for Python < 3.7, but that would be annoying in code that supports
@@ -2520,7 +2520,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
-            self.msg.fail("{}.__set__ is not callable".format(attribute_type), context)
+            self.msg.fail(messages.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
@@ -2543,7 +2543,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
         if not isinstance(inferred_dunder_set_type, CallableType):
-            self.fail(messages.DESCRIPTOR_SET_NOT_CALLABLE, context)
+            self.fail(messages.DESCRIPTOR_SET_NOT_CALLABLE
+                      .format(inferred_dunder_set_type), context)
             return AnyType(TypeOfAny.from_error), get_type, True
 
         if len(inferred_dunder_set_type.arg_types) < 2:
