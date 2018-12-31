@@ -1313,6 +1313,23 @@ def f(x: Union[A, B]) -> None:
         f(x)
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceWithOverlappingPromotionTypes]
+from typing import Union
+
+class FloatLike: pass
+class IntLike(FloatLike): pass
+
+def f1(x: Union[float, int]) -> None:
+    # We ignore promotions in isinstance checks
+    if isinstance(x, float):
+        reveal_type(x)  # E: Revealed type is 'builtins.float'
+
+def f2(x: Union[FloatLike, IntLike]) -> None:
+    # ...but not regular subtyping relationships
+    if isinstance(x, FloatLike):
+        reveal_type(x)  # E: Revealed type is 'Union[__main__.FloatLike, __main__.IntLike]'
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceOfSuperclass]
 class A: pass
 class B(A): pass
