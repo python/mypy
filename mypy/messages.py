@@ -863,15 +863,14 @@ class MessageBuilder:
             name, target), context)
 
     def argument_incompatible_with_supertype(
-            self, arg_num: int, name: str, name_in_supertype: str,
-            supertype: str, context: Context) -> None:
+            self, arg_num: int, name: str, type_name: str,
+            name_in_supertype: str, supertype: str, context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         self.fail('Argument {} of "{}" incompatible with {}'
                   .format(arg_num, name, target), context)
 
         if name == "__eq__":
-            assert isinstance(context, FuncDef)
-            multiline_msg = self.comparison_method_example_msg(class_name=context.info.name())
+            multiline_msg = self.comparison_method_example_msg(class_name=type_name)
             self.note_multiline(multiline_msg, context)
 
     def comparison_method_example_msg(self, class_name: str) -> str:
