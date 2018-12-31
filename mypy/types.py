@@ -83,6 +83,10 @@ class TypeOfAny:
     from_another_any = 7  # type: Final
     # Does this Any come from an implementation limitation/bug?
     implementation_artifact = 8  # type: Final
+    # Does this Any come from some expression that is not a valid type?
+    # For example, if we have the type 'List[3]', we will represent that as 'List[Any]'
+    # where the inner Any has TypeOfAny.invalid_type.
+    invalid_type = 9  # type: Final
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
@@ -366,15 +370,76 @@ class TypeList(Type):
 _dummy = object()  # type: Final[Any]
 
 
+class RawLiteral:
+    """RawLiteral is a minimal class that represents any type that
+    could plausibly be something that lives inside of a literal.
+
+    This class is used ONLY as an implementation detail of AnyType: whenever
+    we encounter expression that is normally an invalid type (but plausibly
+    could be a part of a Literal[...]) type, we represent that expression as
+    an AnyType containing TypeOfAny.invalid_type and this class.
+
+    For example, suppose we have a type like 'Foo[3]'. When we parse this
+    during semantic analysis, we initially represent this type like so:
+
+        UnboundType(
+            name='Foo',
+            args=[
+                AnyType(
+                    TypeOfAny.invalid_type,
+                    raw_literal=RawLiteralHolder(3, 'builtins.int'),
+                ),
+            ]
+        )
+
+    If it turns out that 'Foo' is just a plain old Instance, the arg
+    remains an AnyType. But if it turns out that 'Foo' is an alias
+    for 'Literal', we intercept the Any and transform the entire
+    type into the following:
+
+        LiteralType(value=1, fallback=int_instance_here).
+
+    Note that this class does NOT represent a type or semantic type.
+    """
+    def __init__(self, value: LiteralValue, base_type_name: str) -> None:
+        self.value = value
+        self.base_type_name = base_type_name
+
+    def serialize(self) -> JsonDict:
+        return {
+            '.class': 'RawLiteral',
+            'value': self.value,
+            'base_type_name': self.base_type_name,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'RawLiteral':
+        assert data['.class'] == 'RawLiteralHolder'
+        return RawLiteral(
+            value=data['value'],
+            base_type_name=data['base_type_name'],
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.value, self.base_type_name))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, RawLiteral):
+            return self.base_type_name == other.base_type_name and self.value == other.value
+        else:
+            return NotImplemented
+
+
 class AnyType(Type):
     """The type 'Any'."""
 
-    __slots__ = ('type_of_any', 'source_any', 'missing_import_name')
+    __slots__ = ('type_of_any', 'source_any', 'missing_import_name', 'raw_literal')
 
     def __init__(self,
                  type_of_any: int,
                  source_any: Optional['AnyType'] = None,
                  missing_import_name: Optional[str] = None,
+                 raw_literal: Optional[RawLiteral] = None,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
@@ -390,6 +455,8 @@ class AnyType(Type):
         else:
             self.missing_import_name = source_any.missing_import_name
 
+        self.raw_literal = raw_literal
+
         # Only unimported type anys and anys from other anys should have an import name
         assert (missing_import_name is None or
                 type_of_any in (TypeOfAny.from_unimported_type, TypeOfAny.from_another_any))
@@ -397,6 +464,8 @@ class AnyType(Type):
         assert type_of_any != TypeOfAny.from_another_any or source_any is not None
         # We should not have chains of Anys.
         assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
+        # This 'Any' is an invalid type if and only if a raw_literal is provided.
+        assert (type_of_any == TypeOfAny.invalid_type) == (raw_literal is not None)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -414,6 +483,10 @@ class AnyType(Type):
                        missing_import_name=self.missing_import_name,
                        line=self.line, column=self.column)
 
+    @property
+    def from_invalid_type(self) -> bool:
+        return self.type_of_any == TypeOfAny.invalid_type
+
     def __hash__(self) -> int:
         return hash(AnyType)
 
@@ -421,17 +494,22 @@ class AnyType(Type):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType', 'type_of_any': self.type_of_any,
-                'source_any': self.source_any.serialize() if self.source_any is not None else None,
-                'missing_import_name': self.missing_import_name}
+        return {
+            '.class': 'AnyType', 'type_of_any': self.type_of_any,
+            'source_any': self.source_any.serialize() if self.source_any is not None else None,
+            'missing_import_name': self.missing_import_name,
+            'raw_literal': self.raw_literal.serialize() if self.raw_literal is not None else None,
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
         source = data['source_any']
+        raw_literal = data['raw_literal']
         return AnyType(data['type_of_any'],
                        AnyType.deserialize(source) if source is not None else None,
-                       data['missing_import_name'])
+                       data['missing_import_name'],
+                       RawLiteral.deserialize(raw_literal) if raw_literal is not None else None)
 
 
 class UninhabitedType(Type):
@@ -1299,58 +1377,6 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
-class RawLiteralType(Type):
-    """A synthetic type representing any type that could plausibly be something
-    that lives inside of a literal.
-
-    This synthetic type is only used at the beginning stages of semantic analysis
-    and should be completely removing during the process for mapping UnboundTypes to
-    actual types.
-
-    For example, `Foo[1]` is initially represented as the following:
-
-        UnboundType(
-            name='Foo',
-            args=[
-                RawLiteralType(value=1, base_type_name='builtins.int'),
-            ],
-        )
-
-    As we perform semantic analysis, this type will transform into one of two
-    possible forms.
-
-    If 'Foo' was an alias for 'Literal' all along, this type is transformed into:
-
-        LiteralType(value=1, fallback=int_instance_here)
-
-    Alternatively, if 'Foo' is an unrelated class, we report an error and instead
-    produce something like this:
-
-        Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.from_error))
-    """
-    def __init__(self, value: LiteralValue, base_type_name: str,
-                 line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
-        self.value = value
-        self.base_type_name = base_type_name
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_raw_literal_type(self)
-
-    def serialize(self) -> JsonDict:
-        assert False, "Synthetic types don't serialize"
-
-    def __hash__(self) -> int:
-        return hash((self.value, self.base_type_name))
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, RawLiteralType):
-            return self.base_type_name == other.base_type_name and self.value == other.value
-        else:
-            return NotImplemented
-
-
 class LiteralType(Type):
     """The type of a Literal instance. Literal[Value]
 
@@ -1871,9 +1897,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if t.fallback.type.fullname() != 'mypy_extensions._TypedDict':
                 prefix = repr(t.fallback.type.fullname()) + ', '
         return 'TypedDict({}{})'.format(prefix, s)
-
-    def visit_raw_literal_type(self, t: RawLiteralType) -> str:
-        return repr(t.value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
         return 'Literal[{}]'.format(t.value_repr())

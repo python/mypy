@@ -31,7 +31,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawLiteralType,
+    TypeOfAny, Instance, RawLiteral,
 )
 from mypy import defaults
 from mypy import messages
@@ -184,11 +184,21 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
             node.original_str_fallback = expr_fallback_name
             return node
         else:
-            return RawLiteralType(expr_string, expr_fallback_name, line, column)
+            return AnyType(
+                TypeOfAny.invalid_type,
+                raw_literal=RawLiteral(expr_string, expr_fallback_name),
+                line=line,
+                column=column,
+            )
     except (SyntaxError, ValueError):
         # Note: the parser will raise a `ValueError` instead of a SyntaxError if
         # the string happens to contain things like \x00.
-        return RawLiteralType(expr_string, expr_fallback_name, line, column)
+        return AnyType(
+            TypeOfAny.invalid_type,
+            raw_literal=RawLiteral(expr_string, expr_fallback_name),
+            line=line,
+            column=column,
+        )
 
 
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
@@ -1183,7 +1193,11 @@ class TypeConverter:
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
-            return RawLiteralType(n.value, 'builtins.bool', line=self.line)
+            return AnyType(
+                TypeOfAny.invalid_type,
+                raw_literal=RawLiteral(n.value, 'builtins.bool'),
+                line=self.line,
+            )
         else:
             return UnboundType(str(n.value), line=self.line)
 
@@ -1192,9 +1206,9 @@ class TypeConverter:
         # We support specifically Literal[-4] and nothing else.
         # For example, Literal[+4] or Literal[~6] is not supported.
         typ = self.visit(n.operand)
-        if isinstance(typ, RawLiteralType) and isinstance(n.op, USub):
-            if isinstance(typ.value, int):
-                typ.value *= -1
+        if isinstance(typ, AnyType) and typ.raw_literal is not None:
+            if isinstance(typ.raw_literal.value, int) and isinstance(n.op, USub):
+                typ.raw_literal.value *= -1
                 return typ
         self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
         return AnyType(TypeOfAny.from_error)
@@ -1204,11 +1218,19 @@ class TypeConverter:
         # Could be either float or int
         numeric_value = n.n
         if isinstance(numeric_value, int):
-            return RawLiteralType(numeric_value, 'builtins.int', line=self.line)
+            return AnyType(
+                TypeOfAny.invalid_type,
+                raw_literal=RawLiteral(numeric_value, 'builtins.int'),
+                line=self.line,
+            )
         elif isinstance(numeric_value, float):
             # Floats and other numbers are not valid parameters for RawLiteralType, so we just
             # pass in 'None' for now. We'll report the appropriate error at a later stage.
-            return RawLiteralType(None, 'builtins.float', line=self.line)
+            return AnyType(
+                TypeOfAny.invalid_type,
+                raw_literal=RawLiteral(None, 'builtins.float'),
+                line=self.line,
+            )
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType(TypeOfAny.from_error)
@@ -1230,7 +1252,12 @@ class TypeConverter:
     # Bytes(bytes s)
     def visit_Bytes(self, n: Bytes) -> Type:
         contents = bytes_to_human_readable_repr(n.s)
-        return RawLiteralType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+        return AnyType(
+            TypeOfAny.invalid_type,
+            raw_literal=RawLiteral(contents, 'builtins.bytes'),
+            line=self.line,
+            column=n.col_offset,
+        )
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:

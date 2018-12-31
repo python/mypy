@@ -267,7 +267,18 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 snapshot_types(typ.args))
 
     def visit_any(self, typ: AnyType) -> SnapshotItem:
-        return snapshot_simple_type(typ)
+        if typ.raw_literal:
+            return (
+                'Any',
+                typ.type_of_any,
+                typ.raw_literal.value,
+                typ.raw_literal.base_type_name,
+            )
+        else:
+            return (
+                'Any',
+                typ.type_of_any,
+            )
 
     def visit_none_type(self, typ: NoneTyp) -> SnapshotItem:
         return snapshot_simple_type(typ)
