@@ -44,7 +44,7 @@ RETURN_VALUE_EXPECTED = 'Return value expected'  # type: Final
 NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # type: Final
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
-RETURN_IN_GENERATOR = "'return' with value in async generator is not allowed"  # type: Final
+RETURN_IN_ASYNC_GENERATOR = "'return' with value in async generator is not allowed"  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator"' \
     ' or one of its supertypes'  # type: Final
@@ -112,7 +112,7 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
-    'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
+    'Implicit generic "Any". Use "{}" and specify generic parameters'  # type: Final
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
@@ -138,7 +138,7 @@ SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED = \
 MISSING_OR_INVALID_SELF_TYPE = \
     "Self argument missing for a non-static method (or an invalid type for self)"  # type: Final
 ERASED_SELF_TYPE_NOT_SUPERTYPE = \
-    "The erased type of self '{}' is not a supertype of its class '{}'"  # type: Final
+    'The erased type of self "{}" is not a supertype of its class "{}"'  # type: Final
 INVALID_SELF_TYPE_OR_EXTRA_ARG = \
     "Invalid type for self, or extra argument type in function annotation"  # type: Final
 

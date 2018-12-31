@@ -2654,7 +2654,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                allow_none_return=allow_none_func_call)
 
                 if defn.is_async_generator:
-                    self.fail(messages.RETURN_IN_GENERATOR, s)
+                    self.fail(messages.RETURN_IN_ASYNC_GENERATOR, s)
                     return
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
