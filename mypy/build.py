@@ -802,6 +802,9 @@ def _load_json_file(file: str, manager: BuildManager,
 
 def _cache_dir_prefix(manager: BuildManager) -> str:
     """Get current cache directory (or file if id is given)."""
+    if manager.options.bazel:
+        # This is needed so the cache map works.
+        return os.curdir
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
