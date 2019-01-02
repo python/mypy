@@ -19,6 +19,7 @@ class str:
 class bytes: pass
 
 class tuple(Generic[T]): pass
+class slice: pass
 class function: pass
 
 class ellipsis: pass

@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny
+    FunctionLike, TypeOfAny, LiteralType,
 )
 import mypy.applytype
 import mypy.constraints
@@ -15,7 +15,7 @@ from mypy.erasetype import erase_type
 from mypy import messages, sametypes
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -24,11 +24,15 @@ from mypy.typestate import TypeState, SubtypeKind
 
 from mypy import experiments
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 # Flags for detected protocol members
-IS_SETTABLE = 1
-IS_CLASSVAR = 2
-IS_CLASS_OR_STATIC = 3
+IS_SETTABLE = 1  # type: Final
+IS_CLASSVAR = 2  # type: Final
+IS_CLASS_OR_STATIC = 3  # type: Final
 
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
@@ -322,6 +326,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         else:
             return False
+
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        if isinstance(self.right, LiteralType):
+            return left == self.right
+        else:
+            return self._is_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
@@ -774,10 +784,10 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if right.is_ellipsis_args:
         return True
 
-    left_star = left.var_arg
-    left_star2 = left.kw_arg
-    right_star = right.var_arg
-    right_star2 = right.kw_arg
+    left_star = left.var_arg()
+    left_star2 = left.kw_arg()
+    right_star = right.var_arg()
+    right_star2 = right.kw_arg()
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1163,6 +1173,12 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     return False
             return True
         return self._is_proper_subtype(left.fallback, right)
+
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        if isinstance(self.right, LiteralType):
+            return left == self.right
+        else:
+            return self._is_proper_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         # TODO: What's the right thing to do here?

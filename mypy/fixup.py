@@ -9,10 +9,11 @@ from mypy.nodes import (
 )
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
-    TypeVarType, UnboundType, UnionType, TypeVisitor,
+    TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
     TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
+from mypy.lookup import lookup_fully_qualified
 
 
 # N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
@@ -206,6 +207,9 @@ class TypeFixer(TypeVisitor[None]):
         if tdt.fallback is not None:
             tdt.fallback.accept(self)
 
+    def visit_literal_type(self, lt: LiteralType) -> None:
+        lt.fallback.accept(self)
+
     def visit_type_var(self, tvt: TypeVarType) -> None:
         if tvt.values:
             for vt in tvt.values:
@@ -236,7 +240,10 @@ def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
         return node
     else:
         # Looks like a missing TypeInfo in quick mode, put something there
-        assert quick_and_dirty, "Should never get here in normal mode"
+        assert quick_and_dirty, "Should never get here in normal mode," \
+                                " got {}:{} instead of TypeInfo".format(type(node).__name__,
+                                                                        node.fullname() if node
+                                                                        else '')
         return stale_info(modules)
 
 
@@ -251,40 +258,7 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str,
 
 def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
                             quick_and_dirty: bool) -> Optional[SymbolTableNode]:
-    head = name
-    rest = []
-    while True:
-        if '.' not in head:
-            if not quick_and_dirty:
-                assert '.' in head, "Cannot find %s" % (name,)
-            return None
-        head, tail = head.rsplit('.', 1)
-        rest.append(tail)
-        mod = modules.get(head)
-        if mod is not None:
-            break
-    names = mod.names
-    while True:
-        if not rest:
-            if not quick_and_dirty:
-                assert rest, "Cannot find %s" % (name,)
-            return None
-        key = rest.pop()
-        if key not in names:
-            if not quick_and_dirty:
-                assert key in names, "Cannot find %s for %s" % (key, name)
-            return None
-        stnode = names[key]
-        if not rest:
-            return stnode
-        node = stnode.node
-        # In fine-grained mode, could be a cross-reference to a deleted module
-        # or a Var made up for a missing module.
-        if not isinstance(node, TypeInfo):
-            if not quick_and_dirty:
-                assert node, "Cannot find %s" % (name,)
-            return None
-        names = node.names
+    return lookup_fully_qualified(name, modules, raise_on_missing=not quick_and_dirty)
 
 
 def stale_info(modules: Dict[str, MypyFile]) -> TypeInfo:

@@ -20,7 +20,7 @@ class TypeFixture:
     The members are initialized to contain various type-related values.
     """
 
-    def __init__(self, variance: int=COVARIANT) -> None:
+    def __init__(self, variance: int = COVARIANT) -> None:
         # The 'object' class
         self.oi = self.make_type_info('builtins.object')               # class object
         self.o = Instance(self.oi, [])                        # object
@@ -56,7 +56,10 @@ class TypeFixture:
         self.f3i = self.make_type_info('F3', is_abstract=True, mro=[self.fi])
 
         # Class TypeInfos
-        self.std_tuplei = self.make_type_info('builtins.tuple')        # class tuple
+        self.std_tuplei = self.make_type_info('builtins.tuple',
+                                              mro=[self.oi],
+                                              typevars=['T'],
+                                              variances=[COVARIANT])   # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
         self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
@@ -99,7 +102,7 @@ class TypeFixture:
                                              variances=[variance])
 
         # Instance types
-        self.std_tuple = Instance(self.std_tuplei, [])        # tuple
+        self.std_tuple = Instance(self.std_tuplei, [self.anyt])        # tuple
         self.type_type = Instance(self.type_typei, [])        # type
         self.function = Instance(self.functioni, [])  # function TODO
         self.a = Instance(self.ai, [])          # A

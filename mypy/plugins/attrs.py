@@ -8,33 +8,39 @@ from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
-    is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
+    is_class_var, TempNode, Decorator, MemberExpr, Expression,
+    SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED
 )
 from mypy.plugins.common import (
-    _get_argument, _get_bool_argument, _get_decorator_bool_argument
+    _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
-    Overloaded, Instance, UnionType, FunctionLike
+    Overloaded, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
+from mypy.server.trigger import make_wildcard_trigger
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}
+}  # type: Final
 attr_dataclass_makers = {
     'attr.dataclass',
-}
+}  # type: Final
 attr_attrib_makers = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
-}
+}  # type: Final
 
 
 class Converter:
@@ -51,12 +57,13 @@ class Attribute:
     """The value of an attr.ib() call."""
 
     def __init__(self, name: str, info: TypeInfo,
-                 has_default: bool, init: bool, converter: Converter,
+                 has_default: bool, init: bool, kw_only: bool, converter: Converter,
                  context: Context) -> None:
         self.name = name
         self.info = info
         self.has_default = has_default
         self.init = init
+        self.kw_only = kw_only
         self.converter = converter
         self.context = context
 
@@ -127,10 +134,15 @@ class Attribute:
             # Convert type not set to Any.
             init_type = AnyType(TypeOfAny.unannotated)
 
+        if self.kw_only:
+            arg_kind = ARG_NAMED_OPT if self.has_default else ARG_NAMED
+        else:
+            arg_kind = ARG_OPT if self.has_default else ARG_POS
+
         # Attrs removes leading underscores when creating the __init__ arguments.
         return Argument(Var(self.name.lstrip("_"), init_type), init_type,
                         None,
-                        ARG_OPT if self.has_default else ARG_POS)
+                        arg_kind)
 
     def serialize(self) -> JsonDict:
         """Serialize this object so it can be saved and restored."""
@@ -138,6 +150,7 @@ class Attribute:
             'name': self.name,
             'has_default': self.has_default,
             'init': self.init,
+            'kw_only': self.kw_only,
             'converter_name': self.converter.name,
             'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
             'context_line': self.context.line,
@@ -152,6 +165,7 @@ class Attribute:
             info,
             data['has_default'],
             data['init'],
+            data['kw_only'],
             Converter(data['converter_name'], data['converter_is_attr_converters_optional']),
             Context(line=data['context_line'], column=data['context_column'])
         )
@@ -176,6 +190,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     frozen = _get_frozen(ctx)
     cmp = _get_decorator_bool_argument(ctx, 'cmp', True)
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
+    kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
 
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
@@ -185,8 +200,11 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             # Note: This will not catch subclassing old-style classes.
             ctx.api.fail("attrs only works with new-style classes", info.defn)
             return
+        if kw_only:
+            ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
+            return
 
-    attributes = _analyze_class(ctx, auto_attribs)
+    attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -194,7 +212,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         'frozen': frozen,
     }
 
-    adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
+    adder = MethodAdder(ctx)
     if init:
         _add_init(ctx, attributes, adder)
     if cmp:
@@ -214,13 +232,19 @@ def _get_frozen(ctx: 'mypy.plugin.ClassDefContext') -> bool:
     return False
 
 
-def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> List[Attribute]:
-    """Analyze the class body of an attr maker, its parents, and return the Attributes found."""
+def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
+                   auto_attribs: bool,
+                   kw_only: bool) -> List[Attribute]:
+    """Analyze the class body of an attr maker, its parents, and return the Attributes found.
+
+    auto_attribs=True means we'll generate attributes from type annotations also.
+    kw_only=True means that all attributes created here will be keyword only args in __init__.
+    """
     own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
     # Walk the body looking for assignments and decorators.
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
-            for attr in _attributes_from_assignment(ctx, stmt, auto_attribs):
+            for attr in _attributes_from_assignment(ctx, stmt, auto_attribs, kw_only):
                 # When attrs are defined twice in the same body we want to use the 2nd definition
                 # in the 2nd location. So remove it from the OrderedDict.
                 # Unless it's auto_attribs in which case we want the 2nd definition in the
@@ -244,6 +268,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
     super_attrs = []
     for super_info in ctx.cls.info.mro[1:-1]:
         if 'attrs' in super_info.metadata:
+            # Each class depends on the set of attributes in its attrs ancestors.
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(super_info.fullname()))
+
             for data in super_info.metadata['attrs']['attributes']:
                 # Only add an attribute if it hasn't been defined before.  This
                 # allows for overwriting attribute definitions by subclassing.
@@ -256,19 +283,34 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
+    last_kw_only = False
+
     for attribute in attributes:
-        if attribute.init:
-            if not attribute.has_default and last_default:
-                ctx.api.fail(
-                    "Non-default attributes not allowed after default attributes.",
-                    attribute.context)
-            last_default |= attribute.has_default
+        if not attribute.init:
+            continue
+
+        if attribute.kw_only:
+            # Keyword-only attributes don't care whether they are default or not.
+            last_kw_only = True
+            continue
+
+        if not attribute.has_default and last_default:
+            ctx.api.fail(
+                "Non-default attributes not allowed after default attributes.",
+                attribute.context)
+        if last_kw_only:
+            ctx.api.fail(
+                "Non keyword-only attributes are not allowed after a keyword-only attribute.",
+                attribute.context
+            )
+        last_default |= attribute.has_default
 
     return attributes
 
 
 def _attributes_from_assignment(ctx: 'mypy.plugin.ClassDefContext',
-                                stmt: AssignmentStmt, auto_attribs: bool) -> Iterable[Attribute]:
+                                stmt: AssignmentStmt, auto_attribs: bool,
+                                kw_only: bool) -> Iterable[Attribute]:
     """Return Attribute objects that are created by this assignment.
 
     The assignments can look like this:
@@ -292,11 +334,11 @@ def _attributes_from_assignment(ctx: 'mypy.plugin.ClassDefContext',
             if (isinstance(rvalue, CallExpr)
                     and isinstance(rvalue.callee, RefExpr)
                     and rvalue.callee.fullname in attr_attrib_makers):
-                attr = _attribute_from_attrib_maker(ctx, auto_attribs, lhs, rvalue, stmt)
+                attr = _attribute_from_attrib_maker(ctx, auto_attribs, kw_only, lhs, rvalue, stmt)
                 if attr:
                     yield attr
             elif auto_attribs and stmt.type and stmt.new_syntax and not is_class_var(lhs):
-                yield _attribute_from_auto_attrib(ctx, lhs, rvalue, stmt)
+                yield _attribute_from_auto_attrib(ctx, kw_only, lhs, rvalue, stmt)
 
 
 def _cleanup_decorator(stmt: Decorator, attr_map: Dict[str, Attribute]) -> None:
@@ -329,17 +371,19 @@ def _cleanup_decorator(stmt: Decorator, attr_map: Dict[str, Attribute]) -> None:
 
 
 def _attribute_from_auto_attrib(ctx: 'mypy.plugin.ClassDefContext',
+                                kw_only: bool,
                                 lhs: NameExpr,
                                 rvalue: Expression,
                                 stmt: AssignmentStmt) -> Attribute:
     """Return an Attribute for a new type assignment."""
     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
     has_rhs = not isinstance(rvalue, TempNode)
-    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, Converter(), stmt)
+    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, kw_only, Converter(), stmt)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
                                  auto_attribs: bool,
+                                 kw_only: bool,
                                  lhs: NameExpr,
                                  rvalue: CallExpr,
                                  stmt: AssignmentStmt) -> Optional[Attribute]:
@@ -359,6 +403,13 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
 
     # Read all the arguments from the call.
     init = _get_bool_argument(ctx, rvalue, 'init', True)
+    # Note: If the class decorator says kw_only=True the attribute is ignored.
+    # See https://github.com/python-attrs/attrs/issues/481 for explanation.
+    kw_only |= _get_bool_argument(ctx, rvalue, 'kw_only', False)
+    if kw_only and ctx.api.options.python_version[0] < 3:
+        ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, stmt)
+        return None
+
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, 'default'))
     attr_has_factory = bool(_get_argument(rvalue, 'factory'))
@@ -392,7 +443,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
-    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_info, stmt)
+    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt)
 
 
 def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
@@ -491,39 +542,19 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
         [attribute.argument(ctx) for attribute in attributes if attribute.init],
         NoneTyp()
     )
-    for stmt in ctx.cls.defs.body:
-        # The type of classmethods will be wrong because it's based on the parent's __init__.
-        # Set it correctly.
-        if isinstance(stmt, Decorator) and stmt.func.is_class:
-            func_type = stmt.func.type
-            if isinstance(func_type, CallableType):
-                func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
-        if isinstance(stmt, OverloadedFuncDef) and stmt.is_class:
-            func_type = stmt.type
-            if isinstance(func_type, Overloaded):
-                class_type = ctx.api.class_type(ctx.cls.info)
-                for item in func_type.items():
-                    item.arg_types[0] = class_type
-                if stmt.impl is not None:
-                    assert isinstance(stmt.impl, Decorator)
-                    if isinstance(stmt.impl.func.type, CallableType):
-                        stmt.impl.func.type.arg_types[0] = class_type
 
 
 class MethodAdder:
     """Helper to add methods to a TypeInfo.
 
-    info: The TypeInfo on which we will add methods.
-    function_type: The type of __builtins__.function that will be used as the
-                   fallback for all methods added.
+    ctx: The ClassDefCtx we are using on which we will add methods.
     """
 
     # TODO: Combine this with the code build_namedtuple_typeinfo to support both.
 
-    def __init__(self, info: TypeInfo, function_type: Instance) -> None:
-        self.info = info
-        self.self_type = fill_typevars(info)
-        self.function_type = function_type
+    def __init__(self, ctx: 'mypy.plugin.ClassDefContext') -> None:
+        self.ctx = ctx
+        self.self_type = fill_typevars(ctx.cls.info)
 
     def add_method(self,
                    method_name: str, args: List[Argument], ret_type: Type,
@@ -534,23 +565,5 @@ class MethodAdder:
         self_type: The type to use for the self argument or None to use the inferred self type.
         tvd: If the method is generic these should be the type variables.
         """
-        from mypy.semanal import set_callable_name
         self_type = self_type if self_type is not None else self.self_type
-        args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
-        arg_types = [arg.type_annotation for arg in args]
-        arg_names = [arg.variable.name() for arg in args]
-        arg_kinds = [arg.kind for arg in args]
-        assert None not in arg_types
-        signature = CallableType(cast(List[Type], arg_types), arg_kinds, arg_names,
-                                 ret_type, self.function_type)
-        if tvd:
-            signature.variables = [tvd]
-        func = FuncDef(method_name, args, Block([PassStmt()]))
-        func.info = self.info
-        func.type = set_callable_name(signature, func)
-        func._fullname = self.info.fullname() + '.' + method_name
-        func.line = self.info.line
-        self.info.names[method_name] = SymbolTableNode(MDEF, func)
-        # Add the created methods to the body so that they can get further semantic analysis.
-        # e.g. Forward Reference Resolution.
-        self.info.defn.defs.body.append(func)
+        add_method(self.ctx, method_name, args, ret_type, self_type, tvd)

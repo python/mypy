@@ -18,7 +18,7 @@ import re
 from typing import List, cast
 
 from mypy import build
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
@@ -29,6 +29,7 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
 )
 from mypy.server.mergecheck import check_consistency
+from mypy.dmypy_util import DEFAULT_STATUS_FILE
 from mypy.dmypy_server import Server
 from mypy.main import parse_config_file
 from mypy.find_sources import create_source_list
@@ -55,14 +56,14 @@ class FineGrainedSuite(DataSuite):
     # as skipped, not just elided.
     def should_skip(self, testcase: DataDrivenTestCase) -> bool:
         if self.use_cache:
-            if testcase.name.endswith("-skip-cache"):
+            if testcase.only_when == '-only_when_nocache':
                 return True
             # TODO: In caching mode we currently don't well support
             # starting from cached states with errors in them.
             if testcase.output and testcase.output[0] != '==':
                 return True
         else:
-            if testcase.name.endswith("-skip-nocache"):
+            if testcase.only_when == '-only_when_cache':
                 return True
 
         return False
@@ -74,12 +75,12 @@ class FineGrainedSuite(DataSuite):
 
         main_src = '\n'.join(testcase.input)
         main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
+        with open(main_path, 'w', encoding='utf8') as f:
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
         build_options = self.get_options(main_src, testcase, build_cache=True)
-        server = Server(options)
+        server = Server(options, DEFAULT_STATUS_FILE)
 
         num_regular_incremental_steps = self.get_build_steps(main_src)
         step = 1

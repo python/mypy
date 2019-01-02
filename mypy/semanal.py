@@ -54,21 +54,19 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
-from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
-from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType,
-    TypeTranslator, TypeOfAny
+    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -80,7 +78,10 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
-from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import (
+    Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
+    DynamicClassDefContext
+)
 from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
@@ -88,32 +89,24 @@ from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NA
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
+from mypy.reachability import (
+    infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
+    MYPY_TRUE, MYPY_FALSE
+)
 from mypy.typestate import TypeState
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
-
-# Inferred truth value of an expression.
-ALWAYS_TRUE = 1
-MYPY_TRUE = 2  # True in mypy, False at runtime
-ALWAYS_FALSE = 3
-MYPY_FALSE = 4  # False in mypy, True at runtime
-TRUTH_VALUE_UNKNOWN = 5
-
-inverted_truth_mapping = {
-    ALWAYS_TRUE: ALWAYS_FALSE,
-    ALWAYS_FALSE: ALWAYS_TRUE,
-    TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
-    MYPY_TRUE: MYPY_FALSE,
-    MYPY_FALSE: MYPY_TRUE,
-}
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
     'typing.Function': 'typing.Callable',
     'typing.typevar': 'typing.TypeVar',
-}
+}  # type: Final
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -122,14 +115,14 @@ obsolete_name_mapping = {
 TYPE_PROMOTIONS = {
     'builtins.int': 'builtins.float',
     'builtins.float': 'builtins.complex',
-}
+}  # type: Final
 
 # Hard coded type promotions for Python 3.
 #
 # Note that the bytearray -> bytes promotion is a little unsafe
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
-TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()  # type: Final
 TYPE_PROMOTIONS_PYTHON3.update({
     'builtins.bytearray': 'builtins.bytes',
 })
@@ -139,7 +132,7 @@ TYPE_PROMOTIONS_PYTHON3.update({
 # These promotions are unsafe, but we are doing them anyway
 # for convenience and also for Python 3 compatibility
 # (bytearray -> str).
-TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()  # type: Final
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'builtins.unicode',
     'builtins.bytearray': 'builtins.str',
@@ -150,9 +143,9 @@ TYPE_PROMOTIONS_PYTHON2.update({
 # nested functions. In the first phase we add the function to the symbol table
 # but don't process body. In the second phase we process function body. This
 # way we can have mutually recursive nested functions.
-FUNCTION_BOTH_PHASES = 0  # Everything in one go
-FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
-FUNCTION_SECOND_PHASE = 2  # Only analyze body
+FUNCTION_BOTH_PHASES = 0  # type: Final  # Everything in one go
+FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # type: Final  # Add to symbol table but postpone body
+FUNCTION_SECOND_PHASE = 2  # type: Final  # Only analyze body
 
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
@@ -167,7 +160,7 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.isinstance': 'isinstancelist.pyi',
     'builtins.property': 'property.pyi',
     'builtins.classmethod': 'classmethod.pyi',
-}
+}  # type: Final
 
 
 class SemanticAnalyzerPass2(NodeVisitor[None],
@@ -259,6 +252,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def is_typeshed_stub_file(self) -> bool:
         return self._is_typeshed_stub_file
 
+    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Add dependency from trigger to a target.
+
+        If the target is not given explicitly, use the current target.
+        """
+        if target is None:
+            target = self.scope.current_target()
+        self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
+
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
@@ -314,7 +316,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             del self.cur_mod_node
             del self.globals
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+    def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
@@ -404,6 +406,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             add_symbol = False
                     if add_symbol:
                         self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
+                    assert isinstance(defn.type, CallableType)
+                    if isinstance(defn.type.ret_type, AnyType):
+                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
@@ -476,10 +482,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(functype, CallableType):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
+                    leading_type = fill_typevars(info)  # type: Type
                     if func.is_class or func.name() in ('__new__', '__init_subclass__'):
-                        leading_type = self.class_type(info)
-                    else:
-                        leading_type = fill_typevars(info)
+                        leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
     def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
@@ -523,100 +528,142 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # with a @property with a setter or a deleter, and for a classic
         # @overload.
 
-        # Decide whether to analyze this as a property or an overload.  If an
-        # overload, and we're outside a stub, find the impl and set it.  Remove
-        # the impl from the item list, it's special.
-        types = []  # type: List[CallableType]
-        non_overload_indexes = []
+        defn._fullname = self.qualified_name(defn.name())
 
-        # See if the first item is a property (and not an overload)
         first_item = defn.items[0]
         first_item.is_overload = True
         first_item.accept(self)
 
-        defn._fullname = self.qualified_name(defn.name())
-
         if isinstance(first_item, Decorator) and first_item.func.is_property:
+            # This is a property.
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)
             typ = function_type(first_item.func, self.builtin_type('builtins.function'))
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
-            for i, item in enumerate(defn.items):
-                if i != 0:
-                    # The first item was already visited
-                    item.is_overload = True
-                    item.accept(self)
-                # TODO: support decorated overloaded functions properly
-                if isinstance(item, Decorator):
-                    callable = function_type(item.func, self.builtin_type('builtins.function'))
-                    assert isinstance(callable, CallableType)
-                    if not any(refers_to_fullname(dec, 'typing.overload')
-                               for dec in item.decorators):
-                        if i == len(defn.items) - 1 and not self.is_stub_file:
-                            # Last item outside a stub is impl
-                            defn.impl = item
-                        else:
-                            # Oops it wasn't an overload after all. A clear error
-                            # will vary based on where in the list it is, record
-                            # that.
-                            non_overload_indexes.append(i)
-                    else:
-                        item.func.is_overload = True
-                        types.append(callable)
-                elif isinstance(item, FuncDef):
-                    if i == len(defn.items) - 1 and not self.is_stub_file:
-                        defn.impl = item
-                    else:
-                        non_overload_indexes.append(i)
+            # This is an a normal overload. Find the item signatures, the
+            # implementation (if outside a stub), and any missing @overload
+            # decorators.
+            types, impl, non_overload_indexes = self.find_overload_sigs_and_impl(defn)
+            defn.impl = impl
             if non_overload_indexes:
-                if types:
-                    # Some of them were overloads, but not all.
-                    for idx in non_overload_indexes:
-                        if self.is_stub_file:
-                            self.fail("An implementation for an overloaded function "
-                                      "is not allowed in a stub file", defn.items[idx])
-                        else:
-                            self.fail("The implementation for an overloaded function "
-                                      "must come last", defn.items[idx])
-                else:
-                    for idx in non_overload_indexes[1:]:
-                        self.name_already_defined(defn.name(), defn.items[idx], first_item)
-                    if defn.impl:
-                        self.name_already_defined(defn.name(), defn.impl, first_item)
-                # Remove the non-overloads
-                for idx in reversed(non_overload_indexes):
-                    del defn.items[idx]
-            # If we found an implementation, remove it from the overloads to
-            # consider.
-            if defn.impl is not None:
-                assert defn.impl is defn.items[-1]
+                self.handle_missing_overload_decorators(defn, non_overload_indexes,
+                                                        some_overload_decorators=len(types) > 0)
+            # If we found an implementation, remove it from the overload item list,
+            # as it's special.
+            if impl is not None:
+                assert impl is defn.items[-1]
                 defn.items = defn.items[:-1]
-            elif not self.is_stub_file and not non_overload_indexes:
-                if not (self.type and not self.is_func_scope() and self.type.is_protocol):
-                    self.fail(
-                        "An overloaded function outside a stub file must have an implementation",
-                        defn)
-                else:
-                    for item in defn.items:
-                        if isinstance(item, Decorator):
-                            item.func.is_abstract = True
-                        else:
-                            item.is_abstract = True
+            elif not non_overload_indexes:
+                self.handle_missing_overload_implementation(defn)
 
         if types:
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
         if not defn.items:
-            # It was not any kind of overload def after all. We've visited the
-            # redefinitions already.
+            # It was not a real overload after all, but function redefinition. We've
+            # visited the redefinition(s) already.
             return
 
-        # Check final status, if the implementation is marked
-        # as @final (or the first overload in stubs), then the whole overloaded
-        # definition if @final.
+        # We know this is an overload def. Infer properties and perform some checks.
+        self.process_final_in_overload(defn)
+        self.process_static_or_class_method_in_overload(defn)
+
+        if self.type and not self.is_func_scope():
+            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+            defn.info = self.type
+        elif self.is_func_scope():
+            self.add_local(defn, defn)
+
+    def find_overload_sigs_and_impl(
+            self,
+            defn: OverloadedFuncDef) -> Tuple[List[CallableType],
+                                              Optional[OverloadPart],
+                                              List[int]]:
+        """Find overload signatures, the implementation, and items with missing @overload.
+
+        Assume that the first was already analyzed. As a side effect:
+        analyzes remaining items and updates 'is_overload' flags.
+        """
+        types = []
+        non_overload_indexes = []
+        impl = None  # type: Optional[OverloadPart]
+        for i, item in enumerate(defn.items):
+            if i != 0:
+                # Assume that the first item was already visited
+                item.is_overload = True
+                item.accept(self)
+            # TODO: support decorated overloaded functions properly
+            if isinstance(item, Decorator):
+                callable = function_type(item.func, self.builtin_type('builtins.function'))
+                assert isinstance(callable, CallableType)
+                if not any(refers_to_fullname(dec, 'typing.overload')
+                           for dec in item.decorators):
+                    if i == len(defn.items) - 1 and not self.is_stub_file:
+                        # Last item outside a stub is impl
+                        impl = item
+                    else:
+                        # Oops it wasn't an overload after all. A clear error
+                        # will vary based on where in the list it is, record
+                        # that.
+                        non_overload_indexes.append(i)
+                else:
+                    item.func.is_overload = True
+                    types.append(callable)
+            elif isinstance(item, FuncDef):
+                if i == len(defn.items) - 1 and not self.is_stub_file:
+                    impl = item
+                else:
+                    non_overload_indexes.append(i)
+        return types, impl, non_overload_indexes
+
+    def handle_missing_overload_decorators(self,
+                                           defn: OverloadedFuncDef,
+                                           non_overload_indexes: List[int],
+                                           some_overload_decorators: bool) -> None:
+        """Generate errors for overload items without @overload.
+
+        Side effect: remote non-overload items.
+        """
+        if some_overload_decorators:
+            # Some of them were overloads, but not all.
+            for idx in non_overload_indexes:
+                if self.is_stub_file:
+                    self.fail("An implementation for an overloaded function "
+                              "is not allowed in a stub file", defn.items[idx])
+                else:
+                    self.fail("The implementation for an overloaded function "
+                              "must come last", defn.items[idx])
+        else:
+            for idx in non_overload_indexes[1:]:
+                self.name_already_defined(defn.name(), defn.items[idx], defn.items[0])
+            if defn.impl:
+                self.name_already_defined(defn.name(), defn.impl, defn.items[0])
+        # Remove the non-overloads
+        for idx in reversed(non_overload_indexes):
+            del defn.items[idx]
+
+    def handle_missing_overload_implementation(self, defn: OverloadedFuncDef) -> None:
+        """Generate error about missing overload implementation (only if needed)."""
+        if not self.is_stub_file:
+            if self.type and self.type.is_protocol and not self.is_func_scope():
+                # An overloded protocol method doesn't need an implementation.
+                for item in defn.items:
+                    if isinstance(item, Decorator):
+                        item.func.is_abstract = True
+                    else:
+                        item.is_abstract = True
+            else:
+                self.fail(
+                    "An overloaded function outside a stub file must have an implementation",
+                    defn)
+
+    def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
+        """Detect the @final status of an overloaded function (and perform checks)."""
+        # If the implementation is marked as @final (or the first overload in
+        # stubs), then the whole overloaded definition if @final.
         if any(item.is_final for item in defn.items):
             # We anyway mark it as final because it was probably the intention.
             defn.is_final = True
@@ -632,7 +679,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if defn.impl is not None and defn.impl.is_final:
             defn.is_final = True
 
-        # We know this is an overload def -- let's handle classmethod and staticmethod
+    def process_static_or_class_method_in_overload(self, defn: OverloadedFuncDef) -> None:
         class_status = []
         static_status = []
         for item in defn.items:
@@ -662,12 +709,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             defn.is_class = class_status[0]
             defn.is_static = static_status[0]
-
-        if self.type and not self.is_func_scope():
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            defn.info = self.type
-        elif self.is_func_scope():
-            self.add_local(defn, defn)
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
@@ -772,8 +813,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # that were already set in build_namedtuple_typeinfo.
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
-                # This is needed for the cls argument to classmethods to get bound correctly.
-                named_tuple_info.names['__init__'] = nt_names['__init__']
 
                 self.enter_class(named_tuple_info)
 
@@ -801,8 +840,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 self.setup_class_def_analysis(defn)
                 self.analyze_base_classes(defn)
-                self.analyze_metaclass(defn)
                 defn.info.is_protocol = is_protocol
+                self.analyze_metaclass(defn)
                 defn.info.runtime_protocol = False
                 for decorator in defn.decorators:
                     self.analyze_class_decorator(defn, decorator)
@@ -1323,6 +1362,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert isinstance(inst, Instance)
             defn.info.declared_metaclass = inst
         defn.info.metaclass_type = defn.info.calculate_metaclass_type()
+        if any(info.is_protocol for info in defn.info.mro):
+            if (not defn.info.metaclass_type or
+                    defn.info.metaclass_type.type.fullname() == 'builtins.type'):
+                # All protocols and their subclasses have ABCMeta metaclass by default.
+                # TODO: add a metaclass conflict check if there is another metaclass.
+                abc_meta = self.named_type_or_none('abc.ABCMeta', [])
+                if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
+                    defn.info.metaclass_type = abc_meta
         if defn.info.metaclass_type is None:
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
@@ -1340,15 +1387,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def str_type(self) -> Instance:
         return self.named_type('__builtins__.str')
 
-    def class_type(self, info: TypeInfo) -> Type:
-        # Construct a function type whose fallback is cls.
-        from mypy import checkmember  # To avoid import cycle.
-        leading_type = checkmember.type_object_type(info, self.builtin_type)
-        if isinstance(leading_type, Overloaded):
-            # Overloaded __init__ is too complex to handle.  Plus it's stubs only.
-            return AnyType(TypeOfAny.special_form)
-        else:
-            return leading_type
+    def class_type(self, self_type: Type) -> Type:
+        return TypeType.make_normalized(self_type)
 
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, Context())
@@ -1723,6 +1763,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+        self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
@@ -1737,6 +1778,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
+        if len(s.lvalues) > 1:
+            return
+        lval = s.lvalues[0]
+        if not isinstance(lval, NameExpr) or not isinstance(s.rvalue, CallExpr):
+            return
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return
+        fname = call.callee.fullname
+        if fname:
+            hook = self.plugin.get_dynamic_class_hook(fname)
+            if hook:
+                hook(DynamicClassDefContext(call, lval.name, self))
 
     def unwrap_final(self, s: AssignmentStmt) -> None:
         """Strip Final[...] if present in an assignment.
@@ -1928,6 +1984,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue)
         if not res:
             return
+        if (isinstance(res, Instance) and res.type.name() == lvalue.name and
+                res.type.module_name == self.cur_mod_id):
+            # Aliases like C = C is a no-op.
+            return
         s.is_alias_def = True
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
@@ -1979,89 +2039,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 overrides an existing name.
         """
         if isinstance(lval, NameExpr):
-            # Top-level definitions within some statements (at least while) are
-            # not handled in the first pass, so they have to be added now.
-            nested_global = (not self.is_func_scope() and
-                             self.block_depth[-1] > 0 and
-                             not self.type)
-            if (add_global or nested_global) and lval.name not in self.globals:
-                # Define new global name.
-                v = Var(lval.name)
-                v.set_line(lval)
-                v._fullname = self.qualified_name(lval.name)
-                v.is_ready = False  # Type not inferred yet
-                lval.node = v
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                lval.kind = GDEF
-                lval.fullname = v._fullname
-                self.globals[lval.name] = SymbolTableNode(GDEF, v)
-            elif isinstance(lval.node, Var) and lval.is_new_def:
-                if lval.kind == GDEF:
-                    # Since the is_new_def flag is set, this must have been analyzed
-                    # already in the first pass and added to the symbol table.
-                    # An exception is typing module with incomplete test fixtures.
-                    assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
-            elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
-                  lval.name not in self.global_decls[-1] and
-                  lval.name not in self.nonlocal_decls[-1]):
-                # Define new local name.
-                v = Var(lval.name)
-                v.set_line(lval)
-                lval.node = v
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                lval.kind = LDEF
-                lval.fullname = lval.name
-                self.add_local(v, lval)
-                if lval.name == '_':
-                    # Special case for assignment to local named '_': always infer 'Any'.
-                    typ = AnyType(TypeOfAny.special_form)
-                    self.store_declared_types(lval, typ)
-            elif not self.is_func_scope() and (self.type and
-                                               lval.name not in self.type.names):
-                # Define a new attribute within class body.
-                v = Var(lval.name)
-                v.info = self.type
-                v.is_initialized_in_class = True
-                v.is_inferred = not explicit_type
-                v.set_line(lval)
-                v._fullname = self.qualified_name(lval.name)
-                lval.node = v
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                lval.kind = MDEF
-                lval.fullname = lval.name
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
-            else:
-                # An existing name, try to find the original definition.
-                global_def = self.globals.get(lval.name)
-                if self.locals:
-                    locals_last = self.locals[-1]
-                    if locals_last:
-                        local_def = locals_last.get(lval.name)
-                    else:
-                        local_def = None
-                else:
-                    local_def = None
-                type_def = self.type.names.get(lval.name) if self.type else None
-
-                original_def = global_def or local_def or type_def
-
-                # Redefining an existing name with final is always an error.
-                if final_cb is not None:
-                    # We avoid extra errors if the original definition is also final
-                    # by keeping the final status of this assignment.
-                    keep_final = bool(original_def and isinstance(original_def.node, Var) and
-                                      original_def.node.is_final)
-                    final_cb(keep_final)
-                if explicit_type:
-                    # Don't re-bind types
-                    self.name_already_defined(lval.name, lval, original_def)
-                else:
-                    # Bind to an existing name.
-                    lval.accept(self)
-                    self.check_lvalue_validity(lval.node, lval)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, final_cb)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
@@ -2082,6 +2060,105 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
             self.fail('Invalid assignment target', lval)
+
+    def analyze_name_lvalue(self,
+                            lval: NameExpr,
+                            add_global: bool,
+                            explicit_type: bool,
+                            final_cb: Optional[Callable[[bool], None]]) -> None:
+        """Analyze an lvalue that targets a name expression.
+
+        Arguments are similar to "analyze_lvalue".
+        """
+        # Top-level definitions within some statements (at least while) are
+        # not handled in the first pass, so they have to be added now.
+        nested_global = (not self.is_func_scope() and
+                         self.block_depth[-1] > 0 and
+                         not self.type)
+        if (add_global or nested_global) and lval.name not in self.globals:
+            # Define new global name.
+            v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
+            self.globals[lval.name] = SymbolTableNode(GDEF, v)
+        elif isinstance(lval.node, Var) and lval.is_new_def:
+            if lval.kind == GDEF:
+                # Since the is_new_def flag is set, this must have been analyzed
+                # already in the first pass and added to the symbol table.
+                # An exception is typing module with incomplete test fixtures.
+                assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
+        elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
+              lval.name not in self.global_decls[-1] and
+              lval.name not in self.nonlocal_decls[-1]):
+            # Define new local name.
+            v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
+            self.add_local(v, lval)
+            if lval.name == '_':
+                # Special case for assignment to local named '_': always infer 'Any'.
+                typ = AnyType(TypeOfAny.special_form)
+                self.store_declared_types(lval, typ)
+        elif not self.is_func_scope() and (self.type and
+                                           lval.name not in self.type.names):
+            # Define a new attribute within class body.
+            v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
+            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+        else:
+            self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
+
+    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int, inferred: bool) -> Var:
+        """Return a Var node for an lvalue that is a name expression."""
+        v = Var(lvalue.name)
+        v.set_line(lvalue)
+        v.is_inferred = inferred
+        if kind == MDEF:
+            assert self.type is not None
+            v.info = self.type
+            v.is_initialized_in_class = True
+        if kind != LDEF:
+            v._fullname = self.qualified_name(lvalue.name)
+        if kind == GDEF:
+            v.is_ready = False  # Type not inferred yet
+        lvalue.node = v
+        lvalue.is_new_def = True
+        lvalue.is_inferred_def = True
+        lvalue.kind = kind
+        if kind == GDEF:
+            lvalue.fullname = v._fullname
+        else:
+            lvalue.fullname = lvalue.name
+        return v
+
+    def make_name_lvalue_point_to_existing_def(
+            self,
+            lval: NameExpr,
+            explicit_type: bool,
+            final_cb: Optional[Callable[[bool], None]]) -> None:
+        # Assume that an existing name exists. Try to find the original definition.
+        global_def = self.globals.get(lval.name)
+        if self.locals:
+            locals_last = self.locals[-1]
+            if locals_last:
+                local_def = locals_last.get(lval.name)
+            else:
+                local_def = None
+        else:
+            local_def = None
+        type_def = self.type.names.get(lval.name) if self.type else None
+
+        original_def = global_def or local_def or type_def
+
+        # Redefining an existing name with final is always an error.
+        if final_cb is not None:
+            # We avoid extra errors if the original definition is also final
+            # by keeping the final status of this assignment.
+            keep_final = bool(original_def and isinstance(original_def.node, Var) and
+                              original_def.node.is_final)
+            final_cb(keep_final)
+        if explicit_type:
+            # Don't re-bind types
+            self.name_already_defined(lval.name, lval, original_def)
+        else:
+            # Bind to an existing name.
+            lval.accept(self)
+            self.check_lvalue_validity(lval.node, lval)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
                                      add_global: bool = False,
@@ -2229,6 +2306,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         for t in values + [upper_bound]:
             check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
                                    context=s)
+
+        # mypyc suppresses making copies of a function to check each
+        # possible type, so set the upper bound to Any to prevent that
+        # from causing errors.
+        if values and self.options.mypyc:
+            upper_bound = AnyType(TypeOfAny.implementation_artifact)
+
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         assert node is not None
@@ -2824,23 +2908,24 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Each SymbolTableNode has an attribute node that is nodes.Var
                 # look for variable nodes that marked as is_inferred
                 # Each symboltable node has a Var node as .node
-                local_nodes = cast(
-                    List[Var],
-                    [
-                        n.node for name, n in self.globals.items()
-                        if getattr(n.node, 'is_inferred', False)
-                    ]
-                )
+                local_nodes = [n.node
+                               for name, n in self.globals.items()
+                               if getattr(n.node, 'is_inferred', False)
+                               and isinstance(n.node, Var)]
             elif self.is_class_scope():
                 # type = None  # type: Optional[TypeInfo]
                 if self.type is not None:
-                    local_nodes = cast(List[Var], [st.node for st in self.type.names.values()])
+                    local_nodes = [st.node
+                                   for st in self.type.names.values()
+                                   if isinstance(st.node, Var)]
             elif self.is_func_scope():
                 # locals = None  # type: List[Optional[SymbolTable]]
                 if self.locals is not None:
                     symbol_table = self.locals[-1]
                     if symbol_table is not None:
-                        local_nodes = cast(List[Var], [st.node for st in symbol_table.values()])
+                        local_nodes = [st.node
+                                       for st in symbol_table.values()
+                                       if isinstance(st.node, Var)]
             expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
@@ -2961,7 +3046,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         typ = AnyType(TypeOfAny.from_error)
                 else:
                     typ = AnyType(TypeOfAny.from_error)
-                expr.kind = MDEF
+                expr.kind = GDEF
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
             else:
@@ -3015,12 +3100,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         if expr.op in ('and', 'or'):
             inferred = infer_condition_value(expr.left, self.options)
-            if ((inferred == ALWAYS_FALSE and expr.op == 'and') or
-                    (inferred == ALWAYS_TRUE and expr.op == 'or')):
+            if ((inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'and') or
+                    (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'or')):
                 expr.right_unreachable = True
                 return
-            elif ((inferred == ALWAYS_TRUE and expr.op == 'and') or
-                    (inferred == ALWAYS_FALSE and expr.op == 'or')):
+            elif ((inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'and') or
+                    (inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'or')):
                 expr.right_always = True
 
         expr.right.accept(self)
@@ -3417,6 +3502,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         Note that this can't be used for names nested in class namespaces.
         """
+        # TODO: unify/clean-up/simplify lookup methods, see #4157.
+        # TODO: support nested classes (but consider performance impact,
+        #       we might keep the module level only lookup for thing like 'builtins.int').
         assert '.' in fullname
         module, name = fullname.rsplit('.', maxsplit=1)
         if module not in self.modules:
@@ -3721,270 +3809,6 @@ def remove_imported_names_from_symtable(names: SymbolTable,
             removed.append(name)
     for name in removed:
         del names[name]
-
-
-def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
-    for i in range(len(s.expr)):
-        result = infer_condition_value(s.expr[i], options)
-        if result in (ALWAYS_FALSE, MYPY_FALSE):
-            # The condition is considered always false, so we skip the if/elif body.
-            mark_block_unreachable(s.body[i])
-        elif result in (ALWAYS_TRUE, MYPY_TRUE):
-            # This condition is considered always true, so all of the remaining
-            # elif/else bodies should not be checked.
-            if result == MYPY_TRUE:
-                # This condition is false at runtime; this will affect
-                # import priorities.
-                mark_block_mypy_only(s.body[i])
-            for body in s.body[i + 1:]:
-                mark_block_unreachable(body)
-
-            # Make sure else body always exists and is marked as
-            # unreachable so the type checker always knows that
-            # all control flow paths will flow through the if
-            # statement body.
-            if not s.else_body:
-                s.else_body = Block([])
-            mark_block_unreachable(s.else_body)
-            break
-
-
-def infer_condition_value(expr: Expression, options: Options) -> int:
-    """Infer whether the given condition is always true/false.
-
-    Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
-    MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
-    false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
-    """
-    pyversion = options.python_version
-    name = ''
-    negated = False
-    alias = expr
-    if isinstance(alias, UnaryExpr):
-        if alias.op == 'not':
-            expr = alias.expr
-            negated = True
-    result = TRUTH_VALUE_UNKNOWN
-    if isinstance(expr, NameExpr):
-        name = expr.name
-    elif isinstance(expr, MemberExpr):
-        name = expr.name
-    elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
-        left = infer_condition_value(expr.left, options)
-        if ((left == ALWAYS_TRUE and expr.op == 'and') or
-                (left == ALWAYS_FALSE and expr.op == 'or')):
-            # Either `True and <other>` or `False or <other>`: the result will
-            # always be the right-hand-side.
-            return infer_condition_value(expr.right, options)
-        else:
-            # The result will always be the left-hand-side (e.g. ALWAYS_* or
-            # TRUTH_VALUE_UNKNOWN).
-            return left
-    else:
-        result = consider_sys_version_info(expr, pyversion)
-        if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, options.platform)
-    if result == TRUTH_VALUE_UNKNOWN:
-        if name == 'PY2':
-            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
-        elif name == 'PY3':
-            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-        elif name == 'MYPY' or name == 'TYPE_CHECKING':
-            result = MYPY_TRUE
-        elif name in options.always_true:
-            result = MYPY_TRUE
-        elif name in options.always_false:
-            result = MYPY_FALSE
-    if negated:
-        result = inverted_truth_mapping[result]
-    return result
-
-
-def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> int:
-    """Consider whether expr is a comparison involving sys.version_info.
-
-    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
-    """
-    # Cases supported:
-    # - sys.version_info[<int>] <compare_op> <int>
-    # - sys.version_info[:<int>] <compare_op> <tuple_of_n_ints>
-    # - sys.version_info <compare_op> <tuple_of_1_or_2_ints>
-    #   (in this case <compare_op> must be >, >=, <, <=, but cannot be ==, !=)
-    if not isinstance(expr, ComparisonExpr):
-        return TRUTH_VALUE_UNKNOWN
-    # Let's not yet support chained comparisons.
-    if len(expr.operators) > 1:
-        return TRUTH_VALUE_UNKNOWN
-    op = expr.operators[0]
-    if op not in ('==', '!=', '<=', '>=', '<', '>'):
-        return TRUTH_VALUE_UNKNOWN
-    thing = contains_int_or_tuple_of_ints(expr.operands[1])
-    if thing is None:
-        return TRUTH_VALUE_UNKNOWN
-    index = contains_sys_version_info(expr.operands[0])
-    if isinstance(index, int) and isinstance(thing, int):
-        # sys.version_info[i] <compare_op> k
-        if 0 <= index <= 1:
-            return fixed_comparison(pyversion[index], op, thing)
-        else:
-            return TRUTH_VALUE_UNKNOWN
-    elif isinstance(index, tuple) and isinstance(thing, tuple):
-        lo, hi = index
-        if lo is None:
-            lo = 0
-        if hi is None:
-            hi = 2
-        if 0 <= lo < hi <= 2:
-            val = pyversion[lo:hi]
-            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
-                return fixed_comparison(val, op, thing)
-    return TRUTH_VALUE_UNKNOWN
-
-
-def consider_sys_platform(expr: Expression, platform: str) -> int:
-    """Consider whether expr is a comparison involving sys.platform.
-
-    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
-    """
-    # Cases supported:
-    # - sys.platform == 'posix'
-    # - sys.platform != 'win32'
-    # - sys.platform.startswith('win')
-    if isinstance(expr, ComparisonExpr):
-        # Let's not yet support chained comparisons.
-        if len(expr.operators) > 1:
-            return TRUTH_VALUE_UNKNOWN
-        op = expr.operators[0]
-        if op not in ('==', '!='):
-            return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.operands[0], 'platform'):
-            return TRUTH_VALUE_UNKNOWN
-        right = expr.operands[1]
-        if not isinstance(right, (StrExpr, UnicodeExpr)):
-            return TRUTH_VALUE_UNKNOWN
-        return fixed_comparison(platform, op, right.value)
-    elif isinstance(expr, CallExpr):
-        if not isinstance(expr.callee, MemberExpr):
-            return TRUTH_VALUE_UNKNOWN
-        if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
-            return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.callee.expr, 'platform'):
-            return TRUTH_VALUE_UNKNOWN
-        if expr.callee.name != 'startswith':
-            return TRUTH_VALUE_UNKNOWN
-        if platform.startswith(expr.args[0].value):
-            return ALWAYS_TRUE
-        else:
-            return ALWAYS_FALSE
-    else:
-        return TRUTH_VALUE_UNKNOWN
-
-
-Targ = TypeVar('Targ', int, str, Tuple[int, ...])
-
-
-def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
-    rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
-    if op == '==':
-        return rmap[left == right]
-    if op == '!=':
-        return rmap[left != right]
-    if op == '<=':
-        return rmap[left <= right]
-    if op == '>=':
-        return rmap[left >= right]
-    if op == '<':
-        return rmap[left < right]
-    if op == '>':
-        return rmap[left > right]
-    return TRUTH_VALUE_UNKNOWN
-
-
-def contains_int_or_tuple_of_ints(expr: Expression
-                                  ) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
-    if isinstance(expr, IntExpr):
-        return expr.value
-    if isinstance(expr, TupleExpr):
-        if literal(expr) == LITERAL_YES:
-            thing = []
-            for x in expr.items:
-                if not isinstance(x, IntExpr):
-                    return None
-                thing.append(x.value)
-            return tuple(thing)
-    return None
-
-
-def contains_sys_version_info(expr: Expression
-                              ) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
-    if is_sys_attr(expr, 'version_info'):
-        return (None, None)  # Same as sys.version_info[:]
-    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
-        index = expr.index
-        if isinstance(index, IntExpr):
-            return index.value
-        if isinstance(index, SliceExpr):
-            if index.stride is not None:
-                if not isinstance(index.stride, IntExpr) or index.stride.value != 1:
-                    return None
-            begin = end = None
-            if index.begin_index is not None:
-                if not isinstance(index.begin_index, IntExpr):
-                    return None
-                begin = index.begin_index.value
-            if index.end_index is not None:
-                if not isinstance(index.end_index, IntExpr):
-                    return None
-                end = index.end_index.value
-            return (begin, end)
-    return None
-
-
-def is_sys_attr(expr: Expression, name: str) -> bool:
-    # TODO: This currently doesn't work with code like this:
-    # - import sys as _sys
-    # - from sys import version_info
-    if isinstance(expr, MemberExpr) and expr.name == name:
-        if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
-            # TODO: Guard against a local named sys, etc.
-            # (Though later passes will still do most checking.)
-            return True
-    return False
-
-
-def mark_block_unreachable(block: Block) -> None:
-    block.is_unreachable = True
-    block.accept(MarkImportsUnreachableVisitor())
-
-
-class MarkImportsUnreachableVisitor(TraverserVisitor):
-    """Visitor that flags all imports nested within a node as unreachable."""
-
-    def visit_import(self, node: Import) -> None:
-        node.is_unreachable = True
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        node.is_unreachable = True
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        node.is_unreachable = True
-
-
-def mark_block_mypy_only(block: Block) -> None:
-    block.accept(MarkImportsMypyOnlyVisitor())
-
-
-class MarkImportsMypyOnlyVisitor(TraverserVisitor):
-    """Visitor that sets is_mypy_only (which affects priority)."""
-
-    def visit_import(self, node: Import) -> None:
-        node.is_mypy_only = True
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        node.is_mypy_only = True
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        node.is_mypy_only = True
 
 
 def make_any_non_explicit(t: Type) -> Type:

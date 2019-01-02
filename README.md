@@ -221,7 +221,12 @@ whenever you change branches, merge, rebase, or pull.
 Tests
 -----
 
-See [Test README.md](test-data/unit/README.md)
+The basic way to run tests:
+
+    $ pip3 install -r test-requirements.txt
+    $ ./runtests.py
+
+For more on the tests, see [Test README.md](test-data/unit/README.md)
 
 
 Development status
@@ -243,6 +248,20 @@ tracker:
   https://github.com/python/mypy/issues
 
 Feel free to also ask questions on the tracker.
+
+
+mypy_mypyc
+----------
+
+We have built an experimental compiled version of mypy using the
+[mypyc compiler](https://github.com/mypyc/mypyc) for mypy-annotated
+Python code. It is approximately 4 times faster than interpreted mypy.
+
+If you wish to test out the compiled version of mypy, and are running
+OS X or Linux, you can directly install a binary from
+https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
+
+Compiled mypy packages on PyPI are Coming Soon.
 
 
 Help wanted

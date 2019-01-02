@@ -1,9 +1,11 @@
 # builtins stub with object.__new__
 
+from typing import Any
+
 class object:
     def __init__(self) -> None: pass
 
-    def __new__(cls): pass
+    def __new__(cls) -> Any: pass
 
 class type:
     def __init__(self, x) -> None: pass

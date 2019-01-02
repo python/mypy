@@ -4,12 +4,15 @@ import os.path
 
 from typing import List, Sequence, Set, Tuple, Optional, Dict
 
-from mypy.build import BuildSource, PYTHON_EXTENSIONS
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
+PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)  # type: Final
 
 
 class InvalidSourceList(Exception):
@@ -77,6 +80,11 @@ class SourceFinder:
         names = self.fscache.listdir(arg)
         names.sort(key=keyfunc)
         for name in names:
+            # Skip certain names altogether
+            if (name == '__pycache__' or name == 'py.typed'
+                    or name.startswith('.')
+                    or name.endswith(('~', '.pyc', '.pyo'))):
+                continue
             path = os.path.join(arg, name)
             if self.fscache.isdir(path):
                 sub_sources = self.expand_dir(path, mod_prefix + name + '.')

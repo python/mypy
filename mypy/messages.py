@@ -19,7 +19,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Option
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
@@ -30,74 +30,85 @@ from mypy.nodes import (
     CallExpr
 )
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
 
-NO_RETURN_VALUE_EXPECTED = 'No return value expected'
-MISSING_RETURN_STATEMENT = 'Missing return statement'
-INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
-INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
-RETURN_VALUE_EXPECTED = 'Return value expected'
-NO_RETURN_EXPECTED = 'Return statement in function which does not return'
-INVALID_EXCEPTION = 'Exception must be derived from BaseException'
-INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
+NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final
+MISSING_RETURN_STATEMENT = 'Missing return statement'  # type: Final
+INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'  # type: Final
+INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'  # type: Final
+RETURN_VALUE_EXPECTED = 'Return value expected'  # type: Final
+NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # type: Final
+INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
+INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
-    'The return type of a generator function should be "Generator" or one of its supertypes'
+    'The return type of a generator function should be "Generator"' \
+    ' or one of its supertypes'  # type: Final
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
     'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
-    'supertypes'
+    'supertypes'  # type: Final
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
-    'The return type of a generator function must be None in its third type parameter in Python 2'
-YIELD_VALUE_EXPECTED = 'Yield value expected'
-INCOMPATIBLE_TYPES = 'Incompatible types'
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
-INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
-INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for "__aenter__"'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for "__aexit__"'
-INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
+    'The return type of a generator function must be None in' \
+    ' its third type parameter in Python 2'  # type: Final
+YIELD_VALUE_EXPECTED = 'Yield value expected'  # type: Final
+INCOMPATIBLE_TYPES = 'Incompatible types'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'  # type: Final
+INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'  # type: Final
+INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = \
+    'Incompatible types in "async with" for "__aenter__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = \
+    'Incompatible types in "async with" for "__aexit__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'  # type: Final
 
-INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'
-INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
-INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
-INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
-TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
-CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
-CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
-CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
-CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
-CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
+INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'  # type: Final
+INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'  # type: Final
+INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = \
+    'Incompatible types in string interpolation'  # type: Final
+MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'  # type: Final
+INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'  # type: Final
+TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
+INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
+CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
+CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'  # type: Final
+CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
+CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
+CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
 INCONSISTENT_ABSTRACT_OVERLOAD = \
-    'Overloaded method has both abstract and non-abstract variants'
+    'Overloaded method has both abstract and non-abstract variants'  # type: Final
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
-    'Read-only property cannot override read-write property'
-FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
-RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
-FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
-INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
-FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"
-ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"
-RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
-ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
+    'Read-only property cannot override read-write property'  # type: Final
+FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'  # type: Final
+RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = \
+    "Cannot use a contravariant type variable as return type"  # type: Final
+FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = \
+    "Cannot use a covariant type variable as a parameter"  # type: Final
+INCOMPATIBLE_IMPORT_OF = "Incompatible import of"  # type: Final
+FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"  # type: Final
+ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"  # type: Final
+RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"  # type: Final
+ARGUMENT_TYPE_EXPECTED = \
+    "Function is missing a type annotation for one or more arguments"  # type: Final
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
-    'Keyword argument only valid with "str" key type in call to "dict"'
-ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
+    'Keyword argument only valid with "str" key type in call to "dict"'  # type: Final
+ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'  # type: Final
 INVALID_TYPEDDICT_ARGS = \
-    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
+    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'  # type: Final
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
-    'Expected TypedDict key to be string literal'
-MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
-NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
-DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
-GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
-CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
-CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
-BARE_GENERIC = 'Missing type parameters for generic type'
-IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
-INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
-UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'
+    'Expected TypedDict key to be string literal'  # type: Final
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # type: Final
+DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
+    'Access to generic instance variables via class is ambiguous'  # type: Final
+BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
+IMPLICIT_GENERIC_ANY_BUILTIN = \
+    'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
+INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
+UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -106,7 +117,7 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_NAMED_OPT: "DefaultNamedArg",
     ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
-}
+}  # type: Final
 
 
 class MessageBuilder:
@@ -284,6 +295,8 @@ class MessageBuilder:
                                                  self.format_bare(item_type)))
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
+        elif isinstance(typ, LiteralType):
+            return str(typ)
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
@@ -658,6 +671,18 @@ class MessageBuilder:
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
 
+            if (arg_kind == ARG_STAR2
+                    and isinstance(arg_type, TypedDictType)
+                    and m <= len(callee.arg_names)
+                    and callee.arg_names[m - 1] is not None
+                    and callee.arg_kinds[m - 1] != ARG_STAR2):
+                arg_name = callee.arg_names[m - 1]
+                assert arg_name is not None
+                arg_type_str, expected_type_str = self.format_distinctly(
+                    arg_type.items[arg_name],
+                    expected_type,
+                    bare=True)
+                arg_label = '"{}"'.format(arg_name)
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
@@ -696,6 +721,20 @@ class MessageBuilder:
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
+        self.fail(msg, context)
+
+    def too_many_arguments_from_typed_dict(self,
+                                           callee: CallableType,
+                                           arg_type: TypedDictType,
+                                           context: Context) -> None:
+        # Try to determine the name of the extra argument.
+        for key in arg_type.items:
+            if key not in callee.arg_names:
+                msg = 'Extra argument "{}" from **args'.format(key) + for_function(callee)
+                break
+        else:
+            self.too_many_arguments(callee, context)
+            return
         self.fail(msg, context)
 
     def too_many_positional_arguments(self, callee: CallableType,
@@ -851,7 +890,9 @@ class MessageBuilder:
     def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
         kind = (' to Callable' if isinstance(item, CallableType) else
                 ' to Tuple' if isinstance(item, TupleType) else
-                ' to Union' if isinstance(item, UnionType) else '')
+                ' to Union' if isinstance(item, UnionType) else
+                ' to Literal' if isinstance(item, LiteralType) else
+                '')
         self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
@@ -1116,11 +1157,11 @@ class MessageBuilder:
                         format_key_list(extra, short=True), self.format(typ)),
                         context)
                     return
-        if not expected_keys:
-            expected = '(no keys)'
-        else:
-            expected = format_key_list(expected_keys)
         found = format_key_list(actual_keys, short=True)
+        if not expected_keys:
+            self.fail('Unexpected TypedDict {}'.format(found), context)
+            return
+        expected = format_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
@@ -1143,6 +1184,18 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
+
+    def typeddict_key_cannot_be_deleted(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        if typ.is_anonymous():
+            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+                      context)
+        else:
+            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+                item_name, self.format(typ)), context)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
@@ -1184,6 +1237,10 @@ class MessageBuilder:
     def concrete_only_call(self, typ: Type, context: Context) -> None:
         self.fail("Only concrete class can be given where {} is expected"
                   .format(self.format(typ)), context)
+
+    def cannot_use_function_with_type(
+            self, method_name: str, type_name: str, context: Context) -> None:
+        self.fail("Cannot use {}() with a {} type".format(method_name, type_name), context)
 
     def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
                                    context: Context) -> None:
@@ -1557,7 +1614,7 @@ def temp_message_builder() -> MessageBuilder:
 # For hard-coding suggested missing member alternatives.
 COMMON_MISTAKES = {
     'add': ('append', 'extend'),
-}  # type: Dict[str, Sequence[str]]
+}  # type: Final[Dict[str, Sequence[str]]]
 
 
 def best_matches(current: str, options: Iterable[str]) -> List[str]:

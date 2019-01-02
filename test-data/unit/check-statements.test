@@ -471,32 +471,29 @@ class B: pass
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testTypeErrorInBlock]
-
 while object:
-  x = None # type: A
-  x = object()
-  x = B()
+    x = None # type: A
+    if int():
+        x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+        x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeErrorInvolvingBaseException]
 
 x, a = None, None # type: (BaseException, A)
-a = BaseException()  # Fail
-a = object()         # Fail
-x = object()         # Fail
-x = A()              # Fail
-x = BaseException()
+if int():
+    a = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "A")
+if int():
+    a = object()         # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+if int():
+    x = object()         # E: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+if int():
+    x = A()              # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+if int():
+    x = BaseException()
 class A: pass
 [builtins fixtures/exception.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "BaseException", variable has type "A")
-main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
-main:6: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
 
 [case testSimpleTryExcept2]
 import typing
@@ -786,6 +783,7 @@ import typing
 class E1(BaseException): pass
 class E2(BaseException): pass
 e = 1
+def f(): e  # Prevent redefinition
 e = 1
 try: pass
 except E1 as e: pass
@@ -1426,28 +1424,36 @@ import typing
 class A: pass
 class B: pass
 x = y = A()
-x = A()
-y = A()
-x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-y = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    x = A()
+if int():
+    y = A()
+if int():
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    y = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testChainedAssignment2]
 import typing
 def f() -> None:
     x = 1
     y = 'x'
-    x = y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    if int():
+        x = y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/primitives.pyi]
 [out]
 
 [case testChainedAssignmentWithType]
-
 x = y = None # type: int
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-x = 1
-y = 1
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    x = 1
+if int():
+    y = 1
 
 
 -- Star assignment
@@ -1457,10 +1463,14 @@ y = 1
 [case testAssignListToStarExpr]
 from typing import List
 bs, cs = None, None # type: List[A], List[B]
-*bs, b = bs
-*bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
-*ns, c = cs
-nc = cs
+if int():
+    *bs, b = bs
+if int():
+    *bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+    if int():
+        *ns, c = cs
+if int():
+    nc = cs
 
 class A: pass
 class B: pass
@@ -1547,13 +1557,14 @@ main:8: error: Incompatible types in assignment (expression has type "A", variab
 [case testAugmentedAssignmentIntFloat]
 weight0 = 65.5
 reveal_type(weight0)  # E: Revealed type is 'builtins.float'
-weight0 = 65
-reveal_type(weight0)  # E: Revealed type is 'builtins.int'
-weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
-weight0 *= 0.5
-reveal_type(weight0)  # E: Revealed type is 'builtins.float'
-weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
-reveal_type(weight0) # E: Revealed type is 'builtins.float'
+if int():
+    weight0 = 65
+    reveal_type(weight0)  # E: Revealed type is 'builtins.int'
+    weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
+    weight0 *= 0.5
+    reveal_type(weight0)  # E: Revealed type is 'builtins.float'
+    weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
+    reveal_type(weight0) # E: Revealed type is 'builtins.float'
 
 [builtins fixtures/float.pyi]
 

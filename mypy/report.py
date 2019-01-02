@@ -24,6 +24,10 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 try:
     # mypyc doesn't properly handle import from of submodules that we
     # don't have stubs for, hence the hacky double import
@@ -41,9 +45,11 @@ type_of_any_name_map = collections.OrderedDict([
     (TypeOfAny.from_error, "Error"),
     (TypeOfAny.special_form, "Special Form"),
     (TypeOfAny.implementation_artifact, "Implementation Artifact"),
-])  # type: collections.OrderedDict[TypeOfAny, str]
+])  # type: Final[collections.OrderedDict[int, str]]
 
-reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str], AbstractReporter], bool]]
+ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+
+reporter_classes = {}  # type: Final[ReporterClasses]
 
 
 class Reports:
@@ -84,6 +90,8 @@ class Reports:
 class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
+        if output_dir != '<memory>':
+            stats.ensure_dir_exists(output_dir)
 
     @abstractmethod
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
@@ -117,8 +125,6 @@ class LineCountReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
-
-        stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
                 tree: MypyFile,
@@ -163,8 +169,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, typing.Counter[TypeOfAny]]
-        stats.ensure_dir_exists(output_dir)
+        self.any_types_counter = {}  # type: Dict[str, typing.Counter[int]]
 
     def on_file(self,
                 tree: MypyFile,
@@ -233,7 +238,7 @@ class AnyExpressionsReporter(AbstractReporter):
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
-        total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+        total_counter = collections.Counter()  # type: typing.Counter[int]
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
@@ -355,8 +360,6 @@ class LineCoverageReporter(AbstractReporter):
         super().__init__(reports, output_dir)
         self.lines_covered = {}  # type: Dict[str, List[int]]
 
-        stats.ensure_dir_exists(output_dir)
-
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
@@ -412,6 +415,11 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = None  # type: Optional[Any]
         self.files = []  # type: List[FileInfo]
 
+    # XML doesn't like control characters, but they are sometimes
+    # legal in source code (e.g. comments, string literals).
+    # Tabs (#x09) are allowed in XML content.
+    control_fixer = str.maketrans(''.join(chr(i) for i in range(32) if i != 9), '?' * 31)
+
     def on_file(self,
                 tree: MypyFile,
                 type_map: Dict[Expression, Type],
@@ -440,7 +448,7 @@ class MemoryXmlReporter(AbstractReporter):
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text.rstrip('\n'),
+                                 content=line_text.rstrip('\n').translate(self.control_fixer),
                                  any_info=self._get_any_info_for_line(visitor, lineno))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
@@ -456,7 +464,7 @@ class MemoryXmlReporter(AbstractReporter):
     def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
         if lineno in visitor.any_line_map:
             result = "Any Types on this line: "
-            counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+            counter = collections.Counter()  # type: typing.Counter[int]
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():
@@ -731,7 +739,6 @@ class XsltTxtReporter(AbstractXmlReporter):
         last_xml = self.memory_xml.last_xml
         assert last_xml is not None
         out_path = os.path.join(self.output_dir, 'index.txt')
-        stats.ensure_dir_exists(os.path.dirname(out_path))
         transformed_txt = bytes(self.xslt_txt(last_xml))
         with open(out_path, 'wb') as out_file:
             out_file.write(transformed_txt)

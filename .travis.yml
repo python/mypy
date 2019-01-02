@@ -1,4 +1,5 @@
-if: tag IS present OR type = pull_request OR (branch = master AND type = push)   # we only CI the master, tags and PRs
+# we only CI the master, release branches, tags and PRs
+if: tag IS present OR type = pull_request OR ((branch = master OR branch =~ release-*) AND type = push)
 
 language: python
 # cache package wheels (1 cache per python version)
@@ -36,6 +37,9 @@ jobs:
     env:
     - TOXENV=lint
     - EXTRA_ARGS=
+  - name: "trigger a build of wheels"
+    python: 3.7
+    script: if [[ ($TRAVIS_BRANCH = "master" || $TRAVIS_BRANCH =~ release-*) && $TRAVIS_PULL_REQUEST = "false" ]]; then ./misc/trigger_wheel_build.sh; fi
 
 install:
 - pip install -U pip setuptools

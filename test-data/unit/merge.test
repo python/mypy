@@ -668,7 +668,7 @@ TypeInfo<2>(
   Names(
     __annotations__<4> (builtins.object<1>)
     __doc__<5> (builtins.str<6>)
-    __init__<7>
+    __new__<7>
     _asdict<8>
     _field_defaults<9> (builtins.object<1>)
     _field_types<10> (builtins.object<1>)
@@ -690,7 +690,7 @@ TypeInfo<2>(
   Names(
     __annotations__<4> (builtins.object<1>)
     __doc__<5> (builtins.str<6>)
-    __init__<7>
+    __new__<7>
     _asdict<8>
     _field_defaults<9> (builtins.object<1>)
     _field_types<10> (builtins.object<1>)

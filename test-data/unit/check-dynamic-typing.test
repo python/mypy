@@ -7,9 +7,12 @@ from typing import Any
 d = None # type: Any
 a = None # type: A
 
-a = d # Everything ok
-d = a
-d = d
+if int():
+    a = d # Everything ok
+if int():
+    d = a
+if int():
+    d = d
 d.x = a
 d.x = d
 
@@ -20,12 +23,17 @@ from typing import Any
 d = None # type: Any
 a, b = None, None # type: (A, B)
 
-d, a = b, b    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-d, d = d, d, d # E: Too many values to unpack (2 expected, 3 provided)
+if int():
+    d, a = b, b    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+if int():
+    d, d = d, d, d # E: Too many values to unpack (2 expected, 3 provided)
 
-a, b = d, d
-d, d = a, b
-a, b = d
+if int():
+    a, b = d, d
+if int():
+    d, d = a, b
+if int():
+    a, b = d
 s, t = d
 
 class A: pass
@@ -40,12 +48,17 @@ class B: pass
 from typing import Any
 a, b = None, None # type: (A, B)
 
-b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-a = f(a)
-a = f(b)
-a = f(None)
-a = f(f)
+if int():
+    a = f(a)
+if int():
+    a = f(b)
+if int():
+    a = f(None)
+if int():
+    a = f(f)
 
 def f(x: Any) -> 'A':
     pass
@@ -79,25 +92,43 @@ n = 0
 d in a  # E: Unsupported right operand type for in ("A")
 d and a
 d or a
-c = d and b # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
-c = d or b  # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
+if int():
+    c = d and b # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
+if int():
+    c = d or b  # E: Incompatible types in assignment (expression has type "Union[Any, bool]", variable has type "C")
 
-c = d + a
-c = d - a
-c = d * a
-c = d / a
-c = d // a
-c = d % a
-c = d ** a
-b = d == a
-b = d != a
-b = d < a
-b = d <= a
-b = d > a
-b = d >= a
-b = d in c
-b = d and b
-b = d or b
+if int():
+    c = d + a
+if int():
+    c = d - a
+if int():
+    c = d * a
+if int():
+    c = d / a
+if int():
+    c = d // a
+if int():
+    c = d % a
+if int():
+    c = d ** a
+if int():
+    b = d == a
+if int():
+    b = d != a
+if int():
+    b = d < a
+if int():
+    b = d <= a
+if int():
+    b = d > a
+if int():
+    b = d >= a
+if int():
+    b = d in c
+if int():
+    b = d and b
+if int():
+    b = d or b
 
 class A: pass
 class C:
@@ -122,22 +153,37 @@ n = 0
 
 a and d
 a or d
-c = a in d
-c = b and d # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
-c = b or d  # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
-b = a + d
-b = a / d
+if int():
+    c = a in d
+if int():
+    c = b and d # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
+if int():
+    c = b or d  # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
+if int():
+    b = a + d
+if int():
+    b = a / d
 
-c = a + d
-c = a - d
-c = a * d
-c = a / d
-c = a // d
-c = a % d
-c = a ** d
-b = a in d
-b = b and d
-b = b or d
+if int():
+    c = a + d
+if int():
+    c = a - d
+if int():
+    c = a * d
+if int():
+    c = a / d
+if int():
+    c = a // d
+if int():
+    c = a % d
+if int():
+    c = a ** d
+if int():
+    b = a in d
+if int():
+    b = b and d
+if int():
+    b = b or d
 
 class A:
     def __add__(self, a: 'A') -> 'C':
@@ -174,9 +220,11 @@ from typing import Any
 d = None # type: Any
 a = None # type: A
 b = None # type: bool
-a = not d # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
-b = not d
-a = -d
+if int():
+    a = not d # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+if int():
+    b = not d
+    a = -d
 class A: pass
 [builtins fixtures/bool.pyi]
 [out]
@@ -186,10 +234,13 @@ from typing import Any
 d = None # type: Any
 a = None # type: A
 
-a = d.foo(a()) # E: "A" not callable
+if int():
+    a = d.foo(a()) # E: "A" not callable
 
-a = d.x
-a = d.foo(a, a)
+if int():
+    a = d.x
+if int():
+    a = d.foo(a, a)
 d.x = a
 d.x.y.z  # E: "A" has no attribute "y"
 
@@ -201,10 +252,12 @@ from typing import Any
 d = None # type: Any
 a = None # type: A
 
-a = d[a()] # E: "A" not callable
+if int():
+    a = d[a()] # E: "A" not callable
 d[a()] = a # E: "A" not callable
 
-a = d[a]
+if int():
+    a = d[a]
 d[a] = a
 d[a], d[a] = a, a
 
@@ -215,8 +268,10 @@ from typing import Tuple, Any
 t2 = None # type: Tuple[A, A]
 d = None # type: Any
 
-t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[A, A]")
-t2 = (d, d)
+if int():
+    t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[A, A]")
+if int():
+    t2 = (d, d)
 
 class A: pass
 [builtins fixtures/tuple.pyi]
@@ -228,10 +283,14 @@ class B: pass
 d = None # type: Any
 a = None # type: A
 b = None # type: B
-b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = cast(A, d)
-b = cast(Any, d)
-a = cast(Any, f())
+if int():
+    b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = cast(A, d)
+if int():
+    b = cast(Any, d)
+if int():
+    a = cast(Any, f())
 def f() -> None: pass
 
 [case testCompatibilityOfDynamicWithOtherTypes]
@@ -302,11 +361,14 @@ h = None # type: Callable[[A], None]
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
-g = f   # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+if int():
+    g = f   # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
 f(a)
 f(x)
-a = f(a)
-h = f
+if int():
+    a = f(a)
+if int():
+    h = f
 
 def f(x): pass
 
@@ -319,13 +381,19 @@ g1 = None # type: Callable[[A], None]
 g2 = None # type: Callable[[A, A], None]
 a = None # type: A
 
-g1 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A], None]")
-g2 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A, A], None]")
-g0 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[], None]")
-g1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[A], None]")
+if int():
+    g1 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A], None]")
+if int():
+    g2 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A, A], None]")
+if int():
+    g0 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[], None]")
+if int():
+    g1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[A], None]")
 
-g0 = g0
-g2 = f2
+if int():
+    g0 = g0
+if int():
+    g2 = f2
 f0()
 f2(a, a)
 
@@ -345,12 +413,15 @@ g2 = None # type: Callable[[A, A], None]
 g3 = None # type: Callable[[A, A, A], None]
 g4 = None # type: Callable[[A, A, A, A], None]
 
-f01(a, a)       # Fail
-f13()           # Fail
-f13(a, a, a, a) # Fail
-g2 = f01 # Fail
-g0 = f13 # Fail
-g4 = f13 # Fail
+f01(a, a)       # E: Too many arguments for "f01"
+f13()           # E: Too few arguments for "f13"
+f13(a, a, a, a) # E: Too many arguments for "f13"
+if int():
+    g2 = f01 # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
+if int():
+    g0 = f13 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[], None]")
+if int():
+    g4 = f13 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[A, A, A, A], None]")
 
 f01()
 f01(a)
@@ -358,27 +429,24 @@ f13(a)
 f13(a, a)
 f13(a, a, a)
 
-g0 = f01
-g1 = f01
-g1 = f13
-g2 = f13
-g3 = f13
+if int():
+    g0 = f01
+if int():
+    g1 = f01
+if int():
+    g1 = f13
+if int():
+    g2 = f13
+if int():
+    g3 = f13
 
 def f01(x = b): pass
 def f13(x, y = b, z = b): pass
 
 class A: pass
 class B: pass
-[out]
-main:10: error: Too many arguments for "f01"
-main:11: error: Too few arguments for "f13"
-main:12: error: Too many arguments for "f13"
-main:13: error: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
-main:14: error: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[], None]")
-main:15: error: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[A, A, A, A], None]")
 
 [case testSkipTypeCheckingWithImplicitSignature]
-
 a = None # type: A
 def f():
     a()
@@ -392,7 +460,6 @@ class A: pass
 [builtins fixtures/bool.pyi]
 
 [case testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs]
-
 a = None # type: A
 def f(x=a()):
     a()
@@ -407,17 +474,22 @@ g1 = None # type: Callable[[A], None]
 g2 = None # type: Callable[[A, A], None]
 a = None # type: A
 
-g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
-g2 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
-a = a.f  # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "A")
+if int():
+    g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+if int():
+    g2 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
+if int():
+    a = a.f  # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "A")
 
 class A:
     def g(self) -> None:
         a = self.f(a)
     def f(self, x): pass
 
-g1 = a.f
-a = a.f(a)
+if int():
+    g1 = a.f
+if int():
+    a = a.f(a)
 
 [case testSkipTypeCheckingImplicitMethod]
 
@@ -434,10 +506,13 @@ g0 = None # type: Callable[[], None]
 g1 = None # type: Callable[[A], None]
 a = None # type: A
 
-g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+if int():
+    g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
 
-g1 = a.f
-a = a.f(a)
+if int():
+    g1 = a.f
+if int():
+    a = a.f(a)
 
 class B:
     def f(self, x):
@@ -475,17 +550,16 @@ f1 = None # type: Callable[[A], A]
 f2 = None # type: Callable[[A, A], A]
 a = None # type: A
 
-A(a)   # Fail
-f1 = A # Fail
+A(a)   # E: Too few arguments for "A"
+if int():
+    f1 = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
 
 A(a, a)
-f2 = A
+if int():
+    f2 = A
 
 class A:
   def __init__(self, a, b): pass
-[out]
-main:6: error: Too few arguments for "A"
-main:7: error: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
 
 [case testUsingImplicitTypeObjectWithIs]
 
@@ -509,6 +583,8 @@ t2 = None # type: Tuple[A, Any]
 t3 = None # type: Tuple[Any, Any]
 t4 = None # type: Tuple[A, A]
 t5 = None # type: Tuple[Any, Any, Any]
+
+def f(): t1, t2, t3, t4, t5 # Prevent redefinition
 
 t3 = t5 # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[Any, Any]")
 t5 = t4 # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[Any, Any, Any]")
@@ -571,7 +647,8 @@ from typing import Any, Callable
 f1 = None # type: Callable[[Any], None]
 f2 = None # type: Callable[[Any, Any], None]
 
-f1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
+if int():
+    f1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
 
 
 -- Overriding

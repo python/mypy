@@ -58,15 +58,18 @@ U = Union[int, str]
 
 [case testProhibitReassigningAliases]
 A = float
-A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+if int():
+    A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
 [out]
 
 [case testProhibitReassigningSubscriptedAliases]
 from typing import Callable
 A = Callable[[], float]
-A = Callable[[], int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
-                       # E: Value of type "int" is not indexable
-                       # the second error is because of `Callable = 0` in lib-stub/typing.pyi
+if int():
+    A = Callable[[], int] \
+      # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+      # E: Value of type "int" is not indexable
+      # the second error is because of `Callable = 0` in lib-stub/typing.pyi
 [builtins fixtures/list.pyi]
 [out]
 
@@ -75,7 +78,8 @@ from typing import TypeVar, Union, Tuple
 T = TypeVar('T')
 
 A = Tuple[T, T]
-A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+if int():
+    A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
                    # E: Value of type "int" is not indexable
                    # the second error is because of `Union = 0` in lib-stub/typing.pyi
 [out]
@@ -85,7 +89,8 @@ from typing import TypeVar, Sequence, Type
 T = TypeVar('T')
 
 A: Type[float] = int
-A = float  # OK
+if int():
+    A = float  # OK
 x: A  # E: Invalid type "__main__.A"
 def bad(tp: A) -> None:  # E: Invalid type "__main__.A"
     pass
@@ -427,6 +432,60 @@ reveal_type(D().meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int
 [builtins fixtures/classmethod.pyi]
 [out]
 
+[case testAliasInImportCycle]
+# cmd: mypy -m t t2
+[file t.py]
+MYPY = False
+if MYPY:
+    from t2 import A
+x: A
+[file t2.py]
+import t
+from typing import Callable
+A = Callable[[], None]
+[builtins fixtures/bool.pyi]
+[out]
+
+[case testAliasInImportCycle2]
+import a
+[file a.pyi]
+from b import Parameter
+
+class _ParamType:
+    p: Parameter
+
+_ConvertibleType = _ParamType
+
+def convert_type(ty: _ConvertibleType):
+    ...
+
+[file b.pyi]
+from a import _ConvertibleType
+
+class Parameter:
+    type: _ConvertibleType
+[out]
+
+[case testAliasInImportCycle3]
+# cmd: mypy -m t t2
+[file t.py]
+MYPY = False
+if MYPY:
+    from t2 import A
+x: A
+reveal_type(x)  # E: Revealed type is 't2.D'
+
+# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
+reveal_type(A)  # E: Revealed type is 'Any' \
+                # E: Cannot determine type of 'A'
+A()  # E: Cannot determine type of 'A'
+[file t2.py]
+import t
+class D: pass
+A = D
+[builtins fixtures/bool.pyi]
+[out]
+
 [case testFlexibleAlias1]
 from typing import TypeVar, List, Tuple
 from mypy_extensions import FlexibleAlias
@@ -518,3 +577,42 @@ def foo(x: Bogus[int]) -> None:
     reveal_type(x)  # E: Revealed type is 'builtins.int'
 
 [builtins fixtures/dict.pyi]
+
+[case testOverrideByIdemAliasCorrectType]
+C = C
+class C:  # type: ignore
+    pass
+x: C
+reveal_type(x)  # E: Revealed type is '__main__.C'
+[out]
+
+[case testOverrideByIdemAliasCorrectTypeReversed]
+class C:
+    pass
+C = C  # type: ignore
+x: C
+reveal_type(x)  # E: Revealed type is '__main__.C'
+[out]
+
+[case testOverrideByIdemAliasCorrectTypeImported]
+from other import C as B
+C = B
+x: C
+reveal_type(x)  # E: Revealed type is 'other.C'
+[file other.py]
+class C:
+    pass
+[out]
+
+[case testConditionalExceptionAlias]
+try:
+    E = E
+except BaseException:
+    class E(BaseException): pass  # type: ignore
+
+try:
+    pass
+except E as e:
+    reveal_type(e)  # E: Revealed type is '__main__.E'
+[builtins fixtures/exception.pyi]
+[out]

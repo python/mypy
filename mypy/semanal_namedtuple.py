@@ -13,19 +13,25 @@ from mypy.nodes import (
     Var, EllipsisExpr, Argument, StrExpr, BytesExpr, UnicodeExpr, ExpressionStmt, NameExpr,
     AssignmentStmt, PassStmt, Decorator, FuncBase, ClassDef, Expression, RefExpr, TypeInfo,
     NamedTupleExpr, CallExpr, Context, TupleExpr, ListExpr, SymbolTableNode, FuncDef, Block,
-    TempNode,
-    ARG_POS, ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, MDEF, GDEF
+    TempNode, ARG_POS, ARG_NAMED_OPT, ARG_OPT, MDEF, GDEF
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy import join
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
 NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
                                '_fields', '_field_defaults', '_field_types',
                                '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')
+                               '__annotations__')  # type: Final
+
+NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                        'expected "field_name: field_type [= default]"')  # type: Final
 
 
 class NamedTupleAnalyzer:
@@ -56,8 +62,6 @@ class NamedTupleAnalyzer:
 
     def check_namedtuple_classdef(
             self, defn: ClassDef) -> Tuple[List[str], List[Type], Dict[str, Expression]]:
-        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                                'expected "field_name: field_type [= default]"')
         if self.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
             return [], [], {}
@@ -342,8 +346,9 @@ class NamedTupleAnalyzer:
                        args: List[Argument],
                        name: Optional[str] = None,
                        is_classmethod: bool = False,
+                       is_new: bool = False,
                        ) -> None:
-            if is_classmethod:
+            if is_classmethod or is_new:
                 first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
             else:
                 first = [Argument(Var('self'), selftype, None, ARG_POS)]
@@ -379,8 +384,9 @@ class NamedTupleAnalyzer:
             kind = ARG_POS if default is None else ARG_OPT
             return Argument(var, var.type, default, kind)
 
-        add_method('__init__', ret=NoneTyp(), name=info.name(),
-                   args=[make_init_arg(var) for var in vars])
+        add_method('__new__', ret=selftype, name=info.name(),
+                   args=[make_init_arg(var) for var in vars],
+                   is_new=True)
         add_method('_asdict', args=[], ret=ordereddictype)
         special_form_any = AnyType(TypeOfAny.special_form)
         add_method('_make', ret=selftype, is_classmethod=True,

@@ -39,6 +39,7 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    stubs
    generics
    more_types
+   final_attrs
    metaclasses
 
 .. toctree::
@@ -61,7 +62,6 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    python36
    additional_features
    faq
-   revision_history
 
 Indices and tables
 ==================

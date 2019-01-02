@@ -41,7 +41,6 @@ x = None # type: Tuple[x][x] # E: invalid type comment or annotation
 x = None # type: Iterable[x][x] # E: invalid type comment or annotation
 x = None # type: Callable[..., int][x] # E: invalid type comment or annotation
 x = None # type: Callable[..., int].x # E: invalid type comment or annotation
-x = None # type: Tuple[1] # E: invalid type comment or annotation
 
 def f1(x): # E: invalid type comment or annotation
     # type: (Tuple[int, str].x) -> None
@@ -61,9 +60,6 @@ def f5(x): # E: invalid type comment or annotation
 def f6(x): # E: invalid type comment or annotation
     # type: (Callable[..., int].x) -> None
     pass
-def f7(x): # E: invalid type comment or annotation
-    # type: (Tuple[1]) -> None
-    pass
 
 
 [case testFastParseInvalidTypes3]
@@ -77,7 +73,6 @@ x: Tuple[x][x] # E: invalid type comment or annotation
 x: Iterable[x][x] # E: invalid type comment or annotation
 x: Callable[..., int][x] # E: invalid type comment or annotation
 x: Callable[..., int].x # E: invalid type comment or annotation
-x: Tuple[1] # E: invalid type comment or annotation
 
 x = None # type: Tuple[int, str].x # E: invalid type comment or annotation
 x = None # type: Iterable[x].x # E: invalid type comment or annotation
@@ -85,7 +80,6 @@ x = None # type: Tuple[x][x] # E: invalid type comment or annotation
 x = None # type: Iterable[x][x] # E: invalid type comment or annotation
 x = None # type: Callable[..., int][x] # E: invalid type comment or annotation
 x = None # type: Callable[..., int].x # E: invalid type comment or annotation
-x = None # type: Tuple[1] # E: invalid type comment or annotation
 
 def f1(x: Tuple[int, str].x) -> None: pass # E: invalid type comment or annotation
 def f2(x: Iterable[x].x) -> None: pass # E: invalid type comment or annotation
@@ -93,7 +87,6 @@ def f3(x: Tuple[x][x]) -> None: pass # E: invalid type comment or annotation
 def f4(x: Iterable[x][x]) -> None: pass # E: invalid type comment or annotation
 def f5(x: Callable[..., int][x]) -> None: pass # E: invalid type comment or annotation
 def f6(x: Callable[..., int].x) -> None: pass # E: invalid type comment or annotation
-def f7(x: Tuple[1]) -> None: pass # E: invalid type comment or annotation
 
 [case testFastParseProperty]
 

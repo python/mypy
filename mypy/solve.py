@@ -11,7 +11,7 @@ from mypy.subtypes import is_subtype
 
 
 def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
-                      strict: bool =True) -> List[Optional[Type]]:
+                      strict: bool = True) -> List[Optional[Type]]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable

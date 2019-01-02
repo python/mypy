@@ -6,20 +6,21 @@ import sys
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 MYPY = False
 if MYPY:
-    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
 
 
 class BuildType:
-    STANDARD = 0  # type: ClassVar[int]
-    MODULE = 1  # type: ClassVar[int]
-    PROGRAM_TEXT = 2  # type: ClassVar[int]
+    STANDARD = 0  # type: Final[int]
+    MODULE = 1  # type: Final[int]
+    PROGRAM_TEXT = 2  # type: Final[int]
 
 
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
+    "allow_untyped_globals",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -39,19 +40,19 @@ PER_MODULE_OPTIONS = {
     "ignore_errors",
     "ignore_missing_imports",
     "local_partial_types",
+    "mypyc",
     "no_implicit_optional",
     "show_none_errors",
-    "strict_boolean",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
     "warn_unused_ignores",
-}
+}  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"quick_and_dirty", "platform", "bazel"})
-                           - {"debug_cache"})
+                            {"platform", "bazel", "plugins"})
+                           - {"debug_cache"})  # type: Final
 
 
 class Options:
@@ -78,7 +79,9 @@ class Options:
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
-        self.follow_imports_for_stubs = False  # type: bool
+        self.follow_imports_for_stubs = False
+        # PEP 420 namespace packages
+        self.namespace_packages = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -127,9 +130,6 @@ class Options:
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
 
-        # Only allow booleans in conditions
-        self.strict_boolean = False
-
         # Apply strict None checking
         self.strict_optional = True
 
@@ -145,6 +145,9 @@ class Options:
 
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
+
+        # Suppress toplevel errors caused by missing annotations
+        self.allow_untyped_globals = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]
@@ -164,14 +167,18 @@ class Options:
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
+        self.sqlite_cache = False
         self.debug_cache = False
-        self.quick_and_dirty = False
         self.skip_version_check = False
         self.fine_grained_incremental = False
         # Include fine-grained dependencies in written cache files
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
+
+        # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
+        # in modules being compiled. Not in the config file or command line.
+        self.mypyc = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]
@@ -185,6 +192,7 @@ class Options:
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
         self.show_traceback = False
+        self.raise_exceptions = False
         self.dump_type_stats = False
         self.dump_inference_stats = False
 
@@ -330,7 +338,7 @@ class Options:
         parts = s.split('.')
         expr = re.escape(parts[0]) if parts[0] != '*' else '.*'
         for part in parts[1:]:
-            expr += re.escape('.' + part) if part != '*' else '(\..*)?'
+            expr += re.escape('.' + part) if part != '*' else r'(\..*)?'
         return re.compile(expr + '\\Z')
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:

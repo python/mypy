@@ -12,9 +12,9 @@ For Python 2 mode, use --py2:
   $ stubgen --py2 textwrap
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
-documentation for extra information. For this, use the --docpath option:
+documentation for extra information. For this, use the --doc-dir option:
 
-  $ scripts/stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+  $ scripts/stubgen --doc-dir <DIR>/Python-3.4.2/Doc/library curses
 
   => Generate out/curses.py.
 
@@ -41,10 +41,12 @@ import json
 import os
 import os.path
 import pkgutil
+import inspect
 import subprocess
 import sys
 import textwrap
 import traceback
+import argparse
 from collections import defaultdict
 
 from typing import (
@@ -57,6 +59,7 @@ import mypy.errors
 import mypy.traverser
 import mypy.util
 from mypy import defaults
+from mypy.modulefinder import FindModuleCache, SearchPaths
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
@@ -72,6 +75,10 @@ from mypy.types import (
     UnboundType, NoneTyp, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
@@ -161,9 +168,8 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        search_paths = mypy.build.SearchPaths(('.',) + tuple(search_path), (), (), ())
-        module_path = mypy.build.FindModuleCache().find_module(module, search_paths,
-                                                               interpreter)
+        search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
+        module_path = FindModuleCache(search_paths).find_module(module)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
@@ -207,7 +213,6 @@ def generate_stub(path: str,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                   include_private: bool = False
                   ) -> None:
-
     with open(path, 'rb') as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data, pyversion)
@@ -236,12 +241,12 @@ def generate_stub(path: str,
 
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
-EMPTY = 'EMPTY'
-FUNC = 'FUNC'
-CLASS = 'CLASS'
-EMPTY_CLASS = 'EMPTY_CLASS'
-VAR = 'VAR'
-NOT_IN_ALL = 'NOT_IN_ALL'
+EMPTY = 'EMPTY'  # type: Final
+FUNC = 'FUNC'  # type: Final
+CLASS = 'CLASS'  # type: Final
+EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
+VAR = 'VAR'  # type: Final
+NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
 
 class AnnotationPrinter(TypeStrVisitor):
@@ -250,7 +255,7 @@ class AnnotationPrinter(TypeStrVisitor):
         super().__init__()
         self.stubgen = stubgen
 
-    def visit_unbound_type(self, t: UnboundType)-> str:
+    def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
         base = s.split('.')[0]
         self.stubgen.import_tracker.require_name(base)
@@ -344,7 +349,7 @@ class ImportTracker:
             if alias:
                 self.reverse_alias[alias] = name
 
-    def add_import(self, module: str, alias: Optional[str]=None) -> None:
+    def add_import(self, module: str, alias: Optional[str] = None) -> None:
         name = module.split('.')[0]
         self.module_for[alias or name] = None
         self.direct_imports[name] = module
@@ -446,7 +451,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         if self.is_recorded_name(o.name()):
             return
-        if not self._indent and self._state not in (EMPTY, FUNC):
+        if not self._indent and self._state not in (EMPTY, FUNC) and not o.is_awaitable_coroutine:
             self.add('\n')
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
@@ -454,7 +459,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
-        self.add("%sdef %s(" % (self._indent, o.name()))
+        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name()))
         self.record_name(o.name())
         args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
@@ -509,13 +514,36 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self.is_private_name(o.func.name()):
             return
         for decorator in o.decorators:
-            if isinstance(decorator, NameExpr) and decorator.name in ('property',
-                                                                      'staticmethod',
-                                                                      'classmethod'):
-                self.add('%s@%s\n' % (self._indent, decorator.name))
-            elif (isinstance(decorator, MemberExpr) and decorator.name == 'setter' and
-                  isinstance(decorator.expr, NameExpr)):
-                self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+            if isinstance(decorator, NameExpr):
+                if decorator.name in ('property',
+                                      'staticmethod',
+                                      'classmethod'):
+                    self.add('%s@%s\n' % (self._indent, decorator.name))
+                elif self.import_tracker.module_for.get(decorator.name) in ('asyncio',
+                                                                            'asyncio.coroutines',
+                                                                            'types'):
+                    self.add_coroutine_decorator(o.func, decorator.name, decorator.name)
+            elif isinstance(decorator, MemberExpr):
+                if decorator.name == 'setter' and isinstance(decorator.expr, NameExpr):
+                    self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+                elif decorator.name == 'coroutine':
+                    if (isinstance(decorator.expr, MemberExpr) and
+                        decorator.expr.name == 'coroutines' and
+                        isinstance(decorator.expr.expr, NameExpr) and
+                            (decorator.expr.expr.name == 'asyncio' or
+                             self.import_tracker.reverse_alias.get(decorator.expr.expr.name) ==
+                                'asyncio')):
+                        self.add_coroutine_decorator(o.func,
+                                                     '%s.coroutines.coroutine' %
+                                                     (decorator.expr.expr.name,),
+                                                     decorator.expr.expr.name)
+                    elif (isinstance(decorator.expr, NameExpr) and
+                          (decorator.expr.name in ('asyncio', 'types') or
+                           self.import_tracker.reverse_alias.get(decorator.expr.name) in
+                            ('asyncio', 'asyncio.coroutines', 'types'))):
+                        self.add_coroutine_decorator(o.func,
+                                                     decorator.expr.name + '.coroutine',
+                                                     decorator.expr.name)
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -589,7 +617,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     if init:
                         found = True
                         if not sep and not self._indent and \
-                           self._state not in (EMPTY, VAR):
+                                self._state not in (EMPTY, VAR):
                             init = '\n' + init
                             sep = True
                         self.add(init)
@@ -621,7 +649,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
         self._state = CLASS
 
-    def is_type_expression(self, expr: Expression, top_level: bool=True) -> bool:
+    def is_type_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like type expressions
 
         Used to know if assignments look like typealiases
@@ -746,6 +774,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if line not in self._import_lines:
             self._import_lines.append(line)
 
+    def add_coroutine_decorator(self, func: FuncDef, name: str, require_name: str) -> None:
+        func.is_awaitable_coroutine = True
+        if not self._indent and self._state not in (EMPTY, FUNC):
+            self.add('\n')
+        self.add('%s@%s\n' % (self._indent, name))
+        self.import_tracker.require_name(require_name)
+
     def output(self) -> str:
         """Return the text for the stub."""
         imports = ''
@@ -791,7 +826,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue, NameExpr) and rvalue.name in ('True', 'False'):
             return 'bool'
         if can_infer_optional and \
-           isinstance(rvalue, NameExpr) and rvalue.name == 'None':
+                isinstance(rvalue, NameExpr) and rvalue.name == 'None':
             self.add_typing_import('Optional')
             self.add_typing_import('Any')
             return 'Optional[Any]'
@@ -846,7 +881,6 @@ class ReturnSeeker(mypy.traverser.TraverserVisitor):
 
 
 def has_return_statement(fdef: FuncBase) -> bool:
-
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
@@ -862,20 +896,44 @@ def get_qualified_name(o: Expression) -> str:
 
 
 def walk_packages(packages: List[str]) -> Iterator[str]:
+    """Iterates through all packages and sub-packages in the given list.
+
+    Python packages have a __path__ attribute defined, which pkgutil uses to determine
+    the package hierarchy.  However, packages in C extensions do not have this attribute,
+    so we have to roll out our own.
+    """
     for package_name in packages:
         package = importlib.import_module(package_name)
         yield package.__name__
+        # get the path of the object (needed by pkgutil)
         path = getattr(package, '__path__', None)
         if path is None:
+            # object has no path; this means it's either a module inside a package
+            # (and thus no sub-packages), or it could be a C extension package.
+            if is_c_module(package):
+                # This is a C extension module, now get the list of all sub-packages
+                # using the inspect module
+                subpackages = [package.__name__ + "." + name
+                               for name, val in inspect.getmembers(package)
+                               if inspect.ismodule(val)
+                               and val.__name__ == package.__name__ + "." + name]
+                # recursively iterate through the subpackages
+                for submodule in walk_packages(subpackages):
+                    yield submodule
             # It's a module inside a package.  There's nothing else to walk/yield.
-            continue
-        for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
-                                                                     prefix=package.__name__ + ".",
-                                                                     onerror=lambda r: None):
-            yield qualified_name
+        else:
+            all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
+                                                 onerror=lambda r: None)
+            for importer, qualified_name, ispkg in all_packages:
+                yield qualified_name
 
 
 def main() -> None:
+    # Make sure that the current directory is in sys.path so that
+    # stubgen can be run on packages in the current directory.
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
     options = parse_options(sys.argv[1:])
     if not os.path.isdir(options.output_dir):
         raise SystemExit('Directory "{}" does not exist'.format(options.output_dir))
@@ -912,65 +970,67 @@ def main() -> None:
                 print("Stub generation failed for", module, file=sys.stderr)
 
 
+HEADER = """%(prog)s [--py2] [--no-import] [--doc-dir PATH]
+                     [--search-path PATH] [--python-executable PATH] [-o PATH] MODULE ..."""
+
+DESCRIPTION = """
+Generate draft stubs for modules.
+
+Stubs are generated in directory ./out, to avoid overriding files with
+manual changes.  This directory is assumed to exist.
+"""
+
+
 def parse_options(args: List[str]) -> Options:
-    # TODO: why not use click and reduce the amount of code to maintain
-    # within this module.
-    pyversion = defaults.PYTHON3_VERSION
-    no_import = False
-    recursive = False
-    ignore_errors = False
-    doc_dir = ''
-    search_path = []  # type: List[str]
-    interpreter = ''
-    include_private = False
-    output_dir = 'out'
-    while args and args[0].startswith('-'):
-        if args[0] in '-o':
-            output_dir = args[1]
-            args = args[1:]
-        elif args[0] == '--doc-dir':
-            doc_dir = args[1]
-            args = args[1:]
-        elif args[0] == '--search-path':
-            if not args[1]:
-                usage()
-            search_path = args[1].split(':')
-            args = args[1:]
-        elif args[0] == '-p':
-            interpreter = args[1]
-            args = args[1:]
-        elif args[0] == '--recursive':
-            recursive = True
-        elif args[0] == '--ignore-errors':
-            ignore_errors = True
-        elif args[0] == '--py2':
-            pyversion = defaults.PYTHON2_VERSION
-        elif args[0] == '--no-import':
-            no_import = True
-        elif args[0] == '--include-private':
-            include_private = True
-        elif args[0] in ('-h', '--help'):
-            usage(exit_nonzero=False)
-        else:
-            raise SystemExit('Unrecognized option %s' % args[0])
-        args = args[1:]
-    if not args:
-        usage()
-    if not interpreter:
-        interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
+    parser = argparse.ArgumentParser(prog='stubgen',
+                                     usage=HEADER,
+                                     description=DESCRIPTION)
+
+    parser.add_argument('--py2', action='store_true',
+                        help="run in Python 2 mode (default: Python 3 mode)")
+    parser.add_argument('--recursive', action='store_true',
+                        help="traverse listed modules to generate inner package modules as well")
+    parser.add_argument('--ignore-errors', action='store_true',
+                        help="ignore errors when trying to generate stubs for modules")
+    parser.add_argument('--no-import', action='store_true',
+                        help="don't import the modules, just parse and analyze them "
+                             "(doesn't work with C extension modules and doesn't "
+                             "respect __all__)")
+    parser.add_argument('--include-private', action='store_true',
+                        help="generate stubs for objects and members considered private "
+                             "(single leading underscore and no trailing underscores)")
+    parser.add_argument('--doc-dir', metavar='PATH', default='',
+                        help="use .rst documentation in PATH (this may result in "
+                             "better stubs in some cases; consider setting this to "
+                             "DIR/Python-X.Y.Z/Doc/library)")
+    parser.add_argument('--search-path', metavar='PATH', default='',
+                        help="specify module search directories, separated by ':' "
+                             "(currently only used if --no-import is given)")
+    parser.add_argument('--python-executable', metavar='PATH', dest='interpreter', default='',
+                        help="use Python interpreter at PATH (only works for "
+                             "Python 2 right now)")
+    parser.add_argument('-o', metavar='PATH', dest='output_dir', default='out',
+                        help="Change the output folder [default: %(default)s]")
+    parser.add_argument(metavar='modules', nargs='+', dest='modules')
+
+    ns = parser.parse_args(args)
+
+    pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
+    if not ns.interpreter:
+        ns.interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
     # Create the output folder if it doesn't already exist.
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not os.path.exists(ns.output_dir):
+        os.makedirs(ns.output_dir)
     return Options(pyversion=pyversion,
-                   no_import=no_import,
-                   doc_dir=doc_dir,
-                   search_path=search_path,
-                   interpreter=interpreter,
-                   modules=args,
-                   ignore_errors=ignore_errors,
-                   recursive=recursive,
-                   include_private=include_private,
-                   output_dir=output_dir)
+                   no_import=ns.no_import,
+                   doc_dir=ns.doc_dir,
+                   search_path=ns.search_path.split(':'),
+                   interpreter=ns.interpreter,
+                   modules=ns.modules,
+                   ignore_errors=ns.ignore_errors,
+                   recursive=ns.recursive,
+                   include_private=ns.include_private,
+                   output_dir=ns.output_dir)
 
 
 def default_python2_interpreter() -> str:
@@ -983,48 +1043,6 @@ def default_python2_interpreter() -> str:
         if b'Python 2' in output:
             return candidate
     raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
-
-
-def usage(exit_nonzero: bool=True) -> None:
-    usage = textwrap.dedent("""\
-        usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
-                       [--search-path PATH] [-p PATH] [-o PATH]
-                       MODULE ...
-
-        Generate draft stubs for modules.
-
-        Stubs are generated in directory ./out, to avoid overriding files with
-        manual changes.  This directory is assumed to exist.
-
-        Options:
-          --py2           run in Python 2 mode (default: Python 3 mode)
-          --recursive     traverse listed modules to generate inner package modules as well
-          --ignore-errors ignore errors when trying to generate stubs for modules
-          --no-import     don't import the modules, just parse and analyze them
-                          (doesn't work with C extension modules and doesn't
-                          respect __all__)
-          --include-private
-                          generate stubs for objects and members considered private
-                          (single leading underscore and no trailing underscores)
-          --doc-dir PATH  use .rst documentation in PATH (this may result in
-                          better stubs in some cases; consider setting this to
-                          DIR/Python-X.Y.Z/Doc/library)
-          --search-path PATH
-                          specify module search directories, separated by ':'
-                          (currently only used if --no-import is given)
-          -p PATH         use Python interpreter at PATH (only works for
-                          Python 2 right now)
-          -o PATH         Change the output folder [default: out]
-          -h, --help      print this help message and exit
-    """.rstrip())
-
-    if exit_nonzero:
-        # The user made a mistake, so we should return with an error code
-        raise SystemExit(usage)
-    else:
-        # The user asked for help specifically, so we should exit with success
-        print(usage, file=sys.stderr)
-        sys.exit()
 
 
 if __name__ == '__main__':

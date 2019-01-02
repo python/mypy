@@ -78,9 +78,43 @@ class Person(Mammal):
     name: str
     age: int
 
-reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
-Person('John', 32)
-Person('John', 21, None)  # E: Too many arguments for "Person"
+@dataclass
+class SpecialPerson(Person):
+    special_factor: float
+
+@dataclass
+class ExtraSpecialPerson(SpecialPerson):
+    age: int
+    special_factor: float
+    name: str
+
+reveal_type(Person)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str) -> __main__.Person'
+reveal_type(SpecialPerson)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str, special_factor: builtins.float) -> __main__.SpecialPerson'
+reveal_type(ExtraSpecialPerson)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str, special_factor: builtins.float) -> __main__.ExtraSpecialPerson'
+Person(32, 'John')
+Person(21, 'John', None)  # E: Too many arguments for "Person"
+SpecialPerson(21, 'John', 0.5)
+ExtraSpecialPerson(21, 'John', 0.5)
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOverridingWithDefaults]
+# Issue #5681 https://github.com/python/mypy/issues/5681
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Any
+
+@dataclass
+class Base:
+    some_int: Any
+    some_str: str = 'foo'
+
+
+@dataclass
+class C(Base):
+    some_int: int
+
+reveal_type(C)  # E: Revealed type is 'def (some_int: builtins.int, some_str: builtins.str =) -> __main__.C'
 
 [builtins fixtures/list.pyi]
 
@@ -249,7 +283,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
+        reveal_type(cls)            # E: Revealed type is 'Type[__main__.A]'
         reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
         return x
 
@@ -421,6 +455,25 @@ s: str = a.bar()  # E: Incompatible types in assignment (expression has type "in
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassGenericsClassmethod]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+  x: T
+
+  @classmethod
+  def foo(cls) -> None:
+      reveal_type(cls)  # E: Revealed type is 'Type[__main__.A[T`1]]'
+      reveal_type(cls(1))  # E: Revealed type is '__main__.A[builtins.int*]'
+      reveal_type(cls('wooooo'))  # E: Revealed type is '__main__.A[builtins.str*]'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testDataclassesForwardRefs]
 from dataclasses import dataclass
 
@@ -466,3 +519,42 @@ app.rating
 app.database_name  # E: "SpecializedApplication" has no attribute "database_name"
 
 [builtins fixtures/list.pyi]
+
+[case testDataclassFactory]
+from typing import Type, TypeVar
+from dataclasses import dataclass
+
+T = TypeVar('T', bound='A')
+
+@dataclass
+class A:
+    @classmethod
+    def make(cls: Type[T]) -> T:
+        reveal_type(cls)  # E: Revealed type is 'Type[T`-1]'
+        reveal_type(cls())  # E: Revealed type is 'T`-1'
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testNoComplainFieldNone]
+# flags: --python-version 3.6
+# flags: --no-strict-optional
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Foo:
+    bar: Optional[int] = field(default=None)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoComplainFieldNoneStrict]
+# flags: --python-version 3.6
+# flags: --strict-optional
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Foo:
+    bar: Optional[int] = field(default=None)
+[builtins fixtures/list.pyi]
+[out]

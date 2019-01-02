@@ -14,10 +14,10 @@ from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
 )
-from mypy.stubgenc import generate_c_type_stub, infer_method_sig
+from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
-    infer_sig_from_docstring
+    infer_sig_from_docstring, infer_prop_type_from_docstring
 )
 
 
@@ -103,12 +103,31 @@ class StubgenUtilSuite(Suite):
              ('func3', '(arg, arg2)')])
 
     def test_infer_sig_from_docstring(self) -> None:
-        assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'), '(x)')
-        assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'), '(x, Y_a=None)')
+        assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'), ('(x)', 'Any'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
+                     ('(x, Y_a=None)', 'Any'))
         assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc(x=z(y))', 'func'), None)
         assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
+        # try to infer signature from type annotation
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int)', 'func'), ('(x: int)', 'Any'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3)', 'func'), ('(x: int=3)', 'Any'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
+                     ('(x: int=3)', 'int'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int   \n', 'func'),
+                     ('(x: int=3)', 'int'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
+                     ('(x: Tuple[int, str])', 'str'))
+        assert_equal(infer_sig_from_docstring('\nfunc(x: foo.bar)', 'func'),
+                     ('(x: foo.bar)', 'Any'))
+
+    def infer_prop_type_from_docstring(self) -> None:
+        assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
+        assert_equal(infer_prop_type_from_docstring('Optional[int]: An int.'), 'Optional[int]')
+        assert_equal(infer_prop_type_from_docstring('Tuple[int, int]: A tuple.'),
+                     'Tuple[int, int]')
+        assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
 
 
 class StubgenPythonSuite(DataSuite):
@@ -194,7 +213,7 @@ def load_output(dirname: str) -> List[str]:
 
 
 def add_file(path: str, result: List[str]) -> None:
-    with open(path) as file:
+    with open(path, encoding='utf8') as file:
         result.extend(file.read().splitlines())
 
 
@@ -220,7 +239,9 @@ class StubgencSuite(Suite):
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output = []  # type: List[str]
         mod = ModuleType('module', '')  # any module is fine
-        generate_c_type_stub(mod, 'alias', object, output)
+        imports = []  # type: List[str]
+        generate_c_type_stub(mod, 'alias', object, output, imports)
+        assert_equal(imports, [])
         assert_equal(output[0], 'class alias:')
 
     def test_generate_c_type_stub_variable_type_annotation(self) -> None:
@@ -229,6 +250,63 @@ class StubgencSuite(Suite):
             x = 1
 
         output = []  # type: List[str]
+        imports = []  # type: List[str]
         mod = ModuleType('module', '')  # any module is fine
-        generate_c_type_stub(mod, 'C', TestClassVariableCls, output)
+        generate_c_type_stub(mod, 'C', TestClassVariableCls, output, imports)
+        assert_equal(imports, [])
         assert_equal(output, ['class C:', '    x: Any = ...'])
+
+    def test_generate_c_type_inheritance(self) -> None:
+        class TestClass(KeyError):
+            pass
+
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('module, ')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(KeyError): ...', ])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_inheritance_same_module(self) -> None:
+        class TestBaseClass:
+            pass
+
+        class TestClass(TestBaseClass):
+            pass
+
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestBaseClass.__module__, '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(TestBaseClass): ...', ])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_inheritance_other_module(self) -> None:
+        import argparse
+
+        class TestClass(argparse.Action):
+            pass
+
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('module', '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(argparse.Action): ...', ])
+        assert_equal(imports, ['import argparse'])
+
+    def test_generate_c_type_with_docstring(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: int)
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, [
+            'def test(self, arg0: int) -> Any: ...'
+        ])
+        assert_equal(imports, [])

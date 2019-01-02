@@ -6,9 +6,12 @@ from typing import List
 a1, b1, c1 = None, None, None # type: (A, B, C)
 a2, b2, c2 = None, None, None # type: (A, B, C)
 
-a1, [b1, c1] = a2, [b2, c2]
-a1, [a1, [b1, c1]] = a2, [a2, [b2, c2]]
-a1, [a1, [a1, b1]] = a1, [a1, [a1, c1]]  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+if int():
+    a1, [b1, c1] = a2, [b2, c2]
+if int():
+    a1, [a1, [b1, c1]] = a2, [a2, [b2, c2]]
+if int():
+    a1, [a1, [a1, b1]] = a1, [a1, [a1, c1]]  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 class A: pass
 class B: pass
@@ -35,10 +38,14 @@ from typing import List
 a, b, c = None, None, None # type: (A, B, C)
 t = a, b
 
-[a, b], c = t, c
-[a, c], c = t, c  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
-[a, a, a], c = t, c  # E: Need more than 2 values to unpack (3 expected)
-[a], c = t, c  # E: Too many values to unpack (1 expected, 2 provided)
+if int():
+    [a, b], c = t, c
+if int():
+    [a, c], c = t, c  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
+if int():
+    [a, a, a], c = t, c  # E: Need more than 2 values to unpack (3 expected)
+if int():
+    [a], c = t, c  # E: Too many values to unpack (1 expected, 2 provided)
 
 class A: pass
 class B: pass

@@ -119,7 +119,8 @@ reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, None]'
 
 [case testLambdaReturningNone]
 f = lambda: None
-x = f()  # E: Function does not return a value
+x = f()
+reveal_type(x)  # E: Revealed type is 'None'
 
 [case testNoneArgumentType]
 def f(x: None) -> None: pass
@@ -548,8 +549,10 @@ def f(x: T) -> ONode[T]:
         return None
 
 x = None # type: ONode[int]
-x = f(1)
-x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+if int():
+    x = f(1)
+if int():
+    x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 x.x = 1 # E: Item "None" of "Optional[Node[int]]" has no attribute "x"
 if x is not None:
@@ -697,4 +700,54 @@ def f() -> str:
 def g(x: str) -> None: pass
 
 y = int()
+[builtins fixtures/bool.pyi]
+
+[case testOptionalAssignAny1]
+from typing import Optional
+def f():
+    return 0
+
+def g(x: Optional[int]) -> int:
+    if x is None:
+        reveal_type(x)  # E: Revealed type is 'None'
+        # As a special case for Unions containing None, during
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+    return x
+
+[builtins fixtures/bool.pyi]
+
+[case testOptionalAssignAny2]
+from typing import Optional
+def f():
+    return 0
+
+def g(x: Optional[int]) -> int:
+    if x is None:
+        reveal_type(x)  # E: Revealed type is 'None'
+        x = 1
+        reveal_type(x)  # E: Revealed type is 'builtins.int'
+        # Since we've assigned to x, the special case None behavior shouldn't happen
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+    return x  # E: Incompatible return value type (got "Optional[int]", expected "int")
+
+[builtins fixtures/bool.pyi]
+
+[case testOptionalAssignAny3]
+from typing import Optional
+def f():
+    return 0
+
+def g(x: Optional[int]) -> int:
+    if x is not None:
+        return x
+    reveal_type(x)  # E: Revealed type is 'None'
+    if 1:
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+        return x
+
 [builtins fixtures/bool.pyi]

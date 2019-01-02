@@ -24,6 +24,10 @@
 -- # flags2: --another-flag
 -- (and flags3 for the third run, and so on).
 --
+-- Incremental tests involving plugins that get updated are also supported.
+-- All plugin files that are updated *must* end in '_plugin', so they will
+-- be unloaded from 'sys.modules' between incremental steps.
+--
 -- Any files that we expect to be rechecked should be annotated in the [rechecked]
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
@@ -1110,13 +1114,14 @@ class C: pass
 
 [file c/submodule.py]
 val = 3  # type: int
-val = "foo"
+if int():
+    val = "foo"
 
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
 [stale c]
 [out2]
-tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/c/submodule.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
 
 [case testIncrementalRemoteError]
@@ -1335,8 +1340,9 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        val = "str"   # deliberately triggering error
-        return C()
+        if 1:
+            val = "str"   # deliberately triggering error
+            return C()
 
 [file mod3.py.2]
 from mod4 import C
@@ -1350,7 +1356,7 @@ class C:
 [rechecked mod3, mod2, mod1]
 [stale mod3, mod2]
 [out1]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
@@ -1374,8 +1380,9 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        val = "str"   # deliberately triggering error
-        return C()
+        if 1:
+            val = "str"   # deliberately triggering error
+            return C()
 
 [file mod4.py]
 class C:
@@ -1388,11 +1395,11 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4]
 [out1]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
 [case testIncrementalIncidentalChangeWithBugFixCausesPropagation]
@@ -1413,8 +1420,9 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        val = "str"   # deliberately triggering error
-        return C()
+        if 1:
+            val = "str"   # deliberately triggering error
+            return C()
 
 [file mod3.py.2]
 from mod4 import C
@@ -1432,7 +1440,7 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4, mod3, mod2]
 [out1]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
@@ -2078,7 +2086,7 @@ x = 1
 [stale]
 [out2]
 tmp/n.py:1: error: Cannot find module named 'm'
-tmp/n.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/n.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeleteFileWithinCycle]
 import a
@@ -2151,683 +2159,6 @@ def foo(x) -> int:
 [out2]
 tmp/n.py:2: error: Too many arguments for "foo"
 [out3]
-
---
--- Quick mode
---
-
-[case testQuickAndDirtyInterfaceChangeDoesNotPropagate]
-# flags: --quick-and-dirty
-import b, c
-[file a.py]
-def a(): pass
-[file b.py]
-import a
-import c
-[file c.py]
-import a
-import b
-[file a.py.2]
-def a(x): pass
-[rechecked a]
-[stale a]
-
-[case testQuickAndDirtyDoesNotInvalidateImportCycle]
-# flags: --quick-and-dirty
-import b, c
-[file a.py]
-def a(): pass
-[file b.py]
-import a
-import c
-[file c.py]
-import a
-import b
-[file b.py.2]
-import a
-import c
-x = 0
-[rechecked b]
-[stale b]
-
-[case testQuickAndDirtySwitchToIncrementalMode]
-# flags: --quick-and-dirty
-# flags2: --incremental
-import a, b
-[file a.py]
-import b
-[file b.py]
-import a
-[rechecked a, b, builtins]
-[stale a, b, builtins]
-
-[case testQuickAndDirtyFixErrorInExistingFunction]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-def foo() -> int: return ''
-[file b.py]
-import a
-[file a.py.2]
-def foo() -> int: return 0
-[out1]
-tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
-[out2]
-[rechecked a]
-[stale a]
-
-[case testQuickAndDirtyIntroduceErrorInNewFunction]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-[file b.py]
-import a
-[file a.py.2]
-import b
-def foo() -> int: return ''
-[out1]
-[out2]
-tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
-[rechecked a]
-[stale]
-
-[case testQuickAndDirtyPersistingError]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-def foo() -> int: return ''
-[file b.py]
-import a
-[file a.py.2]
-import b
-def foo() -> int: return 0.5
-[out1]
-tmp/a.py:2: error: Incompatible return value type (got "str", expected "int")
-[out2]
-tmp/a.py:2: error: Incompatible return value type (got "float", expected "int")
-[rechecked a]
-[stale]
-
-[case testQuickAndDirtyIntroduceReferencesWithinCycle]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-[file b.py]
-import a
-class C: pass
-def f() -> int: pass
-[file a.py.2]
-import b
-reveal_type(b.C)
-reveal_type(b.f)
-[out1]
-[out2]
-tmp/a.py:2: error: Revealed type is 'def () -> b.C'
-tmp/a.py:3: error: Revealed type is 'def () -> builtins.int'
-[rechecked a]
-[stale]
-
-[case testQuickAndDirtyIntroduceReferencesWithinCycle2]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-class C: pass
-def f() -> int: pass
-[file b.py]
-import a
-[file b.py.2]
-import a
-reveal_type(a.C)
-reveal_type(a.f)
-[out1]
-[out2]
-tmp/b.py:2: error: Revealed type is 'def () -> a.C'
-tmp/b.py:3: error: Revealed type is 'def () -> builtins.int'
-[rechecked b]
-[stale]
-
-[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError]
-# flags: --quick-and-dirty
-import a, b, c
-[file a.py]
-import b
-[file b.py]
-import a
-class C: pass
-def f() -> int: pass
-[file c.py]
-[file a.py.2]
-import b
-def g() -> b.C: pass
-h = b.f
-[file c.py.3]
-import a
-reveal_type(a.g)
-reveal_type(a.h)
-[out1]
-[out2]
-[out3]
-tmp/c.py:2: error: Revealed type is 'def () -> b.C'
-tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
-[rechecked a]
-[stale a]
-[rechecked2 c]
-[stale2]
-
-[case testQuickAndDirtyIntroduceReferencesWithinCycleNoError2]
-# flags: --quick-and-dirty
-import a, b, c
-[file a.py]
-import b
-class C: pass
-def f() -> int: pass
-[file b.py]
-import a
-[file c.py]
-[file b.py.2]
-import a
-def g() -> a.C: pass
-h = a.f
-[file c.py.3]
-import b
-reveal_type(b.g)
-reveal_type(b.h)
-[out1]
-[out2]
-[out3]
-tmp/c.py:2: error: Revealed type is 'def () -> a.C'
-tmp/c.py:3: error: Revealed type is 'def () -> builtins.int'
-[rechecked b]
-[stale b]
-[rechecked2 c]
-[stale2]
-
--- (The behavior for blockers is actually no different than in regular incremental mode)
-[case testQuickAndDirtyBlockerOnFirstRound]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-class B(C): pass
-class C(B): pass  # blocker
-[file b.py]
-import a
-[file a.py.2]
-import b
-class B: pass
-class C(B): pass
-[out1]
-tmp/a.py:3: error: Cycle in inheritance hierarchy
-[out2]
-[rechecked a, b]
-[stale a, b]
-
-[case testQuickAndDirtyBlockerOnSecondRound]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-class B: pass
-class C(B): pass
-[file b.py]
-import a
-[file a.py.2]
-import b
-class B(C): pass
-class C(B): pass  # blocker
-[out1]
-[out2]
-tmp/a.py:3: error: Cycle in inheritance hierarchy
-[rechecked a, b]
-[stale a, b]
-
-[case testQuickAndDirtyRenameFunctionInTwoModules]
-# flags: --quick-and-dirty
-import a, b, c, d
-[file a.py]
-import d
-def f(): pass
-[file b.py]
-from a import f
-[file c.py]
-from b import f
-[file d.py]
-from c import f
-[file a.py.2]
-import d
-def g(): pass  # renamed f to g
-[file c.py.2]
-from a import g
-
-[case testQuickAndDirtyUnmodifiedModuleDoesNotGenerateError]
-# flags: --quick-and-dirty
-import a, b, c, d
-[file a.py]
-import d
-class C:
-    def f(self): pass
-[file b.py]
-from a import C
-[file c.py]
-from b import C
-[file d.py]
-from c import C
-C().f()  # no error because unmodified
-[file a.py.2]
-import d
-class C:
-    def g(self): pass  # renamed f to g
-[file c.py.2]
-from a import C
-[out1]
-[out2]
-
-[case testQuickAndDirtyUnmodifiedModuleDoesNotGenerateError2]
-# flags: --quick-and-dirty
-import a, b, c
-[file a.py]
-import c
-class C:
-    x = 0
-[file b.py]
-import a
-x = a.C.x  # type: int
-[file c.py]
-import b
-x = b.x
-[file a.py.2]
-import c
-class C:
-    pass  # Removed x
-[out1]
-[out2]
-[rechecked a]
-[stale a]
-
-[case testQuickAndDirtyTypeAliasReference]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-def f(x: b.S) -> b.S: return x
-[file b.py]
-import a
-S = str
-[file a.py.2]
-import b
-def f(x: b.S) -> int: return 0
-
-[case testQuickAndDirtyNamedTupleReference]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-def f(x: b.P) -> b.P: return x
-[file b.py]
-from typing import NamedTuple
-import a
-P = NamedTuple('P', (('x', int),))
-[file a.py.2]
-import b
-def f(x: b.P) -> int: return 0
-
-[case testQuickAndDirtyTypeVarReference]
-# flags: --quick-and-dirty
-import a, b
-[file a.py]
-import b
-def f(x: b.T) -> b.T: return x
-[file b.py]
-from typing import TypeVar
-import a
-T = TypeVar('T')
-[file a.py.2]
-import b
-def f(x: b.T) -> int: return 0
-
-[case testQuickAndDirtyDeleteFunctionUsedByOtherModule]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-from b import f
-[file b.py]
-import a
-def f() -> int: pass
-a.f()
-[file b.py.2]
-import a
-reveal_type(a.f)
-[out2]
-tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
-
-[case testQuickAndDirtyDeleteClassUsedInAnnotation]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C: pass
-[file b.py]
-import a
-class C: pass
-[file b.py.2]
-import a
-reveal_type(a.f)
-a.f().x
-[out2]
-tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
-tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
-
-[case testQuickAndDirtyDeleteSuperClass]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-from b import Foo
-z = (1, Foo())
-
-class Bar:
-    pass
-[file b.py]
-from e import Quux
-class Baz:
-    pass
-class Foo(Baz, Quux):
-    pass
-[file e.py]
-from a import Bar
-class Quux(Bar):
-    pass
-
-[file a.py.2]
-from b import Foo
-z = (1, Foo())
-[out]
-[out2]
-
-[case testQuickAndDirtyDeleteClassUsedAsBase]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-class D(b.C): pass
-[file b.py]
-import a
-class C: pass
-[file b.py.2]
-import a
-reveal_type(a.D)
-a.D().x
-[out2]
-tmp/b.py:2: error: Revealed type is 'def () -> a.D'
-tmp/b.py:3: error: "D" has no attribute "x"
-
-[case testQuickAndDirtyDeleteNestedClassUsedInAnnotation]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C.D: pass
-[file b.py]
-import a
-class C:
-    class D: pass
-[file b.py.2]
-import a
-class C:
-    pass
-reveal_type(a.f)
-a.f().x
-[out2]
-tmp/b.py:4: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
-tmp/b.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
-
-[case testQuickAndDirtyTurnGenericClassIntoNonGeneric-skip]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C[int]: pass
-[file b.py]
-from typing import TypeVar, Generic
-import a
-T = TypeVar('T')
-class C(Generic[T]): pass
-[file b.py.2]
-import a
-class C: pass
-reveal_type(a.f)
-c: C
-d = a.f()
-c = d
-d = c
-[out2]
-# TODO: Crashes (https://github.com/python/mypy/issues/3279)
-
-[case testQuickAndDirtyTurnClassIntoGenericOne-skip]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C: pass
-[file b.py]
-import a
-class C: pass
-[file b.py.2]
-from typing import TypeVar, Generic
-import a
-T = TypeVar('T')
-class C(Generic[T]): pass
-reveal_type(a.f)
-c: C[int]
-d = a.f()
-d = c
-c = d
-[out2]
-# TODO: Crashes (https://github.com/python/mypy/issues/3279)
-
-[case testQuickAndDirtyDeleteTypeVarUsedInAnnotation]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f(x: b.T) -> b.T: return x
-[file b.py]
-from typing import TypeVar
-import a
-T = TypeVar('T')
-[file b.py.2]
-import a
-reveal_type(a.f)
-reveal_type(a.f(1))
-[out2]
-tmp/b.py:2: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
-tmp/b.py:3: error: Revealed type is 'builtins.int*'
-
-[case testQuickAndDirtyDeleteNewTypeUsedInAnnotation]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C: pass
-[file b.py]
-from typing import NewType
-import a
-C = NewType('C', int)
-[file b.py.2]
-import a
-reveal_type(a.f)
-a.f().x
-[out2]
-tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
-tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
-
-[case testQuickAndDirtyChangeClassIntoFunction]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C: pass
-[file b.py]
-import a
-class C: pass
-[file b.py.2]
-import a
-def C() -> None: pass
-reveal_type(a.f)
-a.f().x
-[out2]
-tmp/b.py:3: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
-tmp/b.py:4: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
-
-[case testQuickAndDirtyChangeClassIntoVariable]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-def f() -> b.C: pass
-[file b.py]
-import a
-class C: pass
-[file b.py.2]
-import a
-C = 0
-reveal_type(a.f)
-a.f().x
-[out2]
-tmp/b.py:3: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
-tmp/b.py:4: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
-
-[case testQuickAndDirtyAddFile]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-x = ''
-[file b.py]
-import a
-[file b.py.2]
-import c
-reveal_type(c.x)
-[file c.py.2]
-import a
-x = 1
-reveal_type(a.x)
-[rechecked b, c]
-[stale]
-[out2]
-tmp/c.py:3: error: Revealed type is 'builtins.str'
-tmp/b.py:2: error: Revealed type is 'builtins.int'
-
-[case testQuickAndDirtyDeleteFile]
-# flags: --quick-and-dirty
-import b
-[file a.py]
-def f() -> None: pass
-[file b.py]
-import a
-a.f()
-[delete a.py.2]
-[file b.py.3]
-import a
-a.f() # Comment change
-[file b.py.4]
-# Remove import
-[rechecked b]
-[stale]
-[rechecked2 b]
-[stale2]
-[rechecked3 b]
-[stale3 b]
-[out2]
-tmp/b.py:1: error: Cannot find module named 'a'
-tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-[out3]
-tmp/b.py:1: error: Cannot find module named 'a'
-tmp/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-[out4]
-
-[case testQuickAndDirtyRenameModule]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-b.f()
-[file b.py]
-def f() -> None: pass
-[delete b.py.2]
-[file c.py.2]
-def f() -> None: pass
-[file a.py.2]
-import c
-c.f(1)
-[file c.py.3]
-def f() -> None: pass # comment change
-[file c.py.4]
-def f(x) -> None: pass
-[out]
-[out2]
-tmp/a.py:2: error: Too many arguments for "f"
-[out3]
-tmp/a.py:2: error: Too many arguments for "f"
-[out4]
-[rechecked a, c]
-[stale c]
-[rechecked2 a, c]
-[stale2]
-[rechecked3 a, c]
-[stale3 a, c]
-
-[case testQuickAndDirtyMultiplePasses]
-# flags: --quick-and-dirty
-import a
-[file a.py]
-import b
-b.f()
-[file b.py]
-def f() -> None: pass
-[file b.py.2]
-# Write cache file but the error in a is not caught yet.
-def f(x) -> None: pass
-[file a.py.3]
-# Editing a triggers the error.
-import b
-b.f()
-[rechecked b]
-[rechecked2 a]
-[out2]
-[out3]
-tmp/a.py:3: error: Too few arguments for "f"
-
-[case testQuickAndDirtySerializeStaleType]
-# flags: --quick-and-dirty
-import a, c
-[file a.py]
-import b
-def f() -> b.C: pass
-[file b.py]
-import a
-class C: pass
-[file c.py]
-[file b.py.2]
-import a
-x = a.f()
-[file c.py.3]
-import b
-reveal_type(b.x)
-def g(x: object) -> None: pass
-g(b.x)
-b.x.y
-[rechecked b]
-[stale b]
-[rechecked2 c]
-[stale2]
-[out3]
-tmp/c.py:2: error: Revealed type is '<stale cache: consider running mypy without --quick>'
-tmp/c.py:5: error: "<stale cache: consider running mypy without --quick>" has no attribute "y"
 
 [case testCacheDeletedAfterErrorsFound]
 import a
@@ -2912,29 +2243,6 @@ tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
-
-[case testNoCrashOnDoubleImportAliasQuick]
-# cmd: mypy -m e
-# cmd2: mypy -m c
-# cmd3: mypy -m e
-# flags: --quick
-[file c.py]
-from typing import List
-Alias = List[int]
-[file c.py.2]
-from typing import List
-Alias = int
-
-[file d.py]
-from c import Alias
-
-[file e.py]
-from d import Alias
-[file e.py.3]
-from d import Alias
-x: Alias
-[out3]
-[builtins fixtures/list.pyi]
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -4059,7 +3367,7 @@ import a
 
 [out2]
 main:2: error: Cannot find module named 'a'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
 # flags: --strict-optional
@@ -4202,7 +3510,7 @@ def f(x: int) -> None: pass
 [out]
 [out2]
 main:1: error: Cannot find module named 'p.q'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
 main:2: error: Too few arguments for "f"
 
@@ -4323,7 +3631,7 @@ def foo() -> None:
 tmp/main.py:2: error: "int" has no attribute "foo"
 
 [case testIncrementalBustedFineGrainedCache1]
-# flags: --cache-fine-grained
+# flags: --cache-fine-grained --no-sqlite-cache
 import a
 import b
 [file a.py]
@@ -4347,6 +3655,21 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
+[stale a, b, builtins]
+[rechecked a, b, builtins]
+
+[case testIncrementalBustedFineGrainedCache3]
+# flags: --cache-fine-grained --no-sqlite-cache
+import a
+import b
+[file a.py]
+[file b.py]
+-- This is a heinous hack, but we simulate having a invalid cache by deleting
+-- the proto deps file.
+[delete ../.mypy_cache/3.6/@proto_deps.meta.json.2]
+[file b.py.2]
+# uh
+-- Every file should get reloaded, since the cache was invalidated
 [stale a, b, builtins]
 [rechecked a, b, builtins]
 
@@ -4610,7 +3933,7 @@ main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
 [case testIncrementalDataclassesThreeFiles]
 from c import C
-C(5, 'foo', True)
+C('foo', 5, True)
 
 [file a.py]
 from dataclasses import dataclass
@@ -4647,6 +3970,7 @@ class C(A, B):
 [out1]
 [out2]
 tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
+main:2: error: Argument 2 to "C" has incompatible type "int"; expected "bool"
 
 [case testIncrementalDataclassesThreeRuns]
 from a import A
@@ -4788,10 +4112,10 @@ def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
 tmp/c.py:1: error: Cannot find module named 'a.b.c'
-tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out2]
 tmp/c.py:1: error: Cannot find module named 'a.b.c'
-tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports
@@ -5123,6 +4447,50 @@ def outer() -> None:
 [out]
 [out2]
 
+[case testRecursiveAliasImported]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x)
+[file lib.pyi]
+from typing import List
+from other import B
+A = List[B]  # type: ignore
+[file other.pyi]
+from typing import List
+from lib import A
+B = List[A]
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
+
+[case testRecursiveNamedTupleTypedDict]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x.x['x'])
+[file lib.pyi]
+from typing import NamedTuple
+from other import B
+A = NamedTuple('A', [('x', B)])  # type: ignore
+[file other.pyi]
+from mypy_extensions import TypedDict
+from lib import A
+B = TypedDict('B', {'x': A})
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[TypedDict('other.B', {'x': Any}), fallback=lib.A]'
+
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
 # cmd: mypy -m main
@@ -5193,3 +4561,332 @@ def f(x: str) -> None: pass
 [out]
 [out2]
 tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testOverrideByIdemAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C
+class C:  # type: ignore
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    pass
+C = C  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasGeneric]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    pass
+C = C[int]  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImported]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from other import C
+C = C  # type: ignore
+x: C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImportedReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C  # type: ignore
+from other import C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testConditionalExceptionAliasOverride]
+import a
+[file a.py]
+import lib
+try:
+    x = 1
+except lib.Exception as e:
+    pass
+[file a.py.2]
+import lib
+try:
+    x = 2
+except lib.Exception as e:
+    pass
+[file lib.py]
+try:
+    Exception = Exception
+except BaseException:
+    class Exception(BaseException): pass  # type: ignore
+
+try:
+    pass
+except Exception as e:
+    pass
+[builtins fixtures/exception.pyi]
+[out]
+[out2]
+
+[case testBadEnumLoading]
+import a
+[file a.py]
+from b import E
+x: E
+y = 1
+
+[file a.py.2]
+from b import E
+x: E
+y = 2
+
+[file b.py]
+from typing import List
+from enum import Enum
+
+def f() -> List[str]: ...
+
+E = Enum('E', f())  # type: ignore
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+
+[case testChangedPluginsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+class C: ...
+def f() -> C: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.int', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file basic_plugin.py.2]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+[file mypy.ini]
+[[mypy]
+plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testChangedPluginsInvalidateCache2]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+class C: ...
+def f() -> C: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+from version_plugin import __version__, choice
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    if choice:
+        return ctx.api.named_generic_type('builtins.int', [])
+    else:
+        return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file version_plugin.py]
+__version__ = 0.1
+choice = True
+
+[file version_plugin.py.2]
+__version__ = 0.2
+choice = False
+[file mypy.ini]
+[[mypy]
+plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testAddedPluginsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+def f() -> int: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file mypy.ini]
+[[mypy]
+python_version=3.6
+[file mypy.ini.2]
+[[mypy]
+python_version=3.6
+plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedPluginsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+from b import x
+y: str = x
+
+[file a.py.2]
+from b import x
+y: str = x
+touch = 1
+
+[file b.py]
+def f() -> int: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file mypy.ini]
+[[mypy]
+python_version=3.6
+plugins=basic_plugin.py
+[file mypy.ini.2]
+[[mypy]
+python_version=3.6
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")

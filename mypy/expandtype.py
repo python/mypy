@@ -4,7 +4,7 @@ from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
     NoneTyp, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef
+    FunctionLike, TypeVarDef, LiteralType,
 )
 
 
@@ -110,6 +110,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.copy_modified(item_types=self.expand_types(t.items.values()))
+
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        # TODO: Verify this implementation is correct
+        return t
 
     def visit_union_type(self, t: UnionType) -> Type:
         # After substituting for type variables in t.items,

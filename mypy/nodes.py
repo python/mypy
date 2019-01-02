@@ -10,7 +10,8 @@ from mypy_extensions import trait
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict, ClassVar
+    from typing import DefaultDict
+    from typing_extensions import Final
 
 import mypy.strconv
 from mypy.util import short_type
@@ -64,29 +65,29 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: int
-GDEF = 1  # type: int
-MDEF = 2  # type: int
-MODULE_REF = 3  # type: int
+LDEF = 0  # type: Final[int]
+GDEF = 1  # type: Final[int]
+MDEF = 2  # type: Final[int]
+MODULE_REF = 3  # type: Final[int]
 # Type variable declared using TypeVar(...) has kind TVAR. It's not
 # valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-TVAR = 4  # type: int
+TVAR = 4  # type: Final[int]
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 5  # type: int
+UNBOUND_IMPORTED = 5  # type: Final[int]
 
 # RevealExpr node kinds
-REVEAL_TYPE = 0  # type: int
-REVEAL_LOCALS = 1  # type: int
+REVEAL_TYPE = 0  # type: Final[int]
+REVEAL_LOCALS = 1  # type: Final[int]
 
-LITERAL_YES = 2
-LITERAL_TYPE = 1
-LITERAL_NO = 0
+LITERAL_YES = 2  # type: Final
+LITERAL_TYPE = 1  # type: Final
+LITERAL_NO = 0  # type: Final
 
 node_kinds = {
     LDEF: 'Ldef',
@@ -95,14 +96,14 @@ node_kinds = {
     MODULE_REF: 'ModuleRef',
     TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
-}
-inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
+}  # type: Final
+inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}  # type: Final
 
 
 implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__doc__': None,  # depends on Python version, see semanal.py
                          '__file__': '__builtins__.str',
-                         '__package__': '__builtins__.str'}
+                         '__package__': '__builtins__.str'}  # type: Final
 
 
 # These aliases exist because built-in class objects are not subscriptable.
@@ -116,17 +117,17 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
-}
+}  # type: Final
 
 reverse_builtin_aliases = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
     'builtins.set': 'typing.Set',
     'builtins.frozenset': 'typing.FrozenSet',
-}
+}  # type: Final
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.enumerate': ''}
+                   'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
 
@@ -226,6 +227,8 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package = False
+    # Plugin-created dependencies
+    plugin_deps = None  # type: Dict[str, Set[str]]
 
     def __init__(self,
                  defs: List[Statement],
@@ -238,6 +241,7 @@ class MypyFile(SymbolNode):
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
+        self.plugin_deps = {}
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -379,7 +383,7 @@ class ImportedName(SymbolNode):
 
 FUNCBASE_FLAGS = [
     'is_property', 'is_class', 'is_static', 'is_final'
-]
+]  # type: Final
 
 
 class FuncBase(Node):
@@ -510,7 +514,7 @@ class Argument(Node):
 FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
     'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
     'is_awaitable_coroutine',
-]
+]  # type: Final
 
 
 class FuncItem(FuncBase):
@@ -570,7 +574,7 @@ class FuncItem(FuncBase):
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
     'is_decorated', 'is_conditional', 'is_abstract',
-]
+]  # type: Final
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -707,7 +711,7 @@ VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init'
-]
+]  # type: Final
 
 
 class Var(SymbolNode):
@@ -741,7 +745,7 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name   # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast(Bogus[str], None)  # Name with module prefix
+        self._fullname = cast('Bogus[str]', None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
@@ -1228,9 +1232,24 @@ class StrExpr(Expression):
 
     value = ''
 
-    def __init__(self, value: str) -> None:
+    # Keeps track of whether this string originated from Python 2 source code vs
+    # Python 3 source code. We need to keep track of this information so we can
+    # correctly handle types that have "nested strings". For example, consider this
+    # type alias, where we have a forward reference to a literal type:
+    #
+    #     Alias = List["Literal['foo']"]
+    #
+    # When parsing this, we need to know whether the outer string and alias came from
+    # Python 2 code vs Python 3 code so we can determine whether the inner `Literal['foo']`
+    # is meant to be `Literal[u'foo']` or `Literal[b'foo']`.
+    #
+    # This field keeps track of that information.
+    from_python_3 = True
+
+    def __init__(self, value: str, from_python_3: bool = False) -> None:
         super().__init__()
         self.value = value
+        self.from_python_3 = from_python_3
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1239,7 +1258,16 @@ class StrExpr(Expression):
 class BytesExpr(Expression):
     """Bytes literal"""
 
-    value = ''  # TODO use bytes
+    # Note: we deliberately do NOT use bytes here because it ends up
+    # unnecessarily complicating a lot of the result logic. For example,
+    # we'd have to worry about converting the bytes into a format we can
+    # easily serialize/deserialize to and from JSON, would have to worry
+    # about turning the bytes into a human-readable representation in
+    # error messages...
+    #
+    # It's more convenient to just store the human-readable representation
+    # from the very start.
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
@@ -1252,7 +1280,7 @@ class BytesExpr(Expression):
 class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
-    value = ''  # TODO use bytes
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
@@ -1372,17 +1400,17 @@ class MemberExpr(RefExpr):
 # Kinds of arguments
 
 # Positional argument
-ARG_POS = 0  # type: int
+ARG_POS = 0  # type: Final[int]
 # Positional, optional argument (functions only, not calls)
-ARG_OPT = 1  # type: int
+ARG_OPT = 1  # type: Final[int]
 # *arg argument
-ARG_STAR = 2  # type: int
+ARG_STAR = 2  # type: Final[int]
 # Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED = 3  # type: int
+ARG_NAMED = 3  # type: Final[int]
 # **arg argument
-ARG_STAR2 = 4  # type: int
+ARG_STAR2 = 4  # type: Final[int]
 # In an argument list, keyword-only and also optional
-ARG_NAMED_OPT = 5
+ARG_NAMED_OPT = 5  # type: Final[int]
 
 
 class CallExpr(Expression):
@@ -1503,22 +1531,22 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-}  # type: Dict[str, str]
+}  # type: Final[Dict[str, str]]
 
-op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}
+op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}  # type: Final
 op_methods_to_symbols['__div__'] = '/'
 
-comparison_fallback_method = '__cmp__'
+comparison_fallback_method = '__cmp__'  # type: Final
 ops_falling_back_to_cmp = {'__ne__', '__eq__',
                            '__lt__', '__le__',
-                           '__gt__', '__ge__'}
+                           '__gt__', '__ge__'}  # type: Final
 
 
 ops_with_inplace_method = {
-    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}
+    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}  # type: Final
 
 inplace_operator_methods = set(
-    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)
+    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)  # type: Final
 
 reverse_op_methods = {
     '__add__': '__radd__',
@@ -1541,7 +1569,7 @@ reverse_op_methods = {
     '__ge__': '__le__',
     '__gt__': '__lt__',
     '__le__': '__ge__',
-}
+}  # type: Final
 
 # Suppose we have some class A. When we do A() + A(), Python will only check
 # the output of A().__add__(A()) and skip calling the __radd__ method entirely.
@@ -1562,16 +1590,16 @@ op_methods_that_shortcut = {
     '__xor__',
     '__lshift__',
     '__rshift__',
-}
+}  # type: Final
 
-normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
-reverse_op_method_set = set(reverse_op_methods.values())
+normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())  # type: Final
+reverse_op_method_set = set(reverse_op_methods.values())  # type: Final
 
 unary_op_methods = {
     '-': '__neg__',
     '+': '__pos__',
     '~': '__invert__',
-}
+}  # type: Final
 
 
 class OpExpr(Expression):
@@ -1891,9 +1919,9 @@ class TypeApplication(Expression):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-INVARIANT = 0  # type: int
-COVARIANT = 1  # type: int
-CONTRAVARIANT = 2  # type: int
+INVARIANT = 0  # type: Final[int]
+COVARIANT = 1  # type: Final[int]
+CONTRAVARIANT = 2  # type: Final[int]
 
 
 class TypeVarExpr(SymbolNode, Expression):
@@ -1916,7 +1944,7 @@ class TypeVarExpr(SymbolNode, Expression):
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
                  upper_bound: 'mypy.types.Type',
-                 variance: int=INVARIANT) -> None:
+                 variance: int = INVARIANT) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
@@ -2223,7 +2251,7 @@ class TypeInfo(SymbolNode):
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
-    ]  # type: ClassVar[List[str]]
+    ]  # type: Final[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
@@ -2294,6 +2322,12 @@ class TypeInfo(SymbolNode):
 
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
+
+    def __bool__(self) -> bool:
+        # We defined this here instead of just overriding it in
+        # FakeInfo so that mypyc can generate a direct call instead of
+        # using the generic bool handling.
+        return not isinstance(self, FakeInfo)
 
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
@@ -2471,22 +2505,19 @@ class FakeInfo(TypeInfo):
     # for missing TypeInfos in a number of places where the excuses
     # for not being Optional are a little weaker.
     #
-    # It defines a __bool__ method so that it can be conveniently
-    # tested against in the same way that it would be if things were
-    # properly optional.
+    # TypeInfo defines a __bool__ method that returns False for FakeInfo
+    # so that it can be conveniently tested against in the same way that it
+    # would be if things were properly optional.
     def __init__(self, msg: str) -> None:
         self.msg = msg
-
-    def __bool__(self) -> bool:
-        return False
 
     def __getattribute__(self, attr: str) -> None:
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: TypeInfo
-CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: TypeInfo
-FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: TypeInfo
+VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: Final[TypeInfo]
+CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: Final[TypeInfo]
+FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: Final[TypeInfo]
 
 
 class TypeAlias(SymbolNode):
@@ -2674,6 +2705,8 @@ class SymbolTableNode:
         cross_ref: For deserialized MODULE_REF nodes, the referenced module
             name; for other nodes, optionally the name of the referenced object.
         implicit: Was this defined by assignment to self attribute?
+        plugin_generated: Was this symbol generated by a plugin?
+            (And therefore needs to be removed in aststrip.)
         no_serialize: Do not serialize this node if True. This is used to prevent
             keys in the cache that refer to modules on which this file does not
             depend. Currently this can happen if there is a module not in build
@@ -2697,6 +2730,7 @@ class SymbolTableNode:
                  'module_hidden',
                  'cross_ref',
                  'implicit',
+                 'plugin_generated',
                  'no_serialize',
                  )
 
@@ -2707,6 +2741,7 @@ class SymbolTableNode:
                  implicit: bool = False,
                  module_hidden: bool = False,
                  *,
+                 plugin_generated: bool = False,
                  no_serialize: bool = False) -> None:
         self.kind = kind
         self.node = node
@@ -2714,6 +2749,7 @@ class SymbolTableNode:
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref = None  # type: Optional[str]
+        self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
 
     @property
@@ -2770,6 +2806,8 @@ class SymbolTableNode:
             data['module_public'] = False
         if self.implicit:
             data['implicit'] = True
+        if self.plugin_generated:
+            data['plugin_generated'] = True
         if self.kind == MODULE_REF:
             assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
             data['cross_ref'] = self.node.fullname()
@@ -2803,6 +2841,8 @@ class SymbolTableNode:
             stnode.module_public = data['module_public']
         if 'implicit' in data:
             stnode.implicit = data['implicit']
+        if 'plugin_generated' in data:
+            stnode.plugin_generated = data['plugin_generated']
         return stnode
 
 
@@ -2879,7 +2919,7 @@ deserialize_map = {
     for key, obj in globals().items()
     if type(obj) is not FakeInfo
     and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
-}
+}  # type: Final
 
 
 def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:

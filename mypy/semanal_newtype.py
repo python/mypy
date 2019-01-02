@@ -5,7 +5,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from typing import Tuple, Optional
 
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType
+from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType, TypeOfAny
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
     UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, GDEF, MDEF, ARG_POS
@@ -107,12 +107,20 @@ class NewTypeAnalyzer:
             has_failed = True
 
         # Check second argument
+        msg = "Argument 2 to NewType(...) must be a valid type"
         try:
             unanalyzed_type = expr_to_unanalyzed_type(args[1])
         except TypeTranslationError:
-            self.fail("Argument 2 to NewType(...) must be a valid type", context)
+            self.fail(msg, context)
             return None
+
         old_type = self.api.anal_type(unanalyzed_type)
+
+        # The caller of this function assumes that if we return a Type, it's always
+        # a valid one. So, we translate AnyTypes created from errors into None.
+        if isinstance(old_type, AnyType) and old_type.type_of_any == TypeOfAny.from_error:
+            self.fail(msg, context)
+            return None
 
         return None if has_failed else old_type
 
