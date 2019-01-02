@@ -2,6 +2,8 @@
 
 from typing import AbstractSet, Dict, Set, List
 
+from io import StringIO
+
 from mypy.test.helpers import assert_equal, Suite
 from mypy.build import BuildManager, State, BuildSourceSet
 from mypy.modulefinder import SearchPaths
@@ -42,6 +44,8 @@ class GraphSuite(Suite):
         options = Options()
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
+        stdout = StringIO()
+        stderr = StringIO()
         manager = BuildManager(
             data_dir='',
             search_paths=search_paths,
@@ -55,6 +59,8 @@ class GraphSuite(Suite):
             errors=errors,
             flush_errors=lambda msgs, serious: None,
             fscache=fscache,
+            stdout=stdout,
+            stderr=stderr,
         )
         return manager
 
