@@ -3325,3 +3325,24 @@ L2:
     return r2
 L3:
     unreachable
+
+[case testRevealType]
+def f(x: int) -> None:
+    reveal_type(x)  # type: ignore
+[out]
+def f(x):
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
+    r6 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_1 :: static  ('reveal_type')
+    r2 = getattr r0, r1
+    r3 = box(int, x)
+    r4 = py_call(r2, r3)
+    r5 = unbox(int, r4)
+    r6 = None
+    return r6

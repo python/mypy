@@ -229,7 +229,8 @@ def include_dir() -> str:
 
 def generate_c(sources: List[BuildSource], options: Options,
                multi_file: bool,
-               shared_lib_name: Optional[str]) -> Tuple[List[Tuple[str, str]], str]:
+               shared_lib_name: Optional[str],
+               verbose: bool = False) -> Tuple[List[Tuple[str, str]], str]:
     """Drive the actual core compilation step.
 
     Returns the C source code and (for debugging) the pretty printed IR.
@@ -246,14 +247,16 @@ def generate_c(sources: List[BuildSource], options: Options,
         fail('Typechecking failure')
 
     t1 = time.time()
-    print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
+    if verbose:
+        print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
 
     ops = []  # type: List[str]
     ctext = emitmodule.compile_modules_to_c(result, module_names, shared_lib_name, multi_file,
                                             ops=ops)
 
     t2 = time.time()
-    print("Compiled to C in {:.3f}s".format(t2 - t1))
+    if verbose:
+        print("Compiled to C in {:.3f}s".format(t2 - t1))
 
     return ctext, '\n'.join(ops)
 
@@ -324,7 +327,8 @@ def mypycify(paths: List[str],
              mypy_options: Optional[List[str]] = None,
              opt_level: str = '3',
              multi_file: bool = False,
-             skip_cgen: bool = False) -> List[MypycifyExtension]:
+             skip_cgen: bool = False,
+             verbose: bool = False) -> List[MypycifyExtension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
@@ -367,7 +371,7 @@ def mypycify(paths: List[str],
     # so that it can do a corner-cutting version without full stubs.
     # TODO: Be able to do this based on file mtimes?
     if not skip_cgen:
-        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name)
+        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)

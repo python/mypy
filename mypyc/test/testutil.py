@@ -95,7 +95,9 @@ def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    _, modules = genops.build_ir([result.files['__main__']], result.graph, result.types)
+    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types)
+    assert errors == 0
+
     module = modules[0][1]
     return module.functions
 

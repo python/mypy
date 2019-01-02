@@ -93,3 +93,98 @@ assert a.f(10) == 100
 [file a.py]
 def f(x: int) -> int:
     return x*x
+
+[case testErrorOutput]
+# cmd: test.py foo/__init__.py foo/bar.py
+
+[file test.py]
+from typing import List, Any
+from typing_extensions import Final
+from mypy_extensions import trait
+
+def args(*x: int) -> int:  # E: Accepting *args or **kwargs is unimplemented
+    return sum(x)
+
+def kwargs(**x: int) -> None:  # E: Accepting *args or **kwargs is unimplemented
+    pass
+
+def foo(x: List[int]) -> List[int]:
+    return [1, 2, *x]  # E: Star expressions (in non call contexts) are unimplemented
+
+def busted(b: bool) -> None:
+    for i in range(1, 10, 0):  # E: range() step can't be zero
+        try:
+            if i == 5:
+                break  # E: break inside try/finally block is unimplemented
+            elif i == 4:
+                continue  # E: continue inside try/finally block is unimplemented
+        finally:
+            print('oops')
+
+print(foo([1,2,3]))
+
+x = [1,2]
+
+class Foo:
+    a, b = (10, 20)  # E: Only assignment to variables is supported in class bodies
+    x[0] = 10  # E: Only assignment to variables is supported in class bodies
+    lol = 20
+    l = [10]  # W: Unsupported default attribute value
+    c = d = 50  # E: Multiple assignment in class bodies not supported
+
+    if 1+1 == 2:  # E: Unsupported statement in class body
+        x = 10
+
+Foo.lol = 50  # E: Only class variables defined as ClassVar can be assigned to
+
+print(x)
+del x  # E: Unimplemented del operation
+
+def decorator(x: Any) -> Any:
+    return x
+
+class NeverMetaclass(type):  # E: Inheriting from most builtin types is unimplemented
+    pass
+
+@decorator  # E: Metaclasses are not supported  # E: Class decorators are not supported
+class Wrong(metaclass=NeverMetaclass):
+    pass
+
+class Concrete1:
+    pass
+
+@trait
+class Trait1(Concrete1):
+    pass
+
+class Concrete2:
+    pass
+
+@trait
+class Trait2(Concrete2):
+    pass
+
+cmplx = 2+5j  # E: complex literals are unimplemented
+
+def warning(x: List[int] = []) -> None:  # W: Unsupported default argument value
+    pass
+
+class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent list  # E: Non-trait MRO must be linear
+    pass
+
+iterator_warning = (i+1 for i in range(10))  # W: Treating generator comprehension as list
+
+d1 = {1: 2}
+d2 = {2: 3, **d1}  # E: **args in dict expressions is unimplemented
+
+async def aio(x: Any) -> Any:  # E: async functions are unimplemented
+    await x  # E: await is unimplemented
+
+def yieldfrom(x: Any) -> Any:
+    yield from x  # E: yield from is unimplemented
+
+[file foo/__init__.py]
+x = 20
+
+[file foo/bar.py]
+from . import x  # E: Relative imports are unimplemented

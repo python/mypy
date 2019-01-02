@@ -14,7 +14,7 @@ It would be translated to something that conceptually looks like this:
    return r3
 """
 from typing import (
-    Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast, overload,
+    Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, NoReturn, cast, overload,
 )
 MYPY = False
 if MYPY:
@@ -40,6 +40,7 @@ from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
 )
 import mypy.nodes
+import mypy.errors
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
     TypeType, FunctionLike, Overloaded, TypeOfAny, UninhabitedType, UnboundType,
@@ -99,11 +100,35 @@ from mypyc.crash import catch_errors
 GenFunc = Callable[[], None]
 
 
+class UnsupportedException(Exception):
+    pass
+
+
+class Errors:
+    def __init__(self) -> None:
+        self.num_errors = 0
+        self.num_warnings = 0
+        self._errors = mypy.errors.Errors()
+
+    def error(self, msg: str, path: str, line: int) -> None:
+        self._errors.report(line, None, msg, severity='error', file=path)
+        self.num_errors += 1
+
+    def warning(self, msg: str, path: str, line: int) -> None:
+        self._errors.report(line, None, msg, severity='warning', file=path)
+        self.num_warnings += 1
+
+    def flush_errors(self) -> None:
+        for error in self._errors.new_messages():
+            print(error)
+
+
 def build_ir(modules: List[MypyFile],
              graph: Graph,
-             types: Dict[Expression, Type]) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
+             types: Dict[Expression, Type]) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
     result = []
     mapper = Mapper()
+    errors = Errors()
 
     # Collect all classes defined in the compilation unit.
     classes = []
@@ -121,7 +146,7 @@ def build_ir(modules: List[MypyFile],
     # Populate structural information in class IR.
     for module, cdef in classes:
         with catch_errors(module.path, cdef.line):
-            prepare_class_def(module.fullname(), cdef, mapper)
+            prepare_class_def(module.path, module.fullname(), cdef, errors, mapper)
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
@@ -146,7 +171,7 @@ def build_ir(modules: List[MypyFile],
         module.accept(pbv)
 
         # Second pass.
-        builder = IRBuilder(types, graph, mapper, module_names, pbv)
+        builder = IRBuilder(types, graph, errors, mapper, module_names, pbv)
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             builder.imports,
@@ -161,7 +186,9 @@ def build_ir(modules: List[MypyFile],
     for cir in class_irs:
         compute_vtable(cir)
 
-    return mapper.literals, result
+    errors.flush_errors()
+
+    return mapper.literals, result, errors.num_errors
 
 
 def is_trait(cdef: ClassDef) -> bool:
@@ -384,7 +411,16 @@ def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Ma
             ir.property_types[node.name()] = decl.sig.ret_type
 
 
-def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
+def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
+                      errors: Errors, mapper: Mapper) -> None:
+    # The metaclass chain for GenericMeta all works, but in general they don't
+    if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname() not in (
+            'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
+        errors.error("Metaclasses are not supported", path, cdef.line)
+    if any(not (isinstance(d, NameExpr) and d.fullname == 'mypy_extensions.trait')
+           for d in cdef.decorators):
+        errors.error("Class decorators are not supported", path, cdef.line)
+
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
     for name, node in info.names.items():
@@ -398,12 +434,25 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
             assert node.node.impl
             prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
-    # Special case exceptions and dicts
-    # XXX: How do we handle *other* things??
-    if info.bases and any(cls.fullname() == 'builtins.Exception' for cls in info.mro):
-        ir.builtin_base = 'PyBaseExceptionObject'
-    if info.bases and any(cls.fullname() == 'builtins.dict' for cls in info.mro):
-        ir.builtin_base = 'PyDictObject'
+    # Check for subclassing from builtin types
+    for cls in info.mro:
+        # Special case exceptions and dicts
+        # XXX: How do we handle *other* things??
+        if cls.fullname() == 'builtins.Exception':
+            # don't do anything for Exception (we'll do something for BaseException)
+            pass
+        elif cls.fullname() == 'builtins.BaseException':
+            ir.builtin_base = 'PyBaseExceptionObject'
+        elif cls.fullname() == 'builtins.dict':
+            ir.builtin_base = 'PyDictObject'
+        elif cls.fullname() == 'builtins.object':
+            pass
+        elif cls.fullname().startswith('builtins.'):
+            # Note that if we try to subclass a C extension class that
+            # isn't in builtins, bad things will happen and we won't
+            # catch it here! But this should catch a lot of the most
+            # common pitfalls.
+            errors.error("Inheriting from most builtin types is unimplemented", path, cdef.line)
 
     if ir.builtin_base:
         ir.attributes.clear()
@@ -419,7 +468,8 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases
              if base.type in mapper.type_to_ir]
-    assert all(c.is_trait for c in bases[1:]), "Non trait bases must be first"
+    if not all(c.is_trait for c in bases[1:]):
+        errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
     ir.traits = [c for c in bases if c.is_trait]
 
     mro = []
@@ -441,8 +491,8 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     base_idx = 1 if not ir.is_trait else 0
     if len(base_mro) > base_idx:
         ir.base = base_mro[base_idx]
-    assert all(base_mro[i].base == base_mro[i + 1] for i in range(len(base_mro) - 1)), (
-        "non-trait MRO must be linear")
+    if not all(base_mro[i].base == base_mro[i + 1] for i in range(len(base_mro) - 1)):
+        errors.error("Non-trait MRO must be linear", path, cdef.line)
     ir.mro = mro
     ir.base_mro = base_mro
 
@@ -627,23 +677,23 @@ class NonlocalControl:
     try/except blocks).
     """
     @abstractmethod
-    def gen_break(self, builder: 'IRBuilder') -> None: pass
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None: pass
 
     @abstractmethod
-    def gen_continue(self, builder: 'IRBuilder') -> None: pass
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None: pass
 
     @abstractmethod
-    def gen_return(self, builder: 'IRBuilder', value: Value) -> None: pass
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None: pass
 
 
 class BaseNonlocalControl(NonlocalControl):
-    def gen_break(self, builder: 'IRBuilder') -> None:
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
         assert False, "break outside of loop"
 
-    def gen_continue(self, builder: 'IRBuilder') -> None:
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
         assert False, "continue outside of loop"
 
-    def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         builder.add(Return(value))
 
 
@@ -653,35 +703,35 @@ class CleanupNonlocalControl(NonlocalControl):
         self.outer = outer
 
     @abstractmethod
-    def gen_cleanup(self, builder: 'IRBuilder') -> None: ...
+    def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None: ...
 
-    def gen_break(self, builder: 'IRBuilder') -> None:
-        self.gen_cleanup(builder)
-        self.outer.gen_break(builder)
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+        self.gen_cleanup(builder, line)
+        self.outer.gen_break(builder, line)
 
-    def gen_continue(self, builder: 'IRBuilder') -> None:
-        self.gen_cleanup(builder)
-        self.outer.gen_continue(builder)
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+        self.gen_cleanup(builder, line)
+        self.outer.gen_continue(builder, line)
 
-    def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
-        self.gen_cleanup(builder)
-        self.outer.gen_return(builder, value)
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+        self.gen_cleanup(builder, line)
+        self.outer.gen_return(builder, value, line)
 
 
 class GeneratorNonlocalControl(BaseNonlocalControl):
-    def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         # Assign an invalid next label number so that the next time __next__ is called, we jump to
         # the case in which StopIteration is raised.
         builder.assign(builder.fn_info.generator_class.next_label_target,
                        builder.add(LoadInt(-1)),
-                       builder.fn_info.fitem.line)
+                       line)
         # Raise a StopIteration containing a field for the value that should be returned. Before
         # doing so, create a new block without an error handler set so that the implicitly thrown
         # StopIteration isn't caught by except blocks inside of the generator function.
         builder.error_handlers.append(None)
         builder.goto_new_block()
         builder.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, value,
-                                       builder.fn_info.fitem.line))
+                                       line))
         builder.add(Unreachable())
         builder.error_handlers.pop()
 
@@ -690,6 +740,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
                  types: Dict[Expression, Type],
                  graph: Graph,
+                 errors: Errors,
                  mapper: Mapper,
                  modules: List[str],
                  pbv: PreBuildVisitor) -> None:
@@ -731,6 +782,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
+        self.errors = errors
         self.mapper = mapper
         self.imports = []  # type: List[str]
 
@@ -866,8 +918,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr)
             if not self.is_approximately_constant(stmt.rvalue):
-                print('{}:{}: Warning: unsupported default attribute value'.format(
-                    self.module_path, stmt.rvalue.line))
+                self.warning('Unsupported default attribute value', stmt.rvalue.line)
 
             # If the attribute is initialized to None and type isn't optional,
             # don't initialize it to anything.
@@ -904,9 +955,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # Variable declaration with no body
                 if isinstance(stmt.rvalue, TempNode):
                     continue
-                assert len(stmt.lvalues) == 1
+
+                if len(stmt.lvalues) != 1:
+                    self.error("Multiple assignment in class bodies not supported", stmt.line)
+                    continue
                 lvalue = stmt.lvalues[0]
-                assert isinstance(lvalue, NameExpr)
+                if not isinstance(lvalue, NameExpr):
+                    self.error("Only assignment to variables is supported in class bodies",
+                               stmt.line)
+                    continue
                 # Only treat marked class variables as class variables.
                 if not (is_class_var(lvalue) or stmt.is_final_def):
                     continue
@@ -921,8 +978,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # Docstring. Ignore
                 pass
             else:
-                with self.catch_errors(stmt.line):
-                    assert False, "Unsupported statement in class body"
+                self.error("Unsupported statement in class body", stmt.line)
 
         self.generate_attr_defaults(cdef)
         self.create_ne_from_eq(cdef)
@@ -1016,7 +1072,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if node.is_mypy_only:
             return
         # TODO support these?
-        assert not node.relative
+        if node.relative:
+            self.error("Relative imports are unimplemented", node.line)
+            return
 
         self.gen_import(node.id, node.line)
         module = self.add(LoadStatic(object_rprimitive, 'module', node.id))
@@ -1163,8 +1221,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for arg in fitem.arguments:
             if arg.initializer:
                 if not self.is_approximately_constant(arg.initializer):
-                    print('{}:{}: Warning: unsupported default argument value'.format(
-                        self.module_path, arg.initializer.line))
+                    self.warning('Unsupported default argument value', arg.initializer.line)
                 target = self.environment.lookup(arg.variable)
                 assert isinstance(target, AssignmentTargetRegister)
                 self.assign_if_null(target,
@@ -1209,7 +1266,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         | c_obj |   --------------------------+
         +-------+
         """
-        assert not any(kind in (ARG_STAR, ARG_STAR2) for kind in fitem.arg_kinds)
+        if any(kind in (ARG_STAR, ARG_STAR2) for kind in fitem.arg_kinds):
+            self.error('Accepting *args or **kwargs is unimplemented', fitem.line)
+
+        if fitem.is_coroutine:
+            self.error('async functions are unimplemented', fitem.line)
 
         func_reg = None  # type: Optional[Value]
 
@@ -1338,7 +1399,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
             retval = self.coerce(self.none(), self.ret_types[-1], -1)
-            self.nonlocal_control[-1].gen_return(self, retval)
+            self.nonlocal_control[-1].gen_return(self, retval, self.fn_info.fitem.line)
 
     def add_implicit_unreachable(self) -> None:
         block = self.blocks[-1][-1]
@@ -1367,9 +1428,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             retval = self.none()
         retval = self.coerce(retval, self.ret_types[-1], stmt.line)
-        self.nonlocal_control[-1].gen_return(self, retval)
+        self.nonlocal_control[-1].gen_return(self, retval, stmt.line)
 
-    def disallow_class_assignments(self, lvalues: List[Lvalue]) -> None:
+    def disallow_class_assignments(self, lvalues: List[Lvalue], line: int) -> None:
         # Some best-effort attempts to disallow assigning to class
         # variables that aren't marked ClassVar, since we blatantly
         # miscompile the interaction between instance and class
@@ -1379,8 +1440,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     and isinstance(lvalue.expr, RefExpr)
                     and isinstance(lvalue.expr.node, TypeInfo)):
                 var = lvalue.expr.node[lvalue.name].node
-                assert not isinstance(var, Var) or var.is_classvar, (
-                    "mypyc only supports assignment to classvars defined as ClassVar")
+                if isinstance(var, Var) and not var.is_classvar:
+                    self.error(
+                        "Only class variables defined as ClassVar can be assigned to",
+                        line)
 
     def non_function_scope(self) -> bool:
         # Currently the stack always has at least two items: dummy and top-level.
@@ -1439,7 +1502,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         assert len(stmt.lvalues) >= 1
-        self.disallow_class_assignments(stmt.lvalues)
+        self.disallow_class_assignments(stmt.lvalues, stmt.line)
         lvalue = stmt.lvalues[0]
         if stmt.type and isinstance(stmt.rvalue, TempNode):
             # This is actually a variable annotation without initializer. Don't generate
@@ -1458,7 +1521,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
         """Operator assignment statement such as x += 1"""
-        self.disallow_class_assignments([stmt.lvalue])
+        self.disallow_class_assignments([stmt.lvalue], stmt.line)
         target = self.get_assignment_target(stmt.lvalue)
         target_value = self.read(target, stmt.line)
         rreg = self.accept(stmt.rvalue)
@@ -1624,14 +1687,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.continue_block = continue_block
             self.break_block = break_block
 
-        def gen_break(self, builder: 'IRBuilder') -> None:
+        def gen_break(self, builder: 'IRBuilder', line: int) -> None:
             builder.add(Goto(self.break_block))
 
-        def gen_continue(self, builder: 'IRBuilder') -> None:
+        def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
             builder.add(Goto(self.continue_block))
 
-        def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
-            self.outer.gen_return(builder, value)
+        def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+            self.outer.gen_return(builder, value, line)
 
     def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
         self.nonlocal_control.append(
@@ -1817,7 +1880,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     end_reg = self.accept(expr.args[1])
                 if len(expr.args) == 3:
                     step = self.extract_int(expr.args[2])
-                    assert step, "range() step can't be zero"
+                    assert step is not None
+                    if step == 0:
+                        self.error("range() step can't be zero", expr.args[2].line)
                 else:
                     step = 1
 
@@ -1869,10 +1934,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return for_obj
 
     def visit_break_stmt(self, node: BreakStmt) -> None:
-        self.nonlocal_control[-1].gen_break(self)
+        self.nonlocal_control[-1].gen_break(self, node.line)
 
     def visit_continue_stmt(self, node: ContinueStmt) -> None:
-        self.nonlocal_control[-1].gen_continue(self)
+        self.nonlocal_control[-1].gen_continue(self, node.line)
 
     def visit_unary_expr(self, expr: UnaryExpr) -> Value:
         return self.unary_op(self.accept(expr.expr), expr.op, expr.line)
@@ -2673,7 +2738,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """First accepts all keys and values, then makes a dict out of them."""
         key_value_pairs = []
         for key_expr, value_expr in expr.items:
-            assert key_expr is not None, "**args in dict expressions unimplemented"
+            if key_expr is None:
+                self.bail("**args in dict expressions is unimplemented", expr.line)
             key = self.accept(key_expr)
             value = self.accept(value_expr)
             key_value_pairs.append((key, value))
@@ -2818,9 +2884,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             super().__init__(outer)
             self.saved = saved
 
-        def gen_cleanup(self, builder: 'IRBuilder') -> None:
-            # Don't bother plumbing a line through because it can't fail
-            builder.primitive_op(restore_exc_info_op, [self.saved], -1)
+        def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
+            builder.primitive_op(restore_exc_info_op, [self.saved], line)
 
     def visit_try_except(self,
                          body: GenFunc,
@@ -2923,13 +2988,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.target = target
             self.ret_reg = None  # type: Optional[Register]
 
-        def gen_break(self, builder: 'IRBuilder') -> None:
-            assert False, "unimplemented"
+        def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+            builder.error("break inside try/finally block is unimplemented", line)
 
-        def gen_continue(self, builder: 'IRBuilder') -> None:
-            assert False, "unimplemented"
+        def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+            builder.error("continue inside try/finally block is unimplemented", line)
 
-        def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+        def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
             if self.ret_reg is None:
                 self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
 
@@ -2947,7 +3012,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.ret_reg = ret_reg
             self.saved = saved
 
-        def gen_cleanup(self, builder: 'IRBuilder') -> None:
+        def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
             # Do an error branch on the return value register, which
             # may be undefined. This will allow it to be properly
             # decrefed if it is not null. This is kind of a hack.
@@ -2957,11 +3022,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 builder.activate_block(target)
 
             # Restore the old exc_info
-            # Don't bother plumbing a line through because it can't fail
             target, cleanup = BasicBlock(), BasicBlock()
             builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))
             builder.activate_block(cleanup)
-            builder.primitive_op(restore_exc_info_op, [self.saved], -1)
+            builder.primitive_op(restore_exc_info_op, [self.saved], line)
             builder.goto_and_activate(target)
 
     def try_finally_try(self, err_handler: BasicBlock, return_entry: BasicBlock,
@@ -3043,7 +3107,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR))
 
             self.activate_block(return_block)
-            self.nonlocal_control[-1].gen_return(self, ret_reg)
+            self.nonlocal_control[-1].gen_return(self, ret_reg, -1)
 
         # TODO: handle break/continue
         self.activate_block(rest)
@@ -3052,7 +3116,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # If there was an exception, restore again
         self.activate_block(cleanup_block)
-        finally_control.gen_cleanup(self)
+        finally_control.gen_cleanup(self, -1)
         self.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
         self.add(Unreachable())
 
@@ -3207,9 +3271,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Unreachable())
         self.activate_block(ok_block)
 
-    def visit_cast_expr(self, o: CastExpr) -> Value:
-        assert False, "CastExpr handled in CallExpr"
-
     def visit_list_comprehension(self, o: ListComprehension) -> Value:
         gen = o.generator
         list_ops = self.primitive_op(new_list_op, [], o.line)
@@ -3247,8 +3308,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return d
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:
-        print('{}:{}: Warning: treating generator comprehension as list'.format(
-            self.module_path, o.line))
+        self.warning('Treating generator comprehension as list', o.line)
 
         gen = o
         list_ops = self.primitive_op(new_list_op, [], o.line)
@@ -3303,7 +3363,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # If the condition is true we'll skip the continue.
                 self.add_bool_branch(cond_val, rest_block, cont_block)
                 self.activate_block(cont_block)
-                self.nonlocal_control[-1].gen_continue(self)
+                self.nonlocal_control[-1].gen_continue(self, cond.line)
                 self.goto_and_activate(rest_block)
 
             if remaining_loop_params:
@@ -3365,11 +3425,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             key = self.load_static_unicode(expr.name)
             self.add(PrimitiveOp([base_reg, key], py_delattr_op, expr.line))
         else:
-            assert False, 'Unsupported del operation'
+            self.error("Unimplemented del operation", expr.line)
 
     def visit_super_expr(self, o: SuperExpr) -> Value:
-        # print('{}:{}: Warning: can not optimize super() expression'.format(
-        #     self.module_path, o.line))
+        # self.warning('can not optimize super() expression', o.line)
         sup_val = self.load_module_attr_by_fullname('builtins.super', o.line)
         if o.call.args:
             args = [self.accept(arg) for arg in o.call.args]
@@ -3408,65 +3467,67 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.primitive_op(ellipsis_op, [], o.line)
 
     # Unimplemented constructs
-    # TODO: some of these are actually things that should never show up,
-    # so properly sort those out.
-
-    def visit__promote_expr(self, o: PromoteExpr) -> Value:
-        raise NotImplementedError
-
     def visit_await_expr(self, o: AwaitExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_complex_expr(self, o: ComplexExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_enum_call_expr(self, o: EnumCallExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        raise NotImplementedError
-
-    def visit_namedtuple_expr(self, o: NamedTupleExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_newtype_expr(self, o: NewTypeExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        raise NotImplementedError
-
-    def visit_reveal_expr(self, o: RevealExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_star_expr(self, o: StarExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_temp_node(self, o: TempNode) -> Value:
-        raise NotImplementedError
-
-    def visit_type_alias_expr(self, o: TypeAliasExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_type_application(self, o: TypeApplication) -> Value:
-        raise NotImplementedError
-
-    def visit_type_var_expr(self, o: TypeVarExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_var(self, o: Var) -> None:
-        raise NotImplementedError
+        self.bail("await is unimplemented", o.line)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
-        raise NotImplementedError
+        self.bail("yield from is unimplemented", o.line)
+
+    def visit_complex_expr(self, o: ComplexExpr) -> Value:
+        self.bail("complex literals are unimplemented", o.line)
+
+    def visit_star_expr(self, o: StarExpr) -> Value:
+        self.bail("Star expressions (in non call contexts) are unimplemented", o.line)
+
+    # Unimplemented constructs that shouldn't come up because they are py2 only
+    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
+        self.bail("Python 2 features are unsupported", o.line)
+
+    def visit_exec_stmt(self, o: ExecStmt) -> None:
+        self.bail("Python 2 features are unsupported", o.line)
+
+    def visit_print_stmt(self, o: PrintStmt) -> None:
+        self.bail("Python 2 features are unsupported", o.line)
+
+    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
+        self.bail("Python 2 features are unsupported", o.line)
+
+    # Constructs that shouldn't ever show up
+    def visit_enum_call_expr(self, o: EnumCallExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit__promote_expr(self, o: PromoteExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_namedtuple_expr(self, o: NamedTupleExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_newtype_expr(self, o: NewTypeExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_temp_node(self, o: TempNode) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_type_alias_expr(self, o: TypeAliasExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_type_application(self, o: TypeApplication) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_type_var_expr(self, o: TypeVarExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_reveal_expr(self, o: RevealExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_var(self, o: Var) -> None:
+        assert False, "can't compile Var; should have been handled already?"
+
+    def visit_cast_expr(self, o: CastExpr) -> Value:
+        assert False, "CastExpr should have been handled in CallExpr"
 
     # Helpers
 
@@ -3552,11 +3613,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
-                res = node.accept(self)
-                res = self.coerce(res, self.node_type(node), node.line)
+                try:
+                    res = node.accept(self)
+                    res = self.coerce(res, self.node_type(node), node.line)
+                # If we hit an error during compilation, we want to
+                # keep trying, so we can produce more error
+                # messages. Generate a temp of the right type to keep
+                # from causing more downstream trouble.
+                except UnsupportedException:
+                    res = self.alloc_temp(self.node_type(node))
                 return res
             else:
-                node.accept(self)
+                try:
+                    node.accept(self)
+                except UnsupportedException:
+                    pass
                 return None
 
     def alloc_temp(self, type: RType) -> Register:
@@ -4281,3 +4352,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     # Lacks a good type because there wasn't a reasonable type in 3.5 :(
     def catch_errors(self, line: int) -> Any:
         return catch_errors(self.module_path, line)
+
+    def warning(self, msg: str, line: int) -> None:
+        self.errors.warning(msg, self.module_path, line)
+
+    def error(self, msg: str, line: int) -> None:
+        self.errors.error(msg, self.module_path, line)
+
+    def bail(self, msg: str, line: int) -> NoReturn:
+        """Reports an error and aborts compilation up until the last accept() call
+
+        (accept() catches the UnsupportedException and keeps on
+        processing. This allows errors to be non-blocking without always
+        needing to write handling for them.
+        """
+        self.error(msg, line)
+        raise UnsupportedException()

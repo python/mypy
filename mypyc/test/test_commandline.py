@@ -12,9 +12,9 @@ import sys
 
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import normalize_error_messages
 
-from mypyc.test.testutil import MypycDataSuite
+from mypyc.test.testutil import MypycDataSuite, assert_test_output
 
 files = [
     'commandline.test',
@@ -44,24 +44,30 @@ class TestCommandLine(MypycDataSuite):
         with open(program_path, 'w') as f:
             f.write(text)
 
+        out = b''
         try:
             # Compile program
-            subprocess.check_call([sys.executable,
-                                   os.path.join(base_path, 'scripts', 'mypyc')] + args,
-                                  cwd='tmp')
+            cmd = subprocess.run([sys.executable,
+                                  os.path.join(base_path, 'scripts', 'mypyc')] + args,
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd='tmp')
+            if 'ErrorOutput' in testcase.name:
+                out += cmd.stdout
 
-            # Run main program
-            out = subprocess.check_output(
-                [python3_path, program],
-                cwd='tmp')
+            if cmd.returncode == 0:
+                # Run main program
+                out += subprocess.check_output(
+                    [python3_path, program],
+                    cwd='tmp')
         finally:
             suffix = 'pyd' if sys.platform == 'win32' else 'so'
             so_paths = glob.glob('tmp/**/*.{}'.format(suffix), recursive=True)
             for path in so_paths:
                 os.remove(path)
 
+        # Strip out 'tmp/' from error message paths in the testcase output,
+        # due to a mismatch between this test and mypy's test suite.
+        expected = [x.replace('tmp/', '') for x in testcase.output]
+
         # Verify output
-        actual = out.decode().splitlines()
-        assert_string_arrays_equal(testcase.output, actual,
-                                   'Invalid output ({}, line {})'.format(
-                                       testcase.file, testcase.line))
+        actual = normalize_error_messages(out.decode().splitlines())
+        assert_test_output(testcase, actual, 'Invalid output', expected=expected)
