@@ -192,7 +192,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed, warn=True)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
-                self.analyze_info(tdef.analyzed.info)
+                self.analyze_synthetic_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
         self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
@@ -273,7 +273,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 if analyzed.info:
                     # Currently NewTypes only have __init__, but to be future proof,
                     # we analyze all symbols.
-                    self.analyze_info(analyzed.info)
+                    self.analyze_synthetic_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
                     self.sem.calculate_class_mro(analyzed.info.defn)
@@ -288,7 +288,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
-                self.analyze_info(analyzed.info)
+                self.analyze_synthetic_info(analyzed.info)
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
         # Subclass attribute assignments with no type annotation should be
@@ -472,12 +472,18 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
             self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch2)))
 
-    def analyze_info(self, info: TypeInfo) -> None:
+    def analyze_synthetic_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
         for name in info.names:
             sym = info.names[name]
             if isinstance(sym.node, (FuncDef, Decorator)):
+                # Since we are analyzing a synthetic type info, the methods there
+                # are not real independent targets, and should be processed when
+                # the enclosing synthetic type is processed.
+                old_recurse = self.recurse_into_functions
+                self.recurse_into_functions = True
                 self.accept(sym.node)
+                self.recurse_into_functions = old_recurse
             if isinstance(sym.node, Var):
                 self.analyze(sym.node.type, sym.node)
 
