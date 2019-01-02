@@ -8235,6 +8235,36 @@ B = func
 ==
 main:5: error: Invalid type "a.A"
 
+[case testNamedTupleForwardFunctionIndirectReveal]
+# flags: --ignore-missing-imports
+import m
+[file m.py]
+from typing import NamedTuple
+from a import A
+
+NT = NamedTuple('NT', [('x', A)])
+[file m.py.3]
+from typing import NamedTuple
+from a import A
+
+NT = NamedTuple('NT', [('x', A)])
+reveal_type(NT.x)
+x: NT
+reveal_type(x.x)
+[file a.py]
+from b import B
+A = B
+[file b.py.2]
+def func(x): pass
+B = func
+[out]
+==
+m.py:4: error: Invalid type "a.A"
+==
+m.py:4: error: Invalid type "a.A"
+m.py:5: error: Revealed type is 'A?'
+m.py:7: error: Revealed type is 'A?'
+
 [case testAliasForwardFunctionDirect]
 # flags: --ignore-missing-imports
 from typing import Optional
