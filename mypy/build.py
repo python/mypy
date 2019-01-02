@@ -51,7 +51,6 @@ from mypy.types import Type
 from mypy.version import __version__
 from mypy.plugin import Plugin, ChainedPlugin, plugin_types
 from mypy.plugins.default import DefaultPlugin
-from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
@@ -1847,6 +1846,7 @@ class State:
             # TODO: Not a reliable test, as we could have a package named typeshed.
             # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
             return
+        from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
         self.fine_grained_deps = get_dependencies(target=self.tree,
                                                   type_map=self.type_map(),
                                                   python_version=self.options.python_version,
