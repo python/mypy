@@ -133,6 +133,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         for d in file_node.defs:
             self.accept(d)
+        self.analyze_symbol_table(file_node.names)
 
     def accept(self, node: Node) -> None:
         try:

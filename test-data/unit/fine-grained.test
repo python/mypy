@@ -8205,3 +8205,32 @@ x = 'no way'
 ==
 ==
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testAliasForwardFunctionDirect]
+# flags: --ignore-missing-imports
+from typing import Optional
+from b import B
+
+Alias = Optional[B]
+[file b.py.2]
+def func(x): pass
+B = int()
+[out]
+==
+main:5: error: Invalid type "b.B"
+
+[case testAliasForwardFunctionIndirect]
+# flags: --ignore-missing-imports
+from typing import Optional
+from a import A
+
+Alias = Optional[A]
+[file a.py]
+from b import B
+A = B
+[file b.py.2]
+def func(x): pass
+B = func
+[out]
+==
+main:5: error: Invalid type "a.A"
