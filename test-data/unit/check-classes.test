@@ -282,6 +282,18 @@ class B(A):
 main:7: error: Argument 1 of "f" incompatible with supertype "A"
 main:9: error: Return type of "h" incompatible with supertype "A"
 
+[case testEqMethodsOverridingWithNonObjects]
+class A:
+  def __eq__(self, other: A) -> bool: pass  # Fail
+[builtins fixtures/attr.pyi]
+[out]
+main:2: error: Argument 1 of "__eq__" incompatible with supertype "object"
+main:2: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
+main:2: note:     def __eq__(self, other: object) -> bool:
+main:2: note:         if not isinstance(other, A):
+main:2: note:             return NotImplemented
+main:2: note:         return <logic to compare two A instances>
+
 [case testMethodOverridingWithIncompatibleArgumentCount]
 import typing
 class A:
