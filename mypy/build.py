@@ -510,10 +510,11 @@ class BuildManager(BuildManagerBase):
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.flush_errors = flush_errors
+        has_reporters = reports is not None and reports.reporters
         self.cache_enabled = (options.incremental
                               and (not options.fine_grained_incremental
                                    or options.use_fine_grained_cache)
-                              and not reports.reporters)
+                              and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
         if options.sqlite_cache:
