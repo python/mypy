@@ -20,7 +20,6 @@ from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
-from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
@@ -606,7 +605,7 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='Report generation',
         description='Generate a report in the specified format.')
-    for report_type in sorted(reporter_classes):
+    for report_type in sorted(defaults.REPORTER_NAMES):
         report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
                                   metavar='DIR',
                                   dest='special-opts:%s_report' % report_type)
@@ -968,7 +967,7 @@ def parse_section(prefix: str, template: Options,
             if dv is None:
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
-                    if report_type in reporter_classes:
+                    if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = section[key]
                     else:
                         print("%s: Unrecognized report type: %s" % (prefix, key),

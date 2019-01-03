@@ -1,11 +1,9 @@
 """Utility functions with no non-trivial dependencies."""
-import inspect
 import os
 import pathlib
 import re
 import subprocess
 import sys
-from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
 MYPY = False
@@ -143,7 +141,7 @@ ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 
 
 def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) -> None:
-    """XXX"""
+    from xml.sax.saxutils import escape
     if not messages and not serious:
         xml = PASS_TEMPLATE.format(time=dt)
     elif not serious:
@@ -205,6 +203,7 @@ fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
+    import inspect  # Lazy import for minor startup speed win
     # Maintain a cache of type -> attributes defined by descriptors in the class
     # (that is, attributes from __slots__ and C extension classes)
     if cls not in fields_cache:
