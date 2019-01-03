@@ -164,8 +164,6 @@ class Concrete2:
 class Trait2(Concrete2):
     pass
 
-cmplx = 2+5j  # E: complex literals are unimplemented
-
 def warning(x: List[int] = []) -> None:  # W: Unsupported default argument value
     pass
 

@@ -231,6 +231,11 @@ class ModuleGenerator:
                 emitter.emit_line(
                     '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
                 )
+            elif isinstance(literal, complex):
+                emitter.emit_line(
+                    '{} = PyComplex_FromDoubles({}, {});'.format(
+                        symbol, str(literal.real), str(literal.imag))
+                )
             elif isinstance(literal, str):
                 emitter.emit_line(
                     '{} = PyUnicode_FromStringAndSize({}, {});'.format(

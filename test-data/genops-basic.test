@@ -944,6 +944,20 @@ L0:
     r6 = cast(float, r5)
     return r6
 
+[case testLoadComplex]
+def load() -> complex:
+    return 5j+1.0
+[out]
+def load():
+    r0 :: object
+    r1 :: float
+    r2 :: object
+L0:
+    r0 = complex_1 :: static  (5j)
+    r1 = float_2 :: static  (1.0)
+    r2 = r0 + r1
+    return r2
+
 [case testBigIntLiteral]
 def big_int() -> None:
     a_62_bit = 4611686018427387902
