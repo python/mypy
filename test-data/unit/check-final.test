@@ -339,22 +339,29 @@ class C:
 from typing import Final
 
 x: Final = 1
+x  # Dummy reference to allow renaming once implemented
 x = 2  # E: Cannot assign to final name "x"
 def f() -> int:
     global x
     x = 3  # E: Cannot assign to final name "x"
     return x
 
+x2: Final = 1
+x2
+def f2() -> None:
+    global x2
+    x2 = 1  # E: Cannot assign to final name "x2"
+
 y = 1
-y: Final = 2  # E: Name 'y' already defined on line 10 \
+y  # Dummy reference to allow renaming once implemented
+y: Final = 2  # E: Name 'y' already defined on line 17 \
               # E: Cannot redefine an existing name as final
 y = 3  # No error here, first definition wins
 
 z: Final = 1
-z: Final = 2  # E: Name 'z' already defined on line 14 \
+z: Final = 2  # E: Name 'z' already defined on line 22 \
               # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
-[out]
 
 [case testFinalReassignModuleReexport]
 from typing import Final

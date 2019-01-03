@@ -81,8 +81,10 @@ def map_actuals_to_formals(actual_kinds: List[int],
                     no_certain_match = (
                         not formal_to_actual[fi]
                         or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
-                    if ((formal_names[fi] and no_certain_match)
-                            or formal_kinds[fi] == nodes.ARG_STAR2):
+                    if ((formal_names[fi]
+                            and no_certain_match
+                            and formal_kinds[fi] != nodes.ARG_STAR) or
+                            formal_kinds[fi] == nodes.ARG_STAR2):
                         formal_to_actual[fi].append(ai)
     return formal_to_actual
 

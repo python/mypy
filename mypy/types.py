@@ -30,23 +30,28 @@ JsonDict = Dict[str, Any]
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
 #
-# Literals can contain enum-values: we special-case those and
-# store the value as a string.
+# Literals can contain bytes and enum-values: we special-case both of these
+# and store the value as a string. We rely on the fallback type that's also
+# stored with the Literal to determine how a string is being used.
 #
 # TODO: confirm that we're happy with representing enums (and the
 # other types) in the manner described above.
 #
-# Note: this type also happens to correspond to types that can be
-# directly converted into JSON. The serialize/deserialize methods
-# of 'LiteralType' relies on this, as well as
-# 'server.astdiff.SnapshotTypeVisitor' and 'types.TypeStrVisitor'.
-# If we end up adding any non-JSON-serializable types to this list,
-# we should make sure to edit those methods to match.
+# Note: if we change the set of types included below, we must also
+# make sure to audit the following methods:
 #
-# Alternatively, we should consider getting rid of this alias and
-# moving any shared special serialization/deserialization code into
-# RawLiteralType or something instead.
+# 1. types.LiteralType's serialize and deserialize methods: this method
+#    needs to make sure it can convert the below types into JSON and back.
+#
+# 2. types.LiteralType's 'alue_repr` method: this method is ultimately used
+#    by TypeStrVisitor's visit_literal_type to generate a reasonable
+#    repr-able output.
+#
+# 3. server.astdiff.SnapshotTypeVisitor's visit_literal_type_method: this
+#    method assumes that the following types supports equality checks and
+#    hashability.
 LiteralValue = Union[int, str, bool, None]
+
 
 # If we only import type_visitor in the middle of the file, mypy
 # breaks, and if we do it at the top, it breaks at runtime because of
@@ -241,7 +246,8 @@ class TypeVarDef(mypy.nodes.Context):
 class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
 
-    __slots__ = ('name', 'args', 'optional', 'empty_tuple_index', 'original_str_expr')
+    __slots__ = ('name', 'args', 'optional', 'empty_tuple_index',
+                 'original_str_expr', 'original_str_fallback')
 
     def __init__(self,
                  name: Optional[str],
@@ -251,6 +257,7 @@ class UnboundType(Type):
                  optional: bool = False,
                  empty_tuple_index: bool = False,
                  original_str_expr: Optional[str] = None,
+                 original_str_fallback: Optional[str] = None,
                  ) -> None:
         super().__init__(line, column)
         if not args:
@@ -262,8 +269,8 @@ class UnboundType(Type):
         self.optional = optional
         # Special case for X[()]
         self.empty_tuple_index = empty_tuple_index
-        # If this UnboundType was originally defined as a str, keep track of
-        # the original contents of that string. This way, if this UnboundExpr
+        # If this UnboundType was originally defined as a str or bytes, keep track of
+        # the original contents of that string-like thing. This way, if this UnboundExpr
         # ever shows up inside of a LiteralType, we can determine whether that
         # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
         # (unless 'foo' is an alias for another literal or something) and
@@ -272,7 +279,11 @@ class UnboundType(Type):
         # We keep track of the entire string instead of just using a boolean flag
         # so we can distinguish between things like Literal["foo"] vs
         # Literal["    foo   "].
+        #
+        # We also keep track of what the original base fallback type was supposed to be
+        # so we don't have to try and recompute it later
         self.original_str_expr = original_str_expr
+        self.original_str_fallback = original_str_fallback
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
@@ -284,13 +295,15 @@ class UnboundType(Type):
         if not isinstance(other, UnboundType):
             return NotImplemented
         return (self.name == other.name and self.optional == other.optional and
-                self.args == other.args and self.original_str_expr == other.original_str_expr)
+                self.args == other.args and self.original_str_expr == other.original_str_expr and
+                self.original_str_fallback == other.original_str_fallback)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnboundType',
                 'name': self.name,
                 'args': [a.serialize() for a in self.args],
                 'expr': self.original_str_expr,
+                'expr_fallback': self.original_str_fallback,
                 }
 
     @classmethod
@@ -298,7 +311,9 @@ class UnboundType(Type):
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
                            [deserialize_type(a) for a in data['args']],
-                           original_str_expr=data['expr'])
+                           original_str_expr=data['expr'],
+                           original_str_fallback=data['expr_fallback'],
+                           )
 
 
 class CallableArgument(Type):
@@ -1368,6 +1383,29 @@ class LiteralType(Type):
         else:
             return NotImplemented
 
+    def value_repr(self) -> str:
+        """Returns the string representation of the underlying type.
+
+        This function is almost equivalent to running `repr(self.value)`,
+        except it includes some additional logic to correctly handle cases
+        where the value is a string, byte string, or a unicode string.
+        """
+        raw = repr(self.value)
+        fallback_name = self.fallback.type.fullname()
+        if fallback_name == 'builtins.bytes':
+            # Note: 'builtins.bytes' only appears in Python 3, so we want to
+            # explicitly prefix with a "b"
+            return 'b' + raw
+        elif fallback_name == 'builtins.unicode':
+            # Similarly, 'builtins.unicode' only appears in Python 2, where we also
+            # want to explicitly prefix
+            return 'u' + raw
+        else:
+            # 'builtins.str' could mean either depending on context, but either way
+            # we don't prefix: it's the "native" string. And of course, if value is
+            # some other type, we just return that string repr directly.
+            return raw
+
     def serialize(self) -> Union[JsonDict, str]:
         return {
             '.class': 'LiteralType',
@@ -1838,7 +1876,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return repr(t.value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
-        return 'Literal[{}]'.format(repr(t.value))
+        return 'Literal[{}]'.format(t.value_repr())
 
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)

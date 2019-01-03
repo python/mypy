@@ -245,22 +245,24 @@ import typing
 s = ''
 u = u''
 n = 0
-n = s + '' # E
-s = s + u'' # E
+if int():
+    n = s + '' # E
+    s = s + u'' # E
 [out]
-_program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-_program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+_program.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+_program.py:7: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
 [case testStrJoin_python2]
-import typing
 s = ''
 u = u''
 n = 0
-n = ''.join([''])   # Error
-s = ''.join([u''])  # Error
+if int():
+    n = ''.join([''])   # Error
+if int():
+    s = ''.join([u''])  # Error
 [out]
 _program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-_program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+_program.py:7: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
 [case testNamedTuple_python2]
 from typing import NamedTuple
@@ -280,11 +282,12 @@ _program.py:5: error: "X" has no attribute "c"
 import typing
 x = 4j
 y = x.real
-y = x         # Error
+if int():
+    y = x         # Error
 x.imag = 2.0  # Error
 [out]
-_program.py:4: error: Incompatible types in assignment (expression has type "complex", variable has type "float")
-_program.py:5: error: Property "imag" defined in "complex" is read-only
+_program.py:5: error: Incompatible types in assignment (expression has type "complex", variable has type "float")
+_program.py:6: error: Property "imag" defined in "complex" is read-only
 
 [case testComplexArithmetic_python2]
 import typing

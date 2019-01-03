@@ -510,8 +510,10 @@ class BuildManager(BuildManagerBase):
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.flush_errors = flush_errors
-        self.cache_enabled = options.incremental and (
-            not options.fine_grained_incremental or options.use_fine_grained_cache)
+        self.cache_enabled = (options.incremental
+                              and (not options.fine_grained_incremental
+                                   or options.use_fine_grained_cache)
+                              and not reports.reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
         if options.sqlite_cache:
@@ -806,6 +808,9 @@ def _load_json_file(file: str, manager: BuildManager,
 
 def _cache_dir_prefix(manager: BuildManager) -> str:
     """Get current cache directory (or file if id is given)."""
+    if manager.options.bazel:
+        # This is needed so the cache map works.
+        return os.curdir
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)

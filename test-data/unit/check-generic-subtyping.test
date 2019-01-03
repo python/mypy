@@ -13,12 +13,15 @@ ac = None # type: A[C]
 ad = None # type: A[D]
 b = None # type: B
 
-b = ad # E: Incompatible types in assignment (expression has type "A[D]", variable has type "B")
-ad = b # E: Incompatible types in assignment (expression has type "B", variable has type "A[D]")
-b = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B")
+if int():
+    b = ad # E: Incompatible types in assignment (expression has type "A[D]", variable has type "B")
+    ad = b # E: Incompatible types in assignment (expression has type "B", variable has type "A[D]")
+if int():
+    b = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B")
 
-b = b
-ac = b
+if int():
+    b = b
+    ac = b
 
 class C: pass
 class A(Generic[T]): pass
@@ -32,13 +35,17 @@ a = None # type: A
 bc = None # type: B[C]
 bd = None # type: B[D]
 
-bc = bd # E: Incompatible types in assignment (expression has type "B[D]", variable has type "B[C]")
-bd = bc # E: Incompatible types in assignment (expression has type "B[C]", variable has type "B[D]")
-bc = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B[C]")
-bd = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B[D]")
+if int():
+    bc = bd # E: Incompatible types in assignment (expression has type "B[D]", variable has type "B[C]")
+    bd = bc # E: Incompatible types in assignment (expression has type "B[C]", variable has type "B[D]")
+if int():
+    bc = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B[C]")
+    bd = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B[D]")
 
-a = bc
-a = bd
+if int():
+    a = bc
+if int():
+    a = bd
 
 class A: pass
 class B(A, Generic[T]): pass
@@ -54,15 +61,19 @@ ad = None # type: A[D]
 bcc = None # type: B[C, C]
 bdc = None # type: B[D, C]
 
-ad = bcc # E: Incompatible types in assignment (expression has type "B[C, C]", variable has type "A[D]")
-ad = bdc # E: Incompatible types in assignment (expression has type "B[D, C]", variable has type "A[D]")
-bcc = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B[C, C]")
-bdc = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B[D, C]")
+if int():
+    ad = bcc # E: Incompatible types in assignment (expression has type "B[C, C]", variable has type "A[D]")
+if int():
+    ad = bdc # E: Incompatible types in assignment (expression has type "B[D, C]", variable has type "A[D]")
+    bcc = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B[C, C]")
+    bdc = ac # E: Incompatible types in assignment (expression has type "A[C]", variable has type "B[D, C]")
 
-bcc = bcc
-bdc = bdc
-ac = bcc
-ac = bdc
+if int():
+    bcc = bcc
+    bdc = bdc
+    ac = bcc
+if int():
+    ac = bdc
 
 class A(Generic[T]): pass
 class B(A[S], Generic[T, S]): pass
@@ -82,12 +93,15 @@ cef = None # type: C[E, F]
 cff = None # type: C[F, F]
 cfe = None # type: C[F, E]
 
-ae = cef # E: Incompatible types in assignment (expression has type "C[E, F]", variable has type "A[A[E]]")
-af = cfe # E: Incompatible types in assignment (expression has type "C[F, E]", variable has type "A[A[F]]")
+if int():
+    ae = cef # E: Incompatible types in assignment (expression has type "C[E, F]", variable has type "A[A[E]]")
+    af = cfe # E: Incompatible types in assignment (expression has type "C[F, E]", variable has type "A[A[F]]")
 
-ae = cfe
-af = cef
-af = cff
+if int():
+    ae = cfe
+    af = cef
+if int():
+    af = cff
 
 class A(Generic[T]): pass
 class B(A[S], Generic[T, S]): pass
@@ -280,9 +294,10 @@ a = None # type: A
 bc = None # type: B[C]
 bd = None # type: B[D]
 
-a = bc # E: Incompatible types in assignment (expression has type "B[C]", variable has type "A")
-bc = a
-bd = a
+if int():
+    a = bc # E: Incompatible types in assignment (expression has type "B[C]", variable has type "A")
+    bc = a
+    bd = a
 
 class B(Generic[T]): pass
 class A(B): pass
@@ -427,12 +442,14 @@ adc = None # type: A[D, C]
 ic = None # type: I[C]
 id = None # type: I[D]
 
-ic = acd # E: Incompatible types in assignment (expression has type "A[C, D]", variable has type "I[C]")
-id = adc # E: Incompatible types in assignment (expression has type "A[D, C]", variable has type "I[D]")
-adc = ic # E: Incompatible types in assignment (expression has type "I[C]", variable has type "A[D, C]")
+if int():
+    ic = acd # E: Incompatible types in assignment (expression has type "A[C, D]", variable has type "I[C]")
+    id = adc # E: Incompatible types in assignment (expression has type "A[D, C]", variable has type "I[D]")
+    adc = ic # E: Incompatible types in assignment (expression has type "I[C]", variable has type "A[D, C]")
 
-ic = adc
-id = acd
+if int():
+    ic = adc
+    id = acd
 
 class I(Generic[T]):
     @abstractmethod
@@ -451,14 +468,17 @@ class I(Generic[S]): pass
 class B(I[C]): pass
 class A(B): pass
 
-ie = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[E]")
-a = ic # E: Incompatible types in assignment (expression has type "I[C]", variable has type "A")
-a = id # E: Incompatible types in assignment (expression has type "I[D]", variable has type "A")
-a = b  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-id = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[D]")
+if int():
+    ie = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[E]")
+    a = ic # E: Incompatible types in assignment (expression has type "I[C]", variable has type "A")
+if int():
+    a = id # E: Incompatible types in assignment (expression has type "I[D]", variable has type "A")
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    id = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[D]")
 
-ic = a
-b = a
+    ic = a
+    b = a
 
 class C: pass
 class D: pass
@@ -483,11 +503,14 @@ from abc import abstractmethod, ABCMeta
 t = TypeVar('t')
 a, i, j = None, None, None # type: (A[object], I[object], J[object])
 (ii, jj) = (i, j)
-ii = a
-jj = a
-jj = i
-a = i # E: Incompatible types in assignment (expression has type "I[object]", variable has type "A[object]")
-a = j # E: Incompatible types in assignment (expression has type "J[object]", variable has type "A[object]")
+if int():
+    ii = a
+    jj = a
+if int():
+    jj = i
+    a = i # E: Incompatible types in assignment (expression has type "I[object]", variable has type "A[object]")
+if int():
+    a = j # E: Incompatible types in assignment (expression has type "J[object]", variable has type "A[object]")
 
 class J(Generic[t]): pass
 class X(metaclass=ABCMeta): pass
@@ -528,8 +551,9 @@ T = TypeVar('T')
 a = None # type: A
 ic, id = None, None # type: (I[C], I[D])
 
-id = a # Fail
-ic = a
+if int():
+    id = a # E: Incompatible types in assignment (expression has type "A", variable has type "I[D]")
+    ic = a
 
 class I(Generic[T]):
     @abstractmethod
@@ -545,8 +569,6 @@ class A(B):
     def f(self, a: 'C', b: 'C') -> None: pass
 class C: pass
 class D: pass
-[out]
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type "I[D]")
 
 [case testSubclassingGenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
@@ -704,8 +726,9 @@ a = None  # type: G[A]
 b = None  # type: G[B]
 c = None  # type: G[C]
 
-b = a  # E: Incompatible types in assignment (expression has type "G[A]", variable has type "G[B]")
-b = c
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "G[A]", variable has type "G[B]")
+    b = c
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -722,8 +745,9 @@ a = None  # type: G[A]
 b = None  # type: G[B]
 c = None  # type: G[C]
 
-b = a
-b = c  # E: Incompatible types in assignment (expression has type "G[C]", variable has type "G[B]")
+if int():
+    b = a
+    b = c  # E: Incompatible types in assignment (expression has type "G[C]", variable has type "G[B]")
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -740,8 +764,9 @@ a = None  # type: G[A]
 b = None  # type: G[B]
 c = None  # type: G[C]
 
-b = a  # E: Incompatible types in assignment (expression has type "G[A]", variable has type "G[B]")
-b = c  # E: Incompatible types in assignment (expression has type "G[C]", variable has type "G[B]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "G[A]", variable has type "G[B]")
+    b = c  # E: Incompatible types in assignment (expression has type "G[C]", variable has type "G[B]")
 [builtins fixtures/bool.pyi]
 [out]
 

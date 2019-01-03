@@ -1114,13 +1114,14 @@ class C: pass
 
 [file c/submodule.py]
 val = 3  # type: int
-val = "foo"
+if int():
+    val = "foo"
 
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
 [stale c]
 [out2]
-tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/c/submodule.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
 
 [case testIncrementalRemoteError]
@@ -1339,8 +1340,9 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        val = "str"   # deliberately triggering error
-        return C()
+        if 1:
+            val = "str"   # deliberately triggering error
+            return C()
 
 [file mod3.py.2]
 from mod4 import C
@@ -1354,7 +1356,7 @@ class C:
 [rechecked mod3, mod2, mod1]
 [stale mod3, mod2]
 [out1]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
@@ -1378,8 +1380,9 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        val = "str"   # deliberately triggering error
-        return C()
+        if 1:
+            val = "str"   # deliberately triggering error
+            return C()
 
 [file mod4.py]
 class C:
@@ -1392,11 +1395,11 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4]
 [out1]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
 [case testIncrementalIncidentalChangeWithBugFixCausesPropagation]
@@ -1417,8 +1420,9 @@ from mod4 import C
 class B:
     def makeC(self) -> C:
         val = 3  # type: int
-        val = "str"   # deliberately triggering error
-        return C()
+        if 1:
+            val = "str"   # deliberately triggering error
+            return C()
 
 [file mod3.py.2]
 from mod4 import C
@@ -1436,7 +1440,7 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4, mod3, mod2]
 [out1]
-tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]

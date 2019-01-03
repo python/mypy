@@ -149,14 +149,20 @@ c1: C1
 c2: C2
 y: AnotherP
 
-x = c
-x = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P")
-x = c1 # E: Incompatible types in assignment (expression has type "C1", variable has type "P") \
-    # N: 'C1' is missing following 'P' protocol member: \
-    # N:     meth2
-x = c2
-x = y
-y = x
+if int():
+    x = c
+if int():
+    x = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P")
+if int():
+    x = c1 # E: Incompatible types in assignment (expression has type "C1", variable has type "P") \
+        # N: 'C1' is missing following 'P' protocol member: \
+        # N:     meth2
+if int():
+    x = c2
+if int():
+    x = y
+if int():
+    y = x
 
 [case testSimpleProtocolTwoMethodsExtend]
 from typing import Protocol
@@ -182,10 +188,12 @@ x: P2
 reveal_type(x.meth1()) # E: Revealed type is 'builtins.int'
 reveal_type(x.meth2()) # E: Revealed type is 'builtins.str'
 
-x = C() # OK
-x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", variable has type "P2") \
-    # N: 'Cbad' is missing following 'P2' protocol member: \
-    # N:     meth2
+if int():
+    x = C() # OK
+if int():
+    x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", variable has type "P2") \
+        # N: 'Cbad' is missing following 'P2' protocol member: \
+        # N:     meth2
 
 [case testProtocolMethodVsAttributeErrors]
 from typing import Protocol
@@ -442,18 +450,24 @@ class B(A): pass
 
 x1: Pco[B]
 y1: Pco[A]
-x1 = y1 # E: Incompatible types in assignment (expression has type "Pco[A]", variable has type "Pco[B]")
-y1 = x1 # E: Incompatible types in assignment (expression has type "Pco[B]", variable has type "Pco[A]")
+if int():
+    x1 = y1 # E: Incompatible types in assignment (expression has type "Pco[A]", variable has type "Pco[B]")
+if int():
+    y1 = x1 # E: Incompatible types in assignment (expression has type "Pco[B]", variable has type "Pco[A]")
 
 x2: Pcontra[B]
 y2: Pcontra[A]
-y2 = x2 # E: Incompatible types in assignment (expression has type "Pcontra[B]", variable has type "Pcontra[A]")
-x2 = y2 # E: Incompatible types in assignment (expression has type "Pcontra[A]", variable has type "Pcontra[B]")
+if int():
+    y2 = x2 # E: Incompatible types in assignment (expression has type "Pcontra[B]", variable has type "Pcontra[A]")
+if int():
+    x2 = y2 # E: Incompatible types in assignment (expression has type "Pcontra[A]", variable has type "Pcontra[B]")
 
 x3: Pinv[B]
 y3: Pinv[A]
-y3 = x3 # E: Incompatible types in assignment (expression has type "Pinv[B]", variable has type "Pinv[A]")
-x3 = y3 # E: Incompatible types in assignment (expression has type "Pinv[A]", variable has type "Pinv[B]")
+if int():
+    y3 = x3 # E: Incompatible types in assignment (expression has type "Pinv[B]", variable has type "Pinv[A]")
+if int():
+    x3 = y3 # E: Incompatible types in assignment (expression has type "Pinv[A]", variable has type "Pinv[B]")
 
 [case testProtocolVarianceWithCallableAndList]
 from typing import Protocol, TypeVar, Callable, List
@@ -687,12 +701,12 @@ class Bad:
         pass
 
 def f(s: Shape) -> None: pass
-s: Shape
-
 f(NonProtoShape())
 f(Circle())
-s = Triangle()
-s = Bad()
+s: Shape
+if int():
+    s = Triangle()
+    s = Bad()
 
 n2: NonProtoShape = s
 [out]
@@ -766,7 +780,8 @@ class D(Generic[T]):
 
 t: Traversable
 t = D[int]() # OK
-t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
+if int():
+    t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -821,8 +836,9 @@ class B:
 
 t: P1
 t = A() # OK
-t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
-t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
+if int():
+    t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
+    t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -955,10 +971,12 @@ x: PInst
 y: PClass
 
 x = CInst()
-x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst") \
+if int():
+    x = CClass() # E: Incompatible types in assignment (expression has type "CClass", variable has type "PInst") \
              # N: Protocol member PInst.v expected instance variable, got class variable
 y = CClass()
-y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass") \
+if int():
+    y = CInst()  # E: Incompatible types in assignment (expression has type "CInst", variable has type "PClass") \
              # N: Protocol member PClass.v expected class variable, got instance variable
 
 [case testPropertyInProtocols]
@@ -1042,12 +1060,15 @@ class C:
 
 x: P
 x = C()
-x = B()
+if int():
+    x = B()
 
 y: PC
 y = B()
-y = C() # E: Incompatible types in assignment (expression has type "C", variable has type "PC") \
-        # N: Protocol member PC.meth expected class or static method
+if int():
+    y = C() \
+      # E: Incompatible types in assignment (expression has type "C", variable has type "PC") \
+      # N: Protocol member PC.meth expected class or static method
 [builtins fixtures/classmethod.pyi]
 
 [case testOverloadedMethodsInProtocols]
@@ -1067,17 +1088,18 @@ class D:
         pass
 
 x: P = C()
-x = D()
+if int():
+    x = D()
 [out]
-main:17: error: Incompatible types in assignment (expression has type "D", variable has type "P")
-main:17: note: Following member(s) of "D" have conflicts:
-main:17: note:     Expected:
-main:17: note:         @overload
-main:17: note:         def f(self, x: int) -> int
-main:17: note:         @overload
-main:17: note:         def f(self, x: str) -> str
-main:17: note:     Got:
-main:17: note:         def f(self, x: int) -> None
+main:18: error: Incompatible types in assignment (expression has type "D", variable has type "P")
+main:18: note: Following member(s) of "D" have conflicts:
+main:18: note:     Expected:
+main:18: note:         @overload
+main:18: note:         def f(self, x: int) -> int
+main:18: note:         @overload
+main:18: note:         def f(self, x: str) -> str
+main:18: note:     Got:
+main:18: note:         def f(self, x: int) -> None
 
 [case testCannotInstantiateProtocolWithOverloadedUnimplementedMethod]
 from typing import overload, Protocol
@@ -1333,9 +1355,10 @@ class B: ...
 x: Union[P1, P2]
 
 x = C1()
-x = C2()
-x = C()
-x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "Union[P1, P2]")
+if int():
+    x = C2()
+    x = C()
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "Union[P1, P2]")
 
 [case testUnionsOfNormalClassesWithProtocols]
 from typing import Protocol, Union
@@ -1431,15 +1454,17 @@ class C:
 
 var: Type[P]
 var()
-var = P # E: Can only assign concrete classes to a variable of type "Type[P]"
-var = B # OK
-var = C # OK
+if int():
+    var = P # E: Can only assign concrete classes to a variable of type "Type[P]"
+    var = B # OK
+    var = C # OK
 
 var_old = None # type: Type[P] # Old syntax for variable annotations
 var_old()
-var_old = P # E: Can only assign concrete classes to a variable of type "Type[P]"
-var_old = B # OK
-var_old = C # OK
+if int():
+    var_old = P # E: Can only assign concrete classes to a variable of type "Type[P]"
+    var_old = B # OK
+    var_old = C # OK
 
 [case testInstantiationProtocolInTypeForClassMethods]
 from typing import Type, Protocol

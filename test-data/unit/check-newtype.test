@@ -310,17 +310,15 @@ main:4: error: Invalid type "__main__.T"
 from typing import NewType
 
 a = 3
-a = NewType('a', int)
+def f(): a
+a = NewType('a', int) # E: Cannot redefine 'a' as a NewType
 
 b = NewType('b', int)
-b = NewType('b', float)  # this line throws two errors
+def g(): b
+b = NewType('b', float)  # E: Cannot assign to a type \
+                         # E: Cannot redefine 'b' as a NewType
 
-c = NewType('c', str)   # type: str
-[out]
-main:4: error: Cannot redefine 'a' as a NewType
-main:7: error: Cannot assign to a type
-main:7: error: Cannot redefine 'b' as a NewType
-main:9: error: Cannot declare the type of a NewType declaration
+c = NewType('c', str)  # type: str  # E: Cannot declare the type of a NewType declaration
 
 [case testNewTypeAddingExplicitTypesFails]
 from typing import NewType

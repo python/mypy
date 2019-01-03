@@ -103,7 +103,8 @@ s: str = n.a  # E: Incompatible types in assignment (expression has type "int", 
 i: int = n.b  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 x, y = n
-x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNewNamedTupleConstructorArgumentTypes]
 # flags: --python-version 3.6
@@ -131,9 +132,12 @@ class X(N):
 x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
 s = ''
 i = 0
-s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-i, s = x
-s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    i, s = x
+if int():
+    s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testNewNamedTupleSelfTypeWithNamedTupleAsBase]
 # flags: --python-version 3.6
@@ -149,9 +153,10 @@ class B(A):
         self.f(self.b)  # E: Argument 1 to "f" of "B" has incompatible type "str"; expected "int"
         i = 0
         s = ''
-        i, s = self
-        i, i = self  # E: Incompatible types in assignment (expression has type "str", \
-                          variable has type "int")
+        if int():
+            i, s = self
+            i, i = self  # E: Incompatible types in assignment (expression has type "str", \
+                              variable has type "int")
 [out]
 
 [case testNewNamedTupleTypeReferenceToClassDerivedFrom]
@@ -166,15 +171,14 @@ class B(A):
     def f(self, x: 'B') -> None:
         i = 0
         s = ''
-        self = x
-        i, s = x
-        i, s = x.a, x.b
-        i, s = x.a, x.a  # E: Incompatible types in assignment (expression has type "int", \
-                              variable has type "str")
-        i, i = self  # E: Incompatible types in assignment (expression has type "str", \
-                          variable has type "int")
-
-[out]
+        if int():
+            self = x
+            i, s = x
+            i, s = x.a, x.b
+            i, s = x.a, x.a  # E: Incompatible types in assignment (expression has type "int", \
+                                  variable has type "str")
+            i, i = self  # E: Incompatible types in assignment (expression has type "str", \
+                              variable has type "int")
 
 [case testNewNamedTupleSubtyping]
 # flags: --python-version 3.6
@@ -188,13 +192,20 @@ class B(A): pass
 a = A(1, '')
 b = B(1, '')
 t: Tuple[int, str]
-b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
-b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
-t = a
-t = (1, '')
-t = b
-a = b
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
+if int():
+    b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
+if int():
+    t = a
+if int():
+    t = (1, '')
+if int():
+    t = b
+if int():
+    a = b
 
 [case testNewNamedTupleSimpleTypeInference]
 # flags: --python-version 3.6

@@ -11,9 +11,12 @@ ab = None # type: A[B]
 ao = None # type: A[object]
 b = None # type: B
 
-ao = f()
-ab = f()
-b = f() # E: Incompatible types in assignment (expression has type "A[<nothing>]", variable has type "B")
+if int():
+    ao = f()
+if int():
+    ab = f()
+if int():
+    b = f() # E: Incompatible types in assignment (expression has type "A[<nothing>]", variable has type "B")
 
 def f() -> 'A[T]': pass
 
@@ -27,9 +30,12 @@ ab = None # type: A[B]
 ao = None # type: A[object]
 b = None # type: B
 
-ao = A()
-ab = A()
-b = A() # E: Incompatible types in assignment (expression has type "A[<nothing>]", variable has type "B")
+if int():
+    ao = A()
+if int():
+    ab = A()
+if int():
+    b = A() # E: Incompatible types in assignment (expression has type "A[<nothing>]", variable has type "B")
 
 class A(Generic[T]): pass
 class B: pass
@@ -43,13 +49,19 @@ ab = None # type: A[B]
 ao = None # type: A[object]
 ac = None # type: A[C]
 
-ac = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
-ab = f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "B"
+if int():
+    ac = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
+if int():
+    ab = f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "B"
 
-ao = f(b)
-ab = f(b)
-ao = f(c)
-ac = f(c)
+if int():
+    ao = f(b)
+if int():
+    ab = f(b)
+if int():
+    ao = f(c)
+if int():
+    ac = f(c)
 
 def f(a: T) -> 'A[T]':
     pass
@@ -74,11 +86,13 @@ def g() -> None:
     b = None # type: B
 
     x = f(o)
-    ab = x # E: Incompatible types in assignment (expression has type "A[object]", variable has type "A[B]")
-    ao = x
+    if int():
+        ab = x # E: Incompatible types in assignment (expression has type "A[object]", variable has type "A[B]")
+        ao = x
     y = f(b)
-    ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ab = y
+    if int():
+        ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ab = y
 
 def f(a: T) -> 'A[T]': pass
 
@@ -104,10 +118,11 @@ def g() -> None:
     ab = None # type: A[B]
     b = None # type: B
     x, y = f(b), f(b)
-    ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ab = x
-    ab = y
+    if int():
+        ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ab = x
+        ab = y
 
 def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
@@ -122,10 +137,11 @@ def h() -> None:
     ab = None # type: A[B]
     b = None # type: B
     x, y = g(f(b))
-    ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ab = x
-    ab = y
+    if int():
+        ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ab = x
+        ab = y
 
 def f(a: T) -> 'A[T]': pass
 def g(a: T) -> List[T]: pass
@@ -148,21 +164,23 @@ o = None # type: object
 ab = None # type: A[B]
 ao = None # type: A[object]
 
-ab, ao = f(b) # Fail
-ao, ab = f(b) # Fail
+if int():
+    ab, ao = f(b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+if int():
+    ao, ab = f(b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 
-ao, ao = f(b)
-ab, ab = f(b)
-ao, ao = f(o)
+if int():
+    ao, ao = f(b)
+if int():
+    ab, ab = f(b)
+if int():
+    ao, ao = f(o)
 
 def f(a: T) -> 'Tuple[A[T], A[T]]': pass
 
 class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/tuple.pyi]
-[out]
-main:8: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-main:9: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 
 [case testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables]
 from typing import TypeVar, Tuple, Generic
@@ -173,14 +191,21 @@ o = None # type: object
 ab = None # type: A[B]
 ao = None # type: A[object]
 
-ao, ao, ab = f(b, b)     # Fail
-ao, ab, ao = g(b, b)     # Fail
-ao, ab, ab, ab = h(b, b) # Fail
-ab, ab, ao, ab = h(b, b) # Fail
+if int():
+    ao, ao, ab = f(b, b)     # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+if int():
+    ao, ab, ao = g(b, b)     # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+if int():
+    ao, ab, ab, ab = h(b, b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+if int():
+    ab, ab, ao, ab = h(b, b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 
-ao, ab, ab = f(b, b)
-ab, ab, ao = g(b, b)
-ab, ab, ab, ab = h(b, b)
+if int():
+    ao, ab, ab = f(b, b)
+if int():
+    ab, ab, ao = g(b, b)
+if int():
+    ab, ab, ab, ab = h(b, b)
 
 def f(a: S, b: T) -> 'Tuple[A[S], A[T], A[T]]': pass
 def g(a: S, b: T) -> 'Tuple[A[S], A[S], A[T]]': pass
@@ -189,11 +214,6 @@ def h(a: S, b: T) -> 'Tuple[A[S], A[S], A[T], A[T]]': pass
 class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/tuple.pyi]
-[out]
-main:9: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-main:10: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-main:11: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-main:12: error: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
 
 
 -- Multiple tvar instances in arguments
@@ -210,14 +230,21 @@ b = None # type: B
 c = None # type: C
 o = None # type: object
 
-ab = f(b, o) # E: Argument 2 to "f" has incompatible type "object"; expected "B"
-ab = f(o, b) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
-ac = f(b, c) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
-ac = f(c, b) # E: Argument 2 to "f" has incompatible type "B"; expected "C"
+if int():
+    ab = f(b, o) # E: Argument 2 to "f" has incompatible type "object"; expected "B"
+if int():
+    ab = f(o, b) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
+if int():
+    ac = f(b, c) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
+if int():
+    ac = f(c, b) # E: Argument 2 to "f" has incompatible type "B"; expected "C"
 
-ao = f(b, c)
-ao = f(c, b)
-ab = f(c, b)
+if int():
+    ao = f(b, c)
+if int():
+    ao = f(c, b)
+if int():
+    ab = f(c, b)
 
 def f(a: T, b: T) -> 'A[T]': pass
 
@@ -239,11 +266,13 @@ ao = None # type: A[object]
 b = None # type: B
 o = None # type: object
 
-aab = f(f(o)) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
+if int():
+    aab = f(f(o)) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
 
-aab = f(f(b))
-aao = f(f(b))
-ao = f(f(b))
+if int():
+    aab = f(f(b))
+    aao = f(f(b))
+    ao = f(f(b))
 
 def f(a: T) -> 'A[T]': pass
 
@@ -258,10 +287,12 @@ ao = None # type: A[object]
 b = None # type: B
 o = None # type: object
 
-ab = f(g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
+if int():
+    ab = f(g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
 
-ab = f(g(b))
-ao = f(g(b))
+if int():
+    ab = f(g(b))
+    ao = f(g(b))
 
 def f(a: T) -> T: pass
 
@@ -278,12 +309,16 @@ ao = None # type: A[object]
 b = None # type: B
 o = None # type: object
 
-ab = f(g(o), g(b)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
-ab = f(g(b), g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
+if int():
+    ab = f(g(o), g(b)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
+if int():
+    ab = f(g(b), g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
 
-ab = f(g(b), g(b))
-ao = f(g(b), g(o))
-ao = f(g(o), g(b))
+if int():
+    ab = f(g(b), g(b))
+    ao = f(g(b), g(o))
+if int():
+    ao = f(g(o), g(b))
 
 def f(a: T, b: T) -> T:
     pass
@@ -309,10 +344,13 @@ ab = None # type: A[B]
 ac = None # type: A[C]
 
 ab.g(f(o))        # E: Argument 1 to "f" has incompatible type "object"; expected "B"
-ac = f(b).g(f(c)) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[C]")
-ac = f(c).g(f(b)) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
+if int():
+    ac = f(b).g(f(c)) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[C]")
+if int():
+    ac = f(c).g(f(b)) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
 
-ab = f(b).g(f(c))
+if int():
+    ab = f(b).g(f(c))
 ab.g(f(c))
 
 def f(a: T) -> 'A[T]': pass
@@ -333,6 +371,7 @@ from typing import List
 aa = None # type: List[A]
 ao = None # type: List[object]
 a = None # type: A
+def f(): a, aa, ao # Prevent redefinition
 
 a = [] # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "A")
 
@@ -349,6 +388,7 @@ ab = None # type: List[B]
 ao = None # type: List[object]
 a = None # type: A
 b = None # type: B
+def f(): aa, ab, ao # Prevent redefinition
 
 aa = [b] # E: List item 0 has incompatible type "B"; expected "A"
 ab = [a] # E: List item 0 has incompatible type "A"; expected "B"
@@ -370,6 +410,7 @@ ab = None # type: List[B]
 ao = None # type: List[object]
 a = None # type: A
 b = None # type: B
+def f(): ab, aa, ao # Prevent redefinition
 
 ab = [b, a] # E: List item 1 has incompatible type "A"; expected "B"
 ab = [a, b] # E: List item 0 has incompatible type "A"; expected "B"
@@ -387,8 +428,9 @@ def f() -> None:
     a = []     # E: Need type annotation for 'a'
     b = [None]
     c = [B()]
-    c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
-    c = [B()]
+    if int():
+        c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
+        c = [B()]
 class B: pass
 [builtins fixtures/list.pyi]
 [out]
@@ -400,6 +442,7 @@ aab = None # type: List[List[B]]
 ab = None # type: List[B]
 b = None # type: B
 o = None # type: object
+def f(): aao, aab # Prevent redefinition
 
 aao = [[o], ab] # E: List item 1 has incompatible type "List[B]"; expected "List[object]"
 aab = [[], [o]] # E: List item 0 has incompatible type "object"; expected "B"
@@ -529,7 +572,8 @@ class set(Generic[t]):
     def __init__(self, iterable: Iterable[t]) -> None: pass
 b = bool()
 l = set([b])
-l = set([object()]) # E: List item 0 has incompatible type "object"; expected "bool"
+if int():
+    l = set([object()]) # E: List item 0 has incompatible type "object"; expected "bool"
 [builtins fixtures/for.pyi]
 
 
@@ -554,8 +598,9 @@ class C(Generic[s, t]): pass
 [case testInferLambdaArgumentTypeUsingContext]
 from typing import Callable
 f = None # type: Callable[[B], A]
-f = lambda x: x.o
-f = lambda x: x.x # E: "B" has no attribute "x"
+if int():
+    f = lambda x: x.o
+    f = lambda x: x.x # E: "B" has no attribute "x"
 class A: pass
 class B:
   o = None # type: A
@@ -563,8 +608,9 @@ class B:
 [case testInferLambdaReturnTypeUsingContext]
 from typing import List, Callable
 f = None # type: Callable[[], List[A]]
-f = lambda: []
-f = lambda: [B()]  # E: List item 0 has incompatible type "B"; expected "A"
+if int():
+    f = lambda: []
+    f = lambda: [B()]  # E: List item 0 has incompatible type "B"; expected "A"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -690,11 +736,16 @@ a = m # type: List[A] # E: Incompatible types in assignment (expression has type
 [case testOrOperationInferredFromContext]
 from typing import List
 a, b, c = None, None, None # type: (List[A], List[B], List[C])
-a = a or []
-a = [] or a
-b = b or [C()]
-a = a or b # E: Incompatible types in assignment (expression has type "Union[List[A], List[B]]", variable has type "List[A]")
-b = b or c # E: Incompatible types in assignment (expression has type "Union[List[B], List[C]]", variable has type "List[B]")
+if int():
+    a = a or []
+if int():
+    a = [] or a
+if int():
+    b = b or [C()]
+if int():
+    a = a or b # E: Incompatible types in assignment (expression has type "Union[List[A], List[B]]", variable has type "List[A]")
+if int():
+    b = b or c # E: Incompatible types in assignment (expression has type "Union[List[B], List[C]]", variable has type "List[B]")
 
 class A: pass
 class B: pass
@@ -712,8 +763,10 @@ t = TypeVar('t')
 s = TypeVar('s')
 # Some type variables can be inferred using context, but not all of them.
 a = None # type: List[A]
-a = f(A(), B())
-a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+if int():
+    a = f(A(), B())
+if int():
+    a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
@@ -725,8 +778,10 @@ s = TypeVar('s')
 t = TypeVar('t')
 # Like testSomeTypeVarsInferredFromContext, but tvars in different order.
 a = None # type: List[A]
-a = f(A(), B())
-a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+if int():
+    a = f(A(), B())
+if int():
+    a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
@@ -747,8 +802,10 @@ class A: pass
 from typing import List
 i = None # type: List[int]
 s = None # type: List[str]
-i = i = []
-i = s = [] # E: Incompatible types in assignment (expression has type "List[str]", variable has type "List[int]")
+if int():
+    i = i = []
+if int():
+    i = s = [] # E: Incompatible types in assignment (expression has type "List[str]", variable has type "List[int]")
 [builtins fixtures/list.pyi]
 
 [case testContextForAttributeDeclaredInInit]
@@ -765,8 +822,9 @@ a.x = [''] # E: List item 0 has incompatible type "str"; expected "int"
 [case testListMultiplyInContext]
 from typing import List
 a = None  # type: List[int]
-a = [None] * 3
-a = [''] * 3 # E: List item 0 has incompatible type "str"; expected "int"
+if int():
+    a = [None] * 3
+    a = [''] * 3 # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testUnionTypeContext]
