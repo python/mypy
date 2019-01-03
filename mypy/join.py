@@ -113,7 +113,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        if state.STRICT_OPTIONAL:
+        if state.strict_optional:
             if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
             elif isinstance(self.s, UnboundType):

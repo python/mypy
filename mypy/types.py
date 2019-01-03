@@ -1538,7 +1538,7 @@ class UnionType(Type):
 
     def relevant_items(self) -> List[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
-        if state.STRICT_OPTIONAL:
+        if state.strict_optional:
             return self.items
         else:
             return [i for i in self.items if not isinstance(i, NoneTyp)]

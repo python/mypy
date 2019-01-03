@@ -164,7 +164,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if state.STRICT_OPTIONAL:
+        if state.strict_optional:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object') or
                     isinstance(self.right, Instance) and self.right.type.is_protocol and
@@ -1059,7 +1059,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, AnyType)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if state.STRICT_OPTIONAL:
+        if state.strict_optional:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object'))
         return True
