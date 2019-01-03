@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mypy import build
 from mypy import defaults
-from mypy import experiments
+from mypy import state
 from mypy import util
 from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -746,11 +746,11 @@ def process_options(args: List[str],
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
     if special_opts.find_occurrences:
-        experiments.find_occurrences = special_opts.find_occurrences.split('.')
-        assert experiments.find_occurrences is not None
-        if len(experiments.find_occurrences) < 2:
+        state.find_occurrences = special_opts.find_occurrences.split('.')
+        assert state.find_occurrences is not None
+        if len(state.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(experiments.find_occurrences) != 2:
+        if len(state.find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.

@@ -14,7 +14,7 @@ if MYPY:
     from typing_extensions import Final
 
 import mypy.nodes
-from mypy import experiments
+from mypy import state
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
     FuncDef,
@@ -1538,7 +1538,7 @@ class UnionType(Type):
 
     def relevant_items(self) -> List[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return self.items
         else:
             return [i for i in self.items if not isinstance(i, NoneTyp)]

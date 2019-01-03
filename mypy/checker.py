@@ -62,8 +62,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
-
-from mypy import experiments
+from mypy import state
 
 MYPY = False
 if MYPY:
@@ -273,7 +272,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
-        with experiments.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional):
             self.errors.set_file(self.path, self.tree.fullname(), scope=self.tscope)
             self.tscope.enter_file(self.tree.fullname())
             with self.enter_partial_types():
@@ -308,7 +307,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         This goes through deferred nodes, returning True if there were any.
         """
         self.recurse_into_functions = True
-        with experiments.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(self.path, self.tree.fullname(), scope=self.tscope)
@@ -505,7 +504,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #     def foo(x: str) -> str: ...
                     #
                     # See Python 2's map function for a concrete example of this kind of overload.
-                    with experiments.strict_optional_set(True):
+                    with state.strict_optional_set(True):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2):
                             self.msg.overloaded_signatures_overlap(
                                 i + 1, i + j + 2, item.func)
