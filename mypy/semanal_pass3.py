@@ -12,7 +12,7 @@ belongs to a module involved in an import loop.
 from collections import OrderedDict
 from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
-from mypy import messages, experiments
+from mypy import messages, state
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
@@ -65,7 +65,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.sem.cur_mod_id = file_node.fullname()
         self.cur_mod_node = file_node
         self.sem.globals = file_node.names
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.update_imported_vars()
             self.accept(file_node)

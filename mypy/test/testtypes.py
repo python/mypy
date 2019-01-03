@@ -15,7 +15,7 @@ from mypy.types import (
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.experiments import strict_optional_set
+from mypy.state import strict_optional_set
 
 
 class TypesSuite(Suite):
