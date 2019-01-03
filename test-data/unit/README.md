@@ -7,7 +7,8 @@ Quick Start
 
 To add a simple unit test for a new feature you developed, open or create a
 `test-data/unit/check-*.test` file with a name that roughly relates to the
-feature you added.
+feature you added. If you added a new `check-*.test` file, add it to the list
+of files in `mypy/test/testcheck.py`.
 
 Add the test in this format anywhere in the file:
 

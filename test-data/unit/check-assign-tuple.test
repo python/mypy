@@ -1,0 +1,15 @@
+[case testAssignTupleNonIterable]
+() = 1  #E: 'builtins.int' object is not iterable
+[typing fixtures/typing-full.pyi]
+
+[case testAssignEmptyPy36]
+# flags: --python-version 3.6
+() = []
+
+[case testAssignEmptyPy35]
+# flags: --python-version 3.5
+() = []  # E: can't assign to ()
+
+[case testAssignEmptyPy27]
+# flags: --python-version 2.7
+() = []  # E: can't assign to ()

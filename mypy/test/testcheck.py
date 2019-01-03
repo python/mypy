@@ -23,6 +23,7 @@ from mypy.errors import CompileError
 
 # List of files that contain test case descriptions.
 typecheck_files = [
+    'check-assign-tuple.test',
     'check-basic.test',
     'check-callable.test',
     'check-classes.test',
