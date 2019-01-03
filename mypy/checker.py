@@ -1476,10 +1476,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # are erased, then it is definitely an incompatibility.
 
                 override_ids = override.type_var_ids()
+                type_name = None
                 if isinstance(override.definition, FuncDef):
                     type_name = override.definition.info.name()
-                else:
-                    type_name = "Foo"
 
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
