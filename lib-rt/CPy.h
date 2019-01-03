@@ -841,6 +841,30 @@ static PyObject *CPyDict_FromAny(PyObject *obj) {
     }
 }
 
+static PyObject *CPyIter_Next(PyObject *iter)
+{
+    return (*iter->ob_type->tp_iternext)(iter);
+}
+
+static PyObject *CPy_FetchStopIterationValue(void)
+{
+    PyObject *val = NULL;
+    _PyGen_FetchStopIterationValue(&val);
+    return val;
+}
+
+static PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
+{
+    // Do a send, or a next if second arg is None.
+    // (This behavior is to match the PEP 380 spec for yield from.)
+    _Py_IDENTIFIER(send);
+    if (val == Py_None) {
+        return CPyIter_Next(iter);
+    } else {
+        return _PyObject_CallMethodIdObjArgs(iter, &PyId_send, val, NULL);
+    }
+}
+
 // mypy lets ints silently coerce to floats, so a mypyc runtime float
 // might be an int also
 static inline bool CPyFloat_Check(PyObject *o) {
@@ -1026,6 +1050,70 @@ static void CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_t
 }
 
 void CPy_Init(void);
+
+
+// A somewhat hairy implementation of specifically most of the error handling
+// in `yield from` error handling. The point here is to reduce code size.
+//
+// This implements most of the bodies of the `except` blocks in the
+// pseudocode in PEP 380.
+//
+// Returns true (1) if a StopIteration was received and we should return.
+// Returns false (0) if a value should be yielded.
+// In both cases the value is stored in outp.
+// Signals an error (2) if the an exception should be propagated.
+static int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
+{
+    _Py_IDENTIFIER(close);
+    _Py_IDENTIFIER(throw);
+    PyObject *exc_type = CPy_ExcState()->exc_type;
+    PyObject *type, *value, *traceback;
+    PyObject *_m;
+    PyObject *res;
+    *outp = NULL;
+
+    if (PyErr_GivenExceptionMatches(exc_type, PyExc_GeneratorExit)) {
+        _m = _PyObject_GetAttrId(iter, &PyId_close);
+        if (_m) {
+            res = PyObject_CallFunctionObjArgs(_m, NULL);
+            Py_DECREF(_m);
+            if (!res)
+                return 2;
+            Py_DECREF(res);
+        } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+        } else {
+            return 2;
+        }
+    } else {
+        _m = _PyObject_GetAttrId(iter, &PyId_throw);
+        if (_m) {
+            CPy_GetExcInfo(&type, &value, &traceback);
+            res = PyObject_CallFunctionObjArgs(_m, type, value, traceback, NULL);
+            Py_DECREF(type);
+            Py_DECREF(value);
+            Py_DECREF(traceback);
+            Py_DECREF(_m);
+            if (res) {
+                *outp = res;
+                return 0;
+            } else {
+                res = CPy_FetchStopIterationValue();
+                if (res) {
+                    *outp = res;
+                    return 1;
+                }
+            }
+        } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+        } else {
+            return 2;
+        }
+    }
+
+    CPy_Reraise();
+    return 2;
+}
 
 
 #ifdef __cplusplus

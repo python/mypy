@@ -3131,7 +3131,7 @@ assert run_generator(another_triple()()) == ((1,), None)
 assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
 
 [case testYieldThrow]
-from typing import Generator, Iterable
+from typing import Generator, Iterable, Any
 from traceback import print_tb
 from contextlib import contextmanager
 import wrapsys
@@ -3149,6 +3149,18 @@ def generator() -> Iterable[int]:
         else:
             print('caught exception without value')
         return 0
+
+def no_except() -> Iterable[int]:
+    yield 1
+    yield 2
+
+def raise_something() -> Iterable[int]:
+    yield 1
+    yield 2
+    raise Exception('failure')
+
+def wrapper(x: Any) -> Any:
+    return (yield from x)
 
 def foo() -> Generator[int, None, None]:
     try:
@@ -3170,7 +3182,7 @@ def exc_info() -> Any:
 [file driver.py]
 import sys
 from typing import Generator, Tuple, TypeVar, Sequence
-from native import generator, ctx_manager
+from native import generator, ctx_manager, wrapper, no_except, raise_something
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -3180,9 +3192,9 @@ def run_generator_and_throw(gen: Generator[T, None, U],
                             value: object = None,
                             traceback: object = None) -> Tuple[Sequence[T], U]:
     res = []
-    for i in range(num_times):
-        res.append(next(gen))
     try:
+        for i in range(num_times):
+            res.append(next(gen))
         if value is not None and traceback is not None:
             gen.throw(Exception, value, traceback)
         elif value is not None:
@@ -3203,6 +3215,17 @@ except Exception as e:
     tb = sys.exc_info()[2]
     assert run_generator_and_throw(generator(), 1, 'some other string', tb) == ((1,), 0)
 
+assert run_generator_and_throw(wrapper(generator()), 0, 'hello') == ((), 'hello')
+assert run_generator_and_throw(wrapper(generator()), 3) == ((1, 2, 3), 0)
+assert run_generator_and_throw(wrapper(generator()), 2, 'some string') == ((1, 2), 0)
+# Make sure we aren't leaking exc_info
+assert sys.exc_info()[0] is None
+
+assert run_generator_and_throw(wrapper([1, 2, 3]), 3, 'lol') == ((1, 2, 3), 'lol')
+assert run_generator_and_throw(wrapper(no_except()), 2, 'lol') == ((1, 2), 'lol')
+
+assert run_generator_and_throw(wrapper(raise_something()), 3) == ((1, 2), 'failure')
+
 with ctx_manager() as c:
     raise Exception('exception')
 
@@ -3215,9 +3238,19 @@ with ctx_manager() as c:
     yield 1
   File "driver.py", line 31, in <module>
     raise Exception
+  File "native.py", line 10, in __mypyc_generator_helper__
+    yield 3
+  File "native.py", line 30, in __mypyc_generator_helper__
+    return (yield from x)
+  File "native.py", line 9, in __mypyc_generator_helper__
+    yield 2
+  File "native.py", line 30, in __mypyc_generator_helper__
+    return (yield from x)
 caught exception without value
 caught exception with value some string
 caught exception with value some other string
+caught exception without value
+caught exception with value some string
 exception
 goodbye
 
@@ -3228,6 +3261,41 @@ def basic() -> Generator[int, int, int]:
     x = yield 1
     y = yield (x + 1)
     return y
+
+def use_from() -> Generator[int, int, int]:
+    return (yield from basic())
+
+[file driver.py]
+from typing import Generator, Tuple, TypeVar, Sequence, Optional, List
+from native import basic, use_from
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def run_generator(gen: Generator[T, V, U],
+                  inputs: Optional[List[V]] = None) -> Tuple[Sequence[T], U]:
+    res = []
+    i = -1
+    while True:
+        try:
+            if i >= 0 and inputs:
+                val = gen.send(inputs[i])
+            else:
+                val = next(gen)
+        except StopIteration as e:
+            return (tuple(res), e.value)
+        res.append(val)
+        i += 1
+
+assert run_generator(basic(), [5, 50]) == ((1, 6), 50)
+assert run_generator(use_from(), [5, 50]) == ((1, 6), 50)
+
+[case testYieldFrom]
+from typing import Generator, Iterator
+
+def basic() -> Iterator[int]:
+    yield from [1, 2, 3]
 
 [file driver.py]
 from typing import Generator, Tuple, TypeVar, Sequence, Optional, List
@@ -3252,7 +3320,7 @@ def run_generator(gen: Generator[T, V, U],
         res.append(val)
         i += 1
 
-assert run_generator(basic(), [5, 50]) == ((1, 6), 50)
+assert run_generator(basic()) == ((1, 2, 3), None)
 
 [case testDecorators1]
 from typing import Generator, Callable, Iterator

@@ -3,7 +3,7 @@
 from typing import List
 
 from mypyc.ops import (
-    EmitterInterface, PrimitiveOp,
+    EmitterInterface, PrimitiveOp, RTuple,
     none_rprimitive, bool_rprimitive, object_rprimitive, tuple_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive,
     ERR_NEVER, ERR_MAGIC, ERR_FALSE
@@ -50,19 +50,71 @@ iter_op = func_op(name='builtins.iter',
                   error_kind=ERR_MAGIC,
                   emit=call_emit('PyObject_GetIter'))
 
-# Although the error_kind is set to be ERR_NEVER, this can actually return NULL, and thus it must
-# be checked using Branch.IS_ERROR.
+# Although the error_kind is set to be ERR_NEVER, this can actually
+# return NULL, and thus it must be checked using Branch.IS_ERROR.
 next_op = custom_op(name='next',
                     arg_types=[object_rprimitive],
                     result_type=object_rprimitive,
                     error_kind=ERR_NEVER,
                     emit=call_emit('PyIter_Next'))
 
+# Do a next, don't swallow StopIteration, but also don't
+# propagate an error.
+# Can return NULL: see next_op.
+next_raw_op = custom_op(name='next',
+                        arg_types=[object_rprimitive],
+                        result_type=object_rprimitive,
+                        error_kind=ERR_NEVER,
+                        emit=call_emit('CPyIter_Next'))
+
+# Do a send, or a next if second arg is None.
+# (This behavior is to match the PEP 380 spec for yield from.)
+# Like next_raw_op, don't swallow StopIteration,
+# but also don't propagate an error.
+# Can return NULL: see next_op.
+send_op = custom_op(name='send',
+                    arg_types=[object_rprimitive, object_rprimitive],
+                    result_type=object_rprimitive,
+                    error_kind=ERR_NEVER,
+                    emit=call_emit('CPyIter_Send'))
+
+# An honest next. Doesn't swallow StopIteration, raises exceptions.
+func_op(name='builtins.next',
+        arg_types=[object_rprimitive],
+        result_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        emit=call_emit('CPyIter_Next'))
+
+
+# This is sort of unfortunate but oh well: yield_from_except performs most of the
+# error handling logic in `yield from` operations. It returns a bool and a value.
+# If the bool is true, then a StopIteration was received and we should return.
+# If the bool is false, then the value should be yielded.
+# The normal case is probably that it signals an exception, which gets
+# propagated.
+yield_from_rtuple = RTuple([bool_rprimitive, object_rprimitive])
+
+yield_from_except_op = custom_op(
+    name='yield_from_except',
+    arg_types=[object_rprimitive],
+    result_type=yield_from_rtuple,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest}.f0 = CPy_YieldFromErrorHandle({args[0]}, &{dest}.f1);'))
+
+
 method_new_op = custom_op(name='method_new',
                           arg_types=[object_rprimitive, object_rprimitive],
                           result_type=object_rprimitive,
                           error_kind=ERR_MAGIC,
                           emit=call_emit('PyMethod_New'))
+
+# Check if the current exception is a StopIteration and return its value if so.
+# If it is a different exception, re-reraise it.
+check_stop_op = custom_op(name='check_stop_iteration',
+                          arg_types=[],
+                          result_type=object_rprimitive,
+                          error_kind=ERR_MAGIC,
+                          emit=call_emit('CPy_FetchStopIterationValue'))
 
 
 #

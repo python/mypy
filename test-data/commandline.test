@@ -178,9 +178,6 @@ d2 = {2: 3, **d1}  # E: **args in dict expressions is unimplemented
 async def aio(x: Any) -> Any:  # E: async functions are unimplemented
     await x  # E: await is unimplemented
 
-def yieldfrom(x: Any) -> Any:
-    yield from x  # E: yield from is unimplemented
-
 [file foo/__init__.py]
 x = 20
 

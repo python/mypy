@@ -79,7 +79,8 @@ from mypyc.ops_tuple import list_tuple_op
 from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_op
 from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_misc import (
-    none_op, none_object_op, true_op, false_op, iter_op, next_op,
+    none_op, none_object_op, true_op, false_op, iter_op, next_op, next_raw_op,
+    check_stop_op, send_op, yield_from_except_op,
     py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
@@ -3443,7 +3444,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             retval = self.accept(expr.expr)
         else:
             retval = self.none()
-        retval = self.coerce(retval, self.ret_types[-1], expr.line)
+        return self.emit_yield(retval, expr.line)
+
+    def emit_yield(self, val: Value, line: int) -> Value:
+        retval = self.coerce(val, self.ret_types[-1], line)
 
         cls = self.fn_info.generator_class
         # Create a new block for the instructions immediately following the yield expression, and
@@ -3452,14 +3456,90 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         next_block = BasicBlock()
         next_label = len(cls.blocks)
         cls.blocks.append(next_block)
-        self.assign(cls.next_label_target, self.add(LoadInt(next_label)), expr.line)
+        self.assign(cls.next_label_target, self.add(LoadInt(next_label)), line)
         self.add(Return(retval))
         self.activate_block(next_block)
 
-        self.add_raise_exception_blocks_to_generator_class(expr.line)
+        self.add_raise_exception_blocks_to_generator_class(line)
 
         assert cls.send_arg_reg is not None
         return cls.send_arg_reg
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
+        # This is basically an implementation of the code in PEP 380.
+
+        # TODO: do we want to use the right types here?
+        result = self.alloc_temp(object_rprimitive)
+        to_yield_reg = self.alloc_temp(object_rprimitive)
+        received_reg = self.alloc_temp(object_rprimitive)
+        iter_reg = self.maybe_spill_assignable(
+            self.primitive_op(iter_op, [self.accept(o.expr)], o.line))
+
+        stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
+        _y_init = self.primitive_op(next_raw_op, [self.read(iter_reg)], o.line)
+        self.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
+
+        # Try extracting a return value from a StopIteration and return it.
+        # If it wasn't, this rereaises the exception.
+        self.activate_block(stop_block)
+        self.assign(result, self.primitive_op(check_stop_op, [], o.line), o.line)
+        self.goto(done_block)
+
+        self.activate_block(main_block)
+        self.assign(to_yield_reg, _y_init, o.line)
+
+        # OK Now the main loop!
+        loop_block = BasicBlock()
+        self.goto_and_activate(loop_block)
+
+        def try_body() -> None:
+            self.assign(received_reg, self.emit_yield(self.read(to_yield_reg), o.line), o.line)
+
+        def except_body() -> None:
+            # The body of the except is all implemented in a C function to
+            # reduce how much code we need to generate. It returns a value
+            # indicating whether to break or yield (or raise an exception).
+            res = self.primitive_op(yield_from_except_op, [self.read(iter_reg)], o.line)
+            to_stop = self.add(TupleGet(res, 0, o.line))
+            val = self.add(TupleGet(res, 1, o.line))
+
+            ok, stop = BasicBlock(), BasicBlock()
+            self.add(Branch(to_stop, stop, ok, Branch.BOOL_EXPR))
+
+            # The exception got swallowed. Continue, yielding the returned value
+            self.activate_block(ok)
+            self.assign(to_yield_reg, val, o.line)
+            self.nonlocal_control[-1].gen_continue(self, o.line)
+
+            # The exception was a StopIteration. Stop iterating.
+            self.activate_block(stop)
+            self.assign(result, val, o.line)
+            self.nonlocal_control[-1].gen_break(self, o.line)
+
+        def else_body() -> None:
+            # Do a next() or a .send(). It will return NULL on exception
+            # but it won't automatically propagate.
+            _y = self.primitive_op(send_op, [self.read(iter_reg), self.read(received_reg)], o.line)
+            ok, stop = BasicBlock(), BasicBlock()
+            self.add(Branch(_y, stop, ok, Branch.IS_ERROR))
+
+            # Everything's fine. Yield it.
+            self.activate_block(ok)
+            self.assign(to_yield_reg, _y, o.line)
+            self.nonlocal_control[-1].gen_continue(self, o.line)
+
+            # Try extracting a return value from a StopIteration and return it.
+            # If it wasn't, this rereaises the exception.
+            self.activate_block(stop)
+            self.assign(result, self.primitive_op(check_stop_op, [], o.line), o.line)
+            self.nonlocal_control[-1].gen_break(self, o.line)
+
+        self.push_loop_stack(loop_block, done_block)
+        self.visit_try_except(try_body, [(None, None, except_body)], else_body, o.line)
+        self.pop_loop_stack()
+
+        self.goto_and_activate(done_block)
+        return self.read(result)
 
     def visit_ellipsis(self, o: EllipsisExpr) -> Value:
         return self.primitive_op(ellipsis_op, [], o.line)
@@ -3467,9 +3547,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     # Unimplemented constructs
     def visit_await_expr(self, o: AwaitExpr) -> Value:
         self.bail("await is unimplemented", o.line)
-
-    def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
-        self.bail("yield from is unimplemented", o.line)
 
     def visit_star_expr(self, o: StarExpr) -> Value:
         self.bail("Star expressions (in non call contexts) are unimplemented", o.line)
@@ -3541,6 +3618,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.new_block()
 
     def activate_block(self, block: BasicBlock) -> None:
+        if self.blocks[-1]:
+            assert isinstance(self.blocks[-1][-1].ops[-1], ControlOp)
+
         block.error_handler = self.error_handlers[-1]
         self.blocks[-1].append(block)
 
