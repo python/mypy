@@ -2542,10 +2542,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
-        if not isinstance(inferred_dunder_set_type, CallableType):
-            self.fail(messages.DESCRIPTOR_SET_NOT_CALLABLE
-                      .format(inferred_dunder_set_type), context)
-            return AnyType(TypeOfAny.from_error), get_type, True
+        # should be handled by get_method above
+        assert isinstance(inferred_dunder_set_type, CallableType)
 
         if len(inferred_dunder_set_type.arg_types) < 2:
             # A message already will have been recorded in check_call
