@@ -26,7 +26,7 @@ MYPY = False
 if MYPY:  # import for forward declaration only
     import mypy.checker
 
-from mypy import experiments
+from mypy import state
 
 
 class MemberContext:
@@ -151,10 +151,10 @@ def analyze_instance_member_access(name: str,
     if override_info:
         info = override_info
 
-    if (experiments.find_occurrences and
-            info.name() == experiments.find_occurrences[0] and
-            name == experiments.find_occurrences[1]):
-        mx.msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), mx.context)
+    if (state.find_occurrences and
+            info.name() == state.find_occurrences[0] and
+            name == state.find_occurrences[1]):
+        mx.msg.note("Occurrence of '{}.{}'".format(*state.find_occurrences), mx.context)
 
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)

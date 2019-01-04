@@ -15,8 +15,7 @@ from mypy.subtypes import (
 )
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
-
-from mypy import experiments
+from mypy import state
 
 # TODO Describe this module.
 
@@ -41,7 +40,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                                 for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed,
                                   prohibit_none_typevar_overlap=True):
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return UninhabitedType()
         else:
             return NoneTyp()
@@ -137,7 +136,7 @@ def is_overlapping_types(left: Type,
     # When running under non-strict optional mode, simplify away types of
     # the form 'Union[A, B, C, None]' into just 'Union[A, B, C]'.
 
-    if not experiments.STRICT_OPTIONAL:
+    if not state.strict_optional:
         if isinstance(left, UnionType):
             left = UnionType.make_union(left.relevant_items())
         if isinstance(right, UnionType):
@@ -191,7 +190,7 @@ def is_overlapping_types(left: Type,
     # We must perform this check after the TypeVar checks because
     # a TypeVar could be bound to None, for example.
 
-    if experiments.STRICT_OPTIONAL and isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
+    if state.strict_optional and isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
         return False
 
     # Next, we handle single-variant types that may be inherently partially overlapping:
@@ -362,7 +361,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, NoneTyp):
-            if experiments.STRICT_OPTIONAL:
+            if state.strict_optional:
                 return AnyType(TypeOfAny.special_form)
             else:
                 return self.s
@@ -386,7 +385,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         return UnionType.make_simplified_union(meets)
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             if isinstance(self.s, NoneTyp) or (isinstance(self.s, Instance) and
                                                self.s.type.fullname() == 'builtins.object'):
                 return t
@@ -400,7 +399,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         if isinstance(self.s, NoneTyp):
-            if experiments.STRICT_OPTIONAL:
+            if state.strict_optional:
                 return t
             else:
                 return self.s
@@ -430,7 +429,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.type, args)
                 else:
-                    if experiments.STRICT_OPTIONAL:
+                    if state.strict_optional:
                         return UninhabitedType()
                     else:
                         return NoneTyp()
@@ -441,7 +440,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     # See also above comment.
                     return self.s
                 else:
-                    if experiments.STRICT_OPTIONAL:
+                    if state.strict_optional:
                         return UninhabitedType()
                     else:
                         return NoneTyp()
@@ -559,7 +558,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
         else:
-            if experiments.STRICT_OPTIONAL:
+            if state.strict_optional:
                 return UninhabitedType()
             else:
                 return NoneTyp()

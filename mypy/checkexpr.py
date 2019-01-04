@@ -2421,13 +2421,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 operand = index.expr
                 if isinstance(operand, IntExpr):
                     return -1 * operand.value
+        typ = self.accept(index)
+        if isinstance(typ, LiteralType) and isinstance(typ.value, int):
+            return typ.value
         return None
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
-        if not isinstance(index, (StrExpr, UnicodeExpr)):
-            self.msg.typeddict_key_must_be_string_literal(td_type, index)
-            return AnyType(TypeOfAny.from_error)
-        item_name = index.value
+        if isinstance(index, (StrExpr, UnicodeExpr)):
+            item_name = index.value
+        else:
+            typ = self.accept(index)
+            if isinstance(typ, LiteralType) and isinstance(typ.value, str):
+                item_name = typ.value
+            else:
+                self.msg.typeddict_key_must_be_string_literal(td_type, index)
+                return AnyType(TypeOfAny.from_error)
 
         item_type = td_type.items.get(item_name)
         if item_type is None:

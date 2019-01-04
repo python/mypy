@@ -134,7 +134,7 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context) -> None:
-        """Emmit an error message at given location."""
+        """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod

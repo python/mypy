@@ -23,6 +23,7 @@ from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
+from mypy.defaults import REPORTER_NAMES
 
 MYPY = False
 if MYPY:
@@ -749,3 +750,7 @@ register_reporter('xslt-txt', XsltTxtReporter, needs_lxml=True)
 
 alias_reporter('xslt-html', 'html')
 alias_reporter('xslt-txt', 'txt')
+
+# Reporter class names are defined twice to speed up mypy startup, as this
+# module is slow to import. Ensure that the two definitions match.
+assert set(reporter_classes) == set(REPORTER_NAMES)
