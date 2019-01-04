@@ -1782,7 +1782,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if self._is_literal_context():
             return LiteralType(value=value, fallback=typ)
         elif self.in_final_declaration:
-            return typ.copy_with_final_value(value)
+            return typ.copy_modified(final_value=LiteralType(
+                value=value,
+                fallback=typ,
+                line=typ.line,
+                column=typ.column,
+            ))
         else:
             return typ
 

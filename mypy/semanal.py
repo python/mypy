@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
-    CallableType, Overloaded, Instance, Type, AnyType,
+    CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
@@ -1911,25 +1911,26 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if isinstance(rvalue, FloatExpr):
             return self.named_type_or_none('builtins.float')
 
+        value = None  # type: LiteralValue
+        type_name = None  # type: Optional[str]
         if isinstance(rvalue, IntExpr):
-            typ = self.named_type_or_none('builtins.int')
-            if typ and is_final:
-                return typ.copy_with_final_value(rvalue.value)
-            return typ
+            value, type_name = rvalue.value, 'builtins.int'
         if isinstance(rvalue, StrExpr):
-            typ = self.named_type_or_none('builtins.str')
-            if typ and is_final:
-                return typ.copy_with_final_value(rvalue.value)
-            return typ
+            value, type_name = rvalue.value, 'builtins.str'
         if isinstance(rvalue, BytesExpr):
-            typ = self.named_type_or_none('builtins.bytes')
-            if typ and is_final:
-                return typ.copy_with_final_value(rvalue.value)
-            return typ
+            value, type_name = rvalue.value, 'builtins.bytes'
         if isinstance(rvalue, UnicodeExpr):
-            typ = self.named_type_or_none('builtins.unicode')
+            value, type_name = rvalue.value, 'builtins.unicode'
+
+        if type_name is not None:
+            typ = self.named_type_or_none(type_name)
             if typ and is_final:
-                return typ.copy_with_final_value(rvalue.value)
+                return typ.copy_modified(final_value=LiteralType(
+                    value=value,
+                    fallback=typ,
+                    line=typ.line,
+                    column=typ.column,
+                ))
             return typ
 
         return None

@@ -80,14 +80,16 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         raise RuntimeError()
 
     def visit_instance(self, t: Instance) -> Type:
-        return t.copy_modified(args=self.expand_types(t.args))
+        args = self.expand_types(t.args)
+        return Instance(t.type, args, t.line, t.column)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
             inst = repl
             # Return copy of instance with type erasure flag on.
-            return inst.copy_modified(erased=True)
+            return Instance(inst.type, inst.args, line=inst.line,
+                            column=inst.column, erased=True)
         else:
             return repl
 

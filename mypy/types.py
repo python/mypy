@@ -572,6 +572,10 @@ class Instance(Type):
         self.erased = erased  # True if result of type variable substitution
         self.invalid = False  # True if recovered after incorrect number of type arguments error
         self.type_ref = None  # type: Optional[str]
+
+        # The underlying Literal[...] value if this instance was created via a Final
+        # declaration. For example, if we did `x: Final = 3`, x would have an instance
+        # with a `final_value` of `LiteralType(3, int_fallback)`.
         self.final_value = final_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -620,26 +624,15 @@ class Instance(Type):
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
-                      erased: Bogus[bool] = _dummy) -> 'Instance':
+                      final_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            erased if erased is not _dummy else self.erased,
-            self.final_value,
+            self.erased,
+            final_value if final_value is not _dummy else self.final_value,
         )
-
-    def copy_with_final_value(self, value: LiteralValue) -> 'Instance':
-        # Note: the fallback for this LiteralType is the *original* type, not the newly
-        # generated one. This helps prevent infinite loops when we traverse the type tree.
-        final_value = LiteralType(
-            value=value,
-            fallback=self,
-            line=self.line,
-            column=self.column,
-        )
-        return Instance(self.type, self.args, self.line, self.column, self.erased, final_value)
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
@@ -2070,7 +2063,7 @@ def get_typ_args(tp: Type) -> List[Type]:
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
     """Return a copy of a parametrizable Type with arguments set to new_args."""
     if isinstance(tp, Instance):
-        return tp.copy_modified(args=new_args)
+        return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):

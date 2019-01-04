@@ -159,7 +159,13 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return t.copy_modified(args=self.translate_types(t.args))
+        return Instance(
+            typ=t.type,
+            args=self.translate_types(t.args),
+            line=t.line,
+            column=t.column,
+            final_value=None if t.final_value is None else t.final_value.accept(self),
+        )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t

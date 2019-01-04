@@ -51,7 +51,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return t.copy_modified(args=[AnyType(TypeOfAny.special_form)] * len(t.args))
+        return Instance(t.type, [AnyType(TypeOfAny.special_form)] * len(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return AnyType(TypeOfAny.special_form)

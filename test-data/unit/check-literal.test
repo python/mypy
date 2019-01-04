@@ -2398,3 +2398,58 @@ force_bytes(reveal_type(a))    # E: Argument 1 to "force_bytes" has incompatible
 force_bytes(reveal_type(b))    # E: Revealed type is 'Literal['foo']'
 force_bytes(reveal_type(c))    # E: Revealed type is 'Literal['foo']'
 [out]
+
+[case testLiteralFinalPropagatesThroughGenerics]
+from typing import TypeVar, Generic
+from typing_extensions import Final, Literal
+
+
+T = TypeVar('T')
+
+class WrapperClass(Generic[T]):
+    def __init__(self, data: T) -> None:
+        self.data = data
+
+def wrapper_func(x: T) -> T:
+    return x
+
+def force(x: Literal[99]) -> None: pass
+def over_int(x: WrapperClass[int]) -> None: pass
+def over_literal(x: WrapperClass[Literal[99]]) -> None: pass
+
+var1: Final = 99
+w1 = WrapperClass(var1)
+force(reveal_type(w1.data))                     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(WrapperClass(var1).data))     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(wrapper_func(var1)))          # E: Revealed type is 'Literal[99]'
+over_int(reveal_type(w1))                       # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_literal(reveal_type(w1))                   # E: Argument 1 to "over_literal" has incompatible type "WrapperClass[int]"; expected "WrapperClass[Literal[99]]" \
+                                                # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_int(reveal_type(WrapperClass(var1)))       # E: Revealed type is '__main__.WrapperClass[builtins.int]'
+over_literal(reveal_type(WrapperClass(var1)))   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+
+w2 = WrapperClass(99)
+force(reveal_type(w2.data))                     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(WrapperClass(99).data))       # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(wrapper_func(99)))            # E: Revealed type is 'Literal[99]'
+over_int(reveal_type(w2))                       # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_literal(reveal_type(w2))                   # E: Argument 1 to "over_literal" has incompatible type "WrapperClass[int]"; expected "WrapperClass[Literal[99]]" \
+                                                # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_int(reveal_type(WrapperClass(99)))         # E: Revealed type is '__main__.WrapperClass[builtins.int]'
+over_literal(reveal_type(WrapperClass(99)))     # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+
+var3: Literal[99] = 99
+w3 = WrapperClass(var3)
+force(reveal_type(w3.data))                     # E: Revealed type is 'Literal[99]'
+force(reveal_type(WrapperClass(var3).data))     # E: Revealed type is 'Literal[99]'
+force(reveal_type(wrapper_func(var3)))          # E: Revealed type is 'Literal[99]'
+over_int(reveal_type(w3))                       # E: Argument 1 to "over_int" has incompatible type "WrapperClass[Literal[99]]"; expected "WrapperClass[int]" \
+                                                # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+over_literal(reveal_type(w3))                   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+over_int(reveal_type(WrapperClass(var3)))       # E: Revealed type is '__main__.WrapperClass[builtins.int]'
+over_literal(reveal_type(WrapperClass(var3)))   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+[out]
