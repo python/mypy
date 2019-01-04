@@ -51,13 +51,38 @@ static inline void CPy_FixupTraitVtable(CPyVTableItem *vtable, int count) {
     }
 }
 
+static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
+    // mypyc classes can't work with metaclasses in
+    // general. Through some various nasty hacks we *do*
+    // manage to work with TypingMeta and its friends.
+    if (metaclass == &PyType_Type)
+        return true;
+    PyObject *module = PyObject_GetAttrString((PyObject *)metaclass, "__module__");
+    if (!module) {
+        PyErr_Clear();
+        return false;
+    }
+
+    bool matches = false;
+    if (PyUnicode_CompareWithASCIIString(module, "typing") == 0 &&
+            (strcmp(metaclass->tp_name, "TypingMeta") == 0
+             || strcmp(metaclass->tp_name, "GenericMeta") == 0)) {
+        matches = true;
+    } else if (PyUnicode_CompareWithASCIIString(module, "abc") == 0 &&
+               strcmp(metaclass->tp_name, "ABCMeta") == 0) {
+        matches = true;
+    }
+    Py_DECREF(module);
+    return matches;
+}
+
 // Create a heap type based on a template non-heap type.
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
 // We don't support NULL bases and a non-type metaclass.
-static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
-                                             PyObject *orig_bases,
-                                             PyObject *modname) {
+static PyObject *CPyType_FromTemplate(PyTypeObject *template_,
+                                      PyObject *orig_bases,
+                                      PyObject *modname) {
     PyHeapTypeObject *t = NULL;
     PyTypeObject *dummy_class = NULL;
     PyObject *name = NULL;
@@ -85,6 +110,11 @@ static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
         metaclass = _PyType_CalculateMetaclass(metaclass, bases);
         if (!metaclass)
             goto error;
+
+        if (!_CPy_IsSafeMetaClass(metaclass)) {
+            PyErr_SetString(PyExc_TypeError, "mypyc classes can't have a metaclass");
+            goto error;
+        }
     }
 
     name = PyUnicode_FromString(template_->tp_name);

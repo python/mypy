@@ -753,3 +753,24 @@ import native
 native.test()
 [out]
 ok
+
+[case testNoMetaclass]
+from foo import Base
+
+class Nothing(Base):  # type: ignore
+    pass
+
+[file foo.py]
+from typing import Any
+class Meta(type):
+    pass
+
+class _Base(metaclass=Meta):
+    pass
+Base = _Base  # type: Any
+
+[file driver.py]
+try:
+    import native
+except TypeError as e:
+    assert(str(e) == "mypyc classes can't have a metaclass")
