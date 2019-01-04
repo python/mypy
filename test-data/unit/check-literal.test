@@ -2587,3 +2587,25 @@ over_literal(reveal_type(w3))                   # E: Revealed type is '__main__.
 over_int(reveal_type(WrapperClass(var3)))       # E: Revealed type is '__main__.WrapperClass[builtins.int]'
 over_literal(reveal_type(WrapperClass(var3)))   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
 [out]
+
+[case testLiteralFinalUsedInLiteralType]
+from typing_extensions import Literal, Final
+a: Final[int] = 3
+b: Final = 3
+c: Final[Literal[3]] = 3
+d: Literal[3]
+
+# TODO: Consider if we want to support cases 'b' and 'd' or not.
+# Probably not: we want to mostly keep the 'types' and 'value' worlds distinct.
+# However, according to final semantics, we ought to be able to substitute "b" with
+# "3" wherever it's used and get the same behavior -- so maybe we do need to support
+# at least case "b" for consistency?
+a_wrap: Literal[4, a]  # E: Invalid type "__main__.a" \
+                       # E: Parameter 2 of Literal[...] is invalid
+b_wrap: Literal[4, b]  # E: Invalid type "__main__.b" \
+                       # E: Parameter 2 of Literal[...] is invalid
+c_wrap: Literal[4, c]  # E: Invalid type "__main__.c" \
+                       # E: Parameter 2 of Literal[...] is invalid
+d_wrap: Literal[4, d]  # E: Invalid type "__main__.d" \
+                       # E: Parameter 2 of Literal[...] is invalid
+[out]

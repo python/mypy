@@ -8452,6 +8452,31 @@ main:2: error: Revealed type is 'builtins.int*'
 ==
 main:2: error: Revealed type is 'Literal[3]'
 
+[case testLiteralFineGrainedChainedViaFinal]
+from mod1 import foo
+from typing_extensions import Literal
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar
+[file mod2.py]
+from mod3 import qux as bar
+[file mod3.py]
+from typing_extensions import Final
+qux: Final = 3
+[file mod3.py.2]
+from typing_extensions import Final
+qux: Final = 4
+[file mod3.py.3]
+from typing_extensions import Final
+qux: Final[int] = 4
+[out]
+==
+main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+==
+main:4: error: Argument 1 to "expect_3" has incompatible type "int"; expected "Literal[3]"
+
 [case testLiteralFineGrainedStringConversionPython3]
 from mod1 import foo
 reveal_type(foo)
@@ -8518,4 +8543,3 @@ main:3: error: Revealed type is 'Literal[u'foo']'
 main:3: error: Revealed type is 'Literal['foo']'
 ==
 main:3: error: Revealed type is 'Literal[u'foo']'
-

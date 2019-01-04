@@ -569,13 +569,43 @@ class Instance(Type):
         super().__init__(line, column)
         self.type = typ
         self.args = args
-        self.erased = erased  # True if result of type variable substitution
-        self.invalid = False  # True if recovered after incorrect number of type arguments error
         self.type_ref = None  # type: Optional[str]
 
-        # The underlying Literal[...] value if this instance was created via a Final
-        # declaration. For example, if we did `x: Final = 3`, x would have an instance
-        # with a `final_value` of `LiteralType(3, int_fallback)`.
+        # True if result of type variable substitution
+        self.erased = erased
+
+        # True if recovered after incorrect number of type arguments error
+        self.invalid = False
+
+        # This field keeps track of the underlying Literal[...] value if this instance
+        # was created via a Final declaration. For example, if we did `x: Final = 3`, x
+        # would have an instance with a `final_value` of `LiteralType(3, int_fallback)`.
+        #
+        # Or more broadly, this field lets this Instance "remember" its original declaration.
+        # We want this behavior because we want implicit Final declarations to act pretty
+        # much identically with constants: we should be able to replace any places where we
+        # use some Final variable with the original value and get the same type-checking
+        # behavior. For example, we want this program:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    var: Final = 3
+        #    expects_literal(var)
+        #
+        # ...to type-check in the exact same way as if we had written the program like this:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    expects_literal(3)
+        #
+        # In order to make this work (especially with literal types), we need var's type
+        # (an Instance) to remember the "original" value.
+        #
+        # This field is currently set only when we encounter an *implicit* final declaration
+        # like `x: Final = 3` where the RHS is some literal expression. This field remains 'None'
+        # when we do things like `x: Final[int] = 3` or `x: Final = foo + bar`.
+        #
+        # Currently most of mypy will ignore this field and will continue to treat this type like
+        # a regular Instance. We end up using this field only when we are explicitly within a
+        # Literal context.
         self.final_value = final_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
