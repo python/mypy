@@ -215,6 +215,441 @@ reveal_type(expr_com_6)  # E: Revealed type is 'Literal['"foo"']'
 [builtins fixtures/bool.pyi]
 [out]
 
+[case testLiteralMixingUnicodeAndBytesPython3]
+from typing_extensions import Literal
+
+a_ann: Literal[u"foo"]
+b_ann: Literal["foo"]
+c_ann: Literal[b"foo"]
+
+a_hint = u"foo"  # type: Literal[u"foo"]
+b_hint = "foo"   # type: Literal["foo"]
+c_hint = b"foo"  # type: Literal[b"foo"]
+
+AAlias = Literal[u"foo"]
+BAlias = Literal["foo"]
+CAlias = Literal[b"foo"]
+a_alias: AAlias
+b_alias: BAlias
+c_alias: CAlias
+
+def accepts_str_1(x: Literal[u"foo"]) -> None: pass
+def accepts_str_2(x: Literal["foo"]) -> None: pass
+def accepts_bytes(x: Literal[b"foo"]) -> None: pass
+
+reveal_type(a_ann)      # E: Revealed type is 'Literal['foo']'
+reveal_type(b_ann)      # E: Revealed type is 'Literal['foo']'
+reveal_type(c_ann)      # E: Revealed type is 'Literal[b'foo']'
+reveal_type(a_hint)     # E: Revealed type is 'Literal['foo']'
+reveal_type(b_hint)     # E: Revealed type is 'Literal['foo']'
+reveal_type(c_hint)     # E: Revealed type is 'Literal[b'foo']'
+reveal_type(a_alias)    # E: Revealed type is 'Literal['foo']'
+reveal_type(b_alias)    # E: Revealed type is 'Literal['foo']'
+reveal_type(c_alias)    # E: Revealed type is 'Literal[b'foo']'
+
+accepts_str_1(a_ann)
+accepts_str_1(b_ann)
+accepts_str_1(c_ann)    # E: Argument 1 to "accepts_str_1" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+accepts_str_1(a_hint)
+accepts_str_1(b_hint)
+accepts_str_1(c_hint)   # E: Argument 1 to "accepts_str_1" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+accepts_str_1(a_alias)
+accepts_str_1(b_alias)
+accepts_str_1(c_alias)  # E: Argument 1 to "accepts_str_1" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+
+accepts_str_2(a_ann)
+accepts_str_2(b_ann)
+accepts_str_2(c_ann)    # E: Argument 1 to "accepts_str_2" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+accepts_str_2(a_hint)
+accepts_str_2(b_hint)
+accepts_str_2(c_hint)   # E: Argument 1 to "accepts_str_2" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+accepts_str_2(a_alias)
+accepts_str_2(b_alias)
+accepts_str_2(c_alias)  # E: Argument 1 to "accepts_str_2" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+
+accepts_bytes(a_ann)    # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(b_ann)    # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(c_ann)
+accepts_bytes(a_hint)   # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(b_hint)   # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(c_hint)
+accepts_bytes(a_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(b_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(c_alias)
+[out]
+
+[case testLiteralMixingUnicodeAndBytesPython2]
+# flags: --python-version 2.7
+from typing_extensions import Literal
+
+a_hint = u"foo"  # type: Literal[u"foo"]
+b_hint = "foo"   # type: Literal["foo"]
+c_hint = b"foo"  # type: Literal[b"foo"]
+
+AAlias = Literal[u"foo"]
+BAlias = Literal["foo"]
+CAlias = Literal[b"foo"]
+a_alias = u"foo"  # type: AAlias
+b_alias = "foo"   # type: BAlias
+c_alias = b"foo"  # type: CAlias
+
+def accepts_unicode(x):
+    # type: (Literal[u"foo"]) -> None
+    pass
+def accepts_bytes_1(x):
+    # type: (Literal["foo"]) -> None
+    pass
+def accepts_bytes_2(x):
+    # type: (Literal[b"foo"]) -> None
+    pass
+
+reveal_type(a_hint)       # E: Revealed type is 'Literal[u'foo']'
+reveal_type(b_hint)       # E: Revealed type is 'Literal['foo']'
+reveal_type(c_hint)       # E: Revealed type is 'Literal['foo']'
+reveal_type(a_alias)      # E: Revealed type is 'Literal[u'foo']'
+reveal_type(b_alias)      # E: Revealed type is 'Literal['foo']'
+reveal_type(c_alias)      # E: Revealed type is 'Literal['foo']'
+
+accepts_unicode(a_hint)
+accepts_unicode(b_hint)   # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode(c_hint)   # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode(a_alias)
+accepts_unicode(b_alias)  # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode(c_alias)  # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+
+accepts_bytes_1(a_hint)   # E: Argument 1 to "accepts_bytes_1" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes_1(b_hint)
+accepts_bytes_1(c_hint)
+accepts_bytes_1(a_alias)  # E: Argument 1 to "accepts_bytes_1" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes_1(b_alias)
+accepts_bytes_1(c_alias)
+
+accepts_bytes_2(a_hint)   # E: Argument 1 to "accepts_bytes_2" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes_2(b_hint)
+accepts_bytes_2(c_hint)
+accepts_bytes_2(a_alias)  # E: Argument 1 to "accepts_bytes_2" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes_2(b_alias)
+accepts_bytes_2(c_alias)
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralMixingUnicodeAndBytesPython2UnicodeLiterals]
+# flags: --python-version 2.7
+from __future__ import unicode_literals
+from typing_extensions import Literal
+
+a_hint = u"foo"  # type: Literal[u"foo"]
+b_hint = "foo"   # type: Literal["foo"]
+c_hint = b"foo"  # type: Literal[b"foo"]
+
+AAlias = Literal[u"foo"]
+BAlias = Literal["foo"]
+CAlias = Literal[b"foo"]
+a_alias = u"foo"  # type: AAlias
+b_alias = "foo"   # type: BAlias
+c_alias = b"foo"  # type: CAlias
+
+def accepts_unicode_1(x):
+    # type: (Literal[u"foo"]) -> None
+    pass
+def accepts_unicode_2(x):
+    # type: (Literal["foo"]) -> None
+    pass
+def accepts_bytes(x):
+    # type: (Literal[b"foo"]) -> None
+    pass
+
+reveal_type(a_hint)       # E: Revealed type is 'Literal[u'foo']'
+reveal_type(b_hint)       # E: Revealed type is 'Literal[u'foo']'
+reveal_type(c_hint)       # E: Revealed type is 'Literal['foo']'
+reveal_type(a_alias)      # E: Revealed type is 'Literal[u'foo']'
+reveal_type(b_alias)      # E: Revealed type is 'Literal[u'foo']'
+reveal_type(c_alias)      # E: Revealed type is 'Literal['foo']'
+
+accepts_unicode_1(a_hint)
+accepts_unicode_1(b_hint)
+accepts_unicode_1(c_hint)   # E: Argument 1 to "accepts_unicode_1" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode_1(a_alias)
+accepts_unicode_1(b_alias)
+accepts_unicode_1(c_alias)  # E: Argument 1 to "accepts_unicode_1" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+
+accepts_unicode_2(a_hint)
+accepts_unicode_2(b_hint)
+accepts_unicode_2(c_hint)   # E: Argument 1 to "accepts_unicode_2" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode_2(a_alias)
+accepts_unicode_2(b_alias)
+accepts_unicode_2(c_alias)  # E: Argument 1 to "accepts_unicode_2" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+
+accepts_bytes(a_hint)       # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes(b_hint)       # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes(c_hint)
+accepts_bytes(a_alias)      # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes(b_alias)      # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes(c_alias)
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings]
+from typing import TypeVar, Generic
+from typing_extensions import Literal
+
+a_unicode_wrapper: u"Literal[u'foo']"
+b_unicode_wrapper: u"Literal['foo']"
+c_unicode_wrapper: u"Literal[b'foo']"
+
+a_str_wrapper: "Literal[u'foo']"
+b_str_wrapper: "Literal['foo']"
+c_str_wrapper: "Literal[b'foo']"
+
+# In Python 3, forward references MUST be str, not bytes
+a_bytes_wrapper: b"Literal[u'foo']"  # E: Invalid type: syntax error in type comment
+b_bytes_wrapper: b"Literal['foo']"   # E: Invalid type: syntax error in type comment
+c_bytes_wrapper: b"Literal[b'foo']"  # E: Invalid type: syntax error in type comment
+
+reveal_type(a_unicode_wrapper)  # E: Revealed type is 'Literal['foo']'
+reveal_type(b_unicode_wrapper)  # E: Revealed type is 'Literal['foo']'
+reveal_type(c_unicode_wrapper)  # E: Revealed type is 'Literal[b'foo']'
+
+reveal_type(a_str_wrapper)      # E: Revealed type is 'Literal['foo']'
+reveal_type(b_str_wrapper)      # E: Revealed type is 'Literal['foo']'
+reveal_type(c_str_wrapper)      # E: Revealed type is 'Literal[b'foo']'
+
+T = TypeVar('T')
+class Wrap(Generic[T]): pass
+
+AUnicodeWrapperAlias = Wrap[u"Literal[u'foo']"]
+BUnicodeWrapperAlias = Wrap[u"Literal['foo']"]
+CUnicodeWrapperAlias = Wrap[u"Literal[b'foo']"]
+a_unicode_wrapper_alias: AUnicodeWrapperAlias
+b_unicode_wrapper_alias: BUnicodeWrapperAlias
+c_unicode_wrapper_alias: CUnicodeWrapperAlias
+
+AStrWrapperAlias = Wrap["Literal[u'foo']"]
+BStrWrapperAlias = Wrap["Literal['foo']"]
+CStrWrapperAlias = Wrap["Literal[b'foo']"]
+a_str_wrapper_alias: AStrWrapperAlias
+b_str_wrapper_alias: BStrWrapperAlias
+c_str_wrapper_alias: CStrWrapperAlias
+
+ABytesWrapperAlias = Wrap[b"Literal[u'foo']"]
+BBytesWrapperAlias = Wrap[b"Literal['foo']"]
+CBytesWrapperAlias = Wrap[b"Literal[b'foo']"]
+a_bytes_wrapper_alias: ABytesWrapperAlias
+b_bytes_wrapper_alias: BBytesWrapperAlias
+c_bytes_wrapper_alias: CBytesWrapperAlias
+
+# In Python 3, we assume that Literal['foo'] and Literal[u'foo'] are always
+# equivalent, no matter what.
+reveal_type(a_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(b_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(c_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal[b'foo']]'
+
+reveal_type(a_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(b_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(c_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal[b'foo']]'
+
+reveal_type(a_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(b_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(c_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal[b'foo']]'
+[out]
+
+[case testLiteralMixingUnicodeAndBytesPython2ForwardStrings]
+# flags: --python-version 2.7
+from typing import TypeVar, Generic
+from typing_extensions import Literal
+
+T = TypeVar('T')
+class Wrap(Generic[T]): pass
+
+AUnicodeWrapperAlias = Wrap[u"Literal[u'foo']"]
+BUnicodeWrapperAlias = Wrap[u"Literal['foo']"]
+CUnicodeWrapperAlias = Wrap[u"Literal[b'foo']"]
+a_unicode_wrapper_alias = Wrap()  # type: AUnicodeWrapperAlias
+b_unicode_wrapper_alias = Wrap()  # type: BUnicodeWrapperAlias
+c_unicode_wrapper_alias = Wrap()  # type: CUnicodeWrapperAlias
+
+AStrWrapperAlias = Wrap["Literal[u'foo']"]
+BStrWrapperAlias = Wrap["Literal['foo']"]
+CStrWrapperAlias = Wrap["Literal[b'foo']"]
+a_str_wrapper_alias = Wrap()  # type: AStrWrapperAlias
+b_str_wrapper_alias = Wrap()  # type: BStrWrapperAlias
+c_str_wrapper_alias = Wrap()  # type: CStrWrapperAlias
+
+ABytesWrapperAlias = Wrap[b"Literal[u'foo']"]
+BBytesWrapperAlias = Wrap[b"Literal['foo']"]
+CBytesWrapperAlias = Wrap[b"Literal[b'foo']"]
+a_bytes_wrapper_alias = Wrap()  # type: ABytesWrapperAlias
+b_bytes_wrapper_alias = Wrap()  # type: BBytesWrapperAlias
+c_bytes_wrapper_alias = Wrap()  # type: CBytesWrapperAlias
+
+# Unlike Python 3, the exact meaning of Literal['foo'] is "inherited" from the "outer"
+# string. For example, the "outer" string is unicode in the first example here. So
+# we treat Literal['foo'] as the same as Literal[u'foo'].
+reveal_type(a_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(b_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(c_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+
+# However, for both of these examples, the "outer" string is bytes, so we don't treat
+# Literal['foo'] as a unicode Literal.
+reveal_type(a_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(b_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(c_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+
+reveal_type(a_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(b_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(c_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+[out]
+
+[case testLiteralMixingUnicodeAndBytesPython2ForwardStringsUnicodeLiterals]
+# flags: --python-version 2.7
+from __future__ import unicode_literals
+from typing import TypeVar, Generic
+from typing_extensions import Literal
+
+T = TypeVar('T')
+class Wrap(Generic[T]): pass
+
+AUnicodeWrapperAlias = Wrap[u"Literal[u'foo']"]
+BUnicodeWrapperAlias = Wrap[u"Literal['foo']"]
+CUnicodeWrapperAlias = Wrap[u"Literal[b'foo']"]
+a_unicode_wrapper_alias = Wrap()  # type: AUnicodeWrapperAlias
+b_unicode_wrapper_alias = Wrap()  # type: BUnicodeWrapperAlias
+c_unicode_wrapper_alias = Wrap()  # type: CUnicodeWrapperAlias
+
+AStrWrapperAlias = Wrap["Literal[u'foo']"]
+BStrWrapperAlias = Wrap["Literal['foo']"]
+CStrWrapperAlias = Wrap["Literal[b'foo']"]
+a_str_wrapper_alias = Wrap()  # type: AStrWrapperAlias
+b_str_wrapper_alias = Wrap()  # type: BStrWrapperAlias
+c_str_wrapper_alias = Wrap()  # type: CStrWrapperAlias
+
+ABytesWrapperAlias = Wrap[b"Literal[u'foo']"]
+BBytesWrapperAlias = Wrap[b"Literal['foo']"]
+CBytesWrapperAlias = Wrap[b"Literal[b'foo']"]
+a_bytes_wrapper_alias = Wrap()  # type: ABytesWrapperAlias
+b_bytes_wrapper_alias = Wrap()  # type: BBytesWrapperAlias
+c_bytes_wrapper_alias = Wrap()  # type: CBytesWrapperAlias
+
+# This example is almost identical to the previous one, except that we're using
+# unicode literals. The first and last examples remain the same, but the middle
+# one changes:
+reveal_type(a_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(b_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(c_unicode_wrapper_alias)  # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+
+# Since unicode_literals is enabled, the "outer" string in Wrap["Literal['foo']"] is now
+# a unicode string, so we end up treating Literal['foo'] as the same as Literal[u'foo'].
+reveal_type(a_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(b_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(c_str_wrapper_alias)      # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+
+reveal_type(a_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal[u'foo']]'
+reveal_type(b_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+reveal_type(c_bytes_wrapper_alias)    # E: Revealed type is '__main__.Wrap[Literal['foo']]'
+[out]
+
+[case testLiteralMixingUnicodeAndBytesInconsistentUnicodeLiterals]
+# flags: --python-version 2.7
+import mod_unicode as u
+import mod_bytes as b
+
+reveal_type(u.func)   # E: Revealed type is 'def (x: Literal[u'foo'])'
+reveal_type(u.var)    # E: Revealed type is 'Literal[u'foo']'
+reveal_type(b.func)   # E: Revealed type is 'def (x: Literal['foo'])'
+reveal_type(b.var)    # E: Revealed type is 'Literal['foo']'
+
+from_u = u"foo"       # type: u.Alias
+from_b = "foo"        # type: b.Alias
+
+u.func(u.var)
+u.func(from_u)
+u.func(b.var)         # E: Argument 1 to "func" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+u.func(from_b)        # E: Argument 1 to "func" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+
+b.func(u.var)         # E: Argument 1 to "func" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+b.func(from_u)        # E: Argument 1 to "func" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+b.func(b.var)
+b.func(from_b)
+
+[file mod_unicode.py]
+from __future__ import unicode_literals
+from typing_extensions import Literal
+
+def func(x):
+    # type: (Literal["foo"]) -> None
+    pass
+
+Alias = Literal["foo"]
+var = "foo"  # type: Alias
+
+[file mod_bytes.py]
+from typing_extensions import Literal
+
+def func(x):
+    # type: (Literal["foo"]) -> None
+    pass
+
+Alias = Literal["foo"]
+var = "foo"  # type: Alias
+[out]
+
+[case testLiteralUnicodeWeirdCharacters]
+from typing import Any
+from typing_extensions import Literal
+
+a1: Literal["\x00\xAC\x62 \u2227 \u03bb(p)"]
+b1: Literal["\x00¬b ∧ λ(p)"]
+c1: Literal["¬b ∧ λ(p)"]
+d1: Literal["\U0001F600"]
+e1: Literal["😀"]
+
+Alias1 = Literal["\x00\xAC\x62 \u2227 \u03bb(p)"]
+Alias2 = Literal["\x00¬b ∧ λ(p)"]
+Alias3 = Literal["¬b ∧ λ(p)"]
+Alias4 = Literal["\U0001F600"]
+Alias5 = Literal["😀"]
+a2: Alias1
+b2: Alias2
+c2: Alias3
+d2: Alias4
+e2: Alias5
+
+blah: Any
+a3 = blah  # type: Literal["\x00\xAC\x62 \u2227 \u03bb(p)"]
+b3 = blah  # type: Literal["\x00¬b ∧ λ(p)"]
+c3 = blah  # type: Literal["¬b ∧ λ(p)"]
+d3 = blah  # type: Literal["\U0001F600"]
+e3 = blah  # type: Literal["😀"]
+
+reveal_type(a1)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
+reveal_type(b1)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
+reveal_type(c1)  # E: Revealed type is 'Literal['¬b ∧ λ(p)']'
+reveal_type(d1)  # E: Revealed type is 'Literal['😀']'
+reveal_type(e1)  # E: Revealed type is 'Literal['😀']'
+
+reveal_type(a2)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
+reveal_type(b2)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
+reveal_type(c2)  # E: Revealed type is 'Literal['¬b ∧ λ(p)']'
+reveal_type(d2)  # E: Revealed type is 'Literal['😀']'
+reveal_type(e2)  # E: Revealed type is 'Literal['😀']'
+
+reveal_type(a3)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
+reveal_type(b3)  # E: Revealed type is 'Literal['\x00¬b ∧ λ(p)']'
+reveal_type(c3)  # E: Revealed type is 'Literal['¬b ∧ λ(p)']'
+reveal_type(d3)  # E: Revealed type is 'Literal['😀']'
+reveal_type(e3)  # E: Revealed type is 'Literal['😀']'
+
+a1 = b1
+a1 = c1  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
+a1 = a2
+a1 = b2
+a1 = c2  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
+a1 = a3
+a1 = b3
+a1 = c3  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
+
+[out skip-path-normalization]
+
 [case testLiteralRenamingImportWorks]
 from typing_extensions import Literal as Foo
 
@@ -487,6 +922,18 @@ bt = {1, 2, 3}
 a: at                           # E: Invalid type "__main__.at"
 b: bt                           # E: Invalid type "__main__.bt"
 [builtins fixtures/set.pyi]
+[out]
+
+[case testLiteralDisallowTypeVar]
+from typing import TypeVar
+from typing_extensions import Literal
+
+T = TypeVar('T')
+
+at = Literal[T]  # E: Parameter 1 of Literal[...] is invalid
+a: at
+
+def foo(b: Literal[T]) -> T: pass   # E: Parameter 1 of Literal[...] is invalid
 [out]
 
 
@@ -1273,15 +1720,16 @@ a: Literal[3]
 b: int
 c: Literal["foo"]
 
-a = a * a  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[3]")
-a = a * b  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[3]")
-a = b * a  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[3]")
+if int():
+    a = a * a  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[3]")
+    a = a * b  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[3]")
+    a = b * a  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[3]")
 
-b = a * a
-b = a * b
-b = b * a
+    b = a * a
+    b = a * b
+    b = b * a
 
-c = c.strip()  # E: Incompatible types in assignment (expression has type "str", variable has type "Literal['foo']")
+    c = c.strip()  # E: Incompatible types in assignment (expression has type "str", variable has type "Literal['foo']")
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -1347,6 +1795,221 @@ indirect.Literal()
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+
+--
+-- Test to make sure literals interact with generics as expected
+--
+
+[case testLiteralAndGenericsWithSimpleFunctions]
+from typing import TypeVar
+from typing_extensions import Literal
+
+T = TypeVar('T')
+def foo(x: T) -> T: pass
+def expects_literal(x: Literal[3]) -> None: pass
+def expects_int(x: int) -> None: pass
+
+a: Literal[3]
+reveal_type(foo(3))  # E: Revealed type is 'builtins.int*'
+reveal_type(foo(a))  # E: Revealed type is 'Literal[3]'
+
+expects_literal(3)
+expects_literal(foo(3))
+expects_literal(foo(foo(3)))
+
+expects_literal(a)
+expects_literal(foo(a))
+expects_literal(foo(foo(a)))
+
+expects_literal(5)              # E: Argument 1 to "expects_literal" has incompatible type "Literal[5]"; expected "Literal[3]"
+expects_literal(foo(5))         # E: Argument 1 to "foo" has incompatible type "Literal[5]"; expected "Literal[3]"
+expects_literal(foo(foo(5)))    # E: Argument 1 to "foo" has incompatible type "Literal[5]"; expected "Literal[3]"
+
+expects_int(a)
+expects_int(foo(a))
+expects_int(foo(foo(a)))
+[out]
+
+[case testLiteralAndGenericWithUnion]
+from typing import TypeVar, Union
+from typing_extensions import Literal
+
+T = TypeVar('T')
+def identity(x: T) -> T: return x
+
+a: Union[int, Literal['foo']] = identity('foo')
+b: Union[int, Literal['foo']] = identity('bar')  # E: Argument 1 to "identity" has incompatible type "Literal['bar']"; expected "Union[int, Literal['foo']]"
+[out]
+
+[case testLiteralAndGenericsNoMatch]
+from typing import TypeVar, Union, List
+from typing_extensions import Literal
+
+def identity(x: T) -> T:
+    return x
+
+Ok1 = Union[List[int], Literal['bad']]
+Ok2 = Union[List[Literal[42]], Literal['bad']]
+Bad = Union[List[Literal[43]], Literal['bad']]
+
+x: Ok1 = identity([42])
+y: Ok2 = identity([42])
+z: Bad = identity([42])  # E: List item 0 has incompatible type "Literal[42]"; expected "Literal[43]"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testLiteralAndGenericsWithSimpleClasses]
+from typing import TypeVar, Generic
+from typing_extensions import Literal
+
+T = TypeVar('T')
+class Wrapper(Generic[T]):
+    def __init__(self, val: T) -> None:
+        self.val = val
+    def inner(self) -> T:
+        return self.val
+
+def expects_literal(a: Literal[3]) -> None: pass
+def expects_literal_wrapper(x: Wrapper[Literal[3]]) -> None: pass
+
+a: Literal[3]
+reveal_type(Wrapper(3))              # E: Revealed type is '__main__.Wrapper[builtins.int*]'
+reveal_type(Wrapper[Literal[3]](3))  # E: Revealed type is '__main__.Wrapper[Literal[3]]'
+reveal_type(Wrapper(a))              # E: Revealed type is '__main__.Wrapper[Literal[3]]'
+
+expects_literal(Wrapper(a).inner())
+
+# Note: the following probably ought to type-check: it's reasonable to infer
+# Wrapper[Literal[3]] here.
+# TODO: Consider finding a way to handle this edge case better
+expects_literal(Wrapper(3).inner())  # E: Argument 1 to "expects_literal" has incompatible type "int"; expected "Literal[3]"
+
+# Note: if we handle the edge case above, we should make sure this error
+# message switches to warning about an incompatible type 'Literal[5]' rather
+# then an incompatible type 'int'
+expects_literal(Wrapper(5).inner())  # E: Argument 1 to "expects_literal" has incompatible type "int"; expected "Literal[3]"
+
+expects_literal_wrapper(Wrapper(a))
+expects_literal_wrapper(Wrapper(3))
+expects_literal_wrapper(Wrapper(5))  # E: Argument 1 to "Wrapper" has incompatible type "Literal[5]"; expected "Literal[3]"
+[out]
+
+[case testLiteralAndGenericsRespectsUpperBound]
+from typing import TypeVar
+from typing_extensions import Literal
+
+TLiteral = TypeVar('TLiteral', bound=Literal[3])
+TInt = TypeVar('TInt', bound=int)
+
+def func1(x: TLiteral) -> TLiteral: pass
+def func2(x: TInt) -> TInt: pass
+
+def func3(x: TLiteral) -> TLiteral:
+    y = func2(x)
+    return y
+def func4(x: TInt) -> TInt:
+    y = func1(x)  # E: Value of type variable "TLiteral" of "func1" cannot be "TInt"
+    return y
+
+a: Literal[3]
+b: Literal[4]
+c: int
+
+reveal_type(func1)      # E: Revealed type is 'def [TLiteral <: Literal[3]] (x: TLiteral`-1) -> TLiteral`-1'
+
+reveal_type(func1(3))   # E: Revealed type is 'Literal[3]'
+reveal_type(func1(a))   # E: Revealed type is 'Literal[3]'
+reveal_type(func1(4))   # E: Revealed type is 'Literal[4]' \
+                        # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(b))   # E: Revealed type is 'Literal[4]' \
+                        # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(c))   # E: Revealed type is 'builtins.int*' \
+                        # E: Value of type variable "TLiteral" of "func1" cannot be "int"
+
+reveal_type(func2(3))   # E: Revealed type is 'builtins.int*'
+reveal_type(func2(a))   # E: Revealed type is 'Literal[3]'
+reveal_type(func2(4))   # E: Revealed type is 'builtins.int*'
+reveal_type(func2(b))   # E: Revealed type is 'Literal[4]'
+reveal_type(func2(c))   # E: Revealed type is 'builtins.int*'
+[out]
+
+[case testLiteralAndGenericsRespectsValueRestriction]
+from typing import TypeVar
+from typing_extensions import Literal
+
+TLiteral = TypeVar('TLiteral', Literal[3], Literal['foo'])
+TNormal = TypeVar('TNormal', int, str)
+
+def func1(x: TLiteral) -> TLiteral: pass
+def func2(x: TNormal) -> TNormal: pass
+
+def func3(x: TLiteral) -> TLiteral:
+    y = func2(x)
+    return y      # E: Incompatible return value type (got "int", expected "Literal[3]") \
+                  # E: Incompatible return value type (got "str", expected "Literal['foo']")
+def func4(x: TNormal) -> TNormal:
+    y = func1(x)  # E: Value of type variable "TLiteral" of "func1" cannot be "int" \
+                  # E: Value of type variable "TLiteral" of "func1" cannot be "str"
+    return y
+
+i1: Literal[3]
+i2: Literal[4]
+i: int
+
+s1: Literal['foo']
+s2: Literal['bar']
+s: str
+
+reveal_type(func1)          # E: Revealed type is 'def [TLiteral in (Literal[3], Literal['foo'])] (x: TLiteral`-1) -> TLiteral`-1'
+
+reveal_type(func1(3))       # E: Revealed type is 'Literal[3]'
+reveal_type(func1(i1))      # E: Revealed type is 'Literal[3]'
+reveal_type(func1(4))       # E: Revealed type is 'Literal[4]' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(i2))      # E: Revealed type is 'Literal[4]' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
+reveal_type(func1(i))       # E: Revealed type is 'builtins.int*' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "int"
+
+reveal_type(func1("foo"))   # E: Revealed type is 'Literal['foo']'
+reveal_type(func1(s1))      # E: Revealed type is 'Literal['foo']'
+reveal_type(func1("bar"))   # E: Revealed type is 'Literal['bar']' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']"
+reveal_type(func1(s2))      # E: Revealed type is 'Literal['bar']' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']"
+reveal_type(func1(s))       # E: Revealed type is 'builtins.str*' \
+                            # E: Value of type variable "TLiteral" of "func1" cannot be "str"
+
+reveal_type(func2(3))       # E: Revealed type is 'builtins.int*'
+reveal_type(func2(i1))      # E: Revealed type is 'builtins.int*'
+reveal_type(func2(4))       # E: Revealed type is 'builtins.int*'
+reveal_type(func2(i2))      # E: Revealed type is 'builtins.int*'
+reveal_type(func2("foo"))   # E: Revealed type is 'builtins.str*'
+reveal_type(func2(s1))      # E: Revealed type is 'builtins.str*'
+reveal_type(func2("bar"))   # E: Revealed type is 'builtins.str*'
+reveal_type(func2(s2))      # E: Revealed type is 'builtins.str*'
+[out]
+
+[case testLiteralAndGenericsWithOverloads]
+from typing import TypeVar, overload, Union
+from typing_extensions import Literal
+
+@overload
+def func1(x: Literal[4]) -> Literal[19]: ...
+@overload
+def func1(x: int) -> int: ...
+def func1(x: int) -> int: pass
+
+T = TypeVar('T')
+def identity(x: T) -> T: pass
+
+a: Literal[4]
+b: Literal[5]
+
+reveal_type(func1(identity(4)))  # E: Revealed type is 'Literal[19]'
+reveal_type(func1(identity(5)))  # E: Revealed type is 'builtins.int'
+reveal_type(func1(identity(a)))  # E: Revealed type is 'Literal[19]'
+reveal_type(func1(identity(b)))  # E: Revealed type is 'builtins.int'
 
 --
 -- Other misc interactions

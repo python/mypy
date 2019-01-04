@@ -809,9 +809,10 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
 def f(p: Point) -> None:
-    p = {'x': 2, 'y': 3}
-    p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
-    p = dict(x=2, y=3)
+    if int():
+        p = {'x': 2, 'y': 3}
+        p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
+        p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
 f({'x': 1, 'y': 'z'})  # E: Incompatible types (expression has type "str", TypedDict item "y" has type "int")
@@ -834,7 +835,8 @@ p2: Point
 p2 = dict(x='bye')  # E: Key 'y' missing for TypedDict "Point"
 
 p3 = Point(x=1, y=2)
-p3 = {'x': 'hi'}  # E: Key 'y' missing for TypedDict "Point"
+if int():
+    p3 = {'x': 'hi'}  # E: Key 'y' missing for TypedDict "Point"
 
 p4: Point = {'x': 1, 'y': 2}
 
@@ -848,7 +850,8 @@ B = TypedDict('B', {'x': int, 'y': str})
 T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1), B(x=1, y=''))
-ab = {'x': 1, 'z': 1} # E: Expected TypedDict key 'x' but found keys ('x', 'z')
+if int():
+    ab = {'x': 1, 'z': 1} # E: Expected TypedDict key 'x' but found keys ('x', 'z')
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems]
@@ -859,7 +862,8 @@ B = TypedDict('B', {'x': int, 'y': int, 'z': str})
 T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1, z=1), B(x=1, y=1, z=''))
-ab = {} # E: Expected TypedDict keys ('x', 'y') but found no keys
+if int():
+    ab = {} # E: Expected TypedDict keys ('x', 'y') but found no keys
 [builtins fixtures/dict.pyi]
 
 

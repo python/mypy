@@ -6,7 +6,9 @@ from typing import List, Optional
 import mypy.plugin
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype
-from mypy.types import AnyType, CallableType, Instance, Type, TypeOfAny, UnionType, union_items
+from mypy.types import (
+    AnyType, CallableType, Instance, NoneTyp, Type, TypeOfAny, UnionType, union_items
+)
 
 
 def _get_bytes_type(api: 'mypy.plugin.CheckerPluginInterface') -> Instance:
@@ -70,7 +72,7 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
                     # Pointer-like _SimpleCData subclasses can also be converted from
                     # an int or None.
                     allowed_types.append(api.named_generic_type('builtins.int', []))
-                    allowed_types.append(api.named_generic_type('builtins.NoneType', []))
+                    allowed_types.append(NoneTyp())
 
     return UnionType.make_simplified_union(allowed_types)
 

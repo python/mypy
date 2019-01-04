@@ -77,7 +77,7 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
-from mypy import experiments
+from mypy import state
 from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
@@ -90,7 +90,8 @@ from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.reachability import (
-    infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE
+    infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
+    MYPY_TRUE, MYPY_FALSE
 )
 from mypy.typestate import TypeState
 
@@ -282,7 +283,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.enum_call_analyzer = EnumCallAnalyzer(options, self)
         self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
 
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
                 self.globals['__builtins__'] = SymbolTableNode(MODULE_REF,
                                                                self.modules['builtins'])
@@ -3102,12 +3103,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         if expr.op in ('and', 'or'):
             inferred = infer_condition_value(expr.left, self.options)
-            if ((inferred == ALWAYS_FALSE and expr.op == 'and') or
-                    (inferred == ALWAYS_TRUE and expr.op == 'or')):
+            if ((inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'and') or
+                    (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'or')):
                 expr.right_unreachable = True
                 return
-            elif ((inferred == ALWAYS_TRUE and expr.op == 'and') or
-                    (inferred == ALWAYS_FALSE and expr.op == 'or')):
+            elif ((inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'and') or
+                    (inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'or')):
                 expr.right_always = True
 
         expr.right.accept(self)

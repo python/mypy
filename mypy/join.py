@@ -14,8 +14,7 @@ from mypy.subtypes import (
     is_protocol_implementation, find_member
 )
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
-
-from mypy import experiments
+from mypy import state
 
 
 def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
@@ -114,7 +113,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
             elif isinstance(self.s, UnboundType):

@@ -2,45 +2,43 @@
 [out]
 
 [case testAssignmentAndVarDef]
-
 a = None # type: A
 b = None # type: B
-a = a
-a = b # Fail
+if int():
+    a = a
+if int():
+    a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
-[out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testConstructionAndAssignment]
-
 x = None # type: A
 x = A()
-x = B()
+if int():
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A:
     def __init__(self): pass
 class B:
     def __init__(self): pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInheritInitFromObject]
-
 x = None # type: A
-x = A()
-x = B()
+if int():
+    x = A()
+if int():
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A(object): pass
 class B(object): pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testImplicitInheritInitFromObject]
-
 x = None # type: A
 o = None # type: object
-x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
-x = A()
-o = x
+if int():
+    x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+if int():
+    x = A()
+if int():
+    o = x
 class A: pass
 class B: pass
 [out]
@@ -71,8 +69,10 @@ main:3: error: Incompatible types in assignment (expression has type "A", variab
 [case testDeclaredVariableInParentheses]
 
 (x) = None # type: int
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-x = 1
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    x = 1
 
 
 -- Simple functions and calling
@@ -122,40 +122,34 @@ main:4: error: Too many arguments for "f"
 
 
 [case testLocalVariables]
-
 def f() -> None:
   x = None # type: A
   y = None # type: B
-  x = x
-  x = y # Fail
+  if int():
+      x = x
+      x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
-[out]
-main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableScope]
-
 def f() -> None:
-  x = None # type: A
+  x: A
   x = A()
 def g() -> None:
-  x = None # type: B
-  x = A() # Fail
+  x: B
+  x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 class A: pass
 class B: pass
-[out]
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testFunctionArguments]
 import typing
 def f(x: 'A', y: 'B') -> None:
-  x = y # Fail
-  x = x
-  y = B()
+  if int():
+    x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    x = x
+    y = B()
 class A: pass
 class B: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableInitialization]
 import typing
@@ -245,29 +239,28 @@ a = __file__ # type: int  # E: Incompatible types in assignment (expression has 
 [case testLocalVariableShadowing]
 
 a = None # type: A
-a = B()       # Fail
-a = A()
+if int():
+    a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = A()
 def f() -> None:
   a = None # type: B
-  a = A()     # Fail
-  a = B()
-a = B()       # Fail
+  if int():
+      a = A()     # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+      a = B()
+a = B()       # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = A()
 
 class A: pass
 class B: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
 
 class A: pass
 while A:
     a = None # type: A
-    a = A()
-    a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    if int():
+        a = A()
+        a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 
 -- # type: signatures

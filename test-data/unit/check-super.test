@@ -12,9 +12,10 @@ class B:
 class A(B):
   def f(self) -> 'A':
     a, b = None, None # type: (A, B)
-    a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = super().g() # E: "g" undefined in superclass
-    b = super().f()
+    if int():
+        a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = super().g() # E: "g" undefined in superclass
+        b = super().f()
     return a
 [out]
 

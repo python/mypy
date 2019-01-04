@@ -304,7 +304,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return IntExpr(node.value)
 
     def visit_str_expr(self, node: StrExpr) -> StrExpr:
-        return StrExpr(node.value)
+        return StrExpr(node.value, node.from_python_3)
 
     def visit_bytes_expr(self, node: BytesExpr) -> BytesExpr:
         return BytesExpr(node.value)
