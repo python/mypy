@@ -997,7 +997,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     return applied
 
 
-def restrict_subtype_away(t: Type, s: Type) -> Type:
+def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) -> Type:
     """Return t minus s.
 
     If we can't determine a precise result, return a supertype of the
@@ -1014,8 +1014,10 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
         # TODO: Implement more robust support for runtime isinstance() checks,
         # see issue #3827
         new_items = [item for item in t.relevant_items()
-                     if (not (is_proper_subtype(erase_type(item), erased_s) or
-                              is_proper_subtype(item, erased_s))
+                     if (not (is_proper_subtype(erase_type(item), erased_s,
+                                                ignore_promotions=ignore_promotions) or
+                              is_proper_subtype(item, erased_s,
+                                                ignore_promotions=ignore_promotions))
                          or isinstance(item, AnyType))]
         return UnionType.make_union(new_items)
     else:
