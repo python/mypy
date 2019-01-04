@@ -259,11 +259,11 @@ from typing import TypeVar, Type
 
 T = TypeVar('T', bound=str)
 class A:
-    def foo(self: T) -> T:   # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.A'
+    def foo(self: T) -> T:   # E: The erased type of self "builtins.str" is not a supertype of its class "__main__.A"
         return self
 
     @classmethod
-    def cfoo(cls: Type[T]) -> T:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.A]'
+    def cfoo(cls: Type[T]) -> T:  # E: The erased type of self "Type[builtins.str]" is not a supertype of its class "Type[__main__.A]"
         return cls()
 
 Q = TypeVar('Q', bound='B')
@@ -283,7 +283,7 @@ class C:
         return cls()
 
 class D:
-    def foo(self: Q) -> Q:  # E: The erased type of self '__main__.B' is not a supertype of its class '__main__.D'
+    def foo(self: Q) -> Q:  # E: The erased type of self "__main__.B" is not a supertype of its class "__main__.D"
         return self
 
     @staticmethod
@@ -291,7 +291,7 @@ class D:
         return self
 
     @classmethod
-    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self 'Type[__main__.B]' is not a supertype of its class 'Type[__main__.D]'
+    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self "Type[__main__.B]" is not a supertype of its class "Type[__main__.D]"
         return cls()
 
 [builtins fixtures/classmethod.pyi]
@@ -323,10 +323,10 @@ class A:
         pass
 
 class B:
-    def __new__(cls: Type[T]) -> T:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
         return cls()
 
-    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
         pass
 
 class C:
@@ -337,10 +337,10 @@ class C:
         pass
 
 class D:
-    def __new__(cls: D) -> D:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
         return cls
 
-    def __init_subclass__(cls: D) -> None:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
         pass
 
 class E:

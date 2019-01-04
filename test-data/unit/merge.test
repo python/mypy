@@ -1451,3 +1451,51 @@ TypeInfo<0>(
     X<3> (builtins.int<4>)
     Y<6> (builtins.int<4>))
   MetaclassType(enum.EnumMeta<5>))
+
+[case testLiteralMerge]
+import target
+[file target.py]
+from typing_extensions import Literal
+def foo(x: Literal[3]) -> Literal['a']: pass
+bar: Literal[4] = 4
+[file target.py.next]
+from typing_extensions import Literal
+def foo(x: Literal['3']) -> Literal['b']: pass
+bar: Literal[5] = 5
+[out]
+MypyFile:1<0>(
+  tmp/main
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ImportFrom:1(typing_extensions, [Literal])
+  FuncDef:2<2>(
+    foo
+    Args(
+      Var(x))
+    def (x: Literal[3]) -> Literal['a']
+    Block:2<3>(
+      PassStmt:2<4>()))
+  AssignmentStmt:3<5>(
+    NameExpr(bar [target.bar<6>])
+    IntExpr(4)
+    Literal[4]))
+==>
+MypyFile:1<0>(
+  tmp/main
+  Import:1(target))
+MypyFile:1<1>(
+  tmp/target.py
+  ImportFrom:1(typing_extensions, [Literal])
+  FuncDef:2<2>(
+    foo
+    Args(
+      Var(x))
+    def (x: Literal['3']) -> Literal['b']
+    Block:2<7>(
+      PassStmt:2<8>()))
+  AssignmentStmt:3<9>(
+    NameExpr(bar [target.bar<6>])
+    IntExpr(5)
+    Literal[5]))
+
