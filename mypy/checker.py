@@ -50,7 +50,8 @@ from mypy.subtypes import (
 from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
-from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
+from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.mro import calculate_mro
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
