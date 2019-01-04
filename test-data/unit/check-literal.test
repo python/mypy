@@ -2189,10 +2189,10 @@ unicode_key = u"key"  # type: Literal[u"key"]
 # but will reject `normal_dict.get(unicode_key)` and `unicode_dict.get(unicode_key)`
 # because the signature of `.get(...)` accepts only a str, not unicode.
 #
-# I don't think this has anything to do with Literal types: we had the same
+# We get the same behavior if we replace all of the Literal[...] types for
+# actual string literals.
 #
-#
-# Tracking issue at https://github.com/python/mypy/issues/6123
+# See https://github.com/python/mypy/issues/6123 for more details.
 reveal_type(normal_dict[normal_key])        # E: Revealed type is 'builtins.int'
 reveal_type(normal_dict[unicode_key])       # E: Revealed type is 'builtins.int'
 reveal_type(unicode_dict[normal_key])       # E: Revealed type is 'builtins.int'
