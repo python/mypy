@@ -799,8 +799,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
                             not isinstance(typ.ret_type, NoneTyp) and
                             not self.dynamic_funcs[-1]):
-                        self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
-                                  item)
+                        self.msg.must_have_none_return_type(fdef)
 
                     self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
@@ -2679,7 +2678,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Functions returning a value of type None are allowed to have a None return.
                     if is_lambda or isinstance(typ, NoneTyp):
                         return
-                    self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
+                    self.msg.no_return_exepected(s)
                 else:
                     self.check_subtype(
                         subtype_label='got',

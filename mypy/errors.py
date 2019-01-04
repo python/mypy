@@ -60,6 +60,9 @@ class ErrorInfo:
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
 
+    # Error code identifying the message, for grouping/filtering
+    id = None  # type: Optional[str]
+
     def __init__(self,
                  import_ctx: List[Tuple[str, int]],
                  file: str,
@@ -73,7 +76,8 @@ class ErrorInfo:
                  blocker: bool,
                  only_once: bool,
                  origin: Optional[Tuple[str, int]] = None,
-                 target: Optional[str] = None) -> None:
+                 target: Optional[str] = None,
+                 id: Optional[str] = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.module = module
@@ -87,6 +91,7 @@ class ErrorInfo:
         self.only_once = only_once
         self.origin = origin or (file, line)
         self.target = target
+        self.id = id
 
 
 class Errors:
@@ -230,7 +235,8 @@ class Errors:
                file: Optional[str] = None,
                only_once: bool = False,
                origin_line: Optional[int] = None,
-               offset: int = 0) -> None:
+               offset: int = 0,
+               id: Optional[str] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -261,7 +267,7 @@ class Errors:
                          function, line, column, severity, message,
                          blocker, only_once,
                          origin=(self.file, origin_line) if origin_line else None,
-                         target=self.current_target())
+                         target=self.current_target(), id=id)
         self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
