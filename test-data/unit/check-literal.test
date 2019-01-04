@@ -2080,3 +2080,138 @@ def func(x: Literal[1], y: Literal[2]) -> None: pass
 reveal_type(unify(func))  # E: Revealed type is '<nothing>'
 [builtins fixtures/list.pyi]
 [out]
+
+
+--
+-- Checks for intelligent indexing
+--
+
+[case testLiteralIntelligentIndexingTuples]
+from typing import Tuple, NamedTuple
+from typing_extensions import Literal
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+class E: pass
+
+idx0: Literal[0]
+idx1: Literal[1]
+idx2: Literal[2]
+idx3: Literal[3]
+idx4: Literal[4]
+idx5: Literal[5]
+idx_neg1: Literal[-1]
+
+tup1: Tuple[A, B, C, D, E]
+reveal_type(tup1[idx0])       # E: Revealed type is '__main__.A'
+reveal_type(tup1[idx1])       # E: Revealed type is '__main__.B'
+reveal_type(tup1[idx2])       # E: Revealed type is '__main__.C'
+reveal_type(tup1[idx3])       # E: Revealed type is '__main__.D'
+reveal_type(tup1[idx4])       # E: Revealed type is '__main__.E'
+reveal_type(tup1[idx_neg1])   # E: Revealed type is '__main__.E'
+tup1[idx5]                    # E: Tuple index out of range
+reveal_type(tup1[idx2:idx4])  # E: Revealed type is 'Tuple[__main__.C, __main__.D]'
+reveal_type(tup1[::idx2])     # E: Revealed type is 'Tuple[__main__.A, __main__.C, __main__.E]'
+
+Tup2Class = NamedTuple('Tup2Class', [('a', A), ('b', B), ('c', C), ('d', D), ('e', E)])
+tup2: Tup2Class
+reveal_type(tup2[idx0])       # E: Revealed type is '__main__.A'
+reveal_type(tup2[idx1])       # E: Revealed type is '__main__.B'
+reveal_type(tup2[idx2])       # E: Revealed type is '__main__.C'
+reveal_type(tup2[idx3])       # E: Revealed type is '__main__.D'
+reveal_type(tup2[idx4])       # E: Revealed type is '__main__.E'
+reveal_type(tup2[idx_neg1])   # E: Revealed type is '__main__.E'
+tup2[idx5]                    # E: Tuple index out of range
+reveal_type(tup2[idx2:idx4])  # E: Revealed type is 'Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]'
+reveal_type(tup2[::idx2])     # E: Revealed type is 'Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]'
+[builtins fixtures/slice.pyi]
+[out]
+
+[case testLiteralIntelligentIndexingTypedDict]
+from typing_extensions import Literal
+from mypy_extensions import TypedDict
+
+class Unrelated: pass
+u: Unrelated
+
+class Inner(TypedDict):
+    a: int
+class Outer(Inner, total=False):
+    b: str
+
+a_key: Literal["a"]
+b_key: Literal["b"]
+c_key: Literal["c"]
+
+d: Outer
+
+reveal_type(d[a_key])         # E: Revealed type is 'builtins.int'
+reveal_type(d[b_key])         # E: Revealed type is 'builtins.str'
+d[c_key]                      # E: TypedDict "Outer" has no key 'c'
+
+reveal_type(d.get(a_key, u))  # E: Revealed type is 'Union[builtins.int, __main__.Unrelated]'
+reveal_type(d.get(b_key, u))  # E: Revealed type is 'Union[builtins.str, __main__.Unrelated]'
+d.get(c_key, u)               # E: TypedDict "Outer" has no key 'c'
+
+reveal_type(d.pop(a_key))     # E: Revealed type is 'builtins.int' \
+                              # E: Key 'a' of TypedDict "Outer" cannot be deleted
+reveal_type(d.pop(b_key))     # E: Revealed type is 'builtins.str'
+d.pop(c_key)                  # E: TypedDict "Outer" has no key 'c'
+
+del d[a_key]                  # E: Key 'a' of TypedDict "Outer" cannot be deleted
+del d[b_key]
+del d[c_key]                  # E: TypedDict "Outer" has no key 'c'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testLiteralIntelligentIndexingTypedDictPython2-skip]
+# flags: --python-version 2.7
+from normal_mod import NormalDict
+from unicode_mod import UnicodeDict
+
+from typing_extensions import Literal
+
+normal_dict = NormalDict(key=4)
+unicode_dict = UnicodeDict(key=4)
+
+normal_key = "key"    # type: Literal["key"]
+unicode_key = u"key"  # type: Literal[u"key"]
+
+# TODO: Make the runtime and mypy behaviors here consistent
+#
+# At runtime, all eight of the below operations will successfully return
+# the int because b"key" == u"key" in Python 2.
+#
+# Mypy, in contrast, will accept all the four calls to `some_dict[...]`
+# but will reject `normal_dict.get(unicode_key)` and `unicode_dict.get(unicode_key)`
+# because the signature of `.get(...)` accepts only a str, not unicode.
+#
+# We get the same behavior if we replace all of the Literal[...] types for
+# actual string literals.
+#
+# See https://github.com/python/mypy/issues/6123 for more details.
+reveal_type(normal_dict[normal_key])        # E: Revealed type is 'builtins.int'
+reveal_type(normal_dict[unicode_key])       # E: Revealed type is 'builtins.int'
+reveal_type(unicode_dict[normal_key])       # E: Revealed type is 'builtins.int'
+reveal_type(unicode_dict[unicode_key])      # E: Revealed type is 'builtins.int'
+
+reveal_type(normal_dict.get(normal_key))    # E: Revealed type is 'builtins.int'
+reveal_type(normal_dict.get(unicode_key))   # E: Revealed type is 'builtins.int'
+reveal_type(unicode_dict.get(normal_key))   # E: Revealed type is 'builtins.int'
+reveal_type(unicode_dict.get(unicode_key))  # E: Revealed type is 'builtins.int'
+
+[file normal_mod.py]
+from mypy_extensions import TypedDict
+NormalDict = TypedDict('NormalDict', {'key': int})
+
+[file unicode_mod.py]
+from __future__ import unicode_literals
+from mypy_extensions import TypedDict
+UnicodeDict = TypedDict(b'UnicodeDict', {'key': int})
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
