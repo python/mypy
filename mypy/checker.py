@@ -1475,6 +1475,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # are erased, then it is definitely an incompatibility.
 
                 override_ids = override.type_var_ids()
+                type_name = None
+                if isinstance(override.definition, FuncDef):
+                    type_name = override.definition.info.name()
 
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
@@ -1483,7 +1486,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if not is_subtype(original.arg_types[i],
                                       erase_override(override.arg_types[i])):
                         self.msg.argument_incompatible_with_supertype(
-                            i + 1, name, name_in_super, supertype, node)
+                            i + 1, name, type_name, name_in_super, supertype, node)
                         emitted_msg = True
 
                 if not is_subtype(erase_override(override.ret_type),

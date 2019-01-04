@@ -405,10 +405,10 @@ class Errors:
                                                                      str, str]]:
         """Translate the messages into a sequence of tuples.
 
-        Each tuple is of form (path, line, col, message.  The rendered
-        sequence includes information about error contexts. The path
-        item may be None. If the line item is negative, the line
-        number is not defined for the tuple.
+        Each tuple is of form (path, line, col, severity, message).
+        The rendered sequence includes information about error contexts.
+        The path item may be None. If the line item is negative, the
+        line number is not defined for the tuple.
         """
         result = []  # type: List[Tuple[Optional[str], int, int, str, str]]
         # (path, line, column, severity, message)
