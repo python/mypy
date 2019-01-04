@@ -4274,9 +4274,9 @@ class C:
 from typing import Final
 
 class C:
-    x: Final[int] = 1
+    x: Final = 1
     def __init__(self) -> None:
-        self.y: Final[int] = 1
+        self.y: Final = 1
 [out]
 [out2]
 main:4: error: Cannot assign to final name "x"
