@@ -383,8 +383,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if (isinstance(tp, CallableType) and tp.is_type_obj() and
                     tp.type_object().is_protocol and
                     not tp.type_object().runtime_protocol):
-                self.chk.fail('Only @runtime protocols can be used with'
-                              ' instance and class checks', e)
+                self.chk.fail(messages.RUNTIME_PROTOCOL_EXPECTED, e)
 
     def check_protocol_issubclass(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
@@ -745,7 +744,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (callee.is_type_obj() and callee.type_object().is_protocol
               # Exception for Type[...]
               and not callee.from_type_type):
-            self.chk.fail('Cannot instantiate protocol class "{}"'
+            self.chk.fail(messages.CANNOT_INSTANTIATE_PROTOCOL
                           .format(callee.type_object().name()), context)
 
         formal_to_actual = map_actuals_to_formals(
@@ -2860,15 +2859,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_super_arguments(self, e: SuperExpr) -> None:
         """Check arguments in a super(...) call."""
         if ARG_STAR in e.call.arg_kinds:
-            self.chk.fail('Varargs not supported with "super"', e)
+            self.chk.fail(messages.SUPER_VARARGS_NOT_SUPPORTED, e)
         elif e.call.args and set(e.call.arg_kinds) != {ARG_POS}:
-            self.chk.fail('"super" only accepts positional arguments', e)
+            self.chk.fail(messages.SUPER_POSITIONAL_ARGS_REQUIRED, e)
         elif len(e.call.args) == 1:
-            self.chk.fail('"super" with a single argument not supported', e)
+            self.chk.fail(messages.SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED, e)
         elif len(e.call.args) > 2:
-            self.chk.fail('Too many arguments for "super"', e)
+            self.chk.fail(messages.TOO_MANY_ARGS_FOR_SUPER, e)
         elif self.chk.options.python_version[0] == 2 and len(e.call.args) == 0:
-            self.chk.fail('Too few arguments for "super"', e)
+            self.chk.fail(messages.TOO_FEW_ARGS_FOR_SUPER, e)
         elif len(e.call.args) == 2:
             type_obj_type = self.accept(e.call.args[0])
             instance_type = self.accept(e.call.args[1])
@@ -2884,7 +2883,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if not isinstance(item, Instance):
                     # A complicated type object type. Too tricky, give up.
                     # TODO: Do something more clever here.
-                    self.chk.fail('Unsupported argument 1 for "super"', e)
+                    self.chk.fail(messages.UNSUPPORTED_ARG_1_FOR_SUPER, e)
                     return
                 type_info = item.type
             elif isinstance(type_obj_type, AnyType):
@@ -2900,19 +2899,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if not isinstance(instance_type, (Instance, TupleType)):
                         # Too tricky, give up.
                         # TODO: Do something more clever here.
-                        self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
+                        self.chk.fail(messages.UNSUPPORTED_ARG_2_FOR_SUPER, e)
                         return
                 if isinstance(instance_type, TupleType):
                     # Needed for named tuples and other Tuple[...] subclasses.
                     instance_type = instance_type.fallback
                 if type_info not in instance_type.type.mro:
-                    self.chk.fail('Argument 2 for "super" not an instance of argument 1', e)
+                    self.chk.fail(messages.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
                                                          and instance_type.is_type_obj()):
                 # TODO: Check whether this is a valid type object here.
                 pass
             elif not isinstance(instance_type, AnyType):
-                self.chk.fail(messages.UNSUPPORTED_ARGUMENT_2_FOR_SUPER, e)
+                self.chk.fail(messages.UNSUPPORTED_ARG_2_FOR_SUPER, e)
 
     def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
         """Type check a super expression."""
@@ -2931,7 +2930,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if not self.chk.in_checked_function():
                         return AnyType(TypeOfAny.unannotated)
                     if self.chk.scope.active_class() is not None:
-                        self.chk.fail('super() outside of a method is not supported', e)
+                        self.chk.fail(messages.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
                         return AnyType(TypeOfAny.from_error)
                     method = self.chk.scope.top_function()
                     assert method is not None
@@ -2939,9 +2938,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # super() in a function with empty args is an error; we
                     # need something in declared_self.
                     if not args:
-                        self.chk.fail(
-                            'super() requires one or more positional arguments in '
-                            'enclosing function', e)
+                        self.chk.fail(messages.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
                         return AnyType(TypeOfAny.from_error)
                     declared_self = args[0].variable.type or fill_typevars(e.info)
                     return analyze_member_access(name=e.name,

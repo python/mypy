@@ -4205,9 +4205,9 @@ TTA = TypeVar('TTA', bound='Type[A]')
 TM = TypeVar('TM', bound='M')
 
 class M(type):
-    def g1(cls: 'Type[A]') -> A: pass #  E: The erased type of self 'Type[__main__.A]' is not a supertype of its class '__main__.M'
-    def g2(cls: Type[TA]) -> TA: pass #  E: The erased type of self 'Type[__main__.A]' is not a supertype of its class '__main__.M'
-    def g3(cls: TTA) -> TTA: pass #  E: The erased type of self 'Type[__main__.A]' is not a supertype of its class '__main__.M'
+    def g1(cls: 'Type[A]') -> A: pass #  E: The erased type of self "Type[__main__.A]" is not a supertype of its class "__main__.M"
+    def g2(cls: Type[TA]) -> TA: pass #  E: The erased type of self "Type[__main__.A]" is not a supertype of its class "__main__.M"
+    def g3(cls: TTA) -> TTA: pass #  E: The erased type of self "Type[__main__.A]" is not a supertype of its class "__main__.M"
     def g4(cls: TM) -> TM: pass
 m: M
 

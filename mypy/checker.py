@@ -431,7 +431,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # valid overloads.
             return None
         if len(defn.items) == 1:
-            self.fail('Single overload definition, multiple required', defn)
+            self.fail(messages.MULTIPLE_OVERLOADS_REQUIRED, defn)
 
         if defn.is_property:
             # HACK: Infer the type of the property.
@@ -881,16 +881,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if typ.arg_names[i] in ['self', 'cls']:
                                 if (self.options.python_version[0] < 3
                                         and is_same_type(erased, arg_type) and not isclass):
-                                    msg = ("Invalid type for self, or extra argument type "
-                                           "in function annotation")
+                                    msg = messages.INVALID_SELF_TYPE_OR_EXTRA_ARG
                                     note = '(Hint: typically annotations omit the type for self)'
                                 else:
-                                    msg = ("The erased type of self '{}' "
-                                           "is not a supertype of its class '{}'"
-                                           ).format(erased, ref_type)
+                                    msg = messages.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                                        erased, ref_type)
                             else:
-                                msg = ("Self argument missing for a non-static method "
-                                       "(or an invalid type for self)")
+                                msg = messages.MISSING_OR_INVALID_SELF_TYPE
                             self.fail(msg, defn)
                             if note:
                                 self.note(note, defn)
@@ -1220,7 +1217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if len(self.scope.stack) == 1:
             # module scope
             if name == '__getattribute__':
-                self.msg.fail('__getattribute__ is not valid at the module level', context)
+                self.msg.fail(messages.MODULE_LEVEL_GETATTRIBUTE, context)
                 return
             # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
             # show an error for Python < 3.7, but that would be annoying in code that supports
@@ -1529,7 +1526,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         for base in typ.mro[1:]:
             if base.is_final:
-                self.fail('Cannot inherit from final class "{}"'.format(base.name()), defn)
+                self.fail(messages.CANNOT_INHERIT_FROM_FINAL.format(base.name()), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1722,7 +1719,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.check_final(s)
         if (s.is_final_def and s.type and not has_no_typevars(s.type)
                 and self.scope.active_class() is not None):
-            self.fail("Final name declared in class body cannot depend on type variables", s)
+            self.fail(messages.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -1963,14 +1960,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not isinstance(base_node, Var):
             return True
         if node.is_classvar and not base_node.is_classvar:
-            self.fail('Cannot override instance variable '
-                      '(previously declared on base class "%s") '
-                      'with class variable' % base.name(), node)
+            self.fail(messages.CANNOT_OVERRIDE_INSTANCE_VAR.format(base.name()), node)
             return False
         elif not node.is_classvar and base_node.is_classvar:
-            self.fail('Cannot override class variable '
-                      '(previously declared on base class "%s") '
-                      'with instance variable' % base.name(), node)
+            self.fail(messages.CANNOT_OVERRIDE_CLASS_VAR.format(base.name()), node)
             return False
         return True
 
@@ -2529,7 +2522,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
-            self.msg.fail("{}.__set__ is not callable".format(attribute_type), context)
+            self.msg.fail(messages.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
@@ -2551,9 +2544,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
-        if not isinstance(inferred_dunder_set_type, CallableType):
-            self.fail("__set__ is not callable", context)
-            return AnyType(TypeOfAny.from_error), get_type, True
+        # should be handled by get_method above
+        assert isinstance(inferred_dunder_set_type, CallableType)
 
         if len(inferred_dunder_set_type.arg_types) < 2:
             # A message already will have been recorded in check_call
@@ -2662,7 +2654,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                allow_none_return=allow_none_func_call)
 
                 if defn.is_async_generator:
-                    self.fail("'return' with value in async generator is not allowed", s)
+                    self.fail(messages.RETURN_IN_ASYNC_GENERATOR, s)
                     return
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
@@ -3024,7 +3016,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         sig = self.function_type(e.func)  # type: Type
         for d in reversed(e.decorators):
             if refers_to_fullname(d, 'typing.overload'):
-                self.fail('Single overload definition, multiple required', e)
+                self.fail(messages.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig)

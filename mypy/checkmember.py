@@ -400,7 +400,7 @@ def analyze_descriptor_access(instance_type: Type,
     dunder_get = descriptor_type.type.get_method('__get__')
 
     if dunder_get is None:
-        msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
+        msg.fail(messages.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
         return AnyType(TypeOfAny.from_error)
 
     function = function_type(dunder_get, builtin_type('builtins.function'))
@@ -427,7 +427,7 @@ def analyze_descriptor_access(instance_type: Type,
         return inferred_dunder_get_type
 
     if not isinstance(inferred_dunder_get_type, CallableType):
-        msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
+        msg.fail(messages.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
         return AnyType(TypeOfAny.from_error)
 
     return inferred_dunder_get_type.ret_type
@@ -586,8 +586,8 @@ def analyze_class_attribute_access(itype: Instance,
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        mx.msg.fail('Cannot access final instance '
-                    'attribute "{}" on class object'.format(node.node.name()), mx.context)
+        mx.msg.fail(messages.CANNOT_ACCESS_FINAL_INSTANCE_ATTR
+                    .format(node.node.name()), mx.context)
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
@@ -617,7 +617,7 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
-        mx.msg.fail('Type variable "{}.{}" cannot be used as an expression'.format(
+        mx.msg.fail(messages.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
                     itype.type.name(), name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
