@@ -8410,3 +8410,109 @@ Alias3 = Literal[4]
 main:3: error: Revealed type is 'Literal[3]'
 ==
 main:3: error: Revealed type is 'Literal[4]'
+
+[case testLiteralFineGrainedChainedFunctionDefinitions]
+from mod1 import func1
+reveal_type(func1())
+[file mod1.py]
+from mod2 import func2 as func1
+[file mod2.py]
+from mod3 import func3
+func2 = func3
+[file mod3.py]
+from typing_extensions import Literal
+def func3() -> Literal[3]: pass
+[file mod3.py.2]
+from typing_extensions import Literal
+def func3() -> Literal[4]: pass
+[out]
+main:2: error: Revealed type is 'Literal[3]'
+==
+main:2: error: Revealed type is 'Literal[4]'
+
+[case testLiteralFineGrainedChainedTypeVarInference]
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from typing import TypeVar
+from mod2 import bar
+T = TypeVar('T', bound=int)
+def func(x: T) -> T: return x
+foo = func(bar)
+[file mod2.py]
+bar = 3
+[file mod2.py.2]
+from typing_extensions import Literal
+bar: Literal[3] = 3
+[out]
+main:2: error: Revealed type is 'builtins.int*'
+==
+main:2: error: Revealed type is 'Literal[3]'
+
+[case testLiteralFineGrainedStringConversionPython3]
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar()
+[file mod2.py]
+from typing_extensions import Literal
+def bar() -> Literal["foo"]: pass
+[file mod2.py.2]
+from typing_extensions import Literal
+def bar() -> Literal[u"foo"]: pass
+[file mod2.py.3]
+from typing_extensions import Literal
+def bar() -> Literal[b"foo"]: pass
+[out]
+main:2: error: Revealed type is 'Literal['foo']'
+==
+main:2: error: Revealed type is 'Literal['foo']'
+==
+main:2: error: Revealed type is 'Literal[b'foo']'
+
+[case testLiteralFineGrainedStringConversionPython2]
+# flags: --python-version 2.7
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar()
+[file mod2.py]
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal["foo"]
+    pass
+[file mod2.py.2]
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal[b"foo"]
+    pass
+[file mod2.py.3]
+from __future__ import unicode_literals
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal["foo"]
+    pass
+[file mod2.py.4]
+from __future__ import unicode_literals
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal[b"foo"]
+    pass
+[file mod2.py.5]
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal[u"foo"]
+    pass
+[out]
+main:3: error: Revealed type is 'Literal['foo']'
+==
+main:3: error: Revealed type is 'Literal['foo']'
+==
+main:3: error: Revealed type is 'Literal[u'foo']'
+==
+main:3: error: Revealed type is 'Literal['foo']'
+==
+main:3: error: Revealed type is 'Literal[u'foo']'
+

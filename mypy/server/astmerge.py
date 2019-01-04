@@ -328,7 +328,12 @@ class NodeReplaceVisitor(TraverserVisitor):
 
 
 class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
-    """Similar to NodeReplaceVisitor, but for type objects."""
+    """Similar to NodeReplaceVisitor, but for type objects.
+
+    Note: this class may sometimes be used to analyze types before
+    semantic analysis has taken place. For example, wee
+    NodeReplaceVisitor.process_base_func.
+    """
 
     def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
