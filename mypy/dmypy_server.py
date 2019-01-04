@@ -326,6 +326,7 @@ class Server:
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
         res = self.fine_grained_increment(sources, remove, update)
         self.fscache.flush()
+        self.update_stats(res)
         return res
 
     def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
@@ -335,11 +336,21 @@ class Server:
         else:
             res = self.fine_grained_increment(sources)
         self.fscache.flush()
+        self.update_stats(res)
         return res
+
+    def update_stats(self, res: Dict[str, Any]) -> None:
+        if self.fine_grained_manager:
+            manager = self.fine_grained_manager.manager
+            manager.dump_stats()
+            res['stats'] = manager.stats
+            manager.stats = {}
 
     def initialize_fine_grained(self, sources: List[BuildSource]) -> Dict[str, Any]:
         self.fswatcher = FileSystemWatcher(self.fscache)
+        t0 = time.time()
         self.update_sources(sources)
+        t1 = time.time()
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
@@ -359,6 +370,7 @@ class Server:
         # the typechecking on the updated files yet.
         # Run a fine-grained update starting from the cached data
         if result.used_cache:
+            t2 = time.time()
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
             for state in self.fine_grained_manager.graph.values():
@@ -377,8 +389,16 @@ class Server:
                     assert state.path is not None
                     changed.append((state.id, state.path))
 
+            t3 = time.time()
             # Run an update
             messages = self.fine_grained_manager.update(changed, removed)
+            t4 = time.time()
+            self.fine_grained_manager.manager.add_stats(
+                update_sources_time=t1 - t0,
+                build_time=t2 - t1,
+                find_changes_time=t3 - t2,
+                fg_update_time=t4 - t3,
+                files_changed=len(removed) + len(changed))
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
@@ -414,6 +434,11 @@ class Server:
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
         manager.log("fine-grained increment: update: {:.3f}s".format(t2 - t1))
+        manager.add_stats(
+            find_changes_time=t1 - t0,
+            fg_update_time=t2 - t1,
+            files_changed=len(removed) + len(changed))
+
         status = 1 if messages else 0
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
