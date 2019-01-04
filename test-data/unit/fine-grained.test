@@ -8293,3 +8293,229 @@ B = func
 [out]
 ==
 main:5: error: Invalid type "a.A"
+
+[case testLiteralFineGrainedVarConversion]
+import mod
+reveal_type(mod.x)
+[file mod.py]
+x = 1
+[file mod.py.2]
+from typing_extensions import Literal
+x: Literal[1] = 1
+[file mod.py.3]
+from typing_extensions import Literal
+x: Literal[1] = 2
+[out]
+main:2: error: Revealed type is 'builtins.int'
+==
+main:2: error: Revealed type is 'Literal[1]'
+==
+mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+main:2: error: Revealed type is 'Literal[1]'
+
+[case testLiteralFineGrainedFunctionConversion]
+from mod import foo
+foo(3)
+[file mod.py]
+def foo(x: int) -> None: pass
+[file mod.py.2]
+from typing_extensions import Literal
+def foo(x: Literal[3]) -> None: pass
+[file mod.py.3]
+from typing_extensions import Literal
+def foo(x: Literal[4]) -> None: pass
+[out]
+==
+==
+main:2: error: Argument 1 to "foo" has incompatible type "Literal[3]"; expected "Literal[4]"
+
+[case testLiteralFineGrainedAlias]
+from mod import Alias
+a: Alias = 1
+[file mod.py]
+Alias = int
+[file mod.py.2]
+from typing_extensions import Literal
+Alias = Literal[1]
+[file mod.py.3]
+from typing_extensions import Literal
+Alias = Literal[2]
+[out]
+==
+==
+main:2: error: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[2]")
+
+[case testLiteralFineGrainedOverload]
+from mod import foo
+reveal_type(foo(4))
+[file mod.py]
+from typing import overload
+from typing_extensions import Literal
+@overload
+def foo(x: int) -> str: ...
+@overload
+def foo(x: Literal['bar']) -> int: ...
+def foo(x): pass
+[file mod.py.2]
+from typing import overload
+from typing_extensions import Literal
+@overload
+def foo(x: Literal[4]) -> Literal['foo']: ...
+@overload
+def foo(x: int) -> str: ...
+@overload
+def foo(x: Literal['bar']) -> int: ...
+def foo(x): pass
+[out]
+main:2: error: Revealed type is 'builtins.str'
+==
+main:2: error: Revealed type is 'Literal['foo']'
+
+[case testLiteralFineGrainedChainedDefinitions]
+from mod1 import foo
+from typing_extensions import Literal
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar
+[file mod2.py]
+from mod3 import qux as bar
+[file mod3.py]
+from typing_extensions import Literal
+qux: Literal[3]
+[file mod3.py.2]
+from typing_extensions import Literal
+qux: Literal[4]
+[out]
+==
+main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+
+[case testLiteralFineGrainedChainedAliases]
+from mod1 import Alias1
+from typing_extensions import Literal
+x: Alias1
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing_extensions import Literal
+Alias3 = Literal[3]
+[file mod3.py.2]
+from typing_extensions import Literal
+Alias3 = Literal[4]
+[out]
+==
+main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+
+[case testLiteralFineGrainedChainedFunctionDefinitions]
+from mod1 import func1
+from typing_extensions import Literal
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(func1())
+[file mod1.py]
+from mod2 import func2 as func1
+[file mod2.py]
+from mod3 import func3
+func2 = func3
+[file mod3.py]
+from typing_extensions import Literal
+def func3() -> Literal[3]: pass
+[file mod3.py.2]
+from typing_extensions import Literal
+def func3() -> Literal[4]: pass
+[out]
+==
+main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+
+[case testLiteralFineGrainedChainedTypeVarInference]
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from typing import TypeVar
+from mod2 import bar
+T = TypeVar('T', bound=int)
+def func(x: T) -> T: return x
+foo = func(bar)
+[file mod2.py]
+bar = 3
+[file mod2.py.2]
+from typing_extensions import Literal
+bar: Literal[3] = 3
+[out]
+main:2: error: Revealed type is 'builtins.int*'
+==
+main:2: error: Revealed type is 'Literal[3]'
+
+[case testLiteralFineGrainedStringConversionPython3]
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar()
+[file mod2.py]
+from typing_extensions import Literal
+def bar() -> Literal["foo"]: pass
+[file mod2.py.2]
+from typing_extensions import Literal
+def bar() -> Literal[u"foo"]: pass
+[file mod2.py.3]
+from typing_extensions import Literal
+def bar() -> Literal[b"foo"]: pass
+[out]
+main:2: error: Revealed type is 'Literal['foo']'
+==
+main:2: error: Revealed type is 'Literal['foo']'
+==
+main:2: error: Revealed type is 'Literal[b'foo']'
+
+[case testLiteralFineGrainedStringConversionPython2]
+# flags: --python-version 2.7
+from mod1 import foo
+reveal_type(foo)
+[file mod1.py]
+from mod2 import bar
+foo = bar()
+[file mod2.py]
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal["foo"]
+    pass
+[file mod2.py.2]
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal[b"foo"]
+    pass
+[file mod2.py.3]
+from __future__ import unicode_literals
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal["foo"]
+    pass
+[file mod2.py.4]
+from __future__ import unicode_literals
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal[b"foo"]
+    pass
+[file mod2.py.5]
+from typing_extensions import Literal
+def bar():
+    # type: () -> Literal[u"foo"]
+    pass
+[out]
+main:3: error: Revealed type is 'Literal['foo']'
+==
+main:3: error: Revealed type is 'Literal['foo']'
+==
+main:3: error: Revealed type is 'Literal[u'foo']'
+==
+main:3: error: Revealed type is 'Literal['foo']'
+==
+main:3: error: Revealed type is 'Literal[u'foo']'
+

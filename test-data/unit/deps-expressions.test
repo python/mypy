@@ -448,3 +448,19 @@ def g() -> None:
 [out]
 <m.f1> -> m.g
 <m.f2> -> m.g
+
+[case testLiteralDepsExpr]
+from typing_extensions import Literal
+
+Alias = Literal[1]
+
+a: Alias
+b = a
+def f(x: Alias) -> None: pass
+def g() -> Literal[1]:
+    return b
+[out]
+<m.Alias> -> m, m.f
+<m.a> -> m
+<m.b> -> m, m.g
+<typing_extensions.Literal> -> m

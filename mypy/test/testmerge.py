@@ -38,6 +38,7 @@ NOT_DUMPED_MODULES = (
     'contextlib',
     'sys',
     'mypy_extensions',
+    'typing_extensions',
     'enum',
 )
 

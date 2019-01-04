@@ -328,7 +328,12 @@ class NodeReplaceVisitor(TraverserVisitor):
 
 
 class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
-    """Similar to NodeReplaceVisitor, but for type objects."""
+    """Similar to NodeReplaceVisitor, but for type objects.
+
+    Note: this visitor may sometimes visit unanalyzed types
+    such as 'UnboundType' and 'RawLiteralType' For example, see
+    NodeReplaceVisitor.process_base_func.
+    """
 
     def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
@@ -393,7 +398,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.fallback.accept(self)
 
     def visit_raw_literal_type(self, t: RawLiteralType) -> None:
-        assert False, "Unexpected RawLiteralType after semantic analysis phase"
+        pass
 
     def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)
