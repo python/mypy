@@ -13,6 +13,7 @@ checker but we are moving away from this convention.
 from collections import OrderedDict
 import re
 import difflib
+from textwrap import dedent
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 
@@ -187,7 +188,7 @@ class MessageBuilder:
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file, offset=offset,
+                               msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
@@ -198,7 +199,15 @@ class MessageBuilder:
     def note(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin, offset=offset)
+        self.report(msg, context, 'note', file=file, origin=origin,
+                    offset=offset)
+
+    def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
+                       origin: Optional[Context] = None, offset: int = 0) -> None:
+        """Report as many notes as lines in the message (unless disabled)."""
+        for msg in messages.splitlines():
+            self.report(msg, context, 'note', file=file, origin=origin,
+                        offset=offset)
 
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
@@ -854,11 +863,24 @@ class MessageBuilder:
             name, target), context)
 
     def argument_incompatible_with_supertype(
-            self, arg_num: int, name: str, name_in_supertype: str,
-            supertype: str, context: Context) -> None:
+            self, arg_num: int, name: str, type_name: Optional[str],
+            name_in_supertype: str, supertype: str, context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         self.fail('Argument {} of "{}" incompatible with {}'
                   .format(arg_num, name, target), context)
+
+        if name == "__eq__" and type_name:
+            multiline_msg = self.comparison_method_example_msg(class_name=type_name)
+            self.note_multiline(multiline_msg, context)
+
+    def comparison_method_example_msg(self, class_name: str) -> str:
+        return dedent('''\
+        It is recommended for "__eq__" to work with arbitrary objects, for example:
+            def __eq__(self, other: object) -> bool:
+                if not isinstance(other, {class_name}):
+                    return NotImplemented
+                return <logic to compare two {class_name} instances>
+        '''.format(class_name=class_name))
 
     def return_type_incompatible_with_supertype(
             self, name: str, name_in_supertype: str, supertype: str,
@@ -1110,8 +1132,6 @@ class MessageBuilder:
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
         self.fail("Revealed local types are:", context)
-        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
-        # for indentation
         for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
             self.fail(line, context)
 

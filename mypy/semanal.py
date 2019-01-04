@@ -77,7 +77,7 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
-from mypy import experiments
+from mypy import state
 from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
@@ -283,7 +283,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.enum_call_analyzer = EnumCallAnalyzer(options, self)
         self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
 
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
                 self.globals['__builtins__'] = SymbolTableNode(MODULE_REF,
                                                                self.modules['builtins'])

@@ -21,8 +21,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.sametypes import is_same_type
 from mypy.typestate import TypeState, SubtypeKind
-
-from mypy import experiments
+from mypy import state
 
 MYPY = False
 if MYPY:
@@ -165,7 +164,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object') or
                     isinstance(self.right, Instance) and self.right.type.is_protocol and
@@ -1060,7 +1059,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, AnyType)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object'))
         return True
