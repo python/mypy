@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
-    CallableType, Overloaded, Instance, Type, AnyType, LiteralType,
+    CallableType, Overloaded, Instance, Type, AnyType,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
@@ -1908,22 +1908,29 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # inside type variables with value restrictions (like
             # AnyStr).
             return None
+        if isinstance(rvalue, FloatExpr):
+            return self.named_type_or_none('builtins.float')
+
         if isinstance(rvalue, IntExpr):
             typ = self.named_type_or_none('builtins.int')
             if typ and is_final:
-                return LiteralType(rvalue.value, typ, rvalue.line, rvalue.column)
+                return typ.copy_with_final_value(rvalue.value)
             return typ
-        if isinstance(rvalue, FloatExpr):
-            return self.named_type_or_none('builtins.float')
         if isinstance(rvalue, StrExpr):
             typ = self.named_type_or_none('builtins.str')
             if typ and is_final:
-                return LiteralType(rvalue.value, typ, rvalue.line, rvalue.column)
+                return typ.copy_with_final_value(rvalue.value)
             return typ
         if isinstance(rvalue, BytesExpr):
-            return self.named_type_or_none('builtins.bytes')
+            typ = self.named_type_or_none('builtins.bytes')
+            if typ and is_final:
+                return typ.copy_with_final_value(rvalue.value)
+            return typ
         if isinstance(rvalue, UnicodeExpr):
-            return self.named_type_or_none('builtins.unicode')
+            typ = self.named_type_or_none('builtins.unicode')
+            if typ and is_final:
+                return typ.copy_with_final_value(rvalue.value)
+            return typ
 
         return None
 

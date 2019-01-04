@@ -77,7 +77,7 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         if alias.op == 'not':
             expr = alias.expr
             negated = True
-    result = TRUTH_VALUE_UNKNOWN  # type: int
+    result = TRUTH_VALUE_UNKNOWN
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):

@@ -174,7 +174,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Type checking pass number (0 = first pass)
     pass_num = 0
     # Last pass number to take
-    last_pass = DEFAULT_LAST_PASS  # type: int
+    last_pass = DEFAULT_LAST_PASS
     # Have we deferred the current function? If yes, don't infer additional
     # types during this pass within the function.
     current_node_deferred = False
@@ -1809,7 +1809,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                rvalue_type = self.expr_checker.accept(rvalue, infer_literal=inferred.is_final)
+                rvalue_type = self.expr_checker.accept(
+                    rvalue,
+                    in_final_declaration=inferred.is_final,
+                )
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],

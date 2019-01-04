@@ -18,7 +18,7 @@ from mypy.typeanal import (
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     StarType, is_optional, remove_optional, is_generic_instance
 )
@@ -139,7 +139,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.plugin = plugin
         self.type_context = [None]
-        self.infer_literal = False
+        self.in_final_declaration = False
         # Temporary overrides for expression types. This is currently
         # used by the union math in overloads.
         # TODO: refactor this to use a pattern similar to one in
@@ -211,10 +211,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if var.type:
-            if self.is_literal_context() and var.name() in {'True', 'False'}:
-                return LiteralType(var.name() == 'True', self.named_type('builtins.bool'))
-            else:
-                return var.type
+            if isinstance(var.type, Instance):
+                if self._is_literal_context() and var.type.final_value is not None:
+                    return var.type.final_value
+                if var.name() in {'True', 'False'}:
+                    return self._handle_literal_expr(var.name() == 'True', 'builtins.bool')
+            return var.type
         else:
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
@@ -693,7 +695,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
                                                   False, False, False, self.msg,
-                                                  original_type=callee, chk=self.chk)
+                                                  original_type=callee, chk=self.chk,
+                                                  in_literal_context=self._is_literal_context())
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -1757,7 +1760,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             original_type = self.accept(e.expr)
             member_type = analyze_member_access(
                 e.name, original_type, e, is_lvalue, False, False,
-                self.msg, original_type=original_type, chk=self.chk)
+                self.msg, original_type=original_type, chk=self.chk,
+                in_literal_context=self._is_literal_context())
             return member_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,
@@ -1767,35 +1771,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
-                                     self.msg, original_type=base_type, chk=self.chk)
+                                     self.msg, original_type=base_type, chk=self.chk,
+                                     in_literal_context=self._is_literal_context())
+
+    def _is_literal_context(self) -> bool:
+        return is_literal_type_like(self.type_context[-1])
+
+    def _handle_literal_expr(self, value: LiteralValue, fallback_name: str) -> Type:
+        typ = self.named_type(fallback_name)
+        if self._is_literal_context():
+            return LiteralType(value=value, fallback=typ)
+        elif self.in_final_declaration:
+            return typ.copy_with_final_value(value)
+        else:
+            return typ
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
-        typ = self.named_type('builtins.int')
-        if self.is_literal_context():
-            return LiteralType(value=e.value, fallback=typ)
-        return typ
+        return self._handle_literal_expr(e.value, 'builtins.int')
 
     def visit_str_expr(self, e: StrExpr) -> Type:
         """Type check a string literal (trivial)."""
-        typ = self.named_type('builtins.str')
-        if self.is_literal_context():
-            return LiteralType(value=e.value, fallback=typ)
-        return typ
+        return self._handle_literal_expr(e.value, 'builtins.str')
 
     def visit_bytes_expr(self, e: BytesExpr) -> Type:
         """Type check a bytes literal (trivial)."""
-        typ = self.named_type('builtins.bytes')
-        if is_literal_type_like(self.type_context[-1]):
-            return LiteralType(value=e.value, fallback=typ)
-        return typ
+        return self._handle_literal_expr(e.value, 'builtins.bytes')
 
     def visit_unicode_expr(self, e: UnicodeExpr) -> Type:
         """Type check a unicode literal (trivial)."""
-        typ = self.named_type('builtins.unicode')
-        if is_literal_type_like(self.type_context[-1]):
-            return LiteralType(value=e.value, fallback=typ)
-        return typ
+        return self._handle_literal_expr(e.value, 'builtins.unicode')
 
     def visit_float_expr(self, e: FloatExpr) -> Type:
         """Type check a float literal (trivial)."""
@@ -1932,7 +1937,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         local_errors = local_errors or self.msg
         method_type = analyze_member_access(method, base_type, context, False, False, True,
-                                            local_errors, original_type=base_type, chk=self.chk)
+                                            local_errors, original_type=base_type, chk=self.chk,
+                                            in_literal_context=self._is_literal_context())
         return self.check_method_call(
             method, base_type, method_type, args, arg_kinds, context, local_errors)
 
@@ -1996,6 +2002,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=context,
                 msg=local_errors,
                 chk=self.chk,
+                in_literal_context=self._is_literal_context()
             )
             if local_errors.is_errors():
                 return None
@@ -2946,7 +2953,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                  override_info=base,
                                                  context=e,
                                                  msg=self.msg,
-                                                 chk=self.chk)
+                                                 chk=self.chk,
+                                                 in_literal_context=self._is_literal_context())
             assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.
@@ -3113,7 +3121,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                type_context: Optional[Type] = None,
                allow_none_return: bool = False,
                always_allow_any: bool = False,
-               infer_literal: bool = False,
+               in_final_declaration: bool = False,
                ) -> Type:
         """Type check a node in the given type context.  If allow_none_return
         is True and this expression is a call, allow it to return None.  This
@@ -3121,8 +3129,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if node in self.type_overrides:
             return self.type_overrides[node]
-        old_infer_literal = self.infer_literal
-        self.infer_literal = infer_literal
+        old_in_final_declaration = self.in_final_declaration
+        self.in_final_declaration = in_final_declaration
         self.type_context.append(type_context)
         try:
             if allow_none_return and isinstance(node, CallExpr):
@@ -3135,7 +3143,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             report_internal_error(err, self.chk.errors.file,
                                   node.line, self.chk.errors, self.chk.options)
         self.type_context.pop()
-        self.infer_literal = old_infer_literal
+        self.in_final_declaration = old_in_final_declaration
         assert typ is not None
         self.chk.store_type(node, typ)
 
@@ -3380,9 +3388,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
-
-    def is_literal_context(self) -> bool:
-        return self.infer_literal or is_literal_type_like(self.type_context[-1])
 
 
 def has_any_type(t: Type) -> bool:

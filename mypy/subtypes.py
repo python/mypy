@@ -589,7 +589,7 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
             return {IS_CLASS_OR_STATIC}
     # just a variable
     if isinstance(v, Var) and not v.is_property:
-        flags = {IS_SETTABLE}  # type: Set[int]
+        flags = {IS_SETTABLE}
         if v.is_classvar:
             flags.add(IS_CLASSVAR)
         return flags

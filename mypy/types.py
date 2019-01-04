@@ -561,37 +561,43 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'final_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, column: int = -1, erased: bool = False) -> None:
+                 line: int = -1, column: int = -1, erased: bool = False,
+                 final_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = args
         self.erased = erased  # True if result of type variable substitution
         self.invalid = False  # True if recovered after incorrect number of type arguments error
         self.type_ref = None  # type: Optional[str]
+        self.final_value = final_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args)))
+        return hash((self.type, tuple(self.args), self.final_value))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
             return NotImplemented
-        return self.type == other.type and self.args == other.args
+        return (self.type == other.type
+                and self.args == other.args
+                and self.final_value == other.final_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
-        if not self.args:
+        if not self.args and not self.final_value:
             return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         data['type_ref'] = type_ref
         data['args'] = [arg.serialize() for arg in self.args]
+        if self.final_value is not None:
+            data['final_value'] = self.final_value.serialize()
         return data
 
     @classmethod
@@ -608,10 +614,32 @@ class Instance(Type):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
+        if 'final_value' in data:
+            inst.final_value = LiteralType.deserialize(data['final_value'])
         return inst
 
-    def copy_modified(self, *, args: List[Type]) -> 'Instance':
-        return Instance(self.type, args, self.line, self.column, self.erased)
+    def copy_modified(self, *,
+                      args: Bogus[List[Type]] = _dummy,
+                      erased: Bogus[bool] = _dummy) -> 'Instance':
+        return Instance(
+            self.type,
+            args if args is not _dummy else self.args,
+            self.line,
+            self.column,
+            erased if erased is not _dummy else self.erased,
+            self.final_value,
+        )
+
+    def copy_with_final_value(self, value: LiteralValue) -> 'Instance':
+        # Note: the fallback for this LiteralType is the *original* type, not the newly
+        # generated one. This helps prevent infinite loops when we traverse the type tree.
+        final_value = LiteralType(
+            value=value,
+            fallback=self,
+            line=self.line,
+            column=self.column,
+        )
+        return Instance(self.type, self.args, self.line, self.column, self.erased, final_value)
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
@@ -2042,7 +2070,7 @@ def get_typ_args(tp: Type) -> List[Type]:
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
     """Return a copy of a parametrizable Type with arguments set to new_args."""
     if isinstance(tp, Instance):
-        return Instance(tp.type, new_args, line, column)
+        return tp.copy_modified(args=new_args)
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):

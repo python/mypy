@@ -678,6 +678,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif isinstance(arg, (NoneTyp, LiteralType)):
             # Types that we can just add directly to the literal/potential union of literals.
             return [arg]
+        elif isinstance(arg, Instance) and arg.final_value is not None:
+            # Types generated from declarations like "var: Final = 4".
+            return [arg.final_value]
         elif isinstance(arg, UnionType):
             out = []
             for union_arg in arg.items:
@@ -1073,7 +1076,7 @@ def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
 def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, implicit: bool = True) -> Type:
     if implicit:
-        type_of_any = TypeOfAny.from_omitted_generics  # type: int
+        type_of_any = TypeOfAny.from_omitted_generics
     else:
         type_of_any = TypeOfAny.special_form
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
