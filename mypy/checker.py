@@ -3764,7 +3764,8 @@ def conditional_type_map(expr: Expression,
                 proposed_precise_type = UnionType([type_range.item
                                           for type_range in proposed_type_ranges
                                           if not type_range.is_upper_bound])
-                remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
+                remaining_type = restrict_subtype_away(current_type, proposed_precise_type,
+                                                       ignore_promotions=True)
                 return {expr: proposed_type}, {expr: remaining_type}
         else:
             return {expr: proposed_type}, {}
