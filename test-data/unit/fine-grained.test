@@ -8373,7 +8373,9 @@ main:2: error: Revealed type is 'Literal['foo']'
 
 [case testLiteralFineGrainedChainedDefinitions]
 from mod1 import foo
-reveal_type(foo)
+from typing_extensions import Literal
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(foo)
 [file mod1.py]
 from mod2 import bar
 foo = bar
@@ -8386,14 +8388,15 @@ qux: Literal[3]
 from typing_extensions import Literal
 qux: Literal[4]
 [out]
-main:2: error: Revealed type is 'Literal[3]'
 ==
-main:2: error: Revealed type is 'Literal[4]'
+main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
 
 [case testLiteralFineGrainedChainedAliases]
 from mod1 import Alias1
+from typing_extensions import Literal
 x: Alias1
-reveal_type(x)
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(x)
 [file mod1.py]
 from mod2 import Alias2
 Alias1 = Alias2
@@ -8407,13 +8410,14 @@ Alias3 = Literal[3]
 from typing_extensions import Literal
 Alias3 = Literal[4]
 [out]
-main:3: error: Revealed type is 'Literal[3]'
 ==
-main:3: error: Revealed type is 'Literal[4]'
+main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
 
 [case testLiteralFineGrainedChainedFunctionDefinitions]
 from mod1 import func1
-reveal_type(func1())
+from typing_extensions import Literal
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(func1())
 [file mod1.py]
 from mod2 import func2 as func1
 [file mod2.py]
@@ -8426,9 +8430,8 @@ def func3() -> Literal[3]: pass
 from typing_extensions import Literal
 def func3() -> Literal[4]: pass
 [out]
-main:2: error: Revealed type is 'Literal[3]'
 ==
-main:2: error: Revealed type is 'Literal[4]'
+main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
 
 [case testLiteralFineGrainedChainedTypeVarInference]
 from mod1 import foo

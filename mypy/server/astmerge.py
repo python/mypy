@@ -330,8 +330,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     """Similar to NodeReplaceVisitor, but for type objects.
 
-    Note: this class may sometimes be used to analyze types before
-    semantic analysis has taken place. For example, wee
+    Note: this visitor may sometimes visit unanalyzed types
+    such as 'UnboundType' and 'RawLiteralType' For example, see
     NodeReplaceVisitor.process_base_func.
     """
 
