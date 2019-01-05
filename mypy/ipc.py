@@ -50,9 +50,9 @@ class IPCBase:
     def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.READ_SIZE = 100000
         self.name = name
-        if sys.platform == 'win32' and timeout is not None:
+        if sys.platform == 'win32':
             # Windows timeouts are in miliseconds
-            self.timeout = int(timeout * 1000)
+            self.timeout = int(timeout * 1000) if timeout is not None else None
         else:
             self.timeout = timeout
 
