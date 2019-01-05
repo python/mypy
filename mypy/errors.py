@@ -518,8 +518,9 @@ class Errors:
             result.extend(a)
         return result
 
-    def remove_duplicates(self, errors: List[Tuple[Optional[str], int, int, str, str, Optional[str]]]
-                          ) -> List[Tuple[Optional[str], int, int, Optional[str], str, str]]:
+    def remove_duplicates(self,
+                          errors: List[Tuple[Optional[str], int, int, str, str, Optional[str]]]
+                          ) -> List[Tuple[Optional[str], int, int, str, str, Optional[str]]]:
         """Remove duplicates from a sorted error list."""
         res = []  # type: List[Tuple[Optional[str], int, int, str, str, Optional[str]]]
         i = 0

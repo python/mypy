@@ -16,7 +16,7 @@ import difflib
 from textwrap import dedent
 
 from typing import (
-    cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, ClassVar, TypeVar,
+    cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, Deque, TypeVar,
     Callable
 )
 
@@ -38,7 +38,7 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-T = TypeVar('T', bound=Callable)
+T = TypeVar('T', bound=Callable[..., Any])
 
 # Type checker error message constants --
 
@@ -184,7 +184,7 @@ def tracked(func: T) -> T:
     msg_id = func.__name__
     message_ids.add(msg_id)
 
-    def wrapped(self, *args, **kwargs):
+    def wrapped(self: 'MessageBuilder', *args: Any, **kwargs: Any) -> Any:
         assert len(self.active_msg_id) == 0 or self.active_msg_id[-1] != msg_id
         self.active_msg_id.append(msg_id)
         try:
@@ -192,7 +192,7 @@ def tracked(func: T) -> T:
         finally:
             self.active_msg_id.pop()
 
-    return wrapped
+    return wrapped  # type: ignore
 
 
 class MessageBuilder:
@@ -217,6 +217,8 @@ class MessageBuilder:
 
     # Hack to deduplicate error messages from union types
     disable_type_names = 0
+
+    active_msg_id = None  # type: Deque[str]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
@@ -500,11 +502,11 @@ class MessageBuilder:
     # on them.
 
     @tracked
-    def no_return_exepected(self, context: Context):
+    def no_return_exepected(self, context: Context) -> None:
         self.fail('No return value expected', context)
 
     @tracked
-    def must_have_none_return_type(self, context: FuncDef):
+    def must_have_none_return_type(self, context: FuncDef) -> None:
         self.fail('The return type of "{}" must be None'.format(context.name()), context)
 
     @tracked
