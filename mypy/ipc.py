@@ -47,9 +47,14 @@ class IPCBase:
 
     connection = None  # type: _IPCHandle
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.READ_SIZE = 100000
         self.name = name
+        if sys.platform == 'win32' and timeout is not None:
+            # Windows timeouts are in miliseconds
+            self.timeout = int(timeout * 1000)
+        else:
+            self.timeout = timeout
 
     def read(self) -> bytes:
         """Read bytes from an IPC connection until its empty."""
@@ -59,7 +64,8 @@ class IPCBase:
                 ov, err = _winapi.ReadFile(self.connection, self.READ_SIZE, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        res = _winapi.WaitForSingleObject(ov.event, _winapi.INFINITE)
+                        timeout = self.timeout if self.timeout else _winapi.INFINITE
+                        res = _winapi.WaitForSingleObject(ov.event, timeout)
                         assert res == _winapi.WAIT_OBJECT_0
                 except BaseException:
                     ov.cancel()
@@ -88,7 +94,8 @@ class IPCBase:
                 ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        res = _winapi.WaitForSingleObject(ov.event, _winapi.INFINITE)
+                        timeout = self.timeout if self.timeout else _winapi.INFINITE
+                        res = _winapi.WaitForSingleObject(ov.event, timeout)
                         assert res == _winapi.WAIT_OBJECT_0
                 except BaseException:
                     ov.cancel()
@@ -115,9 +122,9 @@ class IPCClient(IPCBase):
     """The client side of an IPC connection."""
 
     def __init__(self, name: str, timeout: Optional[float]) -> None:
-        super().__init__(name)
+        super().__init__(name, timeout)
         if sys.platform == 'win32':
-            timeout = int(timeout * 1000) if timeout else _winapi.NMPWAIT_WAIT_FOREVER
+            timeout = self.timeout if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
             except FileNotFoundError:
@@ -167,13 +174,13 @@ class IPCServer(IPCBase):
 
     BUFFER_SIZE = 2**16
 
-    def __init__(self, name: str, timeout: Optional[int] = None) -> None:
+    def __init__(self, name: str, timeout: Optional[float] = None) -> None:
         if sys.platform == 'win32':
             name = r'\\.\pipe\{}-{}.pipe'.format(
                 name, base64.urlsafe_b64encode(os.urandom(6)).decode())
         else:
             name = '{}.sock'.format(name)
-        super().__init__(name)
+        super().__init__(name, timeout)
         if sys.platform == 'win32':
             self.connection = _winapi.CreateNamedPipe(self.name,
                 _winapi.PIPE_ACCESS_DUPLEX
@@ -213,7 +220,9 @@ class IPCServer(IPCBase):
                     raise
             else:
                 try:
-                    _winapi.WaitForSingleObject(ov.event, _winapi.INFINITE)
+                    timeout = self.timeout if self.timeout else _winapi.INFINITE
+                    res = _winapi.WaitForSingleObject(ov.event, timeout)
+                    assert res == _winapi.WAIT_OBJECT_0
                 except BaseException:
                     ov.cancel()
                     _winapi.CloseHandle(self.connection)
