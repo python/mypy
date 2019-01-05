@@ -94,10 +94,10 @@ class IPCBase:
 class IPCClient(IPCBase):
     """The client side of an IPC connection."""
 
-    def __init__(self, name: str, timeout: Optional[int]) -> None:
+    def __init__(self, name: str, timeout: Optional[float]) -> None:
         super().__init__(name)
         if sys.platform == 'win32':
-            timeout = timeout or 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
+            timeout = int(timeout * 1000) if timeout else 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
             except FileNotFoundError:

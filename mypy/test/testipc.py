@@ -28,7 +28,7 @@ class IPCTests(TestCase):
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
-        with IPCClient(connection_name, timeout=1000) as client:
+        with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
             client.write(b'test')
         queue.close()
@@ -41,11 +41,11 @@ class IPCTests(TestCase):
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
-        with IPCClient(connection_name, timeout=1000) as client:
+        with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
             client.write(b'')  # don't let the server hang up yet, we want to connect again.
 
-        with IPCClient(connection_name, timeout=1000) as client:
+        with IPCClient(connection_name, timeout=1) as client:
             assert client.read() == msg.encode()
             client.write(b'test')
         queue.close()
