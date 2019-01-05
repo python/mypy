@@ -70,15 +70,11 @@ class IPCBase:
                 except BaseException:
                     ov.cancel()
                     raise
-                finally:
-                    _, err = ov.GetOverlappedResult(True)
-                    bdata.extend(ov.getbuffer())
-                    if err == 0:
-                        # we are done!
-                        break
-                    elif err == _winapi.ERROR_MORE_DATA:
-                        # read again for more data!
-                        pass
+                _, err = ov.GetOverlappedResult(True)
+                bdata.extend(ov.getbuffer())
+                if err == 0:
+                    # we are done!
+                    break
         else:
             while True:
                 more = self.connection.recv(self.READ_SIZE)
@@ -100,10 +96,9 @@ class IPCBase:
                 except BaseException:
                     ov.cancel()
                     raise
-                finally:
-                    bytes_written, err = ov.GetOverlappedResult(True)
-                    assert err == 0
-                    assert bytes_written == len(data)
+                bytes_written, err = ov.GetOverlappedResult(True)
+                assert err == 0
+                assert bytes_written == len(data)
             except WindowsError as e:
                 raise IPCException("Failed to write with error: {}".format(e.winerror))
         else:
@@ -227,9 +222,8 @@ class IPCServer(IPCBase):
                     ov.cancel()
                     _winapi.CloseHandle(self.connection)
                     raise
-                finally:
-                    _, err = ov.GetOverlappedResult(True)
-                    assert err == 0
+                _, err = ov.GetOverlappedResult(True)
+                assert err == 0
         else:
             try:
                 self.connection, _ = self.sock.accept()
