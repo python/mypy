@@ -189,6 +189,8 @@ class IPCServer(IPCBase):
             except WindowsError as e:
                 if e.winerror == _winapi.ERROR_PIPE_CONNECTED:
                     pass  # The client already exists, which is fine.
+                else:
+                    raise
         else:
             try:
                 self.connection, _ = self.sock.accept()
@@ -202,10 +204,13 @@ class IPCServer(IPCBase):
                  exc_tb: Optional[TracebackType] = None,
                  ) -> bool:
         if sys.platform == 'win32':
-            # Wait for the client to finish reading the last write before disconnecting
-            if not FlushFileBuffers(self.connection):
-                raise IPCException("Failed to flush NamedPipe buffer, maybe the client hung up?")
-            DisconnectNamedPipe(self.connection)
+            try:
+                # Wait for the client to finish reading the last write before disconnecting
+                if not FlushFileBuffers(self.connection):
+                    raise IPCException("Failed to flush NamedPipe buffer,"
+                                       "maybe the client hung up?")
+            finally:
+                DisconnectNamedPipe(self.connection)
         else:
             self.close()
         return False
