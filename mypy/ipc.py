@@ -70,7 +70,8 @@ class IPCBase:
             try:
                 # Only send data if there is data to send, to avoid it
                 # being confused with the empty message sent to terminate
-                # the connection.
+                # the connection. (We will still send the end-of-message
+                # empty message below, which will cause read to return.)
                 if data:
                     _winapi.WriteFile(self.connection, data)
                 # this empty write is to copy the behavior of socket.sendall,
