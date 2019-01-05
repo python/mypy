@@ -600,6 +600,9 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-codes', default=False,
                         help="Show error codes in error messages",
                         group=error_group)
+    error_group.add_argument(
+        '--list-error-codes', action='store_true',
+        help="List known error codes and exit")
 
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))
@@ -701,6 +704,13 @@ def process_options(args: List[str],
     # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
+
+    if dummy.list_error_codes:
+        import mypy.messages
+        for msg_id in sorted(mypy.messages.message_ids):
+            print(msg_id)
+        raise SystemExit(0)
+
     config_file = dummy.config_file
     if config_file is not None and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
