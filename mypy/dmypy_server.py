@@ -128,7 +128,7 @@ else:
 
 # Server code.
 
-CONNECTION_NAME = 'dmypy.sock'  # type: Final
+CONNECTION_NAME = 'dmypy'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
