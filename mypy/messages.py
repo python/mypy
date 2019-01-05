@@ -261,11 +261,15 @@ class MessageBuilder:
                offset: int = 0, id: Optional[str] = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
+            msg_id = id
+            if msg_id is None and len(self.active_msg_id):
+                msg_id = self.active_msg_id[-1]
+
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None,
-                               id=id if id is not None else self.active_msg_id)
+                               id=msg_id)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
