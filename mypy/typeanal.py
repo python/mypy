@@ -503,8 +503,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # The only time it makes sense to use an int or bool is inside of
             # a literal type.
             msg = "Invalid type: try using Literal[{}] instead?".format(repr(t.literal_value))
-        elif t.base_type_name == 'builtins.float':
-            # We special-case warnings for floats numbers.
+        elif t.base_type_name in ('builtins.float', 'builtins.complex'):
+            # We special-case warnings for floats and complex numbers.
             msg = "Invalid type: {} literals cannot be used as a type".format(t.simple_name())
         else:
             # And in all other cases, we default to a generic error message.
@@ -674,7 +674,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # A raw literal. Convert it directly into a literal if we can.
             if arg.literal_value is None:
                 name = arg.simple_name()
-                if name == 'float':
+                if name in ('float', 'complex'):
                     msg = 'Parameter {} of Literal[...] cannot be of type "{}"'.format(idx, name)
                 else:
                     msg = 'Invalid type: Literal[...] cannot contain arbitrary expressions'

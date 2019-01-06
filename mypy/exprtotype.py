@@ -2,7 +2,7 @@
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr, IntExpr, FloatExpr, UnaryExpr,
-    ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
+    ComplexExpr, ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
     get_member_expr_fullname
 )
 from mypy.fastparse import parse_type_string
@@ -133,6 +133,9 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
         # Floats are not valid parameters for RawExpressionType , so we just
         # pass in 'None' for now. We'll report the appropriate error at a later stage.
         return RawExpressionType(None, 'builtins.float', line=expr.line, column=expr.column)
+    elif isinstance(expr, ComplexExpr):
+        # Same thing as above with complex numbers.
+        return RawExpressionType(None, 'builtins.complex', line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     else:
