@@ -235,6 +235,9 @@ class MessageBuilder:
     def get_message_ids(cls) -> Set[str]:
         return _message_ids
 
+    def active_message_id(self) -> Optional[str]:
+        return self.active_msg_ids[-1] if len(self.active_msg_ids) else None
+
     #
     # Helpers
     #
