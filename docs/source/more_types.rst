@@ -1010,12 +1010,12 @@ equal to specifically the string ``"foo"``.
 This feature is primarily useful when annotating functions that behave
 differently based on the exact value the caller provides. For example,
 suppose we have a function ``fetch_data(...)`` that returns bytes if the
-first argument is True, and Text if it's False. We can construct a precise
+first argument is True, and str if it's False. We can construct a precise
 type signature for this function using Literal and overloads:
 
 .. code-block:: python
 
-    from typing import overload, Text, Union
+    from typing import overload, Union
     from typing_extensions import Literal
 
     # The first two overloads use Literal so we can
@@ -1024,15 +1024,15 @@ type signature for this function using Literal and overloads:
     @overload
     def fetch_data(raw: Literal[True]) -> bytes: ...
     @overload
-    def fetch_data(raw: Literal[False]) -> Text: ...
+    def fetch_data(raw: Literal[False]) -> str: ...
 
     # The last overload is a fallback in case the caller
     # provides a regular bool:
 
     @overload
-    def fetch_data(raw: bool) -> Union[bytes, Text]: ...
+    def fetch_data(raw: bool) -> Union[bytes, str]: ...
 
-    def fetch_data(raw: bool) -> Union[bytes, Text]:
+    def fetch_data(raw: bool) -> Union[bytes, str]:
         # (Implementation is omitted)
         pass
 
@@ -1062,8 +1062,8 @@ So, ``Literal[-3, b"foo", True]`` is equivalent to
 more complex types involving Literals a little more convenient.
 
 Literal types may also contain ``None``. Mypy will treat ``Literal[None]`` as being
-exactly equivalent to just ``None``. This means that ``Literal[4, None]``, 
-``Union[Literal[4], None]``, and ``Optional[Literal[4]]`` are all exactly equivalent.
+equivalent to just ``None``. This means that ``Literal[4, None]``, 
+``Union[Literal[4], None]``, and ``Optional[Literal[4]]`` are all equivalent.
 
 Literals may also contain aliases of Literal types. For example, the following program
 is legal:
@@ -1117,12 +1117,12 @@ you can instead declare the variable to be :ref:`Final <final_attrs>`:
     c: Final = 19
 
     reveal_type(c)          # Revealed type is 'int'
-    expects_literal(c)      # ...but type checks!
+    expects_literal(c)      # ...but this type checks!
 
 If we do not provide an explicit type in the Final, the type of ``c`` becomes
 context-sensitive: mypy will basically try "substituting" the original assigned
 value whenever it's used before performing type checking. So, mypy will type-check
-the above program as if it were written like so:
+the above program almost as if it were written like so:
 
 .. code-block:: python
 
@@ -1136,7 +1136,7 @@ the above program as if it were written like so:
 This is why ``expects_literal(19)`` type-checks despite the fact that ``reveal_type(c)``
 reports ``int``.
 
-So while declaring a variable to be final is not quite the same thing as adding
+So while declaring a variable to be Final is not quite the same thing as adding
 an explicit Literal annotation, it often leads to the same effect in practice.
 
 Limitations
@@ -1148,6 +1148,7 @@ and another variable ``b`` of type ``Literal[5]``, mypy will infer that
 ``a + b`` has type ``int``, **not** type ``Literal[8]``.
 
 The basic rule is that Literal types are treated as just regular subtypes of
-whatever type the parameter has. For example, ``Literal[3]`` is as a subtype of
-``int`` and ``Literal["foo"]`` is treated as a subtype of ``str``.
-
+whatever type the parameter has. For example, ``Literal[3]`` is treated as a
+subtype of ``int`` and so will inherit all of ``int``'s methods directly. This
+means that ``Literal[3].__add__`` accepts the same arguments and has the same
+return type as ``int.__add__``.
