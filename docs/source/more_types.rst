@@ -1051,14 +1051,14 @@ type signature for this function using Literal and overloads:
 Parameterizing Literals
 -----------------------
 
-Literal types may contain one or more literal bools, ints, strings, and byte
+Literal types may contain one or more literal bools, ints, strs, and byte
 strings. However, Literal types **cannot** contain arbitrary expressions:
 types like ``Literal[my_string.trim()]``, ``Literal[x > 3]``, or ``Literal[3j + 4]``
 are all illegal.
 
 Literals containing two or more values are equivalent to the union of those values.
 So, ``Literal[-3, b"foo", True]`` is equivalent to
-``Union[Literal[-3], Literal[b"foo"], Literal[True]]``. This can help make writing
+``Union[Literal[-3], Literal[b"foo"], Literal[True]]``. This makes writing
 more complex types involving Literals a little more convenient.
 
 Literal types may also contain ``None``. Mypy will treat ``Literal[None]`` as being
@@ -1089,7 +1089,7 @@ plan on adding support for using enum values inside Literals in an upcoming rele
 Declaring Literal variables
 ---------------------------
 
-You must explicitly add an annotation to a variable to declare that it is
+You must explicitly add an annotation to a variable to declare that it has
 a Literal type:
 
 .. code-block:: python
@@ -1137,7 +1137,7 @@ This is why ``expects_literal(19)`` type-checks despite the fact that ``reveal_t
 reports ``int``.
 
 So while declaring a variable to be final is not quite the same thing as adding
-an explicit Literal annotation, it often leads to the same effect  in practice.
+an explicit Literal annotation, it often leads to the same effect in practice.
 
 Limitations
 -----------
