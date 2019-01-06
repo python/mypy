@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
-    LiteralType, RawLiteralType,
+    LiteralType, RawExpressionType,
 )
 from mypy.fastparse import TYPE_COMMENT_SYNTAX_ERROR
 
@@ -489,7 +489,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ])
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
-    def visit_raw_literal_type(self, t: RawLiteralType) -> Type:
+    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals
         # in the earlier stages of semantic analysis, but those
         # "fake literals" should always be wrapped in an UnboundType
@@ -663,18 +663,24 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if arg.type_of_any != TypeOfAny.from_error:
                 self.fail('Parameter {} of Literal[...] cannot be of type "Any"'.format(idx), ctx)
             return None
-        elif isinstance(arg, RawLiteralType):
-            # A raw literal. Convert it directly into a literal.
-            if arg.base_type_name == 'builtins.float':
-                self.fail(
-                    'Parameter {} of Literal[...] cannot be of type "float"'.format(idx),
-                    ctx)
+        elif isinstance(arg, RawExpressionType):
+            # A raw literal. Convert it directly into a literal if we can.
+            if arg.literal_value is None:
+                name = arg.simple_name()
+                if name == 'float':
+                    msg = 'Parameter {} of Literal[...] cannot be of type "{}"'.format(idx, name)
+                else:
+                    msg = 'Invalid type: Literal[...] cannot contain arbitrary expressions'
+
+                self.fail(msg, ctx)
+                if arg.note is not None:
+                    self.note_func(arg.note, ctx)
                 return None
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
             fallback = self.named_type_with_normalized_str(arg.base_type_name)
             assert isinstance(fallback, Instance)
-            return [LiteralType(arg.value, fallback, line=arg.line, column=arg.column)]
+            return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
         elif isinstance(arg, (NoneTyp, LiteralType)):
             # Types that we can just add directly to the literal/potential union of literals.
             return [arg]
