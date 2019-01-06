@@ -157,6 +157,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
+                 report_invalid_types: bool = True,
                  third_pass: bool = False) -> None:
         self.api = api
         self.lookup = api.lookup_qualified
@@ -174,6 +175,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_unnormalized = allow_unnormalized
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
+        # Should we report an error whenever we encounter a RawExpressionType outside
+        # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
+        # we want to report an error, but the caller may want to do more specialized
+        # error handling.
+        self.report_invalid_types = report_invalid_types
         self.plugin = plugin
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
@@ -499,24 +505,25 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # this method so it generates and returns an actual LiteralType
         # instead.
 
-        if t.base_type_name in ('builtins.int', 'builtins.bool'):
-            # The only time it makes sense to use an int or bool is inside of
-            # a literal type.
-            msg = "Invalid type: try using Literal[{}] instead?".format(repr(t.literal_value))
-        elif t.base_type_name in ('builtins.float', 'builtins.complex'):
-            # We special-case warnings for floats and complex numbers.
-            msg = "Invalid type: {} literals cannot be used as a type".format(t.simple_name())
-        else:
-            # And in all other cases, we default to a generic error message.
-            # Note: the reason why we use a generic error message for strings
-            # but not ints or bools is because whenever we see an out-of-place
-            # string, it's unclear if the user meant to construct a literal type
-            # or just misspelled a regular type. So we avoid guessing.
-            msg = 'Invalid type comment or annotation'
+        if self.report_invalid_types:
+            if t.base_type_name in ('builtins.int', 'builtins.bool'):
+                # The only time it makes sense to use an int or bool is inside of
+                # a literal type.
+                msg = "Invalid type: try using Literal[{}] instead?".format(repr(t.literal_value))
+            elif t.base_type_name in ('builtins.float', 'builtins.complex'):
+                # We special-case warnings for floats and complex numbers.
+                msg = "Invalid type: {} literals cannot be used as a type".format(t.simple_name())
+            else:
+                # And in all other cases, we default to a generic error message.
+                # Note: the reason why we use a generic error message for strings
+                # but not ints or bools is because whenever we see an out-of-place
+                # string, it's unclear if the user meant to construct a literal type
+                # or just misspelled a regular type. So we avoid guessing.
+                msg = 'Invalid type comment or annotation'
 
-        self.fail(msg, t)
-        if t.note is not None:
-            self.note_func(t.note, t)
+            self.fail(msg, t)
+            if t.note is not None:
+                self.note_func(t.note, t)
 
         return AnyType(TypeOfAny.from_error, line=t.line, column=t.column)
 

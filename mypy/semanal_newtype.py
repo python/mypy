@@ -114,11 +114,11 @@ class NewTypeAnalyzer:
             self.fail(msg, context)
             return None
 
-        old_type = self.api.anal_type(unanalyzed_type)
+        old_type = self.api.anal_type(unanalyzed_type, report_invalid_types=False)
 
         # The caller of this function assumes that if we return a Type, it's always
         # a valid one. So, we translate AnyTypes created from errors into None.
-        if isinstance(old_type, AnyType) and old_type.type_of_any == TypeOfAny.from_error:
+        if isinstance(old_type, AnyType) and old_type.is_from_error:
             self.fail(msg, context)
             return None
 
