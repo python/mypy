@@ -1,7 +1,5 @@
 """Server for mypy daemon mode.
 
-Only supports UNIX-like systems.
-
 This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
