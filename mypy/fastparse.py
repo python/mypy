@@ -83,7 +83,6 @@ MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # typ
 _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
-TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'  # type: Final
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -1069,6 +1068,15 @@ class TypeConverter:
         self.node_stack = []  # type: List[AST]
         self.assume_str_is_unicode = assume_str_is_unicode
 
+    def _invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
+        return RawExpressionType(
+            None,
+            'typing.Any',
+            line=self.line,
+            column=getattr(node, 'col_offset', -1),
+            note=note,
+        )
+
     @overload
     def visit(self, node: ast3.expr) -> Type: ...
 
@@ -1086,8 +1094,7 @@ class TypeConverter:
             if visitor is not None:
                 return visitor(node)
             else:
-                self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+                return self._invalid_type(node)
         finally:
             self.node_stack.pop()
 
@@ -1124,12 +1131,10 @@ class TypeConverter:
         constructor = stringify_name(f)
 
         if not isinstance(self.parent(), ast3.List):
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, e.col_offset)
+            note = None
             if constructor:
-                self.note("Suggestion: use {}[...] instead of {}(...)".format(
-                    constructor, constructor),
-                    self.line, e.col_offset)
-            return AnyType(TypeOfAny.from_error)
+                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+            return self._invalid_type(e, note=note)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
@@ -1196,22 +1201,25 @@ class TypeConverter:
             if isinstance(typ.literal_value, int):
                 typ.literal_value *= -1
                 return typ
-        self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-        return AnyType(TypeOfAny.from_error)
+        return self._invalid_type(n)
 
     # Num(number n)
     def visit_Num(self, n: Num) -> Type:
-        # Could be either float or int
-        numeric_value = n.n
-        if isinstance(numeric_value, int):
-            return RawExpressionType(numeric_value, 'builtins.int', line=self.line)
-        elif isinstance(numeric_value, float):
-            # Floats and other numbers are not valid parameters for RawLiteralType, so we just
-            # pass in 'None' for now. We'll report the appropriate error at a later stage.
-            return RawExpressionType(None, 'builtins.float', line=self.line)
+        if isinstance(n.n, int):
+            numeric_value = n.n
+            type_name = 'builtins.int'
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            # Other kinds of numbers (floats, complex) are not valid parameters for
+            # RawExpressionType so we just pass in 'None' for now. We'll report the
+            # appropriate error at a later stage.
+            numeric_value = None
+            type_name = 'builtins.{}'.format(type(n.n).__name__)
+        return RawExpressionType(
+            numeric_value,
+            type_name,
+            line=self.line,
+            column=getattr(n, 'col_offset', -1),
+        )
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
@@ -1251,8 +1259,7 @@ class TypeConverter:
             return UnboundType(value.name, params, line=self.line,
                                empty_tuple_index=empty_tuple_index)
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            return self._invalid_type(n)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
@@ -1265,8 +1272,7 @@ class TypeConverter:
         if isinstance(before_dot, UnboundType) and not before_dot.args:
             return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            return self._invalid_type(n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> Type:

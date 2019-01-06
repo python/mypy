@@ -1057,15 +1057,15 @@ def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
 
 [case testInvalidStrLiteralStrayBrace]
-def f(x: 'int['): pass # E: Invalid type: syntax error in type comment
+def f(x: 'int['): pass # E: Invalid type comment or annotation
 [out]
 
 [case testInvalidStrLiteralSpaces]
-def f(x: 'A B'): pass # E: Invalid type: syntax error in type comment
+def f(x: 'A B'): pass # E: Invalid type comment or annotation
 [out]
 
 [case testInvalidMultilineLiteralType]
-def f() -> "A\nB": pass  # E: Invalid type: syntax error in type comment
+def f() -> "A\nB": pass  # E: Invalid type comment or annotation
 [out]
 
 [case testInconsistentOverload]

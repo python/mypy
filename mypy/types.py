@@ -402,6 +402,10 @@ class AnyType(Type):
         # We should not have chains of Anys.
         assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
 
+    @property
+    def is_from_error(self) -> bool:
+        return self.type_of_any == TypeOfAny.from_error
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 
@@ -1330,7 +1334,7 @@ class RawExpressionType(Type):
     Alternatively, if 'Foo' is an unrelated class, we report an error and instead
     produce something like this:
 
-        Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.invalid_type))
+        Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.from_error))
 
     If the "note" field is not None, the provided note will be reported alongside the
     error at this point.

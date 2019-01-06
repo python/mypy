@@ -18,7 +18,6 @@ from mypy.types import (
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
     LiteralType, RawExpressionType,
 )
-from mypy.fastparse import TYPE_COMMENT_SYNTAX_ERROR
 
 from mypy.nodes import (
     TVAR, MODULE_REF, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
@@ -499,19 +498,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # make signatures like "foo(x: 20) -> None" legal, we can change
         # this method so it generates and returns an actual LiteralType
         # instead.
-        if t.base_type_name == 'builtins.int' or t.base_type_name == 'builtins.bool':
+
+        if t.base_type_name in ('builtins.int', 'builtins.bool'):
             # The only time it makes sense to use an int or bool is inside of
             # a literal type.
-            self.fail("Invalid type: try using Literal[{}] instead?".format(repr(t.value)), t)
+            msg = "Invalid type: try using Literal[{}] instead?".format(repr(t.literal_value))
         elif t.base_type_name == 'builtins.float':
-            self.fail("Invalid type: float literals cannot be used as a type", t)
+            # We special-case warnings for floats numbers.
+            msg = "Invalid type: {} literals cannot be used as a type".format(t.simple_name())
         else:
-            # For other types like strings, it's unclear if the user meant
-            # to construct a literal type or just misspelled a regular type.
-            # So, we leave just a generic "syntax error" error.
-            self.fail('Invalid type: ' + TYPE_COMMENT_SYNTAX_ERROR, t)
+            # And in all other cases, we default to a generic error message.
+            # Note: the reason why we use a generic error message for strings
+            # but not ints or bools is because whenever we see an out-of-place
+            # string, it's unclear if the user meant to construct a literal type
+            # or just misspelled a regular type. So we avoid guessing.
+            msg = 'Invalid type comment or annotation'
 
-        return AnyType(TypeOfAny.from_error)
+        self.fail(msg, t)
+        if t.note is not None:
+            self.note_func(t.note, t)
+
+        return AnyType(TypeOfAny.from_error, line=t.line, column=t.column)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         return t
@@ -671,10 +678,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     msg = 'Parameter {} of Literal[...] cannot be of type "{}"'.format(idx, name)
                 else:
                     msg = 'Invalid type: Literal[...] cannot contain arbitrary expressions'
-
                 self.fail(msg, ctx)
-                if arg.note is not None:
-                    self.note_func(arg.note, ctx)
+                # Note: we deliberately ignore arg.note here: the extra info might normally be
+                # helpful, but it generally won't make sense in the context of a Literal[...].
                 return None
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
