@@ -707,7 +707,7 @@ def process_options(args: List[str],
 
     if dummy.list_error_codes:
         import mypy.messages
-        for msg_id in sorted(mypy.messages.message_ids):
+        for msg_id in sorted(mypy.messages.MessageBuilder.get_message_ids()):
             print(msg_id)
         raise SystemExit(0)
 
@@ -728,6 +728,8 @@ def process_options(args: List[str],
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
+
+    # unneeded attribute transfered from parser
     delattr(options, 'list_error_codes')
 
     # The python_version is either the default, which can be overridden via a config file,

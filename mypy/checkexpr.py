@@ -404,7 +404,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     tp.type_object().is_protocol):
                 attr_members = non_method_protocol_members(tp.type_object())
                 if attr_members:
-                    self.chk.msg.report_non_method_protocol(tp.type_object(),
+                    self.chk.msg.issubclass_on_non_method_protocol(tp.type_object(),
                                                             attr_members, e)
 
     def check_typeddict_call(self, callee: TypedDictType,
@@ -720,7 +720,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    arg_names, callable_node, arg_messages, callable_name,
                                    object_type)
         else:
-            return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
+            return (self.msg.type_has_no_attr(callee, callee, '__call__', context),
+                    AnyType(TypeOfAny.from_error))
 
     def check_callable_call(self,
                             callee: CallableType,

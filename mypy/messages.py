@@ -11,6 +11,7 @@ checker but we are moving away from this convention.
 """
 
 from collections import OrderedDict, deque
+from functools import wraps
 import re
 import difflib
 from textwrap import dedent
@@ -177,22 +178,25 @@ ARG_CONSTRUCTOR_NAMES = {
 }  # type: Final
 
 
-message_ids = set()  # type: Set[str]
+_message_ids = set()  # type: Set[str]
 
 
-def tracked(func: T) -> T:
-    msg_id = func.__name__
-    message_ids.add(msg_id)
+def tracked(id: Optional[str] = None) -> Callable[[T], T]:
+    def deco(func: T) -> T:
+        msg_id = id if id is not None else func.__name__
+        _message_ids.add(msg_id)
 
-    def wrapped(self: 'MessageBuilder', *args: Any, **kwargs: Any) -> Any:
-        assert len(self.active_msg_id) == 0 or self.active_msg_id[-1] != msg_id
-        self.active_msg_id.append(msg_id)
-        try:
-            return func(self, *args, **kwargs)
-        finally:
-            self.active_msg_id.pop()
+        @wraps(func)
+        def wrapped(self: 'MessageBuilder', *args: Any, **kwargs: Any) -> Any:
+            assert self.active_message_id() != msg_id
+            self.active_msg_ids.append(msg_id)
+            try:
+                return func(self, *args, **kwargs)
+            finally:
+                self.active_msg_ids.pop()
 
-    return wrapped  # type: ignore
+        return wrapped  # type: ignore
+    return deco
 
 
 class MessageBuilder:
@@ -218,14 +222,18 @@ class MessageBuilder:
     # Hack to deduplicate error messages from union types
     disable_type_names = 0
 
-    active_msg_id = None  # type: Deque[str]
+    active_msg_ids = None  # type: Deque[str]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
         self.modules = modules
         self.disable_count = 0
         self.disable_type_names = 0
-        self.active_msg_id = deque()
+        self.active_msg_ids = deque()
+
+    @classmethod
+    def get_message_ids(cls) -> Set[str]:
+        return _message_ids
 
     #
     # Helpers
@@ -264,8 +272,8 @@ class MessageBuilder:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             msg_id = id
-            if msg_id is None and len(self.active_msg_id):
-                msg_id = self.active_msg_id[-1]
+            if msg_id is None:
+                msg_id = self.active_message_id()
 
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
@@ -501,16 +509,16 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
 
-    @tracked
+    @tracked()
     def no_return_exepected(self, context: Context) -> None:
         self.fail('No return value expected', context)
 
-    @tracked
+    @tracked()
     def must_have_none_return_type(self, context: FuncDef) -> None:
         self.fail('The return type of "{}" must be None'.format(context.name()), context)
 
-    @tracked
-    def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
+    @tracked()
+    def type_has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
         """Report a missing or non-accessible member.
 
         original_type is the top-level type on which the error occurred.
@@ -601,7 +609,7 @@ class MessageBuilder:
                     typ_format, self.format(original_type), member, extra), context)
         return AnyType(TypeOfAny.from_error)
 
-    @tracked
+    @tracked()
     def unsupported_operand_types(self, op: str, left_type: Any,
                                   right_type: Any, context: Context) -> None:
         """Report unsupported operand types for a binary operation.
@@ -627,7 +635,7 @@ class MessageBuilder:
                 op, left_str, right_str)
         self.fail(msg, context)
 
-    @tracked
+    @tracked()
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
         if self.disable_type_names:
@@ -637,18 +645,13 @@ class MessageBuilder:
                 op, self.format(typ))
         self.fail(msg, context)
 
-    @tracked
-    def not_callable(self, typ: Type, context: Context) -> Type:
-        self.fail('{} not callable'.format(self.format(typ)), context)
-        return AnyType(TypeOfAny.from_error)
-
-    @tracked
+    @tracked()
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callable_name(callee) or '(unknown)'
         self.fail('Call to untyped function {} in typed context'.format(name), context)
         return AnyType(TypeOfAny.from_error)
 
-    @tracked
+    @tracked()
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
                               arg_kind: int, context: Context) -> None:
         """Report an error about an incompatible argument type.
@@ -798,13 +801,13 @@ class MessageBuilder:
             for note_msg in notes:
                 self.note(note_msg, context)
 
-    @tracked
+    @tracked()
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context) -> None:
         self.fail('Invalid index type {} for {}; expected type {}'.format(
             self.format(index_type), base_str, self.format(expected_type)), context)
 
-    @tracked
+    @tracked('wrong_number_of_arguments')
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
         if (argument_names is not None and not all(k is None for k in argument_names)
@@ -822,17 +825,17 @@ class MessageBuilder:
             msg = 'Too few arguments' + for_function(callee)
         self.fail(msg, context)
 
-    @tracked
+    @tracked()
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
         msg = 'Missing named argument "{}"'.format(name) + for_function(callee)
         self.fail(msg, context)
 
-    @tracked
+    @tracked('wrong_number_of_arguments')
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
         self.fail(msg, context)
 
-    @tracked
+    @tracked()
     def too_many_arguments_from_typed_dict(self,
                                            callee: CallableType,
                                            arg_type: TypedDictType,
@@ -847,13 +850,13 @@ class MessageBuilder:
             return
         self.fail(msg, context)
 
-    @tracked
+    @tracked()
     def too_many_positional_arguments(self, callee: CallableType,
                                       context: Context) -> None:
         msg = 'Too many positional arguments' + for_function(callee)
         self.fail(msg, context)
 
-    @tracked
+    @tracked()
     def unexpected_keyword_argument(self, callee: CallableType, name: str,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
@@ -867,14 +870,14 @@ class MessageBuilder:
             self.note('{} defined here'.format(fname), callee.definition,
                       file=module.path, origin=context)
 
-    @tracked
+    @tracked()
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
         self.fail('{} gets multiple values for keyword argument "{}"'.
                   format(callable_name(callee) or 'Function', callee.arg_names[index]),
                   context)
 
-    @tracked
+    @tracked()
     def does_not_return_value(self, callee_type: Optional[Type], context: Context) -> None:
         """Report an error about use of an unusable type."""
         name = None  # type: Optional[str]
@@ -885,7 +888,7 @@ class MessageBuilder:
         else:
             self.fail('Function does not return a value', context)
 
-    @tracked
+    @tracked()
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
         if typ.source is None:
@@ -894,7 +897,7 @@ class MessageBuilder:
             s = " '{}'".format(typ.source)
         self.fail('Trying to read deleted variable{}'.format(s), context)
 
-    @tracked
+    @tracked()
     def deleted_as_lvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an lvalue.
 
@@ -907,7 +910,7 @@ class MessageBuilder:
             s = " '{}'".format(typ.source)
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
-    @tracked
+    @tracked()
     def no_variant_matches_arguments(self,
                                      plausible_targets: List[CallableType],
                                      overload: Overloaded,
@@ -932,7 +935,7 @@ class MessageBuilder:
 
         self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2)
 
-    @tracked
+    @tracked()
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
         if provided < expected:
@@ -946,17 +949,17 @@ class MessageBuilder:
             self.fail('Too many values to unpack ({} expected, {} provided)'.format(
                 expected, provided), context)
 
-    @tracked
+    @tracked()
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail('\'{}\' object is not iterable'.format(type), context)
 
-    @tracked
+    @tracked()
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),
                   context)
 
-    @tracked
+    @tracked()
     def overload_signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
             overload: Overloaded, context: Context) -> None:
@@ -967,7 +970,7 @@ class MessageBuilder:
         note_template = 'Overload variants must be defined in the same order as they are in "{}"'
         self.note(note_template.format(supertype), context)
 
-    @tracked
+    @tracked()
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
             context: Context) -> None:
@@ -975,7 +978,7 @@ class MessageBuilder:
         self.fail('Signature of "{}" incompatible with {}'.format(
             name, target), context)
 
-    @tracked
+    @tracked()
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
             name_in_supertype: str, supertype: str, context: Context) -> None:
@@ -996,7 +999,7 @@ class MessageBuilder:
                 return <logic to compare two {class_name} instances>
         '''.format(class_name=class_name))
 
-    @tracked
+    @tracked()
     def return_type_incompatible_with_supertype(
             self, name: str, name_in_supertype: str, supertype: str,
             context: Context) -> None:
@@ -1004,7 +1007,6 @@ class MessageBuilder:
         self.fail('Return type of "{}" incompatible with {}'
                   .format(name, target), context)
 
-    @tracked
     def override_target(self, name: str, name_in_super: str,
                         supertype: str) -> str:
         target = 'supertype "{}"'.format(supertype)
@@ -1012,7 +1014,7 @@ class MessageBuilder:
             target = '"{}" of {}'.format(name_in_super, target)
         return target
 
-    @tracked
+    @tracked()
     def incompatible_type_application(self, expected_arg_count: int,
                                       actual_arg_count: int,
                                       context: Context) -> None:
@@ -1026,7 +1028,7 @@ class MessageBuilder:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
 
-    @tracked
+    @tracked()
     def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
         kind = (' to Callable' if isinstance(item, CallableType) else
                 ' to Tuple' if isinstance(item, TupleType) else
@@ -1035,7 +1037,7 @@ class MessageBuilder:
                 '')
         self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
-    @tracked
+    @tracked()
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
         callee_name = callable_name(callee_type)
@@ -1044,11 +1046,11 @@ class MessageBuilder:
         else:
             self.fail('Cannot infer function type argument', context)
 
-    @tracked
+    @tracked()
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
         self.fail('List or tuple expected as variable arguments', context)
 
-    @tracked
+    @tracked()
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
@@ -1060,11 +1062,11 @@ class MessageBuilder:
                 'Argument after ** must be a mapping{}'.format(suffix),
                 context)
 
-    @tracked
+    @tracked()
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
-    @tracked
+    @tracked()
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         if isinstance(actual, Instance):
             # Don't include type of instance, because it can look confusingly like a type
@@ -1074,60 +1076,60 @@ class MessageBuilder:
             type_str = self.format(actual)
         self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
 
-    @tracked
+    @tracked('wrong_number_of_str_format_args')
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context)
 
-    @tracked
+    @tracked('wrong_number_of_str_format_args')
     def too_many_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not all arguments converted during string formatting', context)
 
-    @tracked
+    @tracked()
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
         self.fail('Unsupported format character \'%s\'' % placeholder, context)
 
-    @tracked
+    @tracked()
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
         self.fail('String interpolation contains both stars and mapping keys', context)
 
-    @tracked
+    @tracked()
     def requires_int_or_char(self, context: Context) -> None:
         self.fail('%c requires int or char', context)
 
-    @tracked
+    @tracked()
     def key_not_in_mapping(self, key: str, context: Context) -> None:
         self.fail('Key \'%s\' not found in mapping' % key, context)
 
-    @tracked
+    @tracked()
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
         self.fail('String interpolation mixes specifier with and without mapping keys', context)
 
-    @tracked
+    @tracked()
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
 
-    @tracked
+    @tracked()
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s' in base class '%s'" % (name, base), context)
 
-    @tracked
+    @tracked()
     def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
         self.fail('Attribute function "%s" with type %s does not accept self argument'
                   % (name, self.format(item)), context)
 
-    @tracked
+    @tracked()
     def incompatible_self_argument(self, name: str, arg: Type, sig: CallableType,
                                    is_classmethod: bool, context: Context) -> None:
         kind = 'class attribute function' if is_classmethod else 'attribute function'
         self.fail('Invalid self argument %s to %s "%s" with type %s'
                   % (self.format(arg), kind, name, self.format(sig)), context)
 
-    @tracked
+    @tracked()
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
         self.fail('All conditional function variants must have identical '
                   'signatures', defn)
 
-    @tracked
+    @tracked()
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
@@ -1137,7 +1139,7 @@ class MessageBuilder:
                                    attrs),
                   context)
 
-    @tracked
+    @tracked()
     def base_class_definitions_incompatible(self, name: str, base1: TypeInfo,
                                             base2: TypeInfo,
                                             context: Context) -> None:
@@ -1145,24 +1147,24 @@ class MessageBuilder:
                   'with definition in base class "{}"'.format(
                       name, base1.name(), base2.name()), context)
 
-    @tracked
-    def cant_assign_to_method(self, context: Context) -> None:
+    @tracked()
+    def cannot_assign_to_method(self, context: Context) -> None:
         self.fail(CANNOT_ASSIGN_TO_METHOD, context)
 
-    @tracked
-    def cant_assign_to_classvar(self, name: str, context: Context) -> None:
+    @tracked()
+    def cannot_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
-    @tracked
-    def final_cant_override_writable(self, name: str, ctx: Context) -> None:
+    @tracked()
+    def final_cannot_override_writable(self, name: str, ctx: Context) -> None:
         self.fail('Cannot override writable attribute "{}" with a final one'.format(name), ctx)
 
-    @tracked
-    def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
+    @tracked()
+    def cannot_override_final(self, name: str, base_name: str, ctx: Context) -> None:
         self.fail('Cannot override final attribute "{}"'
                   ' (previously declared in base class "{}")'.format(name, base_name), ctx)
 
-    def cant_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
+    def cannot_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
         """Warn about a prohibited assignment to a final attribute.
 
         Pass `attr_assign=True` if the assignment assigns to an attribute.
@@ -1170,21 +1172,21 @@ class MessageBuilder:
         kind = "attribute" if attr_assign else "name"
         self.fail('Cannot assign to final {} "{}"'.format(kind, name), ctx)
 
-    @tracked
-    def protocol_members_cant_be_final(self, ctx: Context) -> None:
+    @tracked()
+    def protocol_members_cannot_be_final(self, ctx: Context) -> None:
         self.fail("Protocol member cannot be final", ctx)
 
-    @tracked
+    @tracked()
     def final_without_value(self, ctx: Context) -> None:
         self.fail("Final name must be initialized with a value", ctx)
 
-    @tracked
+    @tracked()
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
             name, type.name()), context)
 
-    @tracked
+    @tracked()
     def incompatible_typevar_value(self,
                                    callee: CallableType,
                                    typ: Type,
@@ -1195,26 +1197,26 @@ class MessageBuilder:
                                                     self.format(typ)),
                   context)
 
-    @tracked
+    @tracked()
     def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
         self.fail(
             'Overload does not consistently use the "@{}" '.format(decorator)
             + 'decorator on all function signatures.',
             context)
 
-    @tracked
+    @tracked()
     def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
-    @tracked
+    @tracked()
     def overloaded_signatures_partial_overlap(self, index1: int, index2: int,
                                               context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} '.format(index1, index2)
                   + 'are partially overlapping: the two signatures may return '
                   + 'incompatible types given certain calls', context)
 
-    @tracked
+    @tracked()
     def overloaded_signature_will_never_match(self, index1: int, index2: int,
                                               context: Context) -> None:
         self.fail(
@@ -1224,30 +1226,28 @@ class MessageBuilder:
                 index2=index2),
             context)
 
-    @tracked
+    @tracked()
     def overloaded_signatures_typevar_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot satisfy signature {} '.format(index) +
                   'due to inconsistencies in how they use type variables', context)
 
-    @tracked
+    @tracked()
     def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation does not accept all possible arguments '
                   'of signature {}'.format(index), context)
 
-    @tracked
+    @tracked()
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot produce return type '
                   'of signature {}'.format(index), context)
 
-    @tracked
     def warn_both_operands_are_from_unions(self, context: Context) -> None:
         self.note('Both left and right operands are unions', context)
 
-    @tracked
     def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
         self.note('{} operand is of type {}'.format(side, self.format(original)), context)
 
-    @tracked
+    @tracked()
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
             forward_method: str, context: Context) -> None:
@@ -1257,38 +1257,38 @@ class MessageBuilder:
                       forward_method, self.format(forward_class)),
                   context)
 
-    @tracked
+    @tracked()
     def forward_operator_not_callable(
             self, forward_method: str, context: Context) -> None:
         self.fail('Forward operator "{}" is not callable'.format(
             forward_method), context)
 
-    @tracked
+    @tracked()
     def signatures_incompatible(self, method: str, other_method: str,
                                 context: Context) -> None:
         self.fail('Signatures of "{}" and "{}" are incompatible'.format(
             method, other_method), context)
 
-    @tracked
+    @tracked()
     def yield_from_invalid_operand_type(self, expr: Type, context: Context) -> Type:
         text = self.format(expr) if self.format(expr) != 'object' else expr
         self.fail('"yield from" can\'t be applied to {}'.format(text), context)
         return AnyType(TypeOfAny.from_error)
 
-    @tracked
+    @tracked()
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
 
-    @tracked
+    @tracked()
     def invalid_signature_for_special_method(
             self, func_type: Type, context: Context, method_name: str) -> None:
         self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
 
-    @tracked
+    @tracked()
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
 
-    @tracked
+    @tracked()
     def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
@@ -1297,28 +1297,29 @@ class MessageBuilder:
         for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
             self.fail(line, context)
 
-    @tracked
+    @tracked()
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
 
-    @tracked
+    @tracked()
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
 
-    @tracked
+    # filtered by disallow_any_unimported
+    @tracked()
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
 
-    @tracked
+    @tracked()
     def need_annotation_for_var(self, node: SymbolNode, context: Context) -> None:
         self.fail("Need type annotation for '{}'".format(node.name()), context)
 
-    @tracked
+    @tracked()
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
 
-    @tracked
+    @tracked()
     def unexpected_typeddict_keys(
             self,
             typ: TypedDictType,
@@ -1354,7 +1355,7 @@ class MessageBuilder:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context)
 
-    @tracked
+    @tracked()
     def typeddict_key_must_be_string_literal(
             self,
             typ: TypedDictType,
@@ -1363,7 +1364,7 @@ class MessageBuilder:
             'TypedDict key must be a string literal; expected one of {}'.format(
                 format_item_name_list(typ.items.keys())), context)
 
-    @tracked
+    @tracked()
     def typeddict_key_not_found(
             self,
             typ: TypedDictType,
@@ -1375,7 +1376,7 @@ class MessageBuilder:
         else:
             self.fail("TypedDict {} has no key '{}'".format(self.format(typ), item_name), context)
 
-    @tracked
+    @tracked()
     def typeddict_key_cannot_be_deleted(
             self,
             typ: TypedDictType,
@@ -1388,7 +1389,7 @@ class MessageBuilder:
             self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
                 item_name, self.format(typ)), context)
 
-    @tracked
+    @tracked()
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
@@ -1399,13 +1400,14 @@ class MessageBuilder:
             message = 'Expression type contains "Any" (has type {})'.format(self.format(typ))
         self.fail(message, context)
 
-    @tracked
+    @tracked()
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
         message = 'Returning Any from function declared to return {}'.format(
             self.format(typ))
         self.warn(message, context)
 
-    @tracked
+    # filtered by disallow_any_decorated
+    @tracked()
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):
             self.fail("Function is untyped after decorator transformation", context)
@@ -1413,11 +1415,12 @@ class MessageBuilder:
             self.fail('Type of decorated function contains type "Any" ({})'.format(
                 self.format(typ)), context)
 
-    @tracked
+    # filtered by disallow_untyped_decorators
+    @tracked()
     def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
         self.fail('Untyped decorator makes function "{}" untyped'.format(func_name), context)
 
-    @tracked
+    @tracked()
     def bad_proto_variance(self, actual: int, tvar_name: str, expected: int,
                            context: Context) -> None:
         msg = capitalize("{} type variable '{}' used in protocol where"
@@ -1426,24 +1429,24 @@ class MessageBuilder:
                                                       variance_string(expected)))
         self.fail(msg, context)
 
-    @tracked
+    @tracked()
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
         self.fail("Can only assign concrete classes to a variable of type {}"
                   .format(self.format(typ)), context)
 
-    @tracked
+    @tracked()
     def concrete_only_call(self, typ: Type, context: Context) -> None:
         self.fail("Only concrete class can be given where {} is expected"
                   .format(self.format(typ)), context)
 
-    @tracked
+    @tracked()
     def cannot_use_function_with_type(
             self, method_name: str, type_name: str, context: Context) -> None:
         self.fail("Cannot use {}() with a {} type".format(method_name, type_name), context)
 
-    @tracked
-    def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
-                                   context: Context) -> None:
+    @tracked()
+    def issubclass_on_non_method_protocol(self, tp: TypeInfo, members: List[str],
+                                          context: Context) -> None:
         self.fail("Only protocols that don't have non-method members can be"
                   " used with issubclass()", context)
         if len(members) < 3:

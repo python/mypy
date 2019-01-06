@@ -133,7 +133,7 @@ def _analyze_member_access(name: str,
         return AnyType(TypeOfAny.from_error)
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
-    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context)
+    return mx.msg.type_has_no_attr(mx.original_type, typ, name, mx.context)
 
 
 # The several functions that follow implement analyze_member_access for various
@@ -169,7 +169,7 @@ def analyze_instance_member_access(name: str,
             first_item = cast(Decorator, method.items[0])
             return analyze_var(name, first_item.var, typ, info, mx)
         if mx.is_lvalue:
-            mx.msg.cant_assign_to_method(mx.context)
+            mx.msg.cannot_assign_to_method(mx.context)
         signature = function_type(method, mx.builtin_type('builtins.function'))
         signature = freshen_function_type_vars(signature)
         if name == '__new__':
@@ -360,7 +360,7 @@ def analyze_member_var_access(name: str,
     else:
         if mx.chk and mx.chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
-        return mx.msg.has_no_attr(mx.original_type, itype, name, mx.context)
+        return mx.msg.type_has_no_attr(mx.original_type, itype, name, mx.context)
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
@@ -368,7 +368,7 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
     for base in info.mro:
         sym = base.names.get(name)
         if sym and is_final_node(sym.node):
-            msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
+            msg.cannot_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
 def analyze_descriptor_access(instance_type: Type,
@@ -476,7 +476,7 @@ def analyze_var(name: str,
             # TODO allow setting attributes in subclass (although it is probably an error)
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
-            mx.msg.cant_assign_to_classvar(name, mx.context)
+            mx.msg.cannot_assign_to_classvar(name, mx.context)
         result = t
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if mx.is_lvalue:
@@ -484,7 +484,7 @@ def analyze_var(name: str,
                     if not var.is_settable_property:
                         mx.msg.read_only_property(name, itype.type, mx.context)
                 else:
-                    mx.msg.cant_assign_to_method(mx.context)
+                    mx.msg.cannot_assign_to_method(mx.context)
 
             if not var.is_staticmethod:
                 # Class-level function objects and classmethods become bound methods:
@@ -584,7 +584,7 @@ def analyze_class_attribute_access(itype: Instance,
     is_method = is_decorated or isinstance(node.node, FuncBase)
     if mx.is_lvalue:
         if is_method:
-            mx.msg.cant_assign_to_method(mx.context)
+            mx.msg.cannot_assign_to_method(mx.context)
         if isinstance(node.node, TypeInfo):
             mx.msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, mx.context)
 

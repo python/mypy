@@ -1827,7 +1827,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if self.loop_depth > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
-            self.msg.protocol_members_cant_be_final(s)
+            self.msg.protocol_members_cannot_be_final(s)
         if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
                 not self.is_stub_file and not self.is_class_scope()):
             if not invalid_bare_final:  # Skip extra error messages.
@@ -2622,7 +2622,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if self.is_class_scope():
                     assert self.type is not None, "No type set at class scope"
                     if self.type.is_protocol:
-                        self.msg.protocol_members_cant_be_final(d)
+                        self.msg.protocol_members_cannot_be_final(d)
                     else:
                         dec.func.is_final = True
                         dec.var.is_final = True

@@ -1304,7 +1304,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if base_attr:
                 # First, check if we override a final (always an error, even with Any types).
                 if is_final_node(base_attr.node):
-                    self.msg.cant_override_final(name, base.name(), defn)
+                    self.msg.cannot_override_final(name, base.name(), defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
                     self.check_no_writable(name, base_attr.node, defn)
@@ -1641,7 +1641,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Final attributes can never be overridden, but can override
         # non-final read-only attributes.
         if is_final_node(second.node):
-            self.msg.cant_override_final(name, base2.name(), ctx)
+            self.msg.cannot_override_final(name, base2.name(), ctx)
         if is_final_node(first.node):
             self.check_no_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
@@ -1988,7 +1988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # if we are overriding a final method with variable.
             # Other override attempts will be flagged as assignment to constant
             # in `check_final()`.
-            self.msg.cant_override_final(node.name(), base.name(), node)
+            self.msg.cannot_override_final(node.name(), base.name(), node)
             return False
         if node.is_final:
             self.check_no_writable(node.name(), base_node, node)
@@ -2014,7 +2014,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             ok = True
         if not ok:
-            self.msg.final_cant_override_writable(name, ctx)
+            self.msg.final_cannot_override_writable(name, ctx)
 
     def get_final_context(self) -> bool:
         """Check whether we a currently checking a final declaration."""
@@ -2067,11 +2067,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # `check_compatibility_final_super()`.
                         if sym and isinstance(sym.node, Var):
                             if sym.node.is_final and not is_final_decl:
-                                self.msg.cant_assign_to_final(name, sym.node.info is None, s)
+                                self.msg.cannot_assign_to_final(name, sym.node.info is None, s)
                                 # ...but only once
                                 break
                 if lv.node.is_final and not is_final_decl:
-                    self.msg.cant_assign_to_final(name, lv.node.info is None, s)
+                    self.msg.cannot_assign_to_final(name, lv.node.info is None, s)
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
