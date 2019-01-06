@@ -182,6 +182,11 @@ _message_ids = set()  # type: Set[str]
 
 
 def tracked(id: Optional[str] = None) -> Callable[[T], T]:
+    """Identify a MessageBuilder method that represents a message to be tracked.
+
+    Arguments:
+      id: provide an explicit message id. by default, if this is not provided the message id is the name of the method
+    """
     def deco(func: T) -> T:
         msg_id = id if id is not None else func.__name__
         _message_ids.add(msg_id)
