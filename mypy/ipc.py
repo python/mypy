@@ -71,7 +71,9 @@ class IPCBase:
                     ov.cancel()
                     raise
                 _, err = ov.GetOverlappedResult(True)
-                bdata.extend(ov.getbuffer())
+                buff = ov.getbuffer()
+                if buff:
+                    bdata.extend(buff)
                 if err == 0:
                     # we are done!
                     break
