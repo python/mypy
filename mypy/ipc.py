@@ -62,6 +62,9 @@ class IPCBase:
         if sys.platform == 'win32':
             while True:
                 ov, err = _winapi.ReadFile(self.connection, self.READ_SIZE, overlapped=True)
+                # TODO: remove once typeshed supports Literal types
+                assert isinstance(ov, _winapi.Overlapped)
+                assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = self.timeout if self.timeout else _winapi.INFINITE
@@ -90,6 +93,9 @@ class IPCBase:
         if sys.platform == 'win32':
             try:
                 ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
+                # TODO: remove once typeshed supports Literal types
+                assert isinstance(ov, _winapi.Overlapped)
+                assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = self.timeout if self.timeout else _winapi.INFINITE
@@ -211,6 +217,8 @@ class IPCServer(IPCBase):
             # client never connects, though this can be "solved" by killing the server
             try:
                 ov = _winapi.ConnectNamedPipe(self.connection, overlapped=True)
+                # TODO: remove once typeshed supports Literal types
+                assert isinstance(ov, _winapi.Overlapped)
             except WindowsError as e:
                 # Don't raise if the client already exists, or the client already connected
                 if e.winerror not in (_winapi.ERROR_PIPE_CONNECTED, _winapi.ERROR_NO_DATA):
