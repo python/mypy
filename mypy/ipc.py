@@ -50,11 +50,7 @@ class IPCBase:
     def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.READ_SIZE = 100000
         self.name = name
-        if sys.platform == 'win32':
-            # Windows timeouts are in miliseconds
-            self.timeout = int(timeout * 1000) if timeout is not None else None
-        else:
-            self.timeout = timeout
+        self.timeout = timeout
 
     def read(self) -> bytes:
         """Read bytes from an IPC connection until its empty."""
@@ -67,19 +63,21 @@ class IPCBase:
                 assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        timeout = self.timeout if self.timeout else _winapi.INFINITE
+                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         assert res == _winapi.WAIT_OBJECT_0
                 except BaseException:
                     ov.cancel()
                     raise
                 _, err = ov.GetOverlappedResult(True)
-                buff = ov.getbuffer()
-                if buff:
-                    bdata.extend(buff)
+                more = ov.getbuffer()
+                if more:
+                    bdata.extend(more)
                 if err == 0:
                     # we are done!
                     break
+                elif err == _winapi.ERROR_OPERATION_ABORTED:
+                    raise IPCException("ReadFile operation aborted.")
         else:
             while True:
                 more = self.connection.recv(self.READ_SIZE)
@@ -98,7 +96,7 @@ class IPCBase:
                 assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        timeout = self.timeout if self.timeout else _winapi.INFINITE
+                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         assert res == _winapi.WAIT_OBJECT_0
                 except BaseException:
@@ -127,7 +125,7 @@ class IPCClient(IPCBase):
     def __init__(self, name: str, timeout: Optional[float]) -> None:
         super().__init__(name, timeout)
         if sys.platform == 'win32':
-            timeout = self.timeout if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
+            timeout = int(self.timeout * 1000) if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
             except FileNotFoundError:
@@ -225,7 +223,7 @@ class IPCServer(IPCBase):
                     raise
             else:
                 try:
-                    timeout = self.timeout if self.timeout else _winapi.INFINITE
+                    timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                     res = _winapi.WaitForSingleObject(ov.event, timeout)
                     assert res == _winapi.WAIT_OBJECT_0
                 except BaseException:
