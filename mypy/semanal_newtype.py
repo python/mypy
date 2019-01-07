@@ -114,6 +114,8 @@ class NewTypeAnalyzer:
             self.fail(msg, context)
             return None
 
+        # We want to use our custom error message (see above), so we suppress
+        # the default error message for invalid types here.
         old_type = self.api.anal_type(unanalyzed_type, report_invalid_types=False)
 
         # The caller of this function assumes that if we return a Type, it's always

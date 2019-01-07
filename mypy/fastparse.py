@@ -1068,7 +1068,16 @@ class TypeConverter:
         self.node_stack = []  # type: List[AST]
         self.assume_str_is_unicode = assume_str_is_unicode
 
-    def _invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
+    def invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
+        """Constructs a type representing some expression that normally forms an invalid type.
+        For example, if we see a type hint that says "3 + 4", we would transform that
+        expression into a RawExpressionType.
+
+        The semantic analysis layer will report an "Invalid type" error when it
+        encounters this type, along with the given note if one is provided.
+
+        See RawExpressionType's docstring for more details on how it's used.
+        """
         return RawExpressionType(
             None,
             'typing.Any',
@@ -1094,7 +1103,7 @@ class TypeConverter:
             if visitor is not None:
                 return visitor(node)
             else:
-                return self._invalid_type(node)
+                return self.invalid_type(node)
         finally:
             self.node_stack.pop()
 
@@ -1134,7 +1143,7 @@ class TypeConverter:
             note = None
             if constructor:
                 note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
-            return self._invalid_type(e, note=note)
+            return self.invalid_type(e, note=note)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
@@ -1201,7 +1210,7 @@ class TypeConverter:
             if isinstance(typ.literal_value, int):
                 typ.literal_value *= -1
                 return typ
-        return self._invalid_type(n)
+        return self.invalid_type(n)
 
     # Num(number n)
     def visit_Num(self, n: Num) -> Type:
@@ -1259,7 +1268,7 @@ class TypeConverter:
             return UnboundType(value.name, params, line=self.line,
                                empty_tuple_index=empty_tuple_index)
         else:
-            return self._invalid_type(n)
+            return self.invalid_type(n)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
@@ -1272,7 +1281,7 @@ class TypeConverter:
         if isinstance(before_dot, UnboundType) and not before_dot.args:
             return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
         else:
-            return self._invalid_type(n)
+            return self.invalid_type(n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> Type:

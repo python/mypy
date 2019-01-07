@@ -2398,6 +2398,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
                 try:
+                    # We want to use our custom error message below, so we suppress
+                    # the default error message for invalid types here.
                     upper_bound = self.expr_to_analyzed_type(param_value,
                                                              report_invalid_types=False)
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
