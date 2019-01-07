@@ -50,7 +50,11 @@ JsonDict = Dict[str, Any]
 # 3. server.astdiff.SnapshotTypeVisitor's visit_literal_type_method: this
 #    method assumes that the following types supports equality checks and
 #    hashability.
-LiteralValue = Union[int, str, bool, None]
+#
+# Note: Although "Literal[None]" is a valid type, we internally always convert
+# such a type directly into "None". So, "None" is not a valid parameter of
+# LiteralType and is omitted from this list.
+LiteralValue = Union[int, str, bool]
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -397,6 +401,10 @@ class AnyType(Type):
         assert type_of_any != TypeOfAny.from_another_any or source_any is not None
         # We should not have chains of Anys.
         assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
+
+    @property
+    def is_from_error(self) -> bool:
+        return self.type_of_any == TypeOfAny.from_error
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -1299,20 +1307,20 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
-class RawLiteralType(Type):
-    """A synthetic type representing any type that could plausibly be something
-    that lives inside of a literal.
+class RawExpressionType(Type):
+    """A synthetic type representing some arbitrary expression that does not cleanly
+    translate into a type.
 
     This synthetic type is only used at the beginning stages of semantic analysis
     and should be completely removing during the process for mapping UnboundTypes to
-    actual types.
+    actual types: we either turn it into a LiteralType or an AnyType.
 
-    For example, `Foo[1]` is initially represented as the following:
+    For example, suppose `Foo[1]` is initially represented as the following:
 
         UnboundType(
             name='Foo',
             args=[
-                RawLiteralType(value=1, base_type_name='builtins.int'),
+                RawExpressionType(value=1, base_type_name='builtins.int'),
             ],
         )
 
@@ -1327,26 +1335,50 @@ class RawLiteralType(Type):
     produce something like this:
 
         Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.from_error))
+
+    If the "note" field is not None, the provided note will be reported alongside the
+    error at this point.
+
+    Note: if "literal_value" is None, that means this object is representing some
+    expression that cannot possibly be a parameter of Literal[...]. For example,
+    "Foo[3j]" would be represented as:
+
+        UnboundType(
+            name='Foo',
+            args=[
+                RawExpressionType(value=None, base_type_name='builtins.complex'),
+            ],
+        )
     """
-    def __init__(self, value: LiteralValue, base_type_name: str,
-                 line: int = -1, column: int = -1) -> None:
+    def __init__(self,
+                 literal_value: Optional[LiteralValue],
+                 base_type_name: str,
+                 line: int = -1,
+                 column: int = -1,
+                 note: Optional[str] = None,
+                 ) -> None:
         super().__init__(line, column)
-        self.value = value
+        self.literal_value = literal_value
         self.base_type_name = base_type_name
+        self.note = note
+
+    def simple_name(self) -> str:
+        return self.base_type_name.replace("builtins.", "")
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_raw_literal_type(self)
+        return visitor.visit_raw_expression_type(self)
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
 
     def __hash__(self) -> int:
-        return hash((self.value, self.base_type_name))
+        return hash((self.literal_value, self.base_type_name))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, RawLiteralType):
-            return self.base_type_name == other.base_type_name and self.value == other.value
+        if isinstance(other, RawExpressionType):
+            return (self.base_type_name == other.base_type_name
+                    and self.literal_value == other.literal_value)
         else:
             return NotImplemented
 
@@ -1872,8 +1904,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 prefix = repr(t.fallback.type.fullname()) + ', '
         return 'TypedDict({}{})'.format(prefix, s)
 
-    def visit_raw_literal_type(self, t: RawLiteralType) -> str:
-        return repr(t.value)
+    def visit_raw_expression_type(self, t: RawExpressionType) -> str:
+        return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
         return 'Literal[{}]'.format(t.value_repr())

@@ -980,7 +980,7 @@ e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): x
 f = TypeVar('f', (int, str), int) # E: Type expected
 g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
 h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): x
-i = TypeVar('i', bound=1)         # E: Invalid type: try using Literal[1] instead?
+i = TypeVar('i', bound=1)         # E: TypeVar 'bound' must be a type
 [out]
 
 [case testMoreInvalidTypevarArguments]
@@ -1057,15 +1057,15 @@ def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
 
 [case testInvalidStrLiteralStrayBrace]
-def f(x: 'int['): pass # E: Invalid type: syntax error in type comment
+def f(x: 'int['): pass # E: Invalid type comment or annotation
 [out]
 
 [case testInvalidStrLiteralSpaces]
-def f(x: 'A B'): pass # E: Invalid type: syntax error in type comment
+def f(x: 'A B'): pass # E: Invalid type comment or annotation
 [out]
 
 [case testInvalidMultilineLiteralType]
-def f() -> "A\nB": pass  # E: Invalid type: syntax error in type comment
+def f() -> "A\nB": pass  # E: Invalid type comment or annotation
 [out]
 
 [case testInconsistentOverload]

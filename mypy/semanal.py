@@ -1283,7 +1283,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self, expr: Expression) -> Type:
+    def expr_to_analyzed_type(self, expr: Expression, report_invalid_types: bool = True) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
@@ -1295,7 +1295,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ)
+        return self.anal_type(typ, report_invalid_types=report_invalid_types)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
@@ -1686,6 +1686,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
                       allow_unbound_tvars: bool = False,
+                      report_invalid_types: bool = True,
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -1696,6 +1697,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             self.is_typeshed_stub_file,
                             allow_unbound_tvars=allow_unbound_tvars,
                             allow_tuple_literal=allow_tuple_literal,
+                            report_invalid_types=report_invalid_types,
                             allow_unnormalized=self.is_stub_file,
                             third_pass=third_pass)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
@@ -1706,10 +1708,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  report_invalid_types: bool = True,
                   third_pass: bool = False) -> Type:
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
                                allow_tuple_literal=allow_tuple_literal,
+                               report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
         typ = t.accept(a)
         self.add_type_alias_deps(a.aliases_used)
@@ -2394,7 +2398,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
                 try:
-                    upper_bound = self.expr_to_analyzed_type(param_value)
+                    # We want to use our custom error message below, so we suppress
+                    # the default error message for invalid types here.
+                    upper_bound = self.expr_to_analyzed_type(param_value,
+                                                             report_invalid_types=False)
+                    if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
+                        self.fail("TypeVar 'bound' must be a type", param_value)
+                        # Note: we do not return 'None' here -- we want to continue
+                        # using the AnyType as the upper bound.
                 except TypeTranslationError:
                     self.fail("TypeVar 'bound' must be a type", param_value)
                     return None

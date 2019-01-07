@@ -16,9 +16,8 @@ from mypy.types import (
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
-    LiteralType, RawLiteralType,
+    LiteralType, RawExpressionType,
 )
-from mypy.fastparse import TYPE_COMMENT_SYNTAX_ERROR
 
 from mypy.nodes import (
     TVAR, MODULE_REF, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
@@ -158,6 +157,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
+                 report_invalid_types: bool = True,
                  third_pass: bool = False) -> None:
         self.api = api
         self.lookup = api.lookup_qualified
@@ -175,6 +175,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_unnormalized = allow_unnormalized
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
+        # Should we report an error whenever we encounter a RawExpressionType outside
+        # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
+        # we want to report an error, but the caller may want to do more specialized
+        # error handling.
+        self.report_invalid_types = report_invalid_types
         self.plugin = plugin
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
@@ -489,7 +494,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ])
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
-    def visit_raw_literal_type(self, t: RawLiteralType) -> Type:
+    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals
         # in the earlier stages of semantic analysis, but those
         # "fake literals" should always be wrapped in an UnboundType
@@ -499,19 +504,28 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # make signatures like "foo(x: 20) -> None" legal, we can change
         # this method so it generates and returns an actual LiteralType
         # instead.
-        if t.base_type_name == 'builtins.int' or t.base_type_name == 'builtins.bool':
-            # The only time it makes sense to use an int or bool is inside of
-            # a literal type.
-            self.fail("Invalid type: try using Literal[{}] instead?".format(repr(t.value)), t)
-        elif t.base_type_name == 'builtins.float':
-            self.fail("Invalid type: float literals cannot be used as a type", t)
-        else:
-            # For other types like strings, it's unclear if the user meant
-            # to construct a literal type or just misspelled a regular type.
-            # So, we leave just a generic "syntax error" error.
-            self.fail('Invalid type: ' + TYPE_COMMENT_SYNTAX_ERROR, t)
 
-        return AnyType(TypeOfAny.from_error)
+        if self.report_invalid_types:
+            if t.base_type_name in ('builtins.int', 'builtins.bool'):
+                # The only time it makes sense to use an int or bool is inside of
+                # a literal type.
+                msg = "Invalid type: try using Literal[{}] instead?".format(repr(t.literal_value))
+            elif t.base_type_name in ('builtins.float', 'builtins.complex'):
+                # We special-case warnings for floats and complex numbers.
+                msg = "Invalid type: {} literals cannot be used as a type".format(t.simple_name())
+            else:
+                # And in all other cases, we default to a generic error message.
+                # Note: the reason why we use a generic error message for strings
+                # but not ints or bools is because whenever we see an out-of-place
+                # string, it's unclear if the user meant to construct a literal type
+                # or just misspelled a regular type. So we avoid guessing.
+                msg = 'Invalid type comment or annotation'
+
+            self.fail(msg, t)
+            if t.note is not None:
+                self.note_func(t.note, t)
+
+        return AnyType(TypeOfAny.from_error, line=t.line, column=t.column)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         return t
@@ -663,18 +677,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if arg.type_of_any != TypeOfAny.from_error:
                 self.fail('Parameter {} of Literal[...] cannot be of type "Any"'.format(idx), ctx)
             return None
-        elif isinstance(arg, RawLiteralType):
-            # A raw literal. Convert it directly into a literal.
-            if arg.base_type_name == 'builtins.float':
-                self.fail(
-                    'Parameter {} of Literal[...] cannot be of type "float"'.format(idx),
-                    ctx)
+        elif isinstance(arg, RawExpressionType):
+            # A raw literal. Convert it directly into a literal if we can.
+            if arg.literal_value is None:
+                name = arg.simple_name()
+                if name in ('float', 'complex'):
+                    msg = 'Parameter {} of Literal[...] cannot be of type "{}"'.format(idx, name)
+                else:
+                    msg = 'Invalid type: Literal[...] cannot contain arbitrary expressions'
+                self.fail(msg, ctx)
+                # Note: we deliberately ignore arg.note here: the extra info might normally be
+                # helpful, but it generally won't make sense in the context of a Literal[...].
                 return None
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
             fallback = self.named_type_with_normalized_str(arg.base_type_name)
             assert isinstance(fallback, Instance)
-            return [LiteralType(arg.value, fallback, line=arg.line, column=arg.column)]
+            return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
         elif isinstance(arg, (NoneTyp, LiteralType)):
             # Types that we can just add directly to the literal/potential union of literals.
             return [arg]

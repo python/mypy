@@ -5,12 +5,12 @@
 
 [case testLiteralInvalidString]
 from typing_extensions import Literal
-def f1(x: 'A[') -> None: pass  # E: Invalid type: syntax error in type comment
+def f1(x: 'A[') -> None: pass  # E: Invalid type comment or annotation
 def g1(x: Literal['A[']) -> None: pass
 reveal_type(f1)  # E: Revealed type is 'def (x: Any)'
 reveal_type(g1)  # E: Revealed type is 'def (x: Literal['A['])'
 
-def f2(x: 'A B') -> None: pass  # E: Invalid type: syntax error in type comment
+def f2(x: 'A B') -> None: pass  # E: Invalid type comment or annotation
 def g2(x: Literal['A B']) -> None: pass
 reveal_type(f2)  # E: Revealed type is 'def (x: Any)'
 reveal_type(g2)  # E: Revealed type is 'def (x: Literal['A B'])'
@@ -24,7 +24,7 @@ def f(x):  # E: syntax error in type comment
 
 [case testLiteralInvalidTypeComment2]
 from typing_extensions import Literal
-def f(x):  # E: Invalid type: syntax error in type comment
+def f(x):  # E: Invalid type comment or annotation
     # type: ("A[") -> None
     pass
 
@@ -41,7 +41,7 @@ reveal_type(g)  # E: Revealed type is 'def (x: Literal['A['])'
 from typing import Optional
 from typing_extensions import Literal
 
-def f(x):  # E: Invalid type: syntax error in type comment
+def f(x):  # E: Invalid type comment or annotation
     # type: ("A[") -> None
     pass
 
@@ -402,9 +402,9 @@ b_str_wrapper: "Literal['foo']"
 c_str_wrapper: "Literal[b'foo']"
 
 # In Python 3, forward references MUST be str, not bytes
-a_bytes_wrapper: b"Literal[u'foo']"  # E: Invalid type: syntax error in type comment
-b_bytes_wrapper: b"Literal['foo']"   # E: Invalid type: syntax error in type comment
-c_bytes_wrapper: b"Literal[b'foo']"  # E: Invalid type: syntax error in type comment
+a_bytes_wrapper: b"Literal[u'foo']"  # E: Invalid type comment or annotation
+b_bytes_wrapper: b"Literal['foo']"   # E: Invalid type comment or annotation
+c_bytes_wrapper: b"Literal[b'foo']"  # E: Invalid type comment or annotation
 
 reveal_type(a_unicode_wrapper)  # E: Revealed type is 'Literal['foo']'
 reveal_type(b_unicode_wrapper)  # E: Revealed type is 'Literal['foo']'
@@ -855,48 +855,43 @@ reveal_type(d)      # E: Revealed type is 'Any'
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testLiteralDisallowFloats]
+[case testLiteralDisallowFloatsAndComplex]
 from typing_extensions import Literal
 a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
 b1: 3.14             # E: Invalid type: float literals cannot be used as a type
+c1: Literal[3j]      # E: Parameter 1 of Literal[...] cannot be of type "complex"
+d1: 3j               # E: Invalid type: complex literals cannot be used as a type
 
 a2t = Literal[3.14]  # E: Parameter 1 of Literal[...] cannot be of type "float"
 b2t = 3.14
+c2t = Literal[3j]    # E: Parameter 1 of Literal[...] cannot be of type "complex"
+d2t = 3j
 
 a2: a2t
 reveal_type(a2)      # E: Revealed type is 'Any'
 b2: b2t              # E: Invalid type "__main__.b2t"
-
-[out]
-
-[case testLiteralDisallowComplexNumbers]
-from typing_extensions import Literal
-a: Literal[3j]       # E: invalid type comment or annotation
-b: Literal[3j + 2]   # E: invalid type comment or annotation
-c: 3j                # E: invalid type comment or annotation
-d: 3j + 2            # E: invalid type comment or annotation
-
-[case testLiteralDisallowComplexNumbersTypeAlias]
-from typing_extensions import Literal
-at = Literal[3j]        # E: Invalid type alias
-a: at                   # E: Invalid type "__main__.at"
+c2: c2t
+reveal_type(c2)      # E: Revealed type is 'Any'
+d2: d2t              # E: Invalid type "__main__.d2t"
 [builtins fixtures/complex.pyi]
 [out]
 
 [case testLiteralDisallowComplexExpressions]
 from typing_extensions import Literal
-a: Literal[3 + 4]               # E: invalid type comment or annotation
-b: Literal["  foo  ".trim()]    # E: invalid type comment or annotation
-c: Literal[+42]                 # E: invalid type comment or annotation
-d: Literal[~12]                 # E: invalid type comment or annotation
+def dummy() -> int: return 3
+a: Literal[3 + 4]               # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+b: Literal["  foo  ".trim()]    # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+c: Literal[+42]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+d: Literal[~12]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+e: Literal[dummy()]             # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 [out]
 
 [case testLiteralDisallowCollections]
 from typing_extensions import Literal
-a: Literal[{"a": 1, "b": 2}]    # E: invalid type comment or annotation
-b: literal[{1, 2, 3}]           # E: invalid type comment or annotation
-c: {"a": 1, "b": 2}             # E: invalid type comment or annotation
-d: {1, 2, 3}                    # E: invalid type comment or annotation
+a: Literal[{"a": 1, "b": 2}]    # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+b: Literal[{1, 2, 3}]           # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+c: {"a": 1, "b": 2}             # E: Invalid type comment or annotation
+d: {1, 2, 3}                    # E: Invalid type comment or annotation
 
 [case testLiteralDisallowCollections2]
 from typing_extensions import Literal
