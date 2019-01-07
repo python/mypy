@@ -4,6 +4,7 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
+import argparse
 import base64
 import io
 import json
@@ -278,7 +279,9 @@ class Server:
                     ['-i'] + list(args),
                     require_targets=True,
                     server_options=True,
-                    fscache=self.fscache)
+                    fscache=self.fscache,
+                    program='dmypy',
+                    header=argparse.SUPPRESS)
             # Signal that we need to restart if the options have changed
             if self.options_snapshot != options.snapshot():
                 return {'restart': 'configuration changed'}
