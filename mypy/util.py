@@ -10,10 +10,8 @@ from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
 
 MYPY = False
 if MYPY:
-    from typing import Type, ContextManager
+    from typing import Type
     from typing_extensions import Final
-else:
-    ContextManager = object
 
 T = TypeVar('T')
 
@@ -264,7 +262,7 @@ def hard_exit(status: int = 0) -> None:
 # The following is a backport of stream redirect utilities from Lib/contextlib.py
 
 
-class _RedirectStream(ContextManager):
+class _RedirectStream(contextlib.AbstractContextManager):
 
     _stream = None  # type: str
 
