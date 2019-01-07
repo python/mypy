@@ -1009,9 +1009,9 @@ equal to specifically the string ``"foo"``.
 
 This feature is primarily useful when annotating functions that behave
 differently based on the exact value the caller provides. For example,
-suppose we have a function ``fetch_data(...)`` that returns bytes if the
-first argument is True, and str if it's False. We can construct a precise
-type signature for this function using Literal and overloads:
+suppose we have a function ``fetch_data(...)`` that returns ``bytes`` if the
+first argument is ``True``, and ``str`` if it's ``False``. We can construct a
+precise type signature for this function using Literal and overloads:
 
 .. code-block:: python
 
@@ -1033,26 +1033,23 @@ type signature for this function using Literal and overloads:
     def fetch_data(raw: bool) -> Union[bytes, str]: ...
 
     def fetch_data(raw: bool) -> Union[bytes, str]:
-        # (Implementation is omitted)
-        pass
-
-    variable_1: Literal[True] = True
+        # Implementation is omitted
+        ...
 
     reveal_type(fetch_data(True))        # Revealed type is 'bytes'
     reveal_type(fetch_data(False))       # Revealed type is 'str'
-    reveal_type(fetch_data(variable_1))  # Revealed type is 'bytes'
 
     # Variables declared without annotations will continue to have an
     # inferred type of 'bool'.
 
-    variable_2 = True
-    reveal_type(fetch_data(variable_2))  # Revealed type is 'Union[bytes, str]'
+    variable = True
+    reveal_type(fetch_data(variable))    # Revealed type is 'Union[bytes, str]'
 
 Parameterizing Literals
 -----------------------
 
-Literal types may contain one or more literal bools, ints, strs, and byte
-strings. However, Literal types **cannot** contain arbitrary expressions:
+Literal types may contain one or more literal bools, ints, strs, and bytes.
+However, Literal types **cannot** contain arbitrary expressions:
 types like ``Literal[my_string.trim()]``, ``Literal[x > 3]``, or ``Literal[3j + 4]``
 are all illegal.
 
@@ -1074,7 +1071,7 @@ is legal:
     SecondaryColors = Literal["purple", "green", "orange"]
     AllowedColors = Literal[PrimaryColors, SecondaryColors]
 
-    def paint(color: AllowedColors) -> None: pass
+    def paint(color: AllowedColors) -> None: ...
 
     paint("red")        # Type checks!
     paint("turquoise")  # Does not type check
@@ -1106,7 +1103,7 @@ are **not** assumed to be Literals:
     reveal_type(b)          # Revealed type is 'int'
 
 If you find repeating the value of the variable in the type hint to be tedious,
-you can instead declare the variable to be :ref:`Final <final_attrs>`:
+you can instead change the variable to be :ref:`Final <final_attrs>`:
 
 .. code-block:: python
 
@@ -1119,7 +1116,7 @@ you can instead declare the variable to be :ref:`Final <final_attrs>`:
     reveal_type(c)          # Revealed type is 'int'
     expects_literal(c)      # ...but this type checks!
 
-If we do not provide an explicit type in the Final, the type of ``c`` becomes
+If you do not provide an explicit type in the Final, the type of ``c`` becomes
 context-sensitive: mypy will basically try "substituting" the original assigned
 value whenever it's used before performing type checking. So, mypy will type-check
 the above program almost as if it were written like so:
@@ -1136,8 +1133,8 @@ the above program almost as if it were written like so:
 This is why ``expects_literal(19)`` type-checks despite the fact that ``reveal_type(c)``
 reports ``int``.
 
-So while declaring a variable to be Final is not quite the same thing as adding
-an explicit Literal annotation, it often leads to the same effect in practice.
+So while changing a variable to be Final is not quite the same thing as adding
+an explicit ``Literal[...]`` annotation, it often leads to the same effect in practice.
 
 Limitations
 -----------
