@@ -262,7 +262,7 @@ def hard_exit(status: int = 0) -> None:
 # The following is a backport of stream redirect utilities from Lib/contextlib.py
 
 
-class _RedirectStream(contextlib.AbstractContextManager):
+class _RedirectStream:
 
     _stream = None  # type: str
 
