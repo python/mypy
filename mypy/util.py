@@ -1,10 +1,12 @@
 """Utility functions with no non-trivial dependencies."""
+import contextlib
 import os
 import pathlib
 import re
 import subprocess
 import sys
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
+from types import TracebackType
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
 
 MYPY = False
 if MYPY:
@@ -255,3 +257,50 @@ def hard_exit(status: int = 0) -> None:
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(status)
+
+
+# The following is a backport of stream redirect utilities from Lib/contextlib.py
+# We need this for 3.4 support. They can be removed in March 2019!
+
+
+class _RedirectStream:
+
+    _stream = None  # type: str
+
+    def __init__(self, new_target: TextIO) -> None:
+        self._new_target = new_target
+        # We use a list of old targets to make this CM re-entrant
+        self._old_targets = []  # type: List[TextIO]
+
+    def __enter__(self) -> TextIO:
+        self._old_targets.append(getattr(sys, self._stream))
+        setattr(sys, self._stream, self._new_target)
+        return self._new_target
+
+    def __exit__(self,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
+                 exc_val: Optional[BaseException] = None,
+                 exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        setattr(sys, self._stream, self._old_targets.pop())
+        return False
+
+
+class redirect_stdout(_RedirectStream):
+    """Context manager for temporarily redirecting stdout to another file.
+        # How to send help() to stderr
+        with redirect_stdout(sys.stderr):
+            help(dir)
+        # How to write help() to a file
+        with open('help.txt', 'w') as f:
+            with redirect_stdout(f):
+                help(pow)
+    """
+
+    _stream = "stdout"
+
+
+class redirect_stderr(_RedirectStream):
+    """Context manager for temporarily redirecting stderr to another file."""
+
+    _stream = "stderr"

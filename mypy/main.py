@@ -297,6 +297,8 @@ def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
+                    program: str = 'mypy',
+                    header: str = HEADER,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -304,8 +306,8 @@ def process_options(args: List[str],
     call fscache.set_package_root() to set the cache's package root.
     """
 
-    parser = argparse.ArgumentParser(prog='mypy',
-                                     usage=HEADER,
+    parser = argparse.ArgumentParser(prog=program,
+                                     usage=header,
                                      description=DESCRIPTION,
                                      epilog=FOOTER,
                                      fromfile_prefix_chars='@',
