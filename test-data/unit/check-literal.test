@@ -2007,7 +2007,7 @@ reveal_type(func1(identity(a)))  # E: Revealed type is 'Literal[19]'
 reveal_type(func1(identity(b)))  # E: Revealed type is 'builtins.int'
 
 --
--- Other misc interactions
+-- Interactions with meets
 --
 
 [case testLiteralMeets]
@@ -2209,4 +2209,398 @@ UnicodeDict = TypedDict(b'UnicodeDict', {'key': int})
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+--
+-- Interactions with 'Final'
+--
+
+[case testLiteralFinalInferredAsLiteral]
+from typing_extensions import Final, Literal
+
+var1: Final = 1
+var2: Final = "foo"
+var3: Final = True
+var4: Final = None
+
+class Foo:
+    classvar1: Final = 1
+    classvar2: Final = "foo"
+    classvar3: Final = True
+    classvar4: Final = None
+
+    def __init__(self) -> None:
+        self.instancevar1: Final = 1
+        self.instancevar2: Final = "foo"
+        self.instancevar3: Final = True
+        self.instancevar4: Final = None
+
+def force1(x: Literal[1]) -> None: pass
+def force2(x: Literal["foo"]) -> None: pass
+def force3(x: Literal[True]) -> None: pass
+def force4(x: Literal[None]) -> None: pass
+
+reveal_type(var1)                    # E: Revealed type is 'builtins.int'
+reveal_type(var2)                    # E: Revealed type is 'builtins.str'
+reveal_type(var3)                    # E: Revealed type is 'builtins.bool'
+reveal_type(var4)                    # E: Revealed type is 'None'
+force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
+force2(reveal_type(var2))            # E: Revealed type is 'Literal['foo']'
+force3(reveal_type(var3))            # E: Revealed type is 'Literal[True]'
+force4(reveal_type(var4))            # E: Revealed type is 'None'
+
+reveal_type(Foo.classvar1)           # E: Revealed type is 'builtins.int'
+reveal_type(Foo.classvar2)           # E: Revealed type is 'builtins.str'
+reveal_type(Foo.classvar3)           # E: Revealed type is 'builtins.bool'
+reveal_type(Foo.classvar4)           # E: Revealed type is 'None'
+force1(reveal_type(Foo.classvar1))   # E: Revealed type is 'Literal[1]'
+force2(reveal_type(Foo.classvar2))   # E: Revealed type is 'Literal['foo']'
+force3(reveal_type(Foo.classvar3))   # E: Revealed type is 'Literal[True]'
+force4(reveal_type(Foo.classvar4))   # E: Revealed type is 'None'
+
+f = Foo()
+reveal_type(f.instancevar1)          # E: Revealed type is 'builtins.int'
+reveal_type(f.instancevar2)          # E: Revealed type is 'builtins.str'
+reveal_type(f.instancevar3)          # E: Revealed type is 'builtins.bool'
+reveal_type(f.instancevar4)          # E: Revealed type is 'None'
+force1(reveal_type(f.instancevar1))  # E: Revealed type is 'Literal[1]'
+force2(reveal_type(f.instancevar2))  # E: Revealed type is 'Literal['foo']'
+force3(reveal_type(f.instancevar3))  # E: Revealed type is 'Literal[True]'
+force4(reveal_type(f.instancevar4))  # E: Revealed type is 'None'
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalDirectInstanceTypesSupercedeInferredLiteral]
+from typing_extensions import Final, Literal
+
+var1: Final[int] = 1
+var2: Final[str] = "foo"
+var3: Final[bool] = True
+var4: Final[None] = None
+
+class Foo:
+    classvar1: Final[int] = 1
+    classvar2: Final[str] = "foo"
+    classvar3: Final[bool] = True
+    classvar4: Final[None] = None
+
+    def __init__(self) -> None:
+        self.instancevar1: Final[int] = 1
+        self.instancevar2: Final[str] = "foo"
+        self.instancevar3: Final[bool] = True
+        self.instancevar4: Final[None] = None
+
+def force1(x: Literal[1]) -> None: pass
+def force2(x: Literal["foo"]) -> None: pass
+def force3(x: Literal[True]) -> None: pass
+def force4(x: Literal[None]) -> None: pass
+
+reveal_type(var1)            # E: Revealed type is 'builtins.int'
+reveal_type(var2)            # E: Revealed type is 'builtins.str'
+reveal_type(var3)            # E: Revealed type is 'builtins.bool'
+reveal_type(var4)            # E: Revealed type is 'None'
+force1(var1)                 # E: Argument 1 to "force1" has incompatible type "int"; expected "Literal[1]"
+force2(var2)                 # E: Argument 1 to "force2" has incompatible type "str"; expected "Literal['foo']"
+force3(var3)                 # E: Argument 1 to "force3" has incompatible type "bool"; expected "Literal[True]"
+force4(var4)
+
+reveal_type(Foo.classvar1)   # E: Revealed type is 'builtins.int'
+reveal_type(Foo.classvar2)   # E: Revealed type is 'builtins.str'
+reveal_type(Foo.classvar3)   # E: Revealed type is 'builtins.bool'
+reveal_type(Foo.classvar4)   # E: Revealed type is 'None'
+force1(Foo.classvar1)        # E: Argument 1 to "force1" has incompatible type "int"; expected "Literal[1]"
+force2(Foo.classvar2)        # E: Argument 1 to "force2" has incompatible type "str"; expected "Literal['foo']"
+force3(Foo.classvar3)        # E: Argument 1 to "force3" has incompatible type "bool"; expected "Literal[True]"
+force4(Foo.classvar4)
+
+f = Foo()
+reveal_type(f.instancevar1)  # E: Revealed type is 'builtins.int'
+reveal_type(f.instancevar2)  # E: Revealed type is 'builtins.str'
+reveal_type(f.instancevar3)  # E: Revealed type is 'builtins.bool'
+reveal_type(f.instancevar4)  # E: Revealed type is 'None'
+force1(f.instancevar1)       # E: Argument 1 to "force1" has incompatible type "int"; expected "Literal[1]"
+force2(f.instancevar2)       # E: Argument 1 to "force2" has incompatible type "str"; expected "Literal['foo']"
+force3(f.instancevar3)       # E: Argument 1 to "force3" has incompatible type "bool"; expected "Literal[True]"
+force4(f.instancevar4)
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalDirectLiteralTypesForceLiteral]
+from typing_extensions import Final, Literal
+
+var1: Final[Literal[1]] = 1
+var2: Final[Literal["foo"]] = "foo"
+var3: Final[Literal[True]] = True
+var4: Final[Literal[None]] = None
+
+class Foo:
+    classvar1: Final[Literal[1]] = 1
+    classvar2: Final[Literal["foo"]] = "foo"
+    classvar3: Final[Literal[True]] = True
+    classvar4: Final[Literal[None]] = None
+
+    def __init__(self) -> None:
+        self.instancevar1: Final[Literal[1]] = 1
+        self.instancevar2: Final[Literal["foo"]] = "foo"
+        self.instancevar3: Final[Literal[True]] = True
+        self.instancevar4: Final[Literal[None]] = None
+
+def force1(x: Literal[1]) -> None: pass
+def force2(x: Literal["foo"]) -> None: pass
+def force3(x: Literal[True]) -> None: pass
+def force4(x: Literal[None]) -> None: pass
+
+reveal_type(var1)                    # E: Revealed type is 'Literal[1]'
+reveal_type(var2)                    # E: Revealed type is 'Literal['foo']'
+reveal_type(var3)                    # E: Revealed type is 'Literal[True]'
+reveal_type(var4)                    # E: Revealed type is 'None'
+force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
+force2(reveal_type(var2))            # E: Revealed type is 'Literal['foo']'
+force3(reveal_type(var3))            # E: Revealed type is 'Literal[True]'
+force4(reveal_type(var4))            # E: Revealed type is 'None'
+
+reveal_type(Foo.classvar1)           # E: Revealed type is 'Literal[1]'
+reveal_type(Foo.classvar2)           # E: Revealed type is 'Literal['foo']'
+reveal_type(Foo.classvar3)           # E: Revealed type is 'Literal[True]'
+reveal_type(Foo.classvar4)           # E: Revealed type is 'None'
+force1(reveal_type(Foo.classvar1))   # E: Revealed type is 'Literal[1]'
+force2(reveal_type(Foo.classvar2))   # E: Revealed type is 'Literal['foo']'
+force3(reveal_type(Foo.classvar3))   # E: Revealed type is 'Literal[True]'
+force4(reveal_type(Foo.classvar4))   # E: Revealed type is 'None'
+
+f = Foo()
+reveal_type(f.instancevar1)          # E: Revealed type is 'Literal[1]'
+reveal_type(f.instancevar2)          # E: Revealed type is 'Literal['foo']'
+reveal_type(f.instancevar3)          # E: Revealed type is 'Literal[True]'
+reveal_type(f.instancevar4)          # E: Revealed type is 'None'
+force1(reveal_type(f.instancevar1))  # E: Revealed type is 'Literal[1]'
+force2(reveal_type(f.instancevar2))  # E: Revealed type is 'Literal['foo']'
+force3(reveal_type(f.instancevar3))  # E: Revealed type is 'Literal[True]'
+force4(reveal_type(f.instancevar4))  # E: Revealed type is 'None'
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalMismatchCausesError]
+from typing_extensions import Final, Literal
+
+var1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
+var2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
+var3: Final[Literal[False]] = True   # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
+
+class Foo:
+    classvar1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
+    classvar2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
+    classvar3: Final[Literal[False]] = True   # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
+
+    def __init__(self) -> None:
+        self.instancevar1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
+        self.instancevar2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
+        self.instancevar3: Final[Literal[False]] = True    # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
+
+# TODO: Fix the order in which these error messages are shown to be more consistent.
+var1 = 10                # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]") \
+                         # E: Cannot assign to final name "var1"
+
+Foo.classvar1 = 10       # E: Cannot assign to final attribute "classvar1" \
+                         # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
+
+Foo().instancevar1 = 10  # E: Cannot assign to final attribute "instancevar1" \
+                         # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
+[builtins fixtures/primitives.pyi]
+[out]
+
+[case testLiteralFinalGoesOnlyOneLevelDown]
+from typing import Tuple
+from typing_extensions import Final, Literal
+
+a: Final = 1
+b: Final = (1, 2)
+
+def force1(x: Literal[1]) -> None: pass
+def force2(x: Tuple[Literal[1], Literal[2]]) -> None: pass
+
+reveal_type(a)          # E: Revealed type is 'builtins.int'
+reveal_type(b)          # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+
+force1(reveal_type(a))  # E: Revealed type is 'Literal[1]'
+force2(reveal_type(b))  # E: Argument 1 to "force2" has incompatible type "Tuple[int, int]"; expected "Tuple[Literal[1], Literal[2]]" \
+                        # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testLiteralFinalCollectionPropagation]
+from typing import List
+from typing_extensions import Final, Literal
+
+a: Final = 1
+implicit = [a]
+explicit: List[Literal[1]] = [a]
+
+def force1(x: List[Literal[1]]) -> None: pass
+def force2(x: Literal[1]) -> None: pass
+
+reveal_type(implicit)            # E: Revealed type is 'builtins.list[builtins.int*]'
+force1(reveal_type(implicit))    # E: Argument 1 to "force1" has incompatible type "List[int]"; expected "List[Literal[1]]" \
+                                 # E: Revealed type is 'builtins.list[builtins.int*]'
+force2(reveal_type(implicit[0])) # E: Argument 1 to "force2" has incompatible type "int"; expected "Literal[1]" \
+                                 # E: Revealed type is 'builtins.int*'
+
+reveal_type(explicit)            # E: Revealed type is 'builtins.list[Literal[1]]'
+force1(reveal_type(explicit))    # E: Revealed type is 'builtins.list[Literal[1]]'
+force2(reveal_type(explicit[0])) # E: Revealed type is 'Literal[1]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testLiteralFinalStringTypesPython3]
+from typing_extensions import Final, Literal
+
+a: Final = u"foo"
+b: Final = "foo"
+c: Final = b"foo"
+
+def force_unicode(x: Literal[u"foo"]) -> None: pass
+def force_bytes(x: Literal[b"foo"]) -> None: pass
+
+force_unicode(reveal_type(a))  # E: Revealed type is 'Literal['foo']'
+force_unicode(reveal_type(b))  # E: Revealed type is 'Literal['foo']'
+force_unicode(reveal_type(c))  # E: Argument 1 to "force_unicode" has incompatible type "Literal[b'foo']"; expected "Literal['foo']" \
+                               # E: Revealed type is 'Literal[b'foo']'
+
+force_bytes(reveal_type(a))    # E: Argument 1 to "force_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']" \
+                               # E: Revealed type is 'Literal['foo']'
+force_bytes(reveal_type(b))    # E: Argument 1 to "force_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']" \
+                               # E: Revealed type is 'Literal['foo']'
+force_bytes(reveal_type(c))    # E: Revealed type is 'Literal[b'foo']'
+[out]
+
+[case testLiteralFinalStringTypesPython2UnicodeLiterals]
+# flags: --python-version 2.7
+from __future__ import unicode_literals
+from typing_extensions import Final, Literal
+
+a = u"foo"  # type: Final
+b = "foo"   # type: Final
+c = b"foo"  # type: Final
+
+def force_unicode(x):
+    # type: (Literal[u"foo"]) -> None
+    pass
+def force_bytes(x):
+    # type: (Literal[b"foo"]) -> None
+    pass
+
+force_unicode(reveal_type(a))  # E: Revealed type is 'Literal[u'foo']'
+force_unicode(reveal_type(b))  # E: Revealed type is 'Literal[u'foo']'
+force_unicode(reveal_type(c))  # E: Argument 1 to "force_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']" \
+                               # E: Revealed type is 'Literal['foo']'
+
+force_bytes(reveal_type(a))    # E: Argument 1 to "force_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']" \
+                               # E: Revealed type is 'Literal[u'foo']'
+force_bytes(reveal_type(b))    # E: Argument 1 to "force_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']" \
+                               # E: Revealed type is 'Literal[u'foo']'
+force_bytes(reveal_type(c))    # E: Revealed type is 'Literal['foo']'
+[out]
+
+[case testLiteralFinalStringTypesPython2]
+# flags: --python-version 2.7
+from typing_extensions import Final, Literal
+
+a = u"foo"  # type: Final
+b = "foo"   # type: Final
+c = b"foo"  # type: Final
+
+def force_unicode(x):
+    # type: (Literal[u"foo"]) -> None
+    pass
+def force_bytes(x):
+    # type: (Literal[b"foo"]) -> None
+    pass
+
+force_unicode(reveal_type(a))  # E: Revealed type is 'Literal[u'foo']'
+force_unicode(reveal_type(b))  # E: Argument 1 to "force_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']" \
+                               # E: Revealed type is 'Literal['foo']'
+force_unicode(reveal_type(c))  # E: Argument 1 to "force_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']" \
+                               # E: Revealed type is 'Literal['foo']'
+
+force_bytes(reveal_type(a))    # E: Argument 1 to "force_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']" \
+                               # E: Revealed type is 'Literal[u'foo']'
+force_bytes(reveal_type(b))    # E: Revealed type is 'Literal['foo']'
+force_bytes(reveal_type(c))    # E: Revealed type is 'Literal['foo']'
+[out]
+
+[case testLiteralFinalPropagatesThroughGenerics]
+from typing import TypeVar, Generic
+from typing_extensions import Final, Literal
+
+
+T = TypeVar('T')
+
+class WrapperClass(Generic[T]):
+    def __init__(self, data: T) -> None:
+        self.data = data
+
+def wrapper_func(x: T) -> T:
+    return x
+
+def force(x: Literal[99]) -> None: pass
+def over_int(x: WrapperClass[int]) -> None: pass
+def over_literal(x: WrapperClass[Literal[99]]) -> None: pass
+
+var1: Final = 99
+w1 = WrapperClass(var1)
+force(reveal_type(w1.data))                     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(WrapperClass(var1).data))     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(wrapper_func(var1)))          # E: Revealed type is 'Literal[99]'
+over_int(reveal_type(w1))                       # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_literal(reveal_type(w1))                   # E: Argument 1 to "over_literal" has incompatible type "WrapperClass[int]"; expected "WrapperClass[Literal[99]]" \
+                                                # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_int(reveal_type(WrapperClass(var1)))       # E: Revealed type is '__main__.WrapperClass[builtins.int]'
+over_literal(reveal_type(WrapperClass(var1)))   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+
+w2 = WrapperClass(99)
+force(reveal_type(w2.data))                     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(WrapperClass(99).data))       # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
+                                                # E: Revealed type is 'builtins.int*'
+force(reveal_type(wrapper_func(99)))            # E: Revealed type is 'Literal[99]'
+over_int(reveal_type(w2))                       # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_literal(reveal_type(w2))                   # E: Argument 1 to "over_literal" has incompatible type "WrapperClass[int]"; expected "WrapperClass[Literal[99]]" \
+                                                # E: Revealed type is '__main__.WrapperClass[builtins.int*]'
+over_int(reveal_type(WrapperClass(99)))         # E: Revealed type is '__main__.WrapperClass[builtins.int]'
+over_literal(reveal_type(WrapperClass(99)))     # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+
+var3: Literal[99] = 99
+w3 = WrapperClass(var3)
+force(reveal_type(w3.data))                     # E: Revealed type is 'Literal[99]'
+force(reveal_type(WrapperClass(var3).data))     # E: Revealed type is 'Literal[99]'
+force(reveal_type(wrapper_func(var3)))          # E: Revealed type is 'Literal[99]'
+over_int(reveal_type(w3))                       # E: Argument 1 to "over_int" has incompatible type "WrapperClass[Literal[99]]"; expected "WrapperClass[int]" \
+                                                # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+over_literal(reveal_type(w3))                   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+over_int(reveal_type(WrapperClass(var3)))       # E: Revealed type is '__main__.WrapperClass[builtins.int]'
+over_literal(reveal_type(WrapperClass(var3)))   # E: Revealed type is '__main__.WrapperClass[Literal[99]]'
+[out]
+
+[case testLiteralFinalUsedInLiteralType]
+from typing_extensions import Literal, Final
+a: Final[int] = 3
+b: Final = 3
+c: Final[Literal[3]] = 3
+d: Literal[3]
+
+# TODO: Consider if we want to support cases 'b' and 'd' or not.
+# Probably not: we want to mostly keep the 'types' and 'value' worlds distinct.
+# However, according to final semantics, we ought to be able to substitute "b" with
+# "3" wherever it's used and get the same behavior -- so maybe we do need to support
+# at least case "b" for consistency?
+a_wrap: Literal[4, a]  # E: Invalid type "__main__.a" \
+                       # E: Parameter 2 of Literal[...] is invalid
+b_wrap: Literal[4, b]  # E: Invalid type "__main__.b" \
+                       # E: Parameter 2 of Literal[...] is invalid
+c_wrap: Literal[4, c]  # E: Invalid type "__main__.c" \
+                       # E: Parameter 2 of Literal[...] is invalid
+d_wrap: Literal[4, d]  # E: Invalid type "__main__.d" \
+                       # E: Parameter 2 of Literal[...] is invalid
 [out]

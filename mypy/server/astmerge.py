@@ -342,6 +342,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.type = self.fixup(typ.type)
         for arg in typ.args:
             arg.accept(self)
+        if typ.final_value:
+            typ.final_value.accept(self)
 
     def visit_any(self, typ: AnyType) -> None:
         pass

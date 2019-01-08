@@ -1810,8 +1810,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
-                                         rvalue)
+                rvalue_type = self.expr_checker.accept(
+                    rvalue,
+                    in_final_declaration=inferred.is_final,
+                )
+                self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:

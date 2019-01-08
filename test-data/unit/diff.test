@@ -948,39 +948,72 @@ __main__.A.g
 [case testFinalFlagsTriggerVar]
 from typing import Final
 
+v: Final = 1
+w: Final = 1
 x: Final = 1
 y: Final[int] = 1
-same: Final = 0
+z: Final[int] = 1
+same1: Final = 1
+same2: Final[int] = 1
 class C:
+    v: Final = 1
+    w: Final = 1
     x: Final = 1
     y: Final[int] = 1
-    same: Final = 0
+    z: Final[int] = 1
+    same1: Final = 1
+    same2: Final[int] = 1
     def __init__(self) -> None:
-        self.z: Final = 1
-        self.t: Final[int] = 1
-        self.also_same: Final[int] = 0
+        self.vi: Final = 1
+        self.wi: Final = 1
+        self.xi: Final = 1
+        self.yi: Final[int] = 1
+        self.zi: Final[int] = 1
+        self.same1_instance: Final = 1
+        self.same2_instance: Final[int] = 1
 
 [file next.py]
 from typing import Final
 
-x = 1
+v: Final = 0
+w = 1
+x: Final[int] = 1
 y: int = 1
-same: Final = 0
+z: Final = 1
+same1: Final = 1
+same2: Final[int] = 0
 class C:
-    x = 1
+    v: Final = 0
+    w = 1
+    x: Final[int]  = 1
     y: int = 1
-    same: Final = 0
+    z: Final = 1
+    same1: Final = 1
+    same2: Final[int] = 0
     def __init__(self) -> None:
-        self.z = 1
-        self.t: int = 1
-        self.also_same: Final = 0
+        self.vi: Final = 0
+        self.wi = 1
+        self.xi: Final[int] = 1
+        self.yi: int = 1
+        self.zi: Final = 1
+        self.same1_instance: Final = 1
+        self.same2_instance: Final[int] = 0
 [out]
-__main__.C.t
+__main__.C.v
+__main__.C.vi
+__main__.C.w
+__main__.C.wi
 __main__.C.x
+__main__.C.xi
 __main__.C.y
+__main__.C.yi
 __main__.C.z
+__main__.C.zi
+__main__.v
+__main__.w
 __main__.x
 __main__.y
+__main__.z
 
 [case testFinalFlagsTriggerMethod]
 from typing import final

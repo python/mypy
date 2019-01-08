@@ -569,37 +569,77 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'final_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, column: int = -1, erased: bool = False) -> None:
+                 line: int = -1, column: int = -1, erased: bool = False,
+                 final_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = args
-        self.erased = erased  # True if result of type variable substitution
-        self.invalid = False  # True if recovered after incorrect number of type arguments error
         self.type_ref = None  # type: Optional[str]
+
+        # True if result of type variable substitution
+        self.erased = erased
+
+        # True if recovered after incorrect number of type arguments error
+        self.invalid = False
+
+        # This field keeps track of the underlying Literal[...] value if this instance
+        # was created via a Final declaration. For example, if we did `x: Final = 3`, x
+        # would have an instance with a `final_value` of `LiteralType(3, int_fallback)`.
+        #
+        # Or more broadly, this field lets this Instance "remember" its original declaration.
+        # We want this behavior because we want implicit Final declarations to act pretty
+        # much identically with constants: we should be able to replace any places where we
+        # use some Final variable with the original value and get the same type-checking
+        # behavior. For example, we want this program:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    var: Final = 3
+        #    expects_literal(var)
+        #
+        # ...to type-check in the exact same way as if we had written the program like this:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    expects_literal(3)
+        #
+        # In order to make this work (especially with literal types), we need var's type
+        # (an Instance) to remember the "original" value.
+        #
+        # This field is currently set only when we encounter an *implicit* final declaration
+        # like `x: Final = 3` where the RHS is some literal expression. This field remains 'None'
+        # when we do things like `x: Final[int] = 3` or `x: Final = foo + bar`.
+        #
+        # Currently most of mypy will ignore this field and will continue to treat this type like
+        # a regular Instance. We end up using this field only when we are explicitly within a
+        # Literal context.
+        self.final_value = final_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args)))
+        return hash((self.type, tuple(self.args), self.final_value))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
             return NotImplemented
-        return self.type == other.type and self.args == other.args
+        return (self.type == other.type
+                and self.args == other.args
+                and self.final_value == other.final_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
-        if not self.args:
+        if not self.args and not self.final_value:
             return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         data['type_ref'] = type_ref
         data['args'] = [arg.serialize() for arg in self.args]
+        if self.final_value is not None:
+            data['final_value'] = self.final_value.serialize()
         return data
 
     @classmethod
@@ -616,10 +656,21 @@ class Instance(Type):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
+        if 'final_value' in data:
+            inst.final_value = LiteralType.deserialize(data['final_value'])
         return inst
 
-    def copy_modified(self, *, args: List[Type]) -> 'Instance':
-        return Instance(self.type, args, self.line, self.column, self.erased)
+    def copy_modified(self, *,
+                      args: Bogus[List[Type]] = _dummy,
+                      final_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
+        return Instance(
+            self.type,
+            args if args is not _dummy else self.args,
+            self.line,
+            self.column,
+            self.erased,
+            final_value if final_value is not _dummy else self.final_value,
+        )
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
