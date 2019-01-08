@@ -38,7 +38,8 @@ from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
 from mypy.util import DecodeError, decode_python_encoding, is_sub_path
-from mypy.report import Reports
+if MYPY:
+    from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
 from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
@@ -50,7 +51,6 @@ from mypy.types import Type
 from mypy.version import __version__
 from mypy.plugin import Plugin, ChainedPlugin, plugin_types
 from mypy.plugins.default import DefaultPlugin
-from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
@@ -182,7 +182,12 @@ def _build(sources: List[BuildSource],
 
     search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
 
-    reports = Reports(data_dir, options.report_dirs)
+    reports = None
+    if options.report_dirs:
+        # Import lazily to avoid slowing down startup.
+        from mypy.report import Reports  # noqa
+        reports = Reports(data_dir, options.report_dirs)
+
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
     plugin, snapshot = load_plugins(options, errors)
@@ -214,8 +219,10 @@ def _build(sources: List[BuildSource],
                     (time.time() - manager.start_time,
                      len(manager.modules),
                      manager.errors.num_messages()))
-        # Finish the HTML or XML reports even if CompileError was raised.
-        reports.finish()
+        manager.dump_stats()
+        if reports is not None:
+            # Finish the HTML or XML reports even if CompileError was raised.
+            reports.finish()
 
 
 def default_data_dir() -> str:
@@ -473,7 +480,7 @@ class BuildManager(BuildManagerBase):
                  search_paths: SearchPaths,
                  ignore_prefix: str,
                  source_set: BuildSourceSet,
-                 reports: Reports,
+                 reports: Optional['Reports'],
                  options: Options,
                  version_id: str,
                  plugin: Plugin,
@@ -504,10 +511,11 @@ class BuildManager(BuildManagerBase):
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.flush_errors = flush_errors
+        has_reporters = reports is not None and reports.reporters
         self.cache_enabled = (options.incremental
                               and (not options.fine_grained_incremental
                                    or options.use_fine_grained_cache)
-                              and not reports.reporters)
+                              and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
         if options.sqlite_cache:
@@ -527,6 +535,11 @@ class BuildManager(BuildManagerBase):
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
+
+    def dump_stats(self) -> None:
+        self.log("Stats:")
+        for key, value in self.stats_summary().items():
+            self.log("{:24}{}".format(key + ":", value))
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -654,7 +667,7 @@ class BuildManager(BuildManagerBase):
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return self.find_module_cache.find_module(id) is not None
+        return find_module_simple(id, self) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -662,11 +675,13 @@ class BuildManager(BuildManagerBase):
         Raise CompileError if there is a parse error.
         """
         num_errs = self.errors.num_messages()
+        t0 = time.time()
         tree = parse(source, path, id, self.errors, options=self.options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
-                       stubs_parsed=int(tree.is_stub))
+                       stubs_parsed=int(tree.is_stub),
+                       parse_time=time.time() - t0)
 
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
@@ -679,7 +694,7 @@ class BuildManager(BuildManagerBase):
                     file: MypyFile,
                     type_map: Dict[Expression, Type],
                     options: Options) -> None:
-        if self.source_set.is_source(file):
+        if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
 
     def stats_summary(self) -> Mapping[str, object]:
@@ -802,6 +817,9 @@ def _load_json_file(file: str, manager: BuildManager,
 
 def _cache_dir_prefix(manager: BuildManager) -> str:
     """Get current cache directory (or file if id is given)."""
+    if manager.options.bazel:
+        # This is needed so the cache map works.
+        return os.curdir
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
@@ -870,6 +888,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # TODO: May need to take more build options into account
     meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
+    t0 = time.time()
     meta = _load_json_file(meta_json, manager,
                            log_sucess='Meta {} '.format(id),
                            log_error='Could not load cache for {}: '.format(id))
@@ -880,6 +899,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                     .format(id, repr(meta)))
         return None
     m = cache_meta_from_dict(meta, data_json, deps_json)
+    manager.add_stats(load_meta_time=time.time() - t0)
+
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
             m.mtime is None or m.size is None or
@@ -1842,6 +1863,7 @@ class State:
             # TODO: Not a reliable test, as we could have a package named typeshed.
             # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
             return
+        from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
         self.fine_grained_deps = get_dependencies(target=self.tree,
                                                   type_map=self.type_map(),
                                                   python_version=self.options.python_version,
@@ -1983,7 +2005,7 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = manager.find_module_cache.find_module(file_id)
+    path = find_module_simple(file_id, manager)
     if path:
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
@@ -2062,7 +2084,11 @@ def exist_added_packages(suppressed: List[str],
 
 def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
     """Find a filesystem path for module `id` or `None` if not found."""
-    return manager.find_module_cache.find_module(id)
+    t0 = time.time()
+    x = manager.find_module_cache.find_module(id)
+    manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
+
+    return x
 
 
 def in_partial_package(id: str, manager: BuildManager) -> bool:
@@ -2530,8 +2556,10 @@ def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> Non
     # If we are running in fine-grained incremental mode with caching,
     # we don't actually have much to do: just load the fine-grained
     # deps.
+    t0 = time.time()
     for id, state in graph.items():
         state.load_fine_grained_deps()
+    manager.add_stats(load_fg_deps_time=time.time() - t0)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
@@ -2587,12 +2615,16 @@ def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManage
     This can be used to process an SCC of modules
     This involves loading the tree from JSON and then doing various cleanups.
     """
+    t0 = time.time()
     for id in modules:
         graph[id].load_tree()
+    t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
     for id in modules:
         graph[id].patch_dependency_parents()
+    t2 = time.time()
+    manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:

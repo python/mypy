@@ -68,7 +68,12 @@ class IPCBase:
         """Write bytes to an IPC connection."""
         if sys.platform == 'win32':
             try:
-                _winapi.WriteFile(self.connection, data)
+                # Only send data if there is data to send, to avoid it
+                # being confused with the empty message sent to terminate
+                # the connection. (We will still send the end-of-message
+                # empty message below, which will cause read to return.)
+                if data:
+                    _winapi.WriteFile(self.connection, data)
                 # this empty write is to copy the behavior of socket.sendall,
                 # which also sends an empty message to signify it is done writing
                 _winapi.WriteFile(self.connection, b'')
@@ -89,10 +94,10 @@ class IPCBase:
 class IPCClient(IPCBase):
     """The client side of an IPC connection."""
 
-    def __init__(self, name: str, timeout: Optional[int]) -> None:
+    def __init__(self, name: str, timeout: Optional[float]) -> None:
         super().__init__(name)
         if sys.platform == 'win32':
-            timeout = timeout or 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
+            timeout = int(timeout * 1000) if timeout else 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
             except FileNotFoundError:
@@ -144,7 +149,10 @@ class IPCServer(IPCBase):
 
     def __init__(self, name: str, timeout: Optional[int] = None) -> None:
         if sys.platform == 'win32':
-            name = r'\\.\pipe\{}-{}.pipe'.format(name, base64.b64encode(os.urandom(6)))
+            name = r'\\.\pipe\{}-{}.pipe'.format(
+                name, base64.urlsafe_b64encode(os.urandom(6)).decode())
+        else:
+            name = '{}.sock'.format(name)
         super().__init__(name)
         if sys.platform == 'win32':
             self.connection = _winapi.CreateNamedPipe(self.name,
@@ -181,6 +189,8 @@ class IPCServer(IPCBase):
             except WindowsError as e:
                 if e.winerror == _winapi.ERROR_PIPE_CONNECTED:
                     pass  # The client already exists, which is fine.
+                else:
+                    raise
         else:
             try:
                 self.connection, _ = self.sock.accept()
@@ -194,10 +204,13 @@ class IPCServer(IPCBase):
                  exc_tb: Optional[TracebackType] = None,
                  ) -> bool:
         if sys.platform == 'win32':
-            # Wait for the client to finish reading the last write before disconnecting
-            if not FlushFileBuffers(self.connection):
-                raise IPCException("Failed to flush NamedPipe buffer, maybe the client hung up?")
-            DisconnectNamedPipe(self.connection)
+            try:
+                # Wait for the client to finish reading the last write before disconnecting
+                if not FlushFileBuffers(self.connection):
+                    raise IPCException("Failed to flush NamedPipe buffer,"
+                                       "maybe the client hung up?")
+            finally:
+                DisconnectNamedPipe(self.connection)
         else:
             self.close()
         return False

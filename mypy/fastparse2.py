@@ -45,7 +45,7 @@ from mypy.types import (
 )
 from mypy import messages
 from mypy.errors import Errors
-from mypy.fastparse import TypeConverter, parse_type_comment
+from mypy.fastparse import TypeConverter, parse_type_comment, bytes_to_human_readable_repr
 from mypy.options import Options
 
 try:
@@ -113,7 +113,6 @@ def parse(source: Union[str, bytes],
         assert options.python_version[0] < 3 and not is_stub_file
         ast = ast27.parse(source, fnam, 'exec')
         tree = ASTConverter(options=options,
-                            is_stub=is_stub_file,
                             errors=errors,
                             ).visit(ast)
         assert isinstance(tree, MypyFile)
@@ -141,14 +140,31 @@ def is_no_type_check_decorator(expr: ast27.expr) -> bool:
 class ASTConverter:
     def __init__(self,
                  options: Options,
-                 is_stub: bool,
                  errors: Errors) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
         self.options = options
-        self.is_stub = is_stub
         self.errors = errors
+
+        # Indicates whether this file is being parsed with unicode_literals enabled.
+        # Note: typed_ast already naturally takes unicode_literals into account when
+        # parsing so we don't have to worry when analyzing strings within this class.
+        #
+        # The only place where we use this field is when we call fastparse's TypeConverter
+        # and any related methods. That class accepts a Python 3 AST instead of a Python 2
+        # AST: as a result, it don't special-case the `unicode_literals` import and won't know
+        # exactly whether to parse some string as bytes or unicode.
+        #
+        # This distinction is relevant mostly when handling Literal types -- Literal[u"foo"]
+        # is not the same type as Literal[b"foo"], and Literal["foo"] could mean either the
+        # former or the latter based on context.
+        #
+        # This field is set in the 'visit_ImportFrom' method: it's ok to delay computing it
+        # because any `from __future__ import blah` import must be located at the top of the
+        # file, with the exception of the docstring. This means we're guaranteed to correctly
+        # set this field before we encounter any type hints.
+        self.unicode_literals = False
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
@@ -306,7 +322,8 @@ class ASTConverter:
     #              arg? kwarg, expr* defaults)
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
         lineno = n.lineno
-        converter = TypeConverter(self.errors, line=lineno)
+        converter = TypeConverter(self.errors, line=lineno,
+                                  assume_str_is_unicode=self.unicode_literals)
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
         arg_kinds = [arg.kind for arg in args]
@@ -413,7 +430,8 @@ class ASTConverter:
                        line: int,
                        ) -> Tuple[List[Argument], List[Statement]]:
         type_comments = n.type_comments  # type: Sequence[Optional[str]]
-        converter = TypeConverter(self.errors, line=line)
+        converter = TypeConverter(self.errors, line=line,
+                                  assume_str_is_unicode=self.unicode_literals)
         decompose_stmts = []  # type: List[Statement]
 
         n_args = n.args
@@ -532,7 +550,8 @@ class ASTConverter:
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
         typ = None
         if n.type_comment:
-            typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
+            typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+                                     assume_str_is_unicode=self.unicode_literals)
 
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
@@ -549,7 +568,8 @@ class ASTConverter:
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast27.For) -> ForStmt:
         if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
+                                             assume_str_is_unicode=self.unicode_literals)
         else:
             target_type = None
         stmt = ForStmt(self.visit(n.target),
@@ -576,7 +596,8 @@ class ASTConverter:
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast27.With) -> WithStmt:
         if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
+                                             assume_str_is_unicode=self.unicode_literals)
         else:
             target_type = None
         stmt = WithStmt([self.visit(n.context_expr)],
@@ -680,9 +701,12 @@ class ASTConverter:
             mod = n.module if n.module is not None else ''
             i = ImportAll(mod, n.level)  # type: ImportBase
         else:
-            i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
-                           n.level,
-                           [(a.name, a.asname) for a in n.names])
+            module_id = self.translate_module_id(n.module) if n.module is not None else ''
+            i = ImportFrom(module_id, n.level, [(a.name, a.asname) for a in n.names])
+
+            # See comments in the constructor for more information about this field.
+            if module_id == '__future__' and any(a.name == 'unicode_literals' for a in n.names):
+                self.unicode_literals = True
         self.imports.append(i)
         return self.set_line(i, n)
 
@@ -900,18 +924,17 @@ class ASTConverter:
 
     # Str(string s)
     def visit_Str(self, n: ast27.Str) -> Expression:
-        # Hack: assume all string literals in Python 2 stubs are normal
-        # strs (i.e. not unicode).  All stubs are parsed with the Python 3
-        # parser, which causes unprefixed string literals to be interpreted
-        # as unicode instead of bytes.  This hack is generally okay,
-        # because mypy considers str literals to be compatible with
-        # unicode.
+        # Note: typed_ast.ast27 will handled unicode_literals for us. If
+        # n.s is of type 'bytes', we know unicode_literals was not enabled;
+        # otherwise we know it was.
+        #
+        # Note that the following code is NOT run when parsing Python 2.7 stubs:
+        # we always parse stub files (no matter what version) using the Python 3
+        # parser. This is also why string literals in Python 2.7 stubs are assumed
+        # to be unicode.
         if isinstance(n.s, bytes):
-            value = n.s
-            # The following line is a bit hacky, but is the best way to maintain
-            # compatibility with how mypy currently parses the contents of bytes literals.
-            contents = str(value)[2:-1]
-            e = StrExpr(contents)  # type: Union[StrExpr, UnicodeExpr]
+            contents = bytes_to_human_readable_repr(n.s)
+            e = StrExpr(contents, from_python_3=False)  # type: Union[StrExpr, UnicodeExpr]
             return self.set_line(e, n)
         else:
             e = UnicodeExpr(n.s)

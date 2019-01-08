@@ -332,6 +332,7 @@ class FineGrainedBuildManager:
         # its tree loaded so that we can snapshot it for comparison.
         ensure_trees_loaded(manager, graph, [module])
 
+        t0 = time.time()
         # Record symbol table snapshot of old version the changed module.
         old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
         if module in manager.modules:
@@ -350,6 +351,7 @@ class FineGrainedBuildManager:
         module, path, remaining, tree = result
 
         # TODO: What to do with stale dependencies?
+        t1 = time.time()
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
         if is_verbose(self.manager):
             filtered = [trigger for trigger in triggered
@@ -361,6 +363,10 @@ class FineGrainedBuildManager:
             manager, graph, self.deps, triggered,
             {module},
             targets_with_errors=set())
+        t2 = time.time()
+        manager.add_stats(
+            update_isolated_time=t1 - t0,
+            propagate_time=t2 - t1)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors.update(manager.errors.targets())
@@ -528,6 +534,7 @@ def update_module_isolated(module: str,
     # Process the changed file.
     state.parse_file()
     assert state.tree is not None, "file must be at least parsed"
+    t0 = time.time()
     # TODO: state.fix_suppressed_dependencies()?
     if module == 'typing':
         # We need to manually add typing aliases to builtins, like we
@@ -548,12 +555,21 @@ def update_module_isolated(module: str,
     new_modules_dict = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
     replace_modules_with_new_variants(manager, graph, {orig_module: orig_tree}, new_modules_dict)
 
+    t1 = time.time()
     # Perform type checking.
     state.type_checker().reset()
     state.type_check_first_pass()
     state.type_check_second_pass()
+    t2 = time.time()
     state.compute_fine_grained_deps()
+    t3 = time.time()
     state.finish_passes()
+    t4 = time.time()
+    manager.add_stats(
+        semanal_time=t1 - t0,
+        typecheck_time=t2 - t1,
+        deps_time=t3 - t2,
+        finish_passes_time=t4 - t3)
 
     graph[module] = state
 

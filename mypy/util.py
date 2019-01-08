@@ -1,12 +1,12 @@
 """Utility functions with no non-trivial dependencies."""
-import inspect
+import contextlib
 import os
 import pathlib
 import re
 import subprocess
 import sys
-from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
+from types import TracebackType
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
 
 MYPY = False
 if MYPY:
@@ -119,37 +119,38 @@ def try_find_python2_interpreter() -> Optional[str]:
 
 
 PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+<testsuite errors="0" failures="0" name="{name}" skips="0" tests="1" time="{time:.3f}">
+  <testcase classname="{name}" file="{name}" line="1" name="{name}" time="{time:.3f}">
   </testcase>
 </testsuite>
 """  # type: Final
 
 FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+<testsuite errors="0" failures="1" name="{name}" skips="0" tests="1" time="{time:.3f}">
+  <testcase classname="{name}" file="{name}" line="1" name="{name}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
 """  # type: Final
 
 ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+<testsuite errors="1" failures="0" name="{name}" skips="0" tests="1" time="{time:.3f}">
+  <testcase classname="{name}" file="{name}" line="1" name="{name}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
 """  # type: Final
 
 
-def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) -> None:
-    """XXX"""
+def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
+                    name: str = "mypy") -> None:
+    from xml.sax.saxutils import escape
     if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt)
+        xml = PASS_TEMPLATE.format(time=dt, name=name)
     elif not serious:
-        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt, name=name)
     else:
-        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt, name=name)
 
     # checks for a directory structure in path and creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))
@@ -205,6 +206,7 @@ fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
+    import inspect  # Lazy import for minor startup speed win
     # Maintain a cache of type -> attributes defined by descriptors in the class
     # (that is, attributes from __slots__ and C extension classes)
     if cls not in fields_cache:
@@ -256,3 +258,50 @@ def hard_exit(status: int = 0) -> None:
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(status)
+
+
+# The following is a backport of stream redirect utilities from Lib/contextlib.py
+# We need this for 3.4 support. They can be removed in March 2019!
+
+
+class _RedirectStream:
+
+    _stream = None  # type: str
+
+    def __init__(self, new_target: TextIO) -> None:
+        self._new_target = new_target
+        # We use a list of old targets to make this CM re-entrant
+        self._old_targets = []  # type: List[TextIO]
+
+    def __enter__(self) -> TextIO:
+        self._old_targets.append(getattr(sys, self._stream))
+        setattr(sys, self._stream, self._new_target)
+        return self._new_target
+
+    def __exit__(self,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
+                 exc_val: Optional[BaseException] = None,
+                 exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        setattr(sys, self._stream, self._old_targets.pop())
+        return False
+
+
+class redirect_stdout(_RedirectStream):
+    """Context manager for temporarily redirecting stdout to another file.
+        # How to send help() to stderr
+        with redirect_stdout(sys.stderr):
+            help(dir)
+        # How to write help() to a file
+        with open('help.txt', 'w') as f:
+            with redirect_stdout(f):
+                help(pow)
+    """
+
+    _stream = "stdout"
+
+
+class redirect_stderr(_RedirectStream):
+    """Context manager for temporarily redirecting stderr to another file."""
+
+    _stream = "stderr"

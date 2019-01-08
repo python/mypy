@@ -284,7 +284,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_instance(self, typ: Instance) -> SnapshotItem:
         return ('Instance',
                 typ.type.fullname(),
-                snapshot_types(typ.args))
+                snapshot_types(typ.args),
+                None if typ.final_value is None else snapshot_type(typ.final_value))
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
         return ('TypeVar',

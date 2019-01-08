@@ -122,3 +122,11 @@ Daemon stopped
 import bar
 [file bar.py]
 pass
+
+[case testDaemonRunNoTarget]
+$ dmypy run -- --follow-imports=error
+Daemon started
+mypy-daemon: error: Missing target module, package, files, or command.
+== Return code: 2
+$ dmypy stop
+Daemon stopped

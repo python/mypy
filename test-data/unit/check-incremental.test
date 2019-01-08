@@ -4890,3 +4890,17 @@ python_version=3.6
 [out]
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testLiteralIncrementalTurningIntoLiteral]
+import mod
+reveal_type(mod.a)
+[file mod.py]
+from typing_extensions import Literal
+a = 1
+[file mod.py.2]
+from typing_extensions import Literal
+a: Literal[2] = 2
+[out]
+main:2: error: Revealed type is 'builtins.int'
+[out2]
+main:2: error: Revealed type is 'Literal[2]'
