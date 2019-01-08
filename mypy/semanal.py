@@ -1915,7 +1915,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if isinstance(rvalue, FloatExpr):
             return self.named_type_or_none('builtins.float')
 
-        value = None  # type: LiteralValue
+        value = None  # type: Optional[LiteralValue]
         type_name = None  # type: Optional[str]
         if isinstance(rvalue, IntExpr):
             value, type_name = rvalue.value, 'builtins.int'
@@ -1927,6 +1927,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             value, type_name = rvalue.value, 'builtins.unicode'
 
         if type_name is not None:
+            assert value is not None
             typ = self.named_type_or_none(type_name)
             if typ and is_final:
                 return typ.copy_modified(final_value=LiteralType(
