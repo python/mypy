@@ -928,7 +928,11 @@ class ASTConverter:
 
     # Num(object n) -- a number as a PyObject.
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        val = n.n
+        # The n field has the type complex, but complex isn't *really*
+        # a parent of int and float, and this causes isinstance below
+        # to think that the complex branch is always picked. Avoid
+        # this by throwing away the type.
+        val = n.n  # type: object
         if isinstance(val, int):
             e = IntExpr(val)  # type: Union[IntExpr, FloatExpr, ComplexExpr]
         elif isinstance(val, float):
