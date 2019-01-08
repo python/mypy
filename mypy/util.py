@@ -10,7 +10,7 @@ from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
 
 MYPY = False
 if MYPY:
-    from typing import Type
+    from typing import Type, ClassVar
     from typing_extensions import Final
 
 T = TypeVar('T')
@@ -266,7 +266,7 @@ def hard_exit(status: int = 0) -> None:
 
 class _RedirectStream:
 
-    _stream = None  # type: str
+    _stream = None  # type: ClassVar[str]
 
     def __init__(self, new_target: TextIO) -> None:
         self._new_target = new_target
