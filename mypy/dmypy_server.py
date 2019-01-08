@@ -190,6 +190,13 @@ class Server:
         options.local_partial_types = True
         self.status_file = status_file
 
+    def _response_metadata(self) -> Dict[str, str]:
+        py_version = '{}.{}'.format(self.options.python_version[0], self.options.python_version[1])
+        return {
+            'platform': self.options.platform,
+            'python_version': py_version,
+        }
+
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
@@ -216,9 +223,11 @@ class Server:
                                 # If we are crashing, report the crash to the client
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                resp.update(self._response_metadata())
                                 server.write(json.dumps(resp).encode('utf8'))
                                 raise
                     try:
+                        resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode('utf8'))
                     except OSError:
                         pass  # Maybe the client hung up
