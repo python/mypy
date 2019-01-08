@@ -123,6 +123,14 @@ import bar
 [file bar.py]
 pass
 
+[case testDaemonTimeout]
+$ dmypy start --timeout 1 -- --follow-imports=error
+Daemon started
+$ {python} -c "import time;time.sleep(1)"
+$ dmypy status
+No status file found
+== Return code: 2
+
 [case testDaemonRunNoTarget]
 $ dmypy run -- --follow-imports=error
 Daemon started
