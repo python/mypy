@@ -29,7 +29,7 @@ from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
 from mypy.options import Options
 from mypy.typestate import reset_global_state
-from mypy.util import redirect_stderr
+from mypy.util import redirect_stderr, redirect_stdout
 from mypy.version import __version__
 
 
@@ -274,14 +274,16 @@ class Server:
             # Process options can exit on improper arguments, so we need to catch that and
             # capture stderr so the client can report it
             stderr = io.StringIO()
+            stdout = io.StringIO()
             with redirect_stderr(stderr):
-                sources, options = mypy.main.process_options(
-                    ['-i'] + list(args),
-                    require_targets=True,
-                    server_options=True,
-                    fscache=self.fscache,
-                    program='dmypy',
-                    header=argparse.SUPPRESS)
+                with redirect_stdout(stdout):
+                    sources, options = mypy.main.process_options(
+                        ['-i'] + list(args),
+                        require_targets=True,
+                        server_options=True,
+                        fscache=self.fscache,
+                        program='mypy-daemon',
+                        header=argparse.SUPPRESS)
             # Signal that we need to restart if the options have changed
             if self.options_snapshot != options.snapshot():
                 return {'restart': 'configuration changed'}
@@ -296,7 +298,7 @@ class Server:
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         except SystemExit as e:
-            return {'out': '', 'err': stderr.getvalue(), 'status': e.code}
+            return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
         return self.check(sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:

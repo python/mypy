@@ -1,7 +1,5 @@
 """Client for mypy daemon mode.
 
-Experimental!
-
 This manages a daemon process which keeps useful state in memory
 rather than having to read it back from disk on each run.
 """

@@ -260,6 +260,7 @@ def hard_exit(status: int = 0) -> None:
 
 
 # The following is a backport of stream redirect utilities from Lib/contextlib.py
+# We need this for 3.4 support. They can be removed in March 2019!
 
 
 class _RedirectStream:
