@@ -1,12 +1,12 @@
 """Server for mypy daemon mode.
 
-Only supports UNIX-like systems.
-
 This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
+import argparse
 import base64
+import io
 import json
 import os
 import pickle
@@ -29,6 +29,7 @@ from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
 from mypy.options import Options
 from mypy.typestate import reset_global_state
+from mypy.util import redirect_stderr, redirect_stdout
 from mypy.version import __version__
 
 
@@ -270,11 +271,19 @@ class Server:
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
-            sources, options = mypy.main.process_options(
-                ['-i'] + list(args),
-                require_targets=True,
-                server_options=True,
-                fscache=self.fscache)
+            # Process options can exit on improper arguments, so we need to catch that and
+            # capture stderr so the client can report it
+            stderr = io.StringIO()
+            stdout = io.StringIO()
+            with redirect_stderr(stderr):
+                with redirect_stdout(stdout):
+                    sources, options = mypy.main.process_options(
+                        ['-i'] + list(args),
+                        require_targets=True,
+                        server_options=True,
+                        fscache=self.fscache,
+                        program='mypy-daemon',
+                        header=argparse.SUPPRESS)
             # Signal that we need to restart if the options have changed
             if self.options_snapshot != options.snapshot():
                 return {'restart': 'configuration changed'}
@@ -288,6 +297,8 @@ class Server:
                     return {'restart': 'plugins changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
+        except SystemExit as e:
+            return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
         return self.check(sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:

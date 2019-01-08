@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
-    CallableType, Overloaded, Instance, Type, AnyType,
+    CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
@@ -1283,7 +1283,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self, expr: Expression) -> Type:
+    def expr_to_analyzed_type(self, expr: Expression, report_invalid_types: bool = True) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
@@ -1295,7 +1295,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ)
+        return self.anal_type(typ, report_invalid_types=report_invalid_types)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
@@ -1686,6 +1686,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
                       allow_unbound_tvars: bool = False,
+                      report_invalid_types: bool = True,
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -1696,6 +1697,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             self.is_typeshed_stub_file,
                             allow_unbound_tvars=allow_unbound_tvars,
                             allow_tuple_literal=allow_tuple_literal,
+                            report_invalid_types=report_invalid_types,
                             allow_unnormalized=self.is_stub_file,
                             third_pass=third_pass)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
@@ -1706,10 +1708,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  report_invalid_types: bool = True,
                   third_pass: bool = False) -> Type:
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
                                allow_tuple_literal=allow_tuple_literal,
+                               report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
         typ = t.accept(a)
         self.add_type_alias_deps(a.aliases_used)
@@ -1756,9 +1760,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.type and self.type.is_protocol and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
                 if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1896,8 +1900,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return True if e.name == 'True' else False
         return None
 
-    def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
-        """Return builtins.int if rvalue is an int literal, etc."""
+    def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
+        """Return builtins.int if rvalue is an int literal, etc.
+
+        If this is a 'Final' context, we return "Literal[...]" instead."""
         if self.options.semantic_analysis_only or self.function_stack:
             # Skip this if we're only doing the semantic analysis pass.
             # This is mostly to avoid breaking unit tests.
@@ -1906,16 +1912,31 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # inside type variables with value restrictions (like
             # AnyStr).
             return None
-        if isinstance(rvalue, IntExpr):
-            return self.named_type_or_none('builtins.int')
         if isinstance(rvalue, FloatExpr):
             return self.named_type_or_none('builtins.float')
+
+        value = None  # type: LiteralValue
+        type_name = None  # type: Optional[str]
+        if isinstance(rvalue, IntExpr):
+            value, type_name = rvalue.value, 'builtins.int'
         if isinstance(rvalue, StrExpr):
-            return self.named_type_or_none('builtins.str')
+            value, type_name = rvalue.value, 'builtins.str'
         if isinstance(rvalue, BytesExpr):
-            return self.named_type_or_none('builtins.bytes')
+            value, type_name = rvalue.value, 'builtins.bytes'
         if isinstance(rvalue, UnicodeExpr):
-            return self.named_type_or_none('builtins.unicode')
+            value, type_name = rvalue.value, 'builtins.unicode'
+
+        if type_name is not None:
+            typ = self.named_type_or_none(type_name)
+            if typ and is_final:
+                return typ.copy_modified(final_value=LiteralType(
+                    value=value,
+                    fallback=typ,
+                    line=typ.line,
+                    column=typ.column,
+                ))
+            return typ
+
         return None
 
     def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],
@@ -2394,7 +2415,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
                 try:
-                    upper_bound = self.expr_to_analyzed_type(param_value)
+                    # We want to use our custom error message below, so we suppress
+                    # the default error message for invalid types here.
+                    upper_bound = self.expr_to_analyzed_type(param_value,
+                                                             report_invalid_types=False)
+                    if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
+                        self.fail("TypeVar 'bound' must be a type", param_value)
+                        # Note: we do not return 'None' here -- we want to continue
+                        # using the AnyType as the upper bound.
                 except TypeTranslationError:
                     self.fail("TypeVar 'bound' must be a type", param_value)
                     return None

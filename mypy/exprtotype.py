@@ -2,13 +2,13 @@
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr, IntExpr, FloatExpr, UnaryExpr,
-    ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
+    ComplexExpr, ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
     get_member_expr_fullname
 )
 from mypy.fastparse import parse_type_string
 from mypy.types import (
     Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny,
-    RawLiteralType,
+    RawExpressionType,
 )
 
 
@@ -39,9 +39,9 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     if isinstance(expr, NameExpr):
         name = expr.name
         if name == 'True':
-            return RawLiteralType(True, 'builtins.bool', line=expr.line, column=expr.column)
+            return RawExpressionType(True, 'builtins.bool', line=expr.line, column=expr.column)
         elif name == 'False':
-            return RawLiteralType(False, 'builtins.bool', line=expr.line, column=expr.column)
+            return RawExpressionType(False, 'builtins.bool', line=expr.line, column=expr.column)
         else:
             return UnboundType(name, line=expr.line, column=expr.column)
     elif isinstance(expr, MemberExpr):
@@ -122,17 +122,20 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
                                  assume_str_is_unicode=True)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr)
-        if isinstance(typ, RawLiteralType) and isinstance(typ.value, int) and expr.op == '-':
-            typ.value *= -1
-            return typ
-        else:
-            raise TypeTranslationError()
+        if isinstance(typ, RawExpressionType):
+            if isinstance(typ.literal_value, int) and expr.op == '-':
+                typ.literal_value *= -1
+                return typ
+        raise TypeTranslationError()
     elif isinstance(expr, IntExpr):
-        return RawLiteralType(expr.value, 'builtins.int', line=expr.line, column=expr.column)
+        return RawExpressionType(expr.value, 'builtins.int', line=expr.line, column=expr.column)
     elif isinstance(expr, FloatExpr):
-        # Floats are not valid parameters for RawLiteralType, so we just
+        # Floats are not valid parameters for RawExpressionType , so we just
         # pass in 'None' for now. We'll report the appropriate error at a later stage.
-        return RawLiteralType(None, 'builtins.float', line=expr.line, column=expr.column)
+        return RawExpressionType(None, 'builtins.float', line=expr.line, column=expr.column)
+    elif isinstance(expr, ComplexExpr):
+        # Same thing as above with complex numbers.
+        return RawExpressionType(None, 'builtins.complex', line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     else:

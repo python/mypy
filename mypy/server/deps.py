@@ -882,6 +882,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
+        if typ.final_value:
+            triggers.extend(self.get_type_triggers(typ.final_value))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:

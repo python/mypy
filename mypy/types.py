@@ -50,7 +50,11 @@ JsonDict = Dict[str, Any]
 # 3. server.astdiff.SnapshotTypeVisitor's visit_literal_type_method: this
 #    method assumes that the following types supports equality checks and
 #    hashability.
-LiteralValue = Union[int, str, bool, None]
+#
+# Note: Although "Literal[None]" is a valid type, we internally always convert
+# such a type directly into "None". So, "None" is not a valid parameter of
+# LiteralType and is omitted from this list.
+LiteralValue = Union[int, str, bool]
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -398,6 +402,10 @@ class AnyType(Type):
         # We should not have chains of Anys.
         assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
 
+    @property
+    def is_from_error(self) -> bool:
+        return self.type_of_any == TypeOfAny.from_error
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 
@@ -561,37 +569,77 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'final_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, column: int = -1, erased: bool = False) -> None:
+                 line: int = -1, column: int = -1, erased: bool = False,
+                 final_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = args
-        self.erased = erased  # True if result of type variable substitution
-        self.invalid = False  # True if recovered after incorrect number of type arguments error
         self.type_ref = None  # type: Optional[str]
+
+        # True if result of type variable substitution
+        self.erased = erased
+
+        # True if recovered after incorrect number of type arguments error
+        self.invalid = False
+
+        # This field keeps track of the underlying Literal[...] value if this instance
+        # was created via a Final declaration. For example, if we did `x: Final = 3`, x
+        # would have an instance with a `final_value` of `LiteralType(3, int_fallback)`.
+        #
+        # Or more broadly, this field lets this Instance "remember" its original declaration.
+        # We want this behavior because we want implicit Final declarations to act pretty
+        # much identically with constants: we should be able to replace any places where we
+        # use some Final variable with the original value and get the same type-checking
+        # behavior. For example, we want this program:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    var: Final = 3
+        #    expects_literal(var)
+        #
+        # ...to type-check in the exact same way as if we had written the program like this:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    expects_literal(3)
+        #
+        # In order to make this work (especially with literal types), we need var's type
+        # (an Instance) to remember the "original" value.
+        #
+        # This field is currently set only when we encounter an *implicit* final declaration
+        # like `x: Final = 3` where the RHS is some literal expression. This field remains 'None'
+        # when we do things like `x: Final[int] = 3` or `x: Final = foo + bar`.
+        #
+        # Currently most of mypy will ignore this field and will continue to treat this type like
+        # a regular Instance. We end up using this field only when we are explicitly within a
+        # Literal context.
+        self.final_value = final_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args)))
+        return hash((self.type, tuple(self.args), self.final_value))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
             return NotImplemented
-        return self.type == other.type and self.args == other.args
+        return (self.type == other.type
+                and self.args == other.args
+                and self.final_value == other.final_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
-        if not self.args:
+        if not self.args and not self.final_value:
             return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         data['type_ref'] = type_ref
         data['args'] = [arg.serialize() for arg in self.args]
+        if self.final_value is not None:
+            data['final_value'] = self.final_value.serialize()
         return data
 
     @classmethod
@@ -608,10 +656,21 @@ class Instance(Type):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
+        if 'final_value' in data:
+            inst.final_value = LiteralType.deserialize(data['final_value'])
         return inst
 
-    def copy_modified(self, *, args: List[Type]) -> 'Instance':
-        return Instance(self.type, args, self.line, self.column, self.erased)
+    def copy_modified(self, *,
+                      args: Bogus[List[Type]] = _dummy,
+                      final_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
+        return Instance(
+            self.type,
+            args if args is not _dummy else self.args,
+            self.line,
+            self.column,
+            self.erased,
+            final_value if final_value is not _dummy else self.final_value,
+        )
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
@@ -1299,20 +1358,20 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
-class RawLiteralType(Type):
-    """A synthetic type representing any type that could plausibly be something
-    that lives inside of a literal.
+class RawExpressionType(Type):
+    """A synthetic type representing some arbitrary expression that does not cleanly
+    translate into a type.
 
     This synthetic type is only used at the beginning stages of semantic analysis
     and should be completely removing during the process for mapping UnboundTypes to
-    actual types.
+    actual types: we either turn it into a LiteralType or an AnyType.
 
-    For example, `Foo[1]` is initially represented as the following:
+    For example, suppose `Foo[1]` is initially represented as the following:
 
         UnboundType(
             name='Foo',
             args=[
-                RawLiteralType(value=1, base_type_name='builtins.int'),
+                RawExpressionType(value=1, base_type_name='builtins.int'),
             ],
         )
 
@@ -1327,26 +1386,50 @@ class RawLiteralType(Type):
     produce something like this:
 
         Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.from_error))
+
+    If the "note" field is not None, the provided note will be reported alongside the
+    error at this point.
+
+    Note: if "literal_value" is None, that means this object is representing some
+    expression that cannot possibly be a parameter of Literal[...]. For example,
+    "Foo[3j]" would be represented as:
+
+        UnboundType(
+            name='Foo',
+            args=[
+                RawExpressionType(value=None, base_type_name='builtins.complex'),
+            ],
+        )
     """
-    def __init__(self, value: LiteralValue, base_type_name: str,
-                 line: int = -1, column: int = -1) -> None:
+    def __init__(self,
+                 literal_value: Optional[LiteralValue],
+                 base_type_name: str,
+                 line: int = -1,
+                 column: int = -1,
+                 note: Optional[str] = None,
+                 ) -> None:
         super().__init__(line, column)
-        self.value = value
+        self.literal_value = literal_value
         self.base_type_name = base_type_name
+        self.note = note
+
+    def simple_name(self) -> str:
+        return self.base_type_name.replace("builtins.", "")
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
-        return visitor.visit_raw_literal_type(self)
+        return visitor.visit_raw_expression_type(self)
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
 
     def __hash__(self) -> int:
-        return hash((self.value, self.base_type_name))
+        return hash((self.literal_value, self.base_type_name))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, RawLiteralType):
-            return self.base_type_name == other.base_type_name and self.value == other.value
+        if isinstance(other, RawExpressionType):
+            return (self.base_type_name == other.base_type_name
+                    and self.literal_value == other.literal_value)
         else:
             return NotImplemented
 
@@ -1872,8 +1955,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 prefix = repr(t.fallback.type.fullname()) + ', '
         return 'TypedDict({}{})'.format(prefix, s)
 
-    def visit_raw_literal_type(self, t: RawLiteralType) -> str:
-        return repr(t.value)
+    def visit_raw_expression_type(self, t: RawExpressionType) -> str:
+        return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
         return 'Literal[{}]'.format(t.value_repr())

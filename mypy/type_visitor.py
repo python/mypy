@@ -13,14 +13,14 @@ other modules refer to them.
 
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
 from mypy_extensions import trait
 
 T = TypeVar('T')
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
-    RawLiteralType, Instance, NoneTyp, TypeType,
+    RawExpressionType, Instance, NoneTyp, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
 )
@@ -128,7 +128,7 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
     @abstractmethod
-    def visit_raw_literal_type(self, t: RawLiteralType) -> T:
+    def visit_raw_expression_type(self, t: RawExpressionType) -> T:
         pass
 
 
@@ -159,7 +159,18 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, self.translate_types(t.args), t.line, t.column)
+        final_value = None  # type: Optional[LiteralType]
+        if t.final_value is not None:
+            raw_final_value = t.final_value.accept(self)
+            assert isinstance(raw_final_value, LiteralType)
+            final_value = raw_final_value
+        return Instance(
+            typ=t.type,
+            args=self.translate_types(t.args),
+            line=t.line,
+            column=t.column,
+            final_value=final_value,
+        )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
@@ -282,7 +293,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_typeddict_type(self, t: TypedDictType) -> T:
         return self.query_types(t.items.values())
 
-    def visit_raw_literal_type(self, t: RawLiteralType) -> T:
+    def visit_raw_expression_type(self, t: RawExpressionType) -> T:
         return self.strategy([])
 
     def visit_literal_type(self, t: LiteralType) -> T:

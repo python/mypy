@@ -31,7 +31,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawLiteralType,
+    TypeOfAny, Instance, RawExpressionType,
 )
 from mypy import defaults
 from mypy import messages
@@ -83,7 +83,6 @@ MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # typ
 _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
-TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'  # type: Final
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -184,11 +183,11 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
             node.original_str_fallback = expr_fallback_name
             return node
         else:
-            return RawLiteralType(expr_string, expr_fallback_name, line, column)
+            return RawExpressionType(expr_string, expr_fallback_name, line, column)
     except (SyntaxError, ValueError):
         # Note: the parser will raise a `ValueError` instead of a SyntaxError if
         # the string happens to contain things like \x00.
-        return RawLiteralType(expr_string, expr_fallback_name, line, column)
+        return RawExpressionType(expr_string, expr_fallback_name, line, column)
 
 
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
@@ -1069,6 +1068,24 @@ class TypeConverter:
         self.node_stack = []  # type: List[AST]
         self.assume_str_is_unicode = assume_str_is_unicode
 
+    def invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
+        """Constructs a type representing some expression that normally forms an invalid type.
+        For example, if we see a type hint that says "3 + 4", we would transform that
+        expression into a RawExpressionType.
+
+        The semantic analysis layer will report an "Invalid type" error when it
+        encounters this type, along with the given note if one is provided.
+
+        See RawExpressionType's docstring for more details on how it's used.
+        """
+        return RawExpressionType(
+            None,
+            'typing.Any',
+            line=self.line,
+            column=getattr(node, 'col_offset', -1),
+            note=note,
+        )
+
     @overload
     def visit(self, node: ast3.expr) -> Type: ...
 
@@ -1086,8 +1103,7 @@ class TypeConverter:
             if visitor is not None:
                 return visitor(node)
             else:
-                self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+                return self.invalid_type(node)
         finally:
             self.node_stack.pop()
 
@@ -1124,12 +1140,10 @@ class TypeConverter:
         constructor = stringify_name(f)
 
         if not isinstance(self.parent(), ast3.List):
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, e.col_offset)
+            note = None
             if constructor:
-                self.note("Suggestion: use {}[...] instead of {}(...)".format(
-                    constructor, constructor),
-                    self.line, e.col_offset)
-            return AnyType(TypeOfAny.from_error)
+                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+            return self.invalid_type(e, note=note)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
@@ -1183,7 +1197,7 @@ class TypeConverter:
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
-            return RawLiteralType(n.value, 'builtins.bool', line=self.line)
+            return RawExpressionType(n.value, 'builtins.bool', line=self.line)
         else:
             return UnboundType(str(n.value), line=self.line)
 
@@ -1192,26 +1206,29 @@ class TypeConverter:
         # We support specifically Literal[-4] and nothing else.
         # For example, Literal[+4] or Literal[~6] is not supported.
         typ = self.visit(n.operand)
-        if isinstance(typ, RawLiteralType) and isinstance(n.op, USub):
-            if isinstance(typ.value, int):
-                typ.value *= -1
+        if isinstance(typ, RawExpressionType) and isinstance(n.op, USub):
+            if isinstance(typ.literal_value, int):
+                typ.literal_value *= -1
                 return typ
-        self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-        return AnyType(TypeOfAny.from_error)
+        return self.invalid_type(n)
 
     # Num(number n)
     def visit_Num(self, n: Num) -> Type:
-        # Could be either float or int
-        numeric_value = n.n
-        if isinstance(numeric_value, int):
-            return RawLiteralType(numeric_value, 'builtins.int', line=self.line)
-        elif isinstance(numeric_value, float):
-            # Floats and other numbers are not valid parameters for RawLiteralType, so we just
-            # pass in 'None' for now. We'll report the appropriate error at a later stage.
-            return RawLiteralType(None, 'builtins.float', line=self.line)
+        if isinstance(n.n, int):
+            numeric_value = n.n
+            type_name = 'builtins.int'
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            # Other kinds of numbers (floats, complex) are not valid parameters for
+            # RawExpressionType so we just pass in 'None' for now. We'll report the
+            # appropriate error at a later stage.
+            numeric_value = None
+            type_name = 'builtins.{}'.format(type(n.n).__name__)
+        return RawExpressionType(
+            numeric_value,
+            type_name,
+            line=self.line,
+            column=getattr(n, 'col_offset', -1),
+        )
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
@@ -1230,7 +1247,7 @@ class TypeConverter:
     # Bytes(bytes s)
     def visit_Bytes(self, n: Bytes) -> Type:
         contents = bytes_to_human_readable_repr(n.s)
-        return RawLiteralType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+        return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
@@ -1251,8 +1268,7 @@ class TypeConverter:
             return UnboundType(value.name, params, line=self.line,
                                empty_tuple_index=empty_tuple_index)
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            return self.invalid_type(n)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
@@ -1265,8 +1281,7 @@ class TypeConverter:
         if isinstance(before_dot, UnboundType) and not before_dot.args:
             return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            return self.invalid_type(n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> Type:

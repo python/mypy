@@ -130,3 +130,11 @@ $ {python} -c "import time;time.sleep(1)"
 $ dmypy status
 No status file found
 == Return code: 2
+
+[case testDaemonRunNoTarget]
+$ dmypy run -- --follow-imports=error
+Daemon started
+mypy-daemon: error: Missing target module, package, files, or command.
+== Return code: 2
+$ dmypy stop
+Daemon stopped

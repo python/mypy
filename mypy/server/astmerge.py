@@ -59,7 +59,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawLiteralType,
+    RawExpressionType,
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -331,7 +331,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     """Similar to NodeReplaceVisitor, but for type objects.
 
     Note: this visitor may sometimes visit unanalyzed types
-    such as 'UnboundType' and 'RawLiteralType' For example, see
+    such as 'UnboundType' and 'RawExpressionType' For example, see
     NodeReplaceVisitor.process_base_func.
     """
 
@@ -342,6 +342,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.type = self.fixup(typ.type)
         for arg in typ.args:
             arg.accept(self)
+        if typ.final_value:
+            typ.final_value.accept(self)
 
     def visit_any(self, typ: AnyType) -> None:
         pass
@@ -397,7 +399,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
             value_type.accept(self)
         typ.fallback.accept(self)
 
-    def visit_raw_literal_type(self, t: RawLiteralType) -> None:
+    def visit_raw_expression_type(self, t: RawExpressionType) -> None:
         pass
 
     def visit_literal_type(self, typ: LiteralType) -> None:
