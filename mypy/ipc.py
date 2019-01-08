@@ -62,7 +62,8 @@ class IPCBase:
                 assert isinstance(ov, _winapi.Overlapped)
                 assert isinstance(err, int)
                 try:
-                    if err == _winapi.ERROR_IO_PENDING:
+                    if err != 0:
+                        assert err == _winapi.ERROR_IO_PENDING
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         assert res == _winapi.WAIT_OBJECT_0
@@ -95,7 +96,8 @@ class IPCBase:
                 assert isinstance(ov, _winapi.Overlapped)
                 assert isinstance(err, int)
                 try:
-                    if err == _winapi.ERROR_IO_PENDING:
+                    if err != 0:
+                        assert err == _winapi.ERROR_IO_PENDING
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         assert res == _winapi.WAIT_OBJECT_0
