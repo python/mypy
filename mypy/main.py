@@ -70,6 +70,10 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     fscache = FileSystemCache()
     sources, options = process_options(args, fscache=fscache)
 
+    if sources is None:
+        # indicates early out
+        sys.exit(0)
+
     messages = []
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
@@ -299,7 +303,7 @@ def process_options(args: List[str],
                     fscache: Optional[FileSystemCache] = None,
                     program: str = 'mypy',
                     header: str = HEADER,
-                    ) -> Tuple[List[BuildSource], Options]:
+                    ) -> Tuple[Optional[List[BuildSource]], Options]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -704,19 +708,19 @@ def process_options(args: List[str],
     # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
+    options = Options()
 
     if dummy.list_error_codes:
         import mypy.messages
         for msg_id in sorted(mypy.messages.MessageBuilder.get_message_ids()):
             print(msg_id)
-        raise SystemExit(0)
+        return None, options
 
     config_file = dummy.config_file
     if config_file is not None and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
-    options = Options()
     parse_config_file(options, config_file)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
