@@ -1218,15 +1218,20 @@ class TypeConverter:
 
     # Num(number n)
     def visit_Num(self, n: Num) -> Type:
-        if isinstance(n.n, int):
-            numeric_value = n.n
+        # The n field has the type complex, but complex isn't *really*
+        # a parent of int and float, and this causes isinstance below
+        # to think that the complex branch is always picked. Avoid
+        # this by throwing away the type.
+        value = n.n  # type: object
+        if isinstance(value, int):
+            numeric_value = value  # type: Optional[int]
             type_name = 'builtins.int'
         else:
             # Other kinds of numbers (floats, complex) are not valid parameters for
             # RawExpressionType so we just pass in 'None' for now. We'll report the
             # appropriate error at a later stage.
             numeric_value = None
-            type_name = 'builtins.{}'.format(type(n.n).__name__)
+            type_name = 'builtins.{}'.format(type(value).__name__)
         return RawExpressionType(
             numeric_value,
             type_name,
