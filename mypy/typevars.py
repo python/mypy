@@ -21,6 +21,8 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 
 def fill_typevars_with_any(typ: TypeInfo) -> Union[Instance, TupleType]:
+    """ Add correct number of Any's as typevars to a type.
+    """
     inst = Instance(typ, [AnyType(TypeOfAny.special_form)] * len(typ.defn.type_vars))
     if typ.tuple_type is None:
         return inst
