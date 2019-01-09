@@ -49,7 +49,7 @@ from mypy.subtypes import (
 )
 from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars, has_no_typevars
+from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.mro import calculate_mro
 from mypy.erasetype import erase_typevars
@@ -1605,6 +1605,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
 
+    def determine_type_of_class_member(self, sym: SymbolTableNode) -> Optional[Type]:
+        if sym.type is not None:
+            return sym.type
+        if isinstance(sym.node, FuncBase):
+            return self.function_type(sym.node)
+        if isinstance(sym.node, TypeInfo):
+            # nested class
+            return type_object_type(sym.node, self.named_type)
+        return None
+
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
         """Check if attribute name in base1 is compatible with base2 in multiple inheritance.
@@ -1618,19 +1628,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         first = base1[name]
         second = base2[name]
-        first_type = first.type
-        if first_type is None and isinstance(first.node, FuncBase):
-            first_type = self.function_type(first.node)
-        second_type = second.type
-        if second_type is None and isinstance(second.node, FuncBase):
-            second_type = self.function_type(second.node)
+        first_type = self.determine_type_of_class_member(first)
+        second_type = self.determine_type_of_class_member(second)
+
         # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
-            # Method override
-            first_sig = bind_self(first_type)
-            second_sig = bind_self(second_type)
-            ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
+            if first_type.is_type_obj() and second_type.is_type_obj():
+                # For class objects only check the subtype relationship of the classes,
+                # since we allow incompatible overrides of '__init__'/'__new__'
+                ok = is_subtype(left=fill_typevars_with_any(first_type.type_object()),
+                                right=fill_typevars_with_any(second_type.type_object()))
+            else:
+                first_sig = bind_self(first_type)
+                second_sig = bind_self(second_type)
+                ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
         else:
