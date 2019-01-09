@@ -902,7 +902,11 @@ class ASTConverter:
 
     # Num(object n) -- a number as a PyObject.
     def visit_Num(self, n: ast27.Num) -> Expression:
-        value = n.n
+        # The n field has the type complex, but complex isn't *really*
+        # a parent of int and float, and this causes isinstance below
+        # to think that the complex branch is always picked. Avoid
+        # this by throwing away the type.
+        value = n.n  # type: object
         is_inverse = False
         if str(n.n).startswith('-'):  # Hackish because of complex.
             value = -n.n
