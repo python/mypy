@@ -244,7 +244,7 @@ class MessageBuilder:
 
     @classmethod
     def get_message_ids(cls) -> Set[str]:
-        return _message_ids
+        return _message_ids.union(x.name for x in ErrorCodes)
 
     def active_message_id(self) -> Optional[str]:
         return self.active_msg_ids[-1] if len(self.active_msg_ids) else None
@@ -299,14 +299,16 @@ class MessageBuilder:
              format: Optional[Tuple[Any, ...]] = None,
              file: Optional[str] = None, origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
-        # FIXME: remove
+        # FIXME: remove once conversion to Enum is complete
         if isinstance(msg, str):
             val = msg
+            msg_id = None
         else:
             val = msg.value
+            msg_id = msg.name
         if format is not None:
             val = val.format(format)
-        self.report(val, context, 'error', file=file, origin=origin)
+        self.report(val, context, 'error', file=file, origin=origin, id=msg_id)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None, offset: int = 0) -> None:
