@@ -192,7 +192,7 @@ class StringFormatterChecker:
                 if expected_type is None:
                     return
                 self.chk.check_subtype(rep_type, expected_type, replacements,
-                                       messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                       messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                        'expression has type',
                                        'placeholder with key \'%s\' has type' % specifier.key)
         else:
@@ -201,7 +201,7 @@ class StringFormatterChecker:
             dict_type = self.chk.named_generic_type('builtins.dict',
                                                     [any_type, any_type])
             self.chk.check_subtype(rep_type, dict_type, replacements,
-                                   messages.FORMAT_REQUIRES_MAPPING,
+                                   messages.ErrorCodes.FORMAT_REQUIRES_MAPPING,
                                    'expression has type', 'expected type for mapping is')
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
@@ -268,7 +268,7 @@ class StringFormatterChecker:
         def check_type(type: Type) -> None:
             assert expected_type is not None
             self.chk.check_subtype(type, expected_type, context,
-                              messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                              messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                               'expression has type', 'placeholder has type')
 
         def check_expr(expr: Expression) -> None:
@@ -290,7 +290,7 @@ class StringFormatterChecker:
         def check_type(type: Type) -> None:
             assert expected_type is not None
             self.chk.check_subtype(type, expected_type, context,
-                              messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                              messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                               'expression has type', 'placeholder has type')
 
         def check_expr(expr: Expression) -> None:

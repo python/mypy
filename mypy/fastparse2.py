@@ -169,7 +169,7 @@ class ASTConverter:
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
-    def fail(self, msg: str, line: int, column: int) -> None:
+    def fail(self, msg: messages.ErrorCodes, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
     def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
@@ -351,7 +351,7 @@ class ASTConverter:
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if any(a.type_annotation is not None for a in args):
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                        self.fail(messages.ErrorCodes.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated) for
                                  a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)

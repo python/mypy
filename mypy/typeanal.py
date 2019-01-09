@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict
+from typing import Any, Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict
 
 from itertools import chain
 
@@ -273,7 +273,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'
                 if self.options.disallow_any_generics and not self.is_typeshed_stub:
-                    self.fail(messages.BARE_GENERIC, t)
+                    self.fail(messages.ErrorCodes.BARE_GENERIC, t)
                 return self.named_type('builtins.tuple', line=t.line, column=t.column)
             if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                 # Tuple[T, ...] (uniform, variable-length tuple)
@@ -341,7 +341,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # in the third pass.
             if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
                 alternative = nongen_builtins[info.fullname()]
-                self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                self.fail(messages.ErrorCodes.IMPLICIT_GENERIC_ANY_BUILTIN, t, (alternative,))
                 any_type = AnyType(TypeOfAny.from_error, line=t.line)
             else:
                 any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
@@ -717,7 +717,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: messages.ErrorCodes, ctx: Context,
+             format: Optional[Tuple[Any, ...]] = None) -> None:
         self.fail_func(msg, ctx)
 
     @contextmanager

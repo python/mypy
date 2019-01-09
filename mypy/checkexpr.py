@@ -395,7 +395,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if (isinstance(tp, CallableType) and tp.is_type_obj() and
                     tp.type_object().is_protocol and
                     not tp.type_object().runtime_protocol):
-                self.chk.fail(messages.RUNTIME_PROTOCOL_EXPECTED, e)
+                self.chk.fail(messages.ErrorCodes.RUNTIME_PROTOCOL_EXPECTED, e)
 
     def check_protocol_issubclass(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
@@ -434,7 +434,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_typeddict_call_with_kwargs(
                 callee, OrderedDict(), context)
 
-        self.chk.fail(messages.INVALID_TYPEDDICT_ARGS, context)
+        self.chk.fail(messages.ErrorCodes.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
     def check_typeddict_call_with_dict(self, callee: TypedDictType,
@@ -446,7 +446,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for item_name_expr, item_arg in kwargs.items:
             if not isinstance(item_name_expr, StrExpr):
                 key_context = item_name_expr or item_arg
-                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
+                self.chk.fail(messages.ErrorCodes.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
                 return AnyType(TypeOfAny.from_error)
             item_names.append(item_name_expr.value)
 
@@ -472,7 +472,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 item_value = kwargs[item_name]
                 self.chk.check_simple_assignment(
                     lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
-                    msg=messages.INCOMPATIBLE_TYPES,
+                    msg=messages.ErrorCodes.INCOMPATIBLE_TYPES,
                     lvalue_name='TypedDict item "{}"'.format(item_name),
                     rvalue_name='expression')
 
@@ -758,7 +758,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (callee.is_type_obj() and callee.type_object().is_protocol
               # Exception for Type[...]
               and not callee.from_type_type):
-            self.chk.fail(messages.CANNOT_INSTANTIATE_PROTOCOL
+            self.chk.fail(messages.ErrorCodes.CANNOT_INSTANTIATE_PROTOCOL
                           .format(callee.type_object().name()), context)
 
         formal_to_actual = map_actuals_to_formals(
@@ -1006,7 +1006,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(first_arg, (NoneTyp, UninhabitedType)):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not first_arg or not is_subtype(self.named_type('builtins.str'), first_arg):
-                    self.msg.fail(messages.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
+                    self.msg.fail(messages.ErrorCodes.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
                                   context)
         else:
             # In dynamically typed functions use implicit 'Any' types for
@@ -2403,7 +2403,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if n >= 0 and n < len(left_type.items):
                     return left_type.items[n]
                 else:
-                    self.chk.fail(messages.TUPLE_INDEX_OUT_OF_RANGE, e)
+                    self.chk.fail(messages.ErrorCodes.TUPLE_INDEX_OUT_OF_RANGE, e)
                     return AnyType(TypeOfAny.from_error)
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
@@ -2445,7 +2445,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         expected_type = UnionType.make_union([self.named_type('builtins.int'),
                                               self.named_type('builtins.slice')])
         if not self.chk.check_subtype(index_type, expected_type, index,
-                                      messages.INVALID_TUPLE_INDEX_TYPE,
+                                      messages.ErrorCodes.INVALID_TUPLE_INDEX_TYPE,
                                       'actual type', 'expected type'):
             return AnyType(TypeOfAny.from_error)
         else:
@@ -2549,14 +2549,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 tp = type_object_type(item.type, self.named_type)
                 return self.apply_type_arguments_to_callable(tp, item.args, tapp)
             else:
-                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
+                self.chk.fail(messages.ErrorCodes.ONLY_CLASS_APPLICATION, tapp)
                 return AnyType(TypeOfAny.from_error)
         # Type application of a normal generic class in runtime context.
         # This is typically used as `x = G[int]()`.
         tp = self.accept(tapp.expr)
         if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
-                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
+                self.chk.fail(messages.ErrorCodes.ONLY_CLASS_APPLICATION, tapp)
             return self.apply_type_arguments_to_callable(tp, tapp.types, tapp)
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
@@ -2884,7 +2884,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return callable_ctx, None
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
-            self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
+            self.chk.fail(messages.ErrorCodes.CANNOT_INFER_LAMBDA_TYPE, e)
             return None, None
 
         return callable_ctx, callable_ctx
@@ -2898,15 +2898,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_super_arguments(self, e: SuperExpr) -> None:
         """Check arguments in a super(...) call."""
         if ARG_STAR in e.call.arg_kinds:
-            self.chk.fail(messages.SUPER_VARARGS_NOT_SUPPORTED, e)
+            self.chk.fail(messages.ErrorCodes.SUPER_VARARGS_NOT_SUPPORTED, e)
         elif e.call.args and set(e.call.arg_kinds) != {ARG_POS}:
-            self.chk.fail(messages.SUPER_POSITIONAL_ARGS_REQUIRED, e)
+            self.chk.fail(messages.ErrorCodes.SUPER_POSITIONAL_ARGS_REQUIRED, e)
         elif len(e.call.args) == 1:
-            self.chk.fail(messages.SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED, e)
+            self.chk.fail(messages.ErrorCodes.SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED, e)
         elif len(e.call.args) > 2:
-            self.chk.fail(messages.TOO_MANY_ARGS_FOR_SUPER, e)
+            self.chk.fail(messages.ErrorCodes.TOO_MANY_ARGS_FOR_SUPER, e)
         elif self.chk.options.python_version[0] == 2 and len(e.call.args) == 0:
-            self.chk.fail(messages.TOO_FEW_ARGS_FOR_SUPER, e)
+            self.chk.fail(messages.ErrorCodes.TOO_FEW_ARGS_FOR_SUPER, e)
         elif len(e.call.args) == 2:
             type_obj_type = self.accept(e.call.args[0])
             instance_type = self.accept(e.call.args[1])
@@ -2922,7 +2922,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if not isinstance(item, Instance):
                     # A complicated type object type. Too tricky, give up.
                     # TODO: Do something more clever here.
-                    self.chk.fail(messages.UNSUPPORTED_ARG_1_FOR_SUPER, e)
+                    self.chk.fail(messages.ErrorCodes.UNSUPPORTED_ARG_1_FOR_SUPER, e)
                     return
                 type_info = item.type
             elif isinstance(type_obj_type, AnyType):
@@ -2938,19 +2938,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if not isinstance(instance_type, (Instance, TupleType)):
                         # Too tricky, give up.
                         # TODO: Do something more clever here.
-                        self.chk.fail(messages.UNSUPPORTED_ARG_2_FOR_SUPER, e)
+                        self.chk.fail(messages.ErrorCodes.UNSUPPORTED_ARG_2_FOR_SUPER, e)
                         return
                 if isinstance(instance_type, TupleType):
                     # Needed for named tuples and other Tuple[...] subclasses.
                     instance_type = instance_type.fallback
                 if type_info not in instance_type.type.mro:
-                    self.chk.fail(messages.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+                    self.chk.fail(messages.ErrorCodes.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
                                                          and instance_type.is_type_obj()):
                 # TODO: Check whether this is a valid type object here.
                 pass
             elif not isinstance(instance_type, AnyType):
-                self.chk.fail(messages.UNSUPPORTED_ARG_2_FOR_SUPER, e)
+                self.chk.fail(messages.ErrorCodes.UNSUPPORTED_ARG_2_FOR_SUPER, e)
 
     def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
         """Type check a super expression."""
@@ -2969,7 +2969,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if not self.chk.in_checked_function():
                         return AnyType(TypeOfAny.unannotated)
                     if self.chk.scope.active_class() is not None:
-                        self.chk.fail(messages.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
+                        self.chk.fail(messages.ErrorCodes.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
                         return AnyType(TypeOfAny.from_error)
                     method = self.chk.scope.top_function()
                     assert method is not None
@@ -2977,7 +2977,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # super() in a function with empty args is an error; we
                     # need something in declared_self.
                     if not args:
-                        self.chk.fail(messages.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
+                        self.chk.fail(messages.ErrorCodes.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
                         return AnyType(TypeOfAny.from_error)
                     declared_self = args[0].variable.type or fill_typevars(e.info)
                     return analyze_member_access(name=e.name,
@@ -3002,7 +3002,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if index:
                 t = self.accept(index)
                 self.chk.check_subtype(t, expected,
-                                       index, messages.INVALID_SLICE_INDEX)
+                                       index, messages.ErrorCodes.INVALID_SLICE_INDEX)
         return self.named_type('builtins.slice')
 
     def visit_list_comprehension(self, e: ListComprehension) -> Type:
@@ -3273,11 +3273,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if e.expr is None:
             if (not isinstance(expected_item_type, (NoneTyp, AnyType))
                     and self.chk.in_checked_function()):
-                self.chk.fail(messages.YIELD_VALUE_EXPECTED, e)
+                self.chk.fail(messages.ErrorCodes.YIELD_VALUE_EXPECTED, e)
         else:
             actual_item_type = self.accept(e.expr, expected_item_type)
             self.chk.check_subtype(actual_item_type, expected_item_type, e,
-                                   messages.INCOMPATIBLE_TYPES_IN_YIELD,
+                                   messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_YIELD,
                                    'actual type', 'expected type')
         return self.chk.get_generator_receive_type(return_type, False)
 
@@ -3288,9 +3288,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         actual_type = self.accept(e.expr, expected_type)
         if isinstance(actual_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=actual_type)
-        return self.check_awaitable_expr(actual_type, e, messages.INCOMPATIBLE_TYPES_IN_AWAIT)
+        return self.check_awaitable_expr(actual_type, e, messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_AWAIT)
 
-    def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
+    def check_awaitable_expr(self, t: Type, ctx: Context, msg: messages.ErrorCodes) -> Type:
         """Check the argument to `await` and extract the type of value.
 
         Also used by `async for` and `async with`.
@@ -3334,7 +3334,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 iter_type = AnyType(TypeOfAny.from_error)
             else:
                 iter_type = self.check_awaitable_expr(subexpr_type, e,
-                                                      messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM)
+                                                      messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_YIELD_FROM)
 
         # Check that the iterator's item type matches the type yielded by the Generator function
         # containing this `yield from` expression.
@@ -3342,7 +3342,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         actual_item_type = self.chk.get_generator_yield_type(iter_type, False)
 
         self.chk.check_subtype(actual_item_type, expected_item_type, e,
-                           messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
+                           messages.ErrorCodes.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
                            'actual type', 'expected type')
 
         # Determine the type of the entire yield from expression.

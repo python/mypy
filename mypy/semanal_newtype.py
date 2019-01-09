@@ -14,7 +14,7 @@ from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, ErrorCodes
 
 
 class NewTypeAnalyzer:
@@ -152,5 +152,5 @@ class NewTypeAnalyzer:
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: ErrorCodes, ctx: Context) -> None:
         self.api.fail(msg, ctx)

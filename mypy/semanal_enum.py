@@ -12,6 +12,7 @@ from mypy.nodes import (
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
+from mypy.messages import ErrorCodes
 
 
 class EnumCallAnalyzer:
@@ -157,5 +158,5 @@ class EnumCallAnalyzer:
 
     # Helpers
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: ErrorCodes, ctx: Context) -> None:
         self.api.fail(msg, ctx)

@@ -501,7 +501,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
         for t in collect_any_types(typ):
             if t.type_of_any == TypeOfAny.from_omitted_generics:
-                self.fail(messages.BARE_GENERIC, t)
+                self.fail(messages.ErrorCodes.BARE_GENERIC, t)
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
@@ -514,7 +514,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
         return self.sem.dereference_module_cross_ref(node)
 
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: messages.ErrorCodes, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         self.sem.fail(msg, ctx, serious, blocker=blocker)
 
@@ -780,5 +780,5 @@ class TypeVariableChecker(TypeTranslator):
                 else:
                     class_name = '"{}"'.format(type.name())
                     actual_type_name = '"{}"'.format(actual.type.name())
-                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
+                    self.fail(messages.ErrorCodes.INCOMPATIBLE_TYPEVAR_VALUE.format(
                         arg_name, class_name, actual_type_name), context)

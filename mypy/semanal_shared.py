@@ -10,6 +10,7 @@ from mypy.nodes import (
 from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance
 from mypy.tvar_scope import TypeVarScope
+from mypy.messages import ErrorCodes
 
 MYPY = False
 if False:
@@ -43,7 +44,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: ErrorCodes, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         raise NotImplementedError
 

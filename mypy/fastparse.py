@@ -217,7 +217,7 @@ class ASTConverter:
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note')
 
-    def fail(self, msg: str, line: int, column: int) -> None:
+    def fail(self, msg: messages.ErrorCodes, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
     def visit(self, node: Optional[AST]) -> Any:
@@ -404,7 +404,7 @@ class ASTConverter:
                         isinstance(func_type_ast.argtypes[0], ast3_Ellipsis)):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                        self.fail(messages.ErrorCodes.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [a.type_annotation
                                  if a.type_annotation is not None
                                  else AnyType(TypeOfAny.unannotated)
@@ -412,7 +412,7 @@ class ASTConverter:
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                        self.fail(messages.ErrorCodes.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     translated_args = (TypeConverter(self.errors, line=lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
                     arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
@@ -540,7 +540,7 @@ class ASTConverter:
             annotation = arg.annotation
             type_comment = arg.type_comment
             if annotation is not None and type_comment is not None:
-                self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
+                self.fail(messages.ErrorCodes.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
