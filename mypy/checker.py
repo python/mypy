@@ -49,7 +49,7 @@ from mypy.subtypes import (
 )
 from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars, has_no_typevars
+from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.mro import calculate_mro
 from mypy.erasetype import erase_typevars
