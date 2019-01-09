@@ -406,7 +406,7 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 class ParentGeneric(Generic[T]):
     pass
-class ChildGeneric(ParentGeneric, Generic[T]):
+class ChildGeneric(ParentGeneric[T]):
     pass
 class Base1:
     Nested = ParentGeneric
@@ -422,7 +422,7 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 class ParentGeneric(Generic[T]):
     pass
-class ChildGeneric(ParentGeneric, Generic[T]):
+class ChildGeneric(ParentGeneric[T]):
     pass
 class Base1:
     Nested = ParentGeneric
