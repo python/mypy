@@ -123,16 +123,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit(code)
 
 
-def readlinkabs(link: str) -> str:
-    """Return an absolute path to symbolic link destination."""
-    # Adapted from code by Greg Smith.
-    assert os.path.islink(link)
-    path = os.readlink(link)
-    if os.path.isabs(path):
-        return path
-    return os.path.join(os.path.dirname(link), path)
-
-
 class SplitNamespace(argparse.Namespace):
     def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
         self.__dict__['_standard_namespace'] = standard_namespace

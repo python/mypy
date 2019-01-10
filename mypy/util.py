@@ -46,14 +46,6 @@ def short_type(obj: object) -> str:
     return t.split('.')[-1].rstrip("'>")
 
 
-def array_repr(a: List[T]) -> List[str]:
-    """Return the items of an array converted to strings using Repr."""
-    aa = []  # type: List[str]
-    for x in a:
-        aa.append(repr(x))
-    return aa
-
-
 def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
     """PEP-263 for detecting Python file encoding"""
     result = ENCODING_RE.match(text)

@@ -752,9 +752,6 @@ class FunctionLike(Type):
     @abstractmethod
     def is_type_obj(self) -> bool: pass
 
-    def is_concrete_type_obj(self) -> bool:
-        return self.is_type_obj()
-
     @abstractmethod
     def type_object(self) -> mypy.nodes.TypeInfo: pass
 
@@ -937,12 +934,6 @@ class CallableType(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self.name
-
-    def max_fixed_args(self) -> int:
-        n = len(self.arg_types)
-        if self.is_var_arg:
-            n -= 1
-        return n
 
     def max_possible_positional_args(self) -> int:
         """Returns maximum number of positional arguments this method could possibly accept.
@@ -2184,12 +2175,6 @@ def union_items(typ: Type) -> List[Type]:
 
 def is_generic_instance(tp: Type) -> bool:
     return isinstance(tp, Instance) and bool(tp.args)
-
-
-def is_invariant_instance(tp: Type) -> bool:
-    if not isinstance(tp, Instance) or not tp.args:
-        return False
-    return any(v.variance == INVARIANT for v in tp.type.defn.type_vars)
 
 
 def is_optional(t: Type) -> bool:
