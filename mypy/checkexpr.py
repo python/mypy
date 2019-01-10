@@ -2459,6 +2459,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(operand, IntExpr):
                     return -1 * operand.value
         typ = self.accept(index)
+        if isinstance(typ, Instance) and typ.final_value is not None:
+            typ = typ.final_value
         if isinstance(typ, LiteralType) and isinstance(typ.value, int):
             return typ.value
         return None
@@ -2468,6 +2470,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item_name = index.value
         else:
             typ = self.accept(index)
+            if isinstance(typ, Instance) and typ.final_value is not None:
+                typ = typ.final_value
+
             if isinstance(typ, LiteralType) and isinstance(typ.value, str):
                 item_name = typ.value
             else:

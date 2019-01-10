@@ -6,7 +6,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
-from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType
+from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance
 from mypy.typevars import fill_typevars
 
 
@@ -118,6 +118,9 @@ def try_getting_str_literal(expr: Expression, typ: Type) -> Optional[str]:
     """If this expression is a string literal, or if the corresponding type
     is something like 'Literal["some string here"]', returns the underlying
     string value. Otherwise, returns None."""
+    if isinstance(typ, Instance) and typ.final_value is not None:
+        typ = typ.final_value
+
     if isinstance(typ, LiteralType) and typ.fallback.type.fullname() == 'builtins.str':
         val = typ.value
         assert isinstance(val, str)
