@@ -2162,6 +2162,45 @@ del d[c_key]                  # E: TypedDict "Outer" has no key 'c'
 [typing fixtures/typing-full.pyi]
 [out]
 
+[case testLiteralIntelligentIndexingUsingFinal]
+from typing import Tuple, NamedTuple
+from typing_extensions import Literal, Final
+from mypy_extensions import TypedDict
+
+int_key_good: Final = 0
+int_key_bad: Final = 3
+str_key_good: Final = "foo"
+str_key_bad: Final = "missing"
+
+class Unrelated: pass
+
+MyTuple = NamedTuple('MyTuple', [
+    ('foo', int), 
+    ('bar', str),
+])
+
+class MyDict(TypedDict):
+    foo: int
+    bar: str
+
+a: Tuple[int, str]
+b: MyTuple
+c: MyDict
+u: Unrelated
+
+reveal_type(a[int_key_good])         # E: Revealed type is 'builtins.int'
+reveal_type(b[int_key_good])         # E: Revealed type is 'builtins.int'
+reveal_type(c[str_key_good])         # E: Revealed type is 'builtins.int'
+reveal_type(c.get(str_key_good, u))  # E: Revealed type is 'Union[builtins.int, __main__.Unrelated]'
+
+a[int_key_bad]                       # E: Tuple index out of range
+b[int_key_bad]                       # E: Tuple index out of range
+c[str_key_bad]                       # E: TypedDict "MyDict" has no key 'missing'
+c.get(str_key_bad, u)                # E: TypedDict "MyDict" has no key 'missing'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
 [case testLiteralIntelligentIndexingTypedDictPython2-skip]
 # flags: --python-version 2.7
 from normal_mod import NormalDict
