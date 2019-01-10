@@ -443,11 +443,11 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
-        assert len(items) > 0
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        self.set_line(items[0].line)
+        if len(items) > 0:
+            self.set_line(items[0].line)
         self.is_final = False
 
     def name(self) -> str:
@@ -478,6 +478,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             for d in data['items']])
         if data.get('impl') is not None:
             res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
+            # set line for empty overload items, as not set in __init__
+            if len(res.items) > 0:
+                res.set_line(res.impl.line)
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
