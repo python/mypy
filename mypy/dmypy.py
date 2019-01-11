@@ -281,7 +281,7 @@ def do_stop(args: argparse.Namespace) -> None:
     """Stop daemon via a 'stop' request."""
     # May raise BadStatus, which will be handled by main().
     response = request(args.status_file, 'stop', timeout=5)
-    if response:
+    if 'error' in response:
         show_stats(response)
         fail("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
@@ -356,9 +356,8 @@ def check_output(response: Dict[str, Any], verbose: bool,
         # Lazy import so this import doesn't slow things down when not writing junit
         from mypy.util import write_junit_xml
         messages = (out + err).splitlines()
-        # NOTE: We don't have access to the selected Python version and platform here
         write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml,
-                        "mypy-daemon")
+                        response['python_version'], response['platform'])
     if perf_stats_file:
         telemetry = response.get('stats', {})
         with open(perf_stats_file, 'w') as f:
