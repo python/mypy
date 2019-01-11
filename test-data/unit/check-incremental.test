@@ -4904,3 +4904,17 @@ a: Literal[2] = 2
 main:2: error: Revealed type is 'builtins.int'
 [out2]
 main:2: error: Revealed type is 'Literal[2]'
+
+[case testAddedSubStarImport]
+# cmd: mypy -m a pack pack.mod b
+# cmd2: mypy -m other
+[file a.py]
+from pack import *
+[file pack/__init__.py]
+[file pack/mod.py]
+[file b.py]
+import pack.mod
+[file other.py]
+import a
+[out]
+[out2]
