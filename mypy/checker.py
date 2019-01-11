@@ -3766,12 +3766,11 @@ def conditional_type_map(expr: Expression,
             proposed_type = UnionType([type_range.item for type_range in proposed_type_ranges])
         if current_type:
             if (not any(type_range.is_upper_bound for type_range in proposed_type_ranges)
-               and is_proper_subtype(current_type, proposed_type, ignore_promotions=True)):
+               and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
             elif not is_overlapping_types(current_type, proposed_type,
-                                          prohibit_none_typevar_overlap=True,
-                                          ignore_promotions=True):
+                                          prohibit_none_typevar_overlap=True):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
@@ -3779,8 +3778,7 @@ def conditional_type_map(expr: Expression,
                 proposed_precise_type = UnionType([type_range.item
                                           for type_range in proposed_type_ranges
                                           if not type_range.is_upper_bound])
-                remaining_type = restrict_subtype_away(current_type, proposed_precise_type,
-                                                       ignore_promotions=True)
+                remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
                 return {expr: proposed_type}, {expr: remaining_type}
         else:
             return {expr: proposed_type}, {}

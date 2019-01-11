@@ -1313,7 +1313,8 @@ def f(x: Union[A, B]) -> None:
         f(x)
 [builtins fixtures/isinstance.pyi]
 
-[case testIsinstanceWithOverlappingPromotionTypes]
+[case testIsinstanceWithOverlappingPromotionTypes-skip]
+# Currently disabled: see https://github.com/python/mypy/issues/6180 for context
 from typing import Union
 
 class FloatLike: pass
