@@ -101,10 +101,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
-                             "mypy-%d.%d-%s" % (options.python_version[0],
-                                                options.python_version[1],
-                                                options.platform))
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
