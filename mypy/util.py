@@ -112,14 +112,14 @@ def try_find_python2_interpreter() -> Optional[str]:
 
 PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{version}-{platform}" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
   </testcase>
 </testsuite>
 """  # type: Final
 
 FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{version}-{platform}" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
@@ -127,21 +127,24 @@ FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 
 ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{version}-{platform}" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
 """  # type: Final
 
 
-def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str, version: str, platform: str) -> None:
+def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
+                    version: str, platform: str) -> None:
     from xml.sax.saxutils import escape
     if not messages and not serious:
         xml = PASS_TEMPLATE.format(time=dt, version=version, platform=platform)
     elif not serious:
-        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt, version=version, platform=platform)
+        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt,
+                                   ver=version, platform=platform)
     else:
-        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt, version=version, platform=platform)
+        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt,
+                                    ver=version, platform=platform)
 
     # checks for a directory structure in path and creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))

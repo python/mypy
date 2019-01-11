@@ -102,7 +102,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if options.junit_xml:
         t1 = time.time()
         py_version = '{}.{}'.format(options.python_version[0], options.python_version[1])
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml, py_version, options.platform)
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
+                             py_version, options.platform)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile

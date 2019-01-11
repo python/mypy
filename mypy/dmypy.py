@@ -356,7 +356,8 @@ def check_output(response: Dict[str, Any], verbose: bool,
         # Lazy import so this import doesn't slow things down when not writing junit
         from mypy.util import write_junit_xml
         messages = (out + err).splitlines()
-        write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml, response['python_version'], response['platform'])
+        write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml,
+                        response['python_version'], response['platform'])
     if perf_stats_file:
         telemetry = response.get('stats', {})
         with open(perf_stats_file, 'w') as f:
