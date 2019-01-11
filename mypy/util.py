@@ -138,7 +138,7 @@ def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
                     version: str, platform: str) -> None:
     from xml.sax.saxutils import escape
     if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt, version=version, platform=platform)
+        xml = PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
     elif not serious:
         xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt,
                                    ver=version, platform=platform)
