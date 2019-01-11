@@ -281,7 +281,7 @@ def do_stop(args: argparse.Namespace) -> None:
     """Stop daemon via a 'stop' request."""
     # May raise BadStatus, which will be handled by main().
     response = request(args.status_file, 'stop', timeout=5)
-    if response:
+    if 'error' in response:
         show_stats(response)
         fail("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
