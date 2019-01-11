@@ -105,17 +105,6 @@ def get_reachable_graph(root: object) -> Tuple[Dict[int, object],
     return seen, parents
 
 
-def find_all_reachable(root: object) -> List[object]:
-    return list(get_reachable_graph(root)[0].values())
-
-
-def aggregate_by_type(objs: List[object]) -> Dict[type, List[object]]:
-    m = {}  # type: Dict[type, List[object]]
-    for o in objs:
-        m.setdefault(type(o), []).append(o)
-    return m
-
-
 def get_path(o: object,
              seen: Dict[int, object],
              parents: Dict[int, Tuple[int, object]]) -> List[Tuple[object, object]]:

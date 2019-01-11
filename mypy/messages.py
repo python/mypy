@@ -75,7 +75,6 @@ INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'  # type: Final
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
-CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'  # type: Final
 CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
 CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
@@ -1112,12 +1111,6 @@ class MessageBuilder:
     def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
-
-    def overloaded_signatures_partial_overlap(self, index1: int, index2: int,
-                                              context: Context) -> None:
-        self.fail('Overloaded function signatures {} and {} '.format(index1, index2)
-                  + 'are partially overlapping: the two signatures may return '
-                  + 'incompatible types given certain calls', context)
 
     def overloaded_signature_will_never_match(self, index1: int, index2: int,
                                               context: Context) -> None:

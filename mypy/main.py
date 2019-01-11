@@ -121,16 +121,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit(code)
 
 
-def readlinkabs(link: str) -> str:
-    """Return an absolute path to symbolic link destination."""
-    # Adapted from code by Greg Smith.
-    assert os.path.islink(link)
-    path = os.readlink(link)
-    if os.path.isabs(path):
-        return path
-    return os.path.join(os.path.dirname(link), path)
-
-
 class SplitNamespace(argparse.Namespace):
     def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
         self.__dict__['_standard_namespace'] = standard_namespace
@@ -298,6 +288,8 @@ def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
+                    program: str = 'mypy',
+                    header: str = HEADER,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -305,8 +297,8 @@ def process_options(args: List[str],
     call fscache.set_package_root() to set the cache's package root.
     """
 
-    parser = argparse.ArgumentParser(prog='mypy',
-                                     usage=HEADER,
+    parser = argparse.ArgumentParser(prog=program,
+                                     usage=header,
                                      description=DESCRIPTION,
                                      epilog=FOOTER,
                                      fromfile_prefix_chars='@',

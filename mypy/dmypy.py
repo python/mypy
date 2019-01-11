@@ -1,7 +1,5 @@
 """Client for mypy daemon mode.
 
-Highly experimental!  Only supports UNIX-like systems.
-
 This manages a daemon process which keeps useful state in memory
 rather than having to read it back from disk on each run.
 """

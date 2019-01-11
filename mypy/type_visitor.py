@@ -13,7 +13,7 @@ other modules refer to them.
 
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
 from mypy_extensions import trait
 
 T = TypeVar('T')
@@ -159,7 +159,18 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, self.translate_types(t.args), t.line, t.column)
+        final_value = None  # type: Optional[LiteralType]
+        if t.final_value is not None:
+            raw_final_value = t.final_value.accept(self)
+            assert isinstance(raw_final_value, LiteralType)
+            final_value = raw_final_value
+        return Instance(
+            typ=t.type,
+            args=self.translate_types(t.args),
+            line=t.line,
+            column=t.column,
+            final_value=final_value,
+        )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t

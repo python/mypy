@@ -47,36 +47,66 @@ class IPCBase:
 
     connection = None  # type: _IPCHandle
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.READ_SIZE = 100000
         self.name = name
+        self.timeout = timeout
 
     def read(self) -> bytes:
         """Read bytes from an IPC connection until its empty."""
         bdata = bytearray()
-        while True:
-            if sys.platform == 'win32':
-                more, _ = _winapi.ReadFile(self.connection, self.READ_SIZE)
-            else:
+        if sys.platform == 'win32':
+            while True:
+                ov, err = _winapi.ReadFile(self.connection, self.READ_SIZE, overlapped=True)
+                # TODO: remove once typeshed supports Literal types
+                assert isinstance(ov, _winapi.Overlapped)
+                assert isinstance(err, int)
+                try:
+                    if err != 0:
+                        assert err == _winapi.ERROR_IO_PENDING
+                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                        res = _winapi.WaitForSingleObject(ov.event, timeout)
+                        assert res == _winapi.WAIT_OBJECT_0
+                except BaseException:
+                    ov.cancel()
+                    raise
+                _, err = ov.GetOverlappedResult(True)
+                more = ov.getbuffer()
+                if more:
+                    bdata.extend(more)
+                if err == 0:
+                    # we are done!
+                    break
+                elif err == _winapi.ERROR_OPERATION_ABORTED:
+                    raise IPCException("ReadFile operation aborted.")
+        else:
+            while True:
                 more = self.connection.recv(self.READ_SIZE)
-            if not more:
-                break
-            bdata.extend(more)
+                if not more:
+                    break
+                bdata.extend(more)
         return bytes(bdata)
 
     def write(self, data: bytes) -> None:
         """Write bytes to an IPC connection."""
         if sys.platform == 'win32':
             try:
-                # Only send data if there is data to send, to avoid it
-                # being confused with the empty message sent to terminate
-                # the connection. (We will still send the end-of-message
-                # empty message below, which will cause read to return.)
-                if data:
-                    _winapi.WriteFile(self.connection, data)
-                # this empty write is to copy the behavior of socket.sendall,
-                # which also sends an empty message to signify it is done writing
-                _winapi.WriteFile(self.connection, b'')
+                ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
+                # TODO: remove once typeshed supports Literal types
+                assert isinstance(ov, _winapi.Overlapped)
+                assert isinstance(err, int)
+                try:
+                    if err != 0:
+                        assert err == _winapi.ERROR_IO_PENDING
+                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                        res = _winapi.WaitForSingleObject(ov.event, timeout)
+                        assert res == _winapi.WAIT_OBJECT_0
+                except BaseException:
+                    ov.cancel()
+                    raise
+                bytes_written, err = ov.GetOverlappedResult(True)
+                assert err == 0
+                assert bytes_written == len(data)
             except WindowsError as e:
                 raise IPCException("Failed to write with error: {}".format(e.winerror))
         else:
@@ -95,9 +125,9 @@ class IPCClient(IPCBase):
     """The client side of an IPC connection."""
 
     def __init__(self, name: str, timeout: Optional[float]) -> None:
-        super().__init__(name)
+        super().__init__(name, timeout)
         if sys.platform == 'win32':
-            timeout = int(timeout * 1000) if timeout else 0xFFFFFFFF  # NMPWAIT_WAIT_FOREVER
+            timeout = int(self.timeout * 1000) if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
             except FileNotFoundError:
@@ -114,7 +144,7 @@ class IPCClient(IPCBase):
                     0,
                     _winapi.NULL,
                     _winapi.OPEN_EXISTING,
-                    0,
+                    _winapi.FILE_FLAG_OVERLAPPED,
                     _winapi.NULL,
                 )
             except WindowsError as e:
@@ -147,17 +177,18 @@ class IPCServer(IPCBase):
 
     BUFFER_SIZE = 2**16
 
-    def __init__(self, name: str, timeout: Optional[int] = None) -> None:
+    def __init__(self, name: str, timeout: Optional[float] = None) -> None:
         if sys.platform == 'win32':
             name = r'\\.\pipe\{}-{}.pipe'.format(
                 name, base64.urlsafe_b64encode(os.urandom(6)).decode())
         else:
             name = '{}.sock'.format(name)
-        super().__init__(name)
+        super().__init__(name, timeout)
         if sys.platform == 'win32':
             self.connection = _winapi.CreateNamedPipe(self.name,
                 _winapi.PIPE_ACCESS_DUPLEX
-                | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
+                | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE
+                | _winapi.FILE_FLAG_OVERLAPPED,
                 _winapi.PIPE_READMODE_MESSAGE
                 | _winapi.PIPE_TYPE_MESSAGE
                 | _winapi.PIPE_WAIT
@@ -165,7 +196,7 @@ class IPCServer(IPCBase):
                 1,  # one instance
                 self.BUFFER_SIZE,
                 self.BUFFER_SIZE,
-                1000,  # Default timeout in milis
+                _winapi.NMPWAIT_WAIT_FOREVER,
                 0,  # Use default security descriptor
                                                       )
             if self.connection == -1:  # INVALID_HANDLE_VALUE
@@ -185,12 +216,24 @@ class IPCServer(IPCBase):
             # NOTE: It is theoretically possible that this will hang forever if the
             # client never connects, though this can be "solved" by killing the server
             try:
-                _winapi.ConnectNamedPipe(self.connection, _winapi.NULL)
+                ov = _winapi.ConnectNamedPipe(self.connection, overlapped=True)
+                # TODO: remove once typeshed supports Literal types
+                assert isinstance(ov, _winapi.Overlapped)
             except WindowsError as e:
-                if e.winerror == _winapi.ERROR_PIPE_CONNECTED:
-                    pass  # The client already exists, which is fine.
-                else:
+                # Don't raise if the client already exists, or the client already connected
+                if e.winerror not in (_winapi.ERROR_PIPE_CONNECTED, _winapi.ERROR_NO_DATA):
                     raise
+            else:
+                try:
+                    timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                    res = _winapi.WaitForSingleObject(ov.event, timeout)
+                    assert res == _winapi.WAIT_OBJECT_0
+                except BaseException:
+                    ov.cancel()
+                    _winapi.CloseHandle(self.connection)
+                    raise
+                _, err = ov.GetOverlappedResult(True)
+                assert err == 0
         else:
             try:
                 self.connection, _ = self.sock.accept()

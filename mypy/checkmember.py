@@ -71,7 +71,8 @@ def analyze_member_access(name: str,
                           msg: MessageBuilder, *,
                           original_type: Type,
                           chk: 'mypy.checker.TypeChecker',
-                          override_info: Optional[TypeInfo] = None) -> Type:
+                          override_info: Optional[TypeInfo] = None,
+                          in_literal_context: bool = False) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
     The actual implementation is in '_analyze_member_access' and this docstring
@@ -96,7 +97,11 @@ def analyze_member_access(name: str,
                        context,
                        msg,
                        chk=chk)
-    return _analyze_member_access(name, typ, mx, override_info)
+    result = _analyze_member_access(name, typ, mx, override_info)
+    if in_literal_context and isinstance(result, Instance) and result.final_value is not None:
+        return result.final_value
+    else:
+        return result
 
 
 def _analyze_member_access(name: str,
