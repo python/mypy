@@ -43,7 +43,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
 )
-from mypy import messages
+from mypy import message_registry
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment, bytes_to_human_readable_repr
 from mypy.options import Options
@@ -351,7 +351,7 @@ class ASTConverter:
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if any(a.type_annotation is not None for a in args):
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                        self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated) for
                                  a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)

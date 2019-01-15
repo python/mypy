@@ -18,7 +18,7 @@ from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
 from mypy.plugin import AttributeContext
 from mypy.typeanal import set_any_tvars
-from mypy import messages
+from mypy import message_registry
 from mypy import subtypes
 from mypy import meet
 
@@ -147,7 +147,7 @@ def analyze_instance_member_access(name: str,
     if name == '__init__' and not mx.is_super:
         # Accessing __init__ in statically typed code would compromise
         # type safety unless used via super().
-        mx.msg.fail(messages.CANNOT_ACCESS_INIT, mx.context)
+        mx.msg.fail(message_registry.CANNOT_ACCESS_INIT, mx.context)
         return AnyType(TypeOfAny.from_error)
 
     # The base object has an instance type.
@@ -405,7 +405,7 @@ def analyze_descriptor_access(instance_type: Type,
     dunder_get = descriptor_type.type.get_method('__get__')
 
     if dunder_get is None:
-        msg.fail(messages.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
+        msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
         return AnyType(TypeOfAny.from_error)
 
     function = function_type(dunder_get, builtin_type('builtins.function'))
@@ -432,7 +432,7 @@ def analyze_descriptor_access(instance_type: Type,
         return inferred_dunder_get_type
 
     if not isinstance(inferred_dunder_get_type, CallableType):
-        msg.fail(messages.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
+        msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
         return AnyType(TypeOfAny.from_error)
 
     return inferred_dunder_get_type.ret_type
@@ -586,12 +586,12 @@ def analyze_class_attribute_access(itype: Instance,
         if is_method:
             mx.msg.cant_assign_to_method(mx.context)
         if isinstance(node.node, TypeInfo):
-            mx.msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, mx.context)
+            mx.msg.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, mx.context)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        mx.msg.fail(messages.CANNOT_ACCESS_FINAL_INSTANCE_ATTR
+        mx.msg.fail(message_registry.CANNOT_ACCESS_FINAL_INSTANCE_ATTR
                     .format(node.node.name()), mx.context)
 
     # An assignment to final attribute on class object is also always an error,
@@ -609,7 +609,7 @@ def analyze_class_attribute_access(itype: Instance,
             assert isinstance(symnode, Var)
             return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
-            mx.msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)
+            mx.msg.fail(message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         result = add_class_tvars(t, itype, is_classmethod, mx.builtin_type, mx.original_type)
@@ -622,7 +622,7 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
-        mx.msg.fail(messages.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
+        mx.msg.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
                     itype.type.name(), name), mx.context)
         return AnyType(TypeOfAny.from_error)
 

@@ -62,7 +62,8 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
+from mypy.messages import MessageBuilder
+from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
@@ -2259,7 +2260,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if isinstance(node, TypeVarExpr):
             self.fail('Invalid assignment target', ctx)
         elif isinstance(node, TypeInfo):
-            self.fail(CANNOT_ASSIGN_TO_TYPE, ctx)
+            self.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, ctx)
 
     def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
