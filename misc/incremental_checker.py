@@ -165,7 +165,7 @@ def filter_daemon_stats(output: str) -> Tuple[str, Dict[str, Any]]:
     lines = output.splitlines()
     output_lines = []
     for line in lines:
-        m = re.match('(\w+)\s+:\s+(.*)', line)
+        m = re.match(r'(\w+)\s+:\s+(.*)', line)
         if m:
             key, value = m.groups()
             stats[key] = value
