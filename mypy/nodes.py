@@ -443,11 +443,11 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
-        assert len(items) > 0
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        self.set_line(items[0].line)
+        if len(items) > 0:
+            self.set_line(items[0].line)
         self.is_final = False
 
     def name(self) -> str:
@@ -478,6 +478,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             for d in data['items']])
         if data.get('impl') is not None:
             res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
+            # set line for empty overload items, as not set in __init__
+            if len(res.items) > 0:
+                res.set_line(res.impl.line)
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
@@ -1235,9 +1238,24 @@ class StrExpr(Expression):
 
     value = ''
 
-    def __init__(self, value: str) -> None:
+    # Keeps track of whether this string originated from Python 2 source code vs
+    # Python 3 source code. We need to keep track of this information so we can
+    # correctly handle types that have "nested strings". For example, consider this
+    # type alias, where we have a forward reference to a literal type:
+    #
+    #     Alias = List["Literal['foo']"]
+    #
+    # When parsing this, we need to know whether the outer string and alias came from
+    # Python 2 code vs Python 3 code so we can determine whether the inner `Literal['foo']`
+    # is meant to be `Literal[u'foo']` or `Literal[b'foo']`.
+    #
+    # This field keeps track of that information.
+    from_python_3 = True
+
+    def __init__(self, value: str, from_python_3: bool = False) -> None:
         super().__init__()
         self.value = value
+        self.from_python_3 = from_python_3
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1246,7 +1264,16 @@ class StrExpr(Expression):
 class BytesExpr(Expression):
     """Bytes literal"""
 
-    value = ''  # TODO use bytes
+    # Note: we deliberately do NOT use bytes here because it ends up
+    # unnecessarily complicating a lot of the result logic. For example,
+    # we'd have to worry about converting the bytes into a format we can
+    # easily serialize/deserialize to and from JSON, would have to worry
+    # about turning the bytes into a human-readable representation in
+    # error messages...
+    #
+    # It's more convenient to just store the human-readable representation
+    # from the very start.
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
@@ -1259,7 +1286,7 @@ class BytesExpr(Expression):
 class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
-    value = ''  # TODO use bytes
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()

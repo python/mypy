@@ -20,7 +20,7 @@ at an early stage.
 
 from typing import List, Tuple
 
-from mypy import experiments
+from mypy import state
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
@@ -81,7 +81,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
         defs = file.defs
 
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             # Add implicit definitions of module '__name__' etc.
             for name, t in implicit_module_attrs.items():
                 # unicode docstrings should be accepted in Python 2

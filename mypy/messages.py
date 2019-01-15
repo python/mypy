@@ -13,6 +13,7 @@ checker but we are moving away from this convention.
 from collections import OrderedDict
 import re
 import difflib
+from textwrap import dedent
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 
@@ -35,8 +36,7 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-# Constants that represent simple type checker error message, i.e. messages
-# that do not have any parameters.
+# Type checker error message constants --
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final
 MISSING_RETURN_STATEMENT = 'Missing return statement'  # type: Final
@@ -46,6 +46,7 @@ RETURN_VALUE_EXPECTED = 'Return value expected'  # type: Final
 NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # type: Final
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
+RETURN_IN_ASYNC_GENERATOR = "'return' with value in async generator is not allowed"  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator"' \
     ' or one of its supertypes'  # type: Final
@@ -75,12 +76,12 @@ INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'  # type: Final
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
-CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'  # type: Final
 CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
 CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
 INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'  # type: Final
+MULTIPLE_OVERLOADS_REQUIRED = 'Single overload definition, multiple required'  # type: Final
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
     'Read-only property cannot override read-write property'  # type: Final
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'  # type: Final
@@ -103,13 +104,65 @@ TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict key to be string literal'  # type: Final
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # type: Final
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
+DESCRIPTOR_SET_NOT_CALLABLE = "{}.__set__ is not callable"  # type: Final
+DESCRIPTOR_GET_NOT_CALLABLE = "{}.__get__ is not callable"  # type: Final
+MODULE_LEVEL_GETATTRIBUTE = '__getattribute__ is not valid at the module level'  # type: Final
+
+# Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
-    'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
+    'Implicit generic "Any". Use "{}" and specify generic parameters'  # type: Final
+
+# TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
-UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
+CANNOT_USE_TYPEVAR_AS_EXPRESSION = \
+    'Type variable "{}.{}" cannot be used as an expression'  # type: Final
+
+# Super
+TOO_MANY_ARGS_FOR_SUPER = 'Too many arguments for "super"'  # type: Final
+TOO_FEW_ARGS_FOR_SUPER = 'Too few arguments for "super"'  # type: Final
+SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED = '"super" with a single argument not supported'  # type: Final
+UNSUPPORTED_ARG_1_FOR_SUPER = 'Unsupported argument 1 for "super"'  # type: Final
+UNSUPPORTED_ARG_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
+SUPER_VARARGS_NOT_SUPPORTED = 'Varargs not supported with "super"'  # type: Final
+SUPER_POSITIONAL_ARGS_REQUIRED = '"super" only accepts positional arguments'  # type: Final
+SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1 = \
+    'Argument 2 for "super" not an instance of argument 1'  # type: Final
+SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED = \
+    'super() outside of a method is not supported'  # type: Final
+SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED = \
+    'super() requires one or more positional arguments in enclosing function'  # type: Final
+
+# Self-type
+MISSING_OR_INVALID_SELF_TYPE = \
+    "Self argument missing for a non-static method (or an invalid type for self)"  # type: Final
+ERASED_SELF_TYPE_NOT_SUPERTYPE = \
+    'The erased type of self "{}" is not a supertype of its class "{}"'  # type: Final
+INVALID_SELF_TYPE_OR_EXTRA_ARG = \
+    "Invalid type for self, or extra argument type in function annotation"  # type: Final
+
+# Final
+CANNOT_INHERIT_FROM_FINAL = 'Cannot inherit from final class "{}"'  # type: Final
+DEPENDENT_FINAL_IN_CLASS_BODY = \
+    "Final name declared in class body cannot depend on type variables"  # type: Final
+CANNOT_ACCESS_FINAL_INSTANCE_ATTR = \
+    'Cannot access final instance attribute "{}" on class object'  # type: Final
+
+# ClassVar
+CANNOT_OVERRIDE_INSTANCE_VAR = \
+    'Cannot override instance variable (previously declared on base class "{}") with class ' \
+    'variable'  # type: Final
+CANNOT_OVERRIDE_CLASS_VAR = \
+    'Cannot override class variable (previously declared on base class "{}") with instance ' \
+    'variable'  # type: Final
+
+# Protocol
+RUNTIME_PROTOCOL_EXPECTED = \
+    'Only @runtime protocols can be used with instance and class checks'  # type: Final
+CANNOT_INSTANTIATE_PROTOCOL = 'Cannot instantiate protocol class "{}"'  # type: Final
+
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -188,7 +241,7 @@ class MessageBuilder:
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file, offset=offset,
+                               msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
@@ -199,7 +252,15 @@ class MessageBuilder:
     def note(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin, offset=offset)
+        self.report(msg, context, 'note', file=file, origin=origin,
+                    offset=offset)
+
+    def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
+                       origin: Optional[Context] = None, offset: int = 0) -> None:
+        """Report as many notes as lines in the message (unless disabled)."""
+        for msg in messages.splitlines():
+            self.report(msg, context, 'note', file=file, origin=origin,
+                        offset=offset)
 
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
@@ -855,11 +916,24 @@ class MessageBuilder:
             name, target), context)
 
     def argument_incompatible_with_supertype(
-            self, arg_num: int, name: str, name_in_supertype: str,
-            supertype: str, context: Context) -> None:
+            self, arg_num: int, name: str, type_name: Optional[str],
+            name_in_supertype: str, supertype: str, context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         self.fail('Argument {} of "{}" incompatible with {}'
                   .format(arg_num, name, target), context)
+
+        if name == "__eq__" and type_name:
+            multiline_msg = self.comparison_method_example_msg(class_name=type_name)
+            self.note_multiline(multiline_msg, context)
+
+    def comparison_method_example_msg(self, class_name: str) -> str:
+        return dedent('''\
+        It is recommended for "__eq__" to work with arbitrary objects, for example:
+            def __eq__(self, other: object) -> bool:
+                if not isinstance(other, {class_name}):
+                    return NotImplemented
+                return <logic to compare two {class_name} instances>
+        '''.format(class_name=class_name))
 
     def return_type_incompatible_with_supertype(
             self, name: str, name_in_supertype: str, supertype: str,
@@ -1039,12 +1113,6 @@ class MessageBuilder:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
-    def overloaded_signatures_partial_overlap(self, index1: int, index2: int,
-                                              context: Context) -> None:
-        self.fail('Overloaded function signatures {} and {} '.format(index1, index2)
-                  + 'are partially overlapping: the two signatures may return '
-                  + 'incompatible types given certain calls', context)
-
     def overloaded_signature_will_never_match(self, index1: int, index2: int,
                                               context: Context) -> None:
         self.fail(
@@ -1111,8 +1179,6 @@ class MessageBuilder:
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
         self.fail("Revealed local types are:", context)
-        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
-        # for indentation
         for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
             self.fail(line, context)
 

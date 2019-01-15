@@ -31,7 +31,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawLiteralType,
+    TypeOfAny, Instance, RawExpressionType,
 )
 from mypy import defaults
 from mypy import messages
@@ -51,6 +51,7 @@ try:
         NameConstant,
         Expression as ast3_Expression,
         Str,
+        Bytes,
         Index,
         Num,
         UnaryOp,
@@ -82,7 +83,6 @@ MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # typ
 _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
-TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'  # type: Final
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -140,7 +140,11 @@ def parse(source: Union[str, bytes],
     return tree
 
 
-def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -> Optional[Type]:
+def parse_type_comment(type_comment: str,
+                       line: int,
+                       errors: Optional[Errors],
+                       assume_str_is_unicode: bool = True,
+                       ) -> Optional[Type]:
     try:
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
@@ -151,24 +155,39 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
             raise
     else:
         assert isinstance(typ, ast3_Expression)
-        return TypeConverter(errors, line=line).visit(typ.body)
+        return TypeConverter(errors, line=line,
+                             assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
 
 
-def parse_type_string(expr_string: str, line: int, column: int) -> Type:
-    """Parses a type that was originally present inside of an explicit string.
+def parse_type_string(expr_string: str, expr_fallback_name: str,
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+    """Parses a type that was originally present inside of an explicit string,
+    byte string, or unicode string.
 
     For example, suppose we have the type `Foo["blah"]`. We should parse the
     string expression "blah" using this function.
+
+    If `assume_str_is_unicode` is set to true, this function will assume that
+    `Foo["blah"]` is equivalent to `Foo[u"blah"]`. Otherwise, it assumes it's
+    equivalent to `Foo[b"blah"]`.
+
+    The caller is responsible for keeping track of the context in which the
+    type string was encountered (e.g. in Python 3 code, Python 2 code, Python 2
+    code with unicode_literals...) and setting `assume_str_is_unicode` accordingly.
     """
     try:
-        node = parse_type_comment(expr_string.strip(), line=line, errors=None)
+        node = parse_type_comment(expr_string.strip(), line=line, errors=None,
+                                  assume_str_is_unicode=assume_str_is_unicode)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
+            node.original_str_fallback = expr_fallback_name
             return node
         else:
-            return RawLiteralType(expr_string, 'builtins.str', line, column)
-    except SyntaxError:
-        return RawLiteralType(expr_string, 'builtins.str', line, column)
+            return RawExpressionType(expr_string, expr_fallback_name, line, column)
+    except (SyntaxError, ValueError):
+        # Note: the parser will raise a `ValueError` instead of a SyntaxError if
+        # the string happens to contain things like \x00.
+        return RawExpressionType(expr_string, expr_fallback_name, line, column)
 
 
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
@@ -909,7 +928,11 @@ class ASTConverter:
 
     # Num(object n) -- a number as a PyObject.
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        val = n.n
+        # The n field has the type complex, but complex isn't *really*
+        # a parent of int and float, and this causes isinstance below
+        # to think that the complex branch is always picked. Avoid
+        # this by throwing away the type.
+        val = n.n  # type: object
         if isinstance(val, int):
             e = IntExpr(val)  # type: Union[IntExpr, FloatExpr, ComplexExpr]
         elif isinstance(val, float):
@@ -966,10 +989,7 @@ class ASTConverter:
 
     # Bytes(bytes s)
     def visit_Bytes(self, n: ast3.Bytes) -> Union[BytesExpr, StrExpr]:
-        # The following line is a bit hacky, but is the best way to maintain
-        # compatibility with how mypy currently parses the contents of bytes literals.
-        contents = str(n.s)[2:-1]
-        e = BytesExpr(contents)
+        e = BytesExpr(bytes_to_human_readable_repr(n.s))
         return self.set_line(e, n)
 
     # NameConstant(singleton value)
@@ -1042,10 +1062,33 @@ class ASTConverter:
 
 
 class TypeConverter:
-    def __init__(self, errors: Optional[Errors], line: int = -1) -> None:
+    def __init__(self,
+                 errors: Optional[Errors],
+                 line: int = -1,
+                 assume_str_is_unicode: bool = True,
+                 ) -> None:
         self.errors = errors
         self.line = line
         self.node_stack = []  # type: List[AST]
+        self.assume_str_is_unicode = assume_str_is_unicode
+
+    def invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
+        """Constructs a type representing some expression that normally forms an invalid type.
+        For example, if we see a type hint that says "3 + 4", we would transform that
+        expression into a RawExpressionType.
+
+        The semantic analysis layer will report an "Invalid type" error when it
+        encounters this type, along with the given note if one is provided.
+
+        See RawExpressionType's docstring for more details on how it's used.
+        """
+        return RawExpressionType(
+            None,
+            'typing.Any',
+            line=self.line,
+            column=getattr(node, 'col_offset', -1),
+            note=note,
+        )
 
     @overload
     def visit(self, node: ast3.expr) -> Type: ...
@@ -1064,8 +1107,7 @@ class TypeConverter:
             if visitor is not None:
                 return visitor(node)
             else:
-                self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+                return self.invalid_type(node)
         finally:
             self.node_stack.pop()
 
@@ -1090,8 +1132,11 @@ class TypeConverter:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `Str` object.
-        return (parse_type_comment(s.strip(), self.line, self.errors) or
-                AnyType(TypeOfAny.from_error))
+        return (parse_type_comment(s.strip(),
+                                   self.line,
+                                   self.errors,
+                                   self.assume_str_is_unicode)
+                or AnyType(TypeOfAny.from_error))
 
     def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
@@ -1099,12 +1144,10 @@ class TypeConverter:
         constructor = stringify_name(f)
 
         if not isinstance(self.parent(), ast3.List):
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, e.col_offset)
+            note = None
             if constructor:
-                self.note("Suggestion: use {}[...] instead of {}(...)".format(
-                    constructor, constructor),
-                    self.line, e.col_offset)
-            return AnyType(TypeOfAny.from_error)
+                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+            return self.invalid_type(e, note=note)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
@@ -1158,7 +1201,7 @@ class TypeConverter:
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
-            return RawLiteralType(n.value, 'builtins.bool', line=self.line)
+            return RawExpressionType(n.value, 'builtins.bool', line=self.line)
         else:
             return UnboundType(str(n.value), line=self.line)
 
@@ -1167,30 +1210,53 @@ class TypeConverter:
         # We support specifically Literal[-4] and nothing else.
         # For example, Literal[+4] or Literal[~6] is not supported.
         typ = self.visit(n.operand)
-        if isinstance(typ, RawLiteralType) and isinstance(n.op, USub):
-            if isinstance(typ.value, int):
-                typ.value *= -1
+        if isinstance(typ, RawExpressionType) and isinstance(n.op, USub):
+            if isinstance(typ.literal_value, int):
+                typ.literal_value *= -1
                 return typ
-        self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-        return AnyType(TypeOfAny.from_error)
+        return self.invalid_type(n)
 
     # Num(number n)
     def visit_Num(self, n: Num) -> Type:
-        # Could be either float or int
-        numeric_value = n.n
-        if isinstance(numeric_value, int):
-            return RawLiteralType(numeric_value, 'builtins.int', line=self.line)
-        elif isinstance(numeric_value, float):
-            # Floats and other numbers are not valid parameters for RawLiteralType, so we just
-            # pass in 'None' for now. We'll report the appropriate error at a later stage.
-            return RawLiteralType(None, 'builtins.float', line=self.line)
+        # The n field has the type complex, but complex isn't *really*
+        # a parent of int and float, and this causes isinstance below
+        # to think that the complex branch is always picked. Avoid
+        # this by throwing away the type.
+        value = n.n  # type: object
+        if isinstance(value, int):
+            numeric_value = value  # type: Optional[int]
+            type_name = 'builtins.int'
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            # Other kinds of numbers (floats, complex) are not valid parameters for
+            # RawExpressionType so we just pass in 'None' for now. We'll report the
+            # appropriate error at a later stage.
+            numeric_value = None
+            type_name = 'builtins.{}'.format(type(value).__name__)
+        return RawExpressionType(
+            numeric_value,
+            type_name,
+            line=self.line,
+            column=getattr(n, 'col_offset', -1),
+        )
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        return parse_type_string(n.s, line=self.line, column=-1)
+        # Note: we transform these fallback types into the correct types in
+        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
+        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
+        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
+        # translate 'builtins.bytes' in the method below into 'builtins.str'.
+        if 'u' in n.kind or self.assume_str_is_unicode:
+            return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
+        else:
+            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
+
+    # Bytes(bytes s)
+    def visit_Bytes(self, n: Bytes) -> Type:
+        contents = bytes_to_human_readable_repr(n.s)
+        return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
@@ -1211,8 +1277,7 @@ class TypeConverter:
             return UnboundType(value.name, params, line=self.line,
                                empty_tuple_index=empty_tuple_index)
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            return self.invalid_type(n)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
@@ -1225,8 +1290,7 @@ class TypeConverter:
         if isinstance(before_dot, UnboundType) and not before_dot.args:
             return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
         else:
-            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+            return self.invalid_type(n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> Type:
@@ -1246,3 +1310,17 @@ def stringify_name(n: AST) -> Optional[str]:
         if sv is not None:
             return "{}.{}".format(sv, n.attr)
     return None  # Can't do it.
+
+
+def bytes_to_human_readable_repr(b: bytes) -> str:
+    """Converts bytes into some human-readable representation. Unprintable
+    bytes such as the nul byte are escaped. For example:
+
+        >>> b = bytes([102, 111, 111, 10, 0])
+        >>> s = bytes_to_human_readable_repr(b)
+        >>> print(s)
+        foo\n\x00
+        >>> print(repr(s))
+        'foo\\n\\x00'
+    """
+    return str(b)[2:-1]

@@ -213,6 +213,6 @@ to be annotated with a starred type:
 
 .. code-block:: python
 
-    p, q, *rs = 1, 2  # type: int, int, *List[int]
+    p, q, *rs = 1, 2  # type: int, int, List[int]
 
 Here, the type of ``rs`` is set to ``List[int]``.

@@ -1,7 +1,5 @@
 """Client for mypy daemon mode.
 
-Highly experimental!  Only supports UNIX-like systems.
-
 This manages a daemon process which keeps useful state in memory
 rather than having to read it back from disk on each run.
 """
@@ -71,12 +69,14 @@ check_parser = p = subparsers.add_parser('check', formatter_class=AugmentedHelpF
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
+p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
 run_parser = p = subparsers.add_parser('run', formatter_class=AugmentedHelpFormatter,
                                        help="Check some files, [re]starting daemon if necessary")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
+p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
 p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('--log-file', metavar='FILE', type=str,
@@ -89,6 +89,7 @@ recheck_parser = p = subparsers.add_parser('recheck', formatter_class=AugmentedH
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
+p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
 p.add_argument('--update', metavar='FILE', nargs='*',
                help="Files in the run to add or check again (default: all from previous run)..")
 p.add_argument('--remove', metavar='FILE', nargs='*',
@@ -252,7 +253,7 @@ def do_run(args: argparse.Namespace) -> None:
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.verbose, args.junit_xml)
+    check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
 
 
 @action(status_parser)
@@ -280,7 +281,7 @@ def do_stop(args: argparse.Namespace) -> None:
     """Stop daemon via a 'stop' request."""
     # May raise BadStatus, which will be handled by main().
     response = request(args.status_file, 'stop', timeout=5)
-    if response:
+    if 'error' in response:
         show_stats(response)
         fail("Daemon is stuck; consider %s kill" % sys.argv[0])
     else:
@@ -306,7 +307,7 @@ def do_check(args: argparse.Namespace) -> None:
     response = request(args.status_file, 'check', files=args.files)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.verbose, args.junit_xml)
+    check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
 
 
 @action(recheck_parser)
@@ -331,10 +332,12 @@ def do_recheck(args: argparse.Namespace) -> None:
         response = request(args.status_file, 'recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.verbose, args.junit_xml)
+    check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
 
 
-def check_output(response: Dict[str, Any], verbose: bool, junit_xml: Optional[str]) -> None:
+def check_output(response: Dict[str, Any], verbose: bool,
+                 junit_xml: Optional[str],
+                 perf_stats_file: Optional[str]) -> None:
     """Print the output from a check or recheck command.
 
     Call sys.exit() unless the status code is zero.
@@ -353,7 +356,13 @@ def check_output(response: Dict[str, Any], verbose: bool, junit_xml: Optional[st
         # Lazy import so this import doesn't slow things down when not writing junit
         from mypy.util import write_junit_xml
         messages = (out + err).splitlines()
-        write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml)
+        write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml,
+                        response['python_version'], response['platform'])
+    if perf_stats_file:
+        telemetry = response.get('stats', {})
+        with open(perf_stats_file, 'w') as f:
+            json.dump(telemetry, f)
+
     if status_code:
         sys.exit(status_code)
 

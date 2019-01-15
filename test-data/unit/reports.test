@@ -357,3 +357,15 @@ class Foo:
 @attr.s
 class Z(object):
     pass
+
+[case testCoverageIgnoresCache]
+-- Performs two runs to verify that cached information does not prevent
+-- modules from being included in reports.
+# cmd: mypy --linecount-report report a.py
+[file a.py]
+empty = False
+[out]
+[out2]
+[outfile report/linecount.txt]
+      1       1      0      0 total
+      1       1      0      0 a

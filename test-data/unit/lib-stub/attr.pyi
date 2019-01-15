@@ -21,6 +21,7 @@ def attrib(default: None = ...,
            type: None = ...,
            converter: None = ...,
            factory: None = ...,
+           kw_only: bool = ...,
            ) -> Any: ...
 # This form catches an explicit None or no default and infers the type from the other arguments.
 @overload
@@ -35,6 +36,7 @@ def attrib(default: None = ...,
            type: Optional[Type[_T]] = ...,
            converter: Optional[_ConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
+           kw_only: bool = ...,
            ) -> _T: ...
 # This form catches an explicit default argument.
 @overload
@@ -49,6 +51,7 @@ def attrib(default: _T,
            type: Optional[Type[_T]] = ...,
            converter: Optional[_ConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
+           kw_only: bool = ...,
            ) -> _T: ...
 # This form covers type=non-Type: e.g. forward references (str), Any
 @overload
@@ -63,6 +66,7 @@ def attrib(default: Optional[_T] = ...,
            type: object = ...,
            converter: Optional[_ConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
+           kw_only: bool = ...,
            ) -> Any: ...
 
 @overload
@@ -75,8 +79,12 @@ def attrs(maybe_cls: _C,
           init: bool = ...,
           slots: bool = ...,
           frozen: bool = ...,
+          weakref_slot: bool = ...,
           str: bool = ...,
-          auto_attribs: bool = ...) -> _C: ...
+          auto_attribs: bool = ...,
+          kw_only: bool = ...,
+          cache_hash: bool = ...,
+          ) -> _C: ...
 @overload
 def attrs(maybe_cls: None = ...,
           these: Optional[Mapping[str, Any]] = ...,
@@ -87,8 +95,12 @@ def attrs(maybe_cls: None = ...,
           init: bool = ...,
           slots: bool = ...,
           frozen: bool = ...,
+          weakref_slot: bool = ...,
           str: bool = ...,
-          auto_attribs: bool = ...) -> Callable[[_C], _C]: ...
+          auto_attribs: bool = ...,
+          kw_only: bool = ...,
+          cache_hash: bool = ...,
+          ) -> Callable[[_C], _C]: ...
 
 
 # aliases

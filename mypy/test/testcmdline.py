@@ -32,10 +32,11 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_python_cmdline(testcase)
+        for step in [1] + sorted(testcase.output2):
+            test_python_cmdline(testcase, step)
 
 
-def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
+def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
@@ -75,12 +76,14 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
         # Ignore stdout, but we insist on empty stderr and zero status.
         if err or result:
             raise AssertionError(
-                'Expected zero status and empty stderr, got %d and\n%s' %
-                (result, '\n'.join(err + out)))
+                'Expected zero status and empty stderr%s, got %d and\n%s' %
+                (' on step %d' % step if testcase.output2 else '',
+                 result, '\n'.join(err + out)))
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
                 raise AssertionError(
-                    'Expected file {} was not produced by test case'.format(path))
+                    'Expected file {} was not produced by test case{}'.format(
+                        path, ' on step %d' % step if testcase.output2 else ''))
             with open(path, 'r', encoding='utf8') as output_file:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
@@ -93,17 +96,19 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                                          for line in normalized_output]
                 normalized_output = normalize_error_messages(normalized_output)
             assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
-                                       'Output file {} did not match its expected output'.format(
-                                           path))
+                                       'Output file {} did not match its expected output{}'.format(
+                                           path, ' on step %d' % step if testcase.output2 else ''))
     else:
         if testcase.normalize_output:
             out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))
-        assert_string_arrays_equal(testcase.output, out,
-                                   'Invalid output ({}, line {})'.format(
-                                       testcase.file, testcase.line))
+        expected_out = testcase.output if step == 1 else testcase.output2[step]
+        assert_string_arrays_equal(expected_out, out,
+                                   'Invalid output ({}, line {}){}'.format(
+                                       testcase.file, testcase.line,
+                                       ' on step %d' % step if testcase.output2 else ''))
 
 
 def parse_args(line: str) -> List[str]:

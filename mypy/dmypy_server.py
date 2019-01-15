@@ -1,12 +1,12 @@
 """Server for mypy daemon mode.
 
-Only supports UNIX-like systems.
-
 This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
+import argparse
 import base64
+import io
 import json
 import os
 import pickle
@@ -29,6 +29,7 @@ from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
 from mypy.options import Options
 from mypy.typestate import reset_global_state
+from mypy.util import redirect_stderr, redirect_stdout
 from mypy.version import __version__
 
 
@@ -128,7 +129,7 @@ else:
 
 # Server code.
 
-CONNECTION_NAME = 'dmypy.sock'  # type: Final
+CONNECTION_NAME = 'dmypy'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -190,6 +191,13 @@ class Server:
         options.local_partial_types = True
         self.status_file = status_file
 
+    def _response_metadata(self) -> Dict[str, str]:
+        py_version = '{}.{}'.format(self.options.python_version[0], self.options.python_version[1])
+        return {
+            'platform': self.options.platform,
+            'python_version': py_version,
+        }
+
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
@@ -216,9 +224,11 @@ class Server:
                                 # If we are crashing, report the crash to the client
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                resp.update(self._response_metadata())
                                 server.write(json.dumps(resp).encode('utf8'))
                                 raise
                     try:
+                        resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode('utf8'))
                     except OSError:
                         pass  # Maybe the client hung up
@@ -270,11 +280,19 @@ class Server:
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
-            sources, options = mypy.main.process_options(
-                ['-i'] + list(args),
-                require_targets=True,
-                server_options=True,
-                fscache=self.fscache)
+            # Process options can exit on improper arguments, so we need to catch that and
+            # capture stderr so the client can report it
+            stderr = io.StringIO()
+            stdout = io.StringIO()
+            with redirect_stderr(stderr):
+                with redirect_stdout(stdout):
+                    sources, options = mypy.main.process_options(
+                        ['-i'] + list(args),
+                        require_targets=True,
+                        server_options=True,
+                        fscache=self.fscache,
+                        program='mypy-daemon',
+                        header=argparse.SUPPRESS)
             # Signal that we need to restart if the options have changed
             if self.options_snapshot != options.snapshot():
                 return {'restart': 'configuration changed'}
@@ -288,6 +306,8 @@ class Server:
                     return {'restart': 'plugins changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
+        except SystemExit as e:
+            return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
         return self.check(sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
@@ -326,6 +346,7 @@ class Server:
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
         res = self.fine_grained_increment(sources, remove, update)
         self.fscache.flush()
+        self.update_stats(res)
         return res
 
     def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
@@ -335,11 +356,21 @@ class Server:
         else:
             res = self.fine_grained_increment(sources)
         self.fscache.flush()
+        self.update_stats(res)
         return res
+
+    def update_stats(self, res: Dict[str, Any]) -> None:
+        if self.fine_grained_manager:
+            manager = self.fine_grained_manager.manager
+            manager.dump_stats()
+            res['stats'] = manager.stats
+            manager.stats = {}
 
     def initialize_fine_grained(self, sources: List[BuildSource]) -> Dict[str, Any]:
         self.fswatcher = FileSystemWatcher(self.fscache)
+        t0 = time.time()
         self.update_sources(sources)
+        t1 = time.time()
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
@@ -359,6 +390,7 @@ class Server:
         # the typechecking on the updated files yet.
         # Run a fine-grained update starting from the cached data
         if result.used_cache:
+            t2 = time.time()
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
             for state in self.fine_grained_manager.graph.values():
@@ -377,8 +409,16 @@ class Server:
                     assert state.path is not None
                     changed.append((state.id, state.path))
 
+            t3 = time.time()
             # Run an update
             messages = self.fine_grained_manager.update(changed, removed)
+            t4 = time.time()
+            self.fine_grained_manager.manager.add_stats(
+                update_sources_time=t1 - t0,
+                build_time=t2 - t1,
+                find_changes_time=t3 - t2,
+                fg_update_time=t4 - t3,
+                files_changed=len(removed) + len(changed))
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
@@ -414,6 +454,11 @@ class Server:
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
         manager.log("fine-grained increment: update: {:.3f}s".format(t2 - t1))
+        manager.add_stats(
+            find_changes_time=t1 - t0,
+            fg_update_time=t2 - t1,
+            files_changed=len(removed) + len(changed))
+
         status = 1 if messages else 0
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}

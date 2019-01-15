@@ -1046,6 +1046,7 @@ class B: pass
 
 [case testReusingInferredForIndex2]
 # flags: --allow-redefinition
+
 def f() -> None:
     for a in [A()]: pass
     a = A()

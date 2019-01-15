@@ -8,7 +8,7 @@ x = None # type: a : b  # E: syntax error in type comment
 
 [case testFastParseInvalidTypeComment]
 
-x = None # type: a + b  # E: invalid type comment or annotation
+x = None # type: a + b  # E: Invalid type comment or annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
@@ -26,7 +26,7 @@ def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types
 
 [case testFastParseInvalidFunctionAnnotation]
 
-def f(x):  # E: invalid type comment or annotation
+def f(x):  # E: Invalid type comment or annotation
   # type: (a + b) -> None
   pass
 
@@ -35,29 +35,29 @@ def f(x):  # E: invalid type comment or annotation
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
-x = None # type: Tuple[int, str].x # E: invalid type comment or annotation
-x = None # type: Iterable[x].x # E: invalid type comment or annotation
-x = None # type: Tuple[x][x] # E: invalid type comment or annotation
-x = None # type: Iterable[x][x] # E: invalid type comment or annotation
-x = None # type: Callable[..., int][x] # E: invalid type comment or annotation
-x = None # type: Callable[..., int].x # E: invalid type comment or annotation
+x = None # type: Tuple[int, str].x # E: Invalid type comment or annotation
+a = None # type: Iterable[x].x # E: Invalid type comment or annotation
+b = None # type: Tuple[x][x] # E: Invalid type comment or annotation
+c = None # type: Iterable[x][x] # E: Invalid type comment or annotation
+d = None # type: Callable[..., int][x] # E: Invalid type comment or annotation
+e = None # type: Callable[..., int].x # E: Invalid type comment or annotation
 
-def f1(x): # E: invalid type comment or annotation
+def f1(x): # E: Invalid type comment or annotation
     # type: (Tuple[int, str].x) -> None
     pass
-def f2(x): # E: invalid type comment or annotation
+def f2(x): # E: Invalid type comment or annotation
     # type: (Iterable[x].x) -> None
     pass
-def f3(x): # E: invalid type comment or annotation
+def f3(x): # E: Invalid type comment or annotation
     # type: (Tuple[x][x]) -> None
     pass
-def f4(x): # E: invalid type comment or annotation
+def f4(x): # E: Invalid type comment or annotation
     # type: (Iterable[x][x]) -> None
     pass
-def f5(x): # E: invalid type comment or annotation
+def f5(x): # E: Invalid type comment or annotation
     # type: (Callable[..., int][x]) -> None
     pass
-def f6(x): # E: invalid type comment or annotation
+def f6(x): # E: Invalid type comment or annotation
     # type: (Callable[..., int].x) -> None
     pass
 
@@ -67,26 +67,26 @@ def f6(x): # E: invalid type comment or annotation
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
-x: Tuple[int, str].x # E: invalid type comment or annotation
-x: Iterable[x].x # E: invalid type comment or annotation
-x: Tuple[x][x] # E: invalid type comment or annotation
-x: Iterable[x][x] # E: invalid type comment or annotation
-x: Callable[..., int][x] # E: invalid type comment or annotation
-x: Callable[..., int].x # E: invalid type comment or annotation
+x: Tuple[int, str].x # E: Invalid type comment or annotation
+a: Iterable[x].x # E: Invalid type comment or annotation
+b: Tuple[x][x] # E: Invalid type comment or annotation
+c: Iterable[x][x] # E: Invalid type comment or annotation
+d: Callable[..., int][x] # E: Invalid type comment or annotation
+e: Callable[..., int].x # E: Invalid type comment or annotation
 
-x = None # type: Tuple[int, str].x # E: invalid type comment or annotation
-x = None # type: Iterable[x].x # E: invalid type comment or annotation
-x = None # type: Tuple[x][x] # E: invalid type comment or annotation
-x = None # type: Iterable[x][x] # E: invalid type comment or annotation
-x = None # type: Callable[..., int][x] # E: invalid type comment or annotation
-x = None # type: Callable[..., int].x # E: invalid type comment or annotation
+f = None # type: Tuple[int, str].x # E: Invalid type comment or annotation
+g = None # type: Iterable[x].x # E: Invalid type comment or annotation
+h = None # type: Tuple[x][x] # E: Invalid type comment or annotation
+i = None # type: Iterable[x][x] # E: Invalid type comment or annotation
+j = None # type: Callable[..., int][x] # E: Invalid type comment or annotation
+k = None # type: Callable[..., int].x # E: Invalid type comment or annotation
 
-def f1(x: Tuple[int, str].x) -> None: pass # E: invalid type comment or annotation
-def f2(x: Iterable[x].x) -> None: pass # E: invalid type comment or annotation
-def f3(x: Tuple[x][x]) -> None: pass # E: invalid type comment or annotation
-def f4(x: Iterable[x][x]) -> None: pass # E: invalid type comment or annotation
-def f5(x: Callable[..., int][x]) -> None: pass # E: invalid type comment or annotation
-def f6(x: Callable[..., int].x) -> None: pass # E: invalid type comment or annotation
+def f1(x: Tuple[int, str].x) -> None: pass # E: Invalid type comment or annotation
+def f2(x: Iterable[x].x) -> None: pass # E: Invalid type comment or annotation
+def f3(x: Tuple[x][x]) -> None: pass # E: Invalid type comment or annotation
+def f4(x: Iterable[x][x]) -> None: pass # E: Invalid type comment or annotation
+def f5(x: Callable[..., int][x]) -> None: pass # E: Invalid type comment or annotation
+def f6(x: Callable[..., int].x) -> None: pass # E: Invalid type comment or annotation
 
 [case testFastParseProperty]
 
@@ -233,7 +233,7 @@ def f(a):
     # type: (Tuple(int, int)) -> int
     pass
 [out]
-main:3: error: invalid type comment or annotation
+main:3: error: Invalid type comment or annotation
 main:3: note: Suggestion: use Tuple[...] instead of Tuple(...)
 
 [case testFasterParseTypeErrorList_python2]
@@ -242,8 +242,9 @@ from typing import List
 def f(a):
     # type: (List(int)) -> int
     pass
+[builtins_py2 fixtures/floatdict_python2.pyi]
 [out]
-main:3: error: invalid type comment or annotation
+main:3: error: Invalid type comment or annotation
 main:3: note: Suggestion: use List[...] instead of List(...)
 
 [case testFasterParseTypeErrorCustom]
@@ -256,7 +257,7 @@ class Foo(Generic[T]):
 def f(a: Foo(int)) -> int:
     pass
 [out]
-main:7: error: invalid type comment or annotation
+main:7: error: Invalid type comment or annotation
 main:7: note: Suggestion: use Foo[...] instead of Foo(...)
 
 [case testFastParseMatMul]

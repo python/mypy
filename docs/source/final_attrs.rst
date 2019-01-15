@@ -1,3 +1,5 @@
+.. _final_attrs:
+
 Final names, methods and classes
 ================================
 

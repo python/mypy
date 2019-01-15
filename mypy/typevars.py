@@ -3,7 +3,7 @@ from typing import Union, List
 from mypy.nodes import TypeInfo
 
 from mypy.erasetype import erase_typevars
-from mypy.types import Instance, TypeVarType, TupleType, Type
+from mypy.types import Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyType
 
 
 def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
@@ -15,6 +15,14 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     for i in range(len(typ.defn.type_vars)):
         tv.append(TypeVarType(typ.defn.type_vars[i]))
     inst = Instance(typ, tv)
+    if typ.tuple_type is None:
+        return inst
+    return typ.tuple_type.copy_modified(fallback=inst)
+
+
+def fill_typevars_with_any(typ: TypeInfo) -> Union[Instance, TupleType]:
+    """ Apply a correct number of Any's as type arguments to a type."""
+    inst = Instance(typ, [AnyType(TypeOfAny.special_form)] * len(typ.defn.type_vars))
     if typ.tuple_type is None:
         return inst
     return typ.tuple_type.copy_modified(fallback=inst)

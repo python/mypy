@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
-    CallableType, Overloaded, Instance, Type, AnyType,
+    CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
@@ -77,7 +77,7 @@ from mypy.typeanal import (
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
-from mypy import experiments
+from mypy import state
 from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
@@ -93,7 +93,7 @@ from mypy.reachability import (
     infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
     MYPY_TRUE, MYPY_FALSE
 )
-from mypy.typestate import TypeState
+from mypy.mro import calculate_mro, MroError
 
 MYPY = False
 if MYPY:
@@ -212,6 +212,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     is_stub_file = False   # Are we analyzing a stub file?
     _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
+    # Note: some imports (and therefore dependencies) might
+    # not be found in phase 1, for example due to * imports.
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
 
@@ -283,7 +285,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.enum_call_analyzer = EnumCallAnalyzer(options, self)
         self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
 
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
                 self.globals['__builtins__'] = SymbolTableNode(MODULE_REF,
                                                                self.modules['builtins'])
@@ -1284,7 +1286,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self, expr: Expression) -> Type:
+    def expr_to_analyzed_type(self, expr: Expression, report_invalid_types: bool = True) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
@@ -1296,7 +1298,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ)
+        return self.anal_type(typ, report_invalid_types=report_invalid_types)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
@@ -1632,7 +1634,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     continue
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
-                if (node.module_public and (not name.startswith('_') or '__all__' in m.names)):
+                if node.module_public and (not name.startswith('_') or '__all__' in m.names):
+                    if isinstance(node.node, MypyFile):
+                        # Star import of submodule from a package, add it as a dependency.
+                        self.imports.add(node.node.fullname())
                     existing_symbol = self.lookup_current_scope(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
@@ -1688,6 +1693,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
                       allow_unbound_tvars: bool = False,
+                      report_invalid_types: bool = True,
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -1698,6 +1704,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             self.is_typeshed_stub_file,
                             allow_unbound_tvars=allow_unbound_tvars,
                             allow_tuple_literal=allow_tuple_literal,
+                            report_invalid_types=report_invalid_types,
                             allow_unnormalized=self.is_stub_file,
                             third_pass=third_pass)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
@@ -1708,10 +1715,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  report_invalid_types: bool = True,
                   third_pass: bool = False) -> Type:
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
                                allow_tuple_literal=allow_tuple_literal,
+                               report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
         typ = t.accept(a)
         self.add_type_alias_deps(a.aliases_used)
@@ -1755,9 +1764,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.type and self.type.is_protocol and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
                 if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1898,8 +1907,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return True if e.name == 'True' else False
         return None
 
-    def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
-        """Return builtins.int if rvalue is an int literal, etc."""
+    def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
+        """Return builtins.int if rvalue is an int literal, etc.
+
+        If this is a 'Final' context, we return "Literal[...]" instead."""
         if self.options.semantic_analysis_only or self.function_stack:
             # Skip this if we're only doing the semantic analysis pass.
             # This is mostly to avoid breaking unit tests.
@@ -1908,16 +1919,32 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # inside type variables with value restrictions (like
             # AnyStr).
             return None
-        if isinstance(rvalue, IntExpr):
-            return self.named_type_or_none('builtins.int')
         if isinstance(rvalue, FloatExpr):
             return self.named_type_or_none('builtins.float')
+
+        value = None  # type: Optional[LiteralValue]
+        type_name = None  # type: Optional[str]
+        if isinstance(rvalue, IntExpr):
+            value, type_name = rvalue.value, 'builtins.int'
         if isinstance(rvalue, StrExpr):
-            return self.named_type_or_none('builtins.str')
+            value, type_name = rvalue.value, 'builtins.str'
         if isinstance(rvalue, BytesExpr):
-            return self.named_type_or_none('builtins.bytes')
+            value, type_name = rvalue.value, 'builtins.bytes'
         if isinstance(rvalue, UnicodeExpr):
-            return self.named_type_or_none('builtins.unicode')
+            value, type_name = rvalue.value, 'builtins.unicode'
+
+        if type_name is not None:
+            assert value is not None
+            typ = self.named_type_or_none(type_name)
+            if typ and is_final:
+                return typ.copy_modified(final_value=LiteralType(
+                    value=value,
+                    fallback=typ,
+                    line=typ.line,
+                    column=typ.column,
+                ))
+            return typ
+
         return None
 
     def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],
@@ -2429,7 +2456,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
                 try:
-                    upper_bound = self.expr_to_analyzed_type(param_value)
+                    # We want to use our custom error message below, so we suppress
+                    # the default error message for invalid types here.
+                    upper_bound = self.expr_to_analyzed_type(param_value,
+                                                             report_invalid_types=False)
+                    if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
+                        self.fail("TypeVar 'bound' must be a type", param_value)
+                        # Note: we do not return 'None' here -- we want to continue
+                        # using the AnyType as the upper bound.
                 except TypeTranslationError:
                     self.fail("TypeVar 'bound' must be a type", param_value)
                     return None
@@ -3768,62 +3802,6 @@ def refers_to_class_or_function(node: Expression) -> bool:
     """Does semantically analyzed node refer to a class?"""
     return (isinstance(node, RefExpr) and
             isinstance(node.node, (TypeInfo, FuncDef, OverloadedFuncDef)))
-
-
-def calculate_mro(info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = None) -> None:
-    """Calculate and set mro (method resolution order).
-
-    Raise MroError if cannot determine mro.
-    """
-    mro = linearize_hierarchy(info, obj_type)
-    assert mro, "Could not produce a MRO at all for %s" % (info,)
-    info.mro = mro
-    # The property of falling back to Any is inherited.
-    info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
-    TypeState.reset_all_subtype_caches_for(info)
-
-
-class MroError(Exception):
-    """Raised if a consistent mro cannot be determined for a class."""
-
-
-def linearize_hierarchy(info: TypeInfo,
-                        obj_type: Optional[Callable[[], Instance]] = None) -> List[TypeInfo]:
-    # TODO describe
-    if info.mro:
-        return info.mro
-    bases = info.direct_base_classes()
-    if (not bases and info.fullname() != 'builtins.object' and
-            obj_type is not None):
-        # Second pass in import cycle, add a dummy `object` base class,
-        # otherwise MRO calculation may spuriously fail.
-        # MRO will be re-calculated for real in the third pass.
-        bases = [obj_type().type]
-    lin_bases = []
-    for base in bases:
-        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
-        lin_bases.append(linearize_hierarchy(base, obj_type))
-    lin_bases.append(bases)
-    return [info] + merge(lin_bases)
-
-
-def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
-    seqs = [s[:] for s in seqs]
-    result = []  # type: List[TypeInfo]
-    while True:
-        seqs = [s for s in seqs if s]
-        if not seqs:
-            return result
-        for seq in seqs:
-            head = seq[0]
-            if not [s for s in seqs if head in s[1:]]:
-                break
-        else:
-            raise MroError()
-        result.append(head)
-        for s in seqs:
-            if s[0] is head:
-                del s[0]
 
 
 def find_duplicate(list: List[T]) -> Optional[T]:

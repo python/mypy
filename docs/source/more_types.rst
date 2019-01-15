@@ -2,8 +2,8 @@ More types
 ==========
 
 This section introduces a few additional kinds of types, including ``NoReturn``,
-``NewType``, ``TypedDict``, and types for async code. It also discusses how to
-give functions more precise types using overloads. All of these are only
+``NewType``, ``TypedDict``, and types for async code. It also discusses
+how to give functions more precise types using overloads. All of these are only
 situationally useful, so feel free to skip this section and come back when you
 have a need for some of them.
 

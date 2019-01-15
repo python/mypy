@@ -77,7 +77,8 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         return (isinstance(self.right, Instance) and
                 left.type == self.right.type and
-                is_same_types(left.args, self.right.args))
+                is_same_types(left.args, self.right.args) and
+                left.final_value == self.right.final_value)
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and

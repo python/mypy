@@ -155,6 +155,8 @@ class TypeFixer(TypeVisitor[None]):
                 base.accept(self)
         for a in inst.args:
             a.accept(self)
+        if inst.final_value is not None:
+            inst.final_value.accept(self)
 
     def visit_any(self, o: Any) -> None:
         pass  # Nothing to descend into.

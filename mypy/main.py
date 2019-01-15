@@ -13,14 +13,13 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mypy import build
 from mypy import defaults
-from mypy import experiments
+from mypy import state
 from mypy import util
 from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
-from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
@@ -102,7 +101,9 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+        py_version = '{}.{}'.format(options.python_version[0], options.python_version[1])
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
+                             py_version, options.platform)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -119,16 +120,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         util.hard_exit(code)
     elif code:
         sys.exit(code)
-
-
-def readlinkabs(link: str) -> str:
-    """Return an absolute path to symbolic link destination."""
-    # Adapted from code by Greg Smith.
-    assert os.path.islink(link)
-    path = os.readlink(link)
-    if os.path.isabs(path):
-        return path
-    return os.path.join(os.path.dirname(link), path)
 
 
 class SplitNamespace(argparse.Namespace):
@@ -298,6 +289,8 @@ def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
+                    program: str = 'mypy',
+                    header: str = HEADER,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -305,8 +298,8 @@ def process_options(args: List[str],
     call fscache.set_package_root() to set the cache's package root.
     """
 
-    parser = argparse.ArgumentParser(prog='mypy',
-                                     usage=HEADER,
+    parser = argparse.ArgumentParser(prog=program,
+                                     usage=header,
                                      description=DESCRIPTION,
                                      epilog=FOOTER,
                                      fromfile_prefix_chars='@',
@@ -610,7 +603,7 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='Report generation',
         description='Generate a report in the specified format.')
-    for report_type in sorted(reporter_classes):
+    for report_type in sorted(defaults.REPORTER_NAMES):
         report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
                                   metavar='DIR',
                                   dest='special-opts:%s_report' % report_type)
@@ -751,11 +744,11 @@ def process_options(args: List[str],
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
     if special_opts.find_occurrences:
-        experiments.find_occurrences = special_opts.find_occurrences.split('.')
-        assert experiments.find_occurrences is not None
-        if len(experiments.find_occurrences) < 2:
+        state.find_occurrences = special_opts.find_occurrences.split('.')
+        assert state.find_occurrences is not None
+        if len(state.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(experiments.find_occurrences) != 2:
+        if len(state.find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.
@@ -972,7 +965,7 @@ def parse_section(prefix: str, template: Options,
             if dv is None:
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
-                    if report_type in reporter_classes:
+                    if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = section[key]
                     else:
                         print("%s: Unrecognized report type: %s" % (prefix, key),
