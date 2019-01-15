@@ -357,7 +357,7 @@ class StrConv(NodeVisitor[str]):
             id = self.format_id(target_node)
         else:
             id = ''
-        if isinstance(target_node, mypy.nodes.MypyFile):
+        if isinstance(target_node, mypy.nodes.MypyFile) and name == fullname:
             n += id
         elif kind == mypy.nodes.GDEF or (fullname != name and
                                        fullname is not None):
