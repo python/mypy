@@ -24,7 +24,7 @@ from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
-    MODULE_REF, implicit_module_attrs, AssertStmt,
+    implicit_module_attrs, AssertStmt,
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
 from mypy.semanal import SemanticAnalyzerPass2
@@ -360,7 +360,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             assert self.sem.locals[-1] is not None
             if name in self.sem.locals[-1]:
                 # Flag redefinition unless this is a reimport of a module.
-                if not (node.kind == MODULE_REF and
+                if not (isinstance(node.node, MypyFile) and
                         self.sem.locals[-1][name].node == node.node):
                     self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
                     return

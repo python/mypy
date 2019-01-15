@@ -40,7 +40,7 @@ from typing import (
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
-    ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
+    ClassDef, Var, GDEF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
@@ -287,7 +287,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         with state.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
-                self.globals['__builtins__'] = SymbolTableNode(MODULE_REF,
+                self.globals['__builtins__'] = SymbolTableNode(GDEF,
                                                                self.modules['builtins'])
 
             for name in implicit_module_attrs:
@@ -1449,7 +1449,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if parent_mod and self.allow_patching(parent_mod, child):
                 child_mod = self.modules.get(id)
                 if child_mod:
-                    sym = SymbolTableNode(MODULE_REF, child_mod,
+                    sym = SymbolTableNode(GDEF, child_mod,
                                           module_public=module_public,
                                           no_serialize=True)
                 else:
@@ -1478,7 +1478,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                           context: Context, module_hidden: bool = False) -> None:
         if id in self.modules:
             m = self.modules[id]
-            self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m,
+            self.add_symbol(as_id, SymbolTableNode(GDEF, m,  # TODO: fix scope
                                                    module_public=module_public,
                                                    module_hidden=module_hidden), context)
         else:
@@ -1500,7 +1500,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if not node or node.kind == UNBOUND_IMPORTED:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
-                    node = SymbolTableNode(MODULE_REF, mod)
+                    node = SymbolTableNode(GDEF, mod)  # TODO: fix scope
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
@@ -1572,7 +1572,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             fullname = node.node.fullname()
             if fullname in self.modules:
                 # This is a module reference.
-                return SymbolTableNode(MODULE_REF, self.modules[fullname])
+                return SymbolTableNode(GDEF, self.modules[fullname])  # TODO: fix scope
             if fullname in seen:
                 # Looks like a reference cycle. Just break it.
                 # TODO: Generate a more specific error message.
@@ -2565,7 +2565,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
             rnode = self.lookup_type_node(rval)
-            if rnode and rnode.kind == MODULE_REF:
+            if rnode and isinstance(rnode.node, MypyFile):
                 for lval in lvals:
                     if not isinstance(lval, NameExpr):
                         continue
@@ -2574,14 +2574,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         continue
                     lnode = self.lookup(lval.name, ctx)
                     if lnode:
-                        if lnode.kind == MODULE_REF and lnode.node is not rnode.node:
+                        if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
                             self.fail(
                                 "Cannot assign multiple modules to name '{}' "
                                 "without explicit 'types.ModuleType' annotation".format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
-                            lnode.kind = MODULE_REF
+                            lnode.kind = GDEF  # TYPE: fix kind
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -3048,7 +3048,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         base = expr.expr
         base.accept(self)
         # Bind references to module attributes.
-        if isinstance(base, RefExpr) and base.kind == MODULE_REF:
+        if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
@@ -3124,8 +3124,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
             if type_info:
                 n = type_info.names.get(expr.name)
-                if n is not None and (n.kind == MODULE_REF or isinstance(n.node, (TypeInfo,
-                                                                                  TypeAlias))):
+                if n is not None and isinstance(n.node, (MypyFile, TypeInfo, TypeAlias)):
                     if not n:
                         return
                     expr.kind = n.kind
@@ -3591,7 +3590,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert self.locals[-1] is not None
             if name in self.locals[-1]:
                 # Flag redefinition unless this is a reimport of a module.
-                if not (node.kind == MODULE_REF and
+                if not (isinstance(node.node, MypyFile) and
                         self.locals[-1][name].node == node.node):
                     self.name_already_defined(name, context, self.locals[-1][name])
                     return
@@ -3665,7 +3664,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif isinstance(original_ctx, SymbolNode):
             node = original_ctx
 
-        if isinstance(original_ctx, SymbolTableNode) and original_ctx.kind == MODULE_REF:
+        if isinstance(original_ctx, SymbolTableNode) and isinstance(original_ctx.node, MypyFile):
             # Since this is an import, original_ctx.node points to the module definition.
             # Therefore its line number is always 1, which is not useful for this
             # error message.

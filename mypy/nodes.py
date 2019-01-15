@@ -68,7 +68,6 @@ JsonDict = Dict[str, Any]
 LDEF = 0  # type: Final[int]
 GDEF = 1  # type: Final[int]
 MDEF = 2  # type: Final[int]
-MODULE_REF = 3  # type: Final[int]
 # Type variable declared using TypeVar(...) has kind TVAR. It's not
 # valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
@@ -93,7 +92,6 @@ node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
     MDEF: 'Mdef',
-    MODULE_REF: 'ModuleRef',
     TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
 }  # type: Final
@@ -2811,8 +2809,7 @@ class SymbolTableNode:
             data['implicit'] = True
         if self.plugin_generated:
             data['plugin_generated'] = True
-        if self.kind == MODULE_REF:
-            assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
+        if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname()
         else:
             if self.node is not None:
