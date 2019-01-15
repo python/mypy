@@ -1478,7 +1478,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                           context: Context, module_hidden: bool = False) -> None:
         if id in self.modules:
             m = self.modules[id]
-            self.add_symbol(as_id, SymbolTableNode(GDEF, m,  # TODO: fix scope
+            kind = self.current_symbol_kind()
+            self.add_symbol(as_id, SymbolTableNode(kind, m,
                                                    module_public=module_public,
                                                    module_hidden=module_hidden), context)
         else:
@@ -1500,7 +1501,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if not node or node.kind == UNBOUND_IMPORTED:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
-                    node = SymbolTableNode(GDEF, mod)  # TODO: fix scope
+                    kind = self.current_symbol_kind()
+                    node = SymbolTableNode(kind, mod)
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
@@ -1572,7 +1574,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             fullname = node.node.fullname()
             if fullname in self.modules:
                 # This is a module reference.
-                return SymbolTableNode(GDEF, self.modules[fullname])  # TODO: fix scope
+                kind = self.current_symbol_kind()
+                return SymbolTableNode(kind, self.modules[fullname])
             if fullname in seen:
                 # Looks like a reference cycle. Just break it.
                 # TODO: Generate a more specific error message.
@@ -3580,6 +3583,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def is_module_scope(self) -> bool:
         return not (self.is_class_scope() or self.is_func_scope())
+
+    def current_symbol_kind(self) -> int:
+        if self.is_class_scope():
+            kind = MDEF
+        elif self.is_func_scope():
+            kind = LDEF
+        else:
+            kind = GDEF
+        return kind
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
