@@ -2584,7 +2584,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
-                            lnode.kind = GDEF  # TYPE: fix kind
+                            lnode.kind = self.current_symbol_kind()
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
