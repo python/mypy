@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Callable, Optional
 
-from mypy import messages
+from mypy import message_registry
 from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext
@@ -230,7 +230,7 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
             and len(ctx.arg_types[0]) == 1):
         key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
         if key is None:
-            ctx.api.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         if key in ctx.type.required_keys:
@@ -276,7 +276,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             and len(ctx.arg_types[0]) == 1):
         key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
         if key is None:
-            ctx.api.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         value_type = ctx.type.items.get(key)
@@ -301,7 +301,7 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
             and len(ctx.arg_types[0]) == 1):
         key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
         if key is None:
-            ctx.api.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         if key in ctx.type.required_keys:

@@ -29,7 +29,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
-from mypy import nodes, messages
+from mypy import nodes, message_registry
 
 MYPY = False
 if MYPY:
@@ -273,7 +273,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'
                 if self.options.disallow_any_generics and not self.is_typeshed_stub:
-                    self.fail(messages.BARE_GENERIC, t)
+                    self.fail(message_registry.BARE_GENERIC, t)
                 return self.named_type('builtins.tuple', line=t.line, column=t.column)
             if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                 # Tuple[T, ...] (uniform, variable-length tuple)
@@ -341,7 +341,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # in the third pass.
             if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
                 alternative = nongen_builtins[info.fullname()]
-                self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                self.fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
                 any_type = AnyType(TypeOfAny.from_error, line=t.line)
             else:
                 any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)

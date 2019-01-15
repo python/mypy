@@ -12,7 +12,7 @@ belongs to a module involved in an import loop.
 from collections import OrderedDict
 from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
-from mypy import messages, state
+from mypy import message_registry, state
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
@@ -501,7 +501,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
         for t in collect_any_types(typ):
             if t.type_of_any == TypeOfAny.from_omitted_generics:
-                self.fail(messages.BARE_GENERIC, t)
+                self.fail(message_registry.BARE_GENERIC, t)
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
@@ -780,5 +780,5 @@ class TypeVariableChecker(TypeTranslator):
                 else:
                     class_name = '"{}"'.format(type.name())
                     actual_type_name = '"{}"'.format(actual.type.name())
-                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
+                    self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                         arg_name, class_name, actual_type_name), context)
