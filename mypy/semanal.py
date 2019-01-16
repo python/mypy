@@ -1742,15 +1742,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
-
-        def final_cb(keep_final: bool) -> None:
-            self.fail("Cannot redefine an existing name as final", s)
-            if not keep_final:
-                s.is_final_def = False
-
-        for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                final_cb=final_cb if s.is_final_def else None)
+        self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         s.rvalue.accept(self)
@@ -1770,6 +1762,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def analyze_lvalues(self, s: AssignmentStmt) -> None:
+        def final_cb(keep_final: bool) -> None:
+            self.fail("Cannot redefine an existing name as final", s)
+            if not keep_final:
+                s.is_final_def = False
+
+        for lval in s.lvalues:
+            self.analyze_lvalue(lval, explicit_type=s.type is not None,
+                                final_cb=final_cb if s.is_final_def else None)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if len(s.lvalues) > 1:
@@ -1889,6 +1891,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def process_type_annotation(self, s: AssignmentStmt) -> None:
+        """Analyze type annotation or infer simple literal type."""
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
