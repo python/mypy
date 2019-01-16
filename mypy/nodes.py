@@ -1920,7 +1920,16 @@ CONTRAVARIANT = 2  # type: Final[int]
 
 
 class TypeVarExpr(SymbolNode, Expression):
-    """Type variable expression TypeVar(...)."""
+    """Type variable expression TypeVar(...).
+
+    This is also used to represent type variables in symbol tables.
+
+    A type variable is not valid as a type unless bound in a TypeVarScope.
+    That happens within:
+
+     1. a generic class that uses the type variable as a type argument or
+     2. a generic function that refers to the type variable in its signature.
+    """
 
     _name = ''
     _fullname = ''
