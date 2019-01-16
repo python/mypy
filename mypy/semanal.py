@@ -795,20 +795,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def visit_class_def(self, defn: ClassDef) -> None:
         with self.scope.class_scope(defn.info):
-            with self.analyze_class_body(defn) as should_continue:
-                if should_continue:
-                    # Analyze class body.
-                    defn.defs.accept(self)
+            self.analyze_class_body(defn)
 
-    @contextmanager
-    def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
+    def analyze_class_body(self, defn: ClassDef) -> None:
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
             is_protocol = self.detect_protocol_base(defn)
             self.update_metaclass(defn)
             self.clean_up_bases_and_infer_type_variables(defn)
             self.analyze_class_keywords(defn)
             if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
-                yield False
                 return
             named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
             if named_tuple_info is not None:
@@ -817,11 +812,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
 
-                self.enter_class(named_tuple_info)
-
-                yield True
-
-                self.leave_class()
+                self.analyze_class_body_common(defn)
 
                 # make sure we didn't use illegal names, then reset the names in the typeinfo
                 for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
@@ -848,12 +839,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 defn.info.runtime_protocol = False
                 for decorator in defn.decorators:
                     self.analyze_class_decorator(defn, decorator)
-                self.enter_class(defn.info)
-                yield True
-                self.calculate_abstract_status(defn.info)
-                self.setup_type_promotion(defn)
-                self.apply_class_plugin_hooks(defn)
-                self.leave_class()
+                self.analyze_class_body_common(defn)
+
+    def analyze_class_body_common(self, defn: ClassDef) -> None:
+        """Parts of class body analysis that are common to all kinds of class defs."""
+        self.enter_class(defn.info)
+        defn.defs.accept(self)
+        self.calculate_abstract_status(defn.info)
+        self.setup_type_promotion(defn)
+        self.apply_class_plugin_hooks(defn)
+        self.leave_class()
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
