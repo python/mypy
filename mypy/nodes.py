@@ -68,17 +68,12 @@ JsonDict = Dict[str, Any]
 LDEF = 0  # type: Final[int]
 GDEF = 1  # type: Final[int]
 MDEF = 2  # type: Final[int]
-# Type variable declared using TypeVar(...) has kind TVAR. It's not
-# valid as a type unless bound in a TypeVarScope.  That happens within:
-# (1) a generic class that uses the type variable as a type argument or
-# (2) a generic function that refers to the type variable in its signature.
-TVAR = 3  # type: Final[int]
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 5  # type: Final[int]
+UNBOUND_IMPORTED = 4  # type: Final[int]
 
 # RevealExpr node kinds
 REVEAL_TYPE = 0  # type: Final[int]
@@ -92,7 +87,6 @@ node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
     MDEF: 'Mdef',
-    TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
 }  # type: Final
 inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}  # type: Final
