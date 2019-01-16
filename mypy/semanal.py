@@ -1757,11 +1757,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
-
-        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
-                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
-                isinstance(s.rvalue, (ListExpr, TupleExpr))):
-            self.add_exports(s.rvalue.items)
+        self.process__all__(s)
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         def final_cb(keep_final: bool) -> None:
@@ -2662,6 +2658,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                            context: Context) -> None:
         if not self.type or self.is_func_scope():
             self.fail("'%s' used with a non-method" % decorator, context)
+
+    def process__all__(self, s: AssignmentStmt) -> None:
+        """Export names if argument is a __all__ assignment."""
+        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
+                isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(s.rvalue.items)
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         s.expr.accept(self)
