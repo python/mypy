@@ -73,7 +73,7 @@ MDEF = 2  # type: Final[int]
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 4  # type: Final[int]
+UNBOUND_IMPORTED = 3  # type: Final[int]
 
 # RevealExpr node kinds
 REVEAL_TYPE = 0  # type: Final[int]
