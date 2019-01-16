@@ -828,6 +828,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Analyze class-based named tuple if the NamedTuple base class is present.
 
+        TODO: Move this to NamedTupleAnalyzer?
+
         Return True only if the class is a NamedTuple class.
         """
         named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
