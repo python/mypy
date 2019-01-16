@@ -795,26 +795,26 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def visit_class_def(self, defn: ClassDef) -> None:
         with self.scope.class_scope(defn.info):
-            self.analyze_class_body(defn)
+            with self.tvar_scope_frame(self.tvar_scope.class_frame()):
+                self.analyze_class(defn)
 
-    def analyze_class_body(self, defn: ClassDef) -> None:
-        with self.tvar_scope_frame(self.tvar_scope.class_frame()):
-            is_protocol = self.detect_protocol_base(defn)
-            self.update_metaclass(defn)
-            self.clean_up_bases_and_infer_type_variables(defn)
-            self.analyze_class_keywords(defn)
-            if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
-                return
-            if self.analyze_namedtuple_classdef(defn):
-                return
-            self.setup_class_def_analysis(defn)
-            self.analyze_base_classes(defn)
-            defn.info.is_protocol = is_protocol
-            self.analyze_metaclass(defn)
-            defn.info.runtime_protocol = False
-            for decorator in defn.decorators:
-                self.analyze_class_decorator(defn, decorator)
-            self.analyze_class_body_common(defn)
+    def analyze_class(self, defn: ClassDef) -> None:
+        is_protocol = self.detect_protocol_base(defn)
+        self.update_metaclass(defn)
+        self.clean_up_bases_and_infer_type_variables(defn)
+        self.analyze_class_keywords(defn)
+        if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
+            return
+        if self.analyze_namedtuple_classdef(defn):
+            return
+        self.setup_class_def_analysis(defn)
+        self.analyze_base_classes(defn)
+        defn.info.is_protocol = is_protocol
+        self.analyze_metaclass(defn)
+        defn.info.runtime_protocol = False
+        for decorator in defn.decorators:
+            self.analyze_class_decorator(defn, decorator)
+        self.analyze_class_body_common(defn)
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
