@@ -805,41 +805,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.analyze_class_keywords(defn)
             if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
                 return
-            named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
-            if named_tuple_info is not None:
-                # Temporarily clear the names dict so we don't get errors about duplicate names
-                # that were already set in build_namedtuple_typeinfo.
-                nt_names = named_tuple_info.names
-                named_tuple_info.names = SymbolTable()
-
-                self.analyze_class_body_common(defn)
-
-                # make sure we didn't use illegal names, then reset the names in the typeinfo
-                for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
-                    if prohibited in named_tuple_info.names:
-                        if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
-                            continue
-                        ctx = named_tuple_info.names[prohibited].node
-                        assert ctx is not None
-                        self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
-                                  ctx)
-
-                # Restore the names in the original symbol table. This ensures that the symbol
-                # table contains the field objects created by build_namedtuple_typeinfo. Exclude
-                # __doc__, which can legally be overwritten by the class.
-                named_tuple_info.names.update({
-                    key: value for key, value in nt_names.items()
-                    if key not in named_tuple_info.names or key != '__doc__'
-                })
-            else:
-                self.setup_class_def_analysis(defn)
-                self.analyze_base_classes(defn)
-                defn.info.is_protocol = is_protocol
-                self.analyze_metaclass(defn)
-                defn.info.runtime_protocol = False
-                for decorator in defn.decorators:
-                    self.analyze_class_decorator(defn, decorator)
-                self.analyze_class_body_common(defn)
+            if self.analyze_namedtuple_classdef(defn):
+                return
+            self.setup_class_def_analysis(defn)
+            self.analyze_base_classes(defn)
+            defn.info.is_protocol = is_protocol
+            self.analyze_metaclass(defn)
+            defn.info.runtime_protocol = False
+            for decorator in defn.decorators:
+                self.analyze_class_decorator(defn, decorator)
+            self.analyze_class_body_common(defn)
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
@@ -849,6 +824,36 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.setup_type_promotion(defn)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
+        if named_tuple_info is None:
+            return False
+        # Temporarily clear the names dict so we don't get errors about duplicate names
+        # that were already set in build_namedtuple_typeinfo.
+        nt_names = named_tuple_info.names
+        named_tuple_info.names = SymbolTable()
+
+        self.analyze_class_body_common(defn)
+
+        # make sure we didn't use illegal names, then reset the names in the typeinfo
+        for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
+            if prohibited in named_tuple_info.names:
+                if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
+                    continue
+                ctx = named_tuple_info.names[prohibited].node
+                assert ctx is not None
+                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
+                          ctx)
+
+        # Restore the names in the original symbol table. This ensures that the symbol
+        # table contains the field objects created by build_namedtuple_typeinfo. Exclude
+        # __doc__, which can legally be overwritten by the class.
+        named_tuple_info.names.update({
+            key: value for key, value in nt_names.items()
+            if key not in named_tuple_info.names or key != '__doc__'
+        })
+        return True
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
