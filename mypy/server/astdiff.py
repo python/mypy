@@ -54,7 +54,7 @@ from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
-    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
+    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
@@ -134,7 +134,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
         # TODO: cross_ref?
         fullname = node.fullname() if node else None
         common = (fullname, symbol.kind, symbol.module_public)
-        if symbol.kind == MODULE_REF:
+        if isinstance(symbol.node, MypyFile):
             # This is a cross-reference to another module.
             # If the reference is busted because the other module is missing,
             # the node will be a "stale_info" TypeInfo produced by fixup,

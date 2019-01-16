@@ -20,10 +20,10 @@ from mypy.types import (
 )
 
 from mypy.nodes import (
-    TVAR, MODULE_REF, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
+    TVAR, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, ImportedName, TypeAlias
+    Decorator, ImportedName, TypeAlias, MypyFile
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -398,9 +398,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # this type using a forward reference wrapper. It will be revisited in
         # the third pass.
         allow_forward_ref = not (self.third_pass or
-                                 isinstance(sym.node, (FuncDef, Decorator)) or
+                                 isinstance(sym.node, (FuncDef, Decorator, MypyFile)) or
                                  isinstance(sym.node, Var) and sym.node.is_ready or
-                                 sym.kind in (MODULE_REF, TVAR))
+                                 sym.kind == TVAR)
         if allow_forward_ref:
             # We currently can't support subscripted forward refs in functions;
             # see https://github.com/python/mypy/pull/3952#discussion_r139950690

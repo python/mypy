@@ -68,12 +68,11 @@ JsonDict = Dict[str, Any]
 LDEF = 0  # type: Final[int]
 GDEF = 1  # type: Final[int]
 MDEF = 2  # type: Final[int]
-MODULE_REF = 3  # type: Final[int]
 # Type variable declared using TypeVar(...) has kind TVAR. It's not
 # valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-TVAR = 4  # type: Final[int]
+TVAR = 3  # type: Final[int]
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
@@ -93,7 +92,6 @@ node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
     MDEF: 'Mdef',
-    MODULE_REF: 'ModuleRef',
     TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
 }  # type: Final
@@ -2677,16 +2675,15 @@ class SymbolTableNode:
     The most fundamental attributes are 'kind' and 'node'.  The 'node'
     attribute defines the AST node that the name refers to.
 
-    For many bindings, including those targeting variables, functions
-    and classes, the kind is one of LDEF, GDEF or MDEF, depending on the
-    scope of the definition. These three kinds can usually be used
+    For most bindings, including those targeting variables, functions,
+    classes and modules, the kind is one of LDEF, GDEF or MDEF, depending
+    on the scope of the definition. These three kinds can usually be used
     interchangeably and the difference between local, global and class
     scopes is mostly descriptive, with no semantic significance.
     However, some tools that consume mypy ASTs may care about these so
     they should be correct.
 
-    A few definitions get special kinds, including type variables (TVAR),
-    imported modules and module aliases (MODULE_REF)
+    Type variables have a special kind (TVAR).
 
     Attributes:
         kind: Kind of node. Possible values:
@@ -2694,7 +2691,6 @@ class SymbolTableNode:
                - GDEF: global (module-level) definition
                - MDEF: class member definition
                - TVAR: TypeVar(...) definition in any scope
-               - MODULE_REF: reference to a module
                - UNBOUND_IMPORTED: temporary kind for imported names (we
                  don't know the final kind yet)
         node: AST node of definition (among others, this can be
@@ -2811,8 +2807,7 @@ class SymbolTableNode:
             data['implicit'] = True
         if self.plugin_generated:
             data['plugin_generated'] = True
-        if self.kind == MODULE_REF:
-            assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
+        if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname()
         else:
             if self.node is not None:
