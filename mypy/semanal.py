@@ -815,13 +815,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         for decorator in defn.decorators:
             self.analyze_class_decorator(defn, decorator)
         self.analyze_class_body_common(defn)
+        self.setup_type_promotion(defn)
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
         defn.defs.accept(self)
         self.calculate_abstract_status(defn.info)
-        self.setup_type_promotion(defn)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
 
