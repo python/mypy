@@ -1742,37 +1742,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
-
-        def final_cb(keep_final: bool) -> None:
-            self.fail("Cannot redefine an existing name as final", s)
-            if not keep_final:
-                s.is_final_def = False
-
-        for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                final_cb=final_cb if s.is_final_def else None)
+        self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         s.rvalue.accept(self)
-        if s.type:
-            allow_tuple_literal = isinstance(s.lvalues[-1], TupleExpr)
-            s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
-            if (self.type and self.type.is_protocol and isinstance(lval, NameExpr) and
-                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
-                        if isinstance(lval.node, Var):
-                            lval.node.is_abstract_var = True
-        else:
-            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
-                    self.type and self.type.is_protocol and not self.is_func_scope()):
-                self.fail('All protocol members must have explicitly declared types', s)
-            # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
-                if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
-        if s.type:
-            # Store type into nodes.
-            for lvalue in s.lvalues:
-                self.store_declared_types(lvalue, s.type)
+        self.process_type_annotation(s)
         self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
@@ -1783,11 +1757,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
+        self.process__all__(s)
 
-        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
-                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
-                isinstance(s.rvalue, (ListExpr, TupleExpr))):
-            self.add_exports(s.rvalue.items)
+    def analyze_lvalues(self, s: AssignmentStmt) -> None:
+        def final_cb(keep_final: bool) -> None:
+            self.fail("Cannot redefine an existing name as final", s)
+            if not keep_final:
+                s.is_final_def = False
+
+        for lval in s.lvalues:
+            self.analyze_lvalue(lval, explicit_type=s.type is not None,
+                                final_cb=final_cb if s.is_final_def else None)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if len(s.lvalues) > 1:
@@ -1905,6 +1885,29 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif isinstance(e, NameExpr) and e.name in ('True', 'False'):
             return True if e.name == 'True' else False
         return None
+
+    def process_type_annotation(self, s: AssignmentStmt) -> None:
+        """Analyze type annotation or infer simple literal type."""
+        if s.type:
+            lvalue = s.lvalues[-1]
+            allow_tuple_literal = isinstance(lvalue, TupleExpr)
+            s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+            if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
+                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
+                        if isinstance(lvalue.node, Var):
+                            lvalue.node.is_abstract_var = True
+        else:
+            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
+                    self.type and self.type.is_protocol and not self.is_func_scope()):
+                self.fail('All protocol members must have explicitly declared types', s)
+            # Set the type if the rvalue is a simple literal (even if the above error occurred).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
+                if s.lvalues[0].is_inferred_def:
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
+        if s.type:
+            # Store type into nodes.
+            for lvalue in s.lvalues:
+                self.store_declared_types(lvalue, s.type)
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc.
@@ -2655,6 +2658,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                            context: Context) -> None:
         if not self.type or self.is_func_scope():
             self.fail("'%s' used with a non-method" % decorator, context)
+
+    def process__all__(self, s: AssignmentStmt) -> None:
+        """Export names if argument is a __all__ assignment."""
+        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
+                isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(s.rvalue.items)
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         s.expr.accept(self)
