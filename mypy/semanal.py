@@ -1754,25 +1754,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         s.rvalue.accept(self)
-        if s.type:
-            allow_tuple_literal = isinstance(s.lvalues[-1], TupleExpr)
-            s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
-            if (self.type and self.type.is_protocol and isinstance(lval, NameExpr) and
-                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
-                        if isinstance(lval.node, Var):
-                            lval.node.is_abstract_var = True
-        else:
-            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
-                    self.type and self.type.is_protocol and not self.is_func_scope()):
-                self.fail('All protocol members must have explicitly declared types', s)
-            # Set the type if the rvalue is a simple literal (even if the above error occurred).
-            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
-                if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
-        if s.type:
-            # Store type into nodes.
-            for lvalue in s.lvalues:
-                self.store_declared_types(lvalue, s.type)
+        self.process_type_annotation(s)
         self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
@@ -1905,6 +1887,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif isinstance(e, NameExpr) and e.name in ('True', 'False'):
             return True if e.name == 'True' else False
         return None
+
+    def process_type_annotation(self, s: AssignmentStmt) -> None:
+        if s.type:
+            lvalue = s.lvalues[-1]
+            allow_tuple_literal = isinstance(lvalue, TupleExpr)
+            s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+            if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
+                    isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
+                        if isinstance(lvalue.node, Var):
+                            lvalue.node.is_abstract_var = True
+        else:
+            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
+                    self.type and self.type.is_protocol and not self.is_func_scope()):
+                self.fail('All protocol members must have explicitly declared types', s)
+            # Set the type if the rvalue is a simple literal (even if the above error occurred).
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
+                if s.lvalues[0].is_inferred_def:
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
+        if s.type:
+            # Store type into nodes.
+            for lvalue in s.lvalues:
+                self.store_declared_types(lvalue, s.type)
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc.
