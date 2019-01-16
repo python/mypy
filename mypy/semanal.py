@@ -826,6 +826,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.leave_class()
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        """Analyze class-based named tuple if the NamedTuple base class is present.
+
+        Return True only if the class is a NamedTuple class.
+        """
         named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
         if named_tuple_info is None:
             return False
@@ -836,7 +840,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         self.analyze_class_body_common(defn)
 
-        # make sure we didn't use illegal names, then reset the names in the typeinfo
+        # Make sure we didn't use illegal names, then reset the names in the typeinfo.
         for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
             if prohibited in named_tuple_info.names:
                 if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
