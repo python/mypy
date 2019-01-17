@@ -20,7 +20,7 @@ from mypy.types import (
 )
 
 from mypy.nodes import (
-    TVAR, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
+    UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
     Decorator, ImportedName, TypeAlias, MypyFile
@@ -80,7 +80,7 @@ def analyze_type_alias(node: Expression,
         # Note that this misses the case where someone tried to use a
         # class-referenced type variable as a type alias.  It's easier to catch
         # that one in checkmember.py
-        if node.kind == TVAR:
+        if isinstance(node.node, TypeVarExpr):
             api.fail('Type variable "{}" is invalid as target for type alias'.format(
                 node.fullname), node)
             return None
@@ -229,11 +229,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 tvar_def = self.tvar_scope.get_binding(sym)
             else:
                 tvar_def = None
-            if sym.kind == TVAR and tvar_def is not None and self.defining_alias:
+            if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
-            if sym.kind == TVAR and tvar_def is not None:
+            if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(t.name), t)
                 return TypeVarType(tvar_def, t.line)
@@ -388,7 +388,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
-        unbound_tvar = ((sym.kind == TVAR) and
+        unbound_tvar = (isinstance(sym.node, TypeVarExpr) and
                         (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
@@ -398,9 +398,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # this type using a forward reference wrapper. It will be revisited in
         # the third pass.
         allow_forward_ref = not (self.third_pass or
-                                 isinstance(sym.node, (FuncDef, Decorator, MypyFile)) or
-                                 isinstance(sym.node, Var) and sym.node.is_ready or
-                                 sym.kind == TVAR)
+                                 isinstance(sym.node, (FuncDef, Decorator, MypyFile,
+                                                       TypeVarExpr)) or
+                                 (isinstance(sym.node, Var) and sym.node.is_ready))
         if allow_forward_ref:
             # We currently can't support subscripted forward refs in functions;
             # see https://github.com/python/mypy/pull/3952#discussion_r139950690
@@ -412,7 +412,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return ForwardRef(t)
         # None of the above options worked, we give up.
         self.fail('Invalid type "{}"'.format(name), t)
-        if self.third_pass and sym.kind == TVAR:
+        if self.third_pass and isinstance(sym.node, TypeVarExpr):
             self.note_func("Forward references to type variables are prohibited", t)
             return AnyType(TypeOfAny.from_error)
         # TODO: Would it be better to always return Any instead of UnboundType
@@ -1141,7 +1141,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
     def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
         name = t.name
         node = self.lookup(name, t)
-        if node and node.kind == TVAR and (
+        if node and isinstance(node.node, TypeVarExpr) and (
                 self.include_bound_tvars or self.scope.get_binding(node) is None):
             assert isinstance(node.node, TypeVarExpr)
             return [(name, node.node)]

@@ -47,7 +47,7 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
+    SymbolTableNode, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, type_aliases,
@@ -1102,7 +1102,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return None
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
-        if sym is None or sym.kind != TVAR:
+        if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
@@ -2360,11 +2360,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node = self.lookup(name, s)
         assert node is not None
         assert node.fullname is not None
-        node.kind = TVAR
-        TypeVar = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
-        TypeVar.line = call.line
-        call.analyzed = TypeVar
-        node.node = TypeVar
+        node.kind = self.current_symbol_kind()
+        type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
+        type_var.line = call.line
+        call.analyzed = type_var
+        node.node = type_var
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
         if len(call.args) < 1:
@@ -2866,7 +2866,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
-            if n.kind == TVAR and self.tvar_scope.get_binding(n):
+            if isinstance(n.node, TypeVarExpr) and self.tvar_scope.get_binding(n):
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
