@@ -32,7 +32,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -84,8 +84,8 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     Note that currently, the only two subclasses of RefExpr are NameExpr and
     MemberExpr."""
     output = set()  # type: Set[str]
-    while expr.kind == MODULE_REF or expr.fullname is not None:
-        if expr.kind == MODULE_REF and expr.fullname is not None:
+    while isinstance(expr.node, MypyFile) or expr.fullname is not None:
+        if isinstance(expr.node, MypyFile) and expr.fullname is not None:
             # If it's None, something's wrong (perhaps due to an
             # import cycle or a suppressed error).  For now we just
             # skip it.
