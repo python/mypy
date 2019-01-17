@@ -1772,14 +1772,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.process__all__(s)
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
-        def final_cb(keep_final: bool) -> None:
-            self.fail("Cannot redefine an existing name as final", s)
-            if not keep_final:
-                s.is_final_def = False
-
         for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                final_cb=final_cb if s.is_final_def else None)
+            self.analyze_lvalue(lval,
+                                explicit_type=s.type is not None,
+                                is_final=s.is_final_def)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if len(s.lvalues) > 1:
