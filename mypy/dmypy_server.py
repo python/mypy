@@ -192,7 +192,7 @@ class Server:
         self.status_file = status_file
 
     def _response_metadata(self) -> Dict[str, str]:
-        py_version = '{}.{}'.format(self.options.python_version[0], self.options.python_version[1])
+        py_version = '{}_{}'.format(self.options.python_version[0], self.options.python_version[1])
         return {
             'platform': self.options.platform,
             'python_version': py_version,
