@@ -70,6 +70,9 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     fscache = FileSystemCache()
     sources, options = process_options(args, fscache=fscache)
 
+    if sources is None:
+        sys.exit(0)
+
     messages = []
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
@@ -291,7 +294,7 @@ def process_options(args: List[str],
                     fscache: Optional[FileSystemCache] = None,
                     program: str = 'mypy',
                     header: str = HEADER,
-                    ) -> Tuple[List[BuildSource], Options]:
+                    ) -> Tuple[Optional[List[BuildSource]], Options]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -600,9 +603,15 @@ def process_options(args: List[str],
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context',
                         group=error_group)
+    add_invertible_flag('--show-error-codes', default=False,
+                        help="Show error codes in error messages",
+                        group=error_group)
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages",
                         group=error_group)
+    error_group.add_argument(
+        '--list-error-codes', action='store_true',
+        help="List known error codes and exit")
 
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))
@@ -706,12 +715,22 @@ def process_options(args: List[str],
     # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
+    options = Options()
+
+    if dummy.list_error_codes:
+        import mypy.errors
+        errors = mypy.errors.Errors()
+        plugin, _ = build.load_plugins(options, errors)
+        mypy.errors.initialize_error_codes(errors, plugin)
+        for msg_id in sorted(errors.error_codes.id_to_literal):
+            print('%s  %r' % (msg_id, errors.error_codes.id_to_literal[msg_id]))
+        return None, options
+
     config_file = dummy.config_file
     if config_file is not None and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
-    options = Options()
     parse_config_file(options, config_file)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
@@ -723,6 +742,9 @@ def process_options(args: List[str],
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
+
+    # unneeded attribute transfered from parser
+    delattr(options, 'list_error_codes')
 
     # The python_version is either the default, which can be overridden via a config file,
     # or stored in special_opts and is passed via the command line.

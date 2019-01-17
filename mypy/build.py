@@ -41,7 +41,7 @@ from mypy.newsemanal.semanal import NewSemanticAnalyzer
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.errors import Errors, CompileError, report_internal_error, initialize_error_codes
 from mypy.util import DecodeError, decode_python_encoding, is_sub_path
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -59,7 +59,6 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
-
 from mypy.mypyc_hacks import BuildManagerBase
 
 
@@ -194,8 +193,11 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
-    errors = Errors(options.show_error_context, options.show_column_numbers)
+    errors = Errors(options.show_error_context, options.show_column_numbers,
+                    options.show_error_codes)
     plugin, snapshot = load_plugins(options, errors)
+
+    initialize_error_codes(errors, plugin)
 
     # Construct a build manager object to hold state during the build.
     #

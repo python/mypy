@@ -314,6 +314,7 @@ class Server:
             return {'out': '', 'err': str(err), 'status': 2}
         except SystemExit as e:
             return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
+        assert sources is not None
         return self.check(sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:

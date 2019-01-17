@@ -11,6 +11,7 @@ from mypy.version import __version__ as mypy_version
 
 MYPY = False
 if MYPY:
+    from mypy.plugin import Plugin
     from typing_extensions import Final
 
 T = TypeVar('T')
@@ -60,6 +61,9 @@ class ErrorInfo:
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
 
+    # Error code identifying the message, for grouping/filtering
+    id = None  # type: Optional[str]
+
     def __init__(self,
                  import_ctx: List[Tuple[str, int]],
                  file: str,
@@ -73,7 +77,8 @@ class ErrorInfo:
                  blocker: bool,
                  only_once: bool,
                  origin: Optional[Tuple[str, int]] = None,
-                 target: Optional[str] = None) -> None:
+                 target: Optional[str] = None,
+                 id: Optional[str] = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.module = module
@@ -87,6 +92,23 @@ class ErrorInfo:
         self.only_once = only_once
         self.origin = origin or (file, line)
         self.target = target
+        self.id = id
+
+
+class ErrorRegistry:
+
+    def __init__(self) -> None:
+        # mapping of message string literal to id
+        self.literal_to_id = {}  # type: Dict[str, str]
+        # mapping of message id to string literal
+        self.id_to_literal = {}  # type: Dict[str, str]
+
+    def register_errors(self, mapping: Dict[str, str]) -> int:
+        updates = {msg: name for name, msg in mapping.items()}
+        # FIXME: check for name clashes
+        self.literal_to_id.update(updates)
+        self.id_to_literal.update(mapping)
+        return len(updates)
 
 
 class Errors:
@@ -131,16 +153,24 @@ class Errors:
     # Set to True to show column numbers in error messages.
     show_column_numbers = False  # type: bool
 
+    # Set to True to show error codes in error messages.
+    show_error_codes = False
+
     # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
     # Current module id.
     target_module = None  # type: Optional[str]
     scope = None  # type: Optional[Scope]
 
+    error_codes = None  # type: ErrorRegistry
+
     def __init__(self, show_error_context: bool = False,
-                 show_column_numbers: bool = False) -> None:
+                 show_column_numbers: bool = False,
+                 show_error_codes: bool = False) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
+        self.show_error_codes = show_error_codes
+        self.error_codes = ErrorRegistry()
         self.initialize()
 
     def initialize(self) -> None:
@@ -160,7 +190,7 @@ class Errors:
         self.initialize()
 
     def copy(self) -> 'Errors':
-        new = Errors(self.show_error_context, self.show_column_numbers)
+        new = Errors(self.show_error_context, self.show_column_numbers, self.show_error_codes)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -233,7 +263,8 @@ class Errors:
                file: Optional[str] = None,
                only_once: bool = False,
                origin_line: Optional[int] = None,
-               offset: int = 0) -> None:
+               offset: int = 0,
+               id: Optional[str] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -264,7 +295,7 @@ class Errors:
                          function, line, column, severity, message,
                          blocker, only_once,
                          origin=(self.file, origin_line) if origin_line else None,
-                         target=self.current_target())
+                         target=self.current_target(), id=id)
         self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
@@ -356,7 +387,7 @@ class Errors:
         a = []  # type: List[str]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
-        for file, line, column, severity, message in errors:
+        for file, line, column, severity, message, id in errors:
             s = ''
             if file is not None:
                 if self.show_column_numbers and line is not None and line >= 0 \
@@ -366,7 +397,11 @@ class Errors:
                     srcloc = '{}:{}'.format(file, line)
                 else:
                     srcloc = file
-                s = '{}: {}: {}'.format(srcloc, severity, message)
+                if self.show_error_codes:
+                    s = '{}: {}: {}: {}'.format(srcloc, severity,
+                                                id if id is not None else 'unknown', message)
+                else:
+                    s = '{}: {}: {}'.format(srcloc, severity, message)
             else:
                 s = message
             a.append(s)
@@ -404,8 +439,8 @@ class Errors:
                    for info in errs
                    if info.target)
 
-    def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
-                                                                     str, str]]:
+    def render_messages(self, errors: List[ErrorInfo]
+                        ) -> List[Tuple[Optional[str], int, int, str, str, Optional[str]]]:
         """Translate the messages into a sequence of tuples.
 
         Each tuple is of form (path, line, col, severity, message).
@@ -413,12 +448,13 @@ class Errors:
         The path item may be None. If the line item is negative, the
         line number is not defined for the tuple.
         """
-        result = []  # type: List[Tuple[Optional[str], int, int, str, str]]
+        result = []  # type: List[Tuple[Optional[str], int, int, str, str, Optional[str]]]
         # (path, line, column, severity, message)
 
         prev_import_context = []  # type: List[Tuple[str, int]]
         prev_function_or_member = None  # type: Optional[str]
         prev_type = None  # type: Optional[str]
+        prev_msg_id = None  # type: Optional[str]
 
         for e in errors:
             # Report module import context, if different from previous message.
@@ -439,7 +475,7 @@ class Errors:
                     # Remove prefix to ignore from path (if present) to
                     # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
-                    result.append((None, -1, -1, 'note', fmt.format(path, line)))
+                    result.append((None, -1, -1, 'note', fmt.format(path, line), prev_msg_id))
                     i -= 1
 
             file = self.simplify_path(e.file)
@@ -451,31 +487,34 @@ class Errors:
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((file, -1, -1, 'note', 'At top level:'))
+                        result.append((file, -1, -1, 'note', 'At top level:', prev_msg_id))
                     else:
-                        result.append((file, -1, -1, 'note', 'In class "{}":'.format(
-                            e.type)))
+                        result.append((file, -1, -1, 'note',
+                                       'In class "{}":'.format(e.type),
+                                       prev_msg_id))
                 else:
                     if e.type is None:
                         result.append((file, -1, -1, 'note',
-                                       'In function "{}":'.format(
-                                           e.function_or_member)))
+                                       'In function "{}":'.format(e.function_or_member),
+                                       prev_msg_id))
                     else:
                         result.append((file, -1, -1, 'note',
                                        'In member "{}" of class "{}":'.format(
-                                           e.function_or_member, e.type)))
+                                           e.function_or_member, e.type),
+                                       prev_msg_id))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((file, -1, -1, 'note', 'At top level:'))
+                    result.append((file, -1, -1, 'note', 'At top level:', prev_msg_id))
                 else:
                     result.append((file, -1, -1, 'note',
-                                   'In class "{}":'.format(e.type)))
+                                   'In class "{}":'.format(e.type), prev_msg_id))
 
-            result.append((file, e.line, e.column, e.severity, e.message))
+            result.append((file, e.line, e.column, e.severity, e.message, e.id))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
             prev_type = e.type
+            prev_msg_id = e.id
 
         return result
 
@@ -502,10 +541,11 @@ class Errors:
             result.extend(a)
         return result
 
-    def remove_duplicates(self, errors: List[Tuple[Optional[str], int, int, str, str]]
-                          ) -> List[Tuple[Optional[str], int, int, str, str]]:
+    def remove_duplicates(self,
+                          errors: List[Tuple[Optional[str], int, int, str, str, Optional[str]]]
+                          ) -> List[Tuple[Optional[str], int, int, str, str, Optional[str]]]:
         """Remove duplicates from a sorted error list."""
-        res = []  # type: List[Tuple[Optional[str], int, int, str, str]]
+        res = []  # type: List[Tuple[Optional[str], int, int, str, str, Optional[str]]]
         i = 0
         while i < len(errors):
             dup = False
@@ -620,3 +660,13 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
+
+
+def initialize_error_codes(errors: Errors, plugin: 'Plugin') -> None:
+    """Populate errors.error_codes"""
+    from mypy.plugins.common import extract_error_codes
+    import mypy.message_registry
+    # read native error codes from the message registry
+    errors.error_codes.register_errors(extract_error_codes('', mypy.message_registry))
+    # read custom error codes from plugins
+    errors.error_codes.register_errors(plugin.get_error_codes())

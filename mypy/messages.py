@@ -14,7 +14,10 @@ import re
 import difflib
 from textwrap import dedent
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
+from typing import (
+    cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, TypeVar,
+    Callable
+)
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -36,6 +39,7 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
+T = TypeVar('T', bound=Callable[..., Any])
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -75,6 +79,7 @@ class MessageBuilder:
         self.modules = modules
         self.disable_count = 0
         self.disable_type_names = 0
+        self.active_message_id = None
 
     #
     # Helpers
@@ -107,38 +112,44 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Optional[Context], severity: str,
-               file: Optional[str] = None, origin: Optional[Context] = None,
-               offset: int = 0) -> None:
+    def report(self, msg: str, format_args: Tuple[Any, ...], context: Optional[Context],
+               severity: str, file: Optional[str] = None, origin: Optional[Context] = None,
+               offset: int = 0, id: Optional[str] = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
+            msg_id = id
+            if msg_id is None:
+                msg_id = self.errors.error_codes.literal_to_id.get(msg)
+            if format_args:
+                msg = msg.format(*format_args)
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
-                               origin_line=origin.get_line() if origin else None)
+                               origin_line=origin.get_line() if origin else None,
+                               id=msg_id)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file, origin=origin)
+        self.report(msg, (), context, 'error', file=file, origin=origin)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report a note (unless disabled)."""
-        self.report(msg, context, 'note', file=file, origin=origin,
+        self.report(msg, (), context, 'note', file=file, origin=origin,
                     offset=offset)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
                        origin: Optional[Context] = None, offset: int = 0) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
-            self.report(msg, context, 'note', file=file, origin=origin,
+            self.report(msg, (), context, 'note', file=file, origin=origin,
                         offset=offset)
 
     def warn(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
         """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
+        self.report(msg, (), context, 'warning', file=file, origin=origin)
 
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
@@ -971,9 +982,9 @@ class MessageBuilder:
                                    typ: Type,
                                    typevar_name: str,
                                    context: Context) -> None:
-        self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE
-                  .format(typevar_name, callable_name(callee) or 'function', self.format(typ)),
-                  context)
+        self.report(message_registry.INCOMPATIBLE_TYPEVAR_VALUE,
+                    (typevar_name, callable_name(callee) or 'function', self.format(typ)),
+                    context, 'error')
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
         left_str = 'element' if kind == 'container' else 'left operand'

@@ -1,12 +1,12 @@
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict
 
 from mypy import message_registry
 from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext
 )
-from mypy.plugins.common import try_getting_str_literal
+from mypy.plugins.common import try_getting_str_literal, extract_error_codes
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, NoneTyp, UnionType, TypedDictType,
     TypeVarType
@@ -91,6 +91,11 @@ class DefaultPlugin(Plugin):
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
         return None
+
+    def get_error_codes(self) -> Dict[str, str]:
+        from mypy.plugins import attrs
+        error_codes = extract_error_codes('attrs', attrs.Errors)
+        return error_codes
 
 
 def open_callback(ctx: FunctionContext) -> Type:

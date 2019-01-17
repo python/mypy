@@ -83,6 +83,7 @@ typecheck_files = [
     'check-redefine.test',
     'check-literal.test',
     'check-newsemanal.test',
+    'check-error-codes.test',
 ]
 
 

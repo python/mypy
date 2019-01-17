@@ -35,6 +35,9 @@ class InterpretedPlugin:
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         self._modules = modules
 
+    def get_error_codes(self) -> Dict[str, str]:
+        return {}
+
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)

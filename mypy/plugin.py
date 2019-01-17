@@ -357,6 +357,10 @@ class Plugin(CommonPluginApi):
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         self._modules = modules
 
+    def get_error_codes(self) -> Dict[str, str]:
+        """Return mapping of error code names to error messages"""
+        return {}
+
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
@@ -548,6 +552,9 @@ class WrapperPlugin(Plugin):
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         self.plugin.set_modules(modules)
 
+    def get_error_codes(self) -> Dict[str, str]:
+        return self.plugin.get_error_codes()
+
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         return self.plugin.lookup_fully_qualified(fullname)
 
@@ -615,6 +622,12 @@ class ChainedPlugin(Plugin):
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         for plugin in self._plugins:
             plugin.set_modules(modules)
+
+    def get_error_codes(self) -> Dict[str, str]:
+        results = {}
+        for plugin in self._plugins:
+            results.update(plugin.get_error_codes())
+        return results
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
