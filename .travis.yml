@@ -64,11 +64,10 @@ before_install: |
   pip install -U pip setuptools wheel
 
 install:
-  - pip install -r external/mypy/test-requirements.txt
+  - pip install -r mypyc/external/mypy/test-requirements.txt
 
 script: |
   set -e
-  export PYTHONPATH=`pwd`/external/mypy
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     export PYTHONCONFIG="$PYTHONDIR/bin/python-config"
     export LD_LIBRARY_PATH="$PYTHONDIR/lib"

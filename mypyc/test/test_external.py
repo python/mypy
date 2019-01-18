@@ -30,13 +30,13 @@ class TestExternal(unittest.TestCase):
             env['GTEST_COLOR'] = 'yes'  # Use fancy colors
         status = subprocess.call(['make', 'test'],
                                  env=env,
-                                 cwd=os.path.join(base_dir, 'lib-rt'))
+                                 cwd=os.path.join(base_dir, 'mypyc', 'lib-rt'))
         if status != 0:
             raise AssertionError("make test: C unit test failure")
 
     def test_self_type_check(self) -> None:
         """Use the bundled mypy (in git submodule) to type check mypyc."""
-        mypy_dir = os.path.join(base_dir, 'external', 'mypy')
+        mypy_dir = os.path.join(base_dir, 'mypyc', 'external', 'mypy')
         if not os.path.exists(os.path.join(mypy_dir, 'mypy', 'typeshed', 'stdlib')):
             raise AssertionError('Submodule mypy/mypy/typeshed not ready')
         env = os.environ.copy()
@@ -80,6 +80,7 @@ def cached_flake8(dir: str) -> int:
     else:
         cache = {}
     files = glob.glob('%s/**/*.py' % dir, recursive=True)
+    files = [f for f in files if not f.startswith(os.path.join(dir, 'external', 'mypy'))]
     hashes = {}
     for fn in files:
         with open(fn, 'rb') as fb:

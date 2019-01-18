@@ -16,12 +16,11 @@ environment:
 install:
     - "git submodule update --init --recursive"
     - "%PYTHON%\\python.exe -m pip install -U pip setuptools wheel"
-    - "%PYTHON%\\python.exe -m pip install -U -r external/mypy/test-requirements.txt"
+    - "%PYTHON%\\python.exe -m pip install -U -r mypyc/external/mypy/test-requirements.txt"
 
 build: off
 
 test_script:
-    - "SET PYTHONPATH=%CD%\\external\\mypy"
     - "%PYTHON%\\python.exe -m pytest mypyc"
 
 skip_commits:

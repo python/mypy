@@ -46,17 +46,13 @@ Optionally create a virtualenv (recommended):
 
 Then install the dependencies:
 
-    $ python3 -m pip install -r external/mypy/test-requirements.txt
-
-You need to have the `mypy` subdirectory in your `PYTHONPATH`:
-
-    $ export PYTHONPATH=`pwd`/external/mypy
+    $ python3 -m pip install -r mypyc/external/mypy/test-requirements.txt
 
 Now you can run the tests:
 
     $ pytest mypyc
 
-Look at the [issue tracker](https://github.com/JukkaL/mypyc/issues)
+Look at the [issue tracker](https://github.com/mypyc/mypyc/issues)
 for things to work on. Please express your interest in working on an
 issue by adding a comment before doing any significant work, since
 development is currently very active and there is real risk of duplicate

@@ -13,3 +13,4 @@ test_capi
 /dmypy.json
 /.dmypy.json
 /.mypyc-flake8-cache.json
+/build

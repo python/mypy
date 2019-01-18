@@ -1,3 +1,6 @@
+# need to import mypyc to trigger the path shenanigans that cause mypy to be found
+import mypyc
+
 pytest_plugins = [
     'mypy.test.data',
 ]

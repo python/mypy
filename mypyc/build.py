@@ -33,9 +33,6 @@ MYPY = False
 if MYPY:
     from typing import NoReturn
 
-base_path = os.path.join(os.path.dirname(__file__), '..')
-sys.path.insert(0, os.path.join(base_path, 'external/mypy'))
-
 from mypy.main import process_options
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -224,7 +221,7 @@ def shared_lib_name(modules: List[str]) -> str:
 
 def include_dir() -> str:
     """Find the path of the lib-rt dir that needs to be included"""
-    return os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'lib-rt')
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'lib-rt')
 
 
 def generate_c(sources: List[BuildSource], options: Options,
