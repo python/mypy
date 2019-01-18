@@ -366,6 +366,14 @@ z = 3  # E: Cannot assign to final name "z"
 [case testFinalReassignModuleVar2]
 # flags: --allow-redefinition
 from typing import Final
+
+x: Final = 1
+x
+def f() -> int:
+    global x
+    x = 3  # E: Cannot assign to final name "x"
+    return x
+
 y = 1
 y
 y = 2
