@@ -7,6 +7,16 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+
+# Scope kinds
+FILE = 0  # type: Final
+FUNCTION = 1  # type: Final
+CLASS = 2  # type: Final
+
 
 class VariableRenameVisitor(TraverserVisitor):
     """Rename variables to allow redefinition of variables.
@@ -59,6 +69,8 @@ class VariableRenameVisitor(TraverserVisitor):
         self.refs = []  # type: List[Dict[str, List[List[NameExpr]]]]
         # Number of reads of the most recent definition of a variable (per scope)
         self.num_reads = []  # type: List[Dict[str, int]]
+        # Kinds of nested scopes (FILE, FUNCTION or CLASS)
+        self.scope_kinds = []  # type: List[int]
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
         """Rename variables within a file.
@@ -66,7 +78,7 @@ class VariableRenameVisitor(TraverserVisitor):
         This is the main entry point to this class.
         """
         self.clear()
-        self.enter_scope()
+        self.enter_scope(FILE)
         self.enter_block()
 
         for d in file_node.defs:
@@ -80,7 +92,7 @@ class VariableRenameVisitor(TraverserVisitor):
         # be redefined later, since function could refer to either definition.
         self.reject_redefinition_of_vars_in_scope()
 
-        self.enter_scope()
+        self.enter_scope(FUNCTION)
         self.enter_block()
 
         for arg in fdef.arguments:
@@ -99,7 +111,7 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         self.reject_redefinition_of_vars_in_scope()
-        self.enter_scope()
+        self.enter_scope(CLASS)
         super().visit_class_def(cdef)
         self.leave_scope()
 
@@ -234,7 +246,7 @@ class VariableRenameVisitor(TraverserVisitor):
 
         This will be called at the end of a scope.
         """
-        is_func = self.is_nested()
+        is_func = self.scope_kinds[-1] == FUNCTION
         for name, refs in self.refs[-1].items():
             if len(refs) == 1:
                 # Only one definition -- no renaming neeed.
@@ -286,15 +298,17 @@ class VariableRenameVisitor(TraverserVisitor):
     def current_block(self) -> int:
         return self.blocks[-1]
 
-    def enter_scope(self) -> None:
+    def enter_scope(self, kind: int) -> None:
         self.var_blocks.append({})
         self.refs.append({})
         self.num_reads.append({})
+        self.scope_kinds.append(kind)
 
     def leave_scope(self) -> None:
         self.flush_refs()
         self.var_blocks.pop()
         self.num_reads.pop()
+        self.scope_kinds.pop()
 
     def is_nested(self) -> int:
         return len(self.var_blocks) > 1
