@@ -127,6 +127,9 @@ class VariableRenameVisitor(TraverserVisitor):
         self.reject_redefinition_of_vars_in_loop()
 
     def visit_try_stmt(self, stmt: TryStmt) -> None:
+        # Variables defined by a try statement get special treatment in the
+        # type checker which allows them to be always redefined, so no need to
+        # do renaming here.
         self.enter_with_or_try()
         super().visit_try_stmt(stmt)
         self.leave_with_or_try()
