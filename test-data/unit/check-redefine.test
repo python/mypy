@@ -449,3 +449,15 @@ def g() -> None:
     _ = ''
     x, _ = 0, C()
 [builtins fixtures/tuple.pyi]
+
+[case testRedefineAsException]
+# flags: --allow-redefinition
+e = 1
+reveal_type(e) # E: Revealed type is 'builtins.int'
+try:
+    pass
+except Exception as e:
+    reveal_type(e) # E: Revealed type is 'builtins.Exception'
+e = ''
+reveal_type(e) # E: Revealed type is 'builtins.str'
+[builtins fixtures/exception.pyi]
