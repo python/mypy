@@ -2134,11 +2134,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Since the is_new_def flag is set, this must have been analyzed
                 # already in the first pass and added to the symbol table.
                 # An exception is typing module with incomplete test fixtures.
-                if (is_final
-                        and unmangle(lval.name) + "'" in self.globals
-                        and unmangle(lval.name) + "'" != lval.name):
-                    self.fail("Cannot redefine an existing name as final", lval)
                 assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
+                # A previously defined name cannot be redefined as a final name even when
+                # using renaming.
+                if (is_final
+                        and self.is_mangled_global(lval.name)
+                        and not self.is_initial_mangled_global(lval.name)):
+                    self.fail("Cannot redefine an existing name as final", lval)
         elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
               lval.name not in self.global_decls[-1] and
               lval.name not in self.nonlocal_decls[-1]):
@@ -2158,6 +2160,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
+
+    def is_mangled_global(self, name: str) -> bool:
+        # A global is mangled if there exists at least one renamed variant.
+        return unmangle(name) + "'" in self.globals
+
+    def is_initial_mangled_global(self, name: str) -> bool:
+        # If there are renamed definitions for a global, the first one has exactly one prime.
+        return name == unmangle(name) + "'"
 
     def is_alias_for_final_name(self, name: str) -> bool:
         if self.is_func_scope():

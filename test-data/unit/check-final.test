@@ -364,6 +364,15 @@ z: Final = 2  # E: Name 'z' already defined on line 23 \
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleVar2]
+# flags: --allow-redefinition
+from typing import Final
+y = 1
+y
+y = 2
+y
+y: Final = 3  # E: Cannot redefine an existing name as final
+
+[case testFinalReassignModuleVar3]
 # flags: --disallow-redefinition
 from typing import Final
 
