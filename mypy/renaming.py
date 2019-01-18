@@ -79,8 +79,6 @@ class VariableRenameVisitor(TraverserVisitor):
         # Conservatively do not allow variable defined before a function to
         # be redefined later, since function could refer to either definition.
         self.reject_redefinition_of_vars_in_scope()
-        # Functions can't be redefined.
-        self.record_assignment(fdef.name(), can_be_redefined=False)
 
         self.enter_scope()
         self.enter_block()
