@@ -42,16 +42,18 @@ class VariableRenameVisitor(TraverserVisitor):
     def __init__(self) -> None:
         # Counter for labeling new blocks
         self.block_id = 0
+        # Number of surrounding try statements that disallow variable redefinition
         self.disallow_redef_depth = 0
+        # Number of surrounding loop statements
         self.loop_depth = 0
         # Map block id to loop depth.
         self.block_loop_depth = {}  # type: Dict[int, int]
         # Stack of block ids being processed.
         self.blocks = []  # type: List[int]
-        # List of scopes; each scope maps short name to block id.
+        # List of scopes; each scope maps short (unqualified) name to block id.
         self.var_blocks = []  # type: List[Dict[str, int]]
 
-        # References to variables the we may need to rename. List of
+        # References to variables that we may need to rename. List of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
         self.refs = []  # type: List[Dict[str, List[List[NameExpr]]]]
@@ -85,6 +87,8 @@ class VariableRenameVisitor(TraverserVisitor):
 
         for arg in fdef.arguments:
             name = arg.variable.name()
+            # 'self' can't be redefined since it's special as it allows definition of
+            # attributes. 'cls' can't be used to define attributes so we can ignore it.
             can_be_redefined = name != 'self'  # TODO: Proper check
             self.record_assignment(arg.variable.name(), can_be_redefined)
             self.handle_arg(name)
@@ -146,6 +150,12 @@ class VariableRenameVisitor(TraverserVisitor):
             self.analyze_lvalue(lvalue)
 
     def analyze_lvalue(self, lvalue: Lvalue, is_nested: bool = False) -> None:
+        """Process assignment; in particular, keep track of (re)defined names.
+
+        Args:
+            is_nested: True for non-outermost Lvalue in a multiple assignment such as
+                "x, y = ..."
+        """
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
             is_new = self.record_assignment(name, True)
@@ -154,8 +164,8 @@ class VariableRenameVisitor(TraverserVisitor):
             else:
                 self.handle_refine(lvalue)
             if is_nested:
-                # This allows these to redefined freely. Multiple assignments often define
-                # dummy variables that are never read.
+                # This allows these to be redefined freely even if never read. Multiple
+                # assignment like "x, _ _ = y" defines dummy variables that are never read.
                 self.handle_ref(lvalue)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
             for item in lvalue.items:
@@ -166,6 +176,8 @@ class VariableRenameVisitor(TraverserVisitor):
             lvalue.base.accept(self)
             lvalue.index.accept(self)
         elif isinstance(lvalue, StarExpr):
+            # Propagate is_nested since in a typical use case like "x, *rest = ..." 'rest' may
+            # be freely reused.
             self.analyze_lvalue(lvalue.expr, is_nested=is_nested)
 
     def visit_name_expr(self, expr: NameExpr) -> None:

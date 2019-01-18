@@ -1752,8 +1752,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        is_final = self.unwrap_final(s)
-        s.is_final_def = is_final
+        s.is_final_def = self.unwrap_final(s)
         self.analyze_lvalues(s)
         s.rvalue.accept(self)
         self.check_final_implicit_def(s)

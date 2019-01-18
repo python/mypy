@@ -1,7 +1,7 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod, abstractproperty
-from typing import Optional, List, Callable, Dict, Set
+from typing import Optional, List, Callable
 from mypy_extensions import trait
 
 from mypy.nodes import (
