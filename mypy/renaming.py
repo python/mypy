@@ -192,9 +192,8 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def handle_arg(self, name: str) -> None:
         """Store function argument."""
-        if name not in self.refs[-1]:
-            self.refs[-1][name] = [[]]
-            self.num_reads[-1][name] = 0
+        self.refs[-1][name] = [[]]
+        self.num_reads[-1][name] = 0
 
     def handle_def(self, expr: NameExpr) -> None:
         """Store new name definition."""
