@@ -3,7 +3,7 @@ from typing import Dict, List, Set
 from mypy.nodes import (
     Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr, TempNode,
     WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, StarExpr, ImportFrom,
-    MemberExpr, IndexExpr, Import
+    MemberExpr, IndexExpr, Import, ClassDef
 )
 from mypy.traverser import TraverserVisitor
 
@@ -97,6 +97,12 @@ class VariableRenameVisitor(TraverserVisitor):
             stmt.accept(self)
 
         self.leave_block()
+        self.leave_scope()
+
+    def visit_class_def(self, cdef: ClassDef) -> None:
+        self.reject_redefinition_of_vars_in_scope()
+        self.enter_scope()
+        super().visit_class_def(cdef)
         self.leave_scope()
 
     def visit_block(self, block: Block) -> None:

@@ -1033,3 +1033,26 @@ MypyFile:1(
           NameExpr(f [__main__.f])
           Args(
             NameExpr(a' [l])))))))
+
+[case testCannotRenameExternalVarWithinClass]
+# flags: --allow-redefinition
+x = 0
+x
+class A:
+    x = 1
+x = ''
+[out]
+MypyFile:1(
+  AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    IntExpr(0))
+  ExpressionStmt:3(
+    NameExpr(x [__main__.x]))
+  ClassDef:4(
+    A
+    AssignmentStmt:5(
+      NameExpr(x* [m])
+      IntExpr(1)))
+  AssignmentStmt:6(
+    NameExpr(x [__main__.x])
+    StrExpr()))
