@@ -461,3 +461,16 @@ except Exception as e:
 e = ''
 reveal_type(e) # E: Revealed type is 'builtins.str'
 [builtins fixtures/exception.pyi]
+
+[case testRedefineUsingWithStatement]
+# flags: --allow-redefinition
+class A:
+    def __enter__(self) -> int: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> str: ...
+    def __exit__(self, x, y, z) -> None: ...
+with A() as x:
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+with B() as x:
+    x = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "str")

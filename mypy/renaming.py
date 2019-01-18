@@ -132,8 +132,13 @@ class VariableRenameVisitor(TraverserVisitor):
         self.leave_with_or_try()
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
+        for expr in stmt.expr:
+            expr.accept(self)
+        for target in stmt.target:
+            if target is not None:
+                self.analyze_lvalue(target)
         self.enter_with_or_try()
-        super().visit_with_stmt(stmt)
+        stmt.body.accept(self)
         self.leave_with_or_try()
 
     def visit_import(self, imp: Import) -> None:
