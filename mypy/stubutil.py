@@ -147,3 +147,100 @@ def infer_prop_type_from_docstring(docstr: str) -> Optional[str]:
     test_str = r'^([a-zA-Z0-9_, \.\[\]]*): '
     m = re.match(test_str, docstr)
     return m.group(1) if m else None
+
+
+def walk_packages(packages: List[str]) -> Iterator[str]:
+    """Iterates through all packages and sub-packages in the given list.
+
+    Python packages have a __path__ attribute defined, which pkgutil uses to determine
+    the package hierarchy.  However, packages in C extensions do not have this attribute,
+    so we have to roll out our own.
+    """
+    for package_name in packages:
+        package = importlib.import_module(package_name)
+        yield package.__name__
+        # get the path of the object (needed by pkgutil)
+        path = getattr(package, '__path__', None)
+        if path is None:
+            # object has no path; this means it's either a module inside a package
+            # (and thus no sub-packages), or it could be a C extension package.
+            if is_c_module(package):
+                # This is a C extension module, now get the list of all sub-packages
+                # using the inspect module
+                subpackages = [package.__name__ + "." + name
+                               for name, val in inspect.getmembers(package)
+                               if inspect.ismodule(val)
+                               and val.__name__ == package.__name__ + "." + name]
+                # recursively iterate through the subpackages
+                for submodule in walk_packages(subpackages):
+                    yield submodule
+            # It's a module inside a package.  There's nothing else to walk/yield.
+        else:
+            all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
+                                                 onerror=lambda r: None)
+            for importer, qualified_name, ispkg in all_packages:
+                yield qualified_name
+
+
+def find_module_path_and_all_py2(module: str, pyversion: Tuple[int, int],
+                                 interpreter: str) -> Optional[Tuple[str,
+                                                                     Optional[List[str]]]]:
+    """Find module and determine __all__.
+
+    Return None if the module is a C module. Return (module_path, __all__) if
+    Python module. Raise an exception or exit if failed.
+    """
+    module_path = None  # type: Optional[str]
+    if not no_import:
+        if pyversion[0] == 2:
+            module_path, module_all = load_python_module_info(module, interpreter)
+        else:
+            # TODO: Support custom interpreters.
+            try:
+                mod = importlib.import_module(module)
+            except Exception:
+                raise CantImport(module)
+            if is_c_module(mod):
+                return None
+            module_path = mod.__file__
+            module_all = getattr(mod, '__all__', None)
+    else:
+        # Find module by going through search path.
+        search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
+        module_path = FindModuleCache(search_paths).find_module(module)
+        if not module_path:
+            raise SystemExit(
+                "Can't find module '{}' (consider using --search-path)".format(module))
+        module_all = None
+    return module_path, module_all
+
+
+def find_module_path_and_all_py3():
+    pass
+
+
+def _REMOVE_load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
+    """Return tuple (module path, module __all__) for a Python 2 module.
+
+    The path refers to the .py/.py[co] file. The second tuple item is
+    None if the module doesn't define __all__.
+
+    Exit if the module can't be imported or if it's a C extension module.
+    """
+    cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
+    code = ("import importlib, json; mod = importlib.import_module('%s'); "
+            "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
+    try:
+        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
+    except subprocess.CalledProcessError:
+        print("Can't import module %s" % module, file=sys.stderr)
+        sys.exit(1)
+    output = output_bytes.decode('ascii').strip().splitlines()
+    module_path = output[0]
+    if not module_path.endswith(('.py', '.pyc', '.pyo')):
+        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
+                         module)
+    if module_path.endswith(('.pyc', '.pyo')):
+        module_path = module_path[:-1]
+    module_all = json.loads(output[1])
+    return module_path, module_all
