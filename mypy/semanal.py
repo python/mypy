@@ -243,6 +243,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
+        self.export_map = {}  # type: Dict[str, Set[str]]
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -314,6 +315,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if name not in self.all_exports:
                         g.module_public = False
 
+            self.export_map[self.cur_mod_id] = self.all_exports
+            self.all_exports = set()
             del self.options
             del self.patches
             del self.cur_mod_node

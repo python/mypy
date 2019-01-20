@@ -26,8 +26,6 @@ TODO:
 
  - support stubs for C modules in Python 2 mode
  - support non-default Python interpreters in Python 3 mode
- - if using --no-import, look for __all__ in the AST
- - infer some return types, such as no return statement with value -> None
  - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
  - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
    - a quick and dirty heuristic would be to turn this on if a module has something like
@@ -75,6 +73,9 @@ from mypy.types import (
     UnboundType, NoneTyp, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
+from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.build import build
+from mypy.errors import CompileError
 
 MYPY = False
 if MYPY:
@@ -86,6 +87,7 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('search_path', List[str]),
                                  ('interpreter', str),
                                  ('modules', List[str]),
+                                 ('sources', List[str]),
                                  ('ignore_errors', bool),
                                  ('recursive', bool),
                                  ('include_private', bool),
@@ -95,6 +97,42 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
 
 class CantImport(Exception):
     pass
+
+
+def generate_stubs_for_sources(sources: List[str], output_dir: str,
+                               add_header: bool = False,
+                               pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                               include_private: bool = False):
+    options = MypyOptions()
+    options.follow_imports = 'skip'
+    options.incremental = False
+    options.ignore_errors = True
+    options.python_version = pyversion
+    try:
+        targets = create_source_list(sources, options)
+    except InvalidSourceList as e:
+        raise SystemExit(str(e))
+
+    try:
+        res = build(targets, options)
+    except CompileError as e:
+        raise SystemExit("Critical error:", str(e))
+
+    for build_source in targets:
+        print("Writing stub for", build_source.module)
+        ast = res.graph[build_source.module].tree
+        path = build_source.path
+        _all_ = res.manager.semantic_analyzer.export_map[build_source.module]
+        gen = StubGenerator(_all_, pyversion=pyversion, include_private=include_private)
+        ast.accept(gen)
+        target = os.path.join(output_dir, os.path.basename(path) + 'i')
+        subdir = os.path.dirname(target)
+        if subdir and not os.path.isdir(subdir):
+            os.makedirs(subdir)
+        with open(target, 'w') as file:
+            if add_header:
+                write_header(file, build_source.module, pyversion=pyversion)
+            file.write(''.join(gen.output()))
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
@@ -877,6 +915,8 @@ class ReturnSeeker(mypy.traverser.TraverserVisitor):
         self.found = False
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None':
+            return
         self.found = True
 
 
@@ -937,8 +977,10 @@ def main() -> None:
     options = parse_options(sys.argv[1:])
     if not os.path.isdir(options.output_dir):
         raise SystemExit('Directory "{}" does not exist'.format(options.output_dir))
-    if options.recursive and options.no_import:
-        raise SystemExit('recursive stub generation without importing is not currently supported')
+    if options.recursive and options.no_import and not options.sources:
+        raise SystemExit('recursive module stub generation without importing is not currently supported')
+    if options.sources and options.recursive:
+        print('Warning: --recursive has no effect in source mode')
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     if options.doc_dir:
@@ -951,6 +993,15 @@ def main() -> None:
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
+    if options.sources:
+        # Sources are processed as a whole.
+        generate_stubs_for_sources(options.sources,
+                                   output_dir=options.output_dir,
+                                   add_header=True,
+                                   pyversion=options.pyversion,
+                                   include_private=options.include_private)
+        return
+    # Modules are processed one by one.
     for module in (options.modules if not options.recursive else walk_packages(options.modules)):
         try:
             generate_stub_for_module(module,
@@ -1011,7 +1062,9 @@ def parse_options(args: List[str]) -> Options:
                              "Python 2 right now)")
     parser.add_argument('-o', metavar='PATH', dest='output_dir', default='out',
                         help="Change the output folder [default: %(default)s]")
-    parser.add_argument(metavar='modules', nargs='+', dest='modules')
+    parser.add_argument('-s', '--source', metavar='PATH', dest='sources', default=[],
+                        help="Python sources (files and directories)", action='append')
+    parser.add_argument(metavar='modules', nargs='*', dest='modules')
 
     ns = parser.parse_args(args)
 
@@ -1021,12 +1074,19 @@ def parse_options(args: List[str]) -> Options:
     # Create the output folder if it doesn't already exist.
     if not os.path.exists(ns.output_dir):
         os.makedirs(ns.output_dir)
+    if ns.modules and ns.sources:
+        print(parser.usage)
+        raise SystemExit('Error: cannot combine sources and modules')
+    if not ns.modules and not ns.sources:
+        print(parser.usage)
+        raise SystemExit('Error: either module or source required')
     return Options(pyversion=pyversion,
                    no_import=ns.no_import,
                    doc_dir=ns.doc_dir,
                    search_path=ns.search_path.split(':'),
                    interpreter=ns.interpreter,
                    modules=ns.modules,
+                   sources=ns.sources,
                    ignore_errors=ns.ignore_errors,
                    recursive=ns.recursive,
                    include_private=ns.include_private,
