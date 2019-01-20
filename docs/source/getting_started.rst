@@ -28,16 +28,16 @@ Once mypy is installed, run it by using the ``mypy`` tool:
 
 This command makes mypy *type check* your ``program.py`` file and print
 out any errors it finds. Mypy will type check your code *statically*: this
-means that it will check for error without ever running your code, just
+means that it will check for errors without ever running your code, just
 like a linter.
 
 This means that you are always free to ignore the errors mypy reports and
 treat them as just warnings, if you so wish: mypy runs independently from
 Python itself.
 
-However, if you try running mypy on your existing Python code, it will most
-likely report little to no errors: you must add *type annotations* to your
-code to take full advantage of mypy. See the section below for details.
+However, if you try directly running mypy on your existing Python code, it
+will most likely report little to no errors: you must add *type annotations*
+to your code to take full advantage of mypy. See the section below for details.
 
 .. note::
 
