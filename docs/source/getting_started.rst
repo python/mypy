@@ -88,7 +88,7 @@ and returns a string like so:
        return 'Hello ' + name
 
 Our function is now *statically typed*: mypy can use the provided type hints to detect
-incorrect ussages of the ``greeting`` function. For example, it will reject the following
+incorrect usages of the ``greeting`` function. For example, it will reject the following
 calls since the arguments have invalid types:
 
 .. code-block:: python
@@ -111,7 +111,7 @@ See our section on :ref:`typing Python 2 code <python2>` for more details.
 Being able to pick whether you want a function to be dynamically or statically
 typed can be very helpful. For example, if you are migrating an existing
 Python codebase to use static types, it's usually easier to migrate by incrementally
-adding type hints to your code rather then adding them all at once. Similarly,
+adding type hints to your code rather than adding them all at once. Similarly,
 when you are prototyping a new feature, it may be convenient to initially implement
 the code using dynamic typing and only add type hints later once the code is more stable.
 
@@ -267,7 +267,7 @@ of type ``List[float]`` and that ``num`` must be of type ``float``:
                output.append(num)
        return output
 
-Mypy will warn you if it is unable to determine what the type of some variable is.
+Mypy will warn you if it is unable to determine the type of some variable.
 For example, suppose we assign an empty dictionary to some global variable:
 
 .. code-block:: python
