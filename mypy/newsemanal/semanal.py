@@ -70,7 +70,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
-from mypy.typeanal import (
+from mypy.newsemanal.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
     check_for_explicit_any
@@ -86,10 +86,10 @@ from mypy.plugin import (
 from mypy.util import get_prefix, correct_relative_import, unmangle
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
-from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
-from mypy.semanal_typeddict import TypedDictAnalyzer
-from mypy.semanal_enum import EnumCallAnalyzer
-from mypy.semanal_newtype import NewTypeAnalyzer
+from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
+from mypy.newsemanal.semanal_typeddict import TypedDictAnalyzer
+from mypy.newsemanal.semanal_enum import EnumCallAnalyzer
+from mypy.newsemanal.semanal_newtype import NewTypeAnalyzer
 from mypy.reachability import (
     infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
     MYPY_TRUE, MYPY_FALSE

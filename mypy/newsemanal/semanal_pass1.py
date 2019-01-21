@@ -28,7 +28,7 @@ from mypy.nodes import (
     implicit_module_attrs, AssertStmt,
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
-from mypy.semanal import SemanticAnalyzerPass2
+from mypy.newsemanal.semanal import SemanticAnalyzerPass2
 from mypy.reachability import infer_reachability_of_if_statement, assert_will_always_fail
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options

@@ -13,7 +13,7 @@ from mypy.nodes import (
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
+from mypy.newsemanal.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
 
 
