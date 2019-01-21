@@ -3,8 +3,22 @@
 [case testNewAnalyzerEmpty]
 # flags: --new-semantic-analyzer
 
-[case testNewAnalyzerSimple]
+[case testNewAnalyzerSimpleAssignment]
 # flags: --new-semantic-analyzer
 x = 1
 x.y # E: "int" has no attribute "y"
 y # E: Name 'y' is not defined
+
+[case testNewAnalyzerSimpleAnnotation]
+# flags: --new-semantic-analyzer
+x: int = 0
+y: str = 0 \
+    # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNewAnalyzerSimpleClass]
+# flags: --new-semantic-analyzer
+class A:
+    x: int
+a: A
+a.x
+a.y # E: "A" has no attribute "y"
