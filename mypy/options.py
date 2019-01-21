@@ -52,7 +52,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"platform", "bazel", "plugins"})
+                            {"platform", "bazel", "plugins", "new_semantic_analyzer"})
                            - {"debug_cache"})  # type: Final
 
 
@@ -83,6 +83,9 @@ class Options:
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
         self.namespace_packages = False
+
+        # Use the new semantic analyzer
+        self.new_semantic_analyzer = False
 
         # disallow_any options
         self.disallow_any_generics = False
