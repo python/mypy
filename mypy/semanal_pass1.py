@@ -14,7 +14,8 @@ definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
 This pass also infers the reachability of certain if statements, such as
-those with platform checks.
+those with platform checks. This lets us filter out unreachable imports
+at an early stage.
 """
 
 from typing import List, Tuple
@@ -33,6 +34,7 @@ from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
+from mypy.renaming import VariableRenameVisitor
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
@@ -60,6 +62,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         and these will get resolved in later phases of semantic
         analysis.
         """
+        if options.allow_redefinition:
+            # Perform renaming across the AST to allow variable redefinitions
+            file.accept(VariableRenameVisitor())
         sem = self.sem
         self.sem.options = options  # Needed because we sometimes call into it
         self.pyversion = options.python_version

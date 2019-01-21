@@ -1045,6 +1045,27 @@ class B: pass
 [builtins fixtures/for.pyi]
 
 [case testReusingInferredForIndex2]
+# flags: --allow-redefinition
+
+def f() -> None:
+    for a in [A()]: pass
+    a = A()
+    a
+    if int():
+        a = B() \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    for a in []: pass # E: Need type annotation for 'a'
+    a = A()
+    if int():
+        a = B() \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+class A: pass
+class B: pass
+[builtins fixtures/for.pyi]
+[out]
+
+[case testReusingInferredForIndex3]
+# flags: --disallow-redefinition
 def f() -> None:
     for a in [A()]: pass
     a = A()
@@ -2434,9 +2455,18 @@ _ = 0
 _ = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testUnusedTargetNotClass]
+# flags: --allow-redefinition
 class C:
-    _ = 0
+    _, _ = 0, 0
+    _ = ''
+reveal_type(C._) # E: Revealed type is 'builtins.str'
+
+[case testUnusedTargetNotClass2]
+# flags: --disallow-redefinition
+class C:
+    _, _ = 0, 0
     _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(C._) # E: Revealed type is 'builtins.int'
 
 [case testUnusedTargetTupleUnpacking]
 def foo() -> None:

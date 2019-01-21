@@ -334,25 +334,26 @@ MypyFile:1(
           NameExpr(self [l]))))))
 
 [case testGlobalDefinedInBlock]
+# flags: --allow-redefinition
 if object:
     x = object()
     x = x
 x
 [out]
 MypyFile:1(
-  IfStmt:1(
+  IfStmt:2(
     If(
       NameExpr(object [builtins.object]))
     Then(
-      AssignmentStmt:2(
-        NameExpr(x* [__main__.x])
-        CallExpr:2(
+      AssignmentStmt:3(
+        NameExpr(x'* [__main__.x'])
+        CallExpr:3(
           NameExpr(object [builtins.object])
           Args()))
-      AssignmentStmt:3(
-        NameExpr(x [__main__.x])
-        NameExpr(x [__main__.x]))))
-  ExpressionStmt:4(
+      AssignmentStmt:4(
+        NameExpr(x* [__main__.x])
+        NameExpr(x' [__main__.x']))))
+  ExpressionStmt:5(
     NameExpr(x [__main__.x])))
 
 [case testNonlocalDecl]

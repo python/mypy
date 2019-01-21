@@ -56,7 +56,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -83,7 +83,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import get_prefix, correct_relative_import
+from mypy.util import get_prefix, correct_relative_import, unmangle
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
@@ -369,6 +369,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
+
         with self.scope.function_scope(defn):
             self._visit_func_def(defn)
 
@@ -1483,6 +1484,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
+        """Add symbol that is a reference to a module object."""
         if id in self.modules:
             m = self.modules[id]
             kind = self.current_symbol_kind()
@@ -1750,11 +1752,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        self.unwrap_final(s)
+        s.is_final_def = self.unwrap_final(s)
         self.analyze_lvalues(s)
+        s.rvalue.accept(self)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
-        s.rvalue.accept(self)
         self.process_type_annotation(s)
         self.apply_dynamic_class_hook(s)
         self.check_and_set_up_type_alias(s)
@@ -1769,14 +1771,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.process__all__(s)
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
-        def final_cb(keep_final: bool) -> None:
-            self.fail("Cannot redefine an existing name as final", s)
-            if not keep_final:
-                s.is_final_def = False
-
         for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                final_cb=final_cb if s.is_final_def else None)
+            self.analyze_lvalue(lval,
+                                explicit_type=s.type is not None,
+                                is_final=s.is_final_def)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if len(s.lvalues) > 1:
@@ -1793,15 +1791,19 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if hook:
                 hook(DynamicClassDefContext(call, lval.name, self))
 
-    def unwrap_final(self, s: AssignmentStmt) -> None:
+    def unwrap_final(self, s: AssignmentStmt) -> bool:
         """Strip Final[...] if present in an assignment.
 
         This is done to invoke type inference during type checking phase for this
-        assignment. Also, Final[...] desn't affect type in any way, it is rather an
+        assignment. Also, Final[...] desn't affect type in any way -- it is rather an
         access qualifier for given `Var`.
+
+        Also perform various consistency checks.
+
+        Returns True if Final[...] was present.
         """
         if not s.type or not self.is_final_type(s.type):
-            return
+            return False
         assert isinstance(s.type, UnboundType)
         if len(s.type.args) > 1:
             self.fail("Final[...] takes at most one type argument", s.type)
@@ -1815,10 +1817,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             s.type = s.type.args[0]
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
             self.fail("Invalid final declaration", s)
-            return
+            return False
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
-        s.is_final_def = True
         if self.loop_depth > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
@@ -1827,7 +1828,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 not self.is_stub_file and not self.is_class_scope()):
             if not invalid_bare_final:  # Skip extra error messages.
                 self.msg.final_without_value(s)
-        return
+        return True
 
     def check_final_implicit_def(self, s: AssignmentStmt) -> None:
         """Do basic checks for final declaration on self in __init__.
@@ -2067,22 +2068,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False,
-                       final_cb: Optional[Callable[[bool], None]] = None) -> None:
+                       is_final: bool = False) -> None:
         """Analyze an lvalue or assignment target.
+
+        Note that this is used in both pass 1 and 2.
 
         Args:
             lval: The target lvalue
             nested: If true, the lvalue is within a tuple or list lvalue expression
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
-            final_cb: A callback to call in situation where a final declaration on `self`
-                overrides an existing name.
         """
         if isinstance(lval, NameExpr):
-            self.analyze_name_lvalue(lval, add_global, explicit_type, final_cb)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
+                self.analyze_member_lvalue(lval, explicit_type, is_final)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -2108,11 +2109,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             lval: NameExpr,
                             add_global: bool,
                             explicit_type: bool,
-                            final_cb: Optional[Callable[[bool], None]]) -> None:
+                            is_final: bool) -> None:
         """Analyze an lvalue that targets a name expression.
 
         Arguments are similar to "analyze_lvalue".
         """
+        if self.is_alias_for_final_name(lval.name):
+            if is_final:
+                self.fail("Cannot redefine an existing name as final", lval)
+            else:
+                self.msg.cant_assign_to_final(lval.name, self.type is not None, lval)
+
         # Top-level definitions within some statements (at least while) are
         # not handled in the first pass, so they have to be added now.
         nested_global = (not self.is_func_scope() and
@@ -2128,23 +2135,61 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # already in the first pass and added to the symbol table.
                 # An exception is typing module with incomplete test fixtures.
                 assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
+                # A previously defined name cannot be redefined as a final name even when
+                # using renaming.
+                if (is_final
+                        and self.is_mangled_global(lval.name)
+                        and not self.is_initial_mangled_global(lval.name)):
+                    self.fail("Cannot redefine an existing name as final", lval)
         elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
               lval.name not in self.global_decls[-1] and
               lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
             self.add_local(v, lval)
-            if lval.name == '_':
+            if unmangle(lval.name) == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
                 self.store_declared_types(lval, typ)
         elif not self.is_func_scope() and (self.type and
                                            lval.name not in self.type.names):
             # Define a new attribute within class body.
+            if is_final and unmangle(lval.name) + "'" in self.type.names:
+                self.fail("Cannot redefine an existing name as final", lval)
             v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
-            self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
+            self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
+
+    def is_mangled_global(self, name: str) -> bool:
+        # A global is mangled if there exists at least one renamed variant.
+        return unmangle(name) + "'" in self.globals
+
+    def is_initial_mangled_global(self, name: str) -> bool:
+        # If there are renamed definitions for a global, the first one has exactly one prime.
+        return name == unmangle(name) + "'"
+
+    def is_alias_for_final_name(self, name: str) -> bool:
+        if self.is_func_scope():
+            if not name.endswith("'"):
+                # Not a mangled name -- can't be an alias
+                return False
+            name = unmangle(name)
+            assert self.locals[-1] is not None, "No locals at function scope"
+            existing = self.locals[-1].get(name)
+            return existing is not None and is_final_node(existing.node)
+        elif self.type is not None:
+            orig_name = unmangle(name) + "'"
+            if name == orig_name:
+                return False
+            existing = self.type.names.get(orig_name)
+            return existing is not None and is_final_node(existing.node)
+        else:
+            orig_name = unmangle(name) + "'"
+            if name == orig_name:
+                return False
+            existing = self.globals.get(orig_name)
+            return existing is not None and is_final_node(existing.node)
 
     def make_name_lvalue_var(self, lvalue: NameExpr, kind: int, inferred: bool) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
@@ -2173,7 +2218,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self,
             lval: NameExpr,
             explicit_type: bool,
-            final_cb: Optional[Callable[[bool], None]]) -> None:
+            is_final: bool) -> None:
+        """Update an lvalue to point to existing definition in the same scope.
+
+        Arguments are similar to "analyze_lvalue".
+        """
         # Assume that an existing name exists. Try to find the original definition.
         global_def = self.globals.get(lval.name)
         if self.locals:
@@ -2189,12 +2238,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         original_def = global_def or local_def or type_def
 
         # Redefining an existing name with final is always an error.
-        if final_cb is not None:
-            # We avoid extra errors if the original definition is also final
-            # by keeping the final status of this assignment.
-            keep_final = bool(original_def and isinstance(original_def.node, Var) and
-                              original_def.node.is_final)
-            final_cb(keep_final)
+        if is_final:
+            self.fail("Cannot redefine an existing name as final", lval)
         if explicit_type:
             # Don't re-bind types
             self.name_already_defined(lval.name, lval, original_def)
@@ -2219,30 +2264,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type=explicit_type)
 
-    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False,
-                              final_cb: Optional[Callable[[bool], None]] = None) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool, is_final: bool) -> None:
         """Analyze lvalue that is a member expression.
 
         Arguments:
             lval: The target lvalue
             explicit_type: Assignment has type annotation
-            final_cb: A callback to call in situation where a final declaration on `self`
-                overrides an existing name.
+            is_final: Is the target final
         """
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
             cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
-            if cur_node and final_cb is not None:
+            if cur_node and is_final:
                 # Overrides will be checked in type checker.
-                final_cb(False)
+                self.fail("Cannot redefine an existing name as final", lval)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
                     # Note that `explicit_type` might has been erased for bare `Final`,
                     # so we also check if `final_cb` is passed.
-                    (cur_node is None and (explicit_type or final_cb is not None))):
+                    (cur_node is None and (explicit_type or is_final))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
@@ -2367,6 +2410,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node.node = type_var
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
+        name = unmangle(name)
         if len(call.args) < 1:
             self.fail("Too few arguments for TypeVar()", context)
             return False
@@ -2502,6 +2546,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def check_classvar(self, s: AssignmentStmt) -> None:
+        """Check if assignment defines a class variable."""
         lvalue = s.lvalues[0]
         if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
             return
@@ -3612,6 +3657,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
+        """Add symbol to the currently active symbol table."""
         # NOTE: This logic mostly parallels SemanticAnalyzerPass1.add_symbol. If you change
         #     this, you may have to change the other method as well.
         # TODO: Combine these methods in the first and second pass into a single one.
@@ -3648,6 +3694,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
+        """Add local variable or function."""
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
         if name in self.locals[-1]:
@@ -3702,7 +3749,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
+        self.fail("Name '{}' already defined{}".format(unmangle(name), extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:

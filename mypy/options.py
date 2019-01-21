@@ -21,6 +21,7 @@ class BuildType:
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
     "allow_untyped_globals",
+    "allow_redefinition",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -148,6 +149,10 @@ class Options:
 
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
+
+        # Allow variable to be redefined with an arbitrary type in the same block
+        # and the same nesting level as the initialization
+        self.allow_redefinition = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

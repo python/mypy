@@ -924,15 +924,18 @@ class ExpressionStmt(Statement):
 
 
 class AssignmentStmt(Statement):
-    """Assignment statement
+    """Assignment statement.
+
     The same node class is used for single assignment, multiple assignment
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
-    that define new names, and assignments with explicit types (# type).
+    that define new names, and assignments with explicit types ("# type: t"
+    or "x: t [= ...]").
 
-    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
+    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, or IndexExpr.
     """
 
     lvalues = None  # type: List[Lvalue]
+    # This is a TempNode if and only if no rvalue (x: t).
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: Optional[mypy.types.Type]
@@ -2968,3 +2971,8 @@ def is_class_var(expr: NameExpr) -> bool:
     if isinstance(expr.node, Var):
         return expr.node.is_classvar
     return False
+
+
+def is_final_node(node: Optional[SymbolNode]) -> bool:
+    """Check whether `node` corresponds to a final attribute."""
+    return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final

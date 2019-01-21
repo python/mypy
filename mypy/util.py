@@ -254,6 +254,11 @@ def hard_exit(status: int = 0) -> None:
     os._exit(status)
 
 
+def unmangle(name: str) -> str:
+    """Remove internal suffixes from a short name."""
+    return name.rstrip("'")
+
+
 # The following is a backport of stream redirect utilities from Lib/contextlib.py
 # We need this for 3.4 support. They can be removed in March 2019!
 
