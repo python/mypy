@@ -333,6 +333,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
+
+        self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
+        self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
+        self.enum_call_analyzer = EnumCallAnalyzer(options, self)
+        self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
+
         if active_type:
             scope.enter_class(active_type)
             self.enter_class(active_type.defn.info)

@@ -23,7 +23,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
         deferred = []  # type: List[str]
         while worklist:
             next_id = worklist.pop()
-            deferred += graph[next_id].semantic_analyze_target(next_id)
+            deferred += semantic_analyze_target(next_id, graph[next_id])
         worklist = deferred
 
 
@@ -36,14 +36,26 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         symtable = tree.names
         targets = get_all_leaf_targets(symtable)
         for target in targets:
-            deferred += graph[id].semantic_analyze_target(id)
+            deferred += semantic_analyze_target(next_id, graph[next_id])
     assert not deferred  # There can't be cross-function forward refs
 
 
 def get_all_leaf_targets(symtable: SymbolTable) -> List[str]:
-    assert False
     return []
 
 
-def semanatic_analyze_target(id: str, state: 'State') -> List[str]:
-    assert False
+def semantic_analyze_target(id: str, state: 'State') -> List[str]:
+    tree = state.tree
+    assert tree is not None
+    analyzer = state.manager.new_semantic_analyzer
+    # TODO: Move initialization to somewhere else
+    analyzer.global_decls = [set()]
+    analyzer.nonlocal_decls = [set()]
+    tree.names = SymbolTable()
+    analyzer.globals = tree.names
+    with analyzer.file_context(file_node=tree,
+                               fnam=tree.path,
+                               options=state.options,
+                               active_type=None):
+        analyzer.refresh_partial(tree, [])
+    return []
