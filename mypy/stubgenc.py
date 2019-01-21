@@ -18,8 +18,7 @@ def generate_stub_for_c_module(module_name: str,
                                target: str,
                                add_header: bool = True,
                                sigs: Optional[Dict[str, str]] = None,
-                               class_sigs: Optional[Dict[str, str]] = None,
-                               ) -> None:
+                               class_sigs: Optional[Dict[str, str]] = None) -> None:
     module = importlib.import_module(module_name)
     assert is_c_module(module), '%s is not a C module' % module_name
     subdir = os.path.dirname(target)
@@ -115,10 +114,14 @@ def generate_c_function_stub(module: ModuleType,
                              output: List[str],
                              imports: List[str],
                              self_var: Optional[str] = None,
-                             sigs: Dict[str, str] = {},
+                             sigs: Optional[Dict[str, str]] = None,
                              class_name: Optional[str] = None,
-                             class_sigs: Dict[str, str] = {},
-                             ) -> None:
+                             class_sigs: Optional[Dict[str, str]] = None) -> None:
+    if sigs is None:
+        sigs = {}
+    if class_sigs is None:
+        class_sigs = {}
+
     ret_type = 'None' if name == '__init__' and class_name else 'Any'
 
     if self_var:
@@ -169,16 +172,14 @@ def generate_c_function_stub(module: ModuleType,
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
-    """
-    Strips unnecessary module names from typ.
+    """Strips unnecessary module names from typ.
 
-    If typ represents a type that is inside module or is a type comming from builtins, remove
-    module declaration from it
-
-    :param typ: name of the type
-    :param module: in which this type is used
-    :param imports: list of import statements. May be modified during the call
-    :return: stripped name of the type
+    If typ represents a type that is inside module or is a type coming from builtins, remove
+    module declaration from it. Return stripped name of the type.
+    Arguments:
+        typ: name of the type
+        module: in which this type is used
+        imports: list of import statements (may be modified during the call)
     """
     arg_type = typ
     if module and typ.startswith(module.__name__):
@@ -210,9 +211,8 @@ def generate_c_type_stub(module: ModuleType,
                          obj: type,
                          output: List[str],
                          imports: List[str],
-                         sigs: Dict[str, str] = {},
-                         class_sigs: Dict[str, str] = {},
-                         ) -> None:
+                         sigs: Optional[Dict[str, str]] = None,
+                         class_sigs: Optional[Dict[str, str]] = None) -> None:
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
     obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
@@ -289,10 +289,10 @@ def generate_c_type_stub(module: ModuleType,
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:
     if name in ('__new__', '__init__'):
-        return (0, name)
+        return 0, name
     if name.startswith('__') and name.endswith('__'):
-        return (2, name)
-    return (1, name)
+        return 2, name
+    return 1, name
 
 
 def is_skipped_attribute(attr: str) -> bool:

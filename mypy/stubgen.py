@@ -27,9 +27,9 @@ Use "stubgen -h" for more help.
 Note: You should verify the generated stubs manually.
 
 TODO:
-
  - support stubs for C modules in Python 2 mode
  - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
+ - maybe use .rst docs also for Python modules
  - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
    - a quick and dirty heuristic would be to turn this on if a module has something like
      'from x import y as _y'
@@ -37,21 +37,15 @@ TODO:
 """
 
 import glob
-import importlib
-import json
 import os
 import os.path
-import pkgutil
-import inspect
-import subprocess
 import sys
-from textwrap import dedent
 import traceback
 import argparse
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, cast
+    Any, List, Dict, Tuple, Iterable, Mapping, Optional, NamedTuple, Set, cast
 )
 
 import mypy.build
@@ -60,16 +54,20 @@ import mypy.errors
 import mypy.traverser
 import mypy.util
 from mypy import defaults
-from mypy.modulefinder import FindModuleCache, SearchPaths
+from mypy.modulefinder import FindModuleCache, SearchPaths, BuildSource
 from mypy.nodes import (
-    Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
+    Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
+    TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.stubgenc import generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header, parse_all_signatures, find_unique_signatures
+from mypy.stubutil import (
+    write_header, default_py2_interpreter, CantImport,
+    walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3
+)
+from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
     Type, TypeStrVisitor, CallableType,
@@ -98,9 +96,13 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('files', List[str]),
                                  ])
 
-StubSource = NamedTuple('StubSource', [('source', BuildSource),
-                                       ('runtime_all', Optional[List[str]]),
-                                       ])
+
+class StubSource(BuildSource):
+    """An extension of BuildSource that also carries value of __all__ detected at runtime."""
+    def __init__(self, module: str, path: Optional[str] = None,
+                 runtime_all: Optional[List[str]] = None) -> None:
+        super().__init__(path, module, None)
+        self.runtime_all = runtime_all
 
 
 # What was generated previously in the stub file. We keep track of these to generate
@@ -123,7 +125,7 @@ class AnnotationPrinter(TypeStrVisitor):
         s = t.name
         base = s.split('.')[0]
         self.stubgen.import_tracker.require_name(base)
-        if t.args != []:
+        if t.args:
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
@@ -810,19 +812,52 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
         print('Created %s' % target)
 
 
-def find_module_paths_using_imports(modules, packages) -> Tuple[List[StubSource],
-                                                                List[StubSource]]:
+def find_module_paths_using_imports(modules: List[str], packages: List[str],
+                                    interpreter: str,
+                                    pyversion: Tuple[int, int]) -> Tuple[List[StubSource],
+                                                                         List[StubSource]]:
+    """Find path and runtime value of __all__ (if possible) for modules and packages."""
+    py_modules = []  # type: List[StubSource]
+    c_modules = []  # type: List[StubSource]
+
+    modules = modules + list(walk_packages(packages))
+    for mod in modules:
+        if pyversion[0] == 2:
+            result = find_module_path_and_all_py2(mod, interpreter)
+        else:
+            result = find_module_path_and_all_py3(mod)
+        if not result:
+            c_modules.append(StubSource(mod))
+        else:
+            path, runtime_all = result
+            py_modules.append(StubSource(mod, path, runtime_all))
     return py_modules, c_modules
 
 
-def find_module_paths_using_search(modules, packages) -> List[StubSource]:
-    # first use normal stuff, then convert to StubSource.
-    # Find module by going through search path.
+def find_module_paths_using_search(modules: List[str], packages: List[str],
+                                   search_path: List[str]) -> List[StubSource]:
+    """Find sources for modules and packages requested.
+
+    This is used if user passes --no-import, and will not find C modules.
+    Exit if some of the modules or packages can't be found.
+    """
+    result = []  # type: List[StubSource]
     search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
-    module_path = FindModuleCache(search_paths).find_module(module)
-    if not module_path:
-        raise SystemExit(
-            "Can't find module '{}' (consider using --search-path)".format(module))
+    cache = FindModuleCache(search_paths)
+    for module in modules:
+        module_path = cache.find_module(module)
+        if not module_path:
+            raise SystemExit(
+                "Can't find module '{}' (consider using --search-path)".format(module))
+        result.append(StubSource(module, module_path))
+    for package in packages:
+        p_result = cache.find_modules_recursive(package)
+        if not p_result:
+            raise SystemExit(
+                "Can't find package '{}' (consider using --search-path)".format(package))
+        sources = [StubSource(m.module, m.path) for m in p_result]
+        result.extend(sources)
+    return result
 
 
 def generate_asts_for_modules() -> None:
@@ -900,13 +935,18 @@ def generate_stub_from_ast(path: str,
         file.write(''.join(gen.output()))
 
 
-def generate_stubs_for_c_modules(options):
-    sigs = {}  # type: Any
-    class_sigs = {}  # type: Any
-    if options.doc_dir:
-        all_sigs = []  # type: Any
-        all_class_sigs = []  # type: Any
-        for path in glob.glob('%s/*.rst' % options.doc_dir):
+def generate_stubs_for_c_modules(modules: List[StubSource],
+                                 doc_dir: str, output_dir: str, quiet: bool = False) -> None:
+    """Generate stubs for all modules identified as C modules.
+
+    Use documentation (if given) to infer better signatures.
+    """
+    sigs = {}  # type: Dict[str, str]
+    class_sigs = {}  # type: Dict[str, str]
+    if doc_dir:
+        all_sigs = []  # type: List[Sig]
+        all_class_sigs = []  # type: List[Sig]
+        for path in glob.glob('%s/*.rst' % doc_dir):
             with open(path) as f:
                 func_sigs, class_sigs = parse_all_signatures(f.readlines())
             all_sigs += func_sigs
@@ -914,7 +954,10 @@ def generate_stubs_for_c_modules(options):
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
     for mod in modules:
-        generate_stub_for_c_module()
+        target = os.path.join(output_dir, mod.module.replace('.', '/') + '.pyi')
+        generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
+        if not quiet:
+            print('Created %s' % target)
 
 
 def main() -> None:
@@ -941,7 +984,7 @@ def main() -> None:
         generate_stub_from_ast(mod)
 
     if c_modules:
-        generate_stubs_for_c_modules(c_modules)
+        generate_stubs_for_c_modules(c_modules, options.doc_dir, options.output_dir)
 
     for module in (options.modules if not options.recursive else walk_packages(options.modules)):
         try:
@@ -1014,7 +1057,7 @@ def parse_options(args: List[str]) -> Options:
 
     pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
     if not ns.interpreter:
-        ns.interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
+        ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
     if ns.modules + ns.packages and ns.files:
         parser.error("May only specify one of: modules/packages or files.")
 
@@ -1034,18 +1077,6 @@ def parse_options(args: List[str]) -> Options:
                    modules=ns.modules,
                    packages=ns.packages,
                    files=ns.files)
-
-
-def default_python2_interpreter() -> str:
-    # TODO: Make this do something reasonable in Windows.
-    for candidate in ('/usr/bin/python2', '/usr/bin/python'):
-        if not os.path.exists(candidate):
-            continue
-        output = subprocess.check_output([candidate, '--version'],
-                                         stderr=subprocess.STDOUT).strip()
-        if b'Python 2' in output:
-            return candidate
-    raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
 
 
 if __name__ == '__main__':
