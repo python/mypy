@@ -796,6 +796,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        self.setup_class_def_analysis(defn)
         with self.scope.class_scope(defn.info):
             with self.tvar_scope_frame(self.tvar_scope.class_frame()):
                 self.analyze_class(defn)
@@ -809,7 +810,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         if self.analyze_namedtuple_classdef(defn):
             return
-        self.setup_class_def_analysis(defn)
         self.analyze_base_classes(defn)
         defn.info.is_protocol = is_protocol
         self.analyze_metaclass(defn)

@@ -22,3 +22,8 @@ class A:
 a: A
 a.x
 a.y # E: "A" has no attribute "y"
+
+[case testNewAnalyzerErrorInClassBody]
+# flags: --new-semantic-analyzer
+class A:
+    x # E: Name 'x' is not defined
