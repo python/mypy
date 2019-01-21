@@ -55,12 +55,16 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
     so we have to roll out our own.
     """
     for package_name in packages:
-        package = importlib.import_module(package_name)
+        try:
+            package = importlib.import_module(package_name)
+        except Exception:
+            print('Failed to import {}; skipping it'.format(package_name))
+            continue
         yield package.__name__
         # get the path of the object (needed by pkgutil)
         path = getattr(package, '__path__', None)
         if path is None:
-            # object has no path; this means it's either a module inside a package
+            # Object has no path; this means it's either a module inside a package
             # (and thus no sub-packages), or it could be a C extension package.
             if is_c_module(package):
                 # This is a C extension module, now get the list of all sub-packages
@@ -88,7 +92,7 @@ def find_module_path_and_all_py2(module: str,
     The path refers to the .py/.py[co] file. The second tuple item is
     None if the module doesn't define __all__.
 
-    Exit if the module can't be imported or if it's a C extension module.
+    Raise if the module can't be imported or exit if it's a C extension module.
     """
     cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
     code = ("import importlib, json; mod = importlib.import_module('%s'); "
@@ -96,8 +100,7 @@ def find_module_path_and_all_py2(module: str,
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError:
-        print("Can't import module %s" % module, file=sys.stderr)
-        sys.exit(1)
+        raise CantImport(module)
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
     if not module_path.endswith(('.py', '.pyc', '.pyo')):

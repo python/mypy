@@ -15,7 +15,7 @@ from mypy.stubgen import (
     generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
 )
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
-from mypy.stubutil import (
+from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring
 )
