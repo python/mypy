@@ -1,4 +1,4 @@
-"""The semantic analyzer passes 1 and 2.
+"""The new semantic analyzer (work in progress).
 
 Bind names to definitions and do various other simple consistency
 checks. For example, consider this program:
@@ -13,23 +13,7 @@ analysis).  Also, it would bind both references to 'x' to the same
 module-level variable (Var) node.  The second assignment would also
 be analyzed, and the type of 'y' marked as being inferred.
 
-Semantic analysis is the first analysis pass after parsing, and it is
-subdivided into three passes:
-
- * SemanticAnalyzerPass1 is defined in mypy.semanal_pass1.
-
- * SemanticAnalyzerPass2 is the second pass.  It does the bulk of the work.
-   It assumes that dependent modules have been semantically analyzed,
-   up to the second pass, unless there is a import cycle.
-
- * SemanticAnalyzerPass3 is the third pass. It's in mypy.semanal_pass3.
-
 Semantic analysis of types is implemented in module mypy.typeanal.
-
-TODO: Check if the third pass slows down type checking significantly.
-  We could probably get rid of it -- for example, we could collect all
-  analyzed types in a collection and check them without having to
-  traverse the entire AST.
 """
 
 from contextlib import contextmanager
@@ -164,16 +148,14 @@ SUGGESTED_TEST_FIXTURES = {
 }  # type: Final
 
 
-class SemanticAnalyzerPass2(NodeVisitor[None],
-                            SemanticAnalyzerInterface,
-                            SemanticAnalyzerPluginInterface):
+class NewSemanticAnalyzer(NodeVisitor[None],
+                          SemanticAnalyzerInterface,
+                          SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
     parse tree. Note that type checking is performed as a separate
     pass.
-
-    This is the second phase of semantic analysis.
     """
 
     # Module name space
