@@ -2081,7 +2081,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             node.node.normalized = rvalue.node.normalized
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
-                       add_global: bool = False,
                        explicit_type: bool = False,
                        is_final: bool = False) -> None:
         """Analyze an lvalue or assignment target.
@@ -2091,30 +2090,27 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Args:
             lval: The target lvalue
             nested: If true, the lvalue is within a tuple or list lvalue expression
-            add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
         """
         if isinstance(lval, NameExpr):
-            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final)
+            self.analyze_name_lvalue(lval, explicit_type, is_final)
         elif isinstance(lval, MemberExpr):
-            if not add_global:
-                self.analyze_member_lvalue(lval, explicit_type, is_final)
+            self.analyze_member_lvalue(lval, explicit_type, is_final)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
         elif isinstance(lval, IndexExpr):
             if explicit_type:
                 self.fail('Unexpected type declaration', lval)
-            if not add_global:
-                lval.accept(self)
+            lval.accept(self)
         elif isinstance(lval, TupleExpr):
             items = lval.items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("can't assign to ()", lval)
-            self.analyze_tuple_or_list_lvalue(lval, add_global, explicit_type)
+            self.analyze_tuple_or_list_lvalue(lval, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
-                self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
+                self.analyze_lvalue(lval.expr, nested, explicit_type)
             else:
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
@@ -2122,7 +2118,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def analyze_name_lvalue(self,
                             lval: NameExpr,
-                            add_global: bool,
                             explicit_type: bool,
                             is_final: bool) -> None:
         """Analyze an lvalue that targets a name expression.
@@ -2137,10 +2132,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         # Top-level definitions within some statements (at least while) are
         # not handled in the first pass, so they have to be added now.
-        nested_global = (not self.is_func_scope() and
-                         self.block_depth[-1] > 0 and
-                         not self.type)
-        if (add_global or nested_global) and lval.name not in self.globals:
+        add_global = not self.is_func_scope() and not self.type
+        if add_global and lval.name not in self.globals:
             # Define new global name.
             v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
             self.globals[lval.name] = SymbolTableNode(GDEF, v)
@@ -2264,7 +2257,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.check_lvalue_validity(lval.node, lval)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
-                                     add_global: bool = False,
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
@@ -2276,8 +2268,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if len(star_exprs) == 1:
                 star_exprs[0].valid = True
             for i in items:
-                self.analyze_lvalue(i, nested=True, add_global=add_global,
-                                    explicit_type=explicit_type)
+                self.analyze_lvalue(i, nested=True, explicit_type=explicit_type)
 
     def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool, is_final: bool) -> None:
         """Analyze lvalue that is a member expression.
@@ -2807,14 +2798,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.analyze_try_stmt(s, self)
 
-    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None],
-                         add_global: bool = False) -> None:
+    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None]) -> None:
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
             if type:
                 type.accept(visitor)
             if var:
-                self.analyze_lvalue(var, add_global=add_global)
+                self.analyze_lvalue(var)
             handler.accept(visitor)
         if s.else_body:
             s.else_body.accept(visitor)
