@@ -301,6 +301,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             del self.cur_mod_node
             del self.globals
 
+    def prepare_file(self, file_node: MypyFile) -> None:
+        file_node.names = SymbolTable()
+        if 'builtins' in self.modules:
+            file_node.names['__builtins__'] = SymbolTableNode(GDEF,
+                                                              self.modules['builtins'])
+        if file_node.fullname() == 'builtins':
+            # Add empty core definitions required for basic operation. These fill be completed
+            # later on.
+            cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced
+            info = TypeInfo(SymbolTable(), cdef, 'builtins')
+            info._fullname = 'builtins.object'
+            file_node.names['object'] = SymbolTableNode(GDEF, info)
+
     def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -1116,8 +1129,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
         if not defn.info:
-            defn.info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
-            defn.info._fullname = defn.info.name()
+            defn.fullname = self.qualified_name(defn.name)
+            # TODO: Nested classes
+            if self.is_module_scope() and self.qualified_name(defn.name) == 'builtins.object':
+                # Special case 'builtins.object'. It was alredy created, just patch the
+                # actual ClassDef object.
+                info = self.globals['object'].node
+                defn.info = info
+                info.defn = defn
+            else:
+                info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
+                defn.info = info
+            if self.is_module_scope():
+                info._fullname = self.qualified_name(defn.name)
+                self.globals[defn.name] = SymbolTableNode(GDEF, info)
+            else:
+                info._fullname = info.name()
         if self.is_func_scope() or self.type:
             kind = MDEF
             if self.is_nested_within_func_scope():

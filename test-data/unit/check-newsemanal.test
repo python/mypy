@@ -1,9 +1,10 @@
 -- Test cases for the new semantic analyzer
 
+[case testNewAnalyzerEmpty]
+# flags: --new-semantic-analyzer
 
 [case testNewAnalyzerSimple]
 # flags: --new-semantic-analyzer
 x = 1
-reveal_type(x)
-x.y
-y
+x.y # E: "int" has no attribute "y"
+y # E: Name 'y' is not defined

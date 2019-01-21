@@ -18,6 +18,10 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     # Process top levels until everything has been bound.
     # TODO: Limit the number of iterations
+    for id in scc:
+        state = graph[id]
+        assert state.tree is not None
+        state.manager.new_semantic_analyzer.prepare_file(state.tree)
     worklist = scc[:]
     while worklist:
         deferred = []  # type: List[str]
@@ -44,14 +48,13 @@ def get_all_leaf_targets(symtable: SymbolTable) -> List[str]:
     return []
 
 
-def semantic_analyze_target(id: str, state: 'State') -> List[str]:
+def semantic_analyze_target(module: str, state: 'State') -> List[str]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
     # TODO: Move initialization to somewhere else
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]
-    tree.names = SymbolTable()
     analyzer.globals = tree.names
     with analyzer.file_context(file_node=tree,
                                fnam=tree.path,
