@@ -10,17 +10,15 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import (
-    is_c_module, write_header, infer_sig_from_docstring,
-    infer_prop_type_from_docstring
-)
+from mypy.stubutil import write_header, is_c_module
+from mypy.stubdoc import infer_sig_from_docstring, infer_prop_type_from_docstring
 
 
 def generate_stub_for_c_module(module_name: str,
                                target: str,
                                add_header: bool = True,
-                               sigs: Dict[str, str] = {},
-                               class_sigs: Dict[str, str] = {},
+                               sigs: Optional[Dict[str, str]] = None,
+                               class_sigs: Optional[Dict[str, str]] = None,
                                ) -> None:
     module = importlib.import_module(module_name)
     assert is_c_module(module), '%s is not a C module' % module_name

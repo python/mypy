@@ -103,10 +103,6 @@ StubSource = NamedTuple('StubSource', [('source', BuildSource),
                                        ])
 
 
-class CantImport(Exception):
-    pass
-
-
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
 EMPTY = 'EMPTY'  # type: Final
@@ -821,7 +817,12 @@ def find_module_paths_using_imports(modules, packages) -> Tuple[List[StubSource]
 
 def find_module_paths_using_search(modules, packages) -> List[StubSource]:
     # first use normal stuff, then convert to StubSource.
-    pass
+    # Find module by going through search path.
+    search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
+    module_path = FindModuleCache(search_paths).find_module(module)
+    if not module_path:
+        raise SystemExit(
+            "Can't find module '{}' (consider using --search-path)".format(module))
 
 
 def generate_asts_for_modules() -> None:
