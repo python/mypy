@@ -1147,6 +1147,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Special case 'builtins.object'. It was alredy created, just patch the
                 # actual ClassDef object.
                 info = self.globals['object'].node
+                assert isinstance(info, TypeInfo)
                 defn.info = info
                 info.defn = defn
             else:

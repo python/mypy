@@ -49,7 +49,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         symtable = tree.names
         targets = get_all_leaf_targets(symtable)
         for target in targets:
-            deferred += semantic_analyze_target(next_id, graph[next_id])
+            deferred += semantic_analyze_target(target, graph[id])
     assert not deferred  # There can't be cross-function forward refs
 
 
@@ -57,7 +57,8 @@ def get_all_leaf_targets(symtable: SymbolTable) -> List[str]:
     return []
 
 
-def semantic_analyze_target(module: str, state: 'State') -> List[str]:
+def semantic_analyze_target(target: str, state: 'State') -> List[str]:
+    # TODO: Support refreshing function targets (currently only works for module top levels)
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -71,6 +72,6 @@ def semantic_analyze_target(module: str, state: 'State') -> List[str]:
                                active_type=None):
         analyzer.refresh_partial(tree, [])
     if analyzer.deferred:
-        return [module]
+        return [target]
     else:
         return []
