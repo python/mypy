@@ -27,3 +27,16 @@ a.y # E: "A" has no attribute "y"
 # flags: --new-semantic-analyzer
 class A:
     x # E: Name 'x' is not defined
+
+[case testNewAnalyzerTypeAnnotationForwardReference]
+# flags: --new-semantic-analyzer
+class A:
+    b: B
+class B:
+    a: A
+a: A
+b: B
+a.b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a.b = b
+b.a = a
+b.a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")

@@ -203,12 +203,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
+                 incomplete_namespaces: Set[str],
                  errors: Errors,
                  plugin: Plugin) -> None:
         """Construct semantic analyzer.
 
-        Use lib_path to search for modules, and report analysis errors
-        using the Errors instance.
+        We reuse the same semantic analyzer instance across multiple modules.
+
+        Args:
+            modules: Global modules dictionary
+            incomplete_namespaces: Namespaces that are being populated during semantic analysis
+                (can contain modules and classes within the current SCC)
+            errors: Report analysis errors using this instance
         """
         self.locals = [None]
         self.imports = set()
@@ -222,6 +228,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
+        self.incomplete_namespaces = incomplete_namespaces
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
@@ -328,6 +335,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
+        self.deferred = False
         for d in file_node.defs:
             self.accept(d)
 
@@ -351,6 +359,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
         self.enum_call_analyzer = EnumCallAnalyzer(options, self)
         self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
+
+        # Counter that keeps track of references to undefined things potentially caused by
+        # incomplete namespaces.
+        self.num_incomplete_refs = 0
 
         if active_type:
             scope.enter_class(active_type)
@@ -1185,6 +1197,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 info.fallback_to_any = True
                 continue
 
+            assert base is not None  # TODO: Handle None values
+
             if isinstance(base, TupleType):
                 if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
@@ -1308,7 +1322,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self, expr: Expression, report_invalid_types: bool = True) -> Type:
+    def expr_to_analyzed_type(self,
+                              expr: Expression,
+                              report_invalid_types: bool = True) -> Optional[Type]:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
@@ -1741,13 +1757,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True,
-                  third_pass: bool = False) -> Type:
+                  third_pass: bool = False) -> Optional[Type]:
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
                                allow_tuple_literal=allow_tuple_literal,
                                report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
+        prev_incomplete = self.num_incomplete_refs
         typ = t.accept(a)
+        if self.num_incomplete_refs != prev_incomplete:
+            # Something could not be bound yet.
+            return None
         self.add_type_alias_deps(a.aliases_used)
         return typ
 
@@ -1916,7 +1936,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
-            s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+            analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+            if analyzed is not None:
+                s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                         if isinstance(lvalue.node, Var):
@@ -2486,8 +2508,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 try:
                     # We want to use our custom error message below, so we suppress
                     # the default error message for invalid types here.
-                    upper_bound = self.expr_to_analyzed_type(param_value,
-                                                             report_invalid_types=False)
+                    analyzed = self.expr_to_analyzed_type(param_value,
+                                                          report_invalid_types=False)
+                    assert analyzed is not None  # TODO: Handle None values
+                    upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
                         # Note: we do not return 'None' here -- we want to continue
@@ -2537,7 +2561,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         result = []  # type: List[Type]
         for node in items:
             try:
-                result.append(self.anal_type(expr_to_unanalyzed_type(node)))
+                analyzed = self.anal_type(expr_to_unanalyzed_type(node))
+                if analyzed is not None:
+                    result.append(analyzed)
+                else:
+                    # TODO: Is this the right thing to do?
+                    result.append(AnyType(TypeOfAny.from_error))
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))
@@ -2771,8 +2800,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.is_classvar(s.index_type):
                 self.fail_invalid_classvar(s.index)
             allow_tuple_literal = isinstance(s.index, TupleExpr)
-            s.index_type = self.anal_type(s.index_type, allow_tuple_literal=allow_tuple_literal)
-            self.store_declared_types(s.index, s.index_type)
+            analyzed = self.anal_type(s.index_type, allow_tuple_literal=allow_tuple_literal)
+            if analyzed is not None:
+                self.store_declared_types(s.index, analyzed)
+                s.index_type = analyzed
 
         self.loop_depth += 1
         self.visit_block(s.body)
@@ -2845,9 +2876,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if self.is_classvar(t):
                         self.fail_invalid_classvar(n)
                     allow_tuple_literal = isinstance(n, TupleExpr)
-                    t = self.anal_type(t, allow_tuple_literal=allow_tuple_literal)
-                    new_types.append(t)
-                    self.store_declared_types(n, t)
+                    analyzed = self.anal_type(t, allow_tuple_literal=allow_tuple_literal)
+                    if analyzed is not None:
+                        # TODO: Deal with this better
+                        new_types.append(analyzed)
+                        self.store_declared_types(n, analyzed)
 
         # Reverse the logic above to correctly reassign target_type
         if new_types:
@@ -3252,8 +3285,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # We always allow unbound type variables in IndexExpr, since we
                 # may be analysing a type alias definition rvalue. The error will be
                 # reported elsewhere if it is not the case.
-                typearg = self.anal_type(typearg, allow_unbound_tvars=True)
-                types.append(typearg)
+                typearg2 = self.anal_type(typearg, allow_unbound_tvars=True)
+                assert typearg2 is not None  # TODO: Deal with None return values
+                types.append(typearg2)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
             # Types list, dict, set are not subscriptable, prohibit this if
@@ -3293,7 +3327,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
-        expr.type = self.anal_type(expr.type)
+        analyzed = self.anal_type(expr.type)
+        if analyzed is not None:
+            expr.type = analyzed
 
     def visit_reveal_expr(self, expr: RevealExpr) -> None:
         if expr.kind == REVEAL_TYPE:
@@ -3307,7 +3343,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)
         for i in range(len(expr.types)):
-            expr.types[i] = self.anal_type(expr.types[i])
+            analyzed = self.anal_type(expr.types[i])
+            if analyzed is not None:
+                expr.types[i] = analyzed
 
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
         expr.generator.accept(self)
@@ -3368,7 +3406,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.expr.accept(self)
 
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
-        expr.type = self.anal_type(expr.type)
+        analyzed = self.anal_type(expr.type)
+        if analyzed is not None:
+            expr.type = analyzed
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
@@ -3726,6 +3766,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.name_already_defined(n, ctx, self.globals[n])
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
+        # TODO: Reference to another namespace
+        if self.cur_mod_id in self.incomplete_namespaces:
+            # Target namespace is incomplete, so it's possible that the name will be defined
+            # later on. Defer current target.
+            self.deferred = True
+            self.num_incomplete_refs += 1
+            return
         message = "Name '{}' is not defined".format(name)
         extra = self.undefined_name_extra_info(name)
         if extra:

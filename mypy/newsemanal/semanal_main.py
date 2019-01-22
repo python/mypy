@@ -18,16 +18,25 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     # Process top levels until everything has been bound.
     # TODO: Limit the number of iterations
+
+    # Initialize ASTs and symbol tables.
     for id in scc:
         state = graph[id]
         assert state.tree is not None
         state.manager.new_semantic_analyzer.prepare_file(state.tree)
+
+    # Initially all namespaces in the SCC are incomplete (well they are empty).
+    state.manager.incomplete_namespaces.update(scc)
+
     worklist = scc[:]
     while worklist:
         deferred = []  # type: List[str]
         while worklist:
             next_id = worklist.pop()
             deferred += semantic_analyze_target(next_id, graph[next_id])
+            # Assume this namespace is ready.
+            # TODO: It could still be incomplete if some definitions couldn't be bound.
+            state.manager.incomplete_namespaces.discard(next_id)
         worklist = deferred
 
 
@@ -61,4 +70,7 @@ def semantic_analyze_target(module: str, state: 'State') -> List[str]:
                                options=state.options,
                                active_type=None):
         analyzer.refresh_partial(tree, [])
-    return []
+    if analyzer.deferred:
+        return [module]
+    else:
+        return []

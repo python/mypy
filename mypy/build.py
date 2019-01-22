@@ -506,8 +506,13 @@ class BuildManager(BuildManagerBase):
         self.missing_modules = set()  # type: Set[str]
         self.plugin = plugin
         if options.new_semantic_analyzer:
-            self.new_semantic_analyzer = NewSemanticAnalyzer(self.modules, self.missing_modules,
-                                                             self.errors, self.plugin)
+            self.incomplete_namespaces = set()  # type: Set[str]
+            self.new_semantic_analyzer = NewSemanticAnalyzer(
+                self.modules,
+                self.missing_modules,
+                self.incomplete_namespaces,
+                self.errors,
+                self.plugin)
         else:
             self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
                                                            self.errors, self.plugin)
