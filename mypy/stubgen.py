@@ -64,8 +64,9 @@ from mypy.nodes import (
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
-    write_header, default_py2_interpreter, CantImport,
-    walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3
+    write_header, default_py2_interpreter, CantImport, generate_guarded,
+    walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3,
+    report_missing, fail_missing
 )
 from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
@@ -121,7 +122,11 @@ NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
 
 class AnnotationPrinter(TypeStrVisitor):
+    """Visitor used to print existing annotations in a file.
 
+    The main difference from TypeStrVisitor is a better treatment of
+    unbound types.
+    """
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
@@ -142,7 +147,10 @@ class AnnotationPrinter(TypeStrVisitor):
 
 
 class AliasPrinter(NodeVisitor[str]):
+    """Visitor used to collect type aliases _and_ type variable definitions.
 
+    Visit r.h.s of the definition to get the string representation of type alias.
+    """
     def __init__(self, stubgen: 'StubGenerator') -> None:
         self.stubgen = stubgen
         super().__init__()
@@ -188,7 +196,7 @@ class AliasPrinter(NodeVisitor[str]):
 
 
 class ImportTracker:
-
+    """Record necessary imports during stub generation."""
     def __init__(self) -> None:
         # module_for['foo'] has the module name where 'foo' was imported from, or None if
         # 'foo' is a module imported directly; examples
@@ -293,6 +301,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._pyversion = pyversion
         self._include_private = include_private
         self.import_tracker = ImportTracker()
+        # Was the tree semantically analysed before?
         self.analyzed = analyzed
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
@@ -739,6 +748,10 @@ class SelfTraverser(mypy.traverser.TraverserVisitor):
 
 
 def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
+    """Find attribute initializers in a method.
+
+    Return a list of pairs (attribute name, r.h.s. expression).
+    """
     traverser = SelfTraverser()
     fdef.accept(traverser)
     return traverser.results
@@ -755,6 +768,10 @@ class ReturnSeeker(mypy.traverser.TraverserVisitor):
 
 
 def has_return_statement(fdef: FuncBase) -> bool:
+    """Find if a function has a non-trivial return statement.
+
+    Plain 'return' and 'return None' don't count.
+    """
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
@@ -767,6 +784,36 @@ def get_qualified_name(o: Expression) -> str:
         return '%s.%s' % (get_qualified_name(o.expr), o.name)
     else:
         return '<ERROR>'
+
+
+def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[List[StubSource],
+                                                                             List[StubSource]]:
+    """Collect files for which we need to generate stubs.
+
+    Return list of Python modules and C modules.
+    """
+    if options.packages or options.modules:
+        if options.no_import:
+            py_modules = find_module_paths_using_search(options.modules,
+                                                        options.packages,
+                                                        options.search_path)
+            c_modules = []  # type: List[StubSource]
+        else:
+            # Using imports is the default, since we can also find C modules.
+            py_modules, c_modules = find_module_paths_using_imports(options.modules,
+                                                                    options.packages,
+                                                                    options.interpreter,
+                                                                    options.pyversion)
+    else:
+        # Use mypy native source collection for files and directories.
+        try:
+            source_list = create_source_list(options.files, mypy_opts)
+        except InvalidSourceList as e:
+            raise SystemExit(str(e))
+        py_modules = [StubSource(m.module, m.path) for m in source_list]
+        c_modules = []
+
+    return py_modules, c_modules
 
 
 def find_module_paths_using_imports(modules: List[str], packages: List[str],
@@ -787,7 +834,7 @@ def find_module_paths_using_imports(modules: List[str], packages: List[str],
         except CantImport:
             if not quiet:
                 traceback.print_exc()
-            print('Failed to import {}; skipping it'.format(mod))
+            report_missing(mod)
             continue
         if not result:
             c_modules.append(StubSource(mod))
@@ -810,14 +857,12 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
     for module in modules:
         module_path = cache.find_module(module)
         if not module_path:
-            raise SystemExit(
-                "Can't find module '{}' (consider using --search-path)".format(module))
+            fail_missing(module)
         result.append(StubSource(module, module_path))
     for package in packages:
         p_result = cache.find_modules_recursive(package)
         if not p_result:
-            raise SystemExit(
-                "Can't find package '{}' (consider using --search-path)".format(package))
+            fail_missing(package)
         sources = [StubSource(m.module, m.path) for m in p_result]
         result.extend(sources)
     return result
@@ -865,13 +910,16 @@ def generate_asts_for_modules(py_modules: List[StubSource],
 
 
 def generate_stub_from_ast(mod: StubSource,
-                           output_dir: str,
+                           target: str,
                            parse_only: bool = False,
                            pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                            include_private: bool = False,
-                           add_header: bool = True,
-                           quiet: bool = False) -> None:
-    """Use analysed (or just parsed) AST to generate type stub."""
+                           add_header: bool = True) -> None:
+    """Use analysed (or just parsed) AST to generate type stub for single file.
+
+    If directory for target doesn't exist it will created. Existing stub
+    will be overwritten.
+    """
     gen = StubGenerator(mod.runtime_all,
                         pyversion=pyversion,
                         include_private=include_private,
@@ -879,12 +927,6 @@ def generate_stub_from_ast(mod: StubSource,
     mod.ast.accept(gen)
 
     # Write output to file.
-    target = mod.module.replace('.', '/')
-    if os.path.basename(mod.path) == '__init__.py':
-        target += '/__init__.pyi'
-    else:
-        target += '.pyi'
-    target = os.path.join(output_dir, target)
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
@@ -892,88 +934,55 @@ def generate_stub_from_ast(mod: StubSource,
         if add_header:
             write_header(file, mod.module, pyversion=pyversion)
         file.write(''.join(gen.output()))
-    if not quiet:
-        print('Created %s' % target)
 
 
-def generate_stubs_for_c_modules(modules: List[StubSource],
-                                 doc_dir: str, output_dir: str, ignore_errors: bool,
-                                 quiet: bool = False) -> None:
-    """Generate stubs for all modules identified as C modules.
+def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Gather all function and class signatures in the docs.
 
-    Use documentation (if given) to infer better signatures.
+    Return a tuple (function signatures, class signatures).
+    Currently only used for C modules.
     """
-    sigs = {}  # type: Dict[str, str]
-    class_sigs = {}  # type: Dict[str, str]
-    if doc_dir:
-        all_sigs = []  # type: List[Sig]
-        all_class_sigs = []  # type: List[Sig]
-        for path in glob.glob('%s/*.rst' % doc_dir):
-            with open(path) as f:
-                func_sigs, class_sigs = parse_all_signatures(f.readlines())
-            all_sigs += func_sigs
-            all_class_sigs += class_sigs
-        sigs = dict(find_unique_signatures(all_sigs))
-        class_sigs = dict(find_unique_signatures(all_class_sigs))
-    for mod in modules:
-        target = os.path.join(output_dir, mod.module.replace('.', '/') + '.pyi')
-        try:
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
-        except Exception as e:
-            if not ignore_errors:
-                raise e
-            else:
-                print("Stub generation failed for", mod, file=sys.stderr)
-        else:
-            if not quiet:
-                print('Created %s' % target)
+    all_sigs = []  # type: List[Sig]
+    all_class_sigs = []  # type: List[Sig]
+    for path in glob.glob('%s/*.rst' % doc_dir):
+        with open(path) as f:
+            func_sigs, class_sigs = parse_all_signatures(f.readlines())
+        all_sigs += func_sigs
+        all_class_sigs += class_sigs
+    sigs = dict(find_unique_signatures(all_sigs))
+    class_sigs = dict(find_unique_signatures(all_class_sigs))
+    return sigs, class_sigs
 
 
-def main() -> None:
-    # Make sure that the current directory is in sys.path so that
-    # stubgen can be run on packages in the current directory.
-    if '' not in sys.path:
-        sys.path.insert(0, '')
+def generate_stubs(options: Options) -> None:
+    """Main entry point for the program."""
+    mypy_opts = mypy_options(options)
+    py_modules, c_modules = collect_build_targets(options, mypy_opts)
 
-    options = parse_options(sys.argv[1:])
+    # Collect info from docs (if given):
+    sigs = class_sigs = None  # type: Optional[Dict[str, str]]
+    if not options.doc_dir:
+        sigs, class_sigs = collect_docs_signatures(options.doc_dir)
 
-    if options.packages or options.modules:
-        if options.no_import:
-            py_modules = find_module_paths_using_search(options.modules,
-                                                        options.packages,
-                                                        options.search_path)
-            c_modules = None
-        else:
-            py_modules, c_modules = find_module_paths_using_imports(options.modules,
-                                                                    options.packages,
-                                                                    options.interpreter,
-                                                                    options.pyversion)
-    else:
-        try:
-            source_list = create_source_list(options.files, mypy_options(options))
-        except InvalidSourceList as e:
-            raise SystemExit(str(e))
-        py_modules = [StubSource(m.module, m.path) for m in source_list]
-        c_modules = None
-
-    # Use mypy to parse and analyse sources.
-    opts = mypy_options(options)
-    generate_asts_for_modules(py_modules, options.parse_only, opts)
-
+    # Use parsed sources to generate stubs for Python modules.
+    generate_asts_for_modules(py_modules, options.parse_only, mypy_opts)
     for mod in py_modules:
-        try:
+        target = mod.module.replace('.', '/')
+        if os.path.basename(mod.path) == '__init__.py':
+            target += '/__init__.pyi'
+        else:
+            target += '.pyi'
+        target = os.path.join(options.output_dir, target)
+        with generate_guarded(mod.module, target, options.ignore_errors):
             generate_stub_from_ast(mod, options.output_dir,
                                    options.parse_only, options.pyversion)
-        except Exception as e:
-            if not options.ignore_errors:
-                raise e
-            else:
-                print("Stub generation failed for", mod, file=sys.stderr)
 
     # Separately analyse C modules using different logic.
-    if c_modules:
-        generate_stubs_for_c_modules(c_modules, options.doc_dir,
-                                     options.output_dir, options.ignore_errors)
+    for mod in c_modules:
+        target = mod.module.replace('.', '/') + '.pyi'
+        target = os.path.join(options.output_dir, target)
+        with generate_guarded(mod.module, target, options.ignore_errors):
+            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
 
 
 HEADER = """%(prog)s [-h] [--py2] [more options, see -h]
@@ -1048,6 +1057,16 @@ def parse_options(args: List[str]) -> Options:
                    modules=ns.modules,
                    packages=ns.packages,
                    files=ns.files)
+
+
+def main() -> None:
+    # Make sure that the current directory is in sys.path so that
+    # stubgen can be run on packages in the current directory.
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
+    options = parse_options(sys.argv[1:])
+    generate_stubs(options)
 
 
 if __name__ == '__main__':

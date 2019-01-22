@@ -6,6 +6,7 @@ import pkgutil
 import importlib
 import subprocess
 from types import ModuleType
+from contextlib import contextmanager
 
 from typing import Optional, Tuple, List, IO, Iterator
 
@@ -35,6 +36,10 @@ def write_header(file: IO[str], module_name: Optional[str] = None,
 
 
 def default_py2_interpreter() -> str:
+    """Find a system Python 2 interpreter.
+
+    Return full path or exit if failed.
+    """
     # TODO: Make this do something reasonable in Windows.
     for candidate in ('/usr/bin/python2', '/usr/bin/python'):
         if not os.path.exists(candidate):
@@ -58,7 +63,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
         try:
             package = importlib.import_module(package_name)
         except Exception:
-            print('Failed to import {}; skipping it'.format(package_name))
+            report_missing(package_name)
             continue
         yield package.__name__
         # get the path of the object (needed by pkgutil)
@@ -126,3 +131,27 @@ def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[Li
     if is_c_module(mod):
         return None
     return mod.__file__, getattr(mod, '__all__', None)
+
+
+@contextmanager
+def generate_guarded(mod: str, target: str,
+                     ignore_errors: bool = True, quiet: bool = False) -> Iterator[None]:
+    """Ignore or report errors during stub generation."""
+    try:
+        yield
+    except Exception as e:
+        if not ignore_errors:
+            raise e
+        else:
+            print("Stub generation failed for", mod, file=sys.stderr)
+    else:
+        if not quiet:
+            print('Created %s' % target)
+
+
+def report_missing(mod: str) -> None:
+    print('Failed to import {}; skipping it'.format(mod))
+
+
+def fail_missing(mod: str) -> None:
+    raise SystemExit("Can't find module '{}' (consider using --search-path)".format(mod))

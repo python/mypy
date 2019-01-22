@@ -19,6 +19,14 @@ def generate_stub_for_c_module(module_name: str,
                                add_header: bool = True,
                                sigs: Optional[Dict[str, str]] = None,
                                class_sigs: Optional[Dict[str, str]] = None) -> None:
+    """Generate stub for C module.
+
+    This combines simple runtime introspection (looking for attributes with simple
+    builtin types and signatures inferred from docs (if given).
+
+    If directory for target doesn't exist it will created. Existing stub
+    will be overwritten.
+    """
     module = importlib.import_module(module_name)
     assert is_c_module(module), '%s is not a C module' % module_name
     subdir = os.path.dirname(target)
@@ -71,6 +79,7 @@ def generate_stub_for_c_module(module_name: str,
 
 
 def add_typing_import(output: List[str]) -> List[str]:
+    """Add typing imports for collections/types that occur in the generated stub."""
     names = []
     for name in ['Any', 'Union', 'Tuple', 'Optional', 'List', 'Dict']:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
@@ -117,6 +126,13 @@ def generate_c_function_stub(module: ModuleType,
                              sigs: Optional[Dict[str, str]] = None,
                              class_name: Optional[str] = None,
                              class_sigs: Optional[Dict[str, str]] = None) -> None:
+    """Generate stub for a single function or method.
+
+    The result (always a single line) will be appended to 'output'.
+    If necessary, any required names will be added to 'imports'.
+    The 'class_name' is used to find signature of __init__ or __new__ in
+    'class_sigs'.
+    """
     if sigs is None:
         sigs = {}
     if class_sigs is None:
@@ -194,6 +210,10 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
+    """Generate property stub using introspection of 'obj'.
+
+    Infer type from doctring, append resulting lines to 'output'.
+    """
     docstr = getattr(obj, '__doc__', None)
     inferred = infer_prop_type_from_docstring(docstr)
     if not inferred:
@@ -213,6 +233,11 @@ def generate_c_type_stub(module: ModuleType,
                          imports: List[str],
                          sigs: Optional[Dict[str, str]] = None,
                          class_sigs: Optional[Dict[str, str]] = None) -> None:
+    """Generate stub for a single class using runtime introspection.
+
+    The result lines will be appended to 'output'. If necessary, any
+    required names will be added to 'imports'.
+    """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
     obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
@@ -288,6 +313,10 @@ def generate_c_type_stub(module: ModuleType,
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:
+    """Sort methods in classes in a typical order.
+
+    I.e.: constructor, normal methods, special methods.
+    """
     if name in ('__new__', '__init__'):
         return 0, name
     if name.startswith('__') and name.endswith('__'):
