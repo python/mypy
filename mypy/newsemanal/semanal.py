@@ -1582,6 +1582,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
+                if import_id in self.incomplete_namespaces:
+                    # We don't know whether the name will be there, since the namespace
+                    # is incomplete. Defer the current target.
+                    self.deferred = True
+                    return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
