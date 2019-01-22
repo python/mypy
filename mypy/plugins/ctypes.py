@@ -118,12 +118,7 @@ def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
         assert len(ctx.arg_types) == 1, \
             "The stub of the ctypes.Array constructor should have a single vararg parameter"
         for arg_num, (arg_kind, arg_type) in enumerate(zip(ctx.arg_kinds[0], ctx.arg_types[0]), 1):
-            if arg_kind not in {nodes.ARG_POS, nodes.ARG_STAR}:
-                ctx.api.msg.fail(
-                    "Array constructor does not allow keyword arguments",
-                    ctx.context
-                )
-            elif arg_kind == nodes.ARG_POS and not is_subtype(arg_type, allowed):
+            if arg_kind == nodes.ARG_POS and not is_subtype(arg_type, allowed):
                 ctx.api.msg.fail(
                     'Array constructor argument {} of type "{}"'
                     ' is not convertible to the array element type "{}"'
