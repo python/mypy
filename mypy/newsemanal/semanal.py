@@ -309,6 +309,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             del self.globals
 
     def prepare_file(self, file_node: MypyFile) -> None:
+        """Prepare a freshly parsed file for semantic analysis."""
         file_node.names = SymbolTable()
         if 'builtins' in self.modules:
             file_node.names['__builtins__'] = SymbolTableNode(GDEF,
@@ -316,7 +317,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'builtins':
             # Add empty core definitions required for basic operation. These fill be completed
             # later on.
-            cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced
+            cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced later
             info = TypeInfo(SymbolTable(), cdef, 'builtins')
             info._fullname = 'builtins.object'
             file_node.names['object'] = SymbolTableNode(GDEF, info)
@@ -335,7 +336,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        self.deferred = False
+        self.deferred = False  # Set to true if another analysis pass is needed
         for d in file_node.defs:
             self.accept(d)
 
@@ -1144,8 +1145,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             defn.fullname = self.qualified_name(defn.name)
             # TODO: Nested classes
             if self.is_module_scope() and self.qualified_name(defn.name) == 'builtins.object':
-                # Special case 'builtins.object'. It was alredy created, just patch the
-                # actual ClassDef object.
+                # Special case 'builtins.object'. A TypeInfo was already
+                # created for it before semantic analysis, but with a dummy
+                # ClassDef. Patch the real ClassDef object.
                 info = self.globals['object'].node
                 assert isinstance(info, TypeInfo)
                 defn.info = info
@@ -1764,6 +1766,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True,
                   third_pass: bool = False) -> Optional[Type]:
+        """Semantically analyze a type.
+
+        Return None only if some part of the type couldn't be bound *and* it referred
+        to an incomplete namespace. In case of other errors, report an error message
+        and return AnyType.
+        """
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
                                allow_tuple_literal=allow_tuple_literal,

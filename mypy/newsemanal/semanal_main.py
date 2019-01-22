@@ -10,7 +10,7 @@ if MYPY:
 
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
-    # Assume pass 1 has already been peformed.
+    # Assume reachability analysis has already been performed.
     process_top_levels(graph, scc)
     process_functions(graph, scc)
 
@@ -41,6 +41,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
 
 
 def process_functions(graph: 'Graph', scc: List[str]) -> None:
+    # TODO: This doesn't quite work yet
     # Process functions.
     deferred = []  # type: List[str]
     for id in scc:
@@ -54,6 +55,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
 
 
 def get_all_leaf_targets(symtable: SymbolTable) -> List[str]:
+    # TODO: Implement
     return []
 
 

@@ -506,6 +506,8 @@ class BuildManager(BuildManagerBase):
         self.missing_modules = set()  # type: Set[str]
         self.plugin = plugin
         if options.new_semantic_analyzer:
+            # Set of namespaces (module or class) that are being populated during semantic
+            # analysis and may have missing definitions.
             self.incomplete_namespaces = set()  # type: Set[str]
             self.new_semantic_analyzer = NewSemanticAnalyzer(
                 self.modules,
@@ -1812,8 +1814,7 @@ class State:
         patches = []  # type: List[Tuple[int, Callable[[], None]]]
         self.manager.semantic_analyzer.imports.clear()
         with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options,
-                                                      patches)
+            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
         for dep in self.manager.semantic_analyzer.imports:
             self.dependencies.append(dep)
