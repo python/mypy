@@ -12,7 +12,7 @@ from mypy.nodes import (
     ClassDef, RefExpr, TypeInfo, AssignmentStmt, PassStmt, ExpressionStmt, EllipsisExpr, TempNode,
     SymbolTableNode, DictExpr, GDEF, ARG_POS, ARG_NAMED
 )
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
 from mypy.newsemanal.typeanal import check_for_explicit_any, has_any_from_unimported_type
@@ -129,9 +129,12 @@ class TypedDictAnalyzer:
                     continue
                 # Append name and type in this case...
                 fields.append(name)
-                types.append(AnyType(TypeOfAny.unannotated)
-                             if stmt.type is None
-                             else self.api.anal_type(stmt.type))
+                if stmt.type is None:
+                    types.append(AnyType(TypeOfAny.unannotated))
+                else:
+                    analyzed = self.api.anal_type(stmt.type)
+                    assert analyzed is not None  # TODO: Handle None values
+                    types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
@@ -264,7 +267,9 @@ class TypedDictAnalyzer:
             except TypeTranslationError:
                 self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False
-            types.append(self.api.anal_type(type))
+            analyzed = self.api.anal_type(type)
+            assert analyzed is not None  # TODO: Handle None values
+            types.append(analyzed)
         return items, types, True
 
     def fail_typeddict_arg(self, message: str,

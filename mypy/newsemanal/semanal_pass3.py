@@ -29,12 +29,12 @@ from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.newsemanal.typeanal import TypeAnalyserPass3, collect_any_types
 from mypy.typevars import has_no_typevars
-from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
+from mypy.newsemanal.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
 from mypy.newsemanal.semanal import NewSemanticAnalyzer
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.semanal_shared import SemanticAnalyzerCoreInterface
+from mypy.newsemanal.semanal_shared import SemanticAnalyzerCoreInterface
 
 
 class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):

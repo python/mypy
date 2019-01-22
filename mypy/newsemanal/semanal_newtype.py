@@ -10,7 +10,7 @@ from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
     UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, GDEF, MDEF, ARG_POS
 )
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.newsemanal.typeanal import check_for_explicit_any, has_any_from_unimported_type
