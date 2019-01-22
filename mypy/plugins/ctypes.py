@@ -4,6 +4,7 @@ from typing import List, Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
+from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype
 from mypy.types import (
@@ -116,19 +117,22 @@ def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
         allowed = _autoconvertible_to_cdata(et, ctx.api)
         assert len(ctx.arg_types) == 1, \
             "The stub of the ctypes.Array constructor should have a single vararg parameter"
-        for arg_num, arg_type in enumerate(ctx.arg_types[0], 1):
-            # TODO This causes false errors if the argument list contains *args.
-            # In a function hook, the type of an *args parameter is the type of the iterable being
-            # unpacked. However, FunctionContext currently doesn't provide a way to differentiate
-            # between normal arguments and *args, so the iterable type is considered invalid.
-            # Once FunctionContext has an API for this, *args should be allowed here if the
-            # iterable's element type is compatible with the array element type.
-            if not is_subtype(arg_type, allowed):
+        for arg_num, (arg_kind, arg_type) in enumerate(zip(ctx.arg_kinds[0], ctx.arg_types[0]), 1):
+            if arg_kind == nodes.ARG_POS and not is_subtype(arg_type, allowed):
                 ctx.api.msg.fail(
                     'Array constructor argument {} of type "{}"'
                     ' is not convertible to the array element type "{}"'
                     .format(arg_num, arg_type, et),
                     ctx.context)
+            elif arg_kind == nodes.ARG_STAR:
+                ty = ctx.api.named_generic_type("typing.Iterable", [allowed])
+                if not is_subtype(arg_type, ty):
+                    ctx.api.msg.fail(
+                        'Array constructor argument {} of type "{}"'
+                        ' is not convertible to the array element type "Iterable[{}]"'
+                        .format(arg_num, arg_type, et),
+                        ctx.context)
+
     return ctx.default_return_type
 
 
