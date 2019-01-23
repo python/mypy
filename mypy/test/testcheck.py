@@ -80,7 +80,9 @@ typecheck_files = [
     'check-ctypes.test',
     'check-dataclasses.test',
     'check-final.test',
+    'check-redefine.test',
     'check-literal.test',
+    'check-newsemanal.test',
 ]
 
 

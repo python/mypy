@@ -29,6 +29,7 @@ from mypy.nodes import (
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
 )
+from mypy.util import unmangle
 from mypy import message_registry
 
 MYPY = False
@@ -952,7 +953,7 @@ class MessageBuilder:
         Pass `attr_assign=True` if the assignment assigns to an attribute.
         """
         kind = "attribute" if attr_assign else "name"
-        self.fail('Cannot assign to final {} "{}"'.format(kind, name), ctx)
+        self.fail('Cannot assign to final {} "{}"'.format(kind, unmangle(name)), ctx)
 
     def protocol_members_cant_be_final(self, ctx: Context) -> None:
         self.fail("Protocol member cannot be final", ctx)
@@ -1064,7 +1065,7 @@ class MessageBuilder:
                   ctx)
 
     def need_annotation_for_var(self, node: SymbolNode, context: Context) -> None:
-        self.fail("Need type annotation for '{}'".format(node.name()), context)
+        self.fail("Need type annotation for '{}'".format(unmangle(node.name())), context)
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)

@@ -23,7 +23,7 @@ class InterpretedPlugin:
 
     def __new__(cls, *args: Any, **kwargs: Any) -> 'mypy.plugin.Plugin':
         from mypy.plugin import WrapperPlugin
-        plugin = object.__new__(cls)  # type: ignore
+        plugin = object.__new__(cls)
         plugin.__init__(*args, **kwargs)
         return WrapperPlugin(plugin)
 

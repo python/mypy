@@ -523,6 +523,10 @@ def process_options(args: List[str],
                         help="Suppress toplevel errors caused by missing annotations",
                         group=strictness_group)
 
+    add_invertible_flag('--allow-redefinition', default=False, strict_flag=False,
+                        help="Allow unconditional variable redefinition with a new type",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -577,6 +581,8 @@ def process_options(args: List[str],
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
     add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+                        group=internals_group)
+    add_invertible_flag('--new-semantic-analyzer', default=False, help=argparse.SUPPRESS,
                         group=internals_group)
 
     error_group = parser.add_argument_group(

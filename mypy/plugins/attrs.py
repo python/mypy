@@ -19,6 +19,7 @@ from mypy.types import (
     Overloaded, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
+from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
 
 MYPY = False
@@ -376,9 +377,10 @@ def _attribute_from_auto_attrib(ctx: 'mypy.plugin.ClassDefContext',
                                 rvalue: Expression,
                                 stmt: AssignmentStmt) -> Attribute:
     """Return an Attribute for a new type assignment."""
+    name = unmangle(lhs.name)
     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
     has_rhs = not isinstance(rvalue, TempNode)
-    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, kw_only, Converter(), stmt)
+    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, Converter(), stmt)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
@@ -443,7 +445,8 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
-    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt)
+    name = unmangle(lhs.name)
+    return Attribute(name, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt)
 
 
 def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
