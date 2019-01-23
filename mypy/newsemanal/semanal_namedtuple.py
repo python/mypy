@@ -116,7 +116,10 @@ class NamedTupleAnalyzer:
         return items, types, default_items
 
     def process_namedtuple_definition(self, s: AssignmentStmt, is_func_scope: bool) -> None:
-        """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
+        """Check if s defines a namedtuple; if yes, store the definition in symbol table.
+
+        Assume that s has already been successfully analyzed.
+        """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
         lvalue = s.lvalues[0]
