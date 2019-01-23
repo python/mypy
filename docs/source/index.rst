@@ -53,6 +53,7 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    mypy_daemon
    installed_packages
    extending_mypy
+   stubgen
 
 .. toctree::
    :maxdepth: 2

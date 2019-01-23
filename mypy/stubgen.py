@@ -1,15 +1,27 @@
 """Generator of dynamically typed draft stubs for arbitrary modules.
 
-Two modes: p/m and files.
+The logic of this script can be split in three steps:
+* parsing options and finding sources:
+  - use runtime imports be default (to find also C modules)
+  - or use mypy's mechanisms, if importing is prohibited
+* (optionally) semantically analysing the sources using mypy (as a single set)
+* emitting the stubs text:
+  - for Python modules: from ASTs using StubGenerator
+  - for C modules using runtime introspection and (optionally) Sphinx docs
 
-In p/m mode prefer importing (to include C libs),
-if prohibited use mypy source finding logic
+During first and third steps some problematic files can be skipped, but any
+error during second step will cause
 
 Basic usage:
 
-  $ stubgen -m urllib.parse
+  $ stubgen foo.py bar.py some_directory
+  => Generate out/foo.pyi, out/bar.pyi, and stubs for some_directory (recursively).
 
+  $ stubgen -m urllib.parse
   => Generate out/urllib/parse.pyi.
+
+  $ stubgen -p urllib
+  => Generate stubs for whole urlib package (recursively).
 
 For Python 2 mode, use --py2:
 
@@ -18,13 +30,9 @@ For Python 2 mode, use --py2:
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --doc-dir option:
 
-  $ scripts/stubgen --doc-dir <DIR>/Python-3.4.2/Doc/library -m curses
+  $ stubgen --doc-dir <DIR>/Python-3.4.2/Doc/library -m curses
 
-  => Generate out/curses.py.
-
-Use "stubgen -h" for more help.
-
-Note: You should verify the generated stubs manually.
+Note: The generated stubs should be verified manually.
 
 TODO:
  - support stubs for C modules in Python 2 mode
@@ -291,11 +299,15 @@ class ImportTracker:
 class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
                  include_private: bool = False, analyzed: bool = False) -> None:
+        # Best known value of __all__.
         self._all_ = _all_
         self._output = []  # type: List[str]
         self._import_lines = []  # type: List[str]
+        # Current indent level (indent is hardcoded to 4 spaces).
         self._indent = ''
+        # Stack of defined variables (per scope).
         self._vars = [[]]  # type: List[List[str]]
+        # What was generated previously in the stub file.
         self._state = EMPTY
         self._toplevel_names = []  # type: List[str]
         self._pyversion = pyversion
@@ -453,6 +465,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = CLASS
 
     def get_base_types(self, cdef: ClassDef) -> List[str]:
+        """Get list of base classes for a class."""
+        # TODO: use better logic for semantically analysed AST.
         base_types = []  # type: List[str]
         for base in cdef.base_type_exprs:
             if isinstance(base, NameExpr):
@@ -506,6 +520,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = VAR
 
     def is_namedtuple(self, expr: Expression) -> bool:
+        # TODO: use better logic for semantically analysed AST.
         if not isinstance(expr, CallExpr):
             return False
         callee = expr.callee
@@ -547,8 +562,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             else:
                 return True
         elif isinstance(expr, MemberExpr) and self.analyzed:
-            # Also add function aliases
-            return top_level and isinstance(expr.node, FuncDef) or isinstance(expr.node, TypeInfo)
+            # Also add function and module aliases.
+            return top_level and (isinstance(expr.node, (FuncDef, MypyFile)) or
+                                  isinstance(expr.node, TypeInfo))
         elif isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr):
             if isinstance(expr.index, TupleExpr):
                 indices = expr.index.items
@@ -1025,8 +1041,8 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument('--python-executable', metavar='PATH', dest='interpreter', default='',
                         help="use Python interpreter at PATH (only works for "
                              "Python 2 right now)")
-    parser.add_argument('-o', metavar='PATH', dest='output_dir', default='out',
-                        help="change the output folder [default: %(default)s]")
+    parser.add_argument('-o', '--output', metavar='PATH', dest='output_dir', default='out',
+                        help="change the output directory [default: %(default)s]")
     parser.add_argument('-m', '--module', action='append', metavar='MODULE', default=[],
                         help="generate stub for module; can repeat for more modules")
     parser.add_argument('-p', '--package', action='append', metavar='PACKAGE', default=[],

@@ -1,3 +1,5 @@
+"""Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
+
 import sys
 import os.path
 import inspect
@@ -136,7 +138,10 @@ def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[Li
 @contextmanager
 def generate_guarded(mod: str, target: str,
                      ignore_errors: bool = True, quiet: bool = False) -> Iterator[None]:
-    """Ignore or report errors during stub generation."""
+    """Ignore or report errors during stub generation.
+
+    Optionally report success.
+    """
     try:
         yield
     except Exception as e:
