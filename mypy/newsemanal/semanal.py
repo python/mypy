@@ -381,11 +381,29 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
+        self.add_func_to_symbol_table(defn)
+
         if not self.recurse_into_functions:
             return
 
         with self.scope.function_scope(defn):
             self._visit_func_def(defn)
+
+    def add_func_to_symbol_table(self, func: FuncDef) -> None:
+        if self.is_func_scope():
+            # These are handled later.
+            return
+        func._fullname = self.qualified_name(func.name())
+        # TODO: Module-level __getattr__
+        # TODO: Conditional function definitions
+        if self.is_module_scope():
+            if func.name() not in self.globals:
+                self.globals[func.name()] = SymbolTableNode(GDEF, func)
+        elif self.is_class_scope():
+            info = self.type
+            assert info is not None
+            if func.name() not in info.names:
+                info.names[func.name()] = SymbolTableNode(MDEF, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]

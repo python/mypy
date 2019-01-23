@@ -83,3 +83,12 @@ from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
 from a import bad2 # E: Module 'a' has no attribute 'bad2'
 [out]
+
+[case testNewAnalyzerSimpleFunction]
+# flags: --new-semantic-analyzer
+def f(x: int) -> str:
+    return 'x'
+
+def g(x: int) -> int:
+    y = f(1)
+    return y # E: Incompatible return value type (got "str", expected "int")
