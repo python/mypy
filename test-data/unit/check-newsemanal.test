@@ -1,0 +1,85 @@
+-- Test cases for the new semantic analyzer
+
+[case testNewAnalyzerEmpty]
+# flags: --new-semantic-analyzer
+
+[case testNewAnalyzerSimpleAssignment]
+# flags: --new-semantic-analyzer
+x = 1
+x.y # E: "int" has no attribute "y"
+y # E: Name 'y' is not defined
+
+[case testNewAnalyzerSimpleAnnotation]
+# flags: --new-semantic-analyzer
+x: int = 0
+y: str = 0 \
+    # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNewAnalyzerSimpleClass]
+# flags: --new-semantic-analyzer
+class A:
+    x: int
+a: A
+a.x
+a.y # E: "A" has no attribute "y"
+
+[case testNewAnalyzerErrorInClassBody]
+# flags: --new-semantic-analyzer
+class A:
+    x # E: Name 'x' is not defined
+
+[case testNewAnalyzerTypeAnnotationForwardReference]
+# flags: --new-semantic-analyzer
+class A:
+    b: B
+class B:
+    a: A
+a: A
+b: B
+a.b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a.b = b
+b.a = a
+b.a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testNewAnalyzerTypeAnnotationCycle1]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+import b
+class A: pass
+y: b.B
+y()
+[file b.py]
+import a
+class B: pass
+x: a.A
+x()
+[out]
+tmp/b.py:4: error: "A" not callable
+tmp/a.py:4: error: "B" not callable
+
+[case testNewAnalyzerTypeAnnotationCycle2]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import B
+class A: pass
+y: B
+y()
+[file b.py]
+from a import A
+class B: pass
+x: A
+x()
+[out]
+tmp/b.py:4: error: "A" not callable
+tmp/a.py:4: error: "B" not callable
+
+[case testNewAnalyzerTypeAnnotationCycle3]
+# flags: --new-semantic-analyzer
+import b
+[file a.py]
+from b import bad # E: Module 'b' has no attribute 'bad'
+[file b.py]
+from a import bad2 # E: Module 'a' has no attribute 'bad2'
+[out]

@@ -32,8 +32,11 @@ if MYPY:
 
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
+from mypy.newsemanal.semanal_pass1 import ReachabilityAnalyzer
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
+from mypy.newsemanal.semanal import NewSemanticAnalyzer
+from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
@@ -502,10 +505,21 @@ class BuildManager(BuildManagerBase):
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.plugin = plugin
-        self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
-                                                  self.errors, self.plugin)
-        self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
-                                                             self.semantic_analyzer)
+        if options.new_semantic_analyzer:
+            # Set of namespaces (module or class) that are being populated during semantic
+            # analysis and may have missing definitions.
+            self.incomplete_namespaces = set()  # type: Set[str]
+            self.new_semantic_analyzer = NewSemanticAnalyzer(
+                self.modules,
+                self.missing_modules,
+                self.incomplete_namespaces,
+                self.errors,
+                self.plugin)
+        else:
+            self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
+                                                           self.errors, self.plugin)
+            self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
+                                                                 self.semantic_analyzer)
         self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -1721,20 +1735,43 @@ class State:
 
         modules[self.id] = self.tree
 
-        # Do the first pass of semantic analysis: add top-level
-        # definitions in the file to the symbol table.  We must do
-        # this before processing imports, since this may mark some
-        # import statements as unreachable.
-        first = SemanticAnalyzerPass1(manager.semantic_analyzer)
-        with self.wrap_context():
-            first.visit_file(self.tree, self.xpath, self.id, self.options)
+        self.semantic_analysis_pass1()
 
-        # Initialize module symbol table, which was populated by the
-        # semantic analyzer.
-        # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
-        self.tree.names = manager.semantic_analyzer.globals
+        if not self.options.new_semantic_analyzer:
+            # Initialize module symbol table, which was populated by the
+            # semantic analyzer.
+            # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
+            self.tree.names = manager.semantic_analyzer.globals
 
         self.check_blockers()
+
+    def semantic_analysis_pass1(self) -> None:
+        """Perform pass 1 of semantic analysis, which happens immediately after parsing.
+
+        This pass can't assume that any other modules have been processed yet.
+        """
+        options = self.options
+        assert self.tree is not None
+        if options.new_semantic_analyzer:
+            # Do the first pass of semantic analysis: analyze the reachability
+            # of blocks and import statements. We must do this before
+            # processing imports, since this may mark some import statements as
+            # unreachable.
+            #
+            # TODO: Once we remove the old semantic analyzer, this no longer should
+            #     be considered as a semantic analysis pass -- it's an independent
+            #     pass.
+            analyzer = ReachabilityAnalyzer()
+            with self.wrap_context():
+                analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        else:
+            # Do the first pass of semantic analysis: add top-level
+            # definitions in the file to the symbol table.  We must do
+            # this before processing imports, since this may mark some
+            # import statements as unreachable.
+            first = SemanticAnalyzerPass1(self.manager.semantic_analyzer)
+            with self.wrap_context():
+                first.visit_file(self.tree, self.xpath, self.id, options)
 
     def compute_dependencies(self) -> None:
         """Compute a module's dependencies after parsing it.
@@ -2649,12 +2686,15 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
         manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    for id in stale:
-        graph[id].semantic_analysis()
-    for id in stale:
-        graph[id].semantic_analysis_pass_three()
-    for id in stale:
-        graph[id].semantic_analysis_apply_patches()
+    if manager.options.new_semantic_analyzer:
+        semantic_analysis_for_scc(graph, scc)
+    else:
+        for id in stale:
+            graph[id].semantic_analysis()
+        for id in stale:
+            graph[id].semantic_analysis_pass_three()
+        for id in stale:
+            graph[id].semantic_analysis_apply_patches()
     for id in stale:
         graph[id].type_check_first_pass()
     more = True

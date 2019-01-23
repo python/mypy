@@ -10,7 +10,7 @@ from mypy.nodes import (
     UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, GDEF, MDEF, ARG_POS,
     EnumCallExpr
 )
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 
 

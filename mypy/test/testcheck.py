@@ -82,6 +82,7 @@ typecheck_files = [
     'check-final.test',
     'check-redefine.test',
     'check-literal.test',
+    'check-newsemanal.test',
 ]
 
 

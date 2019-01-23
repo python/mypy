@@ -8,7 +8,9 @@ from typing import Tuple, List, Dict, Mapping, Optional, Union, cast
 from mypy.types import (
     Type, TupleType, NoneTyp, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
 )
-from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+from mypy.newsemanal.semanal_shared import (
+    SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+)
 from mypy.nodes import (
     Var, EllipsisExpr, Argument, StrExpr, BytesExpr, UnicodeExpr, ExpressionStmt, NameExpr,
     AssignmentStmt, PassStmt, Decorator, FuncBase, ClassDef, Expression, RefExpr, TypeInfo,
@@ -92,9 +94,12 @@ class NamedTupleAnalyzer:
                 # Append name and type in this case...
                 name = stmt.lvalues[0].name
                 items.append(name)
-                types.append(AnyType(TypeOfAny.unannotated)
-                             if stmt.type is None
-                             else self.api.anal_type(stmt.type))
+                if stmt.type is None:
+                    types.append(AnyType(TypeOfAny.unannotated))
+                else:
+                    analyzed = self.api.anal_type(stmt.type)
+                    assert analyzed is not None  # TODO: Handle None values
+                    types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith('_'):
                     self.fail('NamedTuple field name cannot start with an underscore: {}'
@@ -278,7 +283,9 @@ class NamedTupleAnalyzer:
                     type = expr_to_unanalyzed_type(type_node)
                 except TypeTranslationError:
                     return self.fail_namedtuple_arg('Invalid field type', type_node)
-                types.append(self.api.anal_type(type))
+                analyzed = self.api.anal_type(type)
+                assert analyzed is not None  # TODO: Handle None values
+                types.append(analyzed)
             else:
                 return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
         return items, types, [], True

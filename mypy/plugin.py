@@ -181,7 +181,7 @@ class SemanticAnalyzerPluginInterface:
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True,
-                  third_pass: bool = False) -> Type:
+                  third_pass: bool = False) -> Optional[Type]:
         """Analyze an unbound type."""
         raise NotImplementedError
 
