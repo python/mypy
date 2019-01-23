@@ -28,7 +28,7 @@ replaced with more efficient operations. Examples:
   single three-operand concatenation that doesn't construct an
   intermediate object.
 
-* `x in {1, 3}` can be translated into `x == 1 or x == 2` (more
+* `x in {1, 3}` can be translated into `x == 1 or x == 3` (more
   generally we need to evaluate all right-hand-side items).
 
 ## Integer Range Analysis

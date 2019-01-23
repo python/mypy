@@ -6,7 +6,7 @@
 
 // TODO: Currently only the things that *need* to be defined a single time
 // instead of copied into every module live here. This is silly, and most
-// of the code in CPy.h and python_support.h should move here.
+// of the code in CPy.h and pythonsupport.h should move here.
 
 struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
 PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;

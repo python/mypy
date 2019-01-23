@@ -97,7 +97,7 @@ class RPrimitive(RType):
         elif ctype == 'char':
             self.c_undefined = '2'
         else:
-            assert False, 'Uncognized ctype: %r' % ctype
+            assert False, 'Unrecognized ctype: %r' % ctype
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rprimitive(self)

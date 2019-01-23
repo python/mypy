@@ -600,7 +600,7 @@ class Emitter:
 
     def emit_box(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
                  can_borrow: bool = False) -> None:
-        """Emit code for boxing a value of give type.
+        """Emit code for boxing a value of given type.
 
         Generate a simple assignment if no boxing is needed.
 

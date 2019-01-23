@@ -9,7 +9,7 @@ It would be translated to something that conceptually looks like this:
 
    r0 = 2
    r1 = 1
-   r2 = x * i0 :: int
+   r2 = x * r0 :: int
    r3 = r2 + r1 :: int
    return r3
 """
