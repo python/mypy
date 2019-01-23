@@ -170,7 +170,7 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
             if not testcase.name.endswith('_import'):
                 options.no_import = True
             if not testcase.name.endswith('_semanal'):
-                options.parse_only= True
+                options.parse_only = True
             generate_stubs(options, quiet=True, add_header=False)
             a = load_output(out_dir)
         except CompileError as e:

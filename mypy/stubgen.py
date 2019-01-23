@@ -101,6 +101,7 @@ class Options:
                  search_path: List[str], interpreter: str, parse_only: bool, ignore_errors: bool,
                  include_private: bool, output_dir: str, modules: List[str], packages: List[str],
                  files: List[str]) -> None:
+        # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
         self.no_import = no_import
         self.doc_dir = doc_dir
