@@ -17,6 +17,9 @@ MAX_ITERATIONS = 10
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
     # Assume reachability analysis has already been performed.
+    #
+    # Note that functions can't define new module-level attributes,
+    # since module top levels are fully processed before functions.
     process_top_levels(graph, scc)
     process_functions(graph, scc)
 
