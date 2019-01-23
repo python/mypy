@@ -91,19 +91,28 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
-                                 ('no_import', bool),
-                                 ('doc_dir', str),
-                                 ('search_path', List[str]),
-                                 ('interpreter', str),
-                                 ('parse_only', bool),
-                                 ('ignore_errors', bool),
-                                 ('include_private', bool),
-                                 ('output_dir', str),
-                                 ('modules', List[str]),
-                                 ('packages', List[str]),
-                                 ('files', List[str]),
-                                 ])
+
+class Options:
+    """Represents stubgen options.
+
+    This class is mutable to simplify testing.
+    """
+    def __init__(self, pyversion: Tuple[int, int], no_import: bool, doc_dir: str,
+                 search_path: List[str], interpreter: str, parse_only: bool, ignore_errors: bool,
+                 include_private: bool, output_dir: str, modules: List[str], packages: List[str],
+                 files: List[str]) -> None:
+        self.pyversion = pyversion
+        self.no_import = no_import
+        self.doc_dir = doc_dir
+        self.search_path = search_path
+        self.interpreter = interpreter
+        self.parse_only = parse_only
+        self.ignore_errors = ignore_errors
+        self.include_private = include_private
+        self.output_dir = output_dir
+        self.modules = modules
+        self.packages = packages
+        self.files = files
 
 
 class StubSource(BuildSource):
@@ -900,6 +909,7 @@ def generate_asts_for_modules(py_modules: List[StubSource],
     """Use mypy to parse (and optionally analyze) source files."""
     if parse_only:
         for mod in py_modules:
+            assert mod.path is not None, "Not found module was not skipped"
             with open(mod.path, 'rb') as f:
                 data = f.read()
             source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
@@ -914,7 +924,7 @@ def generate_asts_for_modules(py_modules: List[StubSource],
         return
     # Perform full semantic analysis of the source set.
     try:
-        res = build(py_modules.copy(), mypy_options)
+        res = build(list(py_modules), mypy_options)
     except CompileError as e:
         raise SystemExit("Critical error during semantic analysis: {}".format(e))
 
@@ -940,6 +950,7 @@ def generate_stub_from_ast(mod: StubSource,
                         pyversion=pyversion,
                         include_private=include_private,
                         analyzed=not parse_only)
+    assert mod.ast is not None, "This function must be used only with analyzed modules"
     mod.ast.accept(gen)
 
     # Write output to file.
@@ -962,15 +973,17 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     all_class_sigs = []  # type: List[Sig]
     for path in glob.glob('%s/*.rst' % doc_dir):
         with open(path) as f:
-            func_sigs, class_sigs = parse_all_signatures(f.readlines())
-        all_sigs += func_sigs
-        all_class_sigs += class_sigs
+            loc_sigs, loc_class_sigs = parse_all_signatures(f.readlines())
+        all_sigs += loc_sigs
+        all_class_sigs += loc_class_sigs
     sigs = dict(find_unique_signatures(all_sigs))
     class_sigs = dict(find_unique_signatures(all_class_sigs))
     return sigs, class_sigs
 
 
-def generate_stubs(options: Options) -> None:
+def generate_stubs(options: Options,
+                   # additional args for testing
+                   quiet: bool = False, add_header: bool = True) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
@@ -983,22 +996,25 @@ def generate_stubs(options: Options) -> None:
     # Use parsed sources to generate stubs for Python modules.
     generate_asts_for_modules(py_modules, options.parse_only, mypy_opts)
     for mod in py_modules:
+        assert mod.path is not None, "Not found module was not skipped"
         target = mod.module.replace('.', '/')
         if os.path.basename(mod.path) == '__init__.py':
             target += '/__init__.pyi'
         else:
             target += '.pyi'
         target = os.path.join(options.output_dir, target)
-        with generate_guarded(mod.module, target, options.ignore_errors):
-            generate_stub_from_ast(mod, options.output_dir,
-                                   options.parse_only, options.pyversion)
+        with generate_guarded(mod.module, target, options.ignore_errors, quiet):
+            generate_stub_from_ast(mod, target,
+                                   options.parse_only, options.pyversion,
+                                   options.include_private, add_header)
 
     # Separately analyse C modules using different logic.
     for mod in c_modules:
         target = mod.module.replace('.', '/') + '.pyi'
         target = os.path.join(options.output_dir, target)
-        with generate_guarded(mod.module, target, options.ignore_errors):
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
+        with generate_guarded(mod.module, target, options.ignore_errors, quiet):
+            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs,
+                                       add_header=add_header)
 
 
 HEADER = """%(prog)s [-h] [--py2] [more options, see -h]
@@ -1043,11 +1059,14 @@ def parse_options(args: List[str]) -> Options:
                              "Python 2 right now)")
     parser.add_argument('-o', '--output', metavar='PATH', dest='output_dir', default='out',
                         help="change the output directory [default: %(default)s]")
-    parser.add_argument('-m', '--module', action='append', metavar='MODULE', default=[],
+    parser.add_argument('-m', '--module', action='append', metavar='MODULE',
+                        dest='modules', default=[],
                         help="generate stub for module; can repeat for more modules")
-    parser.add_argument('-p', '--package', action='append', metavar='PACKAGE', default=[],
+    parser.add_argument('-p', '--package', action='append', metavar='PACKAGE',
+                        dest='packages', default=[],
                         help="generate stubs for package recursively; can be repeated")
-    parser.add_argument(metavar='files', nargs='*', help="generate stubs for given files or directories")
+    parser.add_argument(metavar='files', nargs='*', dest='files',
+                        help="generate stubs for given files or directories")
 
     ns = parser.parse_args(args)
 

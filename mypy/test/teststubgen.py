@@ -11,9 +11,7 @@ from typing import List, Tuple
 from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
-from mypy.stubgen import (
-    generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
-)
+from mypy.stubgen import generate_stubs, parse_options, walk_packages, Options
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -157,11 +155,11 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
     handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
                                          delete=False)
     assert os.path.isabs(handle.name)
-    path = os.path.basename(handle.name)
-    name = path[:-3]
-    path = os.path.join('stubgen-test-path', path)
-    out_dir = '_out'
-    os.mkdir(out_dir)
+    mod = os.path.basename(handle.name)[:-3]
+    options.files = []
+    options.modules = [mod]
+    options.search_path = ['stubgen-test-path']
+    out_dir = 'out'
     try:
         handle.write(bytes(source, 'ascii'))
         handle.close()
@@ -169,12 +167,11 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
         reset_importlib_cache('stubgen-test-path')
         try:
-            if testcase.name.endswith('_import'):
-                generate_stub_for_module(name, out_dir, quiet=True,
-                                         no_import=options.no_import,
-                                         include_private=options.include_private)
-            else:
-                generate_stub(path, out_dir, include_private=options.include_private)
+            if not testcase.name.endswith('_import'):
+                options.no_import = True
+            if not testcase.name.endswith('_semanal'):
+                options.parse_only= True
+            generate_stubs(options, quiet=True, add_header=False)
             a = load_output(out_dir)
         except CompileError as e:
             a = e.messages
