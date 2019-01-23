@@ -43,20 +43,17 @@ b.a = b # E: Incompatible types in assignment (expression has type "B", variable
 
 [case testNewAnalyzerTypeAnnotationCycle1]
 # flags: --new-semantic-analyzer
-import a
+import b
 [file a.py]
 import b
 class A: pass
 y: b.B
-y()
+y() # E: "B" not callable
 [file b.py]
 import a
 class B: pass
 x: a.A
-x()
-[out]
-tmp/b.py:4: error: "A" not callable
-tmp/a.py:4: error: "B" not callable
+reveal_type(x) # E: Revealed type is 'a.A'
 
 [case testNewAnalyzerTypeAnnotationCycle2]
 # flags: --new-semantic-analyzer
@@ -83,3 +80,24 @@ from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
 from a import bad2 # E: Module 'a' has no attribute 'bad2'
 [out]
+
+[case testNewAnalyzerSimpleFunction]
+# flags: --new-semantic-analyzer
+def f(x: int) -> str:
+    return 'x'
+
+def g(x: int) -> int:
+    y = f(1)
+    return y # E: Incompatible return value type (got "str", expected "int")
+
+[case testNewAnalyzerSimpleMethod]
+# flags: --new-semantic-analyzer
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def f(self) -> str:
+        return self.x # E: Incompatible return value type (got "int", expected "str")
+
+    def g(self) -> int:
+        return self.f() # E: Incompatible return value type (got "str", expected "int")
