@@ -315,12 +315,34 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             file_node.names['__builtins__'] = SymbolTableNode(GDEF,
                                                               self.modules['builtins'])
         if file_node.fullname() == 'builtins':
-            # Add empty core definitions required for basic operation. These fill be completed
-            # later on.
-            cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced later
-            info = TypeInfo(SymbolTable(), cdef, 'builtins')
-            info._fullname = 'builtins.object'
-            file_node.names['object'] = SymbolTableNode(GDEF, info)
+            self.prepare_builtins_namespace(file_node)
+
+    def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
+        names = file_node.names
+
+        # Add empty definition for 'object', since it's required for basic operation.
+        # This will be completed later on.
+        cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced later
+        info = TypeInfo(SymbolTable(), cdef, 'builtins')
+        info._fullname = 'builtins.object'
+        names['object'] = SymbolTableNode(GDEF, info)
+
+        literal_types = [
+            ('None', NoneTyp()),
+            # reveal_type is a mypy-only function that gives an error with
+            # the type of its arg.
+            ('reveal_type', AnyType(TypeOfAny.special_form)),
+            # reveal_locals is a mypy-only function that gives an error with the types of
+            # locals
+            ('reveal_locals', AnyType(TypeOfAny.special_form)),
+        ]  # type: List[Tuple[str, Type]]
+
+        # TODO: True, False and __debug__
+
+        for name, typ in literal_types:
+            v = Var(name, typ)
+            v._fullname = 'builtins.%s' % name
+            file_node.names[name] = SymbolTableNode(GDEF, v)
 
     def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
