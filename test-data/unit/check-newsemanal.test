@@ -79,7 +79,6 @@ import b
 from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
 from a import bad2 # E: Module 'a' has no attribute 'bad2'
-[out]
 
 [case testNewAnalyzerSimpleFunction]
 # flags: --new-semantic-analyzer
@@ -101,3 +100,32 @@ class A:
 
     def g(self) -> int:
         return self.f() # E: Incompatible return value type (got "str", expected "int")
+
+[case testNewAnalyzerFunctionForwardRef]
+# flags: --new-semantic-analyzer
+def f() -> None:
+    x = g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
+    reveal_type(x) # E: Revealed type is 'builtins.str'
+
+def g(x: str) -> str:
+    return x
+
+[case testNewAnalyzerExportedImportThreePasses]
+# flags: --new-semantic-analyzer
+import b
+
+[file a.py]
+from b import b1 as a2
+from b import b2 as a3
+
+def a1() -> int: pass
+
+reveal_type(a3()) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import a1 as b2
+from a import a2 as b3
+
+def b1() -> str: pass
+
+reveal_type(b3()) # E: Revealed type is 'builtins.str'

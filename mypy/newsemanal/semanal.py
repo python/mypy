@@ -348,6 +348,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
+        self.deferred = False  # Set to true if another analysis pass is needed
+        self.incomplete = False  # Set to true if current module namespace is missing things
+
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
@@ -358,7 +361,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        self.deferred = False  # Set to true if another analysis pass is needed
         for d in file_node.defs:
             self.accept(d)
 
@@ -1629,6 +1631,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
                     self.deferred = True
+                    # Mark the current module namespace as incomplete.
+                    self.incomplete = True
                     return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
@@ -3067,8 +3071,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Some call expressions are recognized as special forms, including
         cast(...).
         """
-        if expr.analyzed:
-            return
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
             # Special form cast(...).
