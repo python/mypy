@@ -153,6 +153,10 @@ SUGGESTED_TEST_FIXTURES = {
 CORE_BUILTIN_CLASSES = ['object', 'bool']  # type: Final
 
 
+# Used for tracking incomplete references
+Tag = int
+
+
 class NewSemanticAnalyzer(NodeVisitor[None],
                           SemanticAnalyzerInterface,
                           SemanticAnalyzerPluginInterface):
@@ -1643,9 +1647,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if import_id in self.incomplete_namespaces:
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
-                    self.deferred = True
-                    # Mark the current module namespace as incomplete.
-                    self.incomplete = True
+                    self.mark_incomplete()
                     return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
@@ -1834,9 +1836,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                allow_tuple_literal=allow_tuple_literal,
                                report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
-        prev_incomplete = self.num_incomplete_refs
+        tag = self.track_incomplete_refs()
         typ = t.accept(a)
-        if self.num_incomplete_refs != prev_incomplete:
+        if self.found_incomplete_ref(tag):
             # Something could not be bound yet.
             return None
         self.add_type_alias_deps(a.aliases_used)
@@ -1859,12 +1861,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)
-        prev_incomplete = self.num_incomplete_refs
+        tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        if self.num_incomplete_refs != prev_incomplete:
+        if self.found_incomplete_ref(tag):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
-            self.deferred = True
-            self.incomplete = True
+            self.mark_incomplete()
             return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
@@ -3264,8 +3265,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 expr.node = Var(expr.name, type=typ)
             else:
                 if file.fullname() in self.incomplete_namespaces:
-                    self.deferred = True
-                    self.num_incomplete_refs += 1
+                    self.record_incomplete_ref()
                     return
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
@@ -3639,6 +3639,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return n
             return None
 
+    def defer(self) -> None:
+        """Defer current target to be analyzed again."""
+        self.deferred = True
+
+    def track_incomplete_refs(self) -> Tag:
+        """Return tag that can be used for tracking references to incomplete names."""
+        return self.num_incomplete_refs
+
+    def found_incomplete_ref(self, tag: Tag) -> bool:
+        """Have we encountered an incomplete reference since starting tracking?"""
+        return self.num_incomplete_refs != tag
+
+    def record_incomplete_ref(self) -> None:
+        """Record the encounter of an incomplete reference and defer current target."""
+        self.defer()
+        self.num_incomplete_refs += 1
+
+    def mark_incomplete(self) -> None:
+        """Mark the current module namespace as incomplete (and defer current target)."""
+        self.defer()
+        self.incomplete = True
+
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[SymbolTableNode]:
         """Create a dummy global symbol using __getattr__ return type.
@@ -3847,8 +3869,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.cur_mod_id in self.incomplete_namespaces:
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
-            self.deferred = True
-            self.num_incomplete_refs += 1
+            self.record_incomplete_ref()
             return
         message = "Name '{}' is not defined".format(name)
         extra = self.undefined_name_extra_info(name)
