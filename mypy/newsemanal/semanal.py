@@ -2646,7 +2646,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if analyzed is not None:
                     result.append(analyzed)
                 else:
-                    # TODO: Is this the right thing to do?
+                    # TODO: Is this the right thing to do? Or maybe return Optional[List[Type]]?
                     result.append(AnyType(TypeOfAny.from_error))
             except TypeTranslationError:
                 self.fail('Type expected', node)
