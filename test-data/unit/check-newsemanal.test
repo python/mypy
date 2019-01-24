@@ -79,7 +79,6 @@ import b
 from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
 from a import bad2 # E: Module 'a' has no attribute 'bad2'
-[out]
 
 [case testNewAnalyzerSimpleFunction]
 # flags: --new-semantic-analyzer
@@ -101,3 +100,69 @@ class A:
 
     def g(self) -> int:
         return self.f() # E: Incompatible return value type (got "str", expected "int")
+
+[case testNewAnalyzerFunctionForwardRef]
+# flags: --new-semantic-analyzer
+def f() -> None:
+    x = g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
+    reveal_type(x) # E: Revealed type is 'builtins.str'
+
+def g(x: str) -> str:
+    return x
+
+[case testNewAnalyzerExportedImportThreePasses]
+# flags: --new-semantic-analyzer
+import b
+
+[file a.py]
+from b import b1 as a2
+from b import b2 as a3
+
+def a1() -> int: pass
+
+reveal_type(a3()) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import a1 as b2
+from a import a2 as b3
+
+def b1() -> str: pass
+
+reveal_type(b3()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerBool]
+# flags: --new-semantic-analyzer
+reveal_type(True) # E: Revealed type is 'builtins.bool'
+reveal_type(False) # E: Revealed type is 'builtins.bool'
+
+[case testNewAnalyzerNewTypeMultiplePasses]
+# flags: --new-semantic-analyzer
+import b
+
+[file a.py]
+from typing import NewType
+import b
+class A: pass
+N2 = NewType('N2', b.N1)
+def f1(x: A) -> None: pass
+def f2(x: b.N1) -> None: pass
+def f3(x: N2) -> None: pass
+a = A()
+n1 = b.N1(a)
+n2 = N2(n1)
+f1(a)
+f1(n1)
+f1(n2)
+f2(a) # E: Argument 1 to "f2" has incompatible type "A"; expected "N1"
+f2(n1)
+f2(n2)
+f3(a) # E: Argument 1 to "f3" has incompatible type "A"; expected "N2"
+f3(n1) # E: Argument 1 to "f3" has incompatible type "N1"; expected "N2"
+f3(n2)
+
+# Test N2 etc.
+
+[file b.py]
+from typing import NewType
+import a
+N1 = NewType('N1', a.A)

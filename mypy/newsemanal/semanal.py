@@ -148,6 +148,11 @@ SUGGESTED_TEST_FIXTURES = {
 }  # type: Final
 
 
+# Special cased built-in classes that are needed for basic functionality and need to be
+# available very early on.
+CORE_BUILTIN_CLASSES = ['object', 'bool']  # type: Final
+
+
 class NewSemanticAnalyzer(NodeVisitor[None],
                           SemanticAnalyzerInterface,
                           SemanticAnalyzerPluginInterface):
@@ -320,12 +325,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
         names = file_node.names
 
-        # Add empty definition for 'object', since it's required for basic operation.
-        # This will be completed later on.
-        cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced later
-        info = TypeInfo(SymbolTable(), cdef, 'builtins')
-        info._fullname = 'builtins.object'
-        names['object'] = SymbolTableNode(GDEF, info)
+        # Add empty definition for core built-in classes, since they are required for basic
+        # operation. These will be completed later on.
+        for name in CORE_BUILTIN_CLASSES:
+            cdef = ClassDef(name, Block([]))  # Dummy ClassDef, will be replaced later
+            info = TypeInfo(SymbolTable(), cdef, 'builtins')
+            info._fullname = 'builtins.%s' % name
+            names[name] = SymbolTableNode(GDEF, info)
+
+        bool_info = names['bool'].node
+        assert isinstance(bool_info, TypeInfo)
+        bool_type = Instance(bool_info, [])
 
         literal_types = [
             ('None', NoneTyp()),
@@ -335,9 +345,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # reveal_locals is a mypy-only function that gives an error with the types of
             # locals
             ('reveal_locals', AnyType(TypeOfAny.special_form)),
+            ('True', bool_type),
+            ('False', bool_type),
+            ('__debug__', bool_type),
         ]  # type: List[Tuple[str, Type]]
-
-        # TODO: True, False and __debug__
 
         for name, typ in literal_types:
             v = Var(name, typ)
@@ -348,6 +359,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
+        self.deferred = False  # Set to true if another analysis pass is needed
+        self.incomplete = False  # Set to true if current module namespace is missing things
+
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
@@ -358,7 +372,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        self.deferred = False  # Set to true if another analysis pass is needed
         for d in file_node.defs:
             self.accept(d)
 
@@ -1075,7 +1088,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         For example, consider this class:
 
-        . class Foo(Bar, Generic[T]): ...
+          class Foo(Bar, Generic[T]): ...
 
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
@@ -1184,11 +1197,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not defn.info:
             defn.fullname = self.qualified_name(defn.name)
             # TODO: Nested classes
-            if self.is_module_scope() and self.qualified_name(defn.name) == 'builtins.object':
-                # Special case 'builtins.object'. A TypeInfo was already
+            if (self.is_module_scope()
+                    and self.cur_mod_id == 'builtins'
+                    and defn.name in CORE_BUILTIN_CLASSES):
+                # Special case core built-in classes. A TypeInfo was already
                 # created for it before semantic analysis, but with a dummy
                 # ClassDef. Patch the real ClassDef object.
-                info = self.globals['object'].node
+                info = self.globals[defn.name].node
                 assert isinstance(info, TypeInfo)
                 defn.info = info
                 info.defn = defn
@@ -1629,6 +1644,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
                     self.deferred = True
+                    # Mark the current module namespace as incomplete.
+                    self.incomplete = True
                     return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
@@ -1842,8 +1859,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)
-        self.analyze_lvalues(s)
+        prev_incomplete = self.num_incomplete_refs
         s.rvalue.accept(self)
+        if self.num_incomplete_refs != prev_incomplete:
+            # Initializer couldn't be fully analyzed. Defer the current node and give up.
+            self.deferred = True
+            self.incomplete = True
+            return
+        self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
@@ -2160,8 +2183,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                        explicit_type: bool = False,
                        is_final: bool = False) -> None:
         """Analyze an lvalue or assignment target.
-
-        Note that this is used in both pass 1 and 2.
 
         Args:
             lval: The target lvalue
@@ -3067,8 +3088,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Some call expressions are recognized as special forms, including
         cast(...).
         """
-        if expr.analyzed:
-            return
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
             # Special form cast(...).
@@ -3209,13 +3228,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
-            file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
+            file = base.node
             # TODO: Should we actually use this? Not sure if this makes a difference.
             # if file.fullname() == self.cur_mod_id:
             #     names = self.globals
             # else:
             #     names = file.names
-            n = file.names.get(expr.name, None) if file is not None else None
+            n = file.names.get(expr.name, None)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 if not n:
@@ -3244,6 +3263,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
             else:
+                if file.fullname() in self.incomplete_namespaces:
+                    self.deferred = True
+                    self.num_incomplete_refs += 1
+                    return
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
                 #
