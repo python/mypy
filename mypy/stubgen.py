@@ -194,9 +194,10 @@ class AliasPrinter(NodeVisitor[str]):
         self.stubgen.import_tracker.require_name(node.name)
         return node.name
 
-    def visit_member_expr(self, node: MemberExpr) -> str:
+    def visit_member_expr(self, o: MemberExpr) -> str:
         if not self.stubgen.analyzed:
-            return super().visit_member_expr(node)
+            return super().visit_member_expr(o)
+        node = o  # type: Expression
         trailer = ''
         while isinstance(node, MemberExpr):
             trailer = '.' + node.name + trailer
@@ -377,7 +378,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             var = arg_.variable
             kind = arg_.kind
             name = var.name()
-            annotated_type = o.unanalyzed_type.arg_types[i] if isinstance(o.unanalyzed_type, CallableType) else None
+            annotated_type = (o.unanalyzed_type.arg_types[i]
+                              if isinstance(o.unanalyzed_type, CallableType) else None)
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
             if (annotated_type is None
@@ -1048,7 +1050,7 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument('--py2', action='store_true',
                         help="run in Python 2 mode (default: Python 3 mode)")
     parser.add_argument('--ignore-errors', action='store_true',
-                        help="ignore errors when trying to generate stubs for modules and packages")
+                        help="ignore errors when trying to generate stubs for modules")
     parser.add_argument('--no-import', action='store_true',
                         help="don't import the modules, just parse and analyze them "
                              "(doesn't work with C extension modules and might not "

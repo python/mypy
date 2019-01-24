@@ -151,6 +151,7 @@ def parse_flags(program_text: str, extra: List[str]) -> Options:
 
 
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
+    assert testcase.tmpdir is not None, "Test case was not properly set up"
     os.chdir(testcase.tmpdir.name)
     extra = []
     mods = []
@@ -171,7 +172,7 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
             if not testcase.name.endswith('_semanal'):
                 options.parse_only = True
             generate_stubs(options, quiet=True, add_header=False)
-            a = []
+            a = []  # type: List[str]
             add_file(os.path.join(out_dir, 'main.pyi'), a)
         except CompileError as e:
             a = e.messages
