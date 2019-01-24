@@ -13,7 +13,9 @@ analysis).  Also, it would bind both references to 'x' to the same
 module-level variable (Var) node.  The second assignment would also
 be analyzed, and the type of 'y' marked as being inferred.
 
-Semantic analysis of types is implemented in module mypy.typeanal.
+Semantic analysis of types is implemented in typeanal.py.
+
+See semanal_main.py for the top-level logic.
 """
 
 from contextlib import contextmanager
