@@ -219,3 +219,52 @@ class A:
 
 class C(B):
     c: int
+
+[case testNewAnalyzerTypedDictClass]
+# flags: --new-semantic-analyzer
+from mypy_extensions import TypedDict
+import a
+class T1(TypedDict):
+    x: A
+class A: pass
+reveal_type(T1(x=A())) # E
+
+[file a.py]
+from mypy_extensions import TypedDict
+from b import TD1 as TD2, TD3
+class T2(TD3):
+    x: int
+reveal_type(T2(x=2)) # E
+
+[file b.py]
+from a import TypedDict as TD1
+from a import TD2 as TD3
+
+[out]
+tmp/a.py:5: error: Revealed type is 'TypedDict('a.T2', {'x': builtins.int})'
+main:7: error: Revealed type is 'TypedDict('__main__.T1', {'x': __main__.A})'
+
+
+[case testNewAnalyzerTypedDictClassInheritance]
+# flags: --new-semantic-analyzer
+from mypy_extensions import TypedDict
+
+class T2(T1):
+    y: int
+
+class T1(TypedDict):
+    x: str
+
+class T3(TypedDict):
+    x: str
+
+class T4(T3):
+    y: A
+
+class A: pass
+
+T2(x=0, y=0) # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+x: T2
+reveal_type(x) # E: Revealed type is 'TypedDict('__main__.T2', {'x': builtins.str, 'y': builtins.int})'
+y: T4
+reveal_type(y) # E: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
