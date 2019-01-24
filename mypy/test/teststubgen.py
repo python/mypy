@@ -6,7 +6,7 @@ import tempfile
 import re
 from types import ModuleType
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
@@ -156,20 +156,36 @@ def parse_flags(program_text: str, extra: List[str]) -> Options:
     return parse_options(flag_list + extra)
 
 
+def mangled_module(orig_mod_name: str) -> Tuple[tempfile.NamedTemporaryFile, str]:
+    # Avoid clashes between importing modules with same name by different tests.
+    prefix = orig_mod_name + '_'
+    handle = tempfile.NamedTemporaryFile(prefix=prefix, suffix='.py', dir=TEST_DIR,
+                                         delete=False)
+    mod = os.path.basename(handle.name)[:-3]
+    return handle, mod
+
+
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
     if TEST_DIR not in sys.path:
         sys.path.insert(0, TEST_DIR)
     os.mkdir(TEST_DIR)
+
+    mods = {}  # type: Dict[str, Tuple[tempfile.NamedTemporaryFile, str]]
+
     source = '\n'.join(testcase.input)
-    handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir=TEST_DIR,
-                                         delete=False)
-    assert os.path.isabs(handle.name)
-    mod = os.path.basename(handle.name)[:-3]
-    options = parse_flags(source, ['--search-path', TEST_DIR, '-m', mod])
+    for file, content in testcase.files + [('main.py', source)]:
+        mod = os.path.basename(file)[:-3]
+        handle, mangled = mangled_module(mod)
+        mods[mangled] = handle, mod
+        handle.write(bytes(content, 'ascii'))
+        handle.close()
+
+    extra = ['--search-path', TEST_DIR]
+    for mangled in mods:
+        extra.extend(['-m', mangled])
+    options = parse_flags(source, extra)
     out_dir = 'out'
     try:
-        handle.write(bytes(source, 'ascii'))
-        handle.close()
         # Without this we may sometimes be unable to import the module below, as importlib
         # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
         reset_importlib_cache(TEST_DIR)
@@ -186,8 +202,10 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))
     finally:
-        handle.close()
-        os.unlink(handle.name)
+        for mangled in mods:
+            handle, _ = mods[mangled]
+            handle.close()
+            os.unlink(handle.name)
         shutil.rmtree(out_dir)
 
 
