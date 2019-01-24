@@ -754,6 +754,36 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
         manager.errors.report(0, 0, "Error writing protocol dependencies cache",
                               blocker=True)
 
+def invert_deps(proto_deps: Dict[str, Set[str]],
+                manager: BuildManager, graph: Graph) -> None:
+    deps = {}  # type: Dict[str, Set[str]]
+    things = [st.fine_grained_deps for st in graph.values()] + [proto_deps]
+    for st_deps in things:
+        for trigger, targets in st_deps.items():
+            deps.setdefault(trigger, set()).update(targets)
+
+    from mypy.server.target import module_prefix
+    rdeps = {id: {} for id in graph}  # type: Dict[str, Dict[str, Set[str]]]
+    extra_deps = {}  # type: Dict[str, Set[str]]
+    for trigger, targets in deps.items():
+        assert trigger[0] == '<'
+        module = module_prefix(graph, trigger[1:-1])
+        if module:
+            rdeps[module].setdefault(trigger, set()).update(targets)
+        else:
+            extra_deps.setdefault(trigger, set()).update(targets)
+
+    def convert(x: Dict[str, Set[str]]) -> Dict[str, List[str]]:
+        return {k: list(v) for k, v in x.items()}
+
+    # XXX: NOT THE PLACE FOR THIS YOU KNOW??
+    for id in graph:
+        _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+        assert deps_json
+        fname = deps_json.replace('.deps.json', '.rdeps.json')
+        manager.metastore.write(fname, json.dumps(convert(rdeps[id])))
+    manager.metastore.write('@extra_deps.json', json.dumps(convert(extra_deps)))
+
 
 PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
 
@@ -2292,6 +2322,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             TypeState.update_protocol_deps()
             if TypeState.proto_deps is not None and not manager.options.fine_grained_incremental:
                 write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
+
+                invert_deps(TypeState.proto_deps, manager, graph)
+
+
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
