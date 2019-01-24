@@ -1114,7 +1114,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            tvars = self.analyze_typevar_declaration(base)
+            tvars = self.analyze_class_typevar_declaration(base)
             if tvars is not None:
                 if declared_tvars:
                     self.fail('Only single Generic[...] or Protocol[...] can be in bases', defn)
@@ -1153,16 +1153,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             tvar_defs.append(tvar_def)
         defn.type_vars = tvar_defs
 
-    def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
-        if not isinstance(t, UnboundType):
+    def analyze_class_typevar_declaration(self, base: Type) -> Optional[TypeVarList]:
+        """Analyze type variables declared using Generic[...] Protocol[...].
+
+        Return None if the base class does not declare type variables. Otherwise,
+        return the type variables.
+        """
+        if not isinstance(base, UnboundType):
             return None
-        unbound = t
+        unbound = base
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.node is None:
             return None
         if (sym.node.fullname() == 'typing.Generic' or
-                sym.node.fullname() == 'typing.Protocol' and t.args or
-                sym.node.fullname() == 'typing_extensions.Protocol' and t.args):
+                sym.node.fullname() == 'typing.Protocol' and base.args or
+                sym.node.fullname() == 'typing_extensions.Protocol' and base.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
@@ -1170,7 +1175,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     tvars.append(tvar)
                 else:
                     self.fail('Free type variable expected in %s[...]' %
-                              sym.node.name(), t)
+                              sym.node.name(), base)
             return tvars
         return None
 
