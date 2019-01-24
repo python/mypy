@@ -151,8 +151,7 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
-        base = s.split('.')[0]
-        self.stubgen.import_tracker.require_name(base)
+        self.stubgen.import_tracker.require_name(s)
         if t.args:
             s += '[{}]'.format(self.list_str(t.args))
         return s
@@ -194,6 +193,18 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_name_expr(self, node: NameExpr) -> str:
         self.stubgen.import_tracker.require_name(node.name)
         return node.name
+
+    def visit_member_expr(self, node: MemberExpr) -> str:
+        if not self.stubgen.analyzed:
+            return super().visit_member_expr(node)
+        trailer = ''
+        while isinstance(node, MemberExpr):
+            trailer = '.' + node.name + trailer
+            node = node.expr
+        if not isinstance(node, NameExpr):
+            return '<ERROR>'  # TODO: make this global constant
+        self.stubgen.import_tracker.require_name(node.name)
+        return node.name + trailer
 
     def visit_str_expr(self, node: StrExpr) -> str:
         return repr(node.value)
@@ -366,7 +377,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             var = arg_.variable
             kind = arg_.kind
             name = var.name()
-            annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
+            annotated_type = o.unanalyzed_type.arg_types[i] if isinstance(o.unanalyzed_type, CallableType) else None
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
             if (annotated_type is None
@@ -398,8 +409,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 arg = name + annotation
             args.append(arg)
         retname = None
-        if isinstance(o.type, CallableType):
-            retname = self.print_annotation(o.type.ret_type)
+        if isinstance(o.unanalyzed_type, CallableType):
+            retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif o.name() == '__init__' or not has_return_statement(o):
             retname = 'None'
         retfield = ''
@@ -504,13 +515,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
-                if isinstance(o.type, TupleType):
-                    annotations = o.type.items  # type: Iterable[Optional[Type]]
+                if isinstance(o.unanalyzed_type, TupleType):
+                    annotations = o.unanalyzed_type.items  # type: Iterable[Optional[Type]]
                 else:
                     annotations = [None] * len(items)
             else:
                 items = [lvalue]
-                annotations = [o.type]
+                annotations = [o.unanalyzed_type]
             sep = False
             found = False
             for item, annotation in zip(items, annotations):

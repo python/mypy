@@ -6,7 +6,7 @@ import tempfile
 import re
 from types import ModuleType
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
@@ -17,12 +17,6 @@ from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring
 )
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-TEST_DIR = 'stubgen-test-path'  # type: Final
 
 
 class StubgenCmdLineSuite(Suite):
@@ -156,69 +150,39 @@ def parse_flags(program_text: str, extra: List[str]) -> Options:
     return parse_options(flag_list + extra)
 
 
-def mangled_module(orig_mod_name: str) -> Tuple[tempfile.NamedTemporaryFile, str]:
-    # Avoid clashes between importing modules with same name by different tests.
-    prefix = orig_mod_name + '_'
-    handle = tempfile.NamedTemporaryFile(prefix=prefix, suffix='.py', dir=TEST_DIR,
-                                         delete=False)
-    mod = os.path.basename(handle.name)[:-3]
-    return handle, mod
-
-
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
-    if TEST_DIR not in sys.path:
-        sys.path.insert(0, TEST_DIR)
-    os.mkdir(TEST_DIR)
-
-    mods = {}  # type: Dict[str, Tuple[tempfile.NamedTemporaryFile, str]]
-
+    os.chdir(testcase.tmpdir.name)
+    extra = []
+    mods = []
     source = '\n'.join(testcase.input)
-    for file, content in testcase.files + [('main.py', source)]:
+    for file, content in testcase.files + [('./main.py', source)]:
         mod = os.path.basename(file)[:-3]
-        handle, mangled = mangled_module(mod)
-        mods[mangled] = handle, mod
-        handle.write(bytes(content, 'ascii'))
-        handle.close()
+        mods.append(mod)
+        extra.extend(['-m', mod])
+        with open(file, 'w') as f:
+            f.write(content)
 
-    extra = ['--search-path', TEST_DIR]
-    for mangled in mods:
-        extra.extend(['-m', mangled])
     options = parse_flags(source, extra)
     out_dir = 'out'
     try:
-        # Without this we may sometimes be unable to import the module below, as importlib
-        # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
-        reset_importlib_cache(TEST_DIR)
         try:
             if not testcase.name.endswith('_import'):
                 options.no_import = True
             if not testcase.name.endswith('_semanal'):
                 options.parse_only = True
             generate_stubs(options, quiet=True, add_header=False)
-            a = load_output(out_dir)
+            a = []
+            add_file(os.path.join(out_dir, 'main.pyi'), a)
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(testcase.output, a,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))
     finally:
-        for mangled in mods:
-            handle, _ = mods[mangled]
-            handle.close()
-            os.unlink(handle.name)
+        for mod in mods:
+            if mod in sys.modules:
+                del sys.modules[mod]
         shutil.rmtree(out_dir)
-
-
-def reset_importlib_cache(entry: str) -> None:
-    # importlib.invalidate_caches() is insufficient, since it doesn't
-    # clear cache entries that indicate that a directory on the path
-    # does not exist, which can cause failures.  Just directly clear
-    # the sys.path_importer_cache entry ourselves.  Other possible
-    # workarounds include always using different paths in the sys.path
-    # (perhaps by using the full path name) or removing the entry from
-    # sys.path after each run.
-    if entry in sys.path_importer_cache:
-        del sys.path_importer_cache[entry]
 
 
 def load_output(dirname: str) -> List[str]:

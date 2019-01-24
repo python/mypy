@@ -1234,12 +1234,18 @@ class F:
 def g(): ...
 
 [case testCrossModule_semanal]
-[file a.py]
-import b
-class A: ...
-B = b.B
-[file b.py]
 import a
-class B: ...
+
+class C:
+    x: A
+    def f(self) -> A: ...
 A = a.A
+[file a.py]
+class A: ...
 [out]
+import a
+
+class C:
+    x: A
+    def f(self) -> A: ...
+A = a.A
