@@ -1,4 +1,28 @@
-"""Top-level logic for the new semantic analyzer."""
+"""Top-level logic for the new semantic analyzer.
+
+The semantic analyzer binds names, resolves imports, detects various
+special constructs that don't have dedicated AST nodes after parse
+(such as 'cast' which looks like a call), and performs various simple
+consistency checks.
+
+Semantic analysis of each SCC (strongly connected component; import
+cycle) is performed in one unit. Each module is analyzed as multiple
+separate *targets*; the module top level is one target and each function
+is a target. Nested functions are not separate targets, however. This is
+mostly identical to targets used by mypy daemon (but classes aren't
+targets in semantic analysis).
+
+We first analyze each module top level in an SCC. If we encounter some
+names that we can't bind because the target of the name may not have
+been processed yet, we *defer* the current target for further
+processing. Deferred targets will be analyzed additional times until
+everything can be bound, or we reach a maximum number of iterations.
+
+We keep track of a set of incomplete namespaces, i.e. namespaces that we
+haven't finished populating yet. References to these namespaces cause a
+deferral if they can't be satisfied. Initially every module in the SCC
+will be incomplete.
+"""
 
 from typing import List, Tuple, Optional, Union
 
