@@ -86,6 +86,7 @@ import b
 [file a.py]
 from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
+# TODO: Could we generate an error here as well?
 from a import bad
 
 [case testNewAnalyzerSimpleFunction]
