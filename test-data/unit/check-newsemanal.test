@@ -175,3 +175,18 @@ f3(n2)
 from typing import NewType
 import a
 N1 = NewType('N1', a.A)
+
+[case testNewAnalyzerInheritanceForwardRef]
+# flags: --new-semantic-analyzer
+class C(B):
+    pass
+class B(A):
+    pass
+class A:
+    def __init__(self, x: str) -> None: pass
+    def f(self, x: int) -> None: pass
+
+C(1) # E: Argument 1 to "C" has incompatible type "int"; expected "str"
+B(1) # E: Argument 1 to "B" has incompatible type "int"; expected "str"
+C('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+B('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
