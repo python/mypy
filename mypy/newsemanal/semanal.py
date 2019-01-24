@@ -222,7 +222,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Args:
             modules: Global modules dictionary
             incomplete_namespaces: Namespaces that are being populated during semantic analysis
-                (can contain modules and classes within the current SCC)
+                (can contain modules and classes within the current SCC; mutated by the caller)
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
@@ -237,6 +237,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
+        # These namespaces are still in process of being populated. If we encounter a
+        # missing name in these namespaces, we need to defer the current analysis target,
+        # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
@@ -1644,7 +1647,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
-                if import_id in self.incomplete_namespaces:
+                if self.is_incomplete_namespace(import_id):
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
                     self.mark_incomplete()
@@ -3264,7 +3267,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
             else:
-                if file.fullname() in self.incomplete_namespaces:
+                if self.is_incomplete_namespace(file.fullname()):
                     self.record_incomplete_ref()
                     return
                 # We only catch some errors here; the rest will be
@@ -3640,7 +3643,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return None
 
     def defer(self) -> None:
-        """Defer current target to be analyzed again."""
+        """Defer current analysis target to be analyzed again."""
         self.deferred = True
 
     def track_incomplete_refs(self) -> Tag:
@@ -3652,14 +3655,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return self.num_incomplete_refs != tag
 
     def record_incomplete_ref(self) -> None:
-        """Record the encounter of an incomplete reference and defer current target."""
+        """Record the encounter of an incomplete reference and defer current analysis target."""
         self.defer()
         self.num_incomplete_refs += 1
 
     def mark_incomplete(self) -> None:
-        """Mark the current module namespace as incomplete (and defer current target)."""
+        """Mark the current module namespace as incomplete (and defer current analysis target)."""
         self.defer()
         self.incomplete = True
+
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        """Is a module or class namespace potentially missing some definitions?
+
+        If a name is missing from an incomplete namespace, we'll need to defer the
+        current analysis target.
+        """
+        return fullname in self.incomplete_namespaces
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[SymbolTableNode]:
@@ -3866,7 +3877,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         # TODO: Reference to another namespace
-        if self.cur_mod_id in self.incomplete_namespaces:
+        if self.is_incomplete_namespace(self.cur_mod_id):
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
             self.record_incomplete_ref()
