@@ -18,6 +18,16 @@ from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring
 )
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+TEST_DIR = 'stubgen-test-path'  # type: Final
+
+
+class StubgenCmdLineSuite(Suite):
+    pass
+
 
 class StubgenCliParseSuite(Suite):
     def test_walk_packages(self) -> None:
@@ -137,35 +147,32 @@ class StubgenPythonSuite(DataSuite):
         test_stubgen(testcase)
 
 
-def parse_flags(program_text: str) -> Options:
+def parse_flags(program_text: str, extra: List[str]) -> Options:
     flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
     if flags:
         flag_list = flags.group(1).split()
     else:
         flag_list = []
-    return parse_options(flag_list + ['dummy.py'])
+    return parse_options(flag_list + extra)
 
 
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
-    if 'stubgen-test-path' not in sys.path:
-        sys.path.insert(0, 'stubgen-test-path')
-    os.mkdir('stubgen-test-path')
+    if TEST_DIR not in sys.path:
+        sys.path.insert(0, TEST_DIR)
+    os.mkdir(TEST_DIR)
     source = '\n'.join(testcase.input)
-    options = parse_flags(source)
-    handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
+    handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir=TEST_DIR,
                                          delete=False)
     assert os.path.isabs(handle.name)
     mod = os.path.basename(handle.name)[:-3]
-    options.files = []
-    options.modules = [mod]
-    options.search_path = ['stubgen-test-path']
+    options = parse_flags(source, ['--search-path', TEST_DIR, '-m', mod])
     out_dir = 'out'
     try:
         handle.write(bytes(source, 'ascii'))
         handle.close()
         # Without this we may sometimes be unable to import the module below, as importlib
         # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
-        reset_importlib_cache('stubgen-test-path')
+        reset_importlib_cache(TEST_DIR)
         try:
             if not testcase.name.endswith('_import'):
                 options.no_import = True

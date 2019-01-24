@@ -1232,3 +1232,14 @@ class F:
 
 @t.coroutine
 def g(): ...
+
+[case testCrossModule_semanal]
+[file a.py]
+import b
+class A: ...
+B = b.B
+[file b.py]
+import a
+class B: ...
+A = a.A
+[out]
