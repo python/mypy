@@ -31,7 +31,7 @@ class StubgenCmdLineSuite(Suite):
                 os.mkdir('subdir')
                 self.make_file('subdir', 'a.py')
                 self.make_file('subdir', 'b.py')
-                os.mkdir('subdir/pack')
+                os.mkdir(os.path.join('subdir', 'pack'))
                 self.make_file('subdir', 'pack', '__init__.py')
                 opts = parse_options(['subdir'])
                 py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
