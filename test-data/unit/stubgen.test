@@ -1233,7 +1233,7 @@ class F:
 @t.coroutine
 def g(): ...
 
-[case testCrossModule_semanal]
+[case testCrossModuleClass_semanal]
 import a
 
 class C:
@@ -1249,3 +1249,13 @@ class C:
     x: A
     def f(self) -> A: ...
 A = a.A
+
+[case testCrossModuleFunction_semanal]
+import a
+g = a.f
+[file a.py]
+def f(): ...
+[out]
+import a
+
+g = a.f

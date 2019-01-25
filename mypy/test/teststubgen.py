@@ -20,7 +20,11 @@ from mypy.stubdoc import (
 
 
 class StubgenCmdLineSuite(Suite):
-    pass
+    def test_files_found(self) -> None:
+        pass
+
+    def test_packages_found(self) -> None:
+        pass
 
 
 class StubgenCliParseSuite(Suite):
