@@ -601,6 +601,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         # TODO: Fix this
         if self.is_class_scope():
+            assert self.type is not None
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             defn.info = self.type
         elif self.is_func_scope():
