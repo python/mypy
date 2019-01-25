@@ -518,7 +518,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             if (self.is_top_level() and
                     isinstance(lvalue, NameExpr) and not self.is_private_name(lvalue.name) and
-                    self.is_type_expression(o.rvalue)):
+                    # it is never an alias with explicit annotation
+                    not o.unanalyzed_type and self.is_type_expression(o.rvalue)):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
@@ -679,6 +680,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._vars[-1].append(lvalue)
         if annotation is not None:
             typename = self.print_annotation(annotation)
+            if (isinstance(annotation, UnboundType) and not annotation.args and
+                    annotation.name == 'Final' and
+                    self.import_tracker.module_for.get('Final') in ('typing, typing_extensions')):
+                # Final without type argument is invalid in stubs.
+                final_arg = self.get_str_type_of_node(rvalue)
+                typename += '[{}]'.format(final_arg)
         else:
             typename = self.get_str_type_of_node(rvalue)
         has_rhs = not (isinstance(rvalue, TempNode) and rvalue.no_rhs)

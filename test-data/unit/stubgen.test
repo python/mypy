@@ -1355,3 +1355,18 @@ class C: ...
 A = a._A
 B = _a.f
 _C = C
+
+[case testFinalWrapped_semanal]
+from typing import Final
+
+x: Final = 1
+y: Final = x
+z: Final[object]
+t: Final
+[out]
+from typing import Any, Final
+
+x: Final[int]
+y: Final[Any]
+z: Final[object]
+t: Final[Any]
