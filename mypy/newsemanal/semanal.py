@@ -895,8 +895,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         base_types, base_error = result
 
+        is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
+        if is_typeddict:
+            if info is None:
+                self.mark_incomplete()
+            else:
+                self.prepare_class_def(defn, info)
+            return
+
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
-        self.setup_class_def_analysis(defn)
+        self.prepare_class_def(defn)
 
         defn.type_vars = tvar_defs
         defn.info.type_vars = [tvar.fullname for tvar in tvar_defs]
@@ -906,8 +914,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         with self.scope.class_scope(defn.info):
             self.configure_base_classes(defn, base_types)
 
-            if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
-                return
             if self.analyze_namedtuple_classdef(defn):
                 return
 
@@ -1241,24 +1247,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
-    def setup_class_def_analysis(self, defn: ClassDef) -> None:
-        """Prepare for the analysis of a class definition."""
+    def prepare_class_def(self, defn: ClassDef, info: Optional[TypeInfo] = None) -> None:
+        """Prepare for the analysis of a class definition.
+
+        Create an empty TypeInfo and store it in a symbol table, or if the 'info'
+        argument is provided, store it instead (used for magic type definitions).
+        """
         if not defn.info:
             defn.fullname = self.qualified_name(defn.name)
             # TODO: Nested classes
-            if (self.is_module_scope()
-                    and self.cur_mod_id == 'builtins'
-                    and defn.name in CORE_BUILTIN_CLASSES):
-                # Special case core built-in classes. A TypeInfo was already
-                # created for it before semantic analysis, but with a dummy
-                # ClassDef. Patch the real ClassDef object.
-                info = self.globals[defn.name].node
-                assert isinstance(info, TypeInfo)
-                defn.info = info
-                info.defn = defn
-            else:
-                info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
-                defn.info = info
+            info = info or self.make_empty_type_info(defn)
+            defn.info = info
+            info.defn = defn
             if self.is_module_scope():
                 info._fullname = self.qualified_name(defn.name)
                 self.globals[defn.name] = SymbolTableNode(GDEF, info)
@@ -1285,6 +1285,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 defn.fullname = defn.info._fullname
                 self.globals[local_name] = node
 
+    def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
+        if (self.is_module_scope()
+                and self.cur_mod_id == 'builtins'
+                and defn.name in CORE_BUILTIN_CLASSES):
+            # Special case core built-in classes. A TypeInfo was already
+            # created for it before semantic analysis, but with a dummy
+            # ClassDef. Patch the real ClassDef object.
+            info = self.globals[defn.name].node
+            assert isinstance(info, TypeInfo)
+        else:
+            info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
+        return info
+
     def analyze_base_classes(
             self,
             base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[Type, Expression]],
@@ -1300,6 +1313,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         is_error = False
         bases = []
         for base_expr in base_type_exprs:
+            if (isinstance(base_expr, RefExpr) and
+                    base_expr.fullname in ('typing.NamedTuple',
+                                           'mypy_extensions.TypedDict')):
+                # Ignore magic bases for now.
+                continue
+
             try:
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
