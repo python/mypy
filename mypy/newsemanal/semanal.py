@@ -599,7 +599,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
 
-        if self.type and not self.is_func_scope():
+        # TODO: Fix this
+        if self.is_class_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             defn.info = self.type
         elif self.is_func_scope():
@@ -2222,7 +2223,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if add_global and lval.name not in self.globals:
             # Define new global name.
             v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
-            self.globals[lval.name] = SymbolTableNode(GDEF, v)
+            self.add_symbol(lval.name, v, lval)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
                 # Since the is_new_def flag is set, this must have been analyzed
@@ -2251,7 +2252,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if is_final and unmangle(lval.name) + "'" in self.type.names:
                 self.fail("Cannot redefine an existing name as final", lval)
             v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            self.add_symbol(lval.name, v, lval)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
 
