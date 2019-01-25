@@ -287,7 +287,20 @@ reveal_type(y2) # E: Revealed type is 'builtins.int'
 y3, y4 = y, y
 from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
 reveal_type(y3) # E: Revealed type is 'builtins.int'
+
 [file b.py]
 from a import x
 
 def f(): pass
+
+[case testNewAnalyzerRedefinitionAndDeferral2]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import C as C2
+class C: pass
+
+class C2: pass # E: Name 'C2' already defined (possibly by an import)
+[file b.py]
+from a import C
