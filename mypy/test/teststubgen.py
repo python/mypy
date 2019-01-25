@@ -24,33 +24,41 @@ from mypy.stubdoc import (
 
 class StubgenCmdLineSuite(Suite):
     def test_files_found(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            os.chdir(tmp)
-            os.mkdir('subdir')
-            self.make_file('subdir/a.py')
-            self.make_file('subdir/b.py')
-            os.mkdir('subdir/pack')
-            self.make_file('subdir/pack/__init__.py')
-            opts = parse_options(['subdir'])
-            py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
-            assert_equal(c_mods, [])
-            files = {mod.path for mod in py_mods}
-            assert_equal(files, {'subdir/pack/__init__.py',
-                                 'subdir/a.py', 'subdir/b.py'})
+        current = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                os.chdir(tmp)
+                os.mkdir('subdir')
+                self.make_file('subdir/a.py')
+                self.make_file('subdir/b.py')
+                os.mkdir('subdir/pack')
+                self.make_file('subdir/pack/__init__.py')
+                opts = parse_options(['subdir'])
+                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                assert_equal(c_mods, [])
+                files = {mod.path for mod in py_mods}
+                assert_equal(files, {'subdir/pack/__init__.py',
+                                     'subdir/a.py', 'subdir/b.py'})
+        finally:
+            os.chdir(current)
 
     def test_packages_found(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            os.chdir(tmp)
-            os.mkdir('pack')
-            self.make_file('pack/__init__.py', 'from . import a, b')
-            self.make_file('pack/a.py')
-            self.make_file('pack/b.py')
-            opts = parse_options(['-p', 'pack'])
-            py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
-            assert_equal(c_mods, [])
-            files = {os.path.relpath(mod.path or 'FAIL') for mod in py_mods}
-            assert_equal(files, {'pack/__init__.py',
-                                 'pack/a.py', 'pack/b.py'})
+        current = os.getcwd()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                os.chdir(tmp)
+                os.mkdir('pack')
+                self.make_file('pack/__init__.py', 'from . import a, b')
+                self.make_file('pack/a.py')
+                self.make_file('pack/b.py')
+                opts = parse_options(['-p', 'pack'])
+                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                assert_equal(c_mods, [])
+                files = {os.path.relpath(mod.path or 'FAIL') for mod in py_mods}
+                assert_equal(files, {'pack/__init__.py',
+                                     'pack/a.py', 'pack/b.py'})
+        finally:
+            os.chdir(current)
 
     def make_file(self, file: str, content: str = '') -> None:
         with open(file, 'w') as f:
@@ -172,8 +180,6 @@ class StubgenPythonSuite(DataSuite):
     files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        assert testcase.tmpdir is not None, "Test case was not properly set up"
-        os.chdir(testcase.tmpdir.name)
         extra = []
         mods = []
         source = '\n'.join(testcase.input)
