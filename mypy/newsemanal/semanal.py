@@ -370,6 +370,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.patches = patches
         self.deferred = False  # Set to true if another analysis pass is needed
         self.incomplete = False  # Set to true if current module namespace is missing things
+        # These names couldn't be added to the symbol table
+        self.missing_names = set()  # type: Set[str]
 
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
@@ -840,7 +842,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         if result is None or self.found_incomplete_ref(tag):
             # Something was incomplete -- defer current target.
-            self.mark_incomplete()
+            self.mark_incomplete(defn.name)
             return
 
         base_types, base_error = result
@@ -848,7 +850,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
             if info is None:
-                self.mark_incomplete()
+                self.mark_incomplete(defn.name)
             else:
                 self.prepare_class_def(defn, info)
             return
@@ -1611,6 +1613,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
             missing = False
             possible_module_id = import_id + '.' + id
+            imported_id = as_id or id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
@@ -1625,22 +1628,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                name = as_id if as_id else id
                 if self.type:
-                    fullname = self.type.fullname() + "." + name
+                    fullname = self.type.fullname() + "." + imported_id
                 else:
-                    fullname = self.qualified_name(name)
-                gvar = self.create_getattr_var(module.names['__getattr__'], name, fullname)
+                    fullname = self.qualified_name(imported_id)
+                gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
-                    self.add_symbol(name, gvar, imp)
+                    self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 if not node:
                     # Normalization failed because target is not defined. Avoid duplicate
                     # error messages by marking the imported name as unknown.
-                    self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                    self.add_unknown_symbol(imported_id, imp, is_import=True)
                     continue
-                imported_id = as_id or id
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol:
                     # Import can redefine a variable. They get special treatment.
@@ -1660,14 +1661,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if self.is_incomplete_namespace(import_id):
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
-                    self.mark_incomplete()
+                    self.mark_incomplete(imported_id)
                     return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
                 self.fail(message, imp)
-                self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                self.add_unknown_symbol(imported_id, imp, is_import=True)
 
                 if import_id == 'typing':
                     # The user probably has a missing definition in a test fixture. Let's verify.
@@ -1679,7 +1680,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
-                self.add_unknown_symbol(as_id or id, imp, is_import=True, target_name=missing_name)
+                self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
 
     def dereference_module_cross_ref(
             self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
@@ -1855,7 +1856,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
-            self.mark_incomplete()
+            for name in names_defined_by_assignment(s):
+                self.mark_incomplete(name)
             return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
@@ -3643,10 +3645,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer()
         self.num_incomplete_refs += 1
 
-    def mark_incomplete(self) -> None:
-        """Mark the current module namespace as incomplete (and defer current analysis target)."""
+    def mark_incomplete(self, name: str) -> None:
+        """Mark the current module namespace as incomplete (and defer current analysis target).
+
+        Args:
+            name: The name that we weren't able to define
+        """
         self.defer()
         self.incomplete = True
+        self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
         """Is a module or class namespace potentially missing some definitions?
@@ -3823,7 +3830,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if existing is not None and context is not None:
             if existing.node != symbol.node:
                 self.name_already_defined(name, context, existing)
-        else:
+        elif name not in self.missing_names:
             names[name] = symbol
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
@@ -4057,3 +4064,21 @@ def apply_semantic_analyzer_patches(patches: List[Tuple[int, Callable[[], None]]
     patches_by_priority = sorted(patches, key=lambda x: x[0])
     for priority, patch_func in patches_by_priority:
         patch_func()
+
+
+def names_defined_by_assignment(s: AssignmentStmt) -> List[str]:
+    result = []  # type: List[str]
+    for lvalue in s.lvalues:
+        result += names_defined_by_lvalue(lvalue)
+    return result
+
+
+def names_defined_by_lvalue(lvalue: Lvalue) -> List[str]:
+    if isinstance(lvalue, NameExpr):
+        return [lvalue.name]
+    elif isinstance(lvalue, (ListExpr, TupleExpr)):
+        result = []  # type: List[str]
+        for item in lvalue.items:
+            result += names_defined_by_lvalue(item)
+        return result
+    return []
