@@ -1233,6 +1233,49 @@ class F:
 @t.coroutine
 def g(): ...
 
+[case testNestedClass_semanal]
+class Outer:
+    class Inner:
+        pass
+
+A = Outer.Inner
+[out]
+class Outer:
+    class Inner: ...
+A = Outer.Inner
+
+[case testFunctionAlias_semanal]
+from asyncio import coroutine
+
+@coroutine
+def start_server():
+    ...
+
+start = start_server
+[out]
+
+[case testModuleAlias_semanal]
+import a
+
+b = a
+[file a.py]
+x = 1
+[out]
+import a
+
+b = a
+
+[case testBadAliasNested_semanal]
+import a
+
+x = registry[a.f]
+[file a.py]
+def f(): ...
+[out]
+from typing import Any
+
+x: Any
+
 [case testCrossModuleClass_semanal]
 import a
 

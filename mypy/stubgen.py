@@ -68,7 +68,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
-    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT, NamedTupleExpr
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
@@ -138,6 +138,11 @@ EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
 VAR = 'VAR'  # type: Final
 NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
+# Indicates that we failed to generate a reasonable output
+# for a given node. These should be manually replaced by a user.
+
+ERROR_MARKER = '<ERROR>'  # type: Final
+
 
 class AnnotationPrinter(TypeStrVisitor):
     """Visitor used to print existing annotations in a file.
@@ -203,7 +208,7 @@ class AliasPrinter(NodeVisitor[str]):
             trailer = '.' + node.name + trailer
             node = node.expr
         if not isinstance(node, NameExpr):
-            return '<ERROR>'  # TODO: make this global constant
+            return ERROR_MARKER
         self.stubgen.import_tracker.require_name(node.name)
         return node.name + trailer
 
@@ -489,7 +494,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def get_base_types(self, cdef: ClassDef) -> List[str]:
         """Get list of base classes for a class."""
-        # TODO: use better logic for semantically analysed AST.
         base_types = []  # type: List[str]
         for base in cdef.base_type_exprs:
             if isinstance(base, NameExpr):
@@ -543,7 +547,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = VAR
 
     def is_namedtuple(self, expr: Expression) -> bool:
-        # TODO: use better logic for semantically analysed AST.
         if not isinstance(expr, CallExpr):
             return False
         callee = expr.callee
@@ -554,14 +557,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.import_tracker.require_name('namedtuple')
         if self._state != EMPTY:
             self.add('\n')
-        name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
+        name = repr(getattr(rvalue.args[0], 'value', ERROR_MARKER))
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
-            items = '<ERROR>'
+            items = ERROR_MARKER
         self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
         self._state = CLASS
 
@@ -586,7 +589,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 return True
         elif isinstance(expr, MemberExpr) and self.analyzed:
             # Also add function and module aliases.
-            return top_level and (isinstance(expr.node, (FuncDef, MypyFile)) or
+            return top_level and (isinstance(expr.node, (FuncDef, Decorator, MypyFile)) or
                                   isinstance(expr.node, TypeInfo))
         elif isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr):
             if isinstance(expr.index, TupleExpr):
@@ -822,7 +825,7 @@ def get_qualified_name(o: Expression) -> str:
     elif isinstance(o, MemberExpr):
         return '%s.%s' % (get_qualified_name(o.expr), o.name)
     else:
-        return '<ERROR>'
+        return ERROR_MARKER
 
 
 def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[List[StubSource],
