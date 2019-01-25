@@ -165,7 +165,6 @@ class FineGrainedBuildManager:
         self.graph = result.graph
         self.previous_modules = get_module_to_path_map(self.graph)
         self.deps = get_all_dependencies(manager, self.graph)
-        self.unloaded_deps = set(self.graph)
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
@@ -329,10 +328,7 @@ class FineGrainedBuildManager:
         previous_modules = self.previous_modules
         graph = self.graph
 
-        # XXX: COMMENT
-        if module in self.unloaded_deps and module in graph:
-            merge_dependencies(graph[module].load_fine_grained_deps(), self.deps)
-            self.unloaded_deps.remove(module)
+        ensure_deps_loaded(module, self.deps, graph)
 
         # If this is an already existing module, make sure that we have
         # its tree loaded so that we can snapshot it for comparison.
@@ -408,6 +404,18 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
 
     return unloaded
 
+
+def ensure_deps_loaded(module: str,
+                       deps: Dict[str, Set[str]], graph: Dict[str, State]) -> None:
+    # XXX: COMMENT
+    if module in graph and graph[module].fine_grained_deps_loaded:
+        return
+    parts = module.split('.')
+    for i in range(len(parts)):
+        base = '.'.join(parts[:i + 1])
+        if base in graph and not graph[base].fine_grained_deps_loaded:
+            merge_dependencies(graph[base].load_fine_grained_deps(), deps)
+            graph[base].fine_grained_deps_loaded = True
 
 def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
                         initial: Sequence[str]) -> None:
@@ -825,6 +833,11 @@ def find_targets_recursive(
         worklist = set()
         for target in current:
             if target.startswith('<'):
+                # XXX: slow??
+                module_id = module_prefix(graph, target[1:-1])
+                if module_id:
+                    ensure_deps_loaded(module_id, deps, graph)
+
                 worklist |= deps.get(target, set()) - processed
             else:
                 module_id = module_prefix(graph, target)

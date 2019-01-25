@@ -779,6 +779,7 @@ def invert_deps(proto_deps: Dict[str, Set[str]],
     for id in graph:
         _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
         assert deps_json
+        manager.log("Writing deps cache", deps_json)
         manager.metastore.write(deps_json, json.dumps(convert(rdeps[id])))
     _, proto_cache = get_protocol_deps_cache_name()
     manager.metastore.write(proto_cache, json.dumps(convert(extra_deps)))
@@ -1455,6 +1456,8 @@ class State:
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
+
+    fine_grained_deps_loaded = False
 
     def __init__(self,
                  id: Optional[str],
@@ -2271,7 +2274,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # The `read_protocol_cache` will also validate
     # the protocol cache against the loaded individual cache files.
     if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
+        t2 = time.time()
         proto_deps = read_protocol_cache(manager, graph)
+        manager.add_stats(load_fg_deps_time=time.time() - t2)
         if proto_deps is not None:
             TypeState.proto_deps = proto_deps
         elif manager.stats.get('fresh_metas', 0) > 0:
