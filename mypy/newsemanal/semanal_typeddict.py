@@ -37,9 +37,15 @@ class TypedDictAnalyzer:
 
         Assume that base classes have been analyzed already.
 
-        Return (is this a TypedDict, new TypeInfo).
-        If we couldn't finish due to incomplete reference, return (True, None).
-        If this is not a TypedDict, return (False, None).
+        Note: Unlike normal classes, we won't create a TypeInfo until
+        the whole definition of the TypeDict (including the body and all
+        key names and types) is complete.  This is mostly because we
+        store the corresponding TypedDictType in the TypeInfo.
+
+        Return (is this a TypedDict, new TypeInfo). Specifics:
+         * If we couldn't finish due to incomplete reference anywhere in
+           the definition, return (True, None).
+         * If this is not a TypedDict, return (False, None).
         """
         possible = False
         for base_expr in defn.base_type_exprs:

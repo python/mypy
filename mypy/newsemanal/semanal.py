@@ -1248,7 +1248,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return remove_dups(tvars)
 
     def prepare_class_def(self, defn: ClassDef, info: Optional[TypeInfo] = None) -> None:
-        """Prepare for the analysis of a class definition."""
+        """Prepare for the analysis of a class definition.
+
+        Create an empty TypeInfo and store it in a symbol table, or if the 'info'
+        argument is provided, store it instead (used for magic type definitions).
+        """
         if not defn.info:
             defn.fullname = self.qualified_name(defn.name)
             # TODO: Nested classes
