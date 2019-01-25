@@ -11,7 +11,10 @@ from typing import List, Tuple
 from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
-from mypy.stubgen import generate_stubs, parse_options, walk_packages, Options
+from mypy.stubgen import (
+    generate_stubs, parse_options, walk_packages, Options, collect_build_targets,
+    mypy_options
+)
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -21,10 +24,37 @@ from mypy.stubdoc import (
 
 class StubgenCmdLineSuite(Suite):
     def test_files_found(self) -> None:
-        pass
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chdir(tmp)
+            os.mkdir('subdir')
+            self.make_file('subdir/a.py')
+            self.make_file('subdir/b.py')
+            os.mkdir('subdir/pack')
+            self.make_file('subdir/pack/__init__.py')
+            opts = parse_options(['subdir'])
+            py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+            assert_equal(c_mods, [])
+            files = {mod.path for mod in py_mods}
+            assert_equal(files, {'subdir/pack/__init__.py',
+                                 'subdir/a.py', 'subdir/b.py'})
 
     def test_packages_found(self) -> None:
-        pass
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chdir(tmp)
+            os.mkdir('pack')
+            self.make_file('pack/__init__.py', 'from . import a, b')
+            self.make_file('pack/a.py')
+            self.make_file('pack/b.py')
+            opts = parse_options(['-p', 'pack'])
+            py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+            assert_equal(c_mods, [])
+            files = {os.path.relpath(mod.path) for mod in py_mods}
+            assert_equal(files, {'pack/__init__.py',
+                                 'pack/a.py', 'pack/b.py'})
+
+    def make_file(self, file: str, content: str = '') -> None:
+        with open(file, 'w') as f:
+            f.write(content)
 
 
 class StubgenCliParseSuite(Suite):
@@ -142,70 +172,51 @@ class StubgenPythonSuite(DataSuite):
     files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_stubgen(testcase)
+        assert testcase.tmpdir is not None, "Test case was not properly set up"
+        os.chdir(testcase.tmpdir.name)
+        extra = []
+        mods = []
+        source = '\n'.join(testcase.input)
+        for file, content in testcase.files + [('./main.py', source)]:
+            mod = os.path.basename(file)[:-3]
+            mods.append(mod)
+            extra.extend(['-m', mod])
+            with open(file, 'w') as f:
+                f.write(content)
 
-
-def parse_flags(program_text: str, extra: List[str]) -> Options:
-    flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
-    if flags:
-        flag_list = flags.group(1).split()
-    else:
-        flag_list = []
-    return parse_options(flag_list + extra)
-
-
-def test_stubgen(testcase: DataDrivenTestCase) -> None:
-    assert testcase.tmpdir is not None, "Test case was not properly set up"
-    os.chdir(testcase.tmpdir.name)
-    extra = []
-    mods = []
-    source = '\n'.join(testcase.input)
-    for file, content in testcase.files + [('./main.py', source)]:
-        mod = os.path.basename(file)[:-3]
-        mods.append(mod)
-        extra.extend(['-m', mod])
-        with open(file, 'w') as f:
-            f.write(content)
-
-    options = parse_flags(source, extra)
-    out_dir = 'out'
-    try:
+        options = self.parse_flags(source, extra)
+        out_dir = 'out'
         try:
-            if not testcase.name.endswith('_import'):
-                options.no_import = True
-            if not testcase.name.endswith('_semanal'):
-                options.parse_only = True
-            generate_stubs(options, quiet=True, add_header=False)
-            a = []  # type: List[str]
-            add_file(os.path.join(out_dir, 'main.pyi'), a)
-        except CompileError as e:
-            a = e.messages
-        assert_string_arrays_equal(testcase.output, a,
-                                   'Invalid output ({}, line {})'.format(
-                                       testcase.file, testcase.line))
-    finally:
-        for mod in mods:
-            if mod in sys.modules:
-                del sys.modules[mod]
-        shutil.rmtree(out_dir)
+            try:
+                if not testcase.name.endswith('_import'):
+                    options.no_import = True
+                if not testcase.name.endswith('_semanal'):
+                    options.parse_only = True
+                generate_stubs(options, quiet=True, add_header=False)
+                a = []  # type: List[str]
+                self.add_file(os.path.join(out_dir, 'main.pyi'), a)
+            except CompileError as e:
+                a = e.messages
+            assert_string_arrays_equal(testcase.output, a,
+                                       'Invalid output ({}, line {})'.format(
+                                           testcase.file, testcase.line))
+        finally:
+            for mod in mods:
+                if mod in sys.modules:
+                    del sys.modules[mod]
+            shutil.rmtree(out_dir)
 
+    def parse_flags(self, program_text: str, extra: List[str]) -> Options:
+        flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+        if flags:
+            flag_list = flags.group(1).split()
+        else:
+            flag_list = []
+        return parse_options(flag_list + extra)
 
-def load_output(dirname: str) -> List[str]:
-    result = []  # type: List[str]
-    entries = glob.glob('%s/*' % dirname)
-    assert entries, 'No files generated'
-    if len(entries) == 1:
-        add_file(entries[0], result)
-    else:
-        for entry in entries:
-            result.append('## %s ##' % entry)
-            add_file(entry, result)
-    return result
-
-
-def add_file(path: str, result: List[str]) -> None:
-    with open(path, encoding='utf8') as file:
-        result.extend(file.read().splitlines())
+    def add_file(self, path: str, result: List[str]) -> None:
+        with open(path, encoding='utf8') as file:
+            result.extend(file.read().splitlines())
 
 
 class StubgencSuite(Suite):

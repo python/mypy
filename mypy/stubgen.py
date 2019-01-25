@@ -107,6 +107,7 @@ class Options:
         self.doc_dir = doc_dir
         self.search_path = search_path
         self.interpreter = interpreter
+        self.decointerpreter = interpreter
         self.parse_only = parse_only
         self.ignore_errors = ignore_errors
         self.include_private = include_private
@@ -431,7 +432,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_decorator(self, o: Decorator) -> None:
         if self.is_private_name(o.func.name()):
             return
-        for decorator in o.decorators:
+        for decorator in o.original_decorators:
             if isinstance(decorator, NameExpr):
                 if decorator.name in ('property',
                                       'staticmethod',
