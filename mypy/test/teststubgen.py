@@ -24,10 +24,10 @@ from mypy.stubdoc import (
 
 class StubgenCmdLineSuite(Suite):
     def test_files_found(self) -> None:
-        current = os.getcwd()
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                os.chdir(tmp)
+        # current = os.getcwd()
+        # try:
+        #    with tempfile.TemporaryDirectory() as tmp:
+        #        os.chdir(tmp)
                 os.mkdir('subdir')
                 self.make_file('subdir', 'a.py')
                 self.make_file('subdir', 'b.py')
@@ -40,14 +40,14 @@ class StubgenCmdLineSuite(Suite):
                 assert_equal(files, {os.path.join('subdir', 'pack', '__init__.py'),
                                      os.path.join('subdir', 'a.py'),
                                      os.path.join('subdir', 'b.py')})
-        finally:
-            os.chdir(current)
+        # finally:
+        #    os.chdir(current)
 
     def test_packages_found(self) -> None:
-        current = os.getcwd()
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                os.chdir(tmp)
+        # current = os.getcwd()
+        # try:
+        #    with tempfile.TemporaryDirectory() as tmp:
+        #        os.chdir(tmp)
                 os.mkdir('pack')
                 self.make_file('pack', '__init__.py', content='from . import a, b')
                 self.make_file('pack', 'a.py')
@@ -59,8 +59,8 @@ class StubgenCmdLineSuite(Suite):
                 assert_equal(files, {os.path.join('pack', '__init__.py'),
                                      os.path.join('pack', 'a.py'),
                                      os.path.join('pack', 'b.py')})
-        finally:
-            os.chdir(current)
+        # finally:
+        #    os.chdir(current)
 
     def make_file(self, *path: str, content: str = '') -> None:
         file = os.path.join(*path)
