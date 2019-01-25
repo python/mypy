@@ -182,7 +182,12 @@ class SemanticAnalyzerPluginInterface:
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True,
                   third_pass: bool = False) -> Optional[Type]:
-        """Analyze an unbound type."""
+        """Analyze an unbound type.
+
+        Return None if the some part of the type is not ready yet (only
+        happens with the new semantic analyzer). In this case the current
+        target being analyzed will be deferred and analyzed again.
+        """
         raise NotImplementedError
 
     @abstractmethod

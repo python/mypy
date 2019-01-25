@@ -13,7 +13,9 @@ analysis).  Also, it would bind both references to 'x' to the same
 module-level variable (Var) node.  The second assignment would also
 be analyzed, and the type of 'y' marked as being inferred.
 
-Semantic analysis of types is implemented in module mypy.typeanal.
+Semantic analysis of types is implemented in typeanal.py.
+
+See semanal_main.py for the top-level logic.
 """
 
 from contextlib import contextmanager
@@ -148,6 +150,15 @@ SUGGESTED_TEST_FIXTURES = {
 }  # type: Final
 
 
+# Special cased built-in classes that are needed for basic functionality and need to be
+# available very early on.
+CORE_BUILTIN_CLASSES = ['object', 'bool']  # type: Final
+
+
+# Used for tracking incomplete references
+Tag = int
+
+
 class NewSemanticAnalyzer(NodeVisitor[None],
                           SemanticAnalyzerInterface,
                           SemanticAnalyzerPluginInterface):
@@ -213,7 +224,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Args:
             modules: Global modules dictionary
             incomplete_namespaces: Namespaces that are being populated during semantic analysis
-                (can contain modules and classes within the current SCC)
+                (can contain modules and classes within the current SCC; mutated by the caller)
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
@@ -228,6 +239,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
+        # These namespaces are still in process of being populated. If we encounter a
+        # missing name in these namespaces, we need to defer the current analysis target,
+        # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
@@ -323,12 +337,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
         names = file_node.names
 
-        # Add empty definition for 'object', since it's required for basic operation.
-        # This will be completed later on.
-        cdef = ClassDef('object', Block([]))  # Dummy ClassDef, will be replaced later
-        info = TypeInfo(SymbolTable(), cdef, 'builtins')
-        info._fullname = 'builtins.object'
-        names['object'] = SymbolTableNode(GDEF, info)
+        # Add empty definition for core built-in classes, since they are required for basic
+        # operation. These will be completed later on.
+        for name in CORE_BUILTIN_CLASSES:
+            cdef = ClassDef(name, Block([]))  # Dummy ClassDef, will be replaced later
+            info = TypeInfo(SymbolTable(), cdef, 'builtins')
+            info._fullname = 'builtins.%s' % name
+            names[name] = SymbolTableNode(GDEF, info)
+
+        bool_info = names['bool'].node
+        assert isinstance(bool_info, TypeInfo)
+        bool_type = Instance(bool_info, [])
 
         literal_types = [
             ('None', NoneTyp()),
@@ -338,9 +357,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # reveal_locals is a mypy-only function that gives an error with the types of
             # locals
             ('reveal_locals', AnyType(TypeOfAny.special_form)),
+            ('True', bool_type),
+            ('False', bool_type),
+            ('__debug__', bool_type),
         ]  # type: List[Tuple[str, Type]]
-
-        # TODO: True, False and __debug__
 
         for name, typ in literal_types:
             v = Var(name, typ)
@@ -351,6 +371,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
+        self.deferred = False  # Set to true if another analysis pass is needed
+        self.incomplete = False  # Set to true if current module namespace is missing things
+
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
@@ -361,7 +384,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        self.deferred = False  # Set to true if another analysis pass is needed
         for d in file_node.defs:
             self.accept(d)
 
@@ -852,28 +874,53 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
-        self.setup_class_def_analysis(defn)
-        with self.scope.class_scope(defn.info):
-            with self.tvar_scope_frame(self.tvar_scope.class_frame()):
-                self.analyze_class(defn)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame()):
+            self.analyze_class(defn)
 
     def analyze_class(self, defn: ClassDef) -> None:
-        is_protocol = self.detect_protocol_base(defn)
-        self.update_metaclass(defn)
-        self.clean_up_bases_and_infer_type_variables(defn)
-        self.analyze_class_keywords(defn)
-        if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
+        tag = self.track_incomplete_refs()
+
+        bases = defn.base_type_exprs
+
+        is_protocol = self.detect_protocol_base(bases)
+        # TODO: Support metaclasses
+        # self.update_metaclass(defn)
+        bases, tvar_defs = self.clean_up_bases_and_infer_type_variables(bases,
+                                                                        context=defn)
+        # TODO: Support keyword arguments
+        # self.analyze_class_keywords(defn)
+        result = self.analyze_base_classes(bases)
+
+        if result is None or self.found_incomplete_ref(tag):
+            # Something was incomplete -- defer current target.
+            self.mark_incomplete()
             return
-        if self.analyze_namedtuple_classdef(defn):
-            return
-        self.analyze_base_classes(defn)
-        defn.info.is_protocol = is_protocol
-        self.analyze_metaclass(defn)
-        defn.info.runtime_protocol = False
-        for decorator in defn.decorators:
-            self.analyze_class_decorator(defn, decorator)
-        self.analyze_class_body_common(defn)
-        self.setup_type_promotion(defn)
+
+        base_types, base_error = result
+
+        # Create TypeInfo for class now that base classes and the MRO can be calculated.
+        self.setup_class_def_analysis(defn)
+
+        defn.type_vars = tvar_defs
+        defn.info.type_vars = [tvar.fullname for tvar in tvar_defs]
+        if base_error:
+            defn.info.fallback_to_any = True
+
+        with self.scope.class_scope(defn.info):
+            self.configure_base_classes(defn, base_types)
+
+            if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
+                return
+            if self.analyze_namedtuple_classdef(defn):
+                return
+
+            defn.info.is_protocol = is_protocol
+            self.analyze_metaclass(defn)
+            defn.info.runtime_protocol = False
+            for decorator in defn.decorators:
+                self.analyze_class_decorator(defn, decorator)
+            self.analyze_class_body_common(defn)
+            self.setup_type_promotion(defn)
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
@@ -1058,8 +1105,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
 
-    def detect_protocol_base(self, defn: ClassDef) -> bool:
-        for base_expr in defn.base_type_exprs:
+    def detect_protocol_base(self, base_type_exprs: List[Expression]) -> bool:
+        """Return True if one of the base class expressions refers to Protocol."""
+        for base_expr in base_type_exprs:
             try:
                 base = expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
@@ -1073,21 +1121,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return True
         return False
 
-    def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
+    def clean_up_bases_and_infer_type_variables(
+            self,
+            base_type_exprs: List[Expression],
+            context: Context) -> Tuple[List[Expression],
+                                       List[TypeVarDef]]:
         """Remove extra base classes such as Generic and infer type vars.
 
         For example, consider this class:
 
-        . class Foo(Bar, Generic[T]): ...
+          class Foo(Bar, Generic[T]): ...
 
         Now we will remove Generic[T] from bases of Foo and infer that the
         type variable 'T' is a type argument of Foo.
 
         Note that this is performed *before* semantic analysis.
+
+        Returns (remaining base expressions, inferred type variables).
         """
+        base_type_exprs = base_type_exprs[:]
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
-        for i, base_expr in enumerate(defn.base_type_exprs):
+        for i, base_expr in enumerate(base_type_exprs):
             self.analyze_type_expr(base_expr)
 
             try:
@@ -1095,10 +1150,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            tvars = self.analyze_typevar_declaration(base)
+            tvars = self.analyze_class_typevar_declaration(base)
             if tvars is not None:
                 if declared_tvars:
-                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', defn)
+                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
                 declared_tvars.extend(tvars)
             if isinstance(base, UnboundType):
@@ -1110,40 +1165,44 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         # also remove bare 'Protocol' bases
                         removed.append(i)
 
-        all_tvars = self.get_all_bases_tvars(defn, removed)
+        all_tvars = self.get_all_bases_tvars(base_type_exprs, removed)
         if declared_tvars:
             if len(remove_dups(declared_tvars)) < len(declared_tvars):
-                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", defn)
+                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", context)
             declared_tvars = remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
                 self.fail("If Generic[...] or Protocol[...] is present"
-                          " it should list all type variables", defn)
+                          " it should list all type variables", context)
                 # In case of error, Generic tvars will go first
                 declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
             declared_tvars = all_tvars
-        if declared_tvars:
-            if defn.info:
-                defn.info.type_vars = [name for name, _ in declared_tvars]
         for i in reversed(removed):
-            defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
-            del defn.base_type_exprs[i]
+            del base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             tvar_defs.append(tvar_def)
-        defn.type_vars = tvar_defs
+        return base_type_exprs, tvar_defs
 
-    def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
-        if not isinstance(t, UnboundType):
+    def analyze_class_typevar_declaration(self, base: Type) -> Optional[TypeVarList]:
+        """Analyze type variables declared using Generic[...] or Protocol[...].
+
+        Args:
+            base: Non-analyzed base class
+
+        Return None if the base class does not declare type variables. Otherwise,
+        return the type variables.
+        """
+        if not isinstance(base, UnboundType):
             return None
-        unbound = t
+        unbound = base
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.node is None:
             return None
         if (sym.node.fullname() == 'typing.Generic' or
-                sym.node.fullname() == 'typing.Protocol' and t.args or
-                sym.node.fullname() == 'typing_extensions.Protocol' and t.args):
+                sym.node.fullname() == 'typing.Protocol' and base.args or
+                sym.node.fullname() == 'typing_extensions.Protocol' and base.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
@@ -1151,7 +1210,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     tvars.append(tvar)
                 else:
                     self.fail('Free type variable expected in %s[...]' %
-                              sym.node.name(), t)
+                              sym.node.name(), base)
             return tvars
         return None
 
@@ -1169,9 +1228,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, sym.node
 
-    def get_all_bases_tvars(self, defn: ClassDef, removed: List[int]) -> TypeVarList:
+    def get_all_bases_tvars(self,
+                            base_type_exprs: List[Expression],
+                            removed: List[int]) -> TypeVarList:
+        """Return all type variable references in bases."""
         tvars = []  # type: TypeVarList
-        for i, base_expr in enumerate(defn.base_type_exprs):
+        for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
                     base = expr_to_unanalyzed_type(base_expr)
@@ -1187,11 +1249,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not defn.info:
             defn.fullname = self.qualified_name(defn.name)
             # TODO: Nested classes
-            if self.is_module_scope() and self.qualified_name(defn.name) == 'builtins.object':
-                # Special case 'builtins.object'. A TypeInfo was already
+            if (self.is_module_scope()
+                    and self.cur_mod_id == 'builtins'
+                    and defn.name in CORE_BUILTIN_CLASSES):
+                # Special case core built-in classes. A TypeInfo was already
                 # created for it before semantic analysis, but with a dummy
                 # ClassDef. Patch the real ClassDef object.
-                info = self.globals['object'].node
+                info = self.globals[defn.name].node
                 assert isinstance(info, TypeInfo)
                 defn.info = info
                 info.defn = defn
@@ -1224,27 +1288,45 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 defn.fullname = defn.info._fullname
                 self.globals[local_name] = node
 
-    def analyze_base_classes(self, defn: ClassDef) -> None:
-        """Analyze and set up base classes.
+    def analyze_base_classes(
+            self,
+            base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[Type, Expression]],
+                                                                 bool]]:
+        """Analyze base class types.
+
+        Return None if some definition was incomplete. Otherwise, return a tuple
+        with these items:
+
+         * List of (analyzed type, original expression) tuples
+         * Boolean indicating whether one of the bases had a semantic analysis error
+        """
+        is_error = False
+        bases = []
+        for base_expr in base_type_exprs:
+            try:
+                base = self.expr_to_analyzed_type(base_expr)
+            except TypeTranslationError:
+                self.fail('Invalid base class', base_expr)
+                is_error = True
+                continue
+            if base is None:
+                return None
+            bases.append((base, base_expr))
+        return bases, is_error
+
+    def configure_base_classes(self,
+                               defn: ClassDef,
+                               bases: List[Tuple[Type, Expression]]) -> None:
+        """Set up base classes.
 
         This computes several attributes on the corresponding TypeInfo defn.info
         related to the base classes: defn.info.bases, defn.info.mro, and
         miscellaneous others (at least tuple_type, fallback_to_any, and is_enum.)
         """
-
         base_types = []  # type: List[Instance]
         info = defn.info
 
-        for base_expr in defn.base_type_exprs:
-            try:
-                base = self.expr_to_analyzed_type(base_expr)
-            except TypeTranslationError:
-                self.fail('Invalid base class', base_expr)
-                info.fallback_to_any = True
-                continue
-
-            assert base is not None  # TODO: Handle None values
-
+        for base, base_expr in bases:
             if isinstance(base, TupleType):
                 if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
@@ -1628,10 +1710,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
-                if import_id in self.incomplete_namespaces:
+                if self.is_incomplete_namespace(import_id):
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
-                    self.deferred = True
+                    self.mark_incomplete()
                     return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
@@ -1820,9 +1902,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                allow_tuple_literal=allow_tuple_literal,
                                report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
-        prev_incomplete = self.num_incomplete_refs
+        tag = self.track_incomplete_refs()
         typ = t.accept(a)
-        if self.num_incomplete_refs != prev_incomplete:
+        if self.found_incomplete_ref(tag):
             # Something could not be bound yet.
             return None
         self.add_type_alias_deps(a.aliases_used)
@@ -1845,8 +1927,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)
-        self.analyze_lvalues(s)
+        tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
+        if self.found_incomplete_ref(tag):
+            # Initializer couldn't be fully analyzed. Defer the current node and give up.
+            self.mark_incomplete()
+            return
+        self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
@@ -2163,8 +2250,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                        explicit_type: bool = False,
                        is_final: bool = False) -> None:
         """Analyze an lvalue or assignment target.
-
-        Note that this is used in both pass 1 and 2.
 
         Args:
             lval: The target lvalue
@@ -2622,7 +2707,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if analyzed is not None:
                     result.append(analyzed)
                 else:
-                    # TODO: Is this the right thing to do?
+                    # TODO: Is this the right thing to do? Or maybe return Optional[List[Type]]?
                     result.append(AnyType(TypeOfAny.from_error))
             except TypeTranslationError:
                 self.fail('Type expected', node)
@@ -3070,8 +3155,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Some call expressions are recognized as special forms, including
         cast(...).
         """
-        if expr.analyzed:
-            return
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
             # Special form cast(...).
@@ -3212,13 +3295,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
-            file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
+            file = base.node
             # TODO: Should we actually use this? Not sure if this makes a difference.
             # if file.fullname() == self.cur_mod_id:
             #     names = self.globals
             # else:
             #     names = file.names
-            n = file.names.get(expr.name, None) if file is not None else None
+            n = file.names.get(expr.name, None)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 if not n:
@@ -3247,6 +3330,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
             else:
+                if self.is_incomplete_namespace(file.fullname()):
+                    self.record_incomplete_ref()
+                    return
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
                 #
@@ -3619,6 +3705,36 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return n
             return None
 
+    def defer(self) -> None:
+        """Defer current analysis target to be analyzed again."""
+        self.deferred = True
+
+    def track_incomplete_refs(self) -> Tag:
+        """Return tag that can be used for tracking references to incomplete names."""
+        return self.num_incomplete_refs
+
+    def found_incomplete_ref(self, tag: Tag) -> bool:
+        """Have we encountered an incomplete reference since starting tracking?"""
+        return self.num_incomplete_refs != tag
+
+    def record_incomplete_ref(self) -> None:
+        """Record the encounter of an incomplete reference and defer current analysis target."""
+        self.defer()
+        self.num_incomplete_refs += 1
+
+    def mark_incomplete(self) -> None:
+        """Mark the current module namespace as incomplete (and defer current analysis target)."""
+        self.defer()
+        self.incomplete = True
+
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        """Is a module or class namespace potentially missing some definitions?
+
+        If a name is missing from an incomplete namespace, we'll need to defer the
+        current analysis target.
+        """
+        return fullname in self.incomplete_namespaces
+
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[SymbolTableNode]:
         """Create a dummy global symbol using __getattr__ return type.
@@ -3824,11 +3940,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         # TODO: Reference to another namespace
-        if self.cur_mod_id in self.incomplete_namespaces:
+        if self.is_incomplete_namespace(self.cur_mod_id):
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
-            self.deferred = True
-            self.num_incomplete_refs += 1
+            self.record_incomplete_ref()
             return
         message = "Name '{}' is not defined".format(name)
         extra = self.undefined_name_extra_info(name)

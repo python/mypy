@@ -2685,7 +2685,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-        manager.semantic_analyzer.add_builtin_aliases(typing_mod)
+        if not manager.options.new_semantic_analyzer:
+            manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     if manager.options.new_semantic_analyzer:
         semantic_analysis_for_scc(graph, scc)
     else:
