@@ -51,6 +51,34 @@ x = 'hi'
 ==
 a.py:3: error: Unsupported operand types for + ("int" and "str")
 
+[case testIncrCacheDoubleChange1]
+# num_build_steps: 2
+import b
+import c
+[file a.py]
+def f(x: int) -> None:
+    pass
+[file b.py]
+from a import f
+f(10)
+[file c.py]
+from a import f
+f(10)
+
+[file a.py.2]
+def f(x: int) -> None:
+    pass
+# nothing changed
+
+[file a.py.3]
+def f(x: str) -> None:
+    pass
+[out]
+==
+==
+c.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+b.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
 [case testIncrCacheProtocol1]
 # num_build_steps: 2
 import a

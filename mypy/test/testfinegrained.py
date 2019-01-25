@@ -86,6 +86,7 @@ class FineGrainedSuite(DataSuite):
         step = 1
         sources = self.parse_sources(main_src, step, options)
         if step <= num_regular_incremental_steps:
+            build_options.incremental = step > 1
             messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)

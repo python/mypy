@@ -753,30 +753,45 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
                               blocker=True)
 
 
-def invert_deps(proto_deps: Dict[str, Set[str]],
-                manager: BuildManager, graph: Graph) -> None:
-    deps = {}  # type: Dict[str, Set[str]]
-    things = [st.compute_fine_grained_deps() for st in graph.values()] + [proto_deps]
-    for st_deps in things:
-        for trigger, targets in st_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
-
+def invert_deps_inner(
+        deps: Dict[str, Set[str]],
+        graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
     from mypy.server.target import module_prefix
-    rdeps = {id: {} for id in graph}  # type: Dict[str, Dict[str, Set[str]]]
+    rdeps = {}  # type: Dict[str, Dict[str, Set[str]]]
     extra_deps = {}  # type: Dict[str, Set[str]]
     for trigger, targets in deps.items():
         assert trigger[0] == '<'
         module = module_prefix(graph, trigger[1:-1])
-        if module:
-            rdeps[module].setdefault(trigger, set()).update(targets)
+        if module and graph[module].tree:
+            mod_rdeps = rdeps.setdefault(module, {})
+            mod_rdeps.setdefault(trigger, set()).update(targets)
         else:
             extra_deps.setdefault(trigger, set()).update(targets)
+
+    return (rdeps, extra_deps)
+
+def invert_deps(proto_deps: Dict[str, Set[str]],
+                manager: BuildManager, graph: Graph) -> None:
+    deps = {}  # type: Dict[str, Set[str]]
+    things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
+    for st_deps in things:
+        for trigger, targets in st_deps.items():
+            deps.setdefault(trigger, set()).update(targets)
 
     def convert(x: Dict[str, Set[str]]) -> Dict[str, List[str]]:
         return {k: list(v) for k, v in x.items()}
 
+    # XXX: can only split them up if there was no cache
+    # no_cache = all(st.meta is None for st in graph.values())
+    # print(no_cache)
+    # print([(st.id, st.meta) for st in graph.values()])
+    if not manager.options.incremental:
+        rdeps, extra_deps = invert_deps_inner(deps, graph)
+    else:
+        rdeps, extra_deps = {}, deps
+
     # XXX: NOT THE PLACE FOR THIS YOU KNOW??
-    for id in graph:
+    for id in rdeps:
         _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
         assert deps_json
         manager.log("Writing deps cache", deps_json)
@@ -1624,7 +1639,11 @@ class State:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
         assert self.meta.deps_json
-        deps = json.loads(self.manager.metastore.read(self.meta.deps_json))
+        # XXX: Check this reasonably??
+        try:
+            deps = json.loads(self.manager.metastore.read(self.meta.deps_json))
+        except FileNotFoundError:
+            deps = {}
         # TODO: Assert deps file wasn't changed.
         val = {k: set(v) for k, v in deps.items()}
         self.manager.add_stats(load_fg_deps_time=time.time() - t0)
