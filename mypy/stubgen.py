@@ -10,7 +10,7 @@ The logic of this script can be split in three steps:
   - for C modules using runtime introspection and (optionally) Sphinx docs
 
 During first and third steps some problematic files can be skipped, but any
-error during second step will cause
+blocking error during second step will cause the whole program to stop.
 
 Basic usage:
 
