@@ -48,7 +48,7 @@ class StubgenCmdLineSuite(Suite):
             opts = parse_options(['-p', 'pack'])
             py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
             assert_equal(c_mods, [])
-            files = {os.path.relpath(mod.path) for mod in py_mods}
+            files = {os.path.relpath(mod.path or 'FAIL') for mod in py_mods}
             assert_equal(files, {'pack/__init__.py',
                                  'pack/a.py', 'pack/b.py'})
 
