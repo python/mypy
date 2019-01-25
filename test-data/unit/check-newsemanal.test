@@ -304,3 +304,19 @@ class C: pass
 class C2: pass # E: Name 'C2' already defined (possibly by an import)
 [file b.py]
 from a import C
+
+[case testNewAnalyzerImportStarForwardRef]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+x: A
+reveal_type(x) # E: Revealed type is 'b.A'
+
+from b import *
+
+class A: pass # E: Name 'A' already defined (possibly by an import)
+
+[file b.py]
+class A: pass
+from a import x

@@ -1749,6 +1749,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         i_id = self.correct_relative_import(i)
         if i_id in self.modules:
             m = self.modules[i_id]
+            if self.is_incomplete_namespace(i_id):
+                # Any names could be missing from the current namespace if the target module
+                # namespace is incomplete.
+                self.mark_incomplete('*')
             self.add_submodules_to_parent_modules(i_id, True)
             for name, orig_node in m.names.items():
                 node = self.dereference_module_cross_ref(orig_node)
@@ -3649,7 +3653,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Mark the current module namespace as incomplete (and defer current analysis target).
 
         Args:
-            name: The name that we weren't able to define
+            name: The name that we weren't able to define (or '*' if the name is unknown)
         """
         self.defer()
         self.incomplete = True
@@ -3830,7 +3834,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if existing is not None and context is not None:
             if existing.node != symbol.node:
                 self.name_already_defined(name, context, existing)
-        elif name not in self.missing_names:
+        elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
