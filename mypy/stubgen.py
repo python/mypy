@@ -517,7 +517,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
             if (self.is_top_level() and
-                    isinstance(lvalue, NameExpr) and self.is_type_expression(o.rvalue)):
+                    isinstance(lvalue, NameExpr) and not self.is_private_name(lvalue.name) and
+                    self.is_type_expression(o.rvalue)):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
@@ -587,12 +588,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             elif expr.name == 'None':
                 return not top_level
             else:
-                return True
+                return not self.is_private_name(expr.name)
         elif isinstance(expr, MemberExpr) and self.analyzed:
             # Also add function and module aliases.
-            return top_level and (isinstance(expr.node, (FuncDef, Decorator, MypyFile)) or
-                                  isinstance(expr.node, TypeInfo))
-        elif isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr):
+            return (top_level and (isinstance(expr.node, (FuncDef, Decorator, MypyFile)) or
+                                   isinstance(expr.node, TypeInfo)) and
+                    not self.is_private_member(expr.node.fullname()))
+        elif (isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr) and
+              not self.is_private_name(expr.base.name)):
             if isinstance(expr.index, TupleExpr):
                 indices = expr.index.items
             else:
@@ -734,6 +737,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__getstate__',
                                                      '__setstate__',
                                                      '__slots__'))
+
+    def is_private_member(self, fullname: str) -> bool:
+        parts = fullname.split('.')
+        for part in parts:
+            if self.is_private_name(part):
+                return True
+        return False
 
     def get_str_type_of_node(self, rvalue: Expression,
                              can_infer_optional: bool = False) -> str:

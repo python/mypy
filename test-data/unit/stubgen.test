@@ -1313,3 +1313,45 @@ def f(): ...
 import a
 
 g = a.f
+
+[case testPrivateAliasesExcluded_semanal]
+import a, _a
+
+class C: ...
+
+A = a._A
+B = _a.f
+_C = C
+[file a.py]
+class _A: ...
+[file _a.py]
+def f(): ...
+[out]
+from typing import Any
+
+class C: ...
+
+A: Any
+B: Any
+
+[case testPrivateAliasesIncluded_semanal]
+# flags: --include-private
+import a, _a
+
+class C: ...
+
+A = a._A
+B = _a.f
+_C = C
+[file a.py]
+class _A: ...
+[file _a.py]
+def f(): ...
+[out]
+import _a
+import a
+
+class C: ...
+A = a._A
+B = _a.f
+_C = C
