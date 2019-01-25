@@ -80,7 +80,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
                                for name, val in inspect.getmembers(package)
                                if inspect.ismodule(val)
                                and val.__name__ == package.__name__ + "." + name]
-                # recursively iterate through the subpackages
+                # Recursively iterate through the subpackages
                 for submodule in walk_packages(subpackages):
                     yield submodule
             # It's a module inside a package.  There's nothing else to walk/yield.
@@ -99,7 +99,7 @@ def find_module_path_and_all_py2(module: str,
     The path refers to the .py/.py[co] file. The second tuple item is
     None if the module doesn't define __all__.
 
-    Raise if the module can't be imported or exit if it's a C extension module.
+    Raise CantImport if the module can't be imported, or exit if it's a C extension module.
     """
     cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
     code = ("import importlib, json; mod = importlib.import_module('%s'); "

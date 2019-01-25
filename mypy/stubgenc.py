@@ -24,7 +24,7 @@ def generate_stub_for_c_module(module_name: str,
     This combines simple runtime introspection (looking for attributes with simple
     builtin types and signatures inferred from docs (if given).
 
-    If directory for target doesn't exist it will created. Existing stub
+    If directory for target doesn't exist it will be created. Existing stub
     will be overwritten.
     """
     module = importlib.import_module(module_name)
@@ -192,6 +192,7 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
 
     If typ represents a type that is inside module or is a type coming from builtins, remove
     module declaration from it. Return stripped name of the type.
+
     Arguments:
         typ: name of the type
         module: in which this type is used
@@ -212,7 +213,7 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
     """Generate property stub using introspection of 'obj'.
 
-    Infer type from doctring, append resulting lines to 'output'.
+    Try to infer type from doctring, append resulting lines to 'output'.
     """
     docstr = getattr(obj, '__doc__', None)
     inferred = infer_prop_type_from_docstring(docstr)
