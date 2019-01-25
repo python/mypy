@@ -165,6 +165,7 @@ class FineGrainedBuildManager:
         self.graph = result.graph
         self.previous_modules = get_module_to_path_map(self.graph)
         self.deps = get_all_dependencies(manager, self.graph)
+        self.unloaded_deps = set(self.graph)
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
@@ -328,6 +329,11 @@ class FineGrainedBuildManager:
         previous_modules = self.previous_modules
         graph = self.graph
 
+        # XXX: COMMENT
+        if module in self.unloaded_deps and module in graph:
+            merge_dependencies(graph[module].load_fine_grained_deps(), self.deps)
+            self.unloaded_deps.remove(module)
+
         # If this is an already existing module, make sure that we have
         # its tree loaded so that we can snapshot it for comparison.
         ensure_trees_loaded(manager, graph, [module])
@@ -358,7 +364,8 @@ class FineGrainedBuildManager:
                         if not trigger.endswith('__>')]
             self.manager.log_fine_grained('triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
-        collect_dependencies([module], self.deps, graph)
+        if module in graph:
+            merge_dependencies(graph[module].compute_fine_grained_deps(), self.deps)
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
@@ -417,7 +424,9 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict
     """Return the fine-grained dependency map for an entire build."""
     # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
-    collect_dependencies(graph, deps, graph)
+    for id in graph:
+        if graph[id].tree is not None:
+            merge_dependencies(graph[id].compute_fine_grained_deps(), deps)
     TypeState.add_all_protocol_deps(deps)
     return deps
 
@@ -653,14 +662,10 @@ def get_sources(fscache: FileSystemCache,
     return sources
 
 
-def collect_dependencies(new_modules: Iterable[str],
-                         deps: Dict[str, Set[str]],
-                         graph: Dict[str, State]) -> None:
-    for id in new_modules:
-        if id not in graph:
-            continue
-        for trigger, targets in graph[id].fine_grained_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
+def merge_dependencies(new_deps: Dict[str, Set[str]],
+                       deps: Dict[str, Set[str]]) -> None:
+    for trigger, targets in new_deps.items():
+        deps.setdefault(trigger, set()).update(targets)
     # Merge also the newly added protocol deps.
     TypeState.update_protocol_deps(deps)
 

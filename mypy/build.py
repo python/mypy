@@ -241,7 +241,6 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('hash', str),
                         ('dependencies', List[str]),  # names of imported modules
                         ('data_mtime', int),  # mtime of data_json
-                        ('deps_mtime', Optional[int]),  # mtime of deps_json
                         ('data_json', str),  # path of <id>.data.json
                         # path of <id>.deps.json, which we use to store fine-grained
                         # dependency information for fine-grained mode
@@ -281,7 +280,6 @@ def cache_meta_from_dict(meta: Dict[str, Any],
         meta.get('hash', sentinel),
         meta.get('dependencies', []),
         int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
-        int(meta['deps_mtime']) if meta.get('deps_mtime') is not None else None,
         data_json,
         deps_json,
         meta.get('suppressed', []),
@@ -754,10 +752,11 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
         manager.errors.report(0, 0, "Error writing protocol dependencies cache",
                               blocker=True)
 
+
 def invert_deps(proto_deps: Dict[str, Set[str]],
                 manager: BuildManager, graph: Graph) -> None:
     deps = {}  # type: Dict[str, Set[str]]
-    things = [st.fine_grained_deps for st in graph.values()] + [proto_deps]
+    things = [st.compute_fine_grained_deps() for st in graph.values()] + [proto_deps]
     for st_deps in things:
         for trigger, targets in st_deps.items():
             deps.setdefault(trigger, set()).update(targets)
@@ -780,9 +779,9 @@ def invert_deps(proto_deps: Dict[str, Set[str]],
     for id in graph:
         _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
         assert deps_json
-        fname = deps_json.replace('.deps.json', '.rdeps.json')
-        manager.metastore.write(fname, json.dumps(convert(rdeps[id])))
-    manager.metastore.write('@extra_deps.json', json.dumps(convert(extra_deps)))
+        manager.metastore.write(deps_json, json.dumps(convert(rdeps[id])))
+    _, proto_cache = get_protocol_deps_cache_name()
+    manager.metastore.write(proto_cache, json.dumps(convert(extra_deps)))
 
 
 PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
@@ -948,8 +947,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
             m.mtime is None or m.size is None or
-            m.dependencies is None or m.data_mtime is None or
-            (manager.options.cache_fine_grained and m.deps_mtime is None)):
+            m.dependencies is None or m.data_mtime is None):
         manager.log('Metadata abandoned for {}: attributes are missing'.format(id))
         return None
 
@@ -1019,13 +1017,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if data_mtime != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
-    deps_mtime = None
-    if manager.options.cache_fine_grained:
-        assert meta.deps_json
-        deps_mtime = manager.getmtime(meta.deps_json)
-        if deps_mtime != meta.deps_mtime:
-            manager.log('Metadata abandoned for {}: deps cache is modified'.format(id))
-            return None
 
     path = manager.normpath(path)
     try:
@@ -1083,7 +1074,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'size': size,
                 'hash': source_hash,
                 'data_mtime': data_mtime,
-                'deps_mtime': deps_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
                 'child_modules': meta.child_modules,
@@ -1125,7 +1115,6 @@ def json_dumps(obj: Any, debug_cache: bool) -> str:
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
-                serialized_fine_grained_deps: Dict[str, List[str]],
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int], dep_lines: List[int],
                 old_interface_hash: str, source_hash: str,
@@ -1214,14 +1203,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
             return interface_hash, None
         data_mtime = manager.getmtime(data_json)
 
-    deps_mtime = None
-    if deps_json:
-        deps_str = json_dumps(serialized_fine_grained_deps, manager.options.debug_cache)
-        if not metastore.write(deps_json, deps_str):
-            manager.log("Error writing deps JSON file {}".format(deps_json))
-            return interface_hash, None
-        deps_mtime = manager.getmtime(deps_json)
-
     mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
     options = manager.options.clone_for_module(id)
@@ -1232,7 +1213,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'size': size,
             'hash': source_hash,
             'data_mtime': data_mtime,
-            'deps_mtime': deps_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
             'child_modules': child_modules,
@@ -1472,8 +1452,6 @@ class State:
     # Whether the module has an error or any of its dependencies have one.
     transitive_error = False
 
-    fine_grained_deps = None  # type: Dict[str, Set[str]]
-
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
@@ -1507,7 +1485,6 @@ class State:
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
         self._type_checker = None
-        self.fine_grained_deps = {}
         if not path and source is None:
             assert id is not None
             try:
@@ -1638,14 +1615,17 @@ class State:
         self.manager.errors.set_import_context(save_import_context)
         self.check_blockers()
 
-    # Methods for processing cached modules.
-    def load_fine_grained_deps(self) -> None:
+    def load_fine_grained_deps(self) -> Dict[str, Set[str]]:
+        if self.meta is None: return {}
+        t0 = time.time()
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
         assert self.meta.deps_json
         deps = json.loads(self.manager.metastore.read(self.meta.deps_json))
         # TODO: Assert deps file wasn't changed.
-        self.fine_grained_deps = {k: set(v) for k, v in deps.items()}
+        val = {k: set(v) for k, v in deps.items()}
+        self.manager.add_stats(load_fg_deps_time=time.time() - t0)
+        return val
 
     def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
@@ -1925,7 +1905,7 @@ class State:
             elif dep not in self.suppressed and dep in self.manager.missing_modules:
                 self.suppressed.append(dep)
 
-    def compute_fine_grained_deps(self) -> None:
+    def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
         assert self.tree is not None
         if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
             # We don't track changes to typeshed -- the assumption is that they are only changed
@@ -1933,12 +1913,12 @@ class State:
             #
             # TODO: Not a reliable test, as we could have a package named typeshed.
             # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
-            return
+            return {}
         from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
-        self.fine_grained_deps = get_dependencies(target=self.tree,
-                                                  type_map=self.type_map(),
-                                                  python_version=self.options.python_version,
-                                                  options=self.manager.options)
+        return get_dependencies(target=self.tree,
+                                type_map=self.type_map(),
+                                python_version=self.options.python_version,
+                                options=self.manager.options)
 
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
@@ -1968,7 +1948,6 @@ class State:
         assert self.source_hash is not None
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
-            {k: list(v) for k, v in self.fine_grained_deps.items()},
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
             dep_prios, dep_lines, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
@@ -2325,8 +2304,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
 
                 invert_deps(TypeState.proto_deps, manager, graph)
 
-
-
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
@@ -2627,14 +2604,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
 def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> None:
     """Finish loading everything for use in the fine-grained incremental cache"""
-
-    # If we are running in fine-grained incremental mode with caching,
-    # we don't actually have much to do: just load the fine-grained
-    # deps.
-    t0 = time.time()
-    for id, state in graph.items():
-        state.load_fine_grained_deps()
-    manager.add_stats(load_fg_deps_time=time.time() - t0)
+    pass
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
