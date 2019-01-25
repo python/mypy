@@ -175,3 +175,47 @@ f3(n2)
 from typing import NewType
 import a
 N1 = NewType('N1', a.A)
+
+[case testNewAnalyzerInheritanceForwardRef]
+# flags: --new-semantic-analyzer
+class C(B):
+    pass
+class B(A):
+    pass
+class A:
+    def __init__(self, x: str) -> None: pass
+    def f(self, x: int) -> None: pass
+
+C(1) # E: Argument 1 to "C" has incompatible type "int"; expected "str"
+B(1) # E: Argument 1 to "B" has incompatible type "int"; expected "str"
+C('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+B('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testNewAnalyzerInheritanceMROInCycle]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import A
+import b
+
+class B(A):
+    b: int
+
+class D(b.C):
+    d: int
+
+d = D()
+reveal_type(d.a) # E: Revealed type is 'builtins.int'
+reveal_type(d.b) # E: Revealed type is 'builtins.int'
+reveal_type(d.c) # E: Revealed type is 'builtins.int'
+reveal_type(d.d) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import B
+
+class A:
+    a: int
+
+class C(B):
+    c: int

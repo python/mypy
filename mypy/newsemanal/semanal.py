@@ -871,28 +871,53 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
-        self.setup_class_def_analysis(defn)
-        with self.scope.class_scope(defn.info):
-            with self.tvar_scope_frame(self.tvar_scope.class_frame()):
-                self.analyze_class(defn)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame()):
+            self.analyze_class(defn)
 
     def analyze_class(self, defn: ClassDef) -> None:
-        is_protocol = self.detect_protocol_base(defn)
-        self.update_metaclass(defn)
-        self.clean_up_bases_and_infer_type_variables(defn)
-        self.analyze_class_keywords(defn)
-        if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
+        tag = self.track_incomplete_refs()
+
+        bases = defn.base_type_exprs
+
+        is_protocol = self.detect_protocol_base(bases)
+        # TODO: Support metaclasses
+        # self.update_metaclass(defn)
+        bases, tvar_defs = self.clean_up_bases_and_infer_type_variables(bases,
+                                                                        context=defn)
+        # TODO: Support keyword arguments
+        # self.analyze_class_keywords(defn)
+        result = self.analyze_base_classes(bases)
+
+        if result is None or self.found_incomplete_ref(tag):
+            # Something was incomplete -- defer current target.
+            self.mark_incomplete()
             return
-        if self.analyze_namedtuple_classdef(defn):
-            return
-        self.analyze_base_classes(defn)
-        defn.info.is_protocol = is_protocol
-        self.analyze_metaclass(defn)
-        defn.info.runtime_protocol = False
-        for decorator in defn.decorators:
-            self.analyze_class_decorator(defn, decorator)
-        self.analyze_class_body_common(defn)
-        self.setup_type_promotion(defn)
+
+        base_types, base_error = result
+
+        # Create TypeInfo for class now that base classes and the MRO can be calculated.
+        self.setup_class_def_analysis(defn)
+
+        defn.type_vars = tvar_defs
+        defn.info.type_vars = [tvar.fullname for tvar in tvar_defs]
+        if base_error:
+            defn.info.fallback_to_any = True
+
+        with self.scope.class_scope(defn.info):
+            self.configure_base_classes(defn, base_types)
+
+            if self.typed_dict_analyzer.analyze_typeddict_classdef(defn):
+                return
+            if self.analyze_namedtuple_classdef(defn):
+                return
+
+            defn.info.is_protocol = is_protocol
+            self.analyze_metaclass(defn)
+            defn.info.runtime_protocol = False
+            for decorator in defn.decorators:
+                self.analyze_class_decorator(defn, decorator)
+            self.analyze_class_body_common(defn)
+            self.setup_type_promotion(defn)
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
@@ -1077,8 +1102,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
 
-    def detect_protocol_base(self, defn: ClassDef) -> bool:
-        for base_expr in defn.base_type_exprs:
+    def detect_protocol_base(self, base_type_exprs: List[Expression]) -> bool:
+        """Return True if one of the base class expressions refers to Protocol."""
+        for base_expr in base_type_exprs:
             try:
                 base = expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
@@ -1092,7 +1118,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return True
         return False
 
-    def clean_up_bases_and_infer_type_variables(self, defn: ClassDef) -> None:
+    def clean_up_bases_and_infer_type_variables(
+            self,
+            base_type_exprs: List[Expression],
+            context: Context) -> Tuple[List[Expression],
+                                       List[TypeVarDef]]:
         """Remove extra base classes such as Generic and infer type vars.
 
         For example, consider this class:
@@ -1103,10 +1133,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         type variable 'T' is a type argument of Foo.
 
         Note that this is performed *before* semantic analysis.
+
+        Returns (remaining base expressions, inferred type variables).
         """
+        base_type_exprs = base_type_exprs[:]
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
-        for i, base_expr in enumerate(defn.base_type_exprs):
+        for i, base_expr in enumerate(base_type_exprs):
             self.analyze_type_expr(base_expr)
 
             try:
@@ -1114,10 +1147,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            tvars = self.analyze_typevar_declaration(base)
+            tvars = self.analyze_class_typevar_declaration(base)
             if tvars is not None:
                 if declared_tvars:
-                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', defn)
+                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
                 declared_tvars.extend(tvars)
             if isinstance(base, UnboundType):
@@ -1129,40 +1162,44 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         # also remove bare 'Protocol' bases
                         removed.append(i)
 
-        all_tvars = self.get_all_bases_tvars(defn, removed)
+        all_tvars = self.get_all_bases_tvars(base_type_exprs, removed)
         if declared_tvars:
             if len(remove_dups(declared_tvars)) < len(declared_tvars):
-                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", defn)
+                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", context)
             declared_tvars = remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
                 self.fail("If Generic[...] or Protocol[...] is present"
-                          " it should list all type variables", defn)
+                          " it should list all type variables", context)
                 # In case of error, Generic tvars will go first
                 declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
             declared_tvars = all_tvars
-        if declared_tvars:
-            if defn.info:
-                defn.info.type_vars = [name for name, _ in declared_tvars]
         for i in reversed(removed):
-            defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
-            del defn.base_type_exprs[i]
+            del base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             tvar_defs.append(tvar_def)
-        defn.type_vars = tvar_defs
+        return base_type_exprs, tvar_defs
 
-    def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
-        if not isinstance(t, UnboundType):
+    def analyze_class_typevar_declaration(self, base: Type) -> Optional[TypeVarList]:
+        """Analyze type variables declared using Generic[...] or Protocol[...].
+
+        Args:
+            base: Non-analyzed base class
+
+        Return None if the base class does not declare type variables. Otherwise,
+        return the type variables.
+        """
+        if not isinstance(base, UnboundType):
             return None
-        unbound = t
+        unbound = base
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.node is None:
             return None
         if (sym.node.fullname() == 'typing.Generic' or
-                sym.node.fullname() == 'typing.Protocol' and t.args or
-                sym.node.fullname() == 'typing_extensions.Protocol' and t.args):
+                sym.node.fullname() == 'typing.Protocol' and base.args or
+                sym.node.fullname() == 'typing_extensions.Protocol' and base.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
@@ -1170,7 +1207,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     tvars.append(tvar)
                 else:
                     self.fail('Free type variable expected in %s[...]' %
-                              sym.node.name(), t)
+                              sym.node.name(), base)
             return tvars
         return None
 
@@ -1188,9 +1225,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, sym.node
 
-    def get_all_bases_tvars(self, defn: ClassDef, removed: List[int]) -> TypeVarList:
+    def get_all_bases_tvars(self,
+                            base_type_exprs: List[Expression],
+                            removed: List[int]) -> TypeVarList:
+        """Return all type variable references in bases."""
         tvars = []  # type: TypeVarList
-        for i, base_expr in enumerate(defn.base_type_exprs):
+        for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
                     base = expr_to_unanalyzed_type(base_expr)
@@ -1245,27 +1285,45 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 defn.fullname = defn.info._fullname
                 self.globals[local_name] = node
 
-    def analyze_base_classes(self, defn: ClassDef) -> None:
-        """Analyze and set up base classes.
+    def analyze_base_classes(
+            self,
+            base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[Type, Expression]],
+                                                                 bool]]:
+        """Analyze base class types.
+
+        Return None if some definition was incomplete. Otherwise, return a tuple
+        with these items:
+
+         * List of (analyzed type, original expression) tuples
+         * Boolean indicating whether one of the bases had a semantic analysis error
+        """
+        is_error = False
+        bases = []
+        for base_expr in base_type_exprs:
+            try:
+                base = self.expr_to_analyzed_type(base_expr)
+            except TypeTranslationError:
+                self.fail('Invalid base class', base_expr)
+                is_error = True
+                continue
+            if base is None:
+                return None
+            bases.append((base, base_expr))
+        return bases, is_error
+
+    def configure_base_classes(self,
+                               defn: ClassDef,
+                               bases: List[Tuple[Type, Expression]]) -> None:
+        """Set up base classes.
 
         This computes several attributes on the corresponding TypeInfo defn.info
         related to the base classes: defn.info.bases, defn.info.mro, and
         miscellaneous others (at least tuple_type, fallback_to_any, and is_enum.)
         """
-
         base_types = []  # type: List[Instance]
         info = defn.info
 
-        for base_expr in defn.base_type_exprs:
-            try:
-                base = self.expr_to_analyzed_type(base_expr)
-            except TypeTranslationError:
-                self.fail('Invalid base class', base_expr)
-                info.fallback_to_any = True
-                continue
-
-            assert base is not None  # TODO: Handle None values
-
+        for base, base_expr in bases:
             if isinstance(base, TupleType):
                 if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
