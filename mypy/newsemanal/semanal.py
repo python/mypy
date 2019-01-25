@@ -434,20 +434,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self._visit_func_def(defn)
 
     def add_func_to_symbol_table(self, func: FuncDef) -> None:
-        if self.is_func_scope():
-            # These are handled later.
-            return
         func._fullname = self.qualified_name(func.name())
-        # TODO: Module-level __getattr__
-        # TODO: Conditional function definitions
-        if self.is_module_scope():
-            if func.name() not in self.globals:
-                self.globals[func.name()] = SymbolTableNode(GDEF, func)
-        elif self.is_class_scope():
-            info = self.type
-            assert info is not None
-            if func.name() not in info.names:
-                info.names[func.name()] = SymbolTableNode(MDEF, func)
+        self.add_symbol(func.name(), func, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -463,55 +451,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
             defn.is_conditional = self.block_depth[-1] > 0
 
-            # TODO(jukka): Figure out how to share the various cases. It doesn't
-            #   make sense to have (almost) duplicate code (here and elsewhere) for
-            #   3 cases: module-level, class-level and local names. Maybe implement
-            #   a common stack of namespaces. As the 3 kinds of namespaces have
-            #   different semantics, this wouldn't always work, but it might still
-            #   be a win.
-            #   Also we can re-use some logic in self.add_symbol().
             if self.is_class_scope():
                 # Method definition
-                assert self.type is not None, "Type not set at class scope"
+                assert self.type is not None
                 defn.info = self.type
-                add_symbol = True
-                if not defn.is_decorated and not defn.is_overload:
-                    if (defn.name() in self.type.names and
-                            self.type.names[defn.name()].node != defn):
-                        # Redefinition. Conditional redefinition is okay.
-                        n = self.type.names[defn.name()].node
-                        if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn,
-                                                      self.type.names[defn.name()])
-                            add_symbol = False
-                    if add_symbol:
-                        self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                     assert isinstance(defn.type, CallableType)
                     if isinstance(defn.type.ret_type, AnyType):
                         defn.type = defn.type.copy_modified(ret_type=NoneTyp())
                 self.prepare_method_signature(defn, self.type)
-            elif self.is_func_scope():
-                # Nested function
-                assert self.locals[-1] is not None, "No locals at function scope"
-                if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.locals[-1]:
-                        # Redefinition. Conditional redefinition is okay.
-                        n = self.locals[-1][defn.name()].node
-                        if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn,
-                                                      self.locals[-1][defn.name()])
-                    else:
-                        self.add_local(defn, defn)
-            else:
-                # Top-level function
-                if not defn.is_decorated and not defn.is_overload:
-                    symbol = self.globals[defn.name()]
-                    if isinstance(symbol.node, FuncDef) and symbol.node != defn:
-                        # This is redefinition. Conditional redefinition is okay.
-                        if not self.set_original_def(symbol.node, defn):
-                            # Report error.
-                            self.check_no_global(defn.name(), defn, True)
 
             # Analyze function signature and initializers in the first phase
             # (at least this mirrors what happens at runtime).
@@ -573,8 +521,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         We reject straight redefinitions of functions, as they are usually
         a programming error. For example:
 
-        . def f(): ...
-        . def f(): ...  # Error: 'f' redefined
+          def f(): ...
+          def f(): ...  # Error: 'f' redefined
         """
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
