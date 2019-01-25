@@ -29,16 +29,17 @@ class StubgenCmdLineSuite(Suite):
             with tempfile.TemporaryDirectory() as tmp:
                 os.chdir(tmp)
                 os.mkdir('subdir')
-                self.make_file('subdir/a.py')
-                self.make_file('subdir/b.py')
+                self.make_file('subdir', 'a.py')
+                self.make_file('subdir', 'b.py')
                 os.mkdir('subdir/pack')
-                self.make_file('subdir/pack/__init__.py')
+                self.make_file('subdir', 'pack', '__init__.py')
                 opts = parse_options(['subdir'])
                 py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
                 assert_equal(c_mods, [])
                 files = {mod.path for mod in py_mods}
-                assert_equal(files, {'subdir/pack/__init__.py',
-                                     'subdir/a.py', 'subdir/b.py'})
+                assert_equal(files, {os.path.join('subdir', 'pack', '__init__.py'),
+                                     os.path.join('subdir', 'a.py'),
+                                     os.path.join('subdir', 'b.py')})
         finally:
             os.chdir(current)
 
@@ -48,19 +49,21 @@ class StubgenCmdLineSuite(Suite):
             with tempfile.TemporaryDirectory() as tmp:
                 os.chdir(tmp)
                 os.mkdir('pack')
-                self.make_file('pack/__init__.py', 'from . import a, b')
-                self.make_file('pack/a.py')
-                self.make_file('pack/b.py')
+                self.make_file('pack', '__init__.py', content='from . import a, b')
+                self.make_file('pack', 'a.py')
+                self.make_file('pack', 'b.py')
                 opts = parse_options(['-p', 'pack'])
                 py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
                 assert_equal(c_mods, [])
                 files = {os.path.relpath(mod.path or 'FAIL') for mod in py_mods}
-                assert_equal(files, {'pack/__init__.py',
-                                     'pack/a.py', 'pack/b.py'})
+                assert_equal(files, {os.path.join('pack', '__init__.py'),
+                                     os.path.join('pack', 'a.py'),
+                                     os.path.join('pack', 'b.py')})
         finally:
             os.chdir(current)
 
-    def make_file(self, file: str, content: str = '') -> None:
+    def make_file(self, *path: str, content: str = '') -> None:
+        file = os.path.join(*path)
         with open(file, 'w') as f:
             f.write(content)
 
