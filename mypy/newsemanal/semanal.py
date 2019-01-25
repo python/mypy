@@ -370,7 +370,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.patches = patches
         self.deferred = False  # Set to true if another analysis pass is needed
         self.incomplete = False  # Set to true if current module namespace is missing things
-        # These names couldn't be added to the symbol table
+        # These names couldn't be added to the symbol table due to incomplete deps.
         self.missing_names = set()  # type: Set[str]
 
         if isinstance(node, MypyFile):
