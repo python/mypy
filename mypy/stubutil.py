@@ -137,7 +137,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
     if not docstr:
         return None
 
-    state = [State.INIT, ]
+    state = [State.INIT]
     accumulator = ""
     arg_type = None
     arg_name = ""
@@ -151,8 +151,8 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
             if token.type == tokenize.NAME and token.string == name and state[-1] == State.INIT:
                 state.append(State.FUNCTION_NAME)
 
-            elif token.type == tokenize.OP and token.string == '(' and state[-1] == \
-                    State.FUNCTION_NAME:
+            elif (token.type == tokenize.OP and token.string == '(' and
+                    state[-1] == State.FUNCTION_NAME):
                 state.pop()
                 accumulator = ""
                 found = True
@@ -162,24 +162,24 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 # reset state, function name not followed by '('
                 state.pop()
 
-            elif token.type == tokenize.OP and token.string in ('[', '(', '{') and \
-                    state[-1] != State.INIT:
+            elif (token.type == tokenize.OP and token.string in ('[', '(', '{') and
+                  state[-1] != State.INIT):
                 accumulator += token.string
                 state.append(State.OPEN_BRACKET)
 
-            elif token.type == tokenize.OP and token.string in (']', ')', '}') and \
-                    state[-1] == State.OPEN_BRACKET:
+            elif (token.type == tokenize.OP and token.string in (']', ')', '}') and
+                    state[-1] == State.OPEN_BRACKET):
                 accumulator += token.string
                 state.pop()
 
-            elif token.type == tokenize.OP and token.string == ':' and \
-                    state[-1] == State.ARGUMENT_LIST:
+            elif (token.type == tokenize.OP and token.string == ':' and
+                    state[-1] == State.ARGUMENT_LIST):
                 arg_name = accumulator
                 accumulator = ""
                 state.append(State.ARGUMENT_TYPE)
 
-            elif token.type == tokenize.OP and token.string == '=' and state[-1] in (
-                    State.ARGUMENT_LIST, State.ARGUMENT_TYPE):
+            elif (token.type == tokenize.OP and token.string == '=' and
+                  state[-1] in (State.ARGUMENT_LIST, State.ARGUMENT_TYPE)):
                 if state[-1] == State.ARGUMENT_TYPE:
                     arg_type = accumulator
                     state.pop()
@@ -188,8 +188,8 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 accumulator = ""
                 state.append(State.ARGUMENT_DEFAULT)
 
-            elif token.type == tokenize.OP and token.string in (',', ')') and state[-1] in (
-                    State.ARGUMENT_LIST, State.ARGUMENT_DEFAULT, State.ARGUMENT_TYPE):
+            elif (token.type == tokenize.OP and token.string in (',', ')') and
+                  state[-1] in (State.ARGUMENT_LIST, State.ARGUMENT_DEFAULT, State.ARGUMENT_TYPE)):
                 if state[-1] == State.ARGUMENT_DEFAULT:
                     arg_default = accumulator
                     state.pop()
@@ -212,8 +212,8 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunct
                 state.append(State.RETURN_VALUE)
 
             # ENDMAKER is necessary for python 3.4 and 3.5
-            elif token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and state[-1] in (
-                    State.INIT, State.RETURN_VALUE):
+            elif (token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and
+                  state[-1] in (State.INIT, State.RETURN_VALUE)):
                 if state[-1] == State.RETURN_VALUE:
                     ret_type = accumulator
                     accumulator = ""

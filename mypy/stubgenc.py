@@ -126,11 +126,9 @@ def generate_c_function_stub(module: ModuleType,
 
     if (name in ('__new__', '__init__') and name not in sigs and class_name and
             class_name in class_sigs):
-        inferred = [TypedFunctionSig(
-            name=name,
-            args=infer_arg_sig_from_docstring(class_sigs[class_name]),
-            ret_type=ret_type
-        )]  # type: Optional[List[TypedFunctionSig]]
+        inferred = [TypedFunctionSig(name=name,
+                                     args=infer_arg_sig_from_docstring(class_sigs[class_name]),
+                                     ret_type=ret_type)]  # type: Optional[List[TypedFunctionSig]]
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
@@ -138,11 +136,10 @@ def generate_c_function_stub(module: ModuleType,
             if class_name and name not in sigs:
                 inferred = [TypedFunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
             else:
-                inferred = [TypedFunctionSig(
-                    name=name,
-                    args=infer_arg_sig_from_docstring(sigs.get(name, '(*args, **kwargs)')),
-                    ret_type=ret_type
-                )]
+                inferred = [TypedFunctionSig(name=name,
+                                             args=infer_arg_sig_from_docstring(
+                                                 sigs.get(name, '(*args, **kwargs)')),
+                                             ret_type=ret_type)]
 
     is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
