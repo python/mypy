@@ -267,7 +267,6 @@ class StubgenUtilSuite(Suite):
             ]
         )
 
-
     def test_infer_prop_type_from_docstring(self) -> None:
         assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
         assert_equal(infer_prop_type_from_docstring('Optional[int]: An int.'), 'Optional[int]')
