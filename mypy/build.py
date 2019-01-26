@@ -473,7 +473,7 @@ class BuildManager(BuildManagerBase):
                        determine whether we write cache files or not.
       stats:           Dict with various instrumentation numbers, it is used
                        not only for debugging, but also required for correctness,
-                       in particular to check consistency of the protocol dependency cache.
+                       in particular to check consistency of the fine-grained dependency cache.
       fscache:         A file system cacher
     """
 
@@ -713,21 +713,23 @@ class BuildManager(BuildManagerBase):
         return self.stats
 
 
-def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
-                              manager: BuildManager, graph: Graph) -> None:
-    """Write cache files for protocol dependencies.
+def deps_to_json(x: Dict[str, Set[str]]) -> str:
+    return json.dumps({k: list(v) for k, v in x.items()})
 
-    Serialize protocol dependencies map for fine grained mode. Also take the snapshot
-    of current sources to later check consistency between protocol cache and individual
+
+def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
+                     extra_deps: Dict[str, Set[str]],
+                     manager: BuildManager, graph: Graph) -> None:
+    """Write cache files for fine-grained dependencies.
+
+    Serialize fine-grained dependencies map for fine grained mode. Also take the snapshot
+    of current sources to later check consistency between the extra cache and individual
     cache files.
 
-    Out of three kinds of protocol dependencies described in TypeState._snapshot_protocol_deps,
-    only the last two kinds are stored in global protocol caches, dependencies of the first kind
-    (i.e. <SuperProto[wildcard]>, <Proto[wildcard]> -> <Proto>) are written to the normal
-    per-file fine grained dependency caches.
+    XXX: DESCRIBE
     """
     metastore = manager.metastore
-    proto_meta, proto_cache = get_protocol_deps_cache_name()
+    deps_meta, deps_cache = get_deps_cache_name()
     meta_snapshot = {}  # type: Dict[str, str]
     error = False
     for id, st in graph.items():
@@ -740,16 +742,23 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
             assert st.meta, "Module must be either parsed or cached"
             meta_snapshot[id] = st.meta.hash
 
-    if not metastore.write(proto_meta, json.dumps(meta_snapshot)):
-        manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
+    if not metastore.write(deps_meta, json.dumps(meta_snapshot)):
+        manager.log("Error writing fine-grained deps meta JSON file {}".format(deps_meta))
         error = True
-    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
-    if not metastore.write(proto_cache, json.dumps(listed_proto_deps)):
-        manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
+    if not metastore.write(deps_cache, deps_to_json(extra_deps)):
+        manager.log("Error writing fine-grained extra deps JSON file {}".format(deps_cache))
         error = True
+    for id in rdeps:
+        _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+        assert deps_json
+        manager.log("Writing deps cache", deps_json)
+        if not manager.metastore.write(deps_json, deps_to_json(rdeps[id])):
+            manager.log("Error writing fine-grained deps JSON file {}".format(deps_json))
+            error = True
+
     if error:
         manager.errors.set_file(_cache_dir_prefix(manager), None)
-        manager.errors.report(0, 0, "Error writing protocol dependencies cache",
+        manager.errors.report(0, 0, "Error writing fine-grained dependencies cache",
                               blocker=True)
 
 
@@ -770,16 +779,16 @@ def invert_deps_inner(
 
     return (rdeps, extra_deps)
 
+
 def invert_deps(proto_deps: Dict[str, Set[str]],
-                manager: BuildManager, graph: Graph) -> None:
+                manager: BuildManager,
+                graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]],
+                                       Dict[str, Set[str]]]:
     deps = {}  # type: Dict[str, Set[str]]
     things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
     for st_deps in things:
         for trigger, targets in st_deps.items():
             deps.setdefault(trigger, set()).update(targets)
-
-    def convert(x: Dict[str, Set[str]]) -> Dict[str, List[str]]:
-        return {k: list(v) for k, v in x.items()}
 
     # XXX: can only split them up if there was no cache
     # no_cache = all(st.meta is None for st in graph.values())
@@ -790,14 +799,7 @@ def invert_deps(proto_deps: Dict[str, Set[str]],
     else:
         rdeps, extra_deps = {}, deps
 
-    # XXX: NOT THE PLACE FOR THIS YOU KNOW??
-    for id in rdeps:
-        _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
-        assert deps_json
-        manager.log("Writing deps cache", deps_json)
-        manager.metastore.write(deps_json, json.dumps(convert(rdeps[id])))
-    _, proto_cache = get_protocol_deps_cache_name()
-    manager.metastore.write(proto_cache, json.dumps(convert(extra_deps)))
+    return rdeps, extra_deps
 
 
 PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
@@ -825,17 +827,13 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     return snapshot
 
 
-def read_protocol_cache(manager: BuildManager,
-                        graph: Graph) -> Optional[Dict[str, Set[str]]]:
-    """Read and validate protocol dependencies cache.
-
-    See docstring for write_protocol_cache for details about which kinds of
-    dependencies are read.
-    """
-    proto_meta, proto_cache = get_protocol_deps_cache_name()
-    meta_snapshot = _load_json_file(proto_meta, manager,
-                                    log_sucess='Proto meta ',
-                                    log_error='Could not load protocol metadata: ')
+def read_deps_cache(manager: BuildManager,
+                    graph: Graph) -> Optional[Dict[str, Set[str]]]:
+    """Read and validate dependencies cache. """
+    deps_meta, deps_extra_cache = get_deps_cache_name()
+    meta_snapshot = _load_json_file(deps_meta, manager,
+                                    log_sucess='Deps meta ',
+                                    log_error='Could not load fine-grained dependency metadata: ')
     if meta_snapshot is None:
         return None
     # Take a snapshot of the source hashes from all of the metas we found.
@@ -847,15 +845,15 @@ def read_protocol_cache(manager: BuildManager,
     common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
     if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
         # TODO: invalidate also if options changed (like --strict-optional)?
-        manager.log('Protocol cache inconsistent, ignoring')
+        manager.log('Fine-grained dependencies cache inconsistent, ignoring')
         return None
-    deps = _load_json_file(proto_cache, manager,
-                           log_sucess='Proto deps ',
-                           log_error='Could not load protocol cache: ')
+    deps = _load_json_file(deps_extra_cache, manager,
+                           log_sucess='Extra deps ',
+                           log_error='Could not load fine-grained dependencies cache: ')
     if deps is None:
         return None
     if not isinstance(deps, dict):
-        manager.log('Could not load protocol cache: cache is not a dict: {}'
+        manager.log('Could not load fine-grained dependencies cache: cache is not a dict: {}'
                     .format(type(deps)))
         return None
     return {k: set(v) for (k, v) in deps.items()}
@@ -918,17 +916,9 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
 
-def get_protocol_deps_cache_name() -> Tuple[str, str]:
-    """Return file names for fine grained protocol dependencies cache.
-
-    Since these dependencies represent a global state of the program, they
-    are serialized per program, not per module, and the corresponding files
-    live at the root of the cache folder for a given Python version.
-    Return a tuple ('meta file path', 'data file path'), where the meta file
-    contains hashes of all source files at the time the protocol dependencies
-    were written, and data file contains the protocol dependencies.
-    """
-    name = '@proto_deps'
+def get_deps_cache_name() -> Tuple[str, str]:
+    """Return file names for global fine grained dependencies cache."""
+    name = '@deps'
     return name + '.meta.json', name + '.data.json'
 
 
@@ -2286,23 +2276,24 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         dump_graph(graph)
         return graph
 
-    # Fine grained protocol dependencies are serialized separately, so we read them
-    # after we load the cache for whole graph.
+    # Fine grained dependencies that didn't have an associated module in the build
+    # are serialized separately, so we read them after we load the graph.
     # We need to read them both for running in daemon mode and if we are generating
     # a fine-grained cache (so that we can properly update them incrementally).
-    # The `read_protocol_cache` will also validate
-    # the protocol cache against the loaded individual cache files.
+    # The `read_deps_cache` will also validate
+    # the deps cache against the loaded individual cache files.
     if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
         t2 = time.time()
-        proto_deps = read_protocol_cache(manager, graph)
+        extra_deps = read_deps_cache(manager, graph)
         manager.add_stats(load_fg_deps_time=time.time() - t2)
-        if proto_deps is not None:
-            TypeState.proto_deps = proto_deps
+        if extra_deps is not None:
+            # XXX: Is this where we want to put this?
+            TypeState.proto_deps = extra_deps
         elif manager.stats.get('fresh_metas', 0) > 0:
             # Clear the stats so we don't infinite loop because of positive fresh_metas
             manager.stats.clear()
-            # There were some cache files read, but no protocol dependencies loaded.
-            manager.log("Error reading protocol dependencies cache -- aborting cache load")
+            # There were some cache files read, but no fine-grained dependencies loaded.
+            manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
             manager.cache_enabled = False
             manager.log("Falling back to full run -- reloading graph...")
             return dispatch(sources, manager)
@@ -2323,10 +2314,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
             TypeState.update_protocol_deps()
-            if TypeState.proto_deps is not None and not manager.options.fine_grained_incremental:
-                write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
-
-                invert_deps(TypeState.proto_deps, manager, graph)
+            if not manager.options.fine_grained_incremental:
+                proto_deps = TypeState.proto_deps or {}
+                rdeps, extra_deps = invert_deps(proto_deps, manager, graph)
+                write_deps_cache(rdeps, extra_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.

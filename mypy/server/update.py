@@ -417,6 +417,7 @@ def ensure_deps_loaded(module: str,
             merge_dependencies(graph[base].load_fine_grained_deps(), deps)
             graph[base].fine_grained_deps_loaded = True
 
+
 def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
                         initial: Sequence[str]) -> None:
     """Ensure that the modules in initial and their deps have loaded trees."""

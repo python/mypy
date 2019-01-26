@@ -202,7 +202,7 @@ a.py:8: note:     x: expected "int", got "str"
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
 -- the proto deps file with something with hash mismatches.
-[file ../.mypy_cache/3.6/@proto_deps.meta.json.2]
+[file ../.mypy_cache/3.6/@deps.meta.json.2]
 {"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "00000000000000000000000000000000"}
 [file b.py.2]
 # uh
