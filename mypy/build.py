@@ -765,12 +765,13 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 def invert_deps_inner(
         deps: Dict[str, Set[str]],
         graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
-    from mypy.server.target import module_prefix
+    from mypy.server.target import module_prefix, trigger_to_target
+
     rdeps = {}  # type: Dict[str, Dict[str, Set[str]]]
     extra_deps = {}  # type: Dict[str, Set[str]]
     for trigger, targets in deps.items():
         assert trigger[0] == '<'
-        module = module_prefix(graph, trigger[1:-1])
+        module = module_prefix(graph, trigger_to_target(trigger))
         if module and graph[module].tree:
             mod_rdeps = rdeps.setdefault(module, {})
             mod_rdeps.setdefault(trigger, set()).update(targets)

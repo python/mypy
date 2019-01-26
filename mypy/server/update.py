@@ -138,7 +138,7 @@ from mypy.server.astdiff import (
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies_of_target
-from mypy.server.target import module_prefix, split_target
+from mypy.server.target import module_prefix, split_target, trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.typestate import TypeState
 
@@ -835,7 +835,7 @@ def find_targets_recursive(
         for target in current:
             if target.startswith('<'):
                 # XXX: slow??
-                module_id = module_prefix(graph, target[1:-1])
+                module_id = module_prefix(graph, trigger_to_target(target))
                 if module_id:
                     ensure_deps_loaded(module_id, deps, graph)
 
