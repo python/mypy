@@ -17,7 +17,8 @@ from mypy.stubgen import (
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
-    infer_sig_from_docstring, infer_prop_type_from_docstring, TypedFunctionSig, TypedArgSig
+    infer_sig_from_docstring, infer_prop_type_from_docstring, TypedFunctionSig, TypedArgSig,
+    infer_arg_sig_from_docstring
 )
 
 
@@ -220,7 +221,54 @@ class StubgenUtilSuite(Suite):
             )]
         )
 
-    def infer_prop_type_from_docstring(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: list=[1,2,[3,4]])', 'func'),
+            [TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='list', default='[1,2,[3,4]]')],
+                ret_type='Any'
+            )]
+        )
+
+        assert_equal(
+            infer_sig_from_docstring('\nfunc(x: str="nasty[")', 'func'),
+            [TypedFunctionSig(
+                name='func',
+                args=[TypedArgSig(name='x', type='str', default='"nasty["')],
+                ret_type='Any'
+            )]
+        )
+
+        assert_equal(
+            infer_sig_from_docstring('\nfunc[(x: foo.bar, invalid]', 'func'),
+            []
+        )
+
+    def test_infer_arg_sig_from_docstring(self) -> None:
+        assert_equal(
+            infer_arg_sig_from_docstring("(*args, **kwargs)"),
+            [
+                TypedArgSig(name='*args', type=None, default=None),
+                TypedArgSig(name='**kwargs', type=None, default=None),
+            ]
+        )
+
+        assert_equal(
+            infer_arg_sig_from_docstring(
+                "(x: Tuple[int, Tuple[str, int], str]=(1, ('a', 2), 'y'), y: int=4)"
+            ),
+            [
+                TypedArgSig(
+                    name='x',
+                    type='Tuple[int,Tuple[str,int],str]',
+                    default="(1,('a',2),'y')"
+                ),
+                TypedArgSig(name='y', type='int', default='4'),
+            ]
+        )
+
+
+    def test_infer_prop_type_from_docstring(self) -> None:
         assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
         assert_equal(infer_prop_type_from_docstring('Optional[int]: An int.'), 'Optional[int]')
         assert_equal(infer_prop_type_from_docstring('Tuple[int, int]: A tuple.'),

@@ -241,28 +241,11 @@ def infer_arg_sig_from_docstring(docstr: str) -> ArgList:
     :param docstr:
     :return: ArgList with infered argument names and its types
     """
-    ret = []  # type: ArgList
-    arguments = []
-    right = docstr[1:-1]
-    accumulator = ""
-    while right:
-        left, sep, right = right.partition(',')
-        if right.count('[') == right.count(']'):
-            arguments.append(accumulator + left)
-            accumulator = ""
-        else:
-            accumulator += left + sep
+    ret = infer_sig_from_docstring("stub" + docstr, "stub")
+    if ret:
+        return ret[0].args
 
-    for arg in arguments:
-        arg_name_type, _, default_value = arg.partition('=')
-        arg_name, _, arg_type = arg_name_type.partition(':')
-
-        ret.append(TypedArgSig(
-            name=arg_name.strip(),
-            type=None if arg_type == '' else arg_type.strip(),
-            default=None if default_value == '' else default_value.strip()
-        ))
-    return ret
+    return []
 
 
 def infer_prop_type_from_docstring(docstr: str) -> Optional[str]:
