@@ -72,6 +72,7 @@ DEBUG_FINE_GRAINED = False  # type: Final
 
 Graph = Dict[str, 'State']
 
+
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
 class BuildResult:
     """The result of a successful build.
@@ -718,11 +719,18 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
                      manager: BuildManager, graph: Graph) -> None:
     """Write cache files for fine-grained dependencies.
 
-    Serialize fine-grained dependencies map for fine grained mode. Also take the snapshot
-    of current sources to later check consistency between the extra cache and individual
-    cache files.
+    Serialize fine-grained dependencies map for fine grained mode.
 
-    XXX: DESCRIBE
+    Dependencies on some module 'm' is stored in the dependency cache
+    file m.deps.json.  This entails some spooky action at a distance:
+    if module 'n' depends on 'm', that produces entries in m.deps.json.
+
+    This means that the validity of the fine-grained dependency caches
+    are a global property, so we store validity checking information
+    fine-grained dependencies in a global cache file.
+    To do this, we take a snapshot of current sources to later check
+    consistency between the extra cache and individual cache files as
+    well as storing the mtime for all of the dependency files.
     """
     metastore = manager.metastore
     meta_path, cache_path = get_deps_cache_name()
@@ -778,7 +786,6 @@ def invert_deps(
     rdeps = {id: {} for id in graph}  # type: Dict[str, Dict[str, Set[str]]]
     extra_deps = {}  # type: Dict[str, Set[str]]
     for trigger, targets in deps.items():
-        assert trigger[0] == '<'
         module = module_prefix(graph, trigger_to_target(trigger))
         if module and graph[module].tree:
             mod_rdeps = rdeps.setdefault(module, {})
@@ -866,7 +873,6 @@ def read_deps_cache(manager: BuildManager,
         return None
 
     module_deps_metas = deps_meta['deps_meta']
-    # XXX: check module metas
     for id, meta in module_deps_metas.items():
         try:
             matched = manager.getmtime(meta['path']) == meta['mtime']
@@ -943,13 +949,6 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     if manager.options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
-
-
-# def get_deps_cache_name(id: str, path: str, manager: BuildManager) -> str:
-#     assert manager.options.cache_fine_grained
-#     _, _, deps_json = get_deps_cache_name(id, path, manager)
-#     assert deps_json is not None
-#     return deps_json
 
 
 def get_deps_cache_name() -> Tuple[str, str]:

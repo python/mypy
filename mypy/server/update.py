@@ -834,7 +834,6 @@ def find_targets_recursive(
         worklist = set()
         for target in current:
             if target.startswith('<'):
-                # XXX: slow??
                 module_id = module_prefix(graph, trigger_to_target(target))
                 if module_id:
                     ensure_deps_loaded(module_id, deps, graph)
