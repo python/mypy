@@ -30,6 +30,8 @@ if MYPY:
     from typing import ClassVar
     from typing_extensions import Final
 
+from mypy_extensions import TypedDict
+
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.newsemanal.semanal_pass1 import ReachabilityAnalyzer
@@ -69,7 +71,6 @@ DEBUG_FINE_GRAINED = False  # type: Final
 
 
 Graph = Dict[str, 'State']
-
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
 class BuildResult:
@@ -242,9 +243,6 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('dependencies', List[str]),  # names of imported modules
                         ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
-                        # path of <id>.deps.json, which we use to store fine-grained
-                        # dependency information for fine-grained mode
-                        ('deps_json', Optional[str]),
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
@@ -260,16 +258,14 @@ CacheMeta = NamedTuple('CacheMeta',
 # suppressed contains those reachable imports that were prevented by
 # silent mode or simply not found.
 
+FgDepMeta = TypedDict('FgDepMeta', {'path': str, 'mtime': int})
 
-def cache_meta_from_dict(meta: Dict[str, Any],
-                         data_json: str, deps_json: Optional[str]) -> CacheMeta:
+def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
     """Build a CacheMeta object from a json metadata dictionary
 
     Args:
       meta: JSON metadata read from the metadata cache file
       data_json: Path to the .data.json file containing the AST trees
-      deps_json: Optionally, path to the .deps.json file containing
-                 fine-grained dependency information.
     """
     sentinel = None  # type: Any  # Values to be validated by the caller
     return CacheMeta(
@@ -281,7 +277,6 @@ def cache_meta_from_dict(meta: Dict[str, Any],
         meta.get('dependencies', []),
         int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
         data_json,
-        deps_json,
         meta.get('suppressed', []),
         meta.get('child_modules', []),
         meta.get('options'),
@@ -502,6 +497,7 @@ class BuildManager(BuildManagerBase):
         self.version_id = version_id
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
+        self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
         self.plugin = plugin
         if options.new_semantic_analyzer:
             # Set of namespaces (module or class) that are being populated during semantic
@@ -729,25 +725,17 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     XXX: DESCRIBE
     """
     metastore = manager.metastore
-    deps_meta, deps_cache = get_deps_cache_name()
-    meta_snapshot = {}  # type: Dict[str, str]
-    error = False
-    for id, st in graph.items():
-        # If we didn't parse a file (so it doesn't have a
-        # source_hash), then it must be a module with a fresh cache,
-        # so use the hash from that.
-        if st.source_hash:
-            meta_snapshot[id] = st.source_hash
-        else:
-            assert st.meta, "Module must be either parsed or cached"
-            meta_snapshot[id] = st.meta.hash
+    meta_path, cache_path = get_deps_cache_name()
 
-    if not metastore.write(deps_meta, json.dumps(meta_snapshot)):
-        manager.log("Error writing fine-grained deps meta JSON file {}".format(deps_meta))
+    error = False
+
+    fg_deps_meta = manager.fg_deps_meta.copy()
+    if not metastore.write(cache_path, deps_to_json(extra_deps)):
+        manager.log("Error writing fine-grained extra deps JSON file {}".format(cache_path))
         error = True
-    if not metastore.write(deps_cache, deps_to_json(extra_deps)):
-        manager.log("Error writing fine-grained extra deps JSON file {}".format(deps_cache))
-        error = True
+    else:
+        fg_deps_meta['@extra'] = {'path': cache_path, 'mtime': manager.getmtime(cache_path)}
+
     for id in rdeps:
         _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
         assert deps_json
@@ -755,6 +743,26 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
         if not manager.metastore.write(deps_json, deps_to_json(rdeps[id])):
             manager.log("Error writing fine-grained deps JSON file {}".format(deps_json))
             error = True
+        else:
+            fg_deps_meta[id] = {'path': deps_json, 'mtime': manager.getmtime(deps_json)}
+
+    meta_snapshot = {}  # type: Dict[str, str]
+    for id, st in graph.items():
+        # If we didn't parse a file (so it doesn't have a
+        # source_hash), then it must be a module with a fresh cache,
+        # so use the hash from that.
+        if st.source_hash:
+            hash = st.source_hash
+        else:
+            assert st.meta, "Module must be either parsed or cached"
+            hash = st.meta.hash
+        meta_snapshot[id] = hash
+
+    meta = {'snapshot': meta_snapshot, 'deps_meta': fg_deps_meta}
+
+    if not metastore.write(meta_path, json.dumps(meta)):
+        manager.log("Error writing fine-grained deps meta JSON file {}".format(meta_path))
+        error = True
 
     if error:
         manager.errors.set_file(_cache_dir_prefix(manager), None)
@@ -767,7 +775,7 @@ def invert_deps(
         graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
     from mypy.server.target import module_prefix, trigger_to_target
 
-    rdeps = {}  # type: Dict[str, Dict[str, Set[str]]]
+    rdeps = {id: {} for id in graph}  # type: Dict[str, Dict[str, Set[str]]]
     extra_deps = {}  # type: Dict[str, Set[str]]
     for trigger, targets in deps.items():
         assert trigger[0] == '<'
@@ -835,14 +843,16 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
 
 
 def read_deps_cache(manager: BuildManager,
-                    graph: Graph) -> Optional[Dict[str, Set[str]]]:
+                    graph: Graph) -> Optional[Tuple[Dict[str, Set[str]],
+                                                    Dict[str, FgDepMeta]]]:
     """Read and validate dependencies cache. """
-    deps_meta, deps_extra_cache = get_deps_cache_name()
-    meta_snapshot = _load_json_file(deps_meta, manager,
-                                    log_sucess='Deps meta ',
-                                    log_error='Could not load fine-grained dependency metadata: ')
-    if meta_snapshot is None:
+    deps_meta_path, deps_extra_cache = get_deps_cache_name()
+    deps_meta = _load_json_file(deps_meta_path, manager,
+                                log_sucess='Deps meta ',
+                                log_error='Could not load fine-grained dependency metadata: ')
+    if deps_meta is None:
         return None
+    meta_snapshot = deps_meta['snapshot']
     # Take a snapshot of the source hashes from all of the metas we found.
     # (Including the ones we rejected because they were out of date.)
     # We use this to verify that they match up with the proto_deps.
@@ -854,6 +864,18 @@ def read_deps_cache(manager: BuildManager,
         # TODO: invalidate also if options changed (like --strict-optional)?
         manager.log('Fine-grained dependencies cache inconsistent, ignoring')
         return None
+
+    module_deps_metas = deps_meta['deps_meta']
+    # XXX: check module metas
+    for id, meta in module_deps_metas.items():
+        try:
+            matched = manager.getmtime(meta['path']) == meta['mtime']
+        except FileNotFoundError:
+            matched = False
+        if not matched:
+            manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
+            return None
+
     deps = _load_json_file(deps_extra_cache, manager,
                            log_sucess='Extra deps ',
                            log_error='Could not load fine-grained dependencies cache: ')
@@ -863,7 +885,7 @@ def read_deps_cache(manager: BuildManager,
         manager.log('Could not load fine-grained dependencies cache: cache is not a dict: {}'
                     .format(type(deps)))
         return None
-    return {k: set(v) for (k, v) in deps.items()}
+    return {k: set(v) for (k, v) in deps.items()}, module_deps_metas
 
 
 def _load_json_file(file: str, manager: BuildManager,
@@ -923,6 +945,13 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
 
+# def get_deps_cache_name(id: str, path: str, manager: BuildManager) -> str:
+#     assert manager.options.cache_fine_grained
+#     _, _, deps_json = get_deps_cache_name(id, path, manager)
+#     assert deps_json is not None
+#     return deps_json
+
+
 def get_deps_cache_name() -> Tuple[str, str]:
     """Return file names for global fine grained dependencies cache."""
     name = '@deps'
@@ -942,7 +971,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json, deps_json = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
@@ -954,7 +983,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
                     .format(id, repr(meta)))
         return None
-    m = cache_meta_from_dict(meta, data_json, deps_json)
+    m = cache_meta_from_dict(meta, data_json)
     manager.add_stats(load_meta_time=time.time() - t0)
 
     # Don't check for path match, that is dealt with in validate_meta().
@@ -1163,9 +1192,9 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Obtain file paths.
     path = manager.normpath(path)
-    meta_json, data_json, deps_json = get_cache_names(id, path, manager)
-    manager.log('Writing {} {} {} {} {}'.format(
-        id, path, meta_json, data_json, deps_json))
+    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    manager.log('Writing {} {} {} {}'.format(
+        id, path, meta_json, data_json))
 
     # Update tree.path so that in bazel mode it's made relative (since
     # sometimes paths leak out).
@@ -1245,7 +1274,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         # The next run will simply find the cache entry out of date.
         manager.log("Error writing meta JSON file {}".format(meta_json))
 
-    return interface_hash, cache_meta_from_dict(meta, data_json, deps_json)
+    return interface_hash, cache_meta_from_dict(meta, data_json)
 
 
 def delete_cache(id: str, path: str, manager: BuildManager) -> None:
@@ -1635,13 +1664,12 @@ class State:
         t0 = time.time()
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
-        assert self.meta.deps_json
-        # XXX: Check this reasonably??
-        try:
-            deps = json.loads(self.manager.metastore.read(self.meta.deps_json))
-        except FileNotFoundError:
+        if self.id in self.manager.fg_deps_meta:
+            # TODO: Assert deps file wasn't changed.
+            deps = json.loads(
+                self.manager.metastore.read(self.manager.fg_deps_meta[self.id]['path']))
+        else:
             deps = {}
-        # TODO: Assert deps file wasn't changed.
         val = {k: set(v) for k, v in deps.items()}
         self.manager.add_stats(load_fg_deps_time=time.time() - t0)
         return val
@@ -2291,11 +2319,11 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # the deps cache against the loaded individual cache files.
     if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
         t2 = time.time()
-        extra_deps = read_deps_cache(manager, graph)
+        deps_cache_info = read_deps_cache(manager, graph)
         manager.add_stats(load_fg_deps_time=time.time() - t2)
-        if extra_deps is not None:
+        if deps_cache_info is not None:
             # XXX: Is this where we want to put this?
-            TypeState.proto_deps = extra_deps
+            TypeState.proto_deps, manager.fg_deps_meta = deps_cache_info
         elif manager.stats.get('fresh_metas', 0) > 0:
             # Clear the stats so we don't infinite loop because of positive fresh_metas
             manager.stats.clear()
