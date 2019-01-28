@@ -45,7 +45,7 @@ class DocStringParser:
         self.accumulator = ""
         self.arg_type = None  # type: Optional[str]
         self.arg_name = ""
-        self.arg_default = None
+        self.arg_default = None  # type: Optional[str]
         self.ret_type = "Any"
         self.found = False
         self.args = []  # type: List[TypedArgSig]
