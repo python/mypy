@@ -762,7 +762,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
                               blocker=True)
 
 
-def invert_deps_inner(
+def invert_deps(
         deps: Dict[str, Set[str]],
         graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
     from mypy.server.target import module_prefix, trigger_to_target
@@ -781,22 +781,28 @@ def invert_deps_inner(
     return (rdeps, extra_deps)
 
 
-def invert_deps(proto_deps: Dict[str, Set[str]],
-                manager: BuildManager,
-                graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]],
-                                       Dict[str, Set[str]]]:
+def process_deps(proto_deps: Dict[str, Set[str]],
+                 manager: BuildManager,
+                 graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]],
+                                        Dict[str, Set[str]]]:
+    """Process fine-grained dependenecies into a form suitable for serializing.
+
+    Returns an (rdeps, extra_deps) pair, where rdeps maps from module ids to
+    all dependencies on that module, and extra_deps contains dependencies that
+    weren't associated with any module.
+    """
     deps = {}  # type: Dict[str, Set[str]]
     things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
     for st_deps in things:
         for trigger, targets in st_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
-    # XXX: can only split them up if there was no cache
-    # no_cache = all(st.meta is None for st in graph.values())
-    # print(no_cache)
-    # print([(st.id, st.meta) for st in graph.values()])
+    # If we are operating in non-incremental mode, properly split up
+    # dependencies between all the files. If this is an incremental update,
+    # though, we write all the dependencies into the "extra_deps" file so we
+    # don't need to reload dependency files to update them.
     if not manager.options.incremental:
-        rdeps, extra_deps = invert_deps_inner(deps, graph)
+        rdeps, extra_deps = invert_deps(deps, graph)
     else:
         rdeps, extra_deps = {}, deps
 
@@ -2317,7 +2323,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             TypeState.update_protocol_deps()
             if not manager.options.fine_grained_incremental:
                 proto_deps = TypeState.proto_deps or {}
-                rdeps, extra_deps = invert_deps(proto_deps, manager, graph)
+                rdeps, extra_deps = process_deps(proto_deps, manager, graph)
                 write_deps_cache(rdeps, extra_deps, manager, graph)
 
     if manager.options.dump_deps:
