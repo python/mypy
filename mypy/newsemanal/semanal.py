@@ -437,6 +437,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self._visit_func_def(defn)
 
     def add_func_to_symbol_table(self, func: FuncDef) -> None:
+        if self.is_class_scope():
+            func.info = self.type
         func._fullname = self.qualified_name(func.name())
         self.add_symbol(func.name(), func, func)
 
@@ -1212,7 +1214,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             info = info or self.make_empty_type_info(defn)
             defn.info = info
             info.defn = defn
-            if self.is_module_scope():
+            if not self.is_func_scope():
                 info._fullname = self.qualified_name(defn.name)
             else:
                 info._fullname = info.name()

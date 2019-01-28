@@ -335,3 +335,40 @@ class A: pass # E: Name 'A' already defined (possibly by an import)
 [file b.py]
 class A: pass
 from a import x
+
+[case testNewAnalyzerNestedClass1]
+# flags: --new-semantic-analyzer
+class A:
+    class B:
+        x: int
+
+        def __init__(self, x: int) -> None:
+            self.x = x
+
+        def f(self) -> str:
+            return self.x # E: Incompatible return value type (got "int", expected "str")
+
+b: A.B
+b = A.B('') # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+reveal_type(b) # E: Revealed type is '__main__.A.B'
+reveal_type(b.x) # E: Revealed type is 'builtins.int'
+reveal_type(b.f()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerNestedClass2]
+# flags: --new-semantic-analyzer
+
+b: A.B
+b = A.B('') # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+reveal_type(b) # E: Revealed type is '__main__.A.B'
+reveal_type(b.x) # E: Revealed type is 'builtins.int'
+reveal_type(b.f()) # E: Revealed type is 'builtins.str'
+
+class A:
+    class B:
+        x: int
+
+        def __init__(self, x: int) -> None:
+            self.x = x
+
+        def f(self) -> str:
+            return self.x # E: Incompatible return value type (got "int", expected "str")
