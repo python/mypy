@@ -35,7 +35,7 @@ A trivial example of using the api is the following
         print('\nError report:\n')
         print(result[1])  # stderr
 
-    print ('\nExit status:', result[2])
+    print('\nExit status:', result[2])
 
 Extending mypy using plugins
 ****************************
