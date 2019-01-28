@@ -1,3 +1,9 @@
+"""Parsing/inferring signatures from documentation.
+
+This module provides several functions to generate better stubs using
+docstrings and Sphinx docs (.rst files).
+"""
+
 from typing import Optional, MutableMapping, MutableSequence, List, Sequence, Tuple
 
 import re
@@ -63,7 +69,7 @@ def build_signature(positional: Sequence[str],
 
 def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
                                                         List[Sig]]:
-    """Parse all signatures in a given document.
+    """Parse all signatures in a given reST document.
 
     Return lists of found signatures for functions and classes.
     """
@@ -108,6 +114,9 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[Tuple[str, str]
     * colon/equal: to match default values, like "a: int = 1"
     * comma/space/brackets: for type hints like "a: Tuple[int, float]"
     * dot: for classes annotating using full path, like "a: foo.bar.baz"
+
+    Return a pair of argument list, return type, for example: '(arg: int, x=None)', 'Any',
+    or None, if there is no match.
     """
     if not docstr:
         return None
@@ -131,7 +140,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[Tuple[str, str]
 
 
 def infer_prop_type_from_docstring(docstr: str) -> Optional[str]:
-    """Check for Google/Numpy style docstring type annotation.
+    """Check for Google/Numpy style docstring type annotation for a property.
 
     The docstring has the format "<type>: <descriptions>".
     In the type string, we allow the following characters:

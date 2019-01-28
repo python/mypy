@@ -118,7 +118,7 @@ class Options:
 
 
 class StubSource(BuildSource):
-    """A single source for stub.
+    """A single source for stub: can be a Python or C module.
 
     A simple extension of BuildSource that also carries the AST and
     the value of __all__ detected at runtime.
@@ -150,7 +150,16 @@ class AnnotationPrinter(TypeStrVisitor):
 
     The main difference from TypeStrVisitor is a better treatment of
     unbound types.
+
+    Notes:
+    * This visitor doesn't add imports necessary for annotations, this is done separately
+      by ImportTracker.
+    * It can print all kinds of types, but the generated strings may not be valid (notably
+      callable types) since it prints the same string that reveal_type() does.
+    * For Instance types it prints the fully qualified names.
     """
+    # TODO: Generate valid string representation for callable types.
+    # TODO: Use short names for Instances.
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
@@ -233,6 +242,7 @@ class AliasPrinter(NodeVisitor[str]):
 
 class ImportTracker:
     """Record necessary imports during stub generation."""
+
     def __init__(self) -> None:
         # module_for['foo'] has the module name where 'foo' was imported from, or None if
         # 'foo' is a module imported directly; examples
@@ -519,7 +529,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if (self.is_top_level() and
                     isinstance(lvalue, NameExpr) and not self.is_private_name(lvalue.name) and
                     # it is never an alias with explicit annotation
-                    not o.unanalyzed_type and self.is_type_expression(o.rvalue)):
+                    not o.unanalyzed_type and self.is_alias_expression(o.rvalue)):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
@@ -571,10 +581,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
         self._state = CLASS
 
-    def is_type_expression(self, expr: Expression, top_level: bool = True) -> bool:
-        """Return True for things that look like type expressions
+    def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
+        """Return True for things that look like target for an alias.
 
-        Used to know if assignments look like typealiases
+        Used to know if assignments look like type aliases, function alias,
+        or module alias.
         """
         # Assignment of TypeVar(...) are passed through
         if (isinstance(expr, CallExpr) and
@@ -592,8 +603,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 return not self.is_private_name(expr.name)
         elif isinstance(expr, MemberExpr) and self.analyzed:
             # Also add function and module aliases.
-            return (top_level and (isinstance(expr.node, (FuncDef, Decorator, MypyFile)) or
-                                   isinstance(expr.node, TypeInfo)) and
+            return ((top_level and isinstance(expr.node, (FuncDef, Decorator, MypyFile))
+                     or isinstance(expr.node, TypeInfo)) and
                     not self.is_private_member(expr.node.fullname()))
         elif (isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr) and
               not self.is_private_name(expr.base.name)):
@@ -609,7 +620,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     indices = args.items + [ret]
                 else:
                     return False
-            return all(self.is_type_expression(i, top_level=False) for i in indices)
+            return all(self.is_alias_expression(i, top_level=False) for i in indices)
         else:
             return False
 
@@ -881,7 +892,10 @@ def find_module_paths_using_imports(modules: List[str], packages: List[str],
                                     pyversion: Tuple[int, int],
                                     quiet: bool = True) -> Tuple[List[StubSource],
                                                                  List[StubSource]]:
-    """Find path and runtime value of __all__ (if possible) for modules and packages."""
+    """Find path and runtime value of __all__ (if possible) for modules and packages.
+
+    This function uses runtime Python imports to get the information.
+    """
     py_modules = []  # type: List[StubSource]
     c_modules = []  # type: List[StubSource]
     modules = modules + list(walk_packages(packages))
@@ -908,6 +922,7 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
                                    search_path: List[str]) -> List[StubSource]:
     """Find sources for modules and packages requested.
 
+    This function just looks for source files at the file system level.
     This is used if user passes --no-import, and will not find C modules.
     Exit if some of the modules or packages can't be found.
     """
@@ -939,23 +954,32 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     return options
 
 
+def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
+    """Parse a source file.
+
+    On success, store AST in the corresponding attribute of the stub source.
+    If there are syntax errors, print them and exit.
+    """
+    assert mod.path is not None, "Not found module was not skipped"
+    with open(mod.path, 'rb') as f:
+        data = f.read()
+    source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
+    try:
+        mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
+                                   errors=None, options=mypy_options)
+    except mypy.errors.CompileError as e:
+        # Syntax error!
+        for m in e.messages:
+            sys.stderr.write('%s\n' % m)
+        sys.exit(1)
+
+
 def generate_asts_for_modules(py_modules: List[StubSource],
                               parse_only: bool, mypy_options: MypyOptions) -> None:
     """Use mypy to parse (and optionally analyze) source files."""
     if parse_only:
         for mod in py_modules:
-            assert mod.path is not None, "Not found module was not skipped"
-            with open(mod.path, 'rb') as f:
-                data = f.read()
-            source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
-            try:
-                mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
-                                           errors=None, options=mypy_options)
-            except mypy.errors.CompileError as e:
-                # Syntax error!
-                for m in e.messages:
-                    sys.stderr.write('%s\n' % m)
-                sys.exit(1)
+            parse_source_file(mod, mypy_options)
         return
     # Perform full semantic analysis of the source set.
     try:
@@ -1025,7 +1049,7 @@ def generate_stubs(options: Options,
 
     # Collect info from docs (if given):
     sigs = class_sigs = None  # type: Optional[Dict[str, str]]
-    if not options.doc_dir:
+    if options.doc_dir:
         sigs, class_sigs = collect_docs_signatures(options.doc_dir)
 
     # Use parsed sources to generate stubs for Python modules.
@@ -1078,7 +1102,7 @@ def parse_options(args: List[str]) -> Options:
                              "respect __all__)")
     parser.add_argument('--parse-only', action='store_true',
                         help="don't perform semantic analysis of sources, just parse them "
-                             "(only applies to Python modules, might affect stubs quality)")
+                             "(only applies to Python modules, might affect quality of stubs)")
     parser.add_argument('--include-private', action='store_true',
                         help="generate stubs for objects and members considered private "
                              "(single leading underscore and no trailing underscores)")
@@ -1132,7 +1156,7 @@ def parse_options(args: List[str]) -> Options:
 def main() -> None:
     # Make sure that the current directory is in sys.path so that
     # stubgen can be run on packages in the current directory.
-    if '' not in sys.path:
+    if not ('' in sys.path or '.' in sys.path):
         sys.path.insert(0, '')
 
     options = parse_options(sys.argv[1:])

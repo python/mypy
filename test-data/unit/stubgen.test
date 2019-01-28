@@ -1370,3 +1370,15 @@ x: Final[int]
 y: Final[Any]
 z: Final[object]
 t: Final[Any]
+
+[case testNoFunctionNested_semanal]
+import a
+from typing import Dict, Any
+
+funcs: Dict[Any, Any]
+f = funcs[a.f]
+[out]
+from typing import Any, Dict
+
+funcs: Dict[Any, Any]
+f: Any

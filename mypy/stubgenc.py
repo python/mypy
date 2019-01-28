@@ -21,8 +21,8 @@ def generate_stub_for_c_module(module_name: str,
                                class_sigs: Optional[Dict[str, str]] = None) -> None:
     """Generate stub for C module.
 
-    This combines simple runtime introspection (looking for attributes with simple
-    builtin types and signatures inferred from docs (if given).
+    This combines simple runtime introspection (looking for docstrings and attributes
+    with simple builtin types) and signatures inferred from .rst documentation (if given).
 
     If directory for target doesn't exist it will be created. Existing stub
     will be overwritten.
@@ -213,7 +213,7 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
     """Generate property stub using introspection of 'obj'.
 
-    Try to infer type from doctring, append resulting lines to 'output'.
+    Try to infer type from docstring, append resulting lines to 'output'.
     """
     docstr = getattr(obj, '__doc__', None)
     inferred = infer_prop_type_from_docstring(docstr)

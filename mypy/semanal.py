@@ -243,6 +243,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = []  # type: List[str]
+        # Map from module id to list of explicitly exported names (i.e. names in __all__).
         self.export_map = {}  # type: Dict[str, List[str]]
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
