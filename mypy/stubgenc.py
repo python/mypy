@@ -11,9 +11,8 @@ from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
 from mypy.stubutil import (
-    is_c_module, write_header, infer_sig_from_docstring,
-    infer_prop_type_from_docstring, ArgList, TypedArgSig,
-    infer_arg_sig_from_docstring, TypedFunctionSig
+    is_c_module, write_header, infer_sig_from_docstring, infer_prop_type_from_docstring,
+    TypedArgSig, infer_arg_sig_from_docstring, TypedFunctionSig
 )
 
 
@@ -303,38 +302,38 @@ def is_skipped_attribute(attr: str) -> bool:
                     '__weakref__')  # For pickling
 
 
-def infer_method_sig(name: str) -> ArgList:
+def infer_method_sig(name: str) -> List[TypedArgSig]:
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
         if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',
                     'int', 'float', 'trunc', 'complex', 'bool'):
             return []
         if name == 'getitem':
-            return [TypedArgSig(name='index', type=None, default=None)]
+            return [TypedArgSig(name='index', type=None, default=False)]
         if name == 'setitem':
             return [
-                TypedArgSig(name='index', type=None, default=None),
-                TypedArgSig(name='object', type=None, default=None)
+                TypedArgSig(name='index', type=None, default=False),
+                TypedArgSig(name='object', type=None, default=False)
             ]
         if name in ('delattr', 'getattr'):
-            return [TypedArgSig(name='name', type=None, default=None)]
+            return [TypedArgSig(name='name', type=None, default=False)]
         if name == 'setattr':
             return [
-                TypedArgSig(name='name', type=None, default=None),
-                TypedArgSig(name='value', type=None, default=None)
+                TypedArgSig(name='name', type=None, default=False),
+                TypedArgSig(name='value', type=None, default=False)
             ]
         if name == 'getstate':
             return []
         if name == 'setstate':
-            return [TypedArgSig(name='state', type=None, default=None)]
+            return [TypedArgSig(name='state', type=None, default=False)]
         if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                     'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
                     'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
                     'divmod', 'rdivmod', 'pow', 'rpow'):
-            return [TypedArgSig(name='other', type=None, default=None)]
+            return [TypedArgSig(name='other', type=None, default=False)]
         if name in ('neg', 'pos'):
             return []
     return [
-        TypedArgSig(name='*args', type=None, default=None),
-        TypedArgSig(name='**kwargs', type=None, default=None)
+        TypedArgSig(name='*args', type=None, default=False),
+        TypedArgSig(name='**kwargs', type=None, default=False)
     ]

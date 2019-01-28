@@ -1,4 +1,4 @@
-import enum
+import contextlib
 import io
 import re
 import sys
@@ -8,6 +8,9 @@ import tokenize
 from typing import Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO, NamedTuple
 from types import ModuleType
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # Type Alias for Signatures
 Sig = Tuple[str, str]
@@ -15,16 +18,133 @@ Sig = Tuple[str, str]
 TypedArgSig = NamedTuple('TypedArgSig', [
     ('name', str),
     ('type', Optional[str]),
-    ('default', Optional[str])
+    ('default', bool)
 ])
 
-ArgList = List[TypedArgSig]
 
 TypedFunctionSig = NamedTuple('TypedFunctionSig', [
     ('name', str),
-    ('args', ArgList),
+    ('args', List[TypedArgSig]),
     ('ret_type', str)
 ])
+
+
+STATE_INIT = 1  # type: Final
+STATE_FUNCTION_NAME = 2  # type: Final
+STATE_ARGUMENT_LIST = 3  # type: Final
+STATE_ARGUMENT_TYPE = 4  # type: Final
+STATE_ARGUMENT_DEFAULT = 5  # type: Final
+STATE_RETURN_VALUE = 6  # type: Final
+STATE_OPEN_BRACKET = 7  # type: Final
+
+
+class DocStringParser:
+    def __init__(self, function_name: str) -> None:
+        self.function_name = function_name
+        self.state = [STATE_INIT]
+        self.accumulator = ""
+        self.arg_type = None  # type: Optional[str]
+        self.arg_name = ""
+        self.arg_default = None
+        self.ret_type = "Any"
+        self.found = False
+        self.args = []  # type: List[TypedArgSig]
+        self.signatures = []  # type: List[TypedFunctionSig]
+
+    def add_token(self, token: tokenize.TokenInfo) -> None:
+        if (token.type == tokenize.NAME and token.string == self.function_name and
+                self.state[-1] == STATE_INIT):
+            self.state.append(STATE_FUNCTION_NAME)
+
+        elif (token.type == tokenize.OP and token.string == '(' and
+              self.state[-1] == STATE_FUNCTION_NAME):
+            self.state.pop()
+            self.accumulator = ""
+            self.found = True
+            self.state.append(STATE_ARGUMENT_LIST)
+
+        elif self.state[-1] == STATE_FUNCTION_NAME:
+            # reset state, function name not followed by '('
+            self.state.pop()
+
+        elif (token.type == tokenize.OP and token.string in ('[', '(', '{') and
+              self.state[-1] != STATE_INIT):
+            self.accumulator += token.string
+            self.state.append(STATE_OPEN_BRACKET)
+
+        elif (token.type == tokenize.OP and token.string in (']', ')', '}') and
+              self.state[-1] == STATE_OPEN_BRACKET):
+            self.accumulator += token.string
+            self.state.pop()
+
+        elif (token.type == tokenize.OP and token.string == ':' and
+              self.state[-1] == STATE_ARGUMENT_LIST):
+            self.arg_name = self.accumulator
+            self.accumulator = ""
+            self.state.append(STATE_ARGUMENT_TYPE)
+
+        elif (token.type == tokenize.OP and token.string == '=' and
+              self.state[-1] in (STATE_ARGUMENT_LIST, STATE_ARGUMENT_TYPE)):
+            if self.state[-1] == STATE_ARGUMENT_TYPE:
+                self.arg_type = self.accumulator
+                self.state.pop()
+            else:
+                self.arg_name = self.accumulator
+            self.accumulator = ""
+            self.state.append(STATE_ARGUMENT_DEFAULT)
+
+        elif (token.type == tokenize.OP and token.string in (',', ')') and
+              self.state[-1] in (STATE_ARGUMENT_LIST, STATE_ARGUMENT_DEFAULT,
+                                 STATE_ARGUMENT_TYPE)):
+            if self.state[-1] == STATE_ARGUMENT_DEFAULT:
+                self.arg_default = self.accumulator
+                self.state.pop()
+            elif self.state[-1] == STATE_ARGUMENT_TYPE:
+                self.arg_type = self.accumulator
+                self.state.pop()
+            elif self.state[-1] == STATE_ARGUMENT_LIST:
+                self.arg_name = self.accumulator
+
+            if token.string == ')':
+                self.state.pop()
+            self.args.append(TypedArgSig(name=self.arg_name, type=self.arg_type,
+                                         default=bool(self.arg_default)))
+            self.arg_name = ""
+            self.arg_type = None
+            self.arg_default = None
+            self.accumulator = ""
+
+        elif token.type == tokenize.OP and token.string == '->' and self.state[-1] == STATE_INIT:
+            self.accumulator = ""
+            self.state.append(STATE_RETURN_VALUE)
+
+        # ENDMAKER is necessary for python 3.4 and 3.5
+        elif (token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and
+              self.state[-1] in (STATE_INIT, STATE_RETURN_VALUE)):
+            if self.state[-1] == STATE_RETURN_VALUE:
+                self.ret_type = self.accumulator
+                self.accumulator = ""
+                self.state.pop()
+
+            if self.found:
+                self.signatures.append(TypedFunctionSig(name=self.function_name, args=self.args,
+                                                        ret_type=self.ret_type))
+                self.found = False
+            self.args = []
+            self.ret_type = 'Any'
+            # leave state as INIT
+        else:
+            self.accumulator += token.string
+
+    def get_signatures(self) -> List[TypedFunctionSig]:
+        def has_arg(name: str, signature: TypedFunctionSig) -> bool:
+            return any(x.name == name for x in signature.args)
+
+        def args_kwargs(signature: TypedFunctionSig) -> bool:
+            return has_arg('*args', signature) and has_arg('**kwargs', signature)
+
+        # Move functions with (*args, **kwargs) in their signature to last place
+        return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
 
 
 def parse_signature(sig: str) -> Optional[Tuple[str,
@@ -123,124 +243,29 @@ def write_header(file: IO[str], module_name: Optional[str] = None,
         '# NOTE: This dynamically typed stub was automatically generated by stubgen.\n\n')
 
 
-class State(enum.Enum):
-    INIT = 1
-    FUNCTION_NAME = 2
-    ARGUMENT_LIST = 3
-    ARGUMENT_TYPE = 4
-    ARGUMENT_DEFAULT = 5
-    RETURN_VALUE = 6
-    OPEN_BRACKET = 7
-
-
 def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[TypedFunctionSig]]:
+    """Concert function signature to list of TypedFunctionSig
+
+    Looks for function signatures of function in docstring. Returns empty list, when no signature
+    is found, one signature in typical case, multiple signatures, if docstring specifies multiple
+    signatures for overload functions.
+
+    Arguments:
+        * docstr: docstring
+        * name: name of function for which signatures are to be found
+    """
     if not docstr:
         return None
 
-    state = [State.INIT]
-    accumulator = ""
-    arg_type = None
-    arg_name = ""
-    arg_default = None
-    ret_type = "Any"
-    found = False
-    args = []  # type: List[TypedArgSig]
-    signatures = []  # type: List[TypedFunctionSig]
-    try:
+    state = DocStringParser(name)
+    with contextlib.suppress(tokenize.TokenError):
         for token in tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline):
-            if token.type == tokenize.NAME and token.string == name and state[-1] == State.INIT:
-                state.append(State.FUNCTION_NAME)
-
-            elif (token.type == tokenize.OP and token.string == '(' and
-                    state[-1] == State.FUNCTION_NAME):
-                state.pop()
-                accumulator = ""
-                found = True
-                state.append(State.ARGUMENT_LIST)
-
-            elif state[-1] == State.FUNCTION_NAME:
-                # reset state, function name not followed by '('
-                state.pop()
-
-            elif (token.type == tokenize.OP and token.string in ('[', '(', '{') and
-                  state[-1] != State.INIT):
-                accumulator += token.string
-                state.append(State.OPEN_BRACKET)
-
-            elif (token.type == tokenize.OP and token.string in (']', ')', '}') and
-                    state[-1] == State.OPEN_BRACKET):
-                accumulator += token.string
-                state.pop()
-
-            elif (token.type == tokenize.OP and token.string == ':' and
-                    state[-1] == State.ARGUMENT_LIST):
-                arg_name = accumulator
-                accumulator = ""
-                state.append(State.ARGUMENT_TYPE)
-
-            elif (token.type == tokenize.OP and token.string == '=' and
-                  state[-1] in (State.ARGUMENT_LIST, State.ARGUMENT_TYPE)):
-                if state[-1] == State.ARGUMENT_TYPE:
-                    arg_type = accumulator
-                    state.pop()
-                else:
-                    arg_name = accumulator
-                accumulator = ""
-                state.append(State.ARGUMENT_DEFAULT)
-
-            elif (token.type == tokenize.OP and token.string in (',', ')') and
-                  state[-1] in (State.ARGUMENT_LIST, State.ARGUMENT_DEFAULT, State.ARGUMENT_TYPE)):
-                if state[-1] == State.ARGUMENT_DEFAULT:
-                    arg_default = accumulator
-                    state.pop()
-                elif state[-1] == State.ARGUMENT_TYPE:
-                    arg_type = accumulator
-                    state.pop()
-                elif state[-1] == State.ARGUMENT_LIST:
-                    arg_name = accumulator
-
-                if token.string == ')':
-                    state.pop()
-                args.append(TypedArgSig(name=arg_name, type=arg_type, default=arg_default))
-                arg_name = ""
-                arg_type = None
-                arg_default = None
-                accumulator = ""
-
-            elif token.type == tokenize.OP and token.string == '->' and state[-1] == State.INIT:
-                accumulator = ""
-                state.append(State.RETURN_VALUE)
-
-            # ENDMAKER is necessary for python 3.4 and 3.5
-            elif (token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and
-                  state[-1] in (State.INIT, State.RETURN_VALUE)):
-                if state[-1] == State.RETURN_VALUE:
-                    ret_type = accumulator
-                    accumulator = ""
-                    state.pop()
-
-                if found:
-                    signatures.append(TypedFunctionSig(name=name, args=args, ret_type=ret_type))
-                    found = False
-                args = []
-                ret_type = 'Any'
-                # leave state as INIT
-            else:
-                accumulator += token.string
-
-        return signatures
-    except tokenize.TokenError:
-        # return as much as collected
-        return signatures
+            state.add_token(token)
+    return state.get_signatures()
 
 
-def infer_arg_sig_from_docstring(docstr: str) -> ArgList:
-    """
-    convert signature in form of "(self: TestClass, arg0: str='ada')" to ArgList
-
-    :param docstr:
-    :return: ArgList with infered argument names and its types
-    """
+def infer_arg_sig_from_docstring(docstr: str) -> List[TypedArgSig]:
+    """Convert signature in form of "(self: TestClass, arg0: str='ada')" to List[TypedArgList]."""
     ret = infer_sig_from_docstring("stub" + docstr, "stub")
     if ret:
         return ret[0].args
