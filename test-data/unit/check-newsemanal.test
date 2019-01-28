@@ -305,6 +305,21 @@ class C2: pass # E: Name 'C2' already defined (possibly by an import)
 [file b.py]
 from a import C
 
+[case testNewAnalyzerRedefinitionAndDeferral3]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import f as g
+def f(): pass
+
+a, *b = g()
+class b(): pass # E: Name 'b' already defined on line 4
+reveal_type(b) # E: Revealed type is 'Any'
+
+[file b.py]
+from a import f
+
 [case testNewAnalyzerImportStarForwardRef]
 # flags: --new-semantic-analyzer
 import a

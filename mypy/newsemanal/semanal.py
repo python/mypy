@@ -368,6 +368,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
+        # TODO: Don't define any attributes here (better to do it in class body or __init__)
         self.deferred = False  # Set to true if another analysis pass is needed
         self.incomplete = False  # Set to true if current module namespace is missing things
         # These names couldn't be added to the symbol table due to incomplete deps.
@@ -601,7 +602,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
 
-        # TODO: Fix this
+        # TODO: Use add_symbol or similar below (this is inconsistent)
         if self.is_class_scope():
             assert self.type is not None
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
@@ -1221,7 +1222,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # in globals under mangled unique names
             #
             # TODO: Putting local classes into globals breaks assumptions in fine-grained
-            #     incremental mode and we should avoid it.
+            #       incremental mode and we should avoid it.
             if '@' not in defn.info._fullname:
                 local_name = defn.info._fullname + '@' + str(defn.line)
                 defn.info._fullname = self.cur_mod_id + '.' + local_name
@@ -1860,7 +1861,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
-            for name in names_defined_by_assignment(s):
+            # Make sure that if we skip the definition of some local names, they can't be
+            # added later in this scope, since an earlier definition should take precedence.
+            for name in names_modified_by_assignment(s):
                 self.mark_incomplete(name)
             return
         self.analyze_lvalues(s)
@@ -3615,7 +3618,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                            parts[i], parts[i])
                             if gvar:
                                 n = SymbolTableNode(GDEF, gvar)
-                                # TODO: What was the purpose of this?
+                                # TODO: Enable this (the purpose is likely to preserve the
+                                #       identity of the Var node if there are multiple imports)
                                 # names[name] = n
                     # TODO: What if node is Var or FuncDef?
                     # Currently, missing these cases results in controversial behavior, when
@@ -3807,7 +3811,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def add_symbol(self, name: str, node: SymbolNode, context: Context,
                    module_public: bool = True, module_hidden: bool = False) -> None:
-        """Add symbol to the currently active symbol table."""
+        """Add symbol to the currently active symbol table.
+
+        Generally additions to symbol table should go through this method or
+        one of the methods below so that kinds, redefinitions, conditional
+        definitions, and skipped names are handled consistently.
+        """
         if self.is_func_scope():
             kind = LDEF
         elif self.type is not None:
@@ -4070,19 +4079,23 @@ def apply_semantic_analyzer_patches(patches: List[Tuple[int, Callable[[], None]]
         patch_func()
 
 
-def names_defined_by_assignment(s: AssignmentStmt) -> List[str]:
+def names_modified_by_assignment(s: AssignmentStmt) -> List[str]:
+    """Return all unqualified (short) names assigned to in an assignment statement."""
     result = []  # type: List[str]
     for lvalue in s.lvalues:
-        result += names_defined_by_lvalue(lvalue)
+        result += names_modified_in_lvalue(lvalue)
     return result
 
 
-def names_defined_by_lvalue(lvalue: Lvalue) -> List[str]:
+def names_modified_in_lvalue(lvalue: Lvalue) -> List[str]:
+    """Return all NameExpr assignment targets in an Lvalue."""
     if isinstance(lvalue, NameExpr):
         return [lvalue.name]
+    elif isinstance(lvalue, StarExpr):
+        return names_modified_in_lvalue(lvalue.expr)
     elif isinstance(lvalue, (ListExpr, TupleExpr)):
         result = []  # type: List[str]
         for item in lvalue.items:
-            result += names_defined_by_lvalue(item)
+            result += names_modified_in_lvalue(item)
         return result
     return []
