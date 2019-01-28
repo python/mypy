@@ -1163,10 +1163,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 sym.node.fullname() == 'typing_extensions.Protocol' and base.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
+                tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
                     tvars.append(tvar)
-                else:
+                elif not self.found_incomplete_ref(tag):
                     self.fail('Free type variable expected in %s[...]' %
                               sym.node.name(), base)
             return tvars

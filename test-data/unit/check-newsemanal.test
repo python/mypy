@@ -372,3 +372,41 @@ class A:
 
         def f(self) -> str:
             return self.x # E: Incompatible return value type (got "int", expected "str")
+
+[case testNewAnalyzerGenerics]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+c: C[int]
+c2: C[int, str] # E: "C" expects 1 type argument, but 2 given
+c3: C
+c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+reveal_type(c.get()) # E: Revealed type is 'builtins.int*'
+reveal_type(c2) # E: Revealed type is '__main__.C[Any]'
+reveal_type(c3) # E: Revealed type is '__main__.C[Any]'
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    def get(self) -> T:
+        return self.x
+
+[case testNewAnalyzerGenericsTypeVarForwardRef]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    def get(self) -> T:
+        return self.x
+
+T = TypeVar('T')
+
+c: C[int]
+c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+reveal_type(c.get()) # E: Revealed type is 'builtins.int*'
