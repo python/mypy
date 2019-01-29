@@ -53,7 +53,7 @@ import argparse
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Mapping, Optional, NamedTuple, Set, cast
+    Any, List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
 )
 
 import mypy.build
@@ -62,13 +62,13 @@ import mypy.errors
 import mypy.traverser
 import mypy.util
 from mypy import defaults
-from mypy.modulefinder import FindModuleCache, SearchPaths, BuildSource
+from mypy.modulefinder import FindModuleCache, SearchPaths, BuildSource, default_lib_path
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
-    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT, NamedTupleExpr
+    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
@@ -210,8 +210,6 @@ class AliasPrinter(NodeVisitor[str]):
         return node.name
 
     def visit_member_expr(self, o: MemberExpr) -> str:
-        if not self.stubgen.analyzed:
-            return super().visit_member_expr(o)
         node = o  # type: Expression
         trailer = ''
         while isinstance(node, MemberExpr):
@@ -429,6 +427,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         retname = None
         if isinstance(o.unanalyzed_type, CallableType):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
+        elif isinstance(o, FuncDef) and o.is_abstract:
+            # Always assume abstract methods return Any unless explicitly annotated.
+            retname = 'Any'
+            self.add_typing_import("Any")
         elif o.name() == '__init__' or not has_return_statement(o):
             retname = 'None'
         retfield = ''
@@ -452,9 +454,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                                             'asyncio.coroutines',
                                                                             'types'):
                     self.add_coroutine_decorator(o.func, decorator.name, decorator.name)
+                elif (self.import_tracker.module_for.get(decorator.name) == 'abc' and
+                      (decorator.name == 'abstractmethod' or
+                       self.import_tracker.reverse_alias.get(decorator.name) == 'abstractmethod')):
+                    self.add('%s@%s\n' % (self._indent, decorator.name))
+                    self.import_tracker.require_name(decorator.name)
             elif isinstance(decorator, MemberExpr):
                 if decorator.name == 'setter' and isinstance(decorator.expr, NameExpr):
                     self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+                elif (isinstance(decorator.expr, NameExpr) and
+                      (decorator.expr.name == 'abc' or
+                       self.import_tracker.reverse_alias.get('abc')) and
+                      decorator.name == 'abstractmethod'):
+                    self.import_tracker.require_name(decorator.expr.name)
+                    self.add('%s@%s.%s\n' % (self._indent, decorator.expr.name, decorator.name))
                 elif decorator.name == 'coroutine':
                     if (isinstance(decorator.expr, MemberExpr) and
                         decorator.expr.name == 'coroutines' and
@@ -484,9 +497,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.record_name(o.name)
         base_types = self.get_base_types(o)
         if base_types:
-            self.add('(%s)' % ', '.join(base_types))
             for base in base_types:
                 self.import_tracker.require_name(base)
+        if isinstance(o.metaclass, (NameExpr, MemberExpr)):
+            meta = o.metaclass.accept(AliasPrinter(self))
+            base_types.append('metaclass=' + meta)
+        elif self.analyzed and o.info.is_abstract:
+            base_types.append('metaclass=abc.ABCMeta')
+            self.import_tracker.add_import('abc')
+            self.import_tracker.require_name('abc')
+        if base_types:
+            self.add('(%s)' % ', '.join(base_types))
         self.add(':\n')
         n = len(self._output)
         self._indent += '    '
@@ -867,7 +888,8 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
         if options.no_import:
             py_modules = find_module_paths_using_search(options.modules,
                                                         options.packages,
-                                                        options.search_path)
+                                                        options.search_path,
+                                                        options.pyversion)
             c_modules = []  # type: List[StubSource]
         else:
             # Using imports is the default, since we can also find C modules.
@@ -919,7 +941,8 @@ def find_module_paths_using_imports(modules: List[str], packages: List[str],
 
 
 def find_module_paths_using_search(modules: List[str], packages: List[str],
-                                   search_path: List[str]) -> List[StubSource]:
+                                   search_path: List[str],
+                                   pyversion: Tuple[int, int]) -> List[StubSource]:
     """Find sources for modules and packages requested.
 
     This function just looks for source files at the file system level.
@@ -927,7 +950,8 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
     Exit if some of the modules or packages can't be found.
     """
     result = []  # type: List[StubSource]
-    search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
+    typeshed_path = default_lib_path(mypy.build.default_data_dir(), pyversion, None)
+    search_paths = SearchPaths(('.',) + tuple(search_path), (), (), tuple(typeshed_path))
     cache = FindModuleCache(search_paths)
     for module in modules:
         module_path = cache.find_module(module)

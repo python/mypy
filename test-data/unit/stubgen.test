@@ -1382,3 +1382,56 @@ from typing import Any, Dict
 
 funcs: Dict[Any, Any]
 f: Any
+
+[case testAbstractMethodNameExpr]
+from abc import ABCMeta, abstractmethod
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self):
+        pass
+[out]
+from abc import ABCMeta, abstractmethod
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self) -> None: ...
+
+[case testAbstractMethodMemberExpr]
+import abc
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def meth(self) -> None: ...
+
+[case testABCMeta_semanal]
+from base import base
+from abc import abstractmethod
+
+class C(Base):
+    @abstractmethod
+    def other(self):
+        pass
+
+[file base.py]
+from abc import abstractmethod, ABCMeta
+
+class Base(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc
+from abc import abstractmethod
+from typing import Any
+
+class C(Base, metaclass=abc.ABCMeta):
+    @abstractmethod
+    def other(self) -> Any: ...
