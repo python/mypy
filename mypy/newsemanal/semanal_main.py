@@ -132,11 +132,12 @@ def semantic_analyze_target(target: str,
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]
     analyzer.globals = tree.names
-    with analyzer.file_context(file_node=tree,
-                               fnam=tree.path,
-                               options=state.options,
-                               active_type=active_type):
-        analyzer.refresh_partial(node, [])
+    with state.wrap_context():
+        with analyzer.file_context(file_node=tree,
+                                   fnam=tree.path,
+                                   options=state.options,
+                                   active_type=active_type):
+            analyzer.refresh_partial(node, [])
     if analyzer.deferred:
         return [target], analyzer.incomplete
     else:
