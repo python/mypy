@@ -225,7 +225,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
-                emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype), attr))
+                emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype), emitter.attr(attr)))
     emitter.emit_line('}} {};'.format(cl.struct_name(emitter.names)))
 
 
@@ -244,20 +244,22 @@ def declare_native_getters_and_setters(cl: ClassIR,
 def generate_native_getters_and_setters(cl: ClassIR,
                                         emitter: Emitter) -> None:
     for attr, rtype in cl.attributes.items():
+        attr_field = emitter.attr(attr)
+
         # Native getter
         emitter.emit_line('{}{}({} *self)'.format(emitter.ctype_spaced(rtype),
                                                   native_getter_name(cl, attr, emitter.names),
                                                   cl.struct_name(emitter.names)))
         emitter.emit_line('{')
         if rtype.is_refcounted:
-            emit_undefined_check(rtype, emitter, attr, '==')
+            emit_undefined_check(rtype, emitter, attr_field, '==')
             emitter.emit_lines(
                 'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
                     repr(attr), repr(cl.name)),
                 '} else {')
-            emitter.emit_inc_ref('self->{}'.format(attr), rtype)
+            emitter.emit_inc_ref('self->{}'.format(attr_field), rtype)
             emitter.emit_line('}')
-        emitter.emit_line('return self->{};'.format(attr))
+        emitter.emit_line('return self->{};'.format(attr_field))
         emitter.emit_line('}')
         emitter.emit_line()
         # Native setter
@@ -267,11 +269,11 @@ def generate_native_getters_and_setters(cl: ClassIR,
                                                 emitter.ctype_spaced(rtype)))
         emitter.emit_line('{')
         if rtype.is_refcounted:
-            emit_undefined_check(rtype, emitter, attr, '!=')
-            emitter.emit_dec_ref('self->{}'.format(attr), rtype)
+            emit_undefined_check(rtype, emitter, attr_field, '!=')
+            emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
             emitter.emit_line('}')
         # This steal the reference to src, so we don't need to increment the arg
-        emitter.emit_lines('self->{} = value;'.format(attr),
+        emitter.emit_lines('self->{} = value;'.format(attr_field),
                            'return 1;',
                            '}')
         emitter.emit_line()
@@ -364,7 +366,8 @@ def generate_setup_for_class(cl: ClassIR,
     emitter.emit_line('self->vtable = {};'.format(vtable_name))
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_line('self->{} = {};'.format(attr, emitter.c_undefined_value(rtype)))
+            emitter.emit_line('self->{} = {};'.format(
+                emitter.attr(attr), emitter.c_undefined_value(rtype)))
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -456,7 +459,7 @@ def generate_traverse_for_class(cl: ClassIR,
     emitter.emit_line('{')
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_gc_visit('self->{}'.format(attr), rtype)
+            emitter.emit_gc_visit('self->{}'.format(emitter.attr(attr)), rtype)
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -469,7 +472,7 @@ def generate_clear_for_class(cl: ClassIR,
     emitter.emit_line('{')
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_gc_clear('self->{}'.format(attr), rtype)
+            emitter.emit_gc_clear('self->{}'.format(emitter.attr(attr)), rtype)
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -572,18 +575,19 @@ def generate_getter(cl: ClassIR,
                     attr: str,
                     rtype: RType,
                     emitter: Emitter) -> None:
+    attr_field = emitter.attr(attr)
     emitter.emit_line('static PyObject *')
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl, attr, emitter.names),
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    emit_undefined_check(rtype, emitter, attr, '==')
+    emit_undefined_check(rtype, emitter, attr_field, '==')
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                     repr(cl.name)))
     emitter.emit_line('return NULL;')
     emitter.emit_line('}')
-    emitter.emit_inc_ref('self->{}'.format(attr), rtype)
-    emitter.emit_box('self->{}'.format(attr), 'retval', rtype, declare_dest=True)
+    emitter.emit_inc_ref('self->{}'.format(attr_field), rtype)
+    emitter.emit_box('self->{}'.format(attr_field), 'retval', rtype, declare_dest=True)
     emitter.emit_line('return retval;')
     emitter.emit_line('}')
 
@@ -592,14 +596,15 @@ def generate_setter(cl: ClassIR,
                     attr: str,
                     rtype: RType,
                     emitter: Emitter) -> None:
+    attr_field = emitter.attr(attr)
     emitter.emit_line('static int')
     emitter.emit_line('{}({} *self, PyObject *value, void *closure)'.format(
         setter_name(cl, attr, emitter.names),
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     if rtype.is_refcounted:
-        emit_undefined_check(rtype, emitter, attr, '!=')
-        emitter.emit_dec_ref('self->{}'.format(attr), rtype)
+        emit_undefined_check(rtype, emitter, attr_field, '!=')
+        emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
         emitter.emit_line('}')
     emitter.emit_line('if (value != NULL) {')
     if rtype.is_unboxed:
@@ -611,9 +616,9 @@ def generate_setter(cl: ClassIR,
         emitter.emit_lines('if (!tmp)',
                            '    return -1;')
     emitter.emit_inc_ref('tmp', rtype)
-    emitter.emit_line('self->{} = tmp;'.format(attr))
+    emitter.emit_line('self->{} = tmp;'.format(attr_field))
     emitter.emit_line('} else')
-    emitter.emit_line('    self->{} = {};'.format(attr, emitter.c_undefined_value(rtype)))
+    emitter.emit_line('    self->{} = {};'.format(attr_field, emitter.c_undefined_value(rtype)))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 

@@ -4,7 +4,8 @@ from collections import OrderedDict
 from typing import List, Set, Dict, Optional, List, Callable, Union
 
 from mypyc.common import (
-    REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX, FAST_ISINSTANCE_MAX_SUBCLASSES
+    REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
+    FAST_ISINSTANCE_MAX_SUBCLASSES
 )
 from mypyc.ops import (
     Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
@@ -70,6 +71,9 @@ class Emitter:
 
     def reg(self, reg: Value) -> str:
         return REG_PREFIX + reg.name
+
+    def attr(self, name: str) -> str:
+        return ATTR_PREFIX + name
 
     def emit_line(self, line: str = '') -> None:
         if line.startswith('}'):

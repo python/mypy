@@ -3666,24 +3666,26 @@ try:
 except RuntimeError:
     assert version == (3, 5), "only 3.5 should fail!"
 
-[case testGeneratorNameClash]
+[case testNameClashIssues]
 class A:
     def foo(self) -> object:
         yield
 class B:
     def foo(self) -> object:
         yield
-[file driver.py]
-# really I only care it builds
 
-[case testNestedFuncNameClash]
-class A:
+class C:
     def foo(self) -> None:
         def bar(self) -> None:
             pass
-class B:
+class D:
     def foo(self) -> None:
         def bar(self) -> None:
             pass
+
+class E:
+    default: int
+    switch: int
+
 [file driver.py]
 # really I only care it builds
