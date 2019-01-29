@@ -152,7 +152,7 @@ SUGGESTED_TEST_FIXTURES = {
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
-CORE_BUILTIN_CLASSES = ['object', 'bool']  # type: Final
+CORE_BUILTIN_CLASSES = ['object', 'bool', 'tuple']  # type: Final
 
 
 # Used for tracking incomplete references
@@ -3364,7 +3364,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # may be analysing a type alias definition rvalue. The error will be
                 # reported elsewhere if it is not the case.
                 typearg2 = self.anal_type(typearg, allow_unbound_tvars=True)
-                assert typearg2 is not None  # TODO: Deal with None return values
+                if typearg2 is None:
+                    self.defer()
+                    return
                 types.append(typearg2)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line

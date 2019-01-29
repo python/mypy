@@ -526,3 +526,17 @@ def f2(x: int) -> int:
 f1(1) # E: Argument 1 to "f1" has incompatible type "int"; expected "str"
 reveal_type(f1('')) # E: Revealed type is 'builtins.str'
 f2(1) # E: Argument 1 to "f2" has incompatible type "int"; expected "str"
+
+[case testNewAnalyzerTypeApplicationForwardReference]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+XY = TypeVar('XY', X, Y)
+
+class C(Generic[T]): pass
+
+class D(C[XY], Generic[XY]): pass
+
+class X: pass
+class Y: pass
