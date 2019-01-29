@@ -368,8 +368,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
+        # TODO: Don't define any attributes here (better to do it in class body or __init__)
         self.deferred = False  # Set to true if another analysis pass is needed
         self.incomplete = False  # Set to true if current module namespace is missing things
+        # These names couldn't be added to the symbol table due to incomplete deps.
+        self.missing_names = set()  # type: Set[str]
 
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
@@ -434,20 +437,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self._visit_func_def(defn)
 
     def add_func_to_symbol_table(self, func: FuncDef) -> None:
-        if self.is_func_scope():
-            # These are handled later.
-            return
         func._fullname = self.qualified_name(func.name())
-        # TODO: Module-level __getattr__
-        # TODO: Conditional function definitions
-        if self.is_module_scope():
-            if func.name() not in self.globals:
-                self.globals[func.name()] = SymbolTableNode(GDEF, func)
-        elif self.is_class_scope():
-            info = self.type
-            assert info is not None
-            if func.name() not in info.names:
-                info.names[func.name()] = SymbolTableNode(MDEF, func)
+        self.add_symbol(func.name(), func, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -463,55 +454,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
             defn.is_conditional = self.block_depth[-1] > 0
 
-            # TODO(jukka): Figure out how to share the various cases. It doesn't
-            #   make sense to have (almost) duplicate code (here and elsewhere) for
-            #   3 cases: module-level, class-level and local names. Maybe implement
-            #   a common stack of namespaces. As the 3 kinds of namespaces have
-            #   different semantics, this wouldn't always work, but it might still
-            #   be a win.
-            #   Also we can re-use some logic in self.add_symbol().
             if self.is_class_scope():
                 # Method definition
-                assert self.type is not None, "Type not set at class scope"
+                assert self.type is not None
                 defn.info = self.type
-                add_symbol = True
-                if not defn.is_decorated and not defn.is_overload:
-                    if (defn.name() in self.type.names and
-                            self.type.names[defn.name()].node != defn):
-                        # Redefinition. Conditional redefinition is okay.
-                        n = self.type.names[defn.name()].node
-                        if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn,
-                                                      self.type.names[defn.name()])
-                            add_symbol = False
-                    if add_symbol:
-                        self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                     assert isinstance(defn.type, CallableType)
                     if isinstance(defn.type.ret_type, AnyType):
                         defn.type = defn.type.copy_modified(ret_type=NoneTyp())
                 self.prepare_method_signature(defn, self.type)
-            elif self.is_func_scope():
-                # Nested function
-                assert self.locals[-1] is not None, "No locals at function scope"
-                if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.locals[-1]:
-                        # Redefinition. Conditional redefinition is okay.
-                        n = self.locals[-1][defn.name()].node
-                        if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn,
-                                                      self.locals[-1][defn.name()])
-                    else:
-                        self.add_local(defn, defn)
-            else:
-                # Top-level function
-                if not defn.is_decorated and not defn.is_overload:
-                    symbol = self.globals[defn.name()]
-                    if isinstance(symbol.node, FuncDef) and symbol.node != defn:
-                        # This is redefinition. Conditional redefinition is okay.
-                        if not self.set_original_def(symbol.node, defn):
-                            # Report error.
-                            self.check_no_global(defn.name(), defn, True)
 
             # Analyze function signature and initializers in the first phase
             # (at least this mirrors what happens at runtime).
@@ -573,8 +524,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         We reject straight redefinitions of functions, as they are usually
         a programming error. For example:
 
-        . def f(): ...
-        . def f(): ...  # Error: 'f' redefined
+          def f(): ...
+          def f(): ...  # Error: 'f' redefined
         """
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
@@ -651,7 +602,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
 
-        if self.type and not self.is_func_scope():
+        # TODO: Use add_symbol or similar below (this is inconsistent)
+        if self.is_class_scope():
+            assert self.type is not None
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             defn.info = self.type
         elif self.is_func_scope():
@@ -890,7 +843,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         if result is None or self.found_incomplete_ref(tag):
             # Something was incomplete -- defer current target.
-            self.mark_incomplete()
+            self.mark_incomplete(defn.name)
             return
 
         base_types, base_error = result
@@ -898,7 +851,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
             if info is None:
-                self.mark_incomplete()
+                self.mark_incomplete(defn.name)
             else:
                 self.prepare_class_def(defn, info)
             return
@@ -1261,29 +1214,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             info.defn = defn
             if self.is_module_scope():
                 info._fullname = self.qualified_name(defn.name)
-                self.globals[defn.name] = SymbolTableNode(GDEF, info)
             else:
                 info._fullname = info.name()
-        if self.is_func_scope() or self.type:
-            kind = MDEF
-            if self.is_nested_within_func_scope():
-                kind = LDEF
-            node = SymbolTableNode(kind, defn.info)
-            self.add_symbol(defn.name, node, defn)
-            if kind == LDEF:
-                # We need to preserve local classes, let's store them
-                # in globals under mangled unique names
-                #
-                # TODO: Putting local classes into globals breaks assumptions in fine-grained
-                #     incremental mode and we should avoid it.
-                if '@' not in defn.info._fullname:
-                    local_name = defn.info._fullname + '@' + str(defn.line)
-                    defn.info._fullname = self.cur_mod_id + '.' + local_name
-                else:
-                    # Preserve name from previous fine-grained incremental run.
-                    local_name = defn.info._fullname
-                defn.fullname = defn.info._fullname
-                self.globals[local_name] = node
+        self.add_symbol(defn.name, defn.info, defn)
+        if self.is_nested_within_func_scope():
+            # We need to preserve local classes, let's store them
+            # in globals under mangled unique names
+            #
+            # TODO: Putting local classes into globals breaks assumptions in fine-grained
+            #       incremental mode and we should avoid it.
+            if '@' not in defn.info._fullname:
+                local_name = defn.info._fullname + '@' + str(defn.line)
+                defn.info._fullname = self.cur_mod_id + '.' + local_name
+            else:
+                # Preserve name from previous fine-grained incremental run.
+                local_name = defn.info._fullname
+            defn.fullname = defn.info._fullname
+            self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
         if (self.is_module_scope()
@@ -1657,18 +1604,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return True
         return False
 
-    def add_module_symbol(self, id: str, as_id: str, module_public: bool,
-                          context: Context, module_hidden: bool = False) -> None:
-        """Add symbol that is a reference to a module object."""
-        if id in self.modules:
-            m = self.modules[id]
-            kind = self.current_symbol_kind()
-            self.add_symbol(as_id, SymbolTableNode(kind, m,
-                                                   module_public=module_public,
-                                                   module_hidden=module_hidden), context)
-        else:
-            self.add_unknown_symbol(as_id, context, is_import=True, target_name=id)
-
     def visit_import_from(self, imp: ImportFrom) -> None:
         import_id = self.correct_relative_import(imp)
         self.add_submodules_to_parent_modules(import_id, True)
@@ -1679,6 +1614,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
             missing = False
             possible_module_id = import_id + '.' + id
+            imported_id = as_id or id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
@@ -1693,22 +1629,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                name = as_id if as_id else id
                 if self.type:
-                    fullname = self.type.fullname() + "." + name
+                    fullname = self.type.fullname() + "." + imported_id
                 else:
-                    fullname = self.qualified_name(name)
-                gvar = self.create_getattr_var(module.names['__getattr__'], name, fullname)
+                    fullname = self.qualified_name(imported_id)
+                gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
-                    self.add_symbol(name, gvar, imp)
+                    self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 if not node:
                     # Normalization failed because target is not defined. Avoid duplicate
                     # error messages by marking the imported name as unknown.
-                    self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                    self.add_unknown_symbol(imported_id, imp, is_import=True)
                     continue
-                imported_id = as_id or id
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol:
                     # Import can redefine a variable. They get special treatment.
@@ -1720,23 +1654,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 module_hidden = not module_public and possible_module_id not in self.modules
                 # NOTE: we take the original node even for final `Var`s. This is to support
                 # a common pattern when constants are re-exported (same applies to import *).
-                symbol = SymbolTableNode(node.kind, node.node,
+                self.add_imported_symbol(imported_id, node, imp,
                                          module_public=module_public,
                                          module_hidden=module_hidden)
-                self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
                 if self.is_incomplete_namespace(import_id):
                     # We don't know whether the name will be there, since the namespace
                     # is incomplete. Defer the current target.
-                    self.mark_incomplete()
+                    self.mark_incomplete(imported_id)
                     return
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
                 self.fail(message, imp)
-                self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                self.add_unknown_symbol(imported_id, imp, is_import=True)
 
                 if import_id == 'typing':
                     # The user probably has a missing definition in a test fixture. Let's verify.
@@ -1748,7 +1681,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
-                self.add_unknown_symbol(as_id or id, imp, is_import=True, target_name=missing_name)
+                self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
 
     def dereference_module_cross_ref(
             self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
@@ -1817,6 +1750,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         i_id = self.correct_relative_import(i)
         if i_id in self.modules:
             m = self.modules[i_id]
+            if self.is_incomplete_namespace(i_id):
+                # Any names could be missing from the current namespace if the target module
+                # namespace is incomplete.
+                self.mark_incomplete('*')
             self.add_submodules_to_parent_modules(i_id, True)
             for name, orig_node in m.names.items():
                 node = self.dereference_module_cross_ref(orig_node)
@@ -1834,34 +1771,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, node, i):
                             continue
-                    symbol = SymbolTableNode(node.kind, node.node)
-                    self.add_symbol(name, symbol, i)
+                    self.add_imported_symbol(name, node, i)
                     i.imported_names.append(name)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
-
-    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
-                           target_name: Optional[str] = None) -> None:
-        var = Var(name)
-        if self.options.logical_deps and target_name is not None:
-            # This makes it possible to add logical fine-grained dependencies
-            # from a missing module. We can't use this by default, since in a
-            # few places we assume that the full name points to a real
-            # definition, but this name may point to nothing.
-            var._fullname = target_name
-        elif self.type:
-            var._fullname = self.type.fullname() + "." + name
-        else:
-            var._fullname = self.qualified_name(name)
-        var.is_ready = True
-        if is_import:
-            any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
-        else:
-            any_type = AnyType(TypeOfAny.from_error)
-        var.type = any_type
-        var.is_suppressed_import = is_import
-        self.add_symbol(name, SymbolTableNode(GDEF, var), context)
 
     #
     # Statements
@@ -1947,7 +1861,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
-            self.mark_incomplete()
+            # Make sure that if we skip the definition of some local names, they can't be
+            # added later in this scope, since an earlier definition should take precedence.
+            for name in names_modified_by_assignment(s):
+                self.mark_incomplete(name)
             return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
@@ -2316,7 +2233,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if add_global and lval.name not in self.globals:
             # Define new global name.
             v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
-            self.globals[lval.name] = SymbolTableNode(GDEF, v)
+            self.add_symbol(lval.name, v, lval)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
                 # Since the is_new_def flag is set, this must have been analyzed
@@ -2345,7 +2262,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if is_final and unmangle(lval.name) + "'" in self.type.names:
                 self.fail("Cannot redefine an existing name as final", lval)
             v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            self.add_symbol(lval.name, v, lval)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
 
@@ -2888,14 +2805,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
-            if self.is_func_scope():
-                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec),
-                                dec)
-            elif self.type:
+            if self.type:
                 dec.var.info = self.type
                 dec.var.is_initialized_in_class = True
-                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
-                                dec)
+            self.add_symbol(dec.var.name(), dec, dec)
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
@@ -3704,8 +3617,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             gvar = self.create_getattr_var(names['__getattr__'],
                                                            parts[i], parts[i])
                             if gvar:
-                                names[name] = gvar
-                                n = gvar
+                                n = SymbolTableNode(GDEF, gvar)
+                                # TODO: Enable this (the purpose is likely to preserve the
+                                #       identity of the Var node if there are multiple imports)
+                                # names[name] = n
                     # TODO: What if node is Var or FuncDef?
                     # Currently, missing these cases results in controversial behavior, when
                     # lookup_qualified(x.y.z) returns Var(x).
@@ -3738,10 +3653,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer()
         self.num_incomplete_refs += 1
 
-    def mark_incomplete(self) -> None:
-        """Mark the current module namespace as incomplete (and defer current analysis target)."""
+    def mark_incomplete(self, name: str) -> None:
+        """Mark the current module namespace as incomplete (and defer current analysis target).
+
+        Args:
+            name: The name that we weren't able to define (or '*' if the name is unknown)
+        """
         self.defer()
         self.incomplete = True
+        self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
         """Is a module or class namespace potentially missing some definitions?
@@ -3752,8 +3672,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return fullname in self.incomplete_namespaces
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
-                           name: str, fullname: str) -> Optional[SymbolTableNode]:
-        """Create a dummy global symbol using __getattr__ return type.
+                           name: str, fullname: str) -> Optional[Var]:
+        """Create a dummy variable using __getattr__ return type.
 
         If not possible, return None.
         """
@@ -3764,7 +3684,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 typ = AnyType(TypeOfAny.from_error)
             v = Var(name, type=typ)
             v._fullname = fullname
-            return SymbolTableNode(GDEF, v)
+            return v
         return None
 
     def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
@@ -3889,53 +3809,91 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             kind = GDEF
         return kind
 
-    def add_symbol(self, name: str, node: SymbolTableNode,
-                   context: Context) -> None:
-        """Add symbol to the currently active symbol table."""
-        # NOTE: This logic mostly parallels SemanticAnalyzerPass1.add_symbol. If you change
-        #     this, you may have to change the other method as well.
-        # TODO: Combine these methods in the first and second pass into a single one.
+    def add_symbol(self, name: str, node: SymbolNode, context: Context,
+                   module_public: bool = True, module_hidden: bool = False) -> None:
+        """Add symbol to the currently active symbol table.
+
+        Generally additions to symbol table should go through this method or
+        one of the methods below so that kinds, redefinitions, conditional
+        definitions, and skipped names are handled consistently.
+        """
+        if self.is_func_scope():
+            kind = LDEF
+        elif self.type is not None:
+            kind = MDEF
+        else:
+            kind = GDEF
+        symbol = SymbolTableNode(kind,
+                                 node,
+                                 module_public=module_public,
+                                 module_hidden=module_hidden)
+        self.add_symbol_table_node(name, symbol, context)
+
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
+                              context: Optional[Context] = None) -> None:
+        """Add symbol table node to the currently active symbol table."""
         if self.is_func_scope():
             assert self.locals[-1] is not None
-            if name in self.locals[-1]:
-                # Flag redefinition unless this is a reimport of a module.
-                if not (isinstance(node.node, MypyFile) and
-                        self.locals[-1][name].node == node.node):
-                    self.name_already_defined(name, context, self.locals[-1][name])
-                    return
-            self.locals[-1][name] = node
-        elif self.type:
-            existing = self.type.names.get(name)
-            if existing and isinstance(existing.node, TypeInfo) and existing.node != node.node:
-                self.name_already_defined(name, context, existing)
-                return
-            self.type.names[name] = node
+            names = self.locals[-1]
+        elif self.type is not None:
+            names = self.type.names
         else:
-            existing = self.globals.get(name)
-            if (existing
-                    and (not isinstance(node.node, MypyFile) or existing.node != node.node)
-                    and existing.kind != UNBOUND_IMPORTED
-                    and not isinstance(existing.node, ImportedName)):
-                # Modules can be imported multiple times to support import
-                # of multiple submodules of a package (e.g. a.x and a.y).
-                ok = False
-                # Only report an error if the symbol collision provides a different type.
-                if existing.type and node.type and is_same_type(existing.type, node.type):
-                    ok = True
-                if not ok:
-                    self.name_already_defined(name, context, existing)
-                    return
-            self.globals[name] = node
+            names = self.globals
+        existing = names.get(name)
+        if existing is not None and context is not None:
+            if existing.node != symbol.node:
+                self.name_already_defined(name, context, existing)
+        elif name not in self.missing_names and '*' not in self.missing_names:
+            names[name] = symbol
 
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
+    def add_module_symbol(self, id: str, as_id: str, module_public: bool,
+                          context: Context, module_hidden: bool = False) -> None:
+        """Add symbol that is a reference to a module object."""
+        if id in self.modules:
+            node = self.modules[id]
+            self.add_symbol(as_id, node, context,
+                            module_public=module_public,
+                            module_hidden=module_hidden)
+        else:
+            self.add_unknown_symbol(as_id, context, is_import=True, target_name=id)
+
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
         """Add local variable or function."""
-        assert self.locals[-1] is not None, "Should not add locals outside a function"
+        assert self.is_func_scope()
         name = node.name()
-        if name in self.locals[-1]:
-            self.name_already_defined(name, ctx, self.locals[-1][name])
-            return
         node._fullname = name
-        self.locals[-1][name] = SymbolTableNode(LDEF, node)
+        self.add_symbol(name, node, context)
+
+    def add_imported_symbol(self, name: str, node: SymbolTableNode, context: Context,
+                            module_public: bool = True, module_hidden: bool = False) -> None:
+        """Add an alias to an existing symbol through import."""
+        symbol = SymbolTableNode(node.kind, node.node,
+                                 module_public=module_public,
+                                 module_hidden=module_hidden)
+        self.add_symbol_table_node(name, symbol, context)
+
+    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
+                           target_name: Optional[str] = None) -> None:
+        """Add symbol that we don't know what it points to (due to error, for example)."""
+        var = Var(name)
+        if self.options.logical_deps and target_name is not None:
+            # This makes it possible to add logical fine-grained dependencies
+            # from a missing module. We can't use this by default, since in a
+            # few places we assume that the full name points to a real
+            # definition, but this name may point to nothing.
+            var._fullname = target_name
+        elif self.type:
+            var._fullname = self.type.fullname() + "." + name
+        else:
+            var._fullname = self.qualified_name(name)
+        var.is_ready = True
+        if is_import:
+            any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
+        else:
+            any_type = AnyType(TypeOfAny.from_error)
+        var.type = any_type
+        var.is_suppressed_import = is_import
+        self.add_symbol(name, var, context)
 
     def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
         exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
@@ -4045,14 +4003,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
 
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
-        """Add node to global symbol table (or to nearest class if there is one)."""
-        # TODO: Adding to the nearest class is ad hoc.
-        if self.type:
-            self.type.names[name] = stnode
-        else:
-            self.globals[name] = stnode
-
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
@@ -4127,3 +4077,25 @@ def apply_semantic_analyzer_patches(patches: List[Tuple[int, Callable[[], None]]
     patches_by_priority = sorted(patches, key=lambda x: x[0])
     for priority, patch_func in patches_by_priority:
         patch_func()
+
+
+def names_modified_by_assignment(s: AssignmentStmt) -> List[str]:
+    """Return all unqualified (short) names assigned to in an assignment statement."""
+    result = []  # type: List[str]
+    for lvalue in s.lvalues:
+        result += names_modified_in_lvalue(lvalue)
+    return result
+
+
+def names_modified_in_lvalue(lvalue: Lvalue) -> List[str]:
+    """Return all NameExpr assignment targets in an Lvalue."""
+    if isinstance(lvalue, NameExpr):
+        return [lvalue.name]
+    elif isinstance(lvalue, StarExpr):
+        return names_modified_in_lvalue(lvalue.expr)
+    elif isinstance(lvalue, (ListExpr, TupleExpr)):
+        result = []  # type: List[str]
+        for item in lvalue.items:
+            result += names_modified_in_lvalue(item)
+        return result
+    return []
