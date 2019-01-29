@@ -441,3 +441,32 @@ reveal_type(x) # E: Revealed type is 'builtins.list[__main__.C]'
 
 class C: pass
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerVersionCheck]
+# flags: --new-semantic-analyzer
+import sys
+
+if sys.version_info[0] < 2:
+    1()
+    import nonexistent
+else:
+    def f(x: int) -> None: pass
+
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+def g() -> None:
+    if sys.version_info[0] < 3:
+        import nonexistent2
+    else:
+        1() # E: "int" not callable
+[builtins fixtures/ops.pyi]
+
+[case testNewAnalyzerVersionCheck2]
+# flags: --new-semantic-analyzer
+import sys
+
+assert sys.version_info[0] == 3
+1() # E: "int" not callable
+assert sys.version_info[0] < 3
+''()
+[builtins fixtures/ops.pyi]
