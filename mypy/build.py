@@ -800,7 +800,7 @@ def invert_deps(
         graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
     from mypy.server.target import module_prefix, trigger_to_target
 
-    rdeps = {id: {} for id in graph}  # type: Dict[str, Dict[str, Set[str]]]
+    rdeps = {id: {} for id, st in graph.items() if st.tree}  # type: Dict[str, Dict[str, Set[str]]]
     extra_deps = {}  # type: Dict[str, Set[str]]
     for trigger, targets in deps.items():
         module = module_prefix(graph, trigger_to_target(trigger))
@@ -824,20 +824,23 @@ def process_deps(proto_deps: Dict[str, Set[str]],
     weren't associated with any module.
     """
 
+    from mypy.server.update import merge_dependencies
+
     deps = manager.load_fine_grained_deps('@extra')
+    # Compute the full set of dependencies from everything we've processed.
     things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
     for st_deps in things:
-        for trigger, targets in st_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
+        merge_dependencies(st_deps, deps)
 
-    # If we are operating in non-incremental mode, properly split up
-    # dependencies between all the files. If this is an incremental update,
-    # though, we write all the dependencies into the "extra_deps" file so we
-    # don't need to reload dependency files to update them.
-    if not manager.options.incremental:
-        rdeps, extra_deps = invert_deps(deps, graph)
-    else:
-        rdeps, extra_deps = {}, deps
+    # Split the dependencies out into based on the module that is depended on.
+    rdeps, extra_deps = invert_deps(deps, graph)
+
+    # We can't just clobber existing dependency information, so we
+    # load the deps for every module we've generated new dependencies
+    # to and merge the new deps into them.
+    for module, mdeps in rdeps.items():
+        old_deps = manager.load_fine_grained_deps(module)
+        merge_dependencies(old_deps, mdeps)
 
     return rdeps, extra_deps
 
