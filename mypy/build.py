@@ -726,8 +726,11 @@ def deps_to_json(x: Dict[str, Set[str]]) -> str:
     return json.dumps({k: list(v) for k, v in x.items()})
 
 
+DEPS_META_FILE = '@deps.meta.json'  # type: Final
+DEPS_EXTRA_FILE = '@extra.meta.json'  # type: Final
+
+
 def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
-                     extra_deps: Dict[str, Set[str]],
                      manager: BuildManager, graph: Graph) -> None:
     """Write cache files for fine-grained dependencies.
 
@@ -736,6 +739,9 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     Dependencies on some module 'm' is stored in the dependency cache
     file m.deps.json.  This entails some spooky action at a distance:
     if module 'n' depends on 'm', that produces entries in m.deps.json.
+    When there is a dependency on a module that does not exist in the
+    build, it is stored with its first existing parent module. If no
+    such module exists, it is stored with the fake module '@extra'.
 
     This means that the validity of the fine-grained dependency caches
     are a global property, so we store validity checking information for
@@ -744,25 +750,18 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
        between the fine-grained dependency cache and module cache metadata
      * We store the mtime of all of the dependency files to verify they
        haven't changed
-
-    There is additionally some "extra" dependency information that
-    isn't stored in any module-specific files. It is treated as
-    belonging to the module '@extra'.
     """
     metastore = manager.metastore
-    meta_path, cache_path = get_deps_cache_name()
 
     error = False
 
     fg_deps_meta = manager.fg_deps_meta.copy()
-    if not metastore.write(cache_path, deps_to_json(extra_deps)):
-        manager.log("Error writing fine-grained extra deps JSON file {}".format(cache_path))
-        error = True
-    else:
-        fg_deps_meta['@extra'] = {'path': cache_path, 'mtime': manager.getmtime(cache_path)}
 
     for id in rdeps:
-        _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+        if id != '@extra':
+            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+        else:
+            deps_json = DEPS_EXTRA_FILE
         assert deps_json
         manager.log("Writing deps cache", deps_json)
         if not manager.metastore.write(deps_json, deps_to_json(rdeps[id])):
@@ -785,8 +784,8 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 
     meta = {'snapshot': meta_snapshot, 'deps_meta': fg_deps_meta}
 
-    if not metastore.write(meta_path, json.dumps(meta)):
-        manager.log("Error writing fine-grained deps meta JSON file {}".format(meta_path))
+    if not metastore.write(DEPS_META_FILE, json.dumps(meta)):
+        manager.log("Error writing fine-grained deps meta JSON file {}".format(DEPS_META_FILE))
         error = True
 
     if error:
@@ -797,43 +796,41 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 
 def invert_deps(
         deps: Dict[str, Set[str]],
-        graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
+        graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
     from mypy.server.target import module_prefix, trigger_to_target
 
     rdeps = {id: {} for id, st in graph.items() if st.tree}  # type: Dict[str, Dict[str, Set[str]]]
-    extra_deps = {}  # type: Dict[str, Set[str]]
     for trigger, targets in deps.items():
         module = module_prefix(graph, trigger_to_target(trigger))
-        if module and graph[module].tree:
-            mod_rdeps = rdeps.setdefault(module, {})
-            mod_rdeps.setdefault(trigger, set()).update(targets)
-        else:
-            extra_deps.setdefault(trigger, set()).update(targets)
+        if not module or not graph[module].tree:
+            module = '@extra'
 
-    return (rdeps, extra_deps)
+        mod_rdeps = rdeps.setdefault(module, {})
+        mod_rdeps.setdefault(trigger, set()).update(targets)
+
+    return rdeps
 
 
 def process_deps(proto_deps: Dict[str, Set[str]],
                  manager: BuildManager,
-                 graph: Graph) -> Tuple[Dict[str, Dict[str, Set[str]]],
-                                        Dict[str, Set[str]]]:
+                 graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
     """Process fine-grained dependenecies into a form suitable for serializing.
 
-    Returns an (rdeps, extra_deps) pair, where rdeps maps from module ids to
-    all dependencies on that module, and extra_deps contains dependencies that
-    weren't associated with any module.
+    Returns a dictionary from module ids to all dependencies on that
+    module. Dependencies not associated with a module in the build are
+    associated with the fake module '@extra'.
     """
 
     from mypy.server.update import merge_dependencies
 
-    deps = manager.load_fine_grained_deps('@extra')
     # Compute the full set of dependencies from everything we've processed.
+    deps = {}  # type: Dict[str, Set[str]]
     things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
     for st_deps in things:
         merge_dependencies(st_deps, deps)
 
     # Split the dependencies out into based on the module that is depended on.
-    rdeps, extra_deps = invert_deps(deps, graph)
+    rdeps = invert_deps(deps, graph)
 
     # We can't just clobber existing dependency information, so we
     # load the deps for every module we've generated new dependencies
@@ -842,7 +839,7 @@ def process_deps(proto_deps: Dict[str, Set[str]],
         old_deps = manager.load_fine_grained_deps(module)
         merge_dependencies(old_deps, mdeps)
 
-    return rdeps, extra_deps
+    return rdeps
 
 
 PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
@@ -877,8 +874,7 @@ def read_deps_cache(manager: BuildManager,
     See the write_deps_cache documentation for more information on
     the details of the cache.
     """
-    deps_meta_path, _ = get_deps_cache_name()
-    deps_meta = _load_json_file(deps_meta_path, manager,
+    deps_meta = _load_json_file(DEPS_META_FILE, manager,
                                 log_sucess='Deps meta ',
                                 log_error='Could not load fine-grained dependency metadata: ')
     if deps_meta is None:
@@ -964,12 +960,6 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     if manager.options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
-
-
-def get_deps_cache_name() -> Tuple[str, str]:
-    """Return file names for global fine grained dependencies cache."""
-    name = '@deps'
-    return name + '.meta.json', name + '.data.json'
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
@@ -2350,8 +2340,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             TypeState.update_protocol_deps()
             if not manager.options.fine_grained_incremental:
                 proto_deps = TypeState.proto_deps or {}
-                rdeps, extra_deps = process_deps(proto_deps, manager, graph)
-                write_deps_cache(rdeps, extra_deps, manager, graph)
+                rdeps = process_deps(proto_deps, manager, graph)
+                write_deps_cache(rdeps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
