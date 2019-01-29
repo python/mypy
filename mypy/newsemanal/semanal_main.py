@@ -101,7 +101,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
             assert not incomplete  # Ditto
 
 
-TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef], Optional[TypeInfo]]
+TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
 
 
 def get_all_leaf_targets(symtable: SymbolTable,
@@ -122,7 +122,7 @@ def get_all_leaf_targets(symtable: SymbolTable,
 
 def semantic_analyze_target(target: str,
                             state: 'State',
-                            node: Union[MypyFile, FuncDef, OverloadedFuncDef],
+                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
                             active_type: Optional[TypeInfo]) -> Tuple[List[str], bool]:
     # TODO: Support refreshing function targets (currently only works for module top levels)
     tree = state.tree
