@@ -386,6 +386,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.recurse_into_functions = False
         for d in file_node.defs:
             self.accept(d)
+        if file_node.fullname() == 'typing':
+            self.add_builtin_aliases(file_node)
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
@@ -3725,17 +3727,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
+            if name in tree.names:
+                continue
+            tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
             if n:
+                # Found built-in class target. Create alias.
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
                 alias_node = TypeAlias(target, alias, line=-1, column=-1,  # there is no context
                                        no_args=True, normalized=True)
-                tree.names[name] = SymbolTableNode(GDEF, alias_node)
+                self.add_symbol(name, alias_node, tree)
+            elif self.found_incomplete_ref(tag):
+                # Built-in class target may not ready yet -- defer.
+                self.mark_incomplete(name)
             else:
-                # Built-in target not defined, remove the original fake
-                # definition to trigger a better error message.
-                tree.names.pop(name, None)
+                # Test fixtures may be missing some builtin classes, which is okay.
+                pass
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -3768,7 +3776,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if module not in self.modules:
             return None
         filenode = self.modules[module]
-        return filenode.names.get(name)
+        result = filenode.names.get(name)
+        if result is None and self.is_incomplete_namespace(module):
+            # TODO: More explicit handling of incomplete refs?
+            self.record_incomplete_ref()
+        return result
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:

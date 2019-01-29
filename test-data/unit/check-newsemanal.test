@@ -431,3 +431,13 @@ class C: pass
 T = TypeVar('T')
 S = TypeVar('S')
 class D(Generic[T, S]): pass
+
+[case testNewAnalyzerBuiltinTypeAliases]
+# flags: --new-semantic-analyzer
+from typing import List
+
+x: List[C]
+reveal_type(x) # E: Revealed type is 'builtins.list[__main__.C]'
+
+class C: pass
+[builtins fixtures/list.pyi]
