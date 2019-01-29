@@ -80,7 +80,9 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
-        worklist = all_deferred
+        # Reverse to process the targets in the same order on every iteration. This avoids
+        # processing the same target twice in a row, which is inefficient.
+        worklist = list(reversed(all_deferred))
 
 
 def process_functions(graph: 'Graph', scc: List[str]) -> None:
