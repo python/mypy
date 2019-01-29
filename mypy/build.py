@@ -727,7 +727,7 @@ def deps_to_json(x: Dict[str, Set[str]]) -> str:
 
 
 DEPS_META_FILE = '@deps.meta.json'  # type: Final
-DEPS_EXTRA_FILE = '@extra.meta.json'  # type: Final
+DEPS_ROOT_FILE = '@root.meta.json'  # type: Final
 
 
 def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
@@ -741,7 +741,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     if module 'n' depends on 'm', that produces entries in m.deps.json.
     When there is a dependency on a module that does not exist in the
     build, it is stored with its first existing parent module. If no
-    such module exists, it is stored with the fake module '@extra'.
+    such module exists, it is stored with the fake module '@root'.
 
     This means that the validity of the fine-grained dependency caches
     are a global property, so we store validity checking information for
@@ -758,10 +758,10 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     fg_deps_meta = manager.fg_deps_meta.copy()
 
     for id in rdeps:
-        if id != '@extra':
+        if id != '@root':
             _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
         else:
-            deps_json = DEPS_EXTRA_FILE
+            deps_json = DEPS_ROOT_FILE
         assert deps_json
         manager.log("Writing deps cache", deps_json)
         if not manager.metastore.write(deps_json, deps_to_json(rdeps[id])):
@@ -803,7 +803,7 @@ def invert_deps(
     for trigger, targets in deps.items():
         module = module_prefix(graph, trigger_to_target(trigger))
         if not module or not graph[module].tree:
-            module = '@extra'
+            module = '@root'
 
         mod_rdeps = rdeps.setdefault(module, {})
         mod_rdeps.setdefault(trigger, set()).update(targets)
@@ -818,7 +818,7 @@ def process_deps(proto_deps: Dict[str, Set[str]],
 
     Returns a dictionary from module ids to all dependencies on that
     module. Dependencies not associated with a module in the build are
-    associated with the fake module '@extra'.
+    associated with the fake module '@root'.
     """
 
     from mypy.server.update import merge_dependencies
