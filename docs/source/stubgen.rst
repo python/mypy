@@ -98,12 +98,12 @@ sources found. To alter this behavior, you can use following flags:
     Don't try to import modules, instead use mypy's normal mechanisms to find
     sources. This will not find any C extension modules. Stubgen also uses
     runtime introspection to find actual value of ``__all__``, so with this flag
-    the set of re-expoted names may be incomplete. This flag will be useful if
+    the set of re-exported names may be incomplete. This flag will be useful if
     importing the module causes an error.
 
 ``--parse-only``
     Don't perform mypy semantic analysis of source files. This may generate
-    worse stubs, in particular some module, class, and function aliases may
+    worse stubs: in particular some module, class, and function aliases may
     be typed as variables with ``Any`` type. This can be useful if semantic
     analysis causes a critical mypy error.
 
