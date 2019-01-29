@@ -311,17 +311,13 @@ def infer_method_sig(name: str) -> List[ArgSig]:
         if name == 'getitem':
             return [ArgSig(name='index', type=None, default=False)]
         if name == 'setitem':
-            return [
-                ArgSig(name='index', type=None, default=False),
-                ArgSig(name='object', type=None, default=False)
-            ]
+            return [ArgSig(name='index', type=None, default=False),
+                    ArgSig(name='object', type=None, default=False)]
         if name in ('delattr', 'getattr'):
             return [ArgSig(name='name', type=None, default=False)]
         if name == 'setattr':
-            return [
-                ArgSig(name='name', type=None, default=False),
-                ArgSig(name='value', type=None, default=False)
-            ]
+            return [ArgSig(name='name', type=None, default=False),
+                    ArgSig(name='value', type=None, default=False)]
         if name == 'getstate':
             return []
         if name == 'setstate':

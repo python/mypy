@@ -117,10 +117,8 @@ class StubgenUtilSuite(Suite):
             infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
             [FunctionSig(
                 name='func',
-                args=[
-                    ArgSig(name='x', type=None, default=False),
-                    ArgSig(name='Y_a', type=None, default=True)
-                ],
+                args=[ArgSig(name='x', type=None, default=False),
+                      ArgSig(name='Y_a', type=None, default=True)],
                 ret_type='Any'
             )]
         )
@@ -128,10 +126,8 @@ class StubgenUtilSuite(Suite):
             infer_sig_from_docstring('\nfunc(x, Y_a=3)', 'func'),
             [FunctionSig(
                 name='func',
-                args=[
-                    ArgSig(name='x', type=None, default=False),
-                    ArgSig(name='Y_a', type=None, default=True)
-                ],
+                args=[ArgSig(name='x', type=None, default=False),
+                      ArgSig(name='Y_a', type=None, default=True)],
                 ret_type='Any'
             )]
         )
@@ -140,10 +136,8 @@ class StubgenUtilSuite(Suite):
             infer_sig_from_docstring('\nfunc(x, Y_a=[1, 2, 3])', 'func'),
             [FunctionSig(
                 name='func',
-                args=[
-                    ArgSig(name='x', type=None, default=False),
-                    ArgSig(name='Y_a', type=None, default=True)
-                ],
+                args=[ArgSig(name='x', type=None, default=False),
+                      ArgSig(name='Y_a', type=None, default=True)],
                 ret_type='Any'
             )]
         )
@@ -205,10 +199,8 @@ class StubgenUtilSuite(Suite):
                                      'func'),
             [FunctionSig(
                 name='func',
-                args=[
-                    ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=False),
-                    ArgSig(name='y', type='int', default=False),
-                ],
+                args=[ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=False),
+                      ArgSig(name='y', type='int', default=False)],
                 ret_type='str'
             )]
         )
@@ -247,24 +239,16 @@ class StubgenUtilSuite(Suite):
     def test_infer_arg_sig_from_docstring(self) -> None:
         assert_equal(
             infer_arg_sig_from_docstring("(*args, **kwargs)"),
-            [
-                ArgSig(name='*args', type=None, default=False),
-                ArgSig(name='**kwargs', type=None, default=False),
-            ]
+            [ArgSig(name='*args', type=None, default=False),
+             ArgSig(name='**kwargs', type=None, default=False)]
         )
 
         assert_equal(
             infer_arg_sig_from_docstring(
                 "(x: Tuple[int, Tuple[str, int], str]=(1, ('a', 2), 'y'), y: int=4)"
             ),
-            [
-                ArgSig(
-                    name='x',
-                    type='Tuple[int,Tuple[str,int],str]',
-                    default=True
-                ),
-                ArgSig(name='y', type='int', default=True),
-            ]
+            [ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=True),
+             ArgSig(name='y', type='int', default=True)]
         )
 
     def test_infer_prop_type_from_docstring(self) -> None:
