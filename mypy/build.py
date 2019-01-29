@@ -727,7 +727,7 @@ def deps_to_json(x: Dict[str, Set[str]]) -> str:
 
 
 DEPS_META_FILE = '@deps.meta.json'  # type: Final
-DEPS_ROOT_FILE = '@root.meta.json'  # type: Final
+DEPS_ROOT_FILE = '@root.deps.json'  # type: Final
 
 
 def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
@@ -794,11 +794,20 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
                               blocker=True)
 
 
-def invert_deps(
-        deps: Dict[str, Set[str]],
-        graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
+def invert_deps(deps: Dict[str, Set[str]],
+                graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
+    """Splits fine-grained dependencies based on the module of the trigger
+
+    Returns a dictionary from module ids to all dependencies on that
+    module. Dependencies not associated with a module in the build are
+    associated with the fake module '@root'.
+    """
+    # Lazy import to speed up startup
     from mypy.server.target import module_prefix, trigger_to_target
 
+    # Prepopulate the map for all the modules that have been processed,
+    # so that we always generate files for processed modules (even if
+    # there aren't any dependencies to them.)
     rdeps = {id: {} for id, st in graph.items() if st.tree}  # type: Dict[str, Dict[str, Set[str]]]
     for trigger, targets in deps.items():
         module = module_prefix(graph, trigger_to_target(trigger))
@@ -811,17 +820,22 @@ def invert_deps(
     return rdeps
 
 
-def process_deps(proto_deps: Dict[str, Set[str]],
-                 manager: BuildManager,
-                 graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
-    """Process fine-grained dependenecies into a form suitable for serializing.
+def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
+                            manager: BuildManager,
+                            graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
+    """Generate fine-grained dependenecies into a form suitable for serializing.
+
+    This does a few things:
+    1. Computes all fine grained deps from modules that were processed
+    2. Splits fine-grained deps based on the module of the trigger
+    3. For each module we generated fine-grained deps for, load any previous
+       deps and merge them in.
 
     Returns a dictionary from module ids to all dependencies on that
     module. Dependencies not associated with a module in the build are
     associated with the fake module '@root'.
     """
-
-    from mypy.server.update import merge_dependencies
+    from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
 
     # Compute the full set of dependencies from everything we've processed.
     deps = {}  # type: Dict[str, Set[str]]
@@ -2340,7 +2354,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             TypeState.update_protocol_deps()
             if not manager.options.fine_grained_incremental:
                 proto_deps = TypeState.proto_deps or {}
-                rdeps = process_deps(proto_deps, manager, graph)
+                rdeps = generate_deps_for_cache(proto_deps, manager, graph)
                 write_deps_cache(rdeps, manager, graph)
 
     if manager.options.dump_deps:
