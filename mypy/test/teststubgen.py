@@ -500,7 +500,7 @@ class StubgencSuite(Suite):
 
 
 class ArgSigSuite(Suite):
-    def test_repr(self):
+    def test_repr(self) -> None:
         assert_equal(repr(ArgSig(name='asd"dsa')),
                      "ArgSig(name='asd\"dsa', type=None, default=False)")
         assert_equal(repr(ArgSig(name="asd'dsa")),
