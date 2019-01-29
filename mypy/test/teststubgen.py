@@ -17,7 +17,7 @@ from mypy.stubgen import (
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
-    infer_sig_from_docstring, infer_prop_type_from_docstring, TypedFunctionSig, TypedArgSig,
+    infer_sig_from_docstring, infer_prop_type_from_docstring, FunctionSig, ArgSig,
     infer_arg_sig_from_docstring
 )
 
@@ -106,31 +106,31 @@ class StubgenUtilSuite(Suite):
     def test_infer_sig_from_docstring(self) -> None:
         assert_equal(
             infer_sig_from_docstring('\nfunc(x) - y', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type=None, default=False)],
+                args=[ArgSig(name='x', type=None, default=False)],
                 ret_type='Any'
             )]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
                 args=[
-                    TypedArgSig(name='x', type=None, default=False),
-                    TypedArgSig(name='Y_a', type=None, default=True)
+                    ArgSig(name='x', type=None, default=False),
+                    ArgSig(name='Y_a', type=None, default=True)
                 ],
                 ret_type='Any'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x, Y_a=3)', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
                 args=[
-                    TypedArgSig(name='x', type=None, default=False),
-                    TypedArgSig(name='Y_a', type=None, default=True)
+                    ArgSig(name='x', type=None, default=False),
+                    ArgSig(name='Y_a', type=None, default=True)
                 ],
                 ret_type='Any'
             )]
@@ -138,11 +138,11 @@ class StubgenUtilSuite(Suite):
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x, Y_a=[1, 2, 3])', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
                 args=[
-                    TypedArgSig(name='x', type=None, default=False),
-                    TypedArgSig(name='Y_a', type=None, default=True)
+                    ArgSig(name='x', type=None, default=False),
+                    ArgSig(name='Y_a', type=None, default=True)
                 ],
                 ret_type='Any'
             )]
@@ -152,9 +152,9 @@ class StubgenUtilSuite(Suite):
         assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), [])
         assert_equal(
             infer_sig_from_docstring('\nfunc(x=z(y))', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type=None, default=True)],
+                args=[ArgSig(name='x', type=None, default=True)],
                 ret_type='Any'
             )]
         )
@@ -162,79 +162,79 @@ class StubgenUtilSuite(Suite):
         # try to infer signature from type annotation
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int)', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='int', default=False)],
+                args=[ArgSig(name='x', type='int', default=False)],
                 ret_type='Any'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int=3)', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='int', default=True)],
+                args=[ArgSig(name='x', type='int', default=True)],
                 ret_type='Any'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='int', default=True)],
+                args=[ArgSig(name='x', type='int', default=True)],
                 ret_type='int'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int=3) -> int   \n', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='int', default=True)],
+                args=[ArgSig(name='x', type='int', default=True)],
                 ret_type='int'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='Tuple[int,str]', default=False)],
+                args=[ArgSig(name='x', type='Tuple[int,str]', default=False)],
                 ret_type='str'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: Tuple[int, Tuple[str, int], str], y: int) -> str',
                                      'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
                 args=[
-                    TypedArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=False),
-                    TypedArgSig(name='y', type='int', default=False),
+                    ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=False),
+                    ArgSig(name='y', type='int', default=False),
                 ],
                 ret_type='str'
             )]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: foo.bar)', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='foo.bar', default=False)],
+                args=[ArgSig(name='x', type='foo.bar', default=False)],
                 ret_type='Any'
             )]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: list=[1,2,[3,4]])', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='list', default=True)],
+                args=[ArgSig(name='x', type='list', default=True)],
                 ret_type='Any'
             )]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: str="nasty[")', 'func'),
-            [TypedFunctionSig(
+            [FunctionSig(
                 name='func',
-                args=[TypedArgSig(name='x', type='str', default=True)],
+                args=[ArgSig(name='x', type='str', default=True)],
                 ret_type='Any'
             )]
         )
@@ -248,8 +248,8 @@ class StubgenUtilSuite(Suite):
         assert_equal(
             infer_arg_sig_from_docstring("(*args, **kwargs)"),
             [
-                TypedArgSig(name='*args', type=None, default=False),
-                TypedArgSig(name='**kwargs', type=None, default=False),
+                ArgSig(name='*args', type=None, default=False),
+                ArgSig(name='**kwargs', type=None, default=False),
             ]
         )
 
@@ -258,12 +258,12 @@ class StubgenUtilSuite(Suite):
                 "(x: Tuple[int, Tuple[str, int], str]=(1, ('a', 2), 'y'), y: int=4)"
             ),
             [
-                TypedArgSig(
+                ArgSig(
                     name='x',
                     type='Tuple[int,Tuple[str,int],str]',
                     default=True
                 ),
-                TypedArgSig(name='y', type='int', default=True),
+                ArgSig(name='y', type='int', default=True),
             ]
         )
 
@@ -367,20 +367,20 @@ class StubgencSuite(Suite):
         assert_equal(infer_method_sig('__hash__'), [])
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_sig('__getitem__'), [TypedArgSig(
+        assert_equal(infer_method_sig('__getitem__'), [ArgSig(
             name='index', type=None, default=False
         )])
 
     def test_infer_setitem_sig(self) -> None:
         assert_equal(infer_method_sig('__setitem__'), [
-            TypedArgSig(name='index', type=None, default=False),
-            TypedArgSig(name='object', type=None, default=False)
+            ArgSig(name='index', type=None, default=False),
+            ArgSig(name='object', type=None, default=False)
         ])
 
     def test_infer_binary_op_sig(self) -> None:
         for op in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul'):
-            assert_equal(infer_method_sig('__%s__' % op), [TypedArgSig(
+            assert_equal(infer_method_sig('__%s__' % op), [ArgSig(
                 name='other', type=None, default=False
             )])
 
