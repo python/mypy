@@ -738,11 +738,12 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     if module 'n' depends on 'm', that produces entries in m.deps.json.
 
     This means that the validity of the fine-grained dependency caches
-    are a global property, so we store validity checking information
-    fine-grained dependencies in a global cache file.
-    To do this, we take a snapshot of current sources to later check
-    consistency between the extra cache and individual cache files as
-    well as storing the mtime for all of the dependency files.
+    are a global property, so we store validity checking information for
+    fine-grained dependencies in a global cache file:
+     * We take a snapshot of current sources to later check consistency
+       between the fine-grained dependency cache and module cache metadata
+     * We store the mtime of all of the dependency files to verify they
+       haven't changed
 
     There is additionally some "extra" dependency information that
     isn't stored in any module-specific files. It is treated as
@@ -868,7 +869,11 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
 
 def read_deps_cache(manager: BuildManager,
                     graph: Graph) -> Optional[Dict[str, FgDepMeta]]:
-    """Read and validate dependencies cache. """
+    """Read and validate the fine-grained dependencies cache.
+
+    See the write_deps_cache documentation for more information on
+    the details of the cache.
+    """
     deps_meta_path, _ = get_deps_cache_name()
     deps_meta = _load_json_file(deps_meta_path, manager,
                                 log_sucess='Deps meta ',
@@ -2327,11 +2332,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             return dispatch(sources, manager)
 
     # If we are loading a fine-grained incremental mode cache, we
-    # don't want to do a real incremental reprocess of the graph---we
-    # just want to load in all of the cache information.
-    if manager.use_fine_grained_cache():
-        process_fine_grained_cache_graph(graph, manager)
-    else:
+    # don't want to do a real incremental reprocess of the
+    # graph---we'll handle it all later.
+    if not manager.use_fine_grained_cache():
         process_graph(graph, manager)
         # Update plugins snapshot.
         write_plugins_snapshot(manager)
@@ -2643,11 +2646,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.trace(str(fresh_scc_queue))
     else:
         manager.log("No fresh SCCs left in queue")
-
-
-def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> None:
-    """Finish loading everything for use in the fine-grained incremental cache"""
-    pass
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:

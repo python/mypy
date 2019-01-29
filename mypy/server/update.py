@@ -409,6 +409,8 @@ def ensure_deps_loaded(module: str,
                        deps: Dict[str, Set[str]], graph: Dict[str, State]) -> None:
     """Ensure that the dependencies on a module are loaded.
 
+    Dependencies are loaded into the 'deps' dictionary.
+
     This also requires loading dependencies from any parent modules,
     since dependencies will get stored with parent modules when a module
     doesn't exist.
