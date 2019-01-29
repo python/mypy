@@ -137,7 +137,7 @@ def generate_c_function_stub(module: ModuleType,
             else:
                 inferred = [FunctionSig(name=name,
                                         args=infer_arg_sig_from_docstring(
-                                                 sigs.get(name, '(*args, **kwargs)')),
+                                            sigs.get(name, '(*args, **kwargs)')),
                                         ret_type=ret_type)]
 
     is_overloaded = len(inferred) > 1 if inferred else False
