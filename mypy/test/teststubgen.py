@@ -106,129 +106,102 @@ class StubgenUtilSuite(Suite):
     def test_infer_sig_from_docstring(self) -> None:
         assert_equal(
             infer_sig_from_docstring('\nfunc(x) - y', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type=None, default=False)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type=None, default=False)],
+                         ret_type='Any')]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type=None, default=False),
-                      ArgSig(name='Y_a', type=None, default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type=None, default=False),
+                               ArgSig(name='Y_a', type=None, default=True)],
+                         ret_type='Any')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x, Y_a=3)', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type=None, default=False),
-                      ArgSig(name='Y_a', type=None, default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type=None, default=False),
+                               ArgSig(name='Y_a', type=None, default=True)],
+                         ret_type='Any')]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x, Y_a=[1, 2, 3])', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type=None, default=False),
-                      ArgSig(name='Y_a', type=None, default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type=None, default=False),
+                               ArgSig(name='Y_a', type=None, default=True)],
+                        ret_type='Any')]
         )
 
         assert_equal(infer_sig_from_docstring('\nafunc(x) - y', 'func'), [])
         assert_equal(infer_sig_from_docstring('\nfunc(x, y', 'func'), [])
         assert_equal(
             infer_sig_from_docstring('\nfunc(x=z(y))', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type=None, default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type=None, default=True)],
+                         ret_type='Any')]
         )
         assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), [])
         # try to infer signature from type annotation
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int)', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='int', default=False)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='int', default=False)],
+                         ret_type='Any')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int=3)', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='int', default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='int', default=True)],
+                         ret_type='Any')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='int', default=True)],
-                ret_type='int'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='int', default=True)],
+                         ret_type='int')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: int=3) -> int   \n', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='int', default=True)],
-                ret_type='int'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='int', default=True)],
+                         ret_type='int')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: Tuple[int, str]) -> str', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='Tuple[int,str]', default=False)],
-                ret_type='str'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='Tuple[int,str]', default=False)],
+                         ret_type='str')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: Tuple[int, Tuple[str, int], str], y: int) -> str',
                                      'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=False),
-                      ArgSig(name='y', type='int', default=False)],
-                ret_type='str'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]',
+                                      default=False),
+                               ArgSig(name='y', type='int', default=False)],
+                         ret_type='str')]
         )
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: foo.bar)', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='foo.bar', default=False)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='foo.bar', default=False)],
+                         ret_type='Any')]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: list=[1,2,[3,4]])', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='list', default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='list', default=True)],
+                         ret_type='Any')]
         )
 
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: str="nasty[")', 'func'),
-            [FunctionSig(
-                name='func',
-                args=[ArgSig(name='x', type='str', default=True)],
-                ret_type='Any'
-            )]
+            [FunctionSig(name='func',
+                         args=[ArgSig(name='x', type='str', default=True)],
+                         ret_type='Any')]
         )
 
         assert_equal(
