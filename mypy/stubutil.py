@@ -120,7 +120,7 @@ def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[Li
     """Find module and determine __all__ for a Python 3 module.
 
     Return None if the module is a C module. Return (module_path, __all__) if
-    Python module. Raise an exception if failed.
+    it is a Python module. Raise CantImport if import failed.
     """
     # TODO: Support custom interpreters.
     try:

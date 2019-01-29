@@ -219,3 +219,119 @@ class A:
 
 class C(B):
     c: int
+
+[case testNewAnalyzerTypedDictClass]
+# flags: --new-semantic-analyzer
+from mypy_extensions import TypedDict
+import a
+class T1(TypedDict):
+    x: A
+class A: pass
+reveal_type(T1(x=A())) # E
+
+[file a.py]
+from mypy_extensions import TypedDict
+from b import TD1 as TD2, TD3
+class T2(TD3):
+    x: int
+reveal_type(T2(x=2)) # E
+
+[file b.py]
+from a import TypedDict as TD1
+from a import TD2 as TD3
+
+[out]
+tmp/a.py:5: error: Revealed type is 'TypedDict('a.T2', {'x': builtins.int})'
+main:7: error: Revealed type is 'TypedDict('__main__.T1', {'x': __main__.A})'
+
+
+[case testNewAnalyzerTypedDictClassInheritance]
+# flags: --new-semantic-analyzer
+from mypy_extensions import TypedDict
+
+class T2(T1):
+    y: int
+
+class T1(TypedDict):
+    x: str
+
+class T3(TypedDict):
+    x: str
+
+class T4(T3):
+    y: A
+
+class A: pass
+
+T2(x=0, y=0) # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+x: T2
+reveal_type(x) # E: Revealed type is 'TypedDict('__main__.T2', {'x': builtins.str, 'y': builtins.int})'
+y: T4
+reveal_type(y) # E: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
+
+[case testNewAnalyzerRedefinitionAndDeferral]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import x as y
+x = 0
+
+def y(): pass # E: Name 'y' already defined on line 2
+reveal_type(y) # E: Revealed type is 'builtins.int'
+
+y2 = y
+class y2: pass # E: Name 'y2' already defined on line 7
+reveal_type(y2) # E: Revealed type is 'builtins.int'
+
+y3, y4 = y, y
+from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
+reveal_type(y3) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import x
+
+def f(): pass
+
+[case testNewAnalyzerRedefinitionAndDeferral2]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import C as C2
+class C: pass
+
+class C2: pass # E: Name 'C2' already defined (possibly by an import)
+[file b.py]
+from a import C
+
+[case testNewAnalyzerRedefinitionAndDeferral3]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import f as g
+def f(): pass
+
+a, *b = g()
+class b(): pass # E: Name 'b' already defined on line 4
+reveal_type(b) # E: Revealed type is 'Any'
+
+[file b.py]
+from a import f
+
+[case testNewAnalyzerImportStarForwardRef]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+x: A
+reveal_type(x) # E: Revealed type is 'b.A'
+
+from b import *
+
+class A: pass # E: Name 'A' already defined (possibly by an import)
+
+[file b.py]
+class A: pass
+from a import x
