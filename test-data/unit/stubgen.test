@@ -1395,7 +1395,7 @@ from abc import ABCMeta, abstractmethod
 
 class A(metaclass=ABCMeta):
     @abstractmethod
-    def meth(self) -> None: ...
+    def meth(self): ...
 
 [case testAbstractMethodMemberExpr]
 import abc
@@ -1409,7 +1409,7 @@ import abc
 
 class A(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def meth(self) -> None: ...
+    def meth(self): ...
 
 [case testABCMeta_semanal]
 from base import base

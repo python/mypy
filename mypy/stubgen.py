@@ -370,7 +370,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             for name in sorted(undefined_names):
                 self.add('#   %s\n' % name)
 
-    def visit_func_def(self, o: FuncDef) -> None:
+    def visit_func_def(self, o: FuncDef, is_abstract: bool = False) -> None:
         if self.is_private_name(o.name()):
             return
         if self.is_not_in_all(o.name()):
@@ -431,7 +431,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated.
             retname = 'Any'
             self.add_typing_import("Any")
-        elif o.name() == '__init__' or not has_return_statement(o):
+        elif o.name() == '__init__' or not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -444,6 +444,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_decorator(self, o: Decorator) -> None:
         if self.is_private_name(o.func.name()):
             return
+        is_abstract = False
         for decorator in o.original_decorators:
             if isinstance(decorator, NameExpr):
                 if decorator.name in ('property',
@@ -459,6 +460,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                        self.import_tracker.reverse_alias.get(decorator.name) == 'abstractmethod')):
                     self.add('%s@%s\n' % (self._indent, decorator.name))
                     self.import_tracker.require_name(decorator.name)
+                    is_abstract = True
             elif isinstance(decorator, MemberExpr):
                 if decorator.name == 'setter' and isinstance(decorator.expr, NameExpr):
                     self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
@@ -468,6 +470,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                       decorator.name == 'abstractmethod'):
                     self.import_tracker.require_name(decorator.expr.name)
                     self.add('%s@%s.%s\n' % (self._indent, decorator.expr.name, decorator.name))
+                    is_abstract = True
                 elif decorator.name == 'coroutine':
                     if (isinstance(decorator.expr, MemberExpr) and
                         decorator.expr.name == 'coroutines' and
@@ -486,7 +489,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                         self.add_coroutine_decorator(o.func,
                                                      decorator.expr.name + '.coroutine',
                                                      decorator.expr.name)
-        super().visit_decorator(o)
+        self.visit_func_def(o.func, is_abstract=is_abstract)
 
     def visit_class_def(self, o: ClassDef) -> None:
         sep = None  # type: Optional[int]
