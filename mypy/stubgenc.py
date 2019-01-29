@@ -309,27 +309,27 @@ def infer_method_sig(name: str) -> List[ArgSig]:
                     'int', 'float', 'trunc', 'complex', 'bool'):
             return []
         if name == 'getitem':
-            return [ArgSig(name='index', type=None, default=False)]
+            return [ArgSig(name='index')]
         if name == 'setitem':
-            return [ArgSig(name='index', type=None, default=False),
-                    ArgSig(name='object', type=None, default=False)]
+            return [ArgSig(name='index'),
+                    ArgSig(name='object')]
         if name in ('delattr', 'getattr'):
-            return [ArgSig(name='name', type=None, default=False)]
+            return [ArgSig(name='name')]
         if name == 'setattr':
-            return [ArgSig(name='name', type=None, default=False),
-                    ArgSig(name='value', type=None, default=False)]
+            return [ArgSig(name='name'),
+                    ArgSig(name='value')]
         if name == 'getstate':
             return []
         if name == 'setstate':
-            return [ArgSig(name='state', type=None, default=False)]
+            return [ArgSig(name='state')]
         if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                     'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
                     'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
                     'divmod', 'rdivmod', 'pow', 'rpow'):
-            return [ArgSig(name='other', type=None, default=False)]
+            return [ArgSig(name='other')]
         if name in ('neg', 'pos'):
             return []
     return [
-        ArgSig(name='*args', type=None, default=False),
-        ArgSig(name='**kwargs', type=None, default=False)
+        ArgSig(name='*args'),
+        ArgSig(name='**kwargs')
     ]
