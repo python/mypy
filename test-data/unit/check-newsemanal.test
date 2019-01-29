@@ -470,3 +470,41 @@ assert sys.version_info[0] == 3
 assert sys.version_info[0] < 3
 ''()
 [builtins fixtures/ops.pyi]
+
+[case testNewAnalyzerOverload]
+# flags: --new-semantic-analyzer
+from typing import overload, Union
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]:
+    return 1.0 # E: Incompatible return value type (got "float", expected "Union[int, str]")
+
+f(1)
+f('')
+f(1.0) # E: No overload variant of "f" matches argument type "float" \
+       # N: Possible overload variants: \
+       # N:     def f(x: int) -> int \
+       # N:     def f(x: str) -> str
+
+[case testNewAnalyzerOverload2]
+# flags: --new-semantic-analyzer
+from typing import overload, Union
+
+class A:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(self, x: Union[int, str]) -> Union[int, str]:
+        return 1.0 # E: Incompatible return value type (got "float", expected "Union[int, str]")
+
+a = A()
+a.f(1)
+a.f('')
+a.f(1.0) # E: No overload variant of "f" of "A" matches argument type "float" \
+         # N: Possible overload variants: \
+         # N:     def f(self, x: int) -> int \
+         # N:     def f(self, x: str) -> str

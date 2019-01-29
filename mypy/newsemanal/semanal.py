@@ -430,7 +430,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        self.add_func_to_symbol_table(defn)
+        if not defn.is_decorated and not defn.is_overload:
+            self.add_func_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
@@ -438,8 +439,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         with self.scope.function_scope(defn):
             self._visit_func_def(defn)
 
-    def add_func_to_symbol_table(self, func: FuncDef) -> None:
+    def add_func_to_symbol_table(self, func: Union[FuncDef, OverloadedFuncDef]) -> None:
         if self.is_class_scope():
+            assert self.type is not None
             func.info = self.type
         func._fullname = self.qualified_name(func.name())
         self.add_symbol(func.name(), func, func)
@@ -548,8 +550,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+        self.add_func_to_symbol_table(defn)
+
         if not self.recurse_into_functions:
             return
+
         # NB: Since _visit_overloaded_func_def will call accept on the
         # underlying FuncDefs, the function might get entered twice.
         # This is fine, though, because only the outermost function is
@@ -580,7 +585,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # This is an a normal overload. Find the item signatures, the
             # implementation (if outside a stub), and any missing @overload
             # decorators.
-            types, impl, non_overload_indexes = self.find_overload_sigs_and_impl(defn)
+            types, impl, non_overload_indexes = self.analyze_overload_sigs_and_impl(defn)
             defn.impl = impl
             if non_overload_indexes:
                 self.handle_missing_overload_decorators(defn, non_overload_indexes,
@@ -606,15 +611,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
 
-        # TODO: Use add_symbol or similar below (this is inconsistent)
-        if self.is_class_scope():
-            assert self.type is not None
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            defn.info = self.type
-        elif self.is_func_scope():
-            self.add_local(defn, defn)
+        self.add_symbol(defn.name(), defn, defn)
 
-    def find_overload_sigs_and_impl(
+    def analyze_overload_sigs_and_impl(
             self,
             defn: OverloadedFuncDef) -> Tuple[List[CallableType],
                                               Optional[OverloadPart],
