@@ -5,7 +5,8 @@ import sys
 import os
 import tokenize
 
-from typing import Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO, NamedTuple
+from typing import (Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO,
+                    NamedTuple, Any)
 from types import ModuleType
 
 MYPY = False
@@ -15,11 +16,22 @@ if MYPY:
 # Type Alias for Signatures
 Sig = Tuple[str, str]
 
-ArgSig = NamedTuple('ArgSig', [
-    ('name', str),
-    ('type', Optional[str]),
-    ('default', bool)
-])
+
+class ArgSig:
+    def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
+        self.name = name
+        self.type = type
+        self.default = default
+
+    def __repr__(self) -> str:
+        return "ArgSig(name={}, type={}, default={})".format(repr(self.name), repr(self.type),
+                                                            repr(self.default))
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, ArgSig):
+            return (self.name == other.name and self.type == other.type and
+                    self.default == other.default)
+        return False
 
 
 FunctionSig = NamedTuple('FunctionSig', [
