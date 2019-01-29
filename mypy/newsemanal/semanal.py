@@ -1605,6 +1605,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             id = parent
 
     def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
+        if parent_mod.names is None:
+            print('defer 1')
+            self.defer()
+            return
         if child not in parent_mod.names:
             return True
         node = parent_mod.names[child].node

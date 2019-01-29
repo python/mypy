@@ -555,12 +555,10 @@ class D(C[XY]): pass
 class X: pass
 class Y: pass
 
-[case testNewAnalyzerSubModule]
+[case testNewAnalyzerSubModuleInCycle]
 # flags: --new-semantic-analyzer
 import a
 [file a.py]
-from aa import x
-[file aa.py]
 MYPY = False
 if MYPY:
     from b.c import x

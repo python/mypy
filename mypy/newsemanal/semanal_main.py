@@ -67,10 +67,13 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     worklist = scc[:]
     iteration = 0
     while worklist:
+        print(iteration, worklist)
         iteration += 1
         if iteration == MAX_ITERATIONS:
             # Give up. Likely it's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
+        elif iteration > MAX_ITERATIONS:
+            assert False, 'Max iteration count reached in semantic analysis'
         all_deferred = []  # type: List[str]
         while worklist:
             next_id = worklist.pop()
@@ -124,6 +127,7 @@ def semantic_analyze_target(target: str,
                             state: 'State',
                             node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
                             active_type: Optional[TypeInfo]) -> Tuple[List[str], bool]:
+    print('--', target)
     # TODO: Support refreshing function targets (currently only works for module top levels)
     tree = state.tree
     assert tree is not None
