@@ -225,8 +225,8 @@ class StubgenUtilSuite(Suite):
         assert_equal(
             infer_arg_sig_from_docstring(
                 "(x: Tuple[int, Tuple[str, int], str]=(1, ('a', 2), 'y'), y: int=4)"),
-                [ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=True),
-                 ArgSig(name='y', type='int', default=True)])
+            [ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=True),
+             ArgSig(name='y', type='int', default=True)])
 
     def test_infer_prop_type_from_docstring(self) -> None:
         assert_equal(infer_prop_type_from_docstring('str: A string.'), 'str')
