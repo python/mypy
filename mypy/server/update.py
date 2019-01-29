@@ -407,7 +407,12 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
 
 def ensure_deps_loaded(module: str,
                        deps: Dict[str, Set[str]], graph: Dict[str, State]) -> None:
-    # XXX: COMMENT
+    """Ensure that the dependencies on a module are loaded.
+
+    This also requires loading dependencies from any parent modules,
+    since dependencies will get stored with parent modules when a module
+    doesn't exist.
+    """
     if module in graph and graph[module].fine_grained_deps_loaded:
         return
     parts = module.split('.')
@@ -432,7 +437,7 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     # Deps for each module were computed during build() or loaded from the cache.
-    deps = {}  # type: Dict[str, Set[str]]
+    deps = manager.load_fine_grained_deps('@extra')  # type: Dict[str, Set[str]]
     for id in graph:
         if graph[id].tree is not None:
             merge_dependencies(graph[id].compute_fine_grained_deps(), deps)

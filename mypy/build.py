@@ -699,6 +699,17 @@ class BuildManager(BuildManagerBase):
         self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
+    def load_fine_grained_deps(self, id: str) -> Dict[str, Set[str]]:
+        t0 = time.time()
+        if id in self.fg_deps_meta:
+            # TODO: Assert deps file wasn't changed.
+            deps = json.loads(self.metastore.read(self.fg_deps_meta[id]['path']))
+        else:
+            deps = {}
+        val = {k: set(v) for k, v in deps.items()}
+        self.add_stats(load_fg_deps_time=time.time() - t0)
+        return val
+
     def report_file(self,
                     file: MypyFile,
                     type_map: Dict[Expression, Type],
@@ -731,6 +742,10 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     To do this, we take a snapshot of current sources to later check
     consistency between the extra cache and individual cache files as
     well as storing the mtime for all of the dependency files.
+
+    There is additionally some "extra" dependency information that
+    isn't stored in any module-specific files. It is treated as
+    belonging to the module '@extra'.
     """
     metastore = manager.metastore
     meta_path, cache_path = get_deps_cache_name()
@@ -806,7 +821,8 @@ def process_deps(proto_deps: Dict[str, Set[str]],
     all dependencies on that module, and extra_deps contains dependencies that
     weren't associated with any module.
     """
-    deps = {}  # type: Dict[str, Set[str]]
+
+    deps = manager.load_fine_grained_deps('@extra')
     things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
     for st_deps in things:
         for trigger, targets in st_deps.items():
@@ -850,10 +866,9 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
 
 
 def read_deps_cache(manager: BuildManager,
-                    graph: Graph) -> Optional[Tuple[Dict[str, Set[str]],
-                                                    Dict[str, FgDepMeta]]]:
+                    graph: Graph) -> Optional[Dict[str, FgDepMeta]]:
     """Read and validate dependencies cache. """
-    deps_meta_path, deps_extra_cache = get_deps_cache_name()
+    deps_meta_path, _ = get_deps_cache_name()
     deps_meta = _load_json_file(deps_meta_path, manager,
                                 log_sucess='Deps meta ',
                                 log_error='Could not load fine-grained dependency metadata: ')
@@ -882,16 +897,7 @@ def read_deps_cache(manager: BuildManager,
             manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
             return None
 
-    deps = _load_json_file(deps_extra_cache, manager,
-                           log_sucess='Extra deps ',
-                           log_error='Could not load fine-grained dependencies cache: ')
-    if deps is None:
-        return None
-    if not isinstance(deps, dict):
-        manager.log('Could not load fine-grained dependencies cache: cache is not a dict: {}'
-                    .format(type(deps)))
-        return None
-    return {k: set(v) for (k, v) in deps.items()}, module_deps_metas
+    return module_deps_metas
 
 
 def _load_json_file(file: str, manager: BuildManager,
@@ -1659,19 +1665,7 @@ class State:
         self.check_blockers()
 
     def load_fine_grained_deps(self) -> Dict[str, Set[str]]:
-        if self.meta is None: return {}
-        t0 = time.time()
-        assert self.meta is not None, "Internal error: this method must be called only" \
-                                      " for cached modules"
-        if self.id in self.manager.fg_deps_meta:
-            # TODO: Assert deps file wasn't changed.
-            deps = json.loads(
-                self.manager.metastore.read(self.manager.fg_deps_meta[self.id]['path']))
-        else:
-            deps = {}
-        val = {k: set(v) for k, v in deps.items()}
-        self.manager.add_stats(load_fg_deps_time=time.time() - t0)
-        return val
+        return self.manager.load_fine_grained_deps(self.id)
 
     def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
@@ -2318,11 +2312,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # the deps cache against the loaded individual cache files.
     if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
         t2 = time.time()
-        deps_cache_info = read_deps_cache(manager, graph)
+        fg_deps_meta = read_deps_cache(manager, graph)
         manager.add_stats(load_fg_deps_time=time.time() - t2)
-        if deps_cache_info is not None:
-            # XXX: Is this where we want to put this?
-            TypeState.proto_deps, manager.fg_deps_meta = deps_cache_info
+        if fg_deps_meta is not None:
+            manager.fg_deps_meta = fg_deps_meta
         elif manager.stats.get('fresh_metas', 0) > 0:
             # Clear the stats so we don't infinite loop because of positive fresh_metas
             manager.stats.clear()
