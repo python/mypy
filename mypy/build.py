@@ -261,6 +261,7 @@ CacheMeta = NamedTuple('CacheMeta',
 
 FgDepMeta = TypedDict('FgDepMeta', {'path': str, 'mtime': int})
 
+
 def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
     """Build a CacheMeta object from a json metadata dictionary
 
