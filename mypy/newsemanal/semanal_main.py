@@ -111,9 +111,7 @@ def get_all_leaf_targets(symtable: SymbolTable,
     result = []  # type: List[TargetInfo]
     for name, node in symtable.items():
         new_prefix = prefix + '.' + name
-        # TODO: Decorated function
-        # TODO: Overloaded function
-        if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef)):
+        if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
             if node.node.fullname() == new_prefix:
                 if isinstance(node.node, TypeInfo):
                     result += get_all_leaf_targets(node.node.names, new_prefix, node.node)

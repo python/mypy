@@ -508,3 +508,21 @@ a.f(1.0) # E: No overload variant of "f" of "A" matches argument type "float" \
          # N: Possible overload variants: \
          # N:     def f(self, x: int) -> int \
          # N:     def f(self, x: str) -> str
+
+[case testNewAnalyzerFunctionDecorator]
+# flags: --new-semantic-analyzer
+from typing import Callable
+
+@dec
+def f1(x: int) -> int:
+    return '' # E: Incompatible return value type (got "str", expected "int")
+
+def dec(f: Callable[[int], int]) -> Callable[[str], str]: ...
+
+@dec
+def f2(x: int) -> int:
+    return '' # E: Incompatible return value type (got "str", expected "int")
+
+f1(1) # E: Argument 1 to "f1" has incompatible type "int"; expected "str"
+reveal_type(f1('')) # E: Revealed type is 'builtins.str'
+f2(1) # E: Argument 1 to "f2" has incompatible type "int"; expected "str"
