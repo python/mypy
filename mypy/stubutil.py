@@ -1,239 +1,20 @@
-import contextlib
-import io
-import re
+"""Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
+
 import sys
-import os
-import tokenize
-
-from typing import (Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO,
-                    NamedTuple, Any)
+import os.path
+import inspect
+import json
+import pkgutil
+import importlib
+import subprocess
 from types import ModuleType
+from contextlib import contextmanager
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-# Type Alias for Signatures
-Sig = Tuple[str, str]
+from typing import Optional, Tuple, List, IO, Iterator
 
 
-class ArgSig:
-    def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
-        self.name = name
-        self.type = type
-        self.default = default
-
-    def __repr__(self) -> str:
-        return "ArgSig(name={}, type={}, default={})".format(repr(self.name), repr(self.type),
-                                                            repr(self.default))
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, ArgSig):
-            return (self.name == other.name and self.type == other.type and
-                    self.default == other.default)
-        return False
-
-
-FunctionSig = NamedTuple('FunctionSig', [
-    ('name', str),
-    ('args', List[ArgSig]),
-    ('ret_type', str)
-])
-
-
-STATE_INIT = 1  # type: Final
-STATE_FUNCTION_NAME = 2  # type: Final
-STATE_ARGUMENT_LIST = 3  # type: Final
-STATE_ARGUMENT_TYPE = 4  # type: Final
-STATE_ARGUMENT_DEFAULT = 5  # type: Final
-STATE_RETURN_VALUE = 6  # type: Final
-STATE_OPEN_BRACKET = 7  # type: Final
-
-
-class DocStringParser:
-    def __init__(self, function_name: str) -> None:
-        self.function_name = function_name
-        self.state = [STATE_INIT]
-        self.accumulator = ""
-        self.arg_type = None  # type: Optional[str]
-        self.arg_name = ""
-        self.arg_default = None  # type: Optional[str]
-        self.ret_type = "Any"
-        self.found = False
-        self.args = []  # type: List[ArgSig]
-        self.signatures = []  # type: List[FunctionSig]
-
-    def add_token(self, token: tokenize.TokenInfo) -> None:
-        if (token.type == tokenize.NAME and token.string == self.function_name and
-                self.state[-1] == STATE_INIT):
-            self.state.append(STATE_FUNCTION_NAME)
-
-        elif (token.type == tokenize.OP and token.string == '(' and
-              self.state[-1] == STATE_FUNCTION_NAME):
-            self.state.pop()
-            self.accumulator = ""
-            self.found = True
-            self.state.append(STATE_ARGUMENT_LIST)
-
-        elif self.state[-1] == STATE_FUNCTION_NAME:
-            # reset state, function name not followed by '('
-            self.state.pop()
-
-        elif (token.type == tokenize.OP and token.string in ('[', '(', '{') and
-              self.state[-1] != STATE_INIT):
-            self.accumulator += token.string
-            self.state.append(STATE_OPEN_BRACKET)
-
-        elif (token.type == tokenize.OP and token.string in (']', ')', '}') and
-              self.state[-1] == STATE_OPEN_BRACKET):
-            self.accumulator += token.string
-            self.state.pop()
-
-        elif (token.type == tokenize.OP and token.string == ':' and
-              self.state[-1] == STATE_ARGUMENT_LIST):
-            self.arg_name = self.accumulator
-            self.accumulator = ""
-            self.state.append(STATE_ARGUMENT_TYPE)
-
-        elif (token.type == tokenize.OP and token.string == '=' and
-              self.state[-1] in (STATE_ARGUMENT_LIST, STATE_ARGUMENT_TYPE)):
-            if self.state[-1] == STATE_ARGUMENT_TYPE:
-                self.arg_type = self.accumulator
-                self.state.pop()
-            else:
-                self.arg_name = self.accumulator
-            self.accumulator = ""
-            self.state.append(STATE_ARGUMENT_DEFAULT)
-
-        elif (token.type == tokenize.OP and token.string in (',', ')') and
-              self.state[-1] in (STATE_ARGUMENT_LIST, STATE_ARGUMENT_DEFAULT,
-                                 STATE_ARGUMENT_TYPE)):
-            if self.state[-1] == STATE_ARGUMENT_DEFAULT:
-                self.arg_default = self.accumulator
-                self.state.pop()
-            elif self.state[-1] == STATE_ARGUMENT_TYPE:
-                self.arg_type = self.accumulator
-                self.state.pop()
-            elif self.state[-1] == STATE_ARGUMENT_LIST:
-                self.arg_name = self.accumulator
-
-            if token.string == ')':
-                self.state.pop()
-            self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
-                                    default=bool(self.arg_default)))
-            self.arg_name = ""
-            self.arg_type = None
-            self.arg_default = None
-            self.accumulator = ""
-
-        elif token.type == tokenize.OP and token.string == '->' and self.state[-1] == STATE_INIT:
-            self.accumulator = ""
-            self.state.append(STATE_RETURN_VALUE)
-
-        # ENDMAKER is necessary for python 3.4 and 3.5
-        elif (token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and
-              self.state[-1] in (STATE_INIT, STATE_RETURN_VALUE)):
-            if self.state[-1] == STATE_RETURN_VALUE:
-                self.ret_type = self.accumulator
-                self.accumulator = ""
-                self.state.pop()
-
-            if self.found:
-                self.signatures.append(FunctionSig(name=self.function_name, args=self.args,
-                                                   ret_type=self.ret_type))
-                self.found = False
-            self.args = []
-            self.ret_type = 'Any'
-            # leave state as INIT
-        else:
-            self.accumulator += token.string
-
-    def get_signatures(self) -> List[FunctionSig]:
-        def has_arg(name: str, signature: FunctionSig) -> bool:
-            return any(x.name == name for x in signature.args)
-
-        def args_kwargs(signature: FunctionSig) -> bool:
-            return has_arg('*args', signature) and has_arg('**kwargs', signature)
-
-        # Move functions with (*args, **kwargs) in their signature to last place
-        return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
-
-
-def parse_signature(sig: str) -> Optional[Tuple[str,
-                                                List[str],
-                                                List[str]]]:
-    m = re.match(r'([.a-zA-Z0-9_]+)\(([^)]*)\)', sig)
-    if not m:
-        return None
-    name = m.group(1)
-    name = name.split('.')[-1]
-    arg_string = m.group(2)
-    if not arg_string.strip():
-        return (name, [], [])
-    args = [arg.strip() for arg in arg_string.split(',')]
-    fixed = []
-    optional = []
-    i = 0
-    while i < len(args):
-        if args[i].startswith('[') or '=' in args[i]:
-            break
-        fixed.append(args[i].rstrip('['))
-        i += 1
-        if args[i - 1].endswith('['):
-            break
-    while i < len(args):
-        arg = args[i]
-        arg = arg.strip('[]')
-        arg = arg.split('=')[0]
-        optional.append(arg)
-        i += 1
-    return (name, fixed, optional)
-
-
-def build_signature(fixed: Sequence[str],
-                    optional: Sequence[str]) -> str:
-    args = []  # type: MutableSequence[str]
-    args.extend(fixed)
-    for arg in optional:
-        if arg.startswith('*'):
-            args.append(arg)
-        else:
-            args.append('%s=...' % arg)
-    sig = '(%s)' % ', '.join(args)
-    # Ad-hoc fixes.
-    sig = sig.replace('(self)', '')
-    return sig
-
-
-def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
-                                                        List[Sig]]:
-    sigs = []
-    class_sigs = []
-    for line in lines:
-        line = line.strip()
-        m = re.match(r'\.\. *(function|method|class) *:: *[a-zA-Z_]', line)
-        if m:
-            sig = line.split('::')[1].strip()
-            parsed = parse_signature(sig)
-            if parsed:
-                name, fixed, optional = parsed
-                if m.group(1) != 'class':
-                    sigs.append((name, build_signature(fixed, optional)))
-                else:
-                    class_sigs.append((name, build_signature(fixed, optional)))
-
-    return sorted(sigs), sorted(class_sigs)
-
-
-def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
-    sig_map = {}  # type: MutableMapping[str, List[str]]
-    for name, sig in sigs:
-        sig_map.setdefault(name, []).append(sig)
-    result = []
-    for name, name_sigs in sig_map.items():
-        if len(set(name_sigs)) == 1:
-            result.append((name, name_sigs[0]))
-    return sorted(result)
+class CantImport(Exception):
+    pass
 
 
 def is_c_module(module: ModuleType) -> bool:
@@ -243,58 +24,137 @@ def is_c_module(module: ModuleType) -> bool:
 
 def write_header(file: IO[str], module_name: Optional[str] = None,
                  pyversion: Tuple[int, int] = (3, 5)) -> None:
+    """Write a header to file indicating this file is auto-generated by stubgen."""
     if module_name:
-        if pyversion[0] >= 3:
-            version = '%d.%d' % (sys.version_info.major,
-                                 sys.version_info.minor)
-        else:
-            version = '2'
-        file.write('# Stubs for %s (Python %s)\n' % (module_name, version))
+        file.write('# Stubs for %s (Python %s)\n' % (module_name, pyversion[0]))
     file.write(
         '#\n'
         '# NOTE: This dynamically typed stub was automatically generated by stubgen.\n\n')
 
 
-def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSig]]:
-    """Concert function signature to list of TypedFunctionSig
+def default_py2_interpreter() -> str:
+    """Find a system Python 2 interpreter.
 
-    Looks for function signatures of function in docstring. Returns empty list, when no signature
-    is found, one signature in typical case, multiple signatures, if docstring specifies multiple
-    signatures for overload functions.
-
-    Arguments:
-        * docstr: docstring
-        * name: name of function for which signatures are to be found
+    Return full path or exit if failed.
     """
-    if not docstr:
+    # TODO: Make this do something reasonable in Windows.
+    for candidate in ('/usr/bin/python2', '/usr/bin/python'):
+        if not os.path.exists(candidate):
+            continue
+        output = subprocess.check_output([candidate, '--version'],
+                                         stderr=subprocess.STDOUT).strip()
+        if b'Python 2' in output:
+            return candidate
+    raise SystemExit("Can't find a Python 2 interpreter -- "
+                     "please use the --python-executable option")
+
+
+def walk_packages(packages: List[str]) -> Iterator[str]:
+    """Iterates through all packages and sub-packages in the given list.
+
+    This uses runtime imports to find both Python and C modules. For Python packages
+    we simply pass the __path__ attribute to pkgutil.walk_packages() to get the content
+    of the package (all subpackages and modules).  However, packages in C extensions
+    do not have this attribute, so we have to roll out our own logic: recursively find
+    all modules imported in the package that have matching names.
+    """
+    for package_name in packages:
+        try:
+            package = importlib.import_module(package_name)
+        except Exception:
+            report_missing(package_name)
+            continue
+        yield package.__name__
+        # get the path of the object (needed by pkgutil)
+        path = getattr(package, '__path__', None)
+        if path is None:
+            # Object has no path; this means it's either a module inside a package
+            # (and thus no sub-packages), or it could be a C extension package.
+            if is_c_module(package):
+                # This is a C extension module, now get the list of all sub-packages
+                # using the inspect module
+                subpackages = [package.__name__ + "." + name
+                               for name, val in inspect.getmembers(package)
+                               if inspect.ismodule(val)
+                               and val.__name__ == package.__name__ + "." + name]
+                # Recursively iterate through the subpackages
+                for submodule in walk_packages(subpackages):
+                    yield submodule
+            # It's a module inside a package.  There's nothing else to walk/yield.
+        else:
+            all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
+                                                 onerror=lambda r: None)
+            for importer, qualified_name, ispkg in all_packages:
+                yield qualified_name
+
+
+def find_module_path_and_all_py2(module: str,
+                                 interpreter: str) -> Optional[Tuple[str,
+                                                                     Optional[List[str]]]]:
+    """Return tuple (module path, module __all__) for a Python 2 module.
+
+    The path refers to the .py/.py[co] file. The second tuple item is
+    None if the module doesn't define __all__.
+
+    Raise CantImport if the module can't be imported, or exit if it's a C extension module.
+    """
+    cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
+    code = ("import importlib, json; mod = importlib.import_module('%s'); "
+            "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
+    try:
+        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
+    except subprocess.CalledProcessError:
+        raise CantImport(module)
+    output = output_bytes.decode('ascii').strip().splitlines()
+    module_path = output[0]
+    if not module_path.endswith(('.py', '.pyc', '.pyo')):
+        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
+                         module)
+    if module_path.endswith(('.pyc', '.pyo')):
+        module_path = module_path[:-1]
+    module_all = json.loads(output[1])
+    return module_path, module_all
+
+
+def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[List[str]]]]:
+    """Find module and determine __all__ for a Python 3 module.
+
+    Return None if the module is a C module. Return (module_path, __all__) if
+    it is a Python module. Raise CantImport if import failed.
+    """
+    # TODO: Support custom interpreters.
+    try:
+        mod = importlib.import_module(module)
+    except Exception:
+        raise CantImport(module)
+    if is_c_module(mod):
         return None
-
-    state = DocStringParser(name)
-    with contextlib.suppress(tokenize.TokenError):
-        for token in tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline):
-            state.add_token(token)
-    return state.get_signatures()
+    return mod.__file__, getattr(mod, '__all__', None)
 
 
-def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
-    """Convert signature in form of "(self: TestClass, arg0: str='ada')" to List[TypedArgList]."""
-    ret = infer_sig_from_docstring("stub" + docstr, "stub")
-    if ret:
-        return ret[0].args
+@contextmanager
+def generate_guarded(mod: str, target: str,
+                     ignore_errors: bool = True, quiet: bool = False) -> Iterator[None]:
+    """Ignore or report errors during stub generation.
 
-    return []
+    Optionally report success.
+    """
+    try:
+        yield
+    except Exception as e:
+        if not ignore_errors:
+            raise e
+        else:
+            # --ignore-errors was passed
+            print("Stub generation failed for", mod, file=sys.stderr)
+    else:
+        if not quiet:
+            print('Created %s' % target)
 
 
-def infer_prop_type_from_docstring(docstr: str) -> Optional[str]:
-    if not docstr:
-        return None
+def report_missing(mod: str) -> None:
+    print('Failed to import {}; skipping it'.format(mod))
 
-    # check for Google/Numpy style docstring type annotation
-    # the docstring has the format "<type>: <descriptions>"
-    # in the type string, we allow the following characters
-    # dot: because something classes are annotated using full path,
-    # brackets: to allow type hints like List[int]
-    # comma/space: things like Tuple[int, int]
-    test_str = r'^([a-zA-Z0-9_, \.\[\]]*): '
-    m = re.match(test_str, docstr)
-    return m.group(1) if m else None
+
+def fail_missing(mod: str) -> None:
+    raise SystemExit("Can't find module '{}' (consider using --search-path)".format(mod))

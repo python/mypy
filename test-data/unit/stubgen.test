@@ -379,6 +379,9 @@ class A:
 class A:
     def __eq__(self) -> None: ...
 
+-- Tests that will perform runtime imports of modules.
+-- Don't use `_import` suffix if there are unquoted forward references.
+
 [case testOmitDefsNotInAll_import]
 __all__ = [] + ['f']
 def f(): ...
@@ -904,7 +907,7 @@ def g():
     return
 [out]
 def f(): ...
-def g(): ...
+def g() -> None: ...
 
 [case testFunctionEllipsisInfersReturnNone]
 def f(): ...
@@ -1232,3 +1235,203 @@ class F:
 
 @t.coroutine
 def g(): ...
+
+-- Tests for stub generation from semantically analyzed trees.
+-- These tests are much slower, so use the `_semanal` suffix only when needed.
+
+[case testNestedClass_semanal]
+class Outer:
+    class Inner:
+        pass
+
+A = Outer.Inner
+[out]
+class Outer:
+    class Inner: ...
+A = Outer.Inner
+
+[case testFunctionAlias_semanal]
+from asyncio import coroutine
+
+@coroutine
+def start_server():
+    ...
+
+start = start_server
+[out]
+from asyncio import coroutine
+
+@coroutine
+def start_server() -> None: ...
+start = start_server
+
+[case testModuleAlias_semanal]
+import a
+
+b = a
+[file a.py]
+x = 1
+[out]
+import a
+
+b = a
+
+[case testBadAliasNested_semanal]
+import a
+
+x = registry[a.f]
+[file a.py]
+def f(): ...
+[out]
+from typing import Any
+
+x: Any
+
+[case testCrossModuleClass_semanal]
+import a
+
+class C:
+    x: A
+    def f(self) -> A: ...
+A = a.A
+[file a.py]
+class A: ...
+[out]
+import a
+
+class C:
+    x: A
+    def f(self) -> A: ...
+A = a.A
+
+[case testCrossModuleFunction_semanal]
+import a
+g = a.f
+[file a.py]
+def f(): ...
+[out]
+import a
+
+g = a.f
+
+[case testPrivateAliasesExcluded_semanal]
+import a, _a
+
+class C: ...
+
+A = a._A
+B = _a.f
+_C = C
+[file a.py]
+class _A: ...
+[file _a.py]
+def f(): ...
+[out]
+from typing import Any
+
+class C: ...
+
+A: Any
+B: Any
+
+[case testPrivateAliasesIncluded_semanal]
+# flags: --include-private
+import a, _a
+
+class C: ...
+
+A = a._A
+B = _a.f
+_C = C
+[file a.py]
+class _A: ...
+[file _a.py]
+def f(): ...
+[out]
+import _a
+import a
+
+class C: ...
+A = a._A
+B = _a.f
+_C = C
+
+[case testFinalWrapped_semanal]
+from typing import Final
+
+x: Final = 1
+y: Final = x
+z: Final[object]
+t: Final
+[out]
+from typing import Any, Final
+
+x: Final[int]
+y: Final[Any]
+z: Final[object]
+t: Final[Any]
+
+[case testNoFunctionNested_semanal]
+import a
+from typing import Dict, Any
+
+funcs: Dict[Any, Any]
+f = funcs[a.f]
+[out]
+from typing import Any, Dict
+
+funcs: Dict[Any, Any]
+f: Any
+
+[case testAbstractMethodNameExpr]
+from abc import ABCMeta, abstractmethod
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self):
+        pass
+[out]
+from abc import ABCMeta, abstractmethod
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self): ...
+
+[case testAbstractMethodMemberExpr]
+import abc
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def meth(self): ...
+
+[case testABCMeta_semanal]
+from base import base
+from abc import abstractmethod
+
+class C(Base):
+    @abstractmethod
+    def other(self):
+        pass
+
+[file base.py]
+from abc import abstractmethod, ABCMeta
+
+class Base(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc
+from abc import abstractmethod
+from typing import Any
+
+class C(Base, metaclass=abc.ABCMeta):
+    @abstractmethod
+    def other(self) -> Any: ...

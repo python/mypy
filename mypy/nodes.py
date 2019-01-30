@@ -652,6 +652,8 @@ class Decorator(SymbolNode, Statement):
 
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators (may be empty)
+    # Some decorators are removed by semanal, keep the original here.
+    original_decorators = None  # type: List[Expression]
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
@@ -661,6 +663,7 @@ class Decorator(SymbolNode, Statement):
         super().__init__()
         self.func = func
         self.decorators = decorators
+        self.original_decorators = decorators.copy()
         self.var = var
         self.is_overload = False
 

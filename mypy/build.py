@@ -1463,7 +1463,8 @@ class State:
                  # as error reporting should be avoided.
                  temporary: bool = False,
                  ) -> None:
-        assert id or path or source is not None, "Neither id, path nor source given"
+        if not temporary:
+            assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
         State.order_counter += 1
         self.order = State.order_counter

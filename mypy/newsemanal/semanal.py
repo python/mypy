@@ -245,7 +245,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.incomplete_namespaces = incomplete_namespaces
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
-        self.all_exports = set()  # type: Set[str]
+        self.all_exports = []  # type: List[str]
+        # Map from module id to list of explicitly exported names (i.e. names in __all__).
+        self.export_map = {}  # type: Dict[str, List[str]]
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -317,6 +319,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if name not in self.all_exports:
                         g.module_public = False
 
+            self.export_map[self.cur_mod_id] = self.all_exports
+            self.all_exports = []
             del self.options
             del self.patches
             del self.cur_mod_node
@@ -3899,7 +3903,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
         for exp in exps:
             if isinstance(exp, StrExpr):
-                self.all_exports.add(exp.value)
+                self.all_exports.append(exp.value)
 
     def check_no_global(self, n: str, ctx: Context,
                         is_overloaded_func: bool = False) -> None:
