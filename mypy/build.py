@@ -259,6 +259,7 @@ CacheMeta = NamedTuple('CacheMeta',
 # suppressed contains those reachable imports that were prevented by
 # silent mode or simply not found.
 
+# Metadata for the fine-grained dependencies file associated with a module.
 FgDepMeta = TypedDict('FgDepMeta', {'path': str, 'mtime': int})
 
 
@@ -455,6 +456,7 @@ class BuildManager(BuildManagerBase):
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
+      fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       plugins_snapshot:
@@ -725,8 +727,9 @@ class BuildManager(BuildManagerBase):
 def deps_to_json(x: Dict[str, Set[str]]) -> str:
     return json.dumps({k: list(v) for k, v in x.items()})
 
-
+# File for storing metadata about all the fine-grained dependency caches
 DEPS_META_FILE = '@deps.meta.json'  # type: Final
+# File for storing fine-grained dependencies that didn't a parent in the build
 DEPS_ROOT_FILE = '@root.deps.json'  # type: Final
 
 
@@ -796,11 +799,12 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 
 def invert_deps(deps: Dict[str, Set[str]],
                 graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
-    """Splits fine-grained dependencies based on the module of the trigger
+    """Splits fine-grained dependencies based on the module of the trigger.
 
     Returns a dictionary from module ids to all dependencies on that
-    module. Dependencies not associated with a module in the build are
-    associated with the fake module '@root'.
+    module. Dependencies not associated with a module in the build will be
+    associated with the nearest parent module that is in the build, or the
+    fake module '@root' if none are.
     """
     # Lazy import to speed up startup
     from mypy.server.target import module_prefix, trigger_to_target
@@ -823,7 +827,7 @@ def invert_deps(deps: Dict[str, Set[str]],
 def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
                             manager: BuildManager,
                             graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
-    """Generate fine-grained dependenecies into a form suitable for serializing.
+    """Generate fine-grained dependencies into a form suitable for serializing.
 
     This does a few things:
     1. Computes all fine grained deps from modules that were processed
@@ -832,8 +836,9 @@ def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
        deps and merge them in.
 
     Returns a dictionary from module ids to all dependencies on that
-    module. Dependencies not associated with a module in the build are
-    associated with the fake module '@root'.
+    module. Dependencies not associated with a module in the build will be
+    associated with the nearest parent module that is in the build, or the
+    fake module '@root' if none are.
     """
     from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
 
@@ -887,6 +892,8 @@ def read_deps_cache(manager: BuildManager,
 
     See the write_deps_cache documentation for more information on
     the details of the cache.
+
+    Returns None if the cache was invalid in some way.
     """
     deps_meta = _load_json_file(DEPS_META_FILE, manager,
                                 log_sucess='Deps meta ',
