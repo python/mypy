@@ -121,6 +121,7 @@ from typing import (
 from mypy.build import (
     BuildManager, State, BuildResult, Graph, load_graph,
     process_fresh_modules, DEBUG_FINE_GRAINED,
+    FAKE_ROOT_MODULE,
 )
 from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
@@ -439,7 +440,7 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     # Deps for each module were computed during build() or loaded from the cache.
-    deps = manager.load_fine_grained_deps('@root')  # type: Dict[str, Set[str]]
+    deps = manager.load_fine_grained_deps(FAKE_ROOT_MODULE)  # type: Dict[str, Set[str]]
     for id in graph:
         if graph[id].tree is not None:
             merge_dependencies(graph[id].compute_fine_grained_deps(), deps)

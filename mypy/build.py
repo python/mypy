@@ -732,6 +732,10 @@ DEPS_META_FILE = '@deps.meta.json'  # type: Final
 # File for storing fine-grained dependencies that didn't a parent in the build
 DEPS_ROOT_FILE = '@root.deps.json'  # type: Final
 
+# The name of the fake module used to store fine-grained dependencies that
+# have no other place to go.
+FAKE_ROOT_MODULE = '@root'  # type: Final
+
 
 def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
                      manager: BuildManager, graph: Graph) -> None:
@@ -744,7 +748,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     if module 'n' depends on 'm', that produces entries in m.deps.json.
     When there is a dependency on a module that does not exist in the
     build, it is stored with its first existing parent module. If no
-    such module exists, it is stored with the fake module '@root'.
+    such module exists, it is stored with the fake module FAKE_ROOT_MODULE.
 
     This means that the validity of the fine-grained dependency caches
     are a global property, so we store validity checking information for
@@ -761,7 +765,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     fg_deps_meta = manager.fg_deps_meta.copy()
 
     for id in rdeps:
-        if id != '@root':
+        if id != FAKE_ROOT_MODULE:
             _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
         else:
             deps_json = DEPS_ROOT_FILE
@@ -804,7 +808,7 @@ def invert_deps(deps: Dict[str, Set[str]],
     Returns a dictionary from module ids to all dependencies on that
     module. Dependencies not associated with a module in the build will be
     associated with the nearest parent module that is in the build, or the
-    fake module '@root' if none are.
+    fake module FAKE_ROOT_MODULE if none are.
     """
     # Lazy import to speed up startup
     from mypy.server.target import module_prefix, trigger_to_target
@@ -816,7 +820,7 @@ def invert_deps(deps: Dict[str, Set[str]],
     for trigger, targets in deps.items():
         module = module_prefix(graph, trigger_to_target(trigger))
         if not module or not graph[module].tree:
-            module = '@root'
+            module = FAKE_ROOT_MODULE
 
         mod_rdeps = rdeps.setdefault(module, {})
         mod_rdeps.setdefault(trigger, set()).update(targets)
@@ -838,7 +842,7 @@ def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
     Returns a dictionary from module ids to all dependencies on that
     module. Dependencies not associated with a module in the build will be
     associated with the nearest parent module that is in the build, or the
-    fake module '@root' if none are.
+    fake module FAKE_ROOT_MODULE if none are.
     """
     from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
 
