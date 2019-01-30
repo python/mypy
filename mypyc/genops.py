@@ -1007,10 +1007,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                            tp], cdef.line)
 
     # An unfortunate hack: for some stdlib modules, pull in modules
-    # that the stubs reexport things from.
+    # that the stubs reexport things from. This works around #393
+    # in these cases.
     import_maps = {
         'os': tuple(['os.path'] + ([] if sys.platform == 'win32' else ['posix'])),
         'os.path': ('os',),
+        'tokenize': ('token',),
         'weakref': ('_weakref',),
     }  # type: ClassVar[Dict[str, Sequence[str]]]
 
