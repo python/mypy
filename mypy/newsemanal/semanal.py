@@ -328,7 +328,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def prepare_file(self, file_node: MypyFile) -> None:
         """Prepare a freshly parsed file for semantic analysis."""
-        file_node.names = SymbolTable()
         if 'builtins' in self.modules:
             file_node.names['__builtins__'] = SymbolTableNode(GDEF,
                                                               self.modules['builtins'])
@@ -1605,10 +1604,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             id = parent
 
     def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
-        if parent_mod.names is None:
-            print('defer 1')
-            self.defer()
-            return
         if child not in parent_mod.names:
             return True
         node = parent_mod.names[child].node
