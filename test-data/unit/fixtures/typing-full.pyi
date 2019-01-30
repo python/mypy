@@ -28,11 +28,6 @@ ClassVar = 0
 NoReturn = 0
 NewType = 0
 
-# Type aliases.
-List = 0
-Dict = 0
-Set = 0
-
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)

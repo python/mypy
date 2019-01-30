@@ -79,7 +79,9 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
-        worklist = all_deferred
+        # Reverse to process the targets in the same order on every iteration. This avoids
+        # processing the same target twice in a row, which is inefficient.
+        worklist = list(reversed(all_deferred))
 
 
 def process_functions(graph: 'Graph', scc: List[str]) -> None:
@@ -95,7 +97,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
             semantic_analyze_function(graph[module], node, active_type)
 
 
-TargetInfo = Tuple[str, Union[MypyFile, FuncDef], Optional[TypeInfo]]
+TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
 
 
 def get_all_leaf_targets(symtable: SymbolTable,
@@ -107,7 +109,7 @@ def get_all_leaf_targets(symtable: SymbolTable,
         new_prefix = prefix + '.' + name
         # TODO: Decorated function
         # TODO: Overloaded function
-        if isinstance(node.node, (FuncDef, TypeInfo)):
+        if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
             if '@' in node.node.fullname() and isinstance(node.node, TypeInfo):
                 new_prefix += '@' + str(node.node.defn.line)
             if node.node.fullname() == new_prefix:
@@ -120,7 +122,7 @@ def get_all_leaf_targets(symtable: SymbolTable,
 
 def semantic_analyze_module(target: str,
                             state: 'State',
-                            node: Union[MypyFile, FuncDef]) -> Tuple[List[str], bool]:
+                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator]) -> Tuple[List[str], bool]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -133,6 +135,9 @@ def semantic_analyze_module(target: str,
                                    fnam=tree.path,
                                    options=state.options,
                                    active_type=None):
+            if isinstance(node, Decorator):
+                # Decorator expressions will be processed as part of the module top level.
+                node = node.func
             analyzer.refresh_partial(node, [])
     if analyzer.deferred:
         return [target], analyzer.incomplete
