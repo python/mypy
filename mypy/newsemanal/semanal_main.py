@@ -137,6 +137,8 @@ def semantic_analyze_target(target: str,
                                    fnam=tree.path,
                                    options=state.options,
                                    active_type=active_type):
+            if isinstance(node, Decorator):
+                node = node.func
             analyzer.refresh_partial(node, [])
     if analyzer.deferred:
         return [target], analyzer.incomplete
