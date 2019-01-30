@@ -53,7 +53,6 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
 
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     # Process top levels until everything has been bound.
-    # TODO: Limit the number of iterations
 
     # Initialize ASTs and symbol tables.
     for id in scc:
@@ -76,7 +75,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
-            deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None)
+            deferred, incomplete = semantic_analyze_module(next_id, state, state.tree)
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
@@ -93,10 +92,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         symtable = tree.names
         targets = get_all_leaf_targets(symtable, module, None)
         for target, node, active_type in targets:
-            deferred, incomplete = semantic_analyze_target(target, graph[module], node,
-                                                           active_type)
-            assert not deferred  # There can't be cross-function forward refs
-            assert not incomplete  # Ditto
+            semantic_analyze_function(graph[module], node, active_type)
 
 
 TargetInfo = Tuple[str, Union[MypyFile, FuncDef], Optional[TypeInfo]]
@@ -112,6 +108,8 @@ def get_all_leaf_targets(symtable: SymbolTable,
         # TODO: Decorated function
         # TODO: Overloaded function
         if isinstance(node.node, (FuncDef, TypeInfo)):
+            if '@' in node.node.fullname() and isinstance(node.node, TypeInfo):
+                new_prefix += '@' + str(node.node.defn.line)
             if node.node.fullname() == new_prefix:
                 if isinstance(node.node, TypeInfo):
                     result += get_all_leaf_targets(node.node.names, new_prefix, node.node)
@@ -120,11 +118,9 @@ def get_all_leaf_targets(symtable: SymbolTable,
     return result
 
 
-def semantic_analyze_target(target: str,
+def semantic_analyze_module(target: str,
                             state: 'State',
-                            node: Union[MypyFile, FuncDef],
-                            active_type: Optional[TypeInfo]) -> Tuple[List[str], bool]:
-    # TODO: Support refreshing function targets (currently only works for module top levels)
+                            node: Union[MypyFile, FuncDef]) -> Tuple[List[str], bool]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -136,9 +132,45 @@ def semantic_analyze_target(target: str,
         with analyzer.file_context(file_node=tree,
                                    fnam=tree.path,
                                    options=state.options,
-                                   active_type=active_type):
+                                   active_type=None):
             analyzer.refresh_partial(node, [])
     if analyzer.deferred:
         return [target], analyzer.incomplete
     else:
         return [], analyzer.incomplete
+
+
+def semantic_analyze_function(state: 'State', node: FuncDef, active_type: Optional[TypeInfo]) -> None:
+    """Analyze function body."""
+    analyzer = state.manager.new_semantic_analyzer
+    tree = state.tree
+    assert tree is not None
+    # TODO: Move initialization to somewhere else
+    analyzer.global_decls = [set()]
+    analyzer.nonlocal_decls = [set()]
+    analyzer.globals = tree.names
+    analyzer.incomplete_namespaces.add(tree.fullname())
+    defer = True
+    iteration = 0
+    while defer:
+        iteration += 1
+        if iteration == MAX_ITERATIONS:
+            if tree.fullname() in analyzer.incomplete_namespaces:
+                analyzer.incomplete_namespaces.remove(tree.fullname())
+        with state.wrap_context():
+            with analyzer.file_context(file_node=tree,
+                                       fnam=tree.path,
+                                       options=state.options,
+                                       active_type=active_type):
+                analyzer.refresh_partial(node, [], recurse_nested=False)
+                defer = analyzer.deferred
+                analyzer.override_locals = analyzer.last_locals
+
+    analyzer.override_locals = None
+    targets = get_all_leaf_targets(analyzer.last_locals, tree.fullname(), active_type)
+    analyzer.locals.append(analyzer.last_locals)
+    for target, node, active_type in targets:
+        semantic_analyze_function(state, node, active_type)
+    analyzer.locals.pop()
+    if tree.fullname() in analyzer.incomplete_namespaces:
+        analyzer.incomplete_namespaces.remove(tree.fullname())
