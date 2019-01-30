@@ -2022,8 +2022,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
-                        if isinstance(lvalue.node, Var):
-                            lvalue.node.is_abstract_var = True
+                if isinstance(lvalue.node, Var):
+                    lvalue.node.is_abstract_var = True
         else:
             if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
                     self.type and self.type.is_protocol and not self.is_func_scope()):
