@@ -242,7 +242,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
-        self.all_exports = set()  # type: Set[str]
+        self.all_exports = []  # type: List[str]
+        # Map from module id to list of explicitly exported names (i.e. names in __all__).
+        self.export_map = {}  # type: Dict[str, List[str]]
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -314,6 +316,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if name not in self.all_exports:
                         g.module_public = False
 
+            self.export_map[self.cur_mod_id] = self.all_exports
+            self.all_exports = []
             del self.options
             del self.patches
             del self.cur_mod_node
@@ -1904,8 +1908,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
-                        if isinstance(lvalue.node, Var):
-                            lvalue.node.is_abstract_var = True
+                if isinstance(lvalue.node, Var):
+                    lvalue.node.is_abstract_var = True
         else:
             if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
                     self.type and self.type.is_protocol and not self.is_func_scope()):
@@ -3707,7 +3711,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
         for exp in exps:
             if isinstance(exp, StrExpr):
-                self.all_exports.add(exp.value)
+                self.all_exports.append(exp.value)
 
     def check_no_global(self, n: str, ctx: Context,
                         is_overloaded_func: bool = False) -> None:

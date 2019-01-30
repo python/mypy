@@ -1819,9 +1819,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
 
-    def visit_unbound_type(self, t: UnboundType)-> str:
+    def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
-        if t.args != []:
+        if t.args:
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
