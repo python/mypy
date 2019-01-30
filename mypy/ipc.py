@@ -77,20 +77,8 @@ class IPCBase:
                     # we are done!
                     break
                 elif err == _winapi.ERROR_MORE_DATA:
-                    left = _winapi.PeekNamedPipe(self.connection)[1]
-                    assert left > 0
-                    ov, err = _winapi.ReadFile(self.connection, left, overlapped=True)
-                    # TODO: remove once typeshed supports Literal types
-                    assert isinstance(ov, _winapi.Overlapped)
-                    assert isinstance(err, int)
-                    read, err = ov.GetOverlappedResult(True)
-                    assert err == 0, err
-                    assert read == left, read
-                    more = ov.getbuffer()
-                    if more:
-                        bdata.extend(more)
-                    # we are done after reading the rest of the pipe contents
-                    break
+                    # read again
+                    continue
                 elif err == _winapi.ERROR_OPERATION_ABORTED:
                     raise IPCException("ReadFile operation aborted.")
         else:
