@@ -138,6 +138,7 @@ def semantic_analyze_target(target: str,
                                    options=state.options,
                                    active_type=active_type):
             if isinstance(node, Decorator):
+                # Decorator expressions will be processed as part of the module top level.
                 node = node.func
             analyzer.refresh_partial(node, [])
     if analyzer.deferred:
