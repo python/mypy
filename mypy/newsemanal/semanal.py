@@ -2757,7 +2757,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
-        self.add_symbol(dec.name(), dec, dec)
+        if not dec.is_overload:
+            self.add_symbol(dec.name(), dec, dec)
         dec.func._fullname = self.qualified_name(dec.name())
         for d in dec.decorators:
             d.accept(self)
