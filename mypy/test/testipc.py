@@ -24,7 +24,7 @@ def server(msg: str, q: 'Queue[str]') -> None:
 class IPCTests(TestCase):
     def test_transaction_large(self) -> None:
         queue = Queue()  # type: Queue[str]
-        msg = 't' * 100001  # longer than the max read size of 100_000
+        msg = 't' * 200000  # longer than the max read size of 100_000
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
         connection_name = queue.get()
