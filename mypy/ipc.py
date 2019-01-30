@@ -110,12 +110,13 @@ class IPCBase:
                 assert isinstance(ov, _winapi.Overlapped)
                 assert isinstance(err, int)
                 try:
-                    if err != 0:
-                        assert err == _winapi.ERROR_IO_PENDING, err
+                    if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
                             raise IPCException("Bad result from I/O wait: {}".format(res))
+                    elif err != 0:
+                        raise IPCException("Failed writing to pipe with error: {}".format(err))
                 except BaseException:
                     ov.cancel()
                     raise
