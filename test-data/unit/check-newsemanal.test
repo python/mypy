@@ -331,6 +331,13 @@ def main() -> None:
         reveal_type(f())  # E: Revealed type is 'builtins.int'
         return str()
 
+[case testNewAnalyzerMissingNamesInFunctions]
+def main() -> None:
+    def f() -> None:
+        x  # E: Name 'x' is not defined
+        class C:
+            x  # E: Name 'x' is not defined
+
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
 from typing import overload, Union
 

@@ -96,20 +96,28 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         targets = get_all_leaf_targets(symtable, module, None)
         for target, node, active_type in targets:
             iteration = 0
-            deferred = [module]
+            # We need one more pass after incomplete is False.
             more_passes = incomplete = True
+            # Start in the incomplete state (no missing names will be reported on first pass).
+            # Note that we use module name, since functions don't create qualified names.
+            deferred = [module]
             analyzer.incomplete_namespaces.add(module)
             while deferred and more_passes:
-                if not incomplete:
-                    more_passes = False
                 iteration += 1
-                if iteration == MAX_ITERATIONS:
-                    if module in analyzer.incomplete_namespaces:
-                        analyzer.incomplete_namespaces.remove(module)
+                if not incomplete or iteration == MAX_ITERATIONS:
+                    # OK, this is one last pass, now missing names will be reported.
+                    more_passes = False
+                    analyzer.incomplete_namespaces.discard(module)
                 deferred, incomplete = semantic_analyze_target(module, graph[module], node,
                                                                active_type)
-            if module in analyzer.incomplete_namespaces:
-                analyzer.incomplete_namespaces.remove(module)
+
+            # After semantic analysis is done, discard local namespaces
+            # to avoid memory hoarding.
+            if isinstance(node, FuncDef):
+                analyzer.saved_locals.pop(node, None)
+            elif isinstance(node, OverloadedFuncDef):
+                for item in node.items:
+                    analyzer.saved_locals.pop(item, None)
 
 
 TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
