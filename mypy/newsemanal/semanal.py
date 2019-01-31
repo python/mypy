@@ -2615,7 +2615,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           report_invalid_types=False)
                     if analyzed is None:
-                        None
+                        return None
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
