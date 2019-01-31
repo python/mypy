@@ -849,11 +849,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         bases = defn.base_type_exprs
 
-        is_protocol = self.detect_protocol_base(bases)
         # TODO: Support metaclasses
         # self.update_metaclass(defn)
-        bases, tvar_defs = self.clean_up_bases_and_infer_type_variables(bases,
-                                                                        context=defn)
+        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
+                                                                                     context=defn)
         # TODO: Support keyword arguments
         # self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
@@ -1085,27 +1084,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
 
-    def detect_protocol_base(self, base_type_exprs: List[Expression]) -> bool:
-        """Return True if one of the base class expressions refers to Protocol."""
-        for base_expr in base_type_exprs:
-            try:
-                base = expr_to_unanalyzed_type(base_expr)
-            except TypeTranslationError:
-                continue  # This will be reported later
-            if not isinstance(base, UnboundType):
-                continue
-            sym = self.lookup_qualified(base.name, base)
-            if sym is None or sym.node is None:
-                continue
-            if sym.node.fullname() in ('typing.Protocol', 'typing_extensions.Protocol'):
-                return True
-        return False
-
     def clean_up_bases_and_infer_type_variables(
             self,
             base_type_exprs: List[Expression],
             context: Context) -> Tuple[List[Expression],
-                                       List[TypeVarDef]]:
+                                       List[TypeVarDef],
+                                       bool]:
         """Remove extra base classes such as Generic and infer type vars.
 
         For example, consider this class:
@@ -1117,11 +1101,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Note that this is performed *before* semantic analysis.
 
-        Returns (remaining base expressions, inferred type variables).
+        Returns (remaining base expressions, inferred type variables, is protocol).
         """
         base_type_exprs = base_type_exprs[:]
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
+        is_protocol = False
         for i, base_expr in enumerate(base_type_exprs):
             self.analyze_type_expr(base_expr)
 
@@ -1135,7 +1120,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if declared_tvars:
                     self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
-                declared_tvars.extend(tvars)
+                declared_tvars.extend(tvars[0])
+                is_protocol = tvars[1]
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
@@ -1144,6 +1130,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             i not in removed):
                         # also remove bare 'Protocol' bases
                         removed.append(i)
+                        is_protocol = True
 
         all_tvars = self.get_all_bases_tvars(base_type_exprs, removed)
         if declared_tvars:
@@ -1163,9 +1150,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             tvar_defs.append(tvar_def)
-        return base_type_exprs, tvar_defs
+        return base_type_exprs, tvar_defs, is_protocol
 
-    def analyze_class_typevar_declaration(self, base: Type) -> Optional[TypeVarList]:
+    def analyze_class_typevar_declaration(self, base: Type) -> Optional[Tuple[TypeVarList, bool]]:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -1183,6 +1170,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if (sym.node.fullname() == 'typing.Generic' or
                 sym.node.fullname() == 'typing.Protocol' and base.args or
                 sym.node.fullname() == 'typing_extensions.Protocol' and base.args):
+            is_proto = sym.node.fullname() != 'typing.Generic'
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
@@ -1192,7 +1180,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 elif not self.found_incomplete_ref(tag):
                     self.fail('Free type variable expected in %s[...]' %
                               sym.node.name(), base)
-            return tvars
+            return tvars, is_proto
         return None
 
     def analyze_unbound_tvar(self, t: Type) -> Optional[Tuple[str, TypeVarExpr]]:
