@@ -825,8 +825,17 @@ def _load_json_file(file: str, manager: BuildManager,
         manager.log(log_error + file)
         return None
     manager.trace(log_sucess + data.rstrip())
-    result = json.loads(data)  # TODO: Errors
-    return result
+    try:
+        result = json.loads(data)
+    except ValueError:  # TODO: JSONDecodeError in 3.5
+        manager.errors.report(0, 0, "Error reading JSON file {};"
+                                    " you likely have a bad cache.\n"
+                                    " Try removing the .mypy_cache directory
+                                    " and run mypy again.".format(file),
+                              blocker=True)
+        return None
+    else:
+        return result
 
 
 def _cache_dir_prefix(manager: BuildManager) -> str:
