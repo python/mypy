@@ -643,7 +643,7 @@ def generate_readonly_getter(cl: ClassIR,
     emitter.emit_line('}')
 
 
-def emit_undefined_check(rtype: RType, emitter: Emitter, attr: str, compare: str) ->None:
+def emit_undefined_check(rtype: RType, emitter: Emitter, attr: str, compare: str) -> None:
     if isinstance(rtype, RTuple):
         attr_expr = 'self->{}'.format(attr)
         emitter.emit_line(

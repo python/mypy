@@ -43,7 +43,8 @@ import mypy.nodes
 import mypy.errors
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
-    TypeType, FunctionLike, Overloaded, TypeOfAny, UninhabitedType, UnboundType,
+    TypeType, FunctionLike, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
+    LiteralType,
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.subtypes import is_named_instance
@@ -353,10 +354,17 @@ class Mapper:
             return self.type_to_rtype(typ.var.type)
         elif isinstance(typ, Overloaded):
             return object_rprimitive
+        elif isinstance(typ, TypedDictType):
+            return dict_rprimitive
+        elif isinstance(typ, LiteralType):
+            return self.type_to_rtype(typ.fallback)
         elif isinstance(typ, (UninhabitedType, UnboundType)):
             # Sure, whatever!
             return object_rprimitive
-        assert False, '%s unsupported' % type(typ)
+
+        # I think we've covered everything that is supposed to
+        # actually show up, so anything else is a bug somewhere.
+        assert False, 'unexpected type %s' % type(typ)
 
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
         assert isinstance(fdef.type, CallableType)
@@ -3071,7 +3079,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def try_finally_body(
             self, finally_block: BasicBlock, finally_body: GenFunc,
-            ret_reg: Optional[Value], old_exc: Value) -> Tuple[BasicBlock, FinallyNonlocalControl]:
+            ret_reg: Optional[Value], old_exc: Value) -> Tuple[BasicBlock,
+                                                               'FinallyNonlocalControl']:
         cleanup_block = BasicBlock()
         # Compile the finally block with the nonlocal control flow overridden to restore exc_info
         self.error_handlers.append(cleanup_block)
