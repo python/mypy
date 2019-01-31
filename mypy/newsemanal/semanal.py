@@ -2503,6 +2503,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                               n_values,
                                               s)
         if res is None:
+            self.mark_incomplete(name)
             return
         variance, upper_bound = res
 
@@ -2609,7 +2610,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # the default error message for invalid types here.
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           report_invalid_types=False)
-                    assert analyzed is not None  # TODO: Handle None values
+                    if analyzed is None:
+                        None
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)

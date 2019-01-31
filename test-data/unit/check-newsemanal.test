@@ -598,3 +598,19 @@ class C(A[C]):
 
 class D(A[D]):
     pass
+
+[case testNewAnalyzerTypeVarBoundForwardRef]
+# flags: --new-semantic-analyzer
+from typing import TypeVar
+
+T = TypeVar('T', bound='C')
+
+class C: pass
+class D(C): pass
+class E: pass
+
+def f(x: T) -> T:
+    return x
+
+reveal_type(f(D())) # E: Revealed type is '__main__.D*'
+f(E()) # E: Value of type variable "T" of "f" cannot be "E"
