@@ -75,7 +75,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
-            deferred, incomplete = semantic_analyze_module(next_id, state, state.tree)
+            deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None)
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
@@ -91,10 +91,28 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
     for module in scc:
         tree = graph[module].tree
         assert tree is not None
+        analyzer = graph[module].manager.new_semantic_analyzer
         symtable = tree.names
         targets = get_all_leaf_targets(symtable, module, None)
         for target, node, active_type in targets:
-            semantic_analyze_function(graph[module], node, active_type)
+            iteration = 0
+            deferred = [module]
+            more_passes = True
+            incomplete = True
+            analyzer.incomplete_namespaces.add(module)
+            while deferred and more_passes:
+                if not incomplete:
+                    more_passes = False
+                iteration += 1
+                if iteration == MAX_ITERATIONS:
+                    if module in analyzer.incomplete_namespaces:
+                        analyzer.incomplete_namespaces.remove(module)
+                deferred, incomplete = semantic_analyze_target(module, graph[module], node,
+                                                               active_type)
+            if isinstance(node, FuncDef):
+                node.locals = None
+            if module in analyzer.incomplete_namespaces:
+                analyzer.incomplete_namespaces.remove(module)
 
 
 TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
@@ -108,8 +126,6 @@ def get_all_leaf_targets(symtable: SymbolTable,
     for name, node in symtable.items():
         new_prefix = prefix + '.' + name
         if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
-            if '@' in node.node.fullname() and isinstance(node.node, TypeInfo):
-                new_prefix += '@' + str(node.node.defn.line)
             if node.node.fullname() == new_prefix:
                 if isinstance(node.node, TypeInfo):
                     result += get_all_leaf_targets(node.node.names, new_prefix, node.node)
@@ -118,10 +134,10 @@ def get_all_leaf_targets(symtable: SymbolTable,
     return result
 
 
-def semantic_analyze_module(target: str,
+def semantic_analyze_target(target: str,
                             state: 'State',
-                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator]
-                            ) -> Tuple[List[str], bool]:
+                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
+                            active_type: Optional[TypeInfo]) -> Tuple[List[str], bool]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -133,7 +149,7 @@ def semantic_analyze_module(target: str,
         with analyzer.file_context(file_node=tree,
                                    fnam=tree.path,
                                    options=state.options,
-                                   active_type=None):
+                                   active_type=active_type):
             if isinstance(node, Decorator):
                 # Decorator expressions will be processed as part of the module top level.
                 node = node.func
@@ -142,39 +158,3 @@ def semantic_analyze_module(target: str,
         return [target], analyzer.incomplete
     else:
         return [], analyzer.incomplete
-
-
-def semantic_analyze_function(state: 'State', node: FuncDef, active_type: Optional[TypeInfo]) -> None:
-    """Analyze function body."""
-    analyzer = state.manager.new_semantic_analyzer
-    tree = state.tree
-    assert tree is not None
-    # TODO: Move initialization to somewhere else
-    analyzer.global_decls = [set()]
-    analyzer.nonlocal_decls = [set()]
-    analyzer.globals = tree.names
-    analyzer.incomplete_namespaces.add(tree.fullname())
-    defer = True
-    iteration = 0
-    while defer:
-        iteration += 1
-        if iteration == MAX_ITERATIONS:
-            if tree.fullname() in analyzer.incomplete_namespaces:
-                analyzer.incomplete_namespaces.remove(tree.fullname())
-        with state.wrap_context():
-            with analyzer.file_context(file_node=tree,
-                                       fnam=tree.path,
-                                       options=state.options,
-                                       active_type=active_type):
-                analyzer.refresh_partial(node, [], recurse_nested=False)
-                defer = analyzer.deferred
-                analyzer.override_locals = analyzer.last_locals
-
-    analyzer.override_locals = None
-    targets = get_all_leaf_targets(analyzer.last_locals, tree.fullname(), active_type)
-    analyzer.locals.append(analyzer.last_locals)
-    for target, node, active_type in targets:
-        semantic_analyze_function(state, node, active_type)
-    analyzer.locals.pop()
-    if tree.fullname() in analyzer.incomplete_namespaces:
-        analyzer.incomplete_namespaces.remove(tree.fullname())

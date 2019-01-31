@@ -336,7 +336,7 @@ class C:
     class D:
         def meth(self) -> None:
             x: Out.In
-            reveal_type(x.t)
+            reveal_type(x.t)  # E: Revealed type is 'builtins.int'
             class Out:
                 class In:
                     def meth(self) -> None:

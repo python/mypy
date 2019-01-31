@@ -211,7 +211,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
-        self.override_locals = None
+        # Saved namespaces from previous passes.
+        self.saved_locals = {}  # type: Dict[FuncDef, SymbolTable]
         self.imports = set()
         self.type = None
         self.type_stack = []
@@ -260,7 +261,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         lowest priority values first.
         """
         self.recurse_into_functions = True
-        self.recurse_nested = True
         self.options = options
         self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
         self.cur_mod_node = file_node
@@ -352,8 +352,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             file_node.names[name] = SymbolTableNode(GDEF, v)
 
     def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
-                        patches: List[Tuple[int, Callable[[], None]]],
-                        recurse_nested: bool = True) -> None:
+                        patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
         # TODO: Don't define any attributes here (better to do it in class body or __init__)
@@ -366,7 +365,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
-            self.recurse_nested = recurse_nested
             self.accept(node)
         del self.patches
 
@@ -754,7 +752,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 a = self.type_analyzer()
                 a.bind_function_type_variables(cast(CallableType, defn.type), defn)
             self.function_stack.append(defn)
-            self.enter()
+            self.enter(defn)
             for arg in defn.arguments:
                 self.add_local(arg.variable, defn)
 
@@ -764,9 +762,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if is_method and not defn.is_static and not defn.is_class and defn.arguments:
                 defn.arguments[0].variable.is_self = True
 
-            self.recurse_into_functions = self.recurse_nested
             defn.body.accept(self)
-            self.last_locals = self.locals[-1]
             self.leave()
             self.function_stack.pop()
 
@@ -3760,8 +3756,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             base = self.cur_mod_id
         return base + '.' + n
 
-    def enter(self) -> None:
-        self.locals.append(self.override_locals or SymbolTable())
+    def enter(self, function: Optional[FuncItem] = None) -> None:
+        if function:
+            names = self.saved_locals.setdefault(function, SymbolTable())
+        else:
+            names = SymbolTable()
+        self.locals.append(names)
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
