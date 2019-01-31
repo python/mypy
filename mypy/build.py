@@ -828,10 +828,13 @@ def _load_json_file(file: str, manager: BuildManager,
     try:
         result = json.loads(data)
     except ValueError:  # TODO: JSONDecodeError in 3.5
-        manager.errors.report(0, 0, "Error reading JSON file {};"
+        manager.errors.report(0, 0, "Error reading JSON file {file};"
                                     " you likely have a bad cache.\n"
-                                    " Try removing the .mypy_cache directory"
-                                    " and run mypy again.".format(file),
+                                    " Try removing the {cache_dir} directory"
+                                    " and run mypy again.".format(
+                                        file=file,
+                                        cache_dir=manager.options.cache_dir
+                                    ),
                               blocker=True)
         return None
     else:
