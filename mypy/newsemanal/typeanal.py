@@ -398,24 +398,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
-        # Option 3:
-        # If it is not something clearly bad (like a known function, variable,
-        # type variable, or module), and it is still not too late, we try deferring
-        # this type using a forward reference wrapper. It will be revisited in
-        # the third pass.
-        allow_forward_ref = not (self.third_pass or
-                                 isinstance(sym.node, (FuncDef, Decorator, MypyFile,
-                                                       TypeVarExpr)) or
-                                 (isinstance(sym.node, Var) and sym.node.is_ready))
-        if allow_forward_ref:
-            # We currently can't support subscripted forward refs in functions;
-            # see https://github.com/python/mypy/pull/3952#discussion_r139950690
-            # for discussion.
-            if t.args and not self.global_scope:
-                if not self.in_dynamic_func:
-                    self.fail('Unsupported forward reference to "{}"'.format(t.name), t)
-                return AnyType(TypeOfAny.from_error)
-            return ForwardRef(t)
         # None of the above options worked, we give up.
         self.fail('Invalid type "{}"'.format(name), t)
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
