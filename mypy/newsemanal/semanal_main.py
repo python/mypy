@@ -117,6 +117,8 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
                 analyzer.saved_locals.pop(node, None)
             elif isinstance(node, OverloadedFuncDef):
                 for item in node.items:
+                    if isinstance(item, Decorator):
+                        item = item.func
                     analyzer.saved_locals.pop(item, None)
 
 

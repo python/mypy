@@ -212,7 +212,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         self.locals = [None]
         # Saved namespaces from previous passes.
-        self.saved_locals = {}  # type: Dict[FuncDef, SymbolTable]
+        self.saved_locals = {}  # type: Dict[FuncItem, SymbolTable]
         self.imports = set()
         self.type = None
         self.type_stack = []
