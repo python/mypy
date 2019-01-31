@@ -97,8 +97,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         for target, node, active_type in targets:
             iteration = 0
             deferred = [module]
-            more_passes = True
-            incomplete = True
+            more_passes = incomplete = True
             analyzer.incomplete_namespaces.add(module)
             while deferred and more_passes:
                 if not incomplete:
@@ -109,8 +108,6 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
                         analyzer.incomplete_namespaces.remove(module)
                 deferred, incomplete = semantic_analyze_target(module, graph[module], node,
                                                                active_type)
-            if isinstance(node, FuncDef):
-                node.locals = None
             if module in analyzer.incomplete_namespaces:
                 analyzer.incomplete_namespaces.remove(module)
 

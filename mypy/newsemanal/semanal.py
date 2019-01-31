@@ -602,6 +602,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         types = []
         non_overload_indexes = []
         impl = None  # type: Optional[OverloadPart]
+        if defn.impl:
+            # We are visiting this second time.
+            defn.items.append(defn.impl)
         for i, item in enumerate(defn.items):
             if i != 0:
                 # Assume that the first item was already visited
