@@ -358,6 +358,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
         pass
 
+    def visit_incomplete_type(self, o: 'mypy.nodes.IncompleteType') -> T:
+        pass
+
     # Statements
 
     def visit_block(self, o: 'mypy.nodes.Block') -> T:

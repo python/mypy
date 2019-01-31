@@ -408,6 +408,7 @@ class C(Generic[T]):
 T = TypeVar('T')
 
 c: C[int]
+reveal_type(c) # E: Revealed type is '__main__.C[builtins.int]'
 c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 reveal_type(c.get()) # E: Revealed type is 'builtins.int*'
 
@@ -576,5 +577,12 @@ T = TypeVar('T')
 
 class A(Generic[T]): pass
 
+a1: A[C] = C()
+a2: A[D] = C() \
+    # E: Incompatible types in assignment (expression has type "C", variable has type "A[D]")
+
 class C(A[C]):
+    pass
+
+class D(A[D]):
     pass

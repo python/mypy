@@ -41,8 +41,9 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
+    IncompleteType, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
+    REVEAL_LOCALS, is_final_node
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -53,7 +54,7 @@ from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
+    TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.newsemanal.typeanal import (
@@ -152,7 +153,7 @@ SUGGESTED_TEST_FIXTURES = {
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
-CORE_BUILTIN_CLASSES = ['object', 'bool', 'tuple']  # type: Final
+CORE_BUILTIN_CLASSES = ['object', 'bool', 'tuple', 'function']  # type: Final
 
 
 # Used for tracking incomplete references
@@ -839,6 +840,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
+        if not defn.info and not self.is_core_builtin_class(defn):
+            self.add_symbol(defn.name, IncompleteType(fullname), defn)
         self.mark_incomplete_type(fullname)
 
         tag = self.track_incomplete_refs()
@@ -861,6 +864,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
 
         base_types, base_error = result
+        if any(isinstance(base, PlaceholderType) for base, _ in base_types):
+            self.mark_incomplete(defn.name)
+            return
 
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
@@ -891,6 +897,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.analyze_class_decorator(defn, decorator)
             self.analyze_class_body_common(defn)
             self.setup_type_promotion(defn)
+
+    def is_core_builtin_class(self, defn: ClassDef) -> bool:
+        return self.cur_mod_id == 'builtins' and defn.name in CORE_BUILTIN_CLASSES
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
@@ -1550,7 +1559,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
-        if not sym:
+        if not sym or isinstance(sym.node, IncompleteType):
             return None
         node = sym.node
         if isinstance(node, TypeAlias):
@@ -3694,6 +3703,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def mark_incomplete_type(self, fullname: str) -> None:
         self.incomplete_types.add(fullname)
 
+    def is_incomplete_type(self, fullname: str) -> bool:
+        return fullname in self.incomplete_types
+
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[Var]:
         """Create a dummy variable using __getattr__ return type.
@@ -3749,7 +3761,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 continue
             tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
-            if n:
+            if n and not isinstance(n.node, IncompleteType):
                 # Found built-in class target. Create alias.
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
@@ -3873,7 +3885,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             names = self.globals
         existing = names.get(name)
-        if existing is not None and context is not None:
+        if (existing is not None
+                and context is not None
+                and not isinstance(existing.node, IncompleteType)):
             if existing.node != symbol.node:
                 self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:

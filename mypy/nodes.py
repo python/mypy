@@ -2668,6 +2668,24 @@ class TypeAlias(SymbolNode):
                    no_args=no_args, normalized=normalized)
 
 
+class IncompleteType(SymbolNode):
+    def __init__(self, fullname: str) -> None:
+        self._fullname = fullname
+        self.line = -1
+
+    def name(self) -> str:
+        return self._fullname.split('.')[-1]
+
+    def fullname(self) -> str:
+        return self._fullname
+
+    def serialize(self) -> JsonDict:
+        assert False, "Incomplete type can't be serialized"
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_incomplete_type(self)
+
+
 class SymbolTableNode:
     """Description of a name binding in a symbol table.
 

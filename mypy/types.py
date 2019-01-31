@@ -1809,9 +1809,10 @@ class PlaceholderType(Type):
     any placeholders. After semantic analysis, no placeholder types must exist.
     """
 
-    def __init__(self, fullname: str) -> None:
-        super().__init__()
+    def __init__(self, fullname: str, args: List[Type], line: int) -> None:
+        super().__init__(line)
         self.fullname = fullname  # Only used for debugging
+        self.args = args
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_placeholder_type(self)
@@ -2005,6 +2006,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return '~{}'.format(t.resolved.accept(self))
         else:
             return '~{}'.format(t.unbound.accept(self))
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> str:
+        return '<placeholder {}>'.format(t.fullname)
 
     def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
