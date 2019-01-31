@@ -727,6 +727,7 @@ class BuildManager(BuildManagerBase):
 def deps_to_json(x: Dict[str, Set[str]]) -> str:
     return json.dumps({k: list(v) for k, v in x.items()})
 
+
 # File for storing metadata about all the fine-grained dependency caches
 DEPS_META_FILE = '@deps.meta.json'  # type: Final
 # File for storing fine-grained dependencies that didn't a parent in the build
