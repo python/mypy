@@ -56,6 +56,7 @@ from mypy.types import (
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
 )
+from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.newsemanal.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
@@ -2506,6 +2507,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.mark_incomplete(name)
             return
         variance, upper_bound = res
+        if any(has_placeholder_type(t) for t in values + [upper_bound]):
+            self.mark_incomplete(name)
+            return
 
         if self.options.disallow_any_unimported:
             for idx, constraint in enumerate(values, start=1):
@@ -4148,3 +4152,15 @@ def names_modified_in_lvalue(lvalue: Lvalue) -> List[str]:
             result += names_modified_in_lvalue(item)
         return result
     return []
+
+
+def has_placeholder_type(t: Type) -> bool:
+    return t.accept(PlaceholderTypeQuery())
+
+
+class PlaceholderTypeQuery(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        return True
