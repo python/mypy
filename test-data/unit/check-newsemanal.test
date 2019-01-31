@@ -567,3 +567,14 @@ import b.c
 [file b/c.pyi]
 x = 0
 import a
+
+[case testNewAnalyzerBaseClassSelfReference]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+
+class C(A[C]):
+    pass
