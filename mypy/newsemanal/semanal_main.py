@@ -80,7 +80,9 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
-        worklist = all_deferred
+        # Reverse to process the targets in the same order on every iteration. This avoids
+        # processing the same target twice in a row, which is inefficient.
+        worklist = list(reversed(all_deferred))
 
 
 def process_functions(graph: 'Graph', scc: List[str]) -> None:
@@ -99,7 +101,7 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
             assert not incomplete  # Ditto
 
 
-TargetInfo = Tuple[str, Union[MypyFile, FuncDef], Optional[TypeInfo]]
+TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
 
 
 def get_all_leaf_targets(symtable: SymbolTable,
@@ -109,9 +111,7 @@ def get_all_leaf_targets(symtable: SymbolTable,
     result = []  # type: List[TargetInfo]
     for name, node in symtable.items():
         new_prefix = prefix + '.' + name
-        # TODO: Decorated function
-        # TODO: Overloaded function
-        if isinstance(node.node, (FuncDef, TypeInfo)):
+        if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
             if node.node.fullname() == new_prefix:
                 if isinstance(node.node, TypeInfo):
                     result += get_all_leaf_targets(node.node.names, new_prefix, node.node)
@@ -122,7 +122,7 @@ def get_all_leaf_targets(symtable: SymbolTable,
 
 def semantic_analyze_target(target: str,
                             state: 'State',
-                            node: Union[MypyFile, FuncDef],
+                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
                             active_type: Optional[TypeInfo]) -> Tuple[List[str], bool]:
     # TODO: Support refreshing function targets (currently only works for module top levels)
     tree = state.tree
@@ -137,6 +137,9 @@ def semantic_analyze_target(target: str,
                                    fnam=tree.path,
                                    options=state.options,
                                    active_type=active_type):
+            if isinstance(node, Decorator):
+                # Decorator expressions will be processed as part of the module top level.
+                node = node.func
             analyzer.refresh_partial(node, [])
     if analyzer.deferred:
         return [target], analyzer.incomplete

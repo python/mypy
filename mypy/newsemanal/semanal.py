@@ -152,7 +152,7 @@ SUGGESTED_TEST_FIXTURES = {
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
-CORE_BUILTIN_CLASSES = ['object', 'bool']  # type: Final
+CORE_BUILTIN_CLASSES = ['object', 'bool', 'tuple']  # type: Final
 
 
 # Used for tracking incomplete references
@@ -390,6 +390,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.recurse_into_functions = False
         for d in file_node.defs:
             self.accept(d)
+        if file_node.fullname() == 'typing':
+            self.add_builtin_aliases(file_node)
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
@@ -432,7 +434,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        self.add_func_to_symbol_table(defn)
+        if not defn.is_decorated and not defn.is_overload:
+            self.add_func_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
@@ -440,7 +443,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         with self.scope.function_scope(defn):
             self._visit_func_def(defn)
 
-    def add_func_to_symbol_table(self, func: FuncDef) -> None:
+    def add_func_to_symbol_table(self, func: Union[FuncDef, OverloadedFuncDef]) -> None:
+        if self.is_class_scope():
+            assert self.type is not None
+            func.info = self.type
         func._fullname = self.qualified_name(func.name())
         self.add_symbol(func.name(), func, func)
 
@@ -548,8 +554,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+        self.add_func_to_symbol_table(defn)
+
         if not self.recurse_into_functions:
             return
+
         # NB: Since _visit_overloaded_func_def will call accept on the
         # underlying FuncDefs, the function might get entered twice.
         # This is fine, though, because only the outermost function is
@@ -580,7 +589,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # This is an a normal overload. Find the item signatures, the
             # implementation (if outside a stub), and any missing @overload
             # decorators.
-            types, impl, non_overload_indexes = self.find_overload_sigs_and_impl(defn)
+            types, impl, non_overload_indexes = self.analyze_overload_sigs_and_impl(defn)
             defn.impl = impl
             if non_overload_indexes:
                 self.handle_missing_overload_decorators(defn, non_overload_indexes,
@@ -606,15 +615,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
 
-        # TODO: Use add_symbol or similar below (this is inconsistent)
-        if self.is_class_scope():
-            assert self.type is not None
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            defn.info = self.type
-        elif self.is_func_scope():
-            self.add_local(defn, defn)
+        self.add_symbol(defn.name(), defn, defn)
 
-    def find_overload_sigs_and_impl(
+    def analyze_overload_sigs_and_impl(
             self,
             defn: OverloadedFuncDef) -> Tuple[List[CallableType],
                                               Optional[OverloadPart],
@@ -1165,10 +1168,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 sym.node.fullname() == 'typing_extensions.Protocol' and base.args):
             tvars = []  # type: TypeVarList
             for arg in unbound.args:
+                tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
                     tvars.append(tvar)
-                else:
+                elif not self.found_incomplete_ref(tag):
                     self.fail('Free type variable expected in %s[...]' %
                               sym.node.name(), base)
             return tvars
@@ -1216,7 +1220,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             info = info or self.make_empty_type_info(defn)
             defn.info = info
             info.defn = defn
-            if self.is_module_scope():
+            if not self.is_func_scope():
                 info._fullname = self.qualified_name(defn.name)
             else:
                 info._fullname = info.name()
@@ -2757,6 +2761,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
+        if not dec.is_overload:
+            self.add_symbol(dec.name(), dec, dec)
+        dec.func._fullname = self.qualified_name(dec.name())
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]
@@ -3362,7 +3369,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # may be analysing a type alias definition rvalue. The error will be
                 # reported elsewhere if it is not the case.
                 typearg2 = self.anal_type(typearg, allow_unbound_tvars=True)
-                assert typearg2 is not None  # TODO: Deal with None return values
+                if typearg2 is None:
+                    self.defer()
+                    return
                 types.append(typearg2)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
@@ -3726,17 +3735,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
+            if name in tree.names:
+                continue
+            tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
             if n:
+                # Found built-in class target. Create alias.
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
                 alias_node = TypeAlias(target, alias, line=-1, column=-1,  # there is no context
                                        no_args=True, normalized=True)
-                tree.names[name] = SymbolTableNode(GDEF, alias_node)
+                self.add_symbol(name, alias_node, tree)
+            elif self.found_incomplete_ref(tag):
+                # Built-in class target may not ready yet -- defer.
+                self.mark_incomplete(name)
             else:
-                # Built-in target not defined, remove the original fake
-                # definition to trigger a better error message.
-                tree.names.pop(name, None)
+                # Test fixtures may be missing some builtin classes, which is okay.
+                pass
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -3769,7 +3784,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if module not in self.modules:
             return None
         filenode = self.modules[module]
-        return filenode.names.get(name)
+        result = filenode.names.get(name)
+        if result is None and self.is_incomplete_namespace(module):
+            # TODO: More explicit handling of incomplete refs?
+            self.record_incomplete_ref()
+        return result
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
