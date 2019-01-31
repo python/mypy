@@ -433,6 +433,18 @@ T = TypeVar('T')
 S = TypeVar('S')
 class D(Generic[T, S]): pass
 
+[case testNewAnalyzerTypeAlias2]
+# flags: --new-semantic-analyzer
+from typing import Union
+
+class C(D): pass
+
+A = Union[C, int]
+x: A
+reveal_type(x) # E: Revealed type is 'Union[__main__.C, builtins.int]'
+
+class D: pass
+
 [case testNewAnalyzerBuiltinTypeAliases]
 # flags: --new-semantic-analyzer
 from typing import List
