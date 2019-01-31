@@ -838,6 +838,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.analyze_class(defn)
 
     def analyze_class(self, defn: ClassDef) -> None:
+        fullname = self.qualified_name(defn.name)
         self.mark_incomplete_type(fullname)
 
         tag = self.track_incomplete_refs()
@@ -857,7 +858,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # Something was incomplete. Defer current target but also record
             # that the class is a known type.
             self.mark_incomplete(defn.name)
-            fullname = self.qualified_name(defn.name)
             return
 
         base_types, base_error = result

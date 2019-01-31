@@ -23,6 +23,7 @@ from mypy.types import (
     RawExpressionType, Instance, NoneTyp, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
+    PlaceholderType,
 )
 
 
@@ -103,6 +104,9 @@ class TypeVisitor(Generic[T]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> T:
         raise RuntimeError('Internal error: unresolved forward reference')
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> T:
+        raise RuntimeError('Internal error: unresolved placeholder type {}'.format(t.fullname))
 
 
 @trait

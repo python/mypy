@@ -1795,6 +1795,33 @@ class ForwardRef(Type):
         assert False, "Internal error: Unresolved forward reference to {}".format(name)
 
 
+class PlaceholderType(Type):
+    """Temporary, yet-unknown type during semantic analysis.
+
+    This is needed when there's a reference to a type before the symbol table
+    entry of the target type is available. Consider this example:
+
+      class str(Sequence[str]): ...
+
+    We use a PlaceholderType for the 'str' in 'Sequence[str]' since we can create
+    a TypeInfo for 'str' until all base classes have been resolved. We'll soon
+    perform another pass which replaces the base class with a complete type without
+    any placeholders. After semantic analysis, no placeholder types must exist.
+    """
+
+    def __init__(self, fullname: str) -> None:
+        super().__init__()
+        self.fullname = fullname  # Only used for debugging
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_placeholder_type(self)
+
+    def serialize(self) -> str:
+        # We should never get here since all placeholders should be replaced
+        # during semantic analysis.
+        assert False, "Internal error: unresolved placeholder type {}".format(self.fullname)
+
+
 # We split off the type visitor base classes to another module
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
