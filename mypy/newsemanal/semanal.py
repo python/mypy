@@ -215,6 +215,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
                  incomplete_namespaces: Set[str],
+                 incomplete_types: Set[str],
                  errors: Errors,
                  plugin: Plugin) -> None:
         """Construct semantic analyzer.
@@ -225,6 +226,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             modules: Global modules dictionary
             incomplete_namespaces: Namespaces that are being populated during semantic analysis
                 (can contain modules and classes within the current SCC; mutated by the caller)
+            incomplete_types: Full names of known, non-type-variable types that may not be
+                included in symbol tables yet; mutated in this class
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
@@ -243,6 +246,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # missing name in these namespaces, we need to defer the current analysis target,
         # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
+        self.incomplete_types = incomplete_types
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = []  # type: List[str]
@@ -834,6 +838,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.analyze_class(defn)
 
     def analyze_class(self, defn: ClassDef) -> None:
+        self.mark_incomplete_type(fullname)
+
         tag = self.track_incomplete_refs()
 
         bases = defn.base_type_exprs
@@ -848,8 +854,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         result = self.analyze_base_classes(bases)
 
         if result is None or self.found_incomplete_ref(tag):
-            # Something was incomplete -- defer current target.
+            # Something was incomplete. Defer current target but also record
+            # that the class is a known type.
             self.mark_incomplete(defn.name)
+            fullname = self.qualified_name(defn.name)
             return
 
         base_types, base_error = result
@@ -3682,6 +3690,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         current analysis target.
         """
         return fullname in self.incomplete_namespaces
+
+    def mark_incomplete_type(self, fullname: str) -> None:
+        self.incomplete_types.add(fullname)
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[Var]:
