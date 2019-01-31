@@ -107,8 +107,6 @@ def get_all_leaf_targets(symtable: SymbolTable,
     result = []  # type: List[TargetInfo]
     for name, node in symtable.items():
         new_prefix = prefix + '.' + name
-        # TODO: Decorated function
-        # TODO: Overloaded function
         if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
             if '@' in node.node.fullname() and isinstance(node.node, TypeInfo):
                 new_prefix += '@' + str(node.node.defn.line)
@@ -122,7 +120,8 @@ def get_all_leaf_targets(symtable: SymbolTable,
 
 def semantic_analyze_module(target: str,
                             state: 'State',
-                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator]) -> Tuple[List[str], bool]:
+                            node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator]
+                            ) -> Tuple[List[str], bool]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer

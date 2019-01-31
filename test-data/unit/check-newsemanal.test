@@ -563,3 +563,17 @@ class D(C[XY], Generic[XY]): pass
 
 class X: pass
 class Y: pass
+
+[case testNewAnalyzerTypeApplicationForwardReference2]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+XY = TypeVar('XY', X, Y)
+
+class C(Generic[T]): pass
+
+class D(C[XY]): pass
+
+class X: pass
+class Y: pass
