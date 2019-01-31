@@ -51,6 +51,34 @@ x = 'hi'
 ==
 a.py:3: error: Unsupported operand types for + ("int" and "str")
 
+[case testIncrCacheDoubleChange1]
+# num_build_steps: 2
+import b
+import c
+[file a.py]
+def f(x: int) -> None:
+    pass
+[file b.py]
+from a import f
+f(10)
+[file c.py]
+from a import f
+f(10)
+
+[file a.py.2]
+def f(x: int) -> None:
+    pass
+# nothing changed
+
+[file a.py.3]
+def f(x: str) -> None:
+    pass
+[out]
+==
+==
+c.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+b.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
 [case testIncrCacheProtocol1]
 # num_build_steps: 2
 import a
@@ -173,9 +201,10 @@ a.py:8: note:     x: expected "int", got "str"
 [file a.py]
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
--- the proto deps file with something with hash mismatches.
-[file ../.mypy_cache/3.6/@proto_deps.meta.json.2]
-{"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "00000000000000000000000000000000"}
+-- the proto deps file with something with mtime mismatches.
+[file ../.mypy_cache/3.6/@deps.meta.json.2]
+{"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
+
 [file b.py.2]
 # uh
 -- A full reload shows up as nothing getting rechecked by fine-grained mode.

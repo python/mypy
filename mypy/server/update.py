@@ -121,6 +121,7 @@ from typing import (
 from mypy.build import (
     BuildManager, State, BuildResult, Graph, load_graph,
     process_fresh_modules, DEBUG_FINE_GRAINED,
+    FAKE_ROOT_MODULE,
 )
 from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
@@ -138,7 +139,7 @@ from mypy.server.astdiff import (
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies_of_target
-from mypy.server.target import module_prefix, split_target
+from mypy.server.target import module_prefix, split_target, trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.typestate import TypeState
 
@@ -328,6 +329,8 @@ class FineGrainedBuildManager:
         previous_modules = self.previous_modules
         graph = self.graph
 
+        ensure_deps_loaded(module, self.deps, graph)
+
         # If this is an already existing module, make sure that we have
         # its tree loaded so that we can snapshot it for comparison.
         ensure_trees_loaded(manager, graph, [module])
@@ -358,7 +361,8 @@ class FineGrainedBuildManager:
                         if not trigger.endswith('__>')]
             self.manager.log_fine_grained('triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
-        collect_dependencies([module], self.deps, graph)
+        if module in graph:
+            merge_dependencies(graph[module].compute_fine_grained_deps(), self.deps)
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
@@ -402,6 +406,26 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
     return unloaded
 
 
+def ensure_deps_loaded(module: str,
+                       deps: Dict[str, Set[str]], graph: Dict[str, State]) -> None:
+    """Ensure that the dependencies on a module are loaded.
+
+    Dependencies are loaded into the 'deps' dictionary.
+
+    This also requires loading dependencies from any parent modules,
+    since dependencies will get stored with parent modules when a module
+    doesn't exist.
+    """
+    if module in graph and graph[module].fine_grained_deps_loaded:
+        return
+    parts = module.split('.')
+    for i in range(len(parts)):
+        base = '.'.join(parts[:i + 1])
+        if base in graph and not graph[base].fine_grained_deps_loaded:
+            merge_dependencies(graph[base].load_fine_grained_deps(), deps)
+            graph[base].fine_grained_deps_loaded = True
+
+
 def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
                         initial: Sequence[str]) -> None:
     """Ensure that the modules in initial and their deps have loaded trees."""
@@ -416,8 +440,10 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     # Deps for each module were computed during build() or loaded from the cache.
-    deps = {}  # type: Dict[str, Set[str]]
-    collect_dependencies(graph, deps, graph)
+    deps = manager.load_fine_grained_deps(FAKE_ROOT_MODULE)  # type: Dict[str, Set[str]]
+    for id in graph:
+        if graph[id].tree is not None:
+            merge_dependencies(graph[id].compute_fine_grained_deps(), deps)
     TypeState.add_all_protocol_deps(deps)
     return deps
 
@@ -653,14 +679,10 @@ def get_sources(fscache: FileSystemCache,
     return sources
 
 
-def collect_dependencies(new_modules: Iterable[str],
-                         deps: Dict[str, Set[str]],
-                         graph: Dict[str, State]) -> None:
-    for id in new_modules:
-        if id not in graph:
-            continue
-        for trigger, targets in graph[id].fine_grained_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
+def merge_dependencies(new_deps: Dict[str, Set[str]],
+                       deps: Dict[str, Set[str]]) -> None:
+    for trigger, targets in new_deps.items():
+        deps.setdefault(trigger, set()).update(targets)
     # Merge also the newly added protocol deps.
     TypeState.update_protocol_deps(deps)
 
@@ -820,6 +842,10 @@ def find_targets_recursive(
         worklist = set()
         for target in current:
             if target.startswith('<'):
+                module_id = module_prefix(graph, trigger_to_target(target))
+                if module_id:
+                    ensure_deps_loaded(module_id, deps, graph)
+
                 worklist |= deps.get(target, set()) - processed
             else:
                 module_id = module_prefix(graph, target)
