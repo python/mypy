@@ -2027,8 +2027,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
-            if analyzed is not None:
-                s.type = analyzed
+            if analyzed is None:
+                return
+            s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                 if isinstance(lvalue.node, Var):
