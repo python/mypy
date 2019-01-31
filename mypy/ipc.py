@@ -48,25 +48,24 @@ class IPCBase:
     connection = None  # type: _IPCHandle
 
     def __init__(self, name: str, timeout: Optional[float]) -> None:
-        self.READ_SIZE = 100000
         self.name = name
         self.timeout = timeout
 
-    def read(self) -> bytes:
+    def read(self, size: int = 100000) -> bytes:
         """Read bytes from an IPC connection until its empty."""
         bdata = bytearray()
         if sys.platform == 'win32':
             while True:
-                ov, err = _winapi.ReadFile(self.connection, self.READ_SIZE, overlapped=True)
+                ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
                 # TODO: remove once typeshed supports Literal types
                 assert isinstance(ov, _winapi.Overlapped)
                 assert isinstance(err, int)
                 try:
-                    if err != 0:
-                        assert err == _winapi.ERROR_IO_PENDING
+                    if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
-                        assert res == _winapi.WAIT_OBJECT_0
+                        if res != _winapi.WAIT_OBJECT_0:
+                            raise IPCException("Bad result from I/O wait: {}".format(res))
                 except BaseException:
                     ov.cancel()
                     raise
@@ -77,11 +76,14 @@ class IPCBase:
                 if err == 0:
                     # we are done!
                     break
+                elif err == _winapi.ERROR_MORE_DATA:
+                    # read again
+                    continue
                 elif err == _winapi.ERROR_OPERATION_ABORTED:
                     raise IPCException("ReadFile operation aborted.")
         else:
             while True:
-                more = self.connection.recv(self.READ_SIZE)
+                more = self.connection.recv(size)
                 if not more:
                     break
                 bdata.extend(more)
@@ -96,16 +98,18 @@ class IPCBase:
                 assert isinstance(ov, _winapi.Overlapped)
                 assert isinstance(err, int)
                 try:
-                    if err != 0:
-                        assert err == _winapi.ERROR_IO_PENDING
+                    if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
-                        assert res == _winapi.WAIT_OBJECT_0
+                        if res != _winapi.WAIT_OBJECT_0:
+                            raise IPCException("Bad result from I/O wait: {}".format(res))
+                    elif err != 0:
+                        raise IPCException("Failed writing to pipe with error: {}".format(err))
                 except BaseException:
                     ov.cancel()
                     raise
                 bytes_written, err = ov.GetOverlappedResult(True)
-                assert err == 0
+                assert err == 0, err
                 assert bytes_written == len(data)
             except WindowsError as e:
                 raise IPCException("Failed to write with error: {}".format(e.winerror))
