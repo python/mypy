@@ -23,7 +23,7 @@ from mypy.nodes import (
     UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, ImportedName, TypeAlias, MypyFile, IncompleteType
+    Decorator, ImportedName, TypeAlias, MypyFile, PlaceholderTypeInfo
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -211,7 +211,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
-            if isinstance(node, IncompleteType):
+            if isinstance(node, PlaceholderTypeInfo):
                 self.api.defer()
                 return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
             if node is None:
@@ -539,8 +539,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
         n = self.api.lookup_fully_qualified(t.fullname)
-        if isinstance(n.node, IncompleteType):
-            self.api.defer()
+        if isinstance(n.node, PlaceholderTypeInfo):
+            self.api.defer()  # Still incomplete
             return t
         else:
             # TODO: Handle non-TypeInfo

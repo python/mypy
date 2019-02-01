@@ -2668,7 +2668,26 @@ class TypeAlias(SymbolNode):
                    no_args=no_args, normalized=normalized)
 
 
-class IncompleteType(SymbolNode):
+class PlaceholderTypeInfo(SymbolNode):
+    """Temporary node that will later become a type but is incomplete.
+
+    These are only present during semantic analysis when using the new
+    semantic analyzer. These are created if some dependencies of a type
+    definition are not yet complete. Their purpose is to allow
+    PlaceholderType instances to be created for types that refer to
+    incomplete types. Example where this is useful:
+
+      class C(Sequence[C]): ...
+
+    We create a PlaceholderTypeInfo for C so that the type C in
+    Sequence[C] can be bound. Without a placeholder, the class
+    definition couldn't be analyzed.
+
+    PlaceholderTypeInfo can only refer to something that will become
+    a TypeInfo. It can't be used with type variables, in particular,
+    as this would cause issues with class type variable detection.
+    """
+
     def __init__(self, fullname: str) -> None:
         self._fullname = fullname
         self.line = -1
@@ -2680,10 +2699,10 @@ class IncompleteType(SymbolNode):
         return self._fullname
 
     def serialize(self) -> JsonDict:
-        assert False, "Incomplete type can't be serialized"
+        assert False, "PlaceholderTypeInfo can't be serialized"
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_incomplete_type(self)
+        return visitor.visit_placeholder_type_info(self)
 
 
 class SymbolTableNode:

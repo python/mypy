@@ -41,7 +41,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    IncompleteType, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    PlaceholderTypeInfo, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
     LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node
 )
@@ -226,8 +226,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             modules: Global modules dictionary
             incomplete_namespaces: Namespaces that are being populated during semantic analysis
                 (can contain modules and classes within the current SCC; mutated by the caller)
-            incomplete_types: Full names of known, non-type-variable types that may not be
-                included in symbol tables yet; mutated in this class
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
@@ -839,7 +837,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
         if not defn.info and not self.is_core_builtin_class(defn):
-            self.add_symbol(defn.name, IncompleteType(fullname), defn)
+            self.add_symbol(defn.name, PlaceholderTypeInfo(fullname), defn)
 
         tag = self.track_incomplete_refs()
 
@@ -861,6 +859,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         base_types, base_error = result
         if any(isinstance(base, PlaceholderType) for base, _ in base_types):
+            # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
+            # are okay in nested positions, since they can't affect the MRO.
             self.mark_incomplete(defn.name)
             return
 
@@ -1544,7 +1544,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
-        if not sym or isinstance(sym.node, IncompleteType):
+        if not sym or isinstance(sym.node, PlaceholderTypeInfo):
             return None
         node = sym.node
         if isinstance(node, TypeAlias):
@@ -2493,6 +2493,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         variance, upper_bound = res
         if any(has_placeholder_type(t) for t in values + [upper_bound]):
+            # We want type variables to be fully resolved, as otherwise we could
+            # easily leak placeholder types.
             self.mark_incomplete(name)
             return
 
@@ -3041,7 +3043,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if isinstance(n.node, TypeVarExpr) and self.tvar_scope.get_binding(n):
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
-            elif isinstance(n.node, IncompleteType):
+            elif isinstance(n.node, PlaceholderTypeInfo):
                 self.defer()
             else:
                 expr.kind = n.kind
@@ -3255,7 +3257,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if n and not n.module_hidden:
                 n = self.rebind_symbol_table_node(n)
                 if n:
-                    if isinstance(n.node, IncompleteType):
+                    if isinstance(n.node, PlaceholderTypeInfo):
                         self.defer()
                         return
                     # TODO: What if None?
@@ -3749,7 +3751,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 continue
             tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
-            if n and not isinstance(n.node, IncompleteType):
+            if n and not isinstance(n.node, PlaceholderTypeInfo):
                 # Found built-in class target. Create alias.
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
@@ -3875,7 +3877,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
         if (existing is not None
                 and context is not None
-                and not isinstance(existing.node, IncompleteType)):
+                and not isinstance(existing.node, PlaceholderTypeInfo)):
             if existing.node != symbol.node:
                 self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
