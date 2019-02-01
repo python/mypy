@@ -154,7 +154,7 @@ n = 0
 a and d
 a or d
 if int():
-    c = a in d
+    c = a in d  # E: Incompatible types in assignment (expression has type "bool", variable has type "C")
 if int():
     c = b and d # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
 if int():
