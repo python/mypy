@@ -434,8 +434,8 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     _, name = get_status(status_file)
     try:
         with IPCClient(name, timeout) as client:
-                client.write(bdata)
-                response = receive(client)
+            client.write(bdata)
+            response = receive(client)
     except (OSError, IPCException) as err:
         return {'error': str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError

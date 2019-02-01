@@ -39,7 +39,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     if case.suite.native_sep:
         join = os.path.join
     else:
-        join = posixpath.join  # type: ignore
+        join = posixpath.join
 
     out_section_missing = case.suite.required_out_section
     normalize_output = True

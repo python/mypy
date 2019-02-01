@@ -156,7 +156,7 @@ oa.value  # E: ctypes.Array attribute "value" is only available with element typ
 oa.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_int"
 [builtins fixtures/floatdict.pyi]
 
-[case testCtypesArrayConstructorStarargs-skip]
+[case testCtypesArrayConstructorStarargs]
 import ctypes
 
 intarr4 = ctypes.c_int * 4
@@ -167,4 +167,16 @@ reveal_type(intarr4(*int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_
 reveal_type(intarr4(*c_int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
 reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
 reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # E: Revealed type is 'ctypes.Array[ctypes.c_int]'
+
+float_values = [1.0, 2.0, 3.0, 4.0]
+intarr4(*float_values) # E: Array constructor argument 1 of type "builtins.list[builtins.float*]" is not convertible to the array element type "Iterable[ctypes.c_int]"
+[builtins fixtures/floatdict.pyi]
+
+[case testCtypesArrayConstructorKwargs]
+import ctypes
+intarr4 = ctypes.c_int * 4
+
+x = {"a": 1, "b": 2}
+intarr4(**x)   # E: Too many arguments for "Array"
+
 [builtins fixtures/floatdict.pyi]

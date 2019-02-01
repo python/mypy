@@ -9,7 +9,8 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
-    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias, TempNode
+    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias, TempNode,
+    is_final_node
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -895,8 +896,3 @@ def erase_to_bound(t: Type) -> Type:
         if isinstance(t.item, TypeVarType):
             return TypeType.make_normalized(t.item.upper_bound)
     return t
-
-
-def is_final_node(node: Optional[SymbolNode]) -> bool:
-    """Check whether `node` corresponds to a final attribute."""
-    return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final

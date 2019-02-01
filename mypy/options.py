@@ -21,6 +21,7 @@ class BuildType:
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
     "allow_untyped_globals",
+    "allow_redefinition",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -51,7 +52,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"platform", "bazel", "plugins"})
+                            {"platform", "bazel", "plugins", "new_semantic_analyzer"})
                            - {"debug_cache"})  # type: Final
 
 
@@ -82,6 +83,9 @@ class Options:
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
         self.namespace_packages = False
+
+        # Use the new semantic analyzer
+        self.new_semantic_analyzer = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -148,6 +152,10 @@ class Options:
 
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
+
+        # Allow variable to be redefined with an arbitrary type in the same block
+        # and the same nesting level as the initialization
+        self.allow_redefinition = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

@@ -1,0 +1,616 @@
+-- Test cases for the new semantic analyzer
+
+[case testNewAnalyzerEmpty]
+
+[case testNewAnalyzerSimpleAssignment]
+x = 1
+x.y # E: "int" has no attribute "y"
+y # E: Name 'y' is not defined
+
+[case testNewAnalyzerSimpleAnnotation]
+x: int = 0
+y: str = 0 \
+    # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNewAnalyzerSimpleClass]
+class A:
+    x: int
+a: A
+a.x
+a.y # E: "A" has no attribute "y"
+
+[case testNewAnalyzerErrorInClassBody]
+class A:
+    x # E: Name 'x' is not defined
+
+[case testNewAnalyzerTypeAnnotationForwardReference]
+class A:
+    b: B
+class B:
+    a: A
+a: A
+b: B
+a.b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a.b = b
+b.a = a
+b.a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testNewAnalyzerTypeAnnotationCycle1]
+import b
+[file a.py]
+import b
+class A: pass
+y: b.B
+y() # E: "B" not callable
+[file b.py]
+import a
+class B: pass
+x: a.A
+reveal_type(x) # E: Revealed type is 'a.A'
+
+[case testNewAnalyzerTypeAnnotationCycle2]
+import a
+[file a.py]
+from b import B
+class A: pass
+y: B
+y()
+[file b.py]
+from a import A
+class B: pass
+x: A
+x()
+[out]
+tmp/b.py:4: error: "A" not callable
+tmp/a.py:4: error: "B" not callable
+
+[case testNewAnalyzerTypeAnnotationCycle3]
+import b
+[file a.py]
+from b import bad # E: Module 'b' has no attribute 'bad'
+[file b.py]
+from a import bad2 # E: Module 'a' has no attribute 'bad2'
+
+[case testNewAnalyzerTypeAnnotationCycle4]
+import b
+[file a.py]
+# TODO: Could we generate an error here as well?
+from b import bad
+[file b.py]
+from a import bad # E: Module 'a' has no attribute 'bad'
+
+[case testNewAnalyzerSimpleFunction]
+def f(x: int) -> str:
+    return 'x'
+
+def g(x: int) -> int:
+    y = f(1)
+    return y # E: Incompatible return value type (got "str", expected "int")
+
+[case testNewAnalyzerSimpleMethod]
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def f(self) -> str:
+        return self.x # E: Incompatible return value type (got "int", expected "str")
+
+    def g(self) -> int:
+        return self.f() # E: Incompatible return value type (got "str", expected "int")
+
+[case testNewAnalyzerFunctionForwardRef]
+def f() -> None:
+    x = g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
+    reveal_type(x) # E: Revealed type is 'builtins.str'
+
+def g(x: str) -> str:
+    return x
+
+[case testNewAnalyzerExportedImportThreePasses]
+import b
+
+[file a.py]
+from b import b1 as a2
+from b import b2 as a3
+
+def a1() -> int: pass
+
+reveal_type(a3()) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import a1 as b2
+from a import a2 as b3
+
+def b1() -> str: pass
+
+reveal_type(b3()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerBool]
+reveal_type(True) # E: Revealed type is 'builtins.bool'
+reveal_type(False) # E: Revealed type is 'builtins.bool'
+
+[case testNewAnalyzerNewTypeMultiplePasses]
+import b
+
+[file a.py]
+from typing import NewType
+import b
+class A: pass
+N2 = NewType('N2', b.N1)
+def f1(x: A) -> None: pass
+def f2(x: b.N1) -> None: pass
+def f3(x: N2) -> None: pass
+a = A()
+n1 = b.N1(a)
+n2 = N2(n1)
+f1(a)
+f1(n1)
+f1(n2)
+f2(a) # E: Argument 1 to "f2" has incompatible type "A"; expected "N1"
+f2(n1)
+f2(n2)
+f3(a) # E: Argument 1 to "f3" has incompatible type "A"; expected "N2"
+f3(n1) # E: Argument 1 to "f3" has incompatible type "N1"; expected "N2"
+f3(n2)
+
+# Test N2 etc.
+
+[file b.py]
+from typing import NewType
+import a
+N1 = NewType('N1', a.A)
+
+[case testNewAnalyzerInheritanceForwardRef]
+class C(B):
+    pass
+class B(A):
+    pass
+class A:
+    def __init__(self, x: str) -> None: pass
+    def f(self, x: int) -> None: pass
+
+C(1) # E: Argument 1 to "C" has incompatible type "int"; expected "str"
+B(1) # E: Argument 1 to "B" has incompatible type "int"; expected "str"
+C('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+B('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testNewAnalyzerInheritanceMROInCycle]
+import a
+
+[file a.py]
+from b import A
+import b
+
+class B(A):
+    b: int
+
+class D(b.C):
+    d: int
+
+d = D()
+reveal_type(d.a) # E: Revealed type is 'builtins.int'
+reveal_type(d.b) # E: Revealed type is 'builtins.int'
+reveal_type(d.c) # E: Revealed type is 'builtins.int'
+reveal_type(d.d) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import B
+
+class A:
+    a: int
+
+class C(B):
+    c: int
+
+[case testNewAnalyzerTypedDictClass]
+from mypy_extensions import TypedDict
+import a
+class T1(TypedDict):
+    x: A
+class A: pass
+reveal_type(T1(x=A())) # E
+
+[file a.py]
+from mypy_extensions import TypedDict
+from b import TD1 as TD2, TD3
+class T2(TD3):
+    x: int
+reveal_type(T2(x=2)) # E
+
+[file b.py]
+from a import TypedDict as TD1
+from a import TD2 as TD3
+
+[out]
+tmp/a.py:5: error: Revealed type is 'TypedDict('a.T2', {'x': builtins.int})'
+main:6: error: Revealed type is 'TypedDict('__main__.T1', {'x': __main__.A})'
+
+
+[case testNewAnalyzerTypedDictClassInheritance]
+from mypy_extensions import TypedDict
+
+class T2(T1):
+    y: int
+
+class T1(TypedDict):
+    x: str
+
+class T3(TypedDict):
+    x: str
+
+class T4(T3):
+    y: A
+
+class A: pass
+
+T2(x=0, y=0) # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+x: T2
+reveal_type(x) # E: Revealed type is 'TypedDict('__main__.T2', {'x': builtins.str, 'y': builtins.int})'
+y: T4
+reveal_type(y) # E: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
+
+[case testNewAnalyzerRedefinitionAndDeferral]
+import a
+
+[file a.py]
+from b import x as y
+x = 0
+
+def y(): pass # E: Name 'y' already defined on line 2
+reveal_type(y) # E: Revealed type is 'builtins.int'
+
+y2 = y
+class y2: pass # E: Name 'y2' already defined on line 7
+reveal_type(y2) # E: Revealed type is 'builtins.int'
+
+y3, y4 = y, y
+from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
+reveal_type(y3) # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import x
+
+def f(): pass
+
+[case testNewAnalyzerRedefinitionAndDeferral2]
+import a
+
+[file a.py]
+from b import C as C2
+class C: pass
+
+class C2: pass # E: Name 'C2' already defined (possibly by an import)
+[file b.py]
+from a import C
+
+[case testNewAnalyzerRedefinitionAndDeferral3]
+import a
+
+[file a.py]
+from b import f as g
+def f(): pass
+
+a, *b = g()
+class b(): pass # E: Name 'b' already defined on line 4
+reveal_type(b) # E: Revealed type is 'Any'
+
+[file b.py]
+from a import f
+
+[case testNewAnalyzerImportStarForwardRef]
+import a
+
+[file a.py]
+x: A
+reveal_type(x) # E: Revealed type is 'b.A'
+
+from b import *
+
+class A: pass # E: Name 'A' already defined (possibly by an import)
+
+[file b.py]
+class A: pass
+from a import x
+
+[case testNewAnalyzerClassInFunction]
+def main() -> None:
+    x: C
+    class C:
+        def __init__(self) -> None:
+            self.x: A
+            x()  # E: "C" not callable
+    reveal_type(x.x)  # E: Revealed type is '__main__.A@8'
+    class A: pass
+
+[case testNewAnalyzerMutuallyRecursiveFunctions]
+def main() -> None:
+    def f() -> int:
+        reveal_type(g())  # E: Revealed type is 'builtins.str'
+        return int()
+    def g() -> str:
+        reveal_type(f())  # E: Revealed type is 'builtins.int'
+        return str()
+
+[case testNewAnalyzerMissingNamesInFunctions]
+def main() -> None:
+    def f() -> None:
+        x  # E: Name 'x' is not defined
+        class C:
+            x  # E: Name 'x' is not defined
+
+[case testNewAnalyzerCyclicDefinitions]
+gx = gy  # E: Name 'gy' is not defined
+gy = gx
+def main() -> None:
+    class C:
+        def meth(self) -> None:
+            lx = ly  # E: Name 'ly' is not defined
+            ly = lx
+
+[case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
+from typing import overload, Union
+
+def main() -> None:
+    @overload
+    def f(x: int) -> int: ...
+    @overload
+    def f(x: str) -> str: ...
+    def f(x: Union[int, str]) -> Union[int, str]:
+        reveal_type(g(str()))  # E: Revealed type is 'builtins.str'
+        return x
+    @overload
+    def g(x: int) -> int: ...
+    @overload
+    def g(x: str) -> str: ...
+    def g(x: Union[int, str]) -> Union[int, str]:
+        reveal_type(f(int()))  # E: Revealed type is 'builtins.int'
+        return float()  # E: Incompatible return value type (got "float", expected "Union[int, str]")
+
+[case testNewAnalyzerNestedClassInMethod]
+class C:
+    class D:
+        def meth(self) -> None:
+            x: Out.In
+            reveal_type(x.t)  # E: Revealed type is 'builtins.int'
+            class Out:
+                class In:
+                    def meth(self) -> None:
+                        self.t: int
+
+[case testNewAnalyzerDeeplyNestedFunctions]
+class Out:
+    class In:
+        def meth(self) -> None:
+            x: C.D
+            reveal_type(x.t)  # E: Revealed type is '__main__.Test@10'
+            class C:
+                class D:
+                    def meth(self) -> None:
+                        self.t: Test
+                        class Test:
+                            def test(self) -> None:
+                                def one() -> int:
+                                    reveal_type(other())  # E: Revealed type is 'builtins.str'
+                                    return int()
+                                def other() -> str:
+                                    reveal_type(one())  # E: Revealed type is 'builtins.int'
+                                    return str()
+
+[case testNewAnalyzerNestedClass1]
+# flags: --new-semantic-analyzer
+class A:
+    class B:
+        x: int
+
+        def __init__(self, x: int) -> None:
+            self.x = x
+
+        def f(self) -> str:
+            return self.x # E: Incompatible return value type (got "int", expected "str")
+
+b: A.B
+b = A.B('') # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+reveal_type(b) # E: Revealed type is '__main__.A.B'
+reveal_type(b.x) # E: Revealed type is 'builtins.int'
+reveal_type(b.f()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerNestedClass2]
+# flags: --new-semantic-analyzer
+
+b: A.B
+b = A.B('') # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+reveal_type(b) # E: Revealed type is '__main__.A.B'
+reveal_type(b.x) # E: Revealed type is 'builtins.int'
+reveal_type(b.f()) # E: Revealed type is 'builtins.str'
+
+class A:
+    class B:
+        x: int
+
+        def __init__(self, x: int) -> None:
+            self.x = x
+
+        def f(self) -> str:
+            return self.x # E: Incompatible return value type (got "int", expected "str")
+
+[case testNewAnalyzerGenerics]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+c: C[int]
+c2: C[int, str] # E: "C" expects 1 type argument, but 2 given
+c3: C
+c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+reveal_type(c.get()) # E: Revealed type is 'builtins.int*'
+reveal_type(c2) # E: Revealed type is '__main__.C[Any]'
+reveal_type(c3) # E: Revealed type is '__main__.C[Any]'
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    def get(self) -> T:
+        return self.x
+
+[case testNewAnalyzerGenericsTypeVarForwardRef]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    def get(self) -> T:
+        return self.x
+
+T = TypeVar('T')
+
+c: C[int]
+c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+reveal_type(c.get()) # E: Revealed type is 'builtins.int*'
+
+[case testNewAnalyzerTypeAlias]
+# flags: --new-semantic-analyzer
+from typing import Union, TypeVar, Generic
+
+C2 = C
+U = Union[C, int]
+G = D[T, C]
+
+c: C2
+reveal_type(c) # E: Revealed type is '__main__.C'
+u: U
+reveal_type(u) # E: Revealed type is 'Union[__main__.C, builtins.int]'
+g: G[int]
+reveal_type(g) # E: Revealed type is '__main__.D[builtins.int, __main__.C]'
+
+class C: pass
+
+T = TypeVar('T')
+S = TypeVar('S')
+class D(Generic[T, S]): pass
+
+[case testNewAnalyzerBuiltinTypeAliases]
+# flags: --new-semantic-analyzer
+from typing import List
+
+x: List[C]
+reveal_type(x) # E: Revealed type is 'builtins.list[__main__.C]'
+
+class C: pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerVersionCheck]
+# flags: --new-semantic-analyzer
+import sys
+
+if sys.version_info[0] < 2:
+    1()
+    import nonexistent
+else:
+    def f(x: int) -> None: pass
+
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+def g() -> None:
+    if sys.version_info[0] < 3:
+        import nonexistent2
+    else:
+        1() # E: "int" not callable
+[builtins fixtures/ops.pyi]
+
+[case testNewAnalyzerVersionCheck2]
+# flags: --new-semantic-analyzer
+import sys
+
+assert sys.version_info[0] == 3
+1() # E: "int" not callable
+assert sys.version_info[0] < 3
+''()
+[builtins fixtures/ops.pyi]
+
+[case testNewAnalyzerOverload]
+# flags: --new-semantic-analyzer
+from typing import overload, Union
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]:
+    return 1.0 # E: Incompatible return value type (got "float", expected "Union[int, str]")
+
+f(1)
+f('')
+f(1.0) # E: No overload variant of "f" matches argument type "float" \
+       # N: Possible overload variants: \
+       # N:     def f(x: int) -> int \
+       # N:     def f(x: str) -> str
+
+[case testNewAnalyzerOverload2]
+# flags: --new-semantic-analyzer
+from typing import overload, Union
+
+class A:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(self, x: Union[int, str]) -> Union[int, str]:
+        return 1.0 # E: Incompatible return value type (got "float", expected "Union[int, str]")
+
+a = A()
+a.f(1)
+a.f('')
+a.f(1.0) # E: No overload variant of "f" of "A" matches argument type "float" \
+         # N: Possible overload variants: \
+         # N:     def f(self, x: int) -> int \
+         # N:     def f(self, x: str) -> str
+
+[case testNewAnalyzerFunctionDecorator]
+# flags: --new-semantic-analyzer
+from typing import Callable
+
+@dec
+def f1(x: int) -> int:
+    return '' # E: Incompatible return value type (got "str", expected "int")
+
+def dec(f: Callable[[int], int]) -> Callable[[str], str]: ...
+
+@dec
+def f2(x: int) -> int:
+    return '' # E: Incompatible return value type (got "str", expected "int")
+
+f1(1) # E: Argument 1 to "f1" has incompatible type "int"; expected "str"
+reveal_type(f1('')) # E: Revealed type is 'builtins.str'
+f2(1) # E: Argument 1 to "f2" has incompatible type "int"; expected "str"
+
+[case testNewAnalyzerTypeApplicationForwardReference]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+XY = TypeVar('XY', X, Y)
+
+class C(Generic[T]): pass
+
+class D(C[XY], Generic[XY]): pass
+
+class X: pass
+class Y: pass
+
+[case testNewAnalyzerTypeApplicationForwardReference2]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+XY = TypeVar('XY', X, Y)
+
+class C(Generic[T]): pass
+
+class D(C[XY]): pass
+
+class X: pass
+class Y: pass

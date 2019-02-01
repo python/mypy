@@ -336,10 +336,56 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
+# flags: --allow-redefinition
 from typing import Final
 
 x: Final = 1
-x  # Dummy reference to allow renaming once implemented
+x
+x = 2  # E: Cannot assign to final name "x"
+def f() -> int:
+    global x
+    x = 3  # No error here is okay since we reported an error above
+    return x
+
+x2: Final = 1
+x2
+def f2() -> None:
+    global x2
+    x2 = 1  # E: Cannot assign to final name "x2"
+
+y = 1
+y
+y: Final = 2  # E: Cannot redefine an existing name as final
+y = 3  # E: Cannot assign to final name "y"
+
+z: Final = 1
+z: Final = 2  # E: Name 'z' already defined on line 23 \
+              # E: Cannot redefine an existing name as final
+z = 3  # E: Cannot assign to final name "z"
+
+[case testFinalReassignModuleVar2]
+# flags: --allow-redefinition
+from typing import Final
+
+x: Final = 1
+x
+def f() -> int:
+    global x
+    x = 3  # E: Cannot assign to final name "x"
+    return x
+
+y = 1
+y
+y = 2
+y
+y: Final = 3  # E: Cannot redefine an existing name as final
+
+[case testFinalReassignModuleVar3]
+# flags: --disallow-redefinition
+from typing import Final
+
+x: Final = 1
+x
 x = 2  # E: Cannot assign to final name "x"
 def f() -> int:
     global x
@@ -352,14 +398,14 @@ def f2() -> None:
     global x2
     x2 = 1  # E: Cannot assign to final name "x2"
 
-y = 1
-y  # Dummy reference to allow renaming once implemented
-y: Final = 2  # E: Name 'y' already defined on line 17 \
+y = 1 # E: Cannot assign to final name "y"
+y
+y: Final = 2  # E: Name 'y' already defined on line 18 \
               # E: Cannot redefine an existing name as final
-y = 3  # No error here, first definition wins
+y = 3  # E: Cannot assign to final name "y"
 
 z: Final = 1
-z: Final = 2  # E: Name 'z' already defined on line 22 \
+z: Final = 2  # E: Name 'z' already defined on line 23 \
               # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
@@ -421,7 +467,7 @@ class C:
     x: Final = 1
     x = 2  # E: Cannot assign to final name "x"
 
-    y = 1
+    y = 1  # E: Cannot assign to final name "y"
     y: Final = 2  # E: Cannot redefine an existing name as final
 [out]
 

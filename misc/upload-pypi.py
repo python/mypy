@@ -137,7 +137,7 @@ class Builder:
             sys.exit(1)
 
     def run_in_virtualenv(self, cmd: str) -> None:
-        self.run('source mypy-venv/bin/activate && cd mypy &&' + cmd)
+        self.run('. mypy-venv/bin/activate && cd mypy &&' + cmd)
 
     def heading(self, heading: str) -> None:
         print()
