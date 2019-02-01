@@ -68,18 +68,12 @@ JsonDict = Dict[str, Any]
 LDEF = 0  # type: Final[int]
 GDEF = 1  # type: Final[int]
 MDEF = 2  # type: Final[int]
-MODULE_REF = 3  # type: Final[int]
-# Type variable declared using TypeVar(...) has kind TVAR. It's not
-# valid as a type unless bound in a TypeVarScope.  That happens within:
-# (1) a generic class that uses the type variable as a type argument or
-# (2) a generic function that refers to the type variable in its signature.
-TVAR = 4  # type: Final[int]
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 5  # type: Final[int]
+UNBOUND_IMPORTED = 3  # type: Final[int]
 
 # RevealExpr node kinds
 REVEAL_TYPE = 0  # type: Final[int]
@@ -93,8 +87,6 @@ node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
     MDEF: 'Mdef',
-    MODULE_REF: 'ModuleRef',
-    TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
 }  # type: Final
 inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}  # type: Final
@@ -227,6 +219,8 @@ class MypyFile(SymbolNode):
     # (i.e. a partial stub package), for such packages we suppress any missing
     # module errors in addition to missing attribute errors.
     is_partial_stub_package = False
+    # Plugin-created dependencies
+    plugin_deps = None  # type: Dict[str, Set[str]]
 
     def __init__(self,
                  defs: List[Statement],
@@ -239,6 +233,7 @@ class MypyFile(SymbolNode):
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
+        self.plugin_deps = {}
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -440,11 +435,11 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
-        assert len(items) > 0
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        self.set_line(items[0].line)
+        if len(items) > 0:
+            self.set_line(items[0].line)
         self.is_final = False
 
     def name(self) -> str:
@@ -475,6 +470,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             for d in data['items']])
         if data.get('impl') is not None:
             res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
+            # set line for empty overload items, as not set in __init__
+            if len(res.items) > 0:
+                res.set_line(res.impl.line)
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
@@ -654,6 +652,8 @@ class Decorator(SymbolNode, Statement):
 
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators (may be empty)
+    # Some decorators are removed by semanal, keep the original here.
+    original_decorators = None  # type: List[Expression]
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
@@ -663,6 +663,7 @@ class Decorator(SymbolNode, Statement):
         super().__init__()
         self.func = func
         self.decorators = decorators
+        self.original_decorators = decorators.copy()
         self.var = var
         self.is_overload = False
 
@@ -742,7 +743,7 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name   # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast(Bogus[str], None)  # Name with module prefix
+        self._fullname = cast('Bogus[str]', None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
@@ -926,15 +927,18 @@ class ExpressionStmt(Statement):
 
 
 class AssignmentStmt(Statement):
-    """Assignment statement
+    """Assignment statement.
+
     The same node class is used for single assignment, multiple assignment
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
-    that define new names, and assignments with explicit types (# type).
+    that define new names, and assignments with explicit types ("# type: t"
+    or "x: t [= ...]").
 
-    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
+    An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, or IndexExpr.
     """
 
     lvalues = None  # type: List[Lvalue]
+    # This is a TempNode if and only if no rvalue (x: t).
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: Optional[mypy.types.Type]
@@ -1229,9 +1233,24 @@ class StrExpr(Expression):
 
     value = ''
 
-    def __init__(self, value: str) -> None:
+    # Keeps track of whether this string originated from Python 2 source code vs
+    # Python 3 source code. We need to keep track of this information so we can
+    # correctly handle types that have "nested strings". For example, consider this
+    # type alias, where we have a forward reference to a literal type:
+    #
+    #     Alias = List["Literal['foo']"]
+    #
+    # When parsing this, we need to know whether the outer string and alias came from
+    # Python 2 code vs Python 3 code so we can determine whether the inner `Literal['foo']`
+    # is meant to be `Literal[u'foo']` or `Literal[b'foo']`.
+    #
+    # This field keeps track of that information.
+    from_python_3 = True
+
+    def __init__(self, value: str, from_python_3: bool = False) -> None:
         super().__init__()
         self.value = value
+        self.from_python_3 = from_python_3
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1240,7 +1259,16 @@ class StrExpr(Expression):
 class BytesExpr(Expression):
     """Bytes literal"""
 
-    value = ''  # TODO use bytes
+    # Note: we deliberately do NOT use bytes here because it ends up
+    # unnecessarily complicating a lot of the result logic. For example,
+    # we'd have to worry about converting the bytes into a format we can
+    # easily serialize/deserialize to and from JSON, would have to worry
+    # about turning the bytes into a human-readable representation in
+    # error messages...
+    #
+    # It's more convenient to just store the human-readable representation
+    # from the very start.
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
@@ -1253,7 +1281,7 @@ class BytesExpr(Expression):
 class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
-    value = ''  # TODO use bytes
+    value = ''
 
     def __init__(self, value: str) -> None:
         super().__init__()
@@ -1898,7 +1926,16 @@ CONTRAVARIANT = 2  # type: Final[int]
 
 
 class TypeVarExpr(SymbolNode, Expression):
-    """Type variable expression TypeVar(...)."""
+    """Type variable expression TypeVar(...).
+
+    This is also used to represent type variables in symbol tables.
+
+    A type variable is not valid as a type unless bound in a TypeVarScope.
+    That happens within:
+
+     1. a generic class that uses the type variable as a type argument or
+     2. a generic function that refers to the type variable in its signature.
+    """
 
     _name = ''
     _fullname = ''
@@ -1917,7 +1954,7 @@ class TypeVarExpr(SymbolNode, Expression):
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
                  upper_bound: 'mypy.types.Type',
-                 variance: int=INVARIANT) -> None:
+                 variance: int = INVARIANT) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
@@ -2296,6 +2333,12 @@ class TypeInfo(SymbolNode):
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
 
+    def __bool__(self) -> bool:
+        # We defined this here instead of just overriding it in
+        # FakeInfo so that mypyc can generate a direct call instead of
+        # using the generic bool handling.
+        return not isinstance(self, FakeInfo)
+
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 
@@ -2472,14 +2515,11 @@ class FakeInfo(TypeInfo):
     # for missing TypeInfos in a number of places where the excuses
     # for not being Optional are a little weaker.
     #
-    # It defines a __bool__ method so that it can be conveniently
-    # tested against in the same way that it would be if things were
-    # properly optional.
+    # TypeInfo defines a __bool__ method that returns False for FakeInfo
+    # so that it can be conveniently tested against in the same way that it
+    # would be if things were properly optional.
     def __init__(self, msg: str) -> None:
         self.msg = msg
-
-    def __bool__(self) -> bool:
-        return False
 
     def __getattribute__(self, attr: str) -> None:
         raise AssertionError(object.__getattribute__(self, 'msg'))
@@ -2641,40 +2681,36 @@ class SymbolTableNode:
     behave differently. This class describes the unique properties of
     each reference.
 
-    The most fundamental attributes are 'kind' and 'node'.  The 'node'
-    attribute defines the AST node that the name refers to.
+    The most fundamental attribute is 'node', which is the AST node that
+    the name refers to.
 
-    For many bindings, including those targeting variables, functions
-    and classes, the kind is one of LDEF, GDEF or MDEF, depending on the
-    scope of the definition. These three kinds can usually be used
+    The kind is usually one of LDEF, GDEF or MDEF, depending on the scope
+    of the definition. These three kinds can usually be used
     interchangeably and the difference between local, global and class
     scopes is mostly descriptive, with no semantic significance.
     However, some tools that consume mypy ASTs may care about these so
     they should be correct.
 
-    A few definitions get special kinds, including type variables (TVAR),
-    imported modules and module aliases (MODULE_REF)
-
     Attributes:
+        node: AST node of definition. Among others, this can be one of
+            FuncDef, Var, TypeInfo, TypeVarExpr or MypyFile -- or None
+            for cross_ref that hasn't been fixed up yet.
         kind: Kind of node. Possible values:
                - LDEF: local definition
                - GDEF: global (module-level) definition
                - MDEF: class member definition
-               - TVAR: TypeVar(...) definition in any scope
-               - MODULE_REF: reference to a module
                - UNBOUND_IMPORTED: temporary kind for imported names (we
                  don't know the final kind yet)
-        node: AST node of definition (among others, this can be
-            FuncDef/Var/TypeInfo/TypeVarExpr/MypyFile, or None for a bound
-            type variable or a cross_ref that hasn't been fixed up yet).
         module_public: If False, this name won't be imported via
             'from <module> import *'. This has no effect on names within
             classes.
         module_hidden: If True, the name will be never exported (needed for
             stub files)
-        cross_ref: For deserialized MODULE_REF nodes, the referenced module
+        cross_ref: For deserialized MypyFile nodes, the referenced module
             name; for other nodes, optionally the name of the referenced object.
         implicit: Was this defined by assignment to self attribute?
+        plugin_generated: Was this symbol generated by a plugin?
+            (And therefore needs to be removed in aststrip.)
         no_serialize: Do not serialize this node if True. This is used to prevent
             keys in the cache that refer to modules on which this file does not
             depend. Currently this can happen if there is a module not in build
@@ -2698,6 +2734,7 @@ class SymbolTableNode:
                  'module_hidden',
                  'cross_ref',
                  'implicit',
+                 'plugin_generated',
                  'no_serialize',
                  )
 
@@ -2708,6 +2745,7 @@ class SymbolTableNode:
                  implicit: bool = False,
                  module_hidden: bool = False,
                  *,
+                 plugin_generated: bool = False,
                  no_serialize: bool = False) -> None:
         self.kind = kind
         self.node = node
@@ -2715,6 +2753,7 @@ class SymbolTableNode:
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref = None  # type: Optional[str]
+        self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
 
     @property
@@ -2771,8 +2810,9 @@ class SymbolTableNode:
             data['module_public'] = False
         if self.implicit:
             data['implicit'] = True
-        if self.kind == MODULE_REF:
-            assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
+        if self.plugin_generated:
+            data['plugin_generated'] = True
+        if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname()
         else:
             if self.node is not None:
@@ -2804,6 +2844,8 @@ class SymbolTableNode:
             stnode.module_public = data['module_public']
         if 'implicit' in data:
             stnode.implicit = data['implicit']
+        if 'plugin_generated' in data:
+            stnode.plugin_generated = data['plugin_generated']
         return stnode
 
 
@@ -2932,3 +2974,8 @@ def is_class_var(expr: NameExpr) -> bool:
     if isinstance(expr.node, Var):
         return expr.node.is_classvar
     return False
+
+
+def is_final_node(node: Optional[SymbolNode]) -> bool:
+    """Check whether `node` corresponds to a final attribute."""
+    return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final

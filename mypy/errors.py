@@ -2,17 +2,19 @@ import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
-from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional, cast
+from typing import Tuple, List, TypeVar, Set, Dict, Optional
 
 from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
-allowed_duplicates = ['@overload', 'Got:', 'Expected:']
+allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
 
 
 class ErrorInfo:
@@ -221,7 +223,7 @@ class Errors:
 
     def report(self,
                line: int,
-               column: int,
+               column: Optional[int],
                message: str,
                blocker: bool = False,
                severity: str = 'error',
@@ -249,6 +251,8 @@ class Errors:
             type = None
             function = None
 
+        if column is None:
+            column = -1
         if file is None:
             file = self.file
         if offset:
@@ -401,10 +405,10 @@ class Errors:
                                                                      str, str]]:
         """Translate the messages into a sequence of tuples.
 
-        Each tuple is of form (path, line, col, message.  The rendered
-        sequence includes information about error contexts. The path
-        item may be None. If the line item is negative, the line
-        number is not defined for the tuple.
+        Each tuple is of form (path, line, col, severity, message).
+        The rendered sequence includes information about error contexts.
+        The path item may be None. If the line item is negative, the
+        line number is not defined for the tuple.
         """
         result = []  # type: List[Tuple[Optional[str], int, int, str, str]]
         # (path, line, column, severity, message)
@@ -594,6 +598,8 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
         pdb.post_mortem(sys.exc_info()[2])
 
     # If requested, print traceback, else print note explaining how to get one.
+    if options.raise_exceptions:
+        raise err
     if not options.show_traceback:
         if not options.pdb:
             print('{}: note: please use --show-traceback to print a traceback '
@@ -609,4 +615,5 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
         print('{}: note: use --pdb to drop into pdb'.format(prefix), file=sys.stderr)
 
     # Exit.  The caller has nothing more to say.
-    raise SystemExit(1)
+    # We use exit code 2 to signal that this is no ordinary error.
+    raise SystemExit(2)

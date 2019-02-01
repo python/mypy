@@ -1,6 +1,16 @@
 from typing import Iterable, Tuple, List, Optional
 
 
+def trigger_to_target(s: str) -> str:
+    assert s[0] == '<'
+    # Strip off the angle brackets
+    s = s[1:-1]
+    # If there is a [wildcard] or similar, strip that off too
+    if s[-1] == ']':
+        s = s.split('[')[0]
+    return s
+
+
 def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
     result = split_target(modules, target)
     if result is None:

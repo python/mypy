@@ -382,6 +382,23 @@ More specifically, mypy will understand the use of ``sys.version_info`` and
    else:
        # Other systems
 
+As a special case, you can also use one of these checks in a top-level
+(unindented) ``assert``; this makes mypy skip the rest of the file.
+Example:
+
+.. code-block:: python
+
+   import sys
+
+   assert sys.platform != 'win32'
+
+   # The rest of this file doesn't apply to Windows.
+
+Some other expressions exhibit similar behavior; in particular,
+``typing.TYPE_CHECKING``, variables named ``MYPY``, and any variable
+whose name is passed to ``--always-true`` or ``--always-false``.
+(However, ``True`` and ``False`` are not treated specially!)
+
 .. note::
 
    Mypy currently does not support more complex checks, and does not assign
@@ -494,6 +511,41 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+
+Using classes that are generic in stubs but not at runtime
+----------------------------------------------------------
+
+Some classes are declared as generic in stubs, but not at runtime. Examples
+in the standard library include ``os.PathLike`` and ``queue.Queue``.
+Subscripting such a class will result in a runtime error:
+
+.. code-block:: python
+
+   from queue import Queue
+
+   class Tasks(Queue[str]):  # TypeError: 'type' object is not subscriptable
+       ...
+
+   results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
+
+To avoid these errors while still having precise types you can either use
+string literal types or ``typing.TYPE_CHECKING``:
+
+.. code-block:: python
+
+   from queue import Queue
+   from typing import TYPE_CHECKING
+
+   if TYPE_CHECKING:
+       BaseQueue = Queue[str]  # this is only processed by mypy
+   else:
+       BaseQueue = Queue  # this is not seen by mypy but will be executed at runtime.
+
+   class Tasks(BaseQueue):  # OK
+       ...
+
+   results: 'Queue[int]' = Queue()  # OK
 
 
 .. _silencing-linters:

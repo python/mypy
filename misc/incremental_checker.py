@@ -33,8 +33,7 @@ To run this script starting from the commit id 2a432b:
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from argparse import (ArgumentParser, RawDescriptionHelpFormatter,
-                      ArgumentDefaultsHelpFormatter, Namespace)
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, Namespace
 import base64
 import json
 import os
@@ -166,7 +165,7 @@ def filter_daemon_stats(output: str) -> Tuple[str, Dict[str, Any]]:
     lines = output.splitlines()
     output_lines = []
     for line in lines:
-        m = re.match('(\w+)\s+:\s+(.*)', line)
+        m = re.match(r'(\w+)\s+:\s+(.*)', line)
         if m:
             key, value = m.groups()
             stats[key] = value

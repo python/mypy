@@ -14,19 +14,17 @@ T = TypeVar('T', bound=A)
 U = TypeVar('U')
 def f(x: T) -> T: pass
 def g(x: U) -> U:
-    return f(x) # Fail
+    return f(x) # E: Value of type variable "T" of "f" cannot be "U"
 
 f(A())
 f(B())
-f(D()) # Fail
+f(D()) # E: Value of type variable "T" of "f" cannot be "D"
 
 b = B()
-b = f(b)
-b = f(C()) # Fail
-[out]
-main:12: error: Value of type variable "T" of "f" cannot be "U"
-main:16: error: Value of type variable "T" of "f" cannot be "D"
-main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
+if int():
+    b = f(b)
+if int():
+    b = f(C()) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 
 [case testBoundOnGenericClass]
@@ -200,6 +198,7 @@ def foo(x: int) -> int:
 
 a = 1
 b = foo(a)
-b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 twice(a) # E: Value of type variable "T" of "twice" cannot be "int"
 [builtins fixtures/args.pyi]

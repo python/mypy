@@ -91,6 +91,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  report_invalid_types: bool = True,
                   third_pass: bool = False) -> Type:
         raise NotImplementedError
 
@@ -144,8 +145,13 @@ def create_indirect_imported_name(file_node: MypyFile,
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
+            if fdef.info.fullname() == 'mypy_extensions._TypedDict':
+                # Avoid exposing the internal _TypedDict name.
+                class_name = 'TypedDict'
+            else:
+                class_name = fdef.info.name()
             return sig.with_name(
-                '{} of {}'.format(fdef.name(), fdef.info.name()))
+                '{} of {}'.format(fdef.name(), class_name))
         else:
             return sig.with_name(fdef.name())
     else:

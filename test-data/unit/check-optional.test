@@ -549,8 +549,10 @@ def f(x: T) -> ONode[T]:
         return None
 
 x = None # type: ONode[int]
-x = f(1)
-x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+if int():
+    x = f(1)
+if int():
+    x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 x.x = 1 # E: Item "None" of "Optional[Node[int]]" has no attribute "x"
 if x is not None:
@@ -743,8 +745,9 @@ def g(x: Optional[int]) -> int:
     if x is not None:
         return x
     reveal_type(x)  # E: Revealed type is 'None'
-    x = f()
-    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
-    return x
+    if 1:
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+        return x
 
 [builtins fixtures/bool.pyi]

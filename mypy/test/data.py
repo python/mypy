@@ -5,17 +5,17 @@ import os
 import tempfile
 import posixpath
 import re
-import sys
 from os import remove, rmdir
 import shutil
 from abc import abstractmethod
+import sys
 
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
-from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+root_dir = os.path.normpath(PREFIX)
 
 # File modify/create operation: copy module contents from source_path.
 UpdateFile = NamedTuple('UpdateFile', [('module', str),
@@ -29,19 +29,20 @@ DeleteFile = NamedTuple('DeleteFile', [('module', str),
 FileOperation = Union[UpdateFile, DeleteFile]
 
 
-def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
-                    case: 'DataDrivenTestCase') -> None:
+def parse_test_case(case: 'DataDrivenTestCase') -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
     This method is part of the setup phase, just before the test case is run.
     """
-    base_path = suite.base_path
-    if suite.native_sep:
+    test_items = parse_test_data(case.data, case.name)
+    base_path = case.suite.base_path
+    if case.suite.native_sep:
         join = os.path.join
     else:
-        join = posixpath.join  # type: ignore
+        join = posixpath.join
 
-    out_section_missing = suite.required_out_section
+    out_section_missing = case.suite.required_out_section
+    normalize_output = True
 
     files = []  # type: List[Tuple[str, str]] # path and contents
     output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
@@ -68,15 +69,15 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
         elif item.id in ('builtins', 'builtins_py2'):
             # Use an alternative stub file for the builtins module.
             assert item.arg is not None
-            mpath = join(os.path.dirname(file), item.arg)
+            mpath = join(os.path.dirname(case.file), item.arg)
             fnam = 'builtins.pyi' if item.id == 'builtins' else '__builtin__.pyi'
-            with open(mpath) as f:
+            with open(mpath, encoding='utf8') as f:
                 files.append((join(base_path, fnam), f.read()))
         elif item.id == 'typing':
             # Use an alternative stub file for the typing module.
             assert item.arg is not None
-            src_path = join(os.path.dirname(file), item.arg)
-            with open(src_path) as f:
+            src_path = join(os.path.dirname(case.file), item.arg)
+            with open(src_path, encoding='utf8') as f:
                 files.append((join(base_path, 'typing.pyi'), f.read()))
         elif re.match(r'stale[0-9]*$', item.id):
             passnum = 1 if item.id == 'stale' else int(item.id[len('stale'):])
@@ -98,8 +99,11 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
+            if item.arg == 'skip-path-normalization':
+                normalize_output = False
+
             tmp_output = [expand_variables(line) for line in item.data]
-            if os.path.sep == '\\':
+            if os.path.sep == '\\' and normalize_output:
                 tmp_output = [fix_win_path(line) for line in tmp_output]
             if item.id == 'out' or item.id == 'out1':
                 output = tmp_output
@@ -113,12 +117,12 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
         else:
             raise ValueError(
                 'Invalid section header {} in {} at line {}'.format(
-                    item.id, file, item.line))
+                    item.id, case.file, item.line))
 
     if out_section_missing:
         raise ValueError(
             '{}, line {}: Required output section not found'.format(
-                file, first_item.line))
+                case.file, first_item.line))
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:
@@ -130,7 +134,7 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
                 and not stale_modules[passnum].issubset(rechecked_modules[passnum])):
             raise ValueError(
                 ('Stale modules after pass {} must be a subset of rechecked '
-                 'modules ({}:{})').format(passnum, file, first_item.line))
+                 'modules ({}:{})').format(passnum, case.file, first_item.line))
 
     input = first_item.data
     expand_errors(input, output, 'main')
@@ -141,13 +145,13 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
     case.output = output
     case.output2 = output2
     case.lastline = item.line
-    case.file = file
     case.files = files
     case.output_files = output_files
     case.expected_stale_modules = stale_modules
     case.expected_rechecked_modules = rechecked_modules
     case.deleted_paths = deleted_paths
     case.triggered = triggered or []
+    case.normalize_output = normalize_output
 
 
 class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
@@ -157,6 +161,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
+    # full path of test suite
     file = ''
     line = 0
 
@@ -168,21 +173,29 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     # Files/directories to clean up after test case; (is directory, path) tuples
     clean_up = None  # type: List[Tuple[bool, str]]
 
+    # Whether or not we should normalize the output to standardize things like
+    # forward vs backward slashes in file paths for Windows vs Linux.
+    normalize_output = True
+
     def __init__(self,
                  parent: 'DataSuiteCollector',
                  suite: 'DataSuite',
-                 path: str,
+                 file: str,
                  name: str,
                  writescache: bool,
                  only_when: str,
+                 platform: Optional[str],
                  skip: bool,
                  data: str,
                  line: int) -> None:
         super().__init__(name, parent)
-        self.path = path
         self.suite = suite
+        self.file = file
         self.writescache = writescache
         self.only_when = only_when
+        if ((platform == 'windows' and sys.platform != 'win32')
+                or (platform == 'posix' and sys.platform == 'win32')):
+            skip = True
         self.skip = skip
         self.data = data
         self.line = line
@@ -211,10 +224,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
             raise
 
     def setup(self) -> None:
-        parse_test_case(suite=self.suite,
-                        test_items=parse_test_data(self.data, self.name),
-                        file=self.path,
-                        case=self)
+        parse_test_case(case=self)
         self.old_cwd = os.getcwd()
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
@@ -229,7 +239,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf8') as f:
                 f.write(content)
             if path not in encountered_files:
                 self.clean_up.append((False, path))
@@ -482,7 +492,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
         # The first in the split things isn't a comment
         for possible_err_comment in input[i].split(' # ')[1:]:
             m = re.search(
-                '^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
+                r'^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
                 possible_err_comment.strip())
             if m:
                 if m.group(1) == 'E':
@@ -567,27 +577,31 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
 
 
 def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
-                     path: str) -> Iterator['DataDrivenTestCase']:
+                     file: str) -> Iterator['DataDrivenTestCase']:
     """Iterate over raw test cases in file, at collection time, ignoring sub items.
 
     The collection phase is slow, so any heavy processing should be deferred to after
     uninteresting tests are filtered (when using -k PATTERN switch).
     """
-    with open(path, encoding='utf-8') as f:
+    with open(file, encoding='utf-8') as f:
         data = f.read()
-    cases = re.split('^\[case ([a-zA-Z_0-9]+)'
-                     '(-writescache)?'
-                     '(-only_when_cache|-only_when_nocache)?'
-                     '(-skip)?'
-                     '\][ \t]*$\n', data,
+    cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
+                     r'(-writescache)?'
+                     r'(-only_when_cache|-only_when_nocache)?'
+                     r'(-posix|-windows)?'
+                     r'(-skip)?'
+                     r'\][ \t]*$\n',
+                     data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    for i in range(1, len(cases), 5):
-        name, writescache, only_when, skip, data = cases[i:i + 5]
-        yield DataDrivenTestCase(parent, suite, path,
+    for i in range(1, len(cases), 6):
+        name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
+        platform = platform_flag[1:] if platform_flag else None
+        yield DataDrivenTestCase(parent, suite, file,
                                  name=add_test_name_suffix(name, suite.test_name_suffix),
                                  writescache=bool(writescache),
                                  only_when=only_when,
+                                 platform=platform,
                                  skip=bool(skip),
                                  data=data,
                                  line=line_no)

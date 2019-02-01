@@ -295,7 +295,7 @@ baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
 file.py:1: error: Cannot find module named 'no_stubs'
-file.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testIgnoreErrorsConfig]
@@ -440,7 +440,7 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = False
 [out]
 main.py:1: error: Cannot find module named 'missing'
-main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: error: Revealed type is 'Any'
 
 [case testConfigSilentMissingImportsOn]
@@ -486,9 +486,9 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find module named 'a'
-main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main.py:1: error: Cannot find module named 'a.b'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: error: Cannot find module named 'a'
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
@@ -957,11 +957,11 @@ def h(s: dict) -> None: pass
 def i(s: set) -> None: pass
 def j(s: frozenset) -> None: pass
 [out]
-m.py:3: error: Implicit generic "Any". Use 'typing.Tuple' and specify generic parameters
-m.py:4: error: Implicit generic "Any". Use 'typing.List' and specify generic parameters
-m.py:5: error: Implicit generic "Any". Use 'typing.Dict' and specify generic parameters
-m.py:6: error: Implicit generic "Any". Use 'typing.Set' and specify generic parameters
-m.py:7: error: Implicit generic "Any". Use 'typing.FrozenSet' and specify generic parameters
+m.py:3: error: Implicit generic "Any". Use "typing.Tuple" and specify generic parameters
+m.py:4: error: Implicit generic "Any". Use "typing.List" and specify generic parameters
+m.py:5: error: Implicit generic "Any". Use "typing.Dict" and specify generic parameters
+m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic parameters
+m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -1257,6 +1257,6 @@ import d
 [case testCacheMap]
 -- This just checks that a valid --cache-map triple is accepted.
 -- (Errors are too verbose to check.)
-# cmd: mypy a.py --cache-map a.py a.meta.json a.data.json
+# cmd: mypy a.py --no-sqlite-cache --cache-map a.py a.meta.json a.data.json
 [file a.py]
 [out]

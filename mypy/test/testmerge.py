@@ -38,6 +38,7 @@ NOT_DUMPED_MODULES = (
     'contextlib',
     'sys',
     'mypy_extensions',
+    'typing_extensions',
     'enum',
 )
 
@@ -93,7 +94,8 @@ class ASTMergeSuite(DataSuite):
             # Verify that old AST nodes are removed from the expression type map.
             assert expr not in new_types
 
-        a = normalize_error_messages(a)
+        if testcase.normalize_output:
+            a = normalize_error_messages(a)
 
         assert_string_arrays_equal(
             testcase.output, a,
@@ -108,13 +110,13 @@ class ASTMergeSuite(DataSuite):
         options.show_traceback = True
         options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
+        with open(main_path, 'w', encoding='utf8') as f:
             f.write(source)
         try:
             result = build.build(sources=[BuildSource(main_path, None, None)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)
-        except CompileError as e:
+        except CompileError:
             # TODO: Is it okay to return None?
             return None
         return result

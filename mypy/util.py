@@ -1,17 +1,16 @@
 """Utility functions with no non-trivial dependencies."""
-import inspect
-import genericpath  # type: ignore  # no stub files yet
+import contextlib
 import os
 import pathlib
 import re
 import subprocess
 import sys
-from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
+from types import TracebackType
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
 
 MYPY = False
 if MYPY:
-    from typing import Type
+    from typing import Type, ClassVar
     from typing_extensions import Final
 
 T = TypeVar('T')
@@ -45,14 +44,6 @@ def short_type(obj: object) -> str:
         return 'nil'
     t = str(type(obj))
     return t.split('.')[-1].rstrip("'>")
-
-
-def array_repr(a: List[T]) -> List[str]:
-    """Return the items of an array converted to strings using Repr."""
-    aa = []  # type: List[str]
-    for x in a:
-        aa.append(repr(x))
-    return aa
 
 
 def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
@@ -121,14 +112,14 @@ def try_find_python2_interpreter() -> Optional[str]:
 
 PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
   </testcase>
 </testsuite>
 """  # type: Final
 
 FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
@@ -136,21 +127,30 @@ FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 
 ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
 """  # type: Final
 
 
-def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) -> None:
-    """XXX"""
+def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
+                    version: str, platform: str) -> None:
+    from xml.sax.saxutils import escape
     if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt)
+        xml = PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
     elif not serious:
-        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt,
+                                   ver=version, platform=platform)
     else:
-        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt,
+                                    ver=version, platform=platform)
+
+    # checks for a directory structure in path and creates folders if needed
+    xml_dirs = os.path.dirname(os.path.abspath(path))
+    if not os.path.isdir(xml_dirs):
+        os.makedirs(xml_dirs)
+
     with open(path, 'wb') as f:
         f.write(xml.encode('utf-8'))
 
@@ -200,6 +200,7 @@ fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
+    import inspect  # Lazy import for minor startup speed win
     # Maintain a cache of type -> attributes defined by descriptors in the class
     # (that is, attributes from __slots__ and C extension classes)
     if cls not in fields_cache:
@@ -210,7 +211,7 @@ def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
     return fields_cache[cls]
 
 
-def replace_object_state(new: object, old: object, copy_dict: bool=False) -> None:
+def replace_object_state(new: object, old: object, copy_dict: bool = False) -> None:
     """Copy state of old node to the new node.
 
     This handles cases where there is __dict__ and/or attribute descriptors
@@ -251,3 +252,55 @@ def hard_exit(status: int = 0) -> None:
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(status)
+
+
+def unmangle(name: str) -> str:
+    """Remove internal suffixes from a short name."""
+    return name.rstrip("'")
+
+
+# The following is a backport of stream redirect utilities from Lib/contextlib.py
+# We need this for 3.4 support. They can be removed in March 2019!
+
+
+class _RedirectStream:
+
+    _stream = None  # type: ClassVar[str]
+
+    def __init__(self, new_target: TextIO) -> None:
+        self._new_target = new_target
+        # We use a list of old targets to make this CM re-entrant
+        self._old_targets = []  # type: List[TextIO]
+
+    def __enter__(self) -> TextIO:
+        self._old_targets.append(getattr(sys, self._stream))
+        setattr(sys, self._stream, self._new_target)
+        return self._new_target
+
+    def __exit__(self,
+                 exc_ty: 'Optional[Type[BaseException]]' = None,
+                 exc_val: Optional[BaseException] = None,
+                 exc_tb: Optional[TracebackType] = None,
+                 ) -> bool:
+        setattr(sys, self._stream, self._old_targets.pop())
+        return False
+
+
+class redirect_stdout(_RedirectStream):
+    """Context manager for temporarily redirecting stdout to another file.
+        # How to send help() to stderr
+        with redirect_stdout(sys.stderr):
+            help(dir)
+        # How to write help() to a file
+        with open('help.txt', 'w') as f:
+            with redirect_stdout(f):
+                help(pow)
+    """
+
+    _stream = "stdout"
+
+
+class redirect_stderr(_RedirectStream):
+    """Context manager for temporarily redirecting stderr to another file."""
+
+    _stream = "stderr"

@@ -98,7 +98,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Literal', e.value)
 
     def visit_str_expr(self, e: StrExpr) -> Key:
-        return ('Literal', e.value)
+        return ('Literal', e.value, e.from_python_3)
 
     def visit_bytes_expr(self, e: BytesExpr) -> Key:
         return ('Literal', e.value)

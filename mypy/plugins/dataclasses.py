@@ -3,14 +3,13 @@ from typing import Dict, List, Set, Tuple
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
-    Context, Decorator, Expression, FuncDef, JsonDict, NameExpr,
-    OverloadedFuncDef, SymbolTableNode, TempNode, TypeInfo, Var,
+    Context, Expression, FuncDef, JsonDict, NameExpr,
+    SymbolTableNode, TempNode, TypeInfo, Var,
 )
 from mypy.plugin import ClassDefContext
-from mypy.plugins.common import _add_method, _get_decorator_bool_argument
-from mypy.types import (
-    CallableType, Instance, NoneTyp, Overloaded, TypeVarDef, TypeVarType,
-)
+from mypy.plugins.common import add_method, _get_decorator_bool_argument
+from mypy.types import Instance, NoneTyp, TypeVarDef, TypeVarType
+from mypy.server.trigger import make_wildcard_trigger
 
 MYPY = False
 if MYPY:
@@ -86,7 +85,7 @@ class DataclassTransformer:
         }
 
         if decorator_arguments['init']:
-            _add_method(
+            add_method(
                 ctx,
                 '__init__',
                 args=[attr.to_argument(info) for attr in attributes if attr.is_in_init],
@@ -98,13 +97,13 @@ class DataclassTransformer:
             for method_name in ['__eq__', '__ne__']:
                 # The TVar is used to enforce that "other" must have
                 # the same type as self (covariant).  Note the
-                # "self_type" parameter to _add_method.
+                # "self_type" parameter to add_method.
                 obj_type = ctx.api.named_type('__builtins__.object')
                 cmp_tvar_def = TypeVarDef('T', 'T', -1, [], obj_type)
                 cmp_other_type = TypeVarType(cmp_tvar_def)
                 cmp_return_type = ctx.api.named_type('__builtins__.bool')
 
-                _add_method(
+                add_method(
                     ctx,
                     method_name,
                     args=[Argument(Var('other', cmp_other_type), cmp_other_type, None, ARG_POS)],
@@ -137,7 +136,7 @@ class DataclassTransformer:
                         existing_method.node,
                     )
 
-                _add_method(
+                add_method(
                     ctx,
                     method_name,
                     args=order_args,
@@ -233,11 +232,17 @@ class DataclassTransformer:
         # Next, collect attributes belonging to any class in the MRO
         # as long as those attributes weren't already collected.  This
         # makes it possible to overwrite attributes in subclasses.
-        super_attrs = []
+        # copy() because we potentially modify all_attrs below and if this code requires debugging
+        # we'll have unmodified attrs laying around.
+        all_attrs = attrs.copy()
         init_method = cls.info.get_method('__init__')
         for info in cls.info.mro[1:-1]:
             if 'dataclass' not in info.metadata:
                 continue
+
+            super_attrs = []
+            # Each class depends on the set of attributes in its dataclass ancestors.
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname()))
 
             for name, data in info.metadata['dataclass']['attributes'].items():
                 if name not in known_attrs:
@@ -254,8 +259,15 @@ class DataclassTransformer:
 
                     known_attrs.add(name)
                     super_attrs.append(attr)
-
-        all_attrs = super_attrs + attrs
+                else:
+                    # How early in the attribute list an attribute appears is determined by the
+                    # reverse MRO, not simply MRO.
+                    # See https://docs.python.org/3/library/dataclasses.html#inheritance for
+                    # details.
+                    (attr,) = [a for a in all_attrs if a.name == name]
+                    all_attrs.remove(attr)
+                    super_attrs.append(attr)
+            all_attrs = super_attrs + all_attrs
 
         # Ensure that arguments without a default don't follow
         # arguments that have a default.

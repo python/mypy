@@ -63,8 +63,10 @@ tmp/m.py:1: error: invalid syntax
 
 [case testIgnoreAssignmentTypeError]
 x = 1
-x = '' # type: ignore
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    x = '' # type: ignore
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testIgnoreInvalidOverride]
 class A:

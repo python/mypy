@@ -943,7 +943,7 @@ def splitquery(url):
     global _queryprog
     if _queryprog is None:
         import re
-        _queryprog = re.compile('^(.*)\?([^?]*)$')
+        _queryprog = re.compile(r'^(.*)\?([^?]*)$')
 
     match = _queryprog.match(url)
     if match: return match.group(1, 2)

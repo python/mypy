@@ -183,7 +183,7 @@ async def f() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehension]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
 
 T = TypeVar('T')
@@ -223,7 +223,7 @@ async def generatorexp(obj: Iterable[int]):
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehensionErrors]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
 
 T = TypeVar('T')
@@ -489,7 +489,7 @@ async def user() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAsend]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> None:
@@ -510,7 +510,7 @@ async def h() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAthrow]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[str, int]:
@@ -529,7 +529,7 @@ async def h() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoSyncIteration]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
@@ -547,7 +547,7 @@ def h() -> None:
 main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 
 [case testAsyncGeneratorNoYieldFrom]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> AsyncGenerator[int, None]:
@@ -560,7 +560,7 @@ async def gen() -> AsyncGenerator[int, None]:
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoReturnWithValue]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def return_int() -> AsyncGenerator[int, None]:

@@ -15,7 +15,7 @@ from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
-from mypy.version import __version__, base_version
+import mypy.version
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -32,15 +32,16 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_python_cmdline(testcase)
+        for step in [1] + sorted(testcase.output2):
+            test_python_cmdline(testcase, step)
 
 
-def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
+def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
-    with open(program_path, 'w') as file:
+    with open(program_path, 'w', encoding='utf8') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
     args = parse_args(testcase.input[0])
@@ -52,46 +53,62 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     env['PYTHONPATH'] = PREFIX
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
+                               stderr=subprocess.PIPE,
                                cwd=test_temp_dir,
                                env=env)
-    outb = process.stdout.read()
+    outb, errb = process.communicate()
+    result = process.returncode
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    err = [s.rstrip('\n\r') for s in str(errb, 'utf8').splitlines()]
 
     if "PYCHARM_HOSTED" in os.environ:
-        pos = next((p for p, i in enumerate(out) if i.startswith('pydev debugger: ')), None)
-        if pos is not None:
-            del out[pos]  # the attaching debugger message itself
-            del out[pos]  # plus the extra new line added
+        for pos, line in enumerate(err):
+            if line.startswith('pydev debugger: '):
+                # Delete the attaching debugger message itself, plus the extra newline added.
+                del err[pos:pos + 2]
+                break
 
-    result = process.wait()
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
     if testcase.output_files:
+        # Ignore stdout, but we insist on empty stderr and zero status.
+        if err or result:
+            raise AssertionError(
+                'Expected zero status and empty stderr%s, got %d and\n%s' %
+                (' on step %d' % step if testcase.output2 else '',
+                 result, '\n'.join(err + out)))
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
                 raise AssertionError(
-                    'Expected file {} was not produced by test case'.format(path))
-            with open(path, 'r') as output_file:
+                    'Expected file {} was not produced by test case{}'.format(
+                        path, ' on step %d' % step if testcase.output2 else ''))
+            with open(path, 'r', encoding='utf8') as output_file:
                 actual_output_content = output_file.read().splitlines()
             normalized_output = normalize_file_output(actual_output_content,
                                                       os.path.abspath(test_temp_dir))
-            if testcase.suite.native_sep and os.path.sep == '\\':
-                normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
-            normalized_output = normalize_error_messages(normalized_output)
+            # We always normalize things like timestamp, but only handle operating-system
+            # specific things if requested.
+            if testcase.normalize_output:
+                if testcase.suite.native_sep and os.path.sep == '\\':
+                    normalized_output = [fix_cobertura_filename(line)
+                                         for line in normalized_output]
+                normalized_output = normalize_error_messages(normalized_output)
             assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
-                                       'Output file {} did not match its expected output'.format(
-                                           path))
+                                       'Output file {} did not match its expected output{}'.format(
+                                           path, ' on step %d' % step if testcase.output2 else ''))
     else:
-        out = normalize_error_messages(out)
+        if testcase.normalize_output:
+            out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))
-        assert_string_arrays_equal(testcase.output, out,
-                                   'Invalid output ({}, line {})'.format(
-                                       testcase.file, testcase.line))
+        expected_out = testcase.output if step == 1 else testcase.output2[step]
+        assert_string_arrays_equal(expected_out, out,
+                                   'Invalid output ({}, line {}){}'.format(
+                                       testcase.file, testcase.line,
+                                       ' on step %d' % step if testcase.output2 else ''))
 
 
 def parse_args(line: str) -> List[str]:
@@ -113,9 +130,13 @@ def parse_args(line: str) -> List[str]:
 
 def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
     """Normalize file output for comparison."""
-    timestamp_regex = re.compile('\d{10}')
+    timestamp_regex = re.compile(r'\d{10}')
     result = [x.replace(current_abs_path, '$PWD') for x in content]
-    result = [re.sub(r'\b' + re.escape(__version__) + r'\b', '$VERSION', x) for x in result]
+    version = mypy.version.__version__
+    result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
+    # We generate a new mypy.version when building mypy wheels that
+    # lacks base_version, so handle that case.
+    base_version = getattr(mypy.version, 'base_version', version)
     result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result

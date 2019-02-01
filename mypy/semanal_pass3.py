@@ -12,9 +12,9 @@ belongs to a module involved in an import loop.
 from collections import OrderedDict
 from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
-from mypy import messages, experiments
+from mypy import message_registry, state
 from mypy.nodes import (
-    Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
+    Node, Expression, MypyFile, FuncDef, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
     TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
@@ -22,7 +22,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
-    UnionType, TypeType, Overloaded, ForwardRef, TypeTranslator, function_type
+    UnionType, TypeType, Overloaded, ForwardRef, TypeTranslator, function_type, LiteralType,
 )
 from mypy.errors import Errors, report_internal_error
 from mypy.options import Options
@@ -65,7 +65,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.sem.cur_mod_id = file_node.fullname()
         self.cur_mod_node = file_node
         self.sem.globals = file_node.names
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.update_imported_vars()
             self.accept(file_node)
@@ -133,6 +133,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         for d in file_node.defs:
             self.accept(d)
+        self.analyze_symbol_table(file_node.names)
 
     def accept(self, node: Node) -> None:
         try:
@@ -191,7 +192,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze(tdef.analyzed.info.typeddict_type, tdef.analyzed, warn=True)
             elif isinstance(tdef.analyzed, NamedTupleExpr):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
-                self.analyze_info(tdef.analyzed.info)
+                self.analyze_synthetic_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
         self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
@@ -272,7 +273,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 if analyzed.info:
                     # Currently NewTypes only have __init__, but to be future proof,
                     # we analyze all symbols.
-                    self.analyze_info(analyzed.info)
+                    self.analyze_synthetic_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
                     self.sem.calculate_class_mro(analyzed.info.defn)
@@ -287,7 +288,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze(analyzed.info.typeddict_type, analyzed, warn=True)
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
-                self.analyze_info(analyzed.info)
+                self.analyze_synthetic_info(analyzed.info)
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
         # Subclass attribute assignments with no type annotation should be
@@ -471,12 +472,18 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
             self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch2)))
 
-    def analyze_info(self, info: TypeInfo) -> None:
+    def analyze_synthetic_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
         for name in info.names:
             sym = info.names[name]
             if isinstance(sym.node, (FuncDef, Decorator)):
+                # Since we are analyzing a synthetic type info, the methods there
+                # are not real independent targets, and should be processed when
+                # the enclosing synthetic type is processed.
+                old_recurse = self.recurse_into_functions
+                self.recurse_into_functions = True
                 self.accept(sym.node)
+                self.recurse_into_functions = old_recurse
             if isinstance(sym.node, Var):
                 self.analyze(sym.node.type, sym.node)
 
@@ -494,7 +501,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
         for t in collect_any_types(typ):
             if t.type_of_any == TypeOfAny.from_omitted_generics:
-                self.fail(messages.BARE_GENERIC, t)
+                self.fail(message_registry.BARE_GENERIC, t)
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
@@ -704,6 +711,13 @@ class ForwardReferenceResolver(TypeTranslator):
         assert isinstance(fallback, Instance)
         return TypedDictType(items, t.required_keys, fallback, t.line, t.column)
 
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        if self.check_recursion(t):
+            return AnyType(TypeOfAny.from_error)
+        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        assert isinstance(fallback, Instance)
+        return LiteralType(t.value, fallback, t.line, t.column)
+
     def visit_union_type(self, t: UnionType) -> Type:
         if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
@@ -766,5 +780,5 @@ class TypeVariableChecker(TypeTranslator):
                 else:
                     class_name = '"{}"'.format(type.name())
                     actual_type_name = '"{}"'.format(actual.type.name())
-                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
+                    self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                         arg_name, class_name, actual_type_name), context)

@@ -54,12 +54,12 @@ from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
-    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
+    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType
+    UnionType, Overloaded, PartialType, TypeType, LiteralType,
 )
 from mypy.util import get_prefix
 
@@ -134,24 +134,23 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
         # TODO: cross_ref?
         fullname = node.fullname() if node else None
         common = (fullname, symbol.kind, symbol.module_public)
-        if symbol.kind == MODULE_REF:
+        if isinstance(node, MypyFile):
             # This is a cross-reference to another module.
             # If the reference is busted because the other module is missing,
             # the node will be a "stale_info" TypeInfo produced by fixup,
             # but that doesn't really matter to us here.
             result[name] = ('Moduleref', common)
-        elif symbol.kind == TVAR:
-            assert isinstance(node, TypeVarExpr)
+        elif isinstance(node, TypeVarExpr):
             result[name] = ('TypeVar',
                             node.variance,
                             [snapshot_type(value) for value in node.values],
                             snapshot_type(node.upper_bound))
-        elif isinstance(symbol.node, TypeAlias):
+        elif isinstance(node, TypeAlias):
             result[name] = ('TypeAlias',
-                            symbol.node.alias_tvars,
-                            symbol.node.normalized,
-                            symbol.node.no_args,
-                            snapshot_optional_type(symbol.node.target))
+                            node.alias_tvars,
+                            node.normalized,
+                            node.no_args,
+                            snapshot_optional_type(node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname()) != name_prefix:
@@ -284,7 +283,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_instance(self, typ: Instance) -> SnapshotItem:
         return ('Instance',
                 typ.type.fullname(),
-                snapshot_types(typ.args))
+                snapshot_types(typ.args),
+                None if typ.final_value is None else snapshot_type(typ.final_value))
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
         return ('TypeVar',
@@ -314,6 +314,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                       for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
         return ('TypedDictType', items, required)
+
+    def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
+        return ('LiteralType', typ.value, snapshot_type(typ.fallback))
 
     def visit_union_type(self, typ: UnionType) -> SnapshotItem:
         # Sort and remove duplicates so that we can use equality to test for

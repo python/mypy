@@ -392,13 +392,14 @@ class A:
 def f(x: object) -> None:
     if isinstance(x, A):
         x.g()
+def ff(x: object) -> None:
+    if isinstance(x, A):
+        pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
 -- The dependencies on the ctor are basically spurious but not a problem
-<m.A.__init__> -> m.f
-<m.A.__new__> -> m.f
 <m.A.g> -> m.f
-<m.A> -> m.A, m.f
+<m.A> -> m.A, m.f, m.ff
 
 [case testUnreachableIsInstance]
 class A:
@@ -413,9 +414,6 @@ def f(x: A) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
--- The dependencies on the ctor are basically spurious but not a problem
-<m.B.__init__> -> m.f
-<m.B.__new__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testAttributeWithClassType1]
@@ -626,7 +624,6 @@ def foo(x: Point) -> int:
 [out]
 <m.Point> -> <m.foo>, <m.p>, m, m.foo
 <m.p> -> m
-<mypy_extensions.TypedDict> -> m
 
 [case testTypedDict2]
 from mypy_extensions import TypedDict
@@ -642,7 +639,6 @@ def foo(x: Point) -> int:
 <m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
 <m.Point> -> <m.foo>, <m.p>, m, m.foo
 <m.p> -> m
-<mypy_extensions.TypedDict> -> m
 
 [case testTypedDict3]
 from mypy_extensions import TypedDict
@@ -660,7 +656,6 @@ def foo(x: Point) -> int:
 <m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
 <m.Point> -> <m.foo>, <m.p>, m, m.Point, m.foo
 <m.p> -> m
-<mypy_extensions.TypedDict> -> m
 
 [case testImportStar]
 from a import *
@@ -826,6 +821,47 @@ def f(x: A) -> None:
 [out]
 <m.A> -> <m.f>, m.f
 <p.b.A> -> m
+
+[case testIgnoredMissingModuleAttribute]
+import a
+a.x  # type: ignore
+
+import b.c
+b.c.x  # type: ignore
+
+from b import c
+c.y  # type: ignore
+[file a.py]
+[file b/__init__.py]
+[file b/c.py]
+[builtins fixtures/module.pyi]
+[out]
+<a.x> -> m
+<a> -> m
+<b.c.x> -> m
+<b.c.y> -> m
+<b.c> -> m
+<b> -> m
+
+[case testIgnoredMissingInstanceAttribute]
+from a import C
+C().x  # type: ignore
+[file a.py]
+class C: pass
+[out]
+<a.C.__init__> -> m
+<a.C.__new__> -> m
+<a.C.x> -> m
+<a.C> -> m
+
+[case testIgnoredMissingClassAttribute]
+from a import C
+C.x  # type: ignore
+[file a.py]
+class C: pass
+[out]
+<a.C.x> -> m
+<a.C> -> m
 
 [case testDepsFromOverloadMod]
 # __dump_all__
@@ -1146,7 +1182,6 @@ from typing import Callable
 def dec(f: Callable[[], None]) -> Callable[[], None]:
     pass
 [out]
-<m.f> -> m
 <mod.dec> -> <m.f>, m
 
 [case testLogicalDecoratorWithArgs]
@@ -1160,7 +1195,6 @@ from typing import Callable
 def dec(arg: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
     pass
 [out]
-<m.f> -> m
 <mod.dec> -> <m.f>, m
 
 [case testLogicalDecoratorMember]
@@ -1174,7 +1208,6 @@ from typing import Callable
 def dec(f: Callable[[], None]) -> Callable[[], None]:
     pass
 [out]
-<m.f> -> m
 <mod.dec> -> <m.f>, m
 <mod> -> m
 
@@ -1287,8 +1320,8 @@ def gg(x: C) -> None:
 [out]
 <foo.bar.C.ff> -> m.g
 <foo.bar.C.y> -> m.gg
-<foo.bar.C> -> <m.gg>, m, m.g, m.gg
-<foo.bar.f> -> m, m.g
+<foo.bar.C> -> <m.gg>, m.g, m.gg
+<foo.bar.f> -> m.g
 
 [case testLogical__init__]
 # flags: --logical-deps
@@ -1315,3 +1348,67 @@ def h() -> None:
 <m.D.__init__> -> m.h
 <m.D.__new__> -> m.h
 <m.D> -> m.D, m.h
+
+[case testLogicalSuperPython2]
+# flags: --logical-deps --py2
+class A:
+    def __init__(self):
+        pass
+    def m(self):
+        pass
+class B(A):
+    def m(self):
+        pass
+class C(B):
+    pass
+class D(C):
+    def __init__(self):
+        # type: () -> None
+        super(B, self).__init__()
+    def mm(self):
+        # type: () -> None
+        super(B, self).m()
+[out]
+<m.A.__init__> -> m.D.__init__
+<m.A.m> -> <m.B.m>, m.B.m
+<m.A.mm> -> m.D.mm
+<m.A> -> m, m.A, m.B
+<m.B.__init__> -> m.D.__init__
+<m.B.m> -> m.D.mm
+<m.B.mm> -> m.D.mm
+<m.B> -> m, m.B, m.C
+<m.C.__init__> -> m.D.__init__
+<m.C.m> -> m.D.mm
+<m.C.mm> -> m.D.mm
+<m.C> -> m, m.C, m.D
+<m.D> -> m.D
+
+[case testDataclassDeps]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+Z = int
+
+@dataclass
+class A:
+    x: Z
+
+@dataclass
+class B(A):
+    y: int
+[builtins fixtures/list.pyi]
+
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__eq__> -> <m.B.__eq__>
+<m.A.__init__> -> <m.B.__init__>, m.B.__init__
+<m.A.__ne__> -> <m.B.__ne__>
+<m.A.__new__> -> <m.B.__new__>
+<m.A.x> -> <m.B.x>
+<m.A.y> -> <m.B.y>
+<m.A> -> m, m.A, m.B
+<m.A[wildcard]> -> m
+<m.B.y> -> m
+<m.B> -> m.B
+<m.Z> -> m
+<dataclasses.dataclass> -> m

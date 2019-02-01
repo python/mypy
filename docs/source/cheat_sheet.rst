@@ -46,9 +46,12 @@ Built-in types
 
    # Use Optional[] for values that could be None
    x = some_function()  # type: Optional[str]
+   # Mypy understands a value can't be None in an if-statement
    if x is not None:
-      print x
-
+       print x.upper()
+   # If a value can never be None due to some invariants, use an assert
+   assert x is not None
+   print x.upper()
 
 Functions
 *********
@@ -204,8 +207,8 @@ that are common in idiomatic Python are standardized.
 
    def f(my_mapping):
        # type: (MutableMapping[int, str]) -> Set[str]
-       my_dict[5] = 'maybe'
-       return set(my_dict.values())
+       my_mapping[5] = 'maybe'
+       return set(my_mapping.values())
 
    f({3: 'yes', 4: 'no'})
 

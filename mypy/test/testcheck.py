@@ -8,9 +8,11 @@ from typing import Dict, List, Set, Tuple
 
 from mypy import build
 from mypy.build import Graph
-from mypy.modulefinder import BuildSource, SearchPaths
+from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
+from mypy.test.data import (
+    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+)
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
@@ -75,8 +77,12 @@ typecheck_files = [
     'check-custom-plugin.test',
     'check-default-plugin.test',
     'check-attr.test',
+    'check-ctypes.test',
     'check-dataclasses.test',
     'check-final.test',
+    'check-redefine.test',
+    'check-literal.test',
+    'check-newsemanal.test',
 ]
 
 
@@ -114,11 +120,16 @@ class TypeCheckSuite(DataSuite):
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
+        # Unload already loaded plugins, they may be updated.
+        for file, _ in testcase.files:
+            module = module_from_path(file)
+            if module.endswith('_plugin') and module in sys.modules:
+                del sys.modules[module]
         if incremental_step == 0 or incremental_step == 1:
             # In run 1, copy program text to program file.
             for module_name, program_path, program_text in module_data:
                 if module_name == '__main__':
-                    with open(program_path, 'w') as f:
+                    with open(program_path, 'w', encoding='utf8') as f:
                         f.write(program_text)
                     break
         elif incremental_step > 1:
@@ -169,7 +180,8 @@ class TypeCheckSuite(DataSuite):
             assert sys.path[0] == plugin_dir
             del sys.path[0]
 
-        a = normalize_error_messages(a)
+        if testcase.normalize_output:
+            a = normalize_error_messages(a)
 
         # Make sure error messages match
         if incremental_step == 0:
@@ -211,11 +223,8 @@ class TypeCheckSuite(DataSuite):
         # for those that had an error in themselves or one of their
         # dependencies.
         error_paths = self.find_error_message_paths(a)
-        if manager.options.quick_and_dirty:
-            busted_paths = error_paths
-        else:
-            busted_paths = {m.path for id, m in manager.modules.items()
-                            if graph[id].transitive_error}
+        busted_paths = {m.path for id, m in manager.modules.items()
+                        if graph[id].transitive_error}
         modules = self.find_module_files(manager)
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
@@ -271,13 +280,14 @@ class TypeCheckSuite(DataSuite):
         Return a list of tuples (module name, file name, program text).
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
-        alt_m = re.search(regex, program_text, flags=re.MULTILINE)
-        if alt_m is not None and incremental_step > 1:
-            # Optionally return a different command if in a later step
-            # of incremental mode, otherwise default to reusing the
-            # original cmd.
-            m = alt_m
+        if incremental_step > 1:
+            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
+            if alt_m is not None:
+                # Optionally return a different command if in a later step
+                # of incremental mode, otherwise default to reusing the
+                # original cmd.
+                m = alt_m
 
         if m:
             # The test case wants to use a non-default main
@@ -286,10 +296,11 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             search_paths = SearchPaths((test_temp_dir,), (), (), ())
+            cache = FindModuleCache(search_paths)
             for module_name in module_names.split(' '):
-                path = build.FindModuleCache(search_paths).find_module(module_name)
+                path = cache.find_module(module_name)
                 assert path is not None, "Can't find ad hoc case file"
-                with open(path) as f:
+                with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))
             return out

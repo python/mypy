@@ -9,19 +9,17 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Callable
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mypy import build
 from mypy import defaults
-from mypy import experiments
+from mypy import state
 from mypy import util
-from mypy.build import BuildResult
 from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
-from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
@@ -65,10 +63,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    if script_path:
-        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
-    else:
-        bin_dir = None
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
@@ -90,10 +84,11 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     serious = False
     blockers = False
+    res = None
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
+        res = build.build(sources, options, None, flush_errors, fscache)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -106,11 +101,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
+                             py_version, options.platform)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
+    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -122,42 +120,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         util.hard_exit(code)
     elif code:
         sys.exit(code)
-
-
-def find_bin_directory(script_path: str) -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script_path):
-            script_path = readlinkabs(script_path)
-        else:
-            break
-    return os.path.dirname(script_path)
-
-
-def readlinkabs(link: str) -> str:
-    """Return an absolute path to symbolic link destination."""
-    # Adapted from code by Greg Smith.
-    assert os.path.islink(link)
-    path = os.readlink(link)
-    if os.path.isabs(path):
-        return path
-    return os.path.join(os.path.dirname(link), path)
-
-
-def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]],
-                    fscache: FileSystemCache) -> BuildResult:
-    # Type-check the program and dependencies.
-    return build.build(sources=sources,
-                       bin_dir=bin_dir,
-                       options=options,
-                       flush_errors=flush_errors,
-                       fscache=fscache)
 
 
 class SplitNamespace(argparse.Namespace):
@@ -256,17 +218,6 @@ def python_executable_prefix(v: str) -> List[str]:
         return ['python{}'.format(v)]
 
 
-def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
-    try:
-        check = subprocess.check_output([python_executable, '-c',
-                                         'import sys; print(repr(sys.version_info[:2]))'],
-                                        stderr=subprocess.STDOUT).decode()
-        return ast.literal_eval(check)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise PythonExecutableInferenceError(
-            'invalid Python executable {}'.format(python_executable))
-
-
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
@@ -282,37 +233,25 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
             ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
-def infer_python_version_and_executable(options: Options,
-                                        special_opts: argparse.Namespace) -> None:
-    """Infer the Python version or executable from each other. Check they are consistent.
+def infer_python_executable(options: Options,
+                            special_opts: argparse.Namespace) -> None:
+    """Infer the Python executable from the given version.
 
-    This function mutates options based on special_opts to infer the correct Python version and
-    executable to use.
+    This function mutates options based on special_opts to infer the correct Python executable
+    to use.
     """
-    # Infer Python version and/or executable if one is not given
-
     # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
     # one subprocess call for speed.
-    if special_opts.python_executable is not None and special_opts.python_version is not None:
-        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-        if py_exe_ver != special_opts.python_version:
-            raise PythonExecutableInferenceError(
-                'Python version {} did not match executable {}, got version {}.'.format(
-                    special_opts.python_version, special_opts.python_executable, py_exe_ver
-                ))
-        else:
-            options.python_version = special_opts.python_version
-            options.python_executable = special_opts.python_executable
-    elif special_opts.python_executable is None and special_opts.python_version is not None:
-        options.python_version = special_opts.python_version
-        py_exe = None
+
+    # Use the command line specified executable, or fall back to one set in the
+    # config file. If an executable is not specified, infer it from the version
+    # (unless no_executable is set)
+    python_executable = special_opts.python_executable or options.python_executable
+
+    if python_executable is None:
         if not special_opts.no_executable:
-            py_exe = _python_executable_from_version(special_opts.python_version)
-        options.python_executable = py_exe
-    elif special_opts.python_version is None and special_opts.python_executable is not None:
-        options.python_version = _python_version_from_executable(
-            special_opts.python_executable)
-        options.python_executable = special_opts.python_executable
+            python_executable = _python_executable_from_version(options.python_version)
+    options.python_executable = python_executable
 
 
 HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
@@ -350,6 +289,8 @@ def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
+                    program: str = 'mypy',
+                    header: str = HEADER,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -357,8 +298,8 @@ def process_options(args: List[str],
     call fscache.set_package_root() to set the cache's package root.
     """
 
-    parser = argparse.ArgumentParser(prog='mypy',
-                                     usage=HEADER,
+    parser = argparse.ArgumentParser(prog=program,
+                                     usage=header,
                                      description=DESCRIPTION,
                                      epilog=FOOTER,
                                      fromfile_prefix_chars='@',
@@ -503,10 +444,9 @@ def process_options(args: List[str],
     disallow_any_group.add_argument(
         '--disallow-any-explicit', default=False, action='store_true',
         help='Disallow explicit Any in type positions')
-    disallow_any_group.add_argument(
-        '--disallow-any-generics', default=False, action='store_true',
-        help='Disallow usage of generic types that do not specify explicit '
-             'type parameters')
+    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
+                        help='Disallow usage of generic types that do not specify explicit type '
+                        'parameters', group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
         title='Untyped definitions and calls',
@@ -583,6 +523,10 @@ def process_options(args: List[str],
                         help="Suppress toplevel errors caused by missing annotations",
                         group=strictness_group)
 
+    add_invertible_flag('--allow-redefinition', default=False, strict_flag=False,
+                        help="Allow unconditional variable redefinition with a new type",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -600,12 +544,12 @@ def process_options(args: List[str],
         '--cache-dir', action='store', metavar='DIR',
         help="Store module cache info in the given folder in incremental mode "
              "(defaults to '{}')".format(defaults.CACHE_DIR))
+    add_invertible_flag('--sqlite-cache', default=False,
+                        help="Use a sqlite database to store the cache",
+                        group=incremental_group)
     incremental_group.add_argument(
         '--cache-fine-grained', action='store_true',
         help="Include fine-grained dependency information in the cache for the mypy daemon")
-    incremental_group.add_argument(
-        '--quick-and-dirty', action='store_true',
-        help="Use cache even if dependencies out of date (implies --incremental)")
     incremental_group.add_argument(
         '--skip-version-check', action='store_true',
         help="Allow using cache written by older mypy version")
@@ -618,6 +562,9 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--show-traceback', '--tb', action='store_true',
         help="Show traceback on fatal error")
+    internals_group.add_argument(
+        '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
+    )
     internals_group.add_argument(
         '--custom-typing', metavar='MODULE', dest='custom_typing_module',
         help="Use a custom typing module")
@@ -634,6 +581,8 @@ def process_options(args: List[str],
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
     add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+                        group=internals_group)
+    add_invertible_flag('--new-semantic-analyzer', default=False, help=argparse.SUPPRESS,
                         group=internals_group)
 
     error_group = parser.add_argument_group(
@@ -656,7 +605,7 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='Report generation',
         description='Generate a report in the specified format.')
-    for report_type in sorted(reporter_classes):
+    for report_type in sorted(defaults.REPORTER_NAMES):
         report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
                                   metavar='DIR',
                                   dest='special-opts:%s_report' % report_type)
@@ -720,29 +669,7 @@ def process_options(args: List[str],
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
 
-    # deprecated options
-    parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
-                        help=argparse.SUPPRESS)
-    add_invertible_flag('--strict-boolean', default=False,
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-f', '--dirty-stubs', action='store_true',
-                        dest='special-opts:dirty_stubs',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--use-python-path', action='store_true',
-                        dest='special-opts:use_python_path',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-s', '--silent-imports', action='store_true',
-                        dest='special-opts:silent_imports',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--almost-silent', action='store_true',
-                        dest='special-opts:almost_silent',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--fast-parser', action='store_true', dest='special-opts:fast_parser',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--no-fast-parser', action='store_true',
-                        dest='special-opts:no_fast_parser',
-                        help=argparse.SUPPRESS)
-
+    # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
@@ -787,44 +714,11 @@ def process_options(args: List[str],
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
 
-    # --use-python-path is no longer supported; explain why.
-    if special_opts.use_python_path:
-        parser.error("Sorry, --use-python-path is no longer supported.\n"
-                     "If you are trying this because your code depends on a library module,\n"
-                     "you should really investigate how to obtain stubs for that module.\n"
-                     "See https://github.com/python/mypy/issues/1411 for more discussion."
-                     )
-
-    # Process deprecated options
-    if special_opts.disallow_any:
-        print("--disallow-any option was split up into multiple flags. "
-              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing")
-    if options.strict_boolean:
-        print("Warning: --strict-boolean is deprecated; "
-              "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
-    if special_opts.almost_silent:
-        print("Warning: --almost-silent has been replaced by "
-              "--follow-imports=errors", file=sys.stderr)
-        if options.follow_imports == 'normal':
-            options.follow_imports = 'errors'
-    elif special_opts.silent_imports:
-        print("Warning: --silent-imports has been replaced by "
-              "--ignore-missing-imports --follow-imports=skip", file=sys.stderr)
-        options.ignore_missing_imports = True
-        if options.follow_imports == 'normal':
-            options.follow_imports = 'skip'
-    if special_opts.dirty_stubs:
-        print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
-              "checks the git status of stubs.",
-              file=sys.stderr)
-    if special_opts.fast_parser:
-        print("Warning: --fast-parser is now the default (and only) parser.")
-    if special_opts.no_fast_parser:
-        print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
-              "is now mypy's default and only parser.")
-
+    # The python_version is either the default, which can be overridden via a config file,
+    # or stored in special_opts and is passed via the command line.
+    options.python_version = special_opts.python_version or options.python_version
     try:
-        infer_python_version_and_executable(options, special_opts)
+        infer_python_executable(options, special_opts)
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
@@ -852,11 +746,11 @@ def process_options(args: List[str],
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
     if special_opts.find_occurrences:
-        experiments.find_occurrences = special_opts.find_occurrences.split('.')
-        assert experiments.find_occurrences is not None
-        if len(experiments.find_occurrences) < 2:
+        state.find_occurrences = special_opts.find_occurrences.split('.')
+        assert state.find_occurrences is not None
+        if len(state.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(experiments.find_occurrences) != 2:
+        if len(state.find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.
@@ -872,11 +766,10 @@ def process_options(args: List[str],
 
     # Process --cache-map.
     if special_opts.cache_map:
-        process_cache_map(parser, special_opts, options)
+        if options.sqlite_cache:
+            parser.error("--cache-map is incompatible with --sqlite-cache")
 
-    # Let quick_and_dirty imply incremental.
-    if options.quick_and_dirty:
-        options.incremental = True
+        process_cache_map(parser, special_opts, options)
 
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
@@ -1074,7 +967,7 @@ def parse_section(prefix: str, template: Options,
             if dv is None:
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
-                    if report_type in reporter_classes:
+                    if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = section[key]
                     else:
                         print("%s: Unrecognized report type: %s" % (prefix, key),

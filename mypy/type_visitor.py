@@ -19,9 +19,9 @@ from mypy_extensions import trait
 T = TypeVar('T')
 
 from mypy.types import (
-    Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, TypeType, TypeOfAny,
-    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
+    RawExpressionType, Instance, NoneTyp, TypeType,
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
 )
 
@@ -86,6 +86,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_literal_type(self, t: LiteralType) -> T:
+        pass
+
+    @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
         pass
 
@@ -123,6 +127,10 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         pass
 
+    @abstractmethod
+    def visit_raw_expression_type(self, t: RawExpressionType) -> T:
+        pass
+
 
 @trait
 class TypeTranslator(TypeVisitor[Type]):
@@ -151,7 +159,18 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, self.translate_types(t.args), t.line, t.column)
+        final_value = None  # type: Optional[LiteralType]
+        if t.final_value is not None:
+            raw_final_value = t.final_value.accept(self)
+            assert isinstance(raw_final_value, LiteralType)
+            final_value = raw_final_value
+        return Instance(
+            typ=t.type,
+            args=self.translate_types(t.args),
+            line=t.line,
+            column=t.column,
+            final_value=final_value,
+        )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
@@ -180,6 +199,16 @@ class TypeTranslator(TypeVisitor[Type]):
                              # TODO: This appears to be unsafe.
                              cast(Any, t.fallback.accept(self)),
                              t.line, t.column)
+
+    def visit_literal_type(self, t: LiteralType) -> Type:
+        fallback = t.fallback.accept(self)
+        assert isinstance(fallback, Instance)
+        return LiteralType(
+            value=t.value,
+            fallback=fallback,
+            line=t.line,
+            column=t.column,
+        )
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
@@ -263,6 +292,12 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> T:
         return self.query_types(t.items.values())
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> T:
+        return self.strategy([])
+
+    def visit_literal_type(self, t: LiteralType) -> T:
+        return self.strategy([])
 
     def visit_star_type(self, t: StarType) -> T:
         return t.type.accept(self)

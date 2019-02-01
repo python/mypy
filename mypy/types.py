@@ -4,8 +4,8 @@ import sys
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
-    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator,
+    Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
+    Sequence, Iterator,
 )
 
 MYPY = False
@@ -14,10 +14,10 @@ if MYPY:
     from typing_extensions import Final
 
 import mypy.nodes
-from mypy import experiments
+from mypy import state
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncBase, FuncDef,
+    FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper, replace_object_state
@@ -27,11 +27,42 @@ T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
 
-# If we import type_visitor in the middle of the file, mypy breaks, and if we do it
-# at the top, it breaks at runtime because of import cycle issues, so we do it at different
-# times in different places.
+# The set of all valid expressions that can currently be contained
+# inside of a Literal[...].
+#
+# Literals can contain bytes and enum-values: we special-case both of these
+# and store the value as a string. We rely on the fallback type that's also
+# stored with the Literal to determine how a string is being used.
+#
+# TODO: confirm that we're happy with representing enums (and the
+# other types) in the manner described above.
+#
+# Note: if we change the set of types included below, we must also
+# make sure to audit the following methods:
+#
+# 1. types.LiteralType's serialize and deserialize methods: this method
+#    needs to make sure it can convert the below types into JSON and back.
+#
+# 2. types.LiteralType's 'alue_repr` method: this method is ultimately used
+#    by TypeStrVisitor's visit_literal_type to generate a reasonable
+#    repr-able output.
+#
+# 3. server.astdiff.SnapshotTypeVisitor's visit_literal_type_method: this
+#    method assumes that the following types supports equality checks and
+#    hashability.
+#
+# Note: Although "Literal[None]" is a valid type, we internally always convert
+# such a type directly into "None". So, "None" is not a valid parameter of
+# LiteralType and is omitted from this list.
+LiteralValue = Union[int, str, bool]
+
+
+# If we only import type_visitor in the middle of the file, mypy
+# breaks, and if we do it at the top, it breaks at runtime because of
+# import cycle issues, so we do it at the top while typechecking and
+# then again in the middle at runtime.
 if MYPY:
-    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor
 
 
 class TypeOfAny:
@@ -219,48 +250,74 @@ class TypeVarDef(mypy.nodes.Context):
 class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
 
-    __slots__ = ('name', 'args', 'optional', 'empty_tuple_index')
+    __slots__ = ('name', 'args', 'optional', 'empty_tuple_index',
+                 'original_str_expr', 'original_str_fallback')
 
     def __init__(self,
-                 name: str,
+                 name: Optional[str],
                  args: Optional[List[Type]] = None,
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
-                 empty_tuple_index: bool = False) -> None:
+                 empty_tuple_index: bool = False,
+                 original_str_expr: Optional[str] = None,
+                 original_str_fallback: Optional[str] = None,
+                 ) -> None:
         super().__init__(line, column)
         if not args:
             args = []
+        assert name is not None
         self.name = name
         self.args = args
         # Should this type be wrapped in an Optional?
         self.optional = optional
         # Special case for X[()]
         self.empty_tuple_index = empty_tuple_index
+        # If this UnboundType was originally defined as a str or bytes, keep track of
+        # the original contents of that string-like thing. This way, if this UnboundExpr
+        # ever shows up inside of a LiteralType, we can determine whether that
+        # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
+        # (unless 'foo' is an alias for another literal or something) and
+        # Literal["foo"] most likely is.
+        #
+        # We keep track of the entire string instead of just using a boolean flag
+        # so we can distinguish between things like Literal["foo"] vs
+        # Literal["    foo   "].
+        #
+        # We also keep track of what the original base fallback type was supposed to be
+        # so we don't have to try and recompute it later
+        self.original_str_expr = original_str_expr
+        self.original_str_fallback = original_str_fallback
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
-        return hash((self.name, self.optional, tuple(self.args)))
+        return hash((self.name, self.optional, tuple(self.args), self.original_str_expr))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
             return NotImplemented
         return (self.name == other.name and self.optional == other.optional and
-                self.args == other.args)
+                self.args == other.args and self.original_str_expr == other.original_str_expr and
+                self.original_str_fallback == other.original_str_fallback)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnboundType',
                 'name': self.name,
                 'args': [a.serialize() for a in self.args],
+                'expr': self.original_str_expr,
+                'expr_fallback': self.original_str_fallback,
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UnboundType':
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
-                           [deserialize_type(a) for a in data['args']])
+                           [deserialize_type(a) for a in data['args']],
+                           original_str_expr=data['expr'],
+                           original_str_fallback=data['expr_fallback'],
+                           )
 
 
 class CallableArgument(Type):
@@ -344,6 +401,10 @@ class AnyType(Type):
         assert type_of_any != TypeOfAny.from_another_any or source_any is not None
         # We should not have chains of Anys.
         assert not self.source_any or self.source_any.type_of_any != TypeOfAny.from_another_any
+
+    @property
+    def is_from_error(self) -> bool:
+        return self.type_of_any == TypeOfAny.from_error
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
@@ -508,38 +569,77 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'final_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, column: int = -1, erased: bool = False) -> None:
+                 line: int = -1, column: int = -1, erased: bool = False,
+                 final_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
-        assert not typ or typ.fullname() not in ["builtins.Any", "typing.Any"]
         self.type = typ
         self.args = args
-        self.erased = erased  # True if result of type variable substitution
-        self.invalid = False  # True if recovered after incorrect number of type arguments error
         self.type_ref = None  # type: Optional[str]
+
+        # True if result of type variable substitution
+        self.erased = erased
+
+        # True if recovered after incorrect number of type arguments error
+        self.invalid = False
+
+        # This field keeps track of the underlying Literal[...] value if this instance
+        # was created via a Final declaration. For example, if we did `x: Final = 3`, x
+        # would have an instance with a `final_value` of `LiteralType(3, int_fallback)`.
+        #
+        # Or more broadly, this field lets this Instance "remember" its original declaration.
+        # We want this behavior because we want implicit Final declarations to act pretty
+        # much identically with constants: we should be able to replace any places where we
+        # use some Final variable with the original value and get the same type-checking
+        # behavior. For example, we want this program:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    var: Final = 3
+        #    expects_literal(var)
+        #
+        # ...to type-check in the exact same way as if we had written the program like this:
+        #
+        #    def expects_literal(x: Literal[3]) -> None: pass
+        #    expects_literal(3)
+        #
+        # In order to make this work (especially with literal types), we need var's type
+        # (an Instance) to remember the "original" value.
+        #
+        # This field is currently set only when we encounter an *implicit* final declaration
+        # like `x: Final = 3` where the RHS is some literal expression. This field remains 'None'
+        # when we do things like `x: Final[int] = 3` or `x: Final = foo + bar`.
+        #
+        # Currently most of mypy will ignore this field and will continue to treat this type like
+        # a regular Instance. We end up using this field only when we are explicitly within a
+        # Literal context.
+        self.final_value = final_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args)))
+        return hash((self.type, tuple(self.args), self.final_value))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
             return NotImplemented
-        return self.type == other.type and self.args == other.args
+        return (self.type == other.type
+                and self.args == other.args
+                and self.final_value == other.final_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
-        if not self.args:
+        if not self.args and not self.final_value:
             return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         data['type_ref'] = type_ref
         data['args'] = [arg.serialize() for arg in self.args]
+        if self.final_value is not None:
+            data['final_value'] = self.final_value.serialize()
         return data
 
     @classmethod
@@ -556,10 +656,21 @@ class Instance(Type):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
+        if 'final_value' in data:
+            inst.final_value = LiteralType.deserialize(data['final_value'])
         return inst
 
-    def copy_modified(self, *, args: List[Type]) -> 'Instance':
-        return Instance(self.type, args, self.line, self.column, self.erased)
+    def copy_modified(self, *,
+                      args: Bogus[List[Type]] = _dummy,
+                      final_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
+        return Instance(
+            self.type,
+            args if args is not _dummy else self.args,
+            self.line,
+            self.column,
+            self.erased,
+            final_value if final_value is not _dummy else self.final_value,
+        )
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
@@ -641,9 +752,6 @@ class FunctionLike(Type):
     @abstractmethod
     def is_type_obj(self) -> bool: pass
 
-    def is_concrete_type_obj(self) -> bool:
-        return self.is_type_obj()
-
     @abstractmethod
     def type_object(self) -> mypy.nodes.TypeInfo: pass
 
@@ -671,8 +779,6 @@ class CallableType(FunctionLike):
                  'arg_kinds',  # ARG_ constants
                  'arg_names',  # Argument names; None if not a keyword argument
                  'min_args',  # Minimum number of arguments; derived from arg_kinds
-                 'var_arg',  # The formal argument for *args. Derived from arg kinds and types
-                 'kw_arg',  # The formal argument for **kwargs. Derived from arg kinds and types
                  'ret_type',  # Return value type
                  'name',  # Name (may be None; for error messages and plugins)
                  'definition',  # For error messages.  May be None.
@@ -713,14 +819,12 @@ class CallableType(FunctionLike):
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
-        assert not any(tp is None for tp in arg_types), "No annotation must be Any, not None"
         if variables is None:
             variables = []
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
-        self.var_arg, self.kw_arg = self._lookup_star_args(self.arg_types, self.arg_kinds)
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -784,31 +888,29 @@ class CallableType(FunctionLike):
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
         )
 
-    def _lookup_star_args(self,
-                          arg_types: List[Type],
-                          arg_kinds: List[int],
-                          ) -> Tuple[Optional[FormalArgument], Optional[FormalArgument]]:
-        """Returns the formal arguments for *args and **kwargs, if they exist.
-
-        This helper method is used only in the constructor."""
-        star_arg = None
-        kwarg_arg = None
-        for position, (type, kind) in enumerate(zip(arg_types, arg_kinds)):
+    def var_arg(self) -> Optional[FormalArgument]:
+        """The formal argument for *args."""
+        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
             if kind == ARG_STAR:
-                star_arg = FormalArgument(None, position, type, False)
-            elif kind == ARG_STAR2:
-                kwarg_arg = FormalArgument(None, position, type, False)
-        return star_arg, kwarg_arg
+                return FormalArgument(None, position, type, False)
+        return None
+
+    def kw_arg(self) -> Optional[FormalArgument]:
+        """The formal argument for **kwargs."""
+        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
+            if kind == ARG_STAR2:
+                return FormalArgument(None, position, type, False)
+        return None
 
     @property
     def is_var_arg(self) -> bool:
         """Does this callable have a *args argument?"""
-        return self.var_arg is not None
+        return ARG_STAR in self.arg_kinds
 
     @property
     def is_kw_arg(self) -> bool:
         """Does this callable have a **kwargs argument?"""
-        return self.kw_arg is not None
+        return ARG_STAR2 in self.arg_kinds
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()
@@ -832,12 +934,6 @@ class CallableType(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self.name
-
-    def max_fixed_args(self) -> int:
-        n = len(self.arg_types)
-        if self.is_var_arg:
-            n -= 1
-        return n
 
     def max_possible_positional_args(self) -> int:
         """Returns maximum number of positional arguments this method could possibly accept.
@@ -929,15 +1025,17 @@ class CallableType(FunctionLike):
 
     def try_synthesizing_arg_from_kwarg(self,
                                         name: Optional[str]) -> Optional[FormalArgument]:
-        if self.kw_arg is not None:
-            return FormalArgument(name, None, self.kw_arg.typ, False)
+        kw_arg = self.kw_arg()
+        if kw_arg is not None:
+            return FormalArgument(name, None, kw_arg.typ, False)
         else:
             return None
 
     def try_synthesizing_arg_from_vararg(self,
                                          position: Optional[int]) -> Optional[FormalArgument]:
-        if self.var_arg is not None:
-            return FormalArgument(None, position, self.var_arg.typ, False)
+        var_arg = self.var_arg()
+        if var_arg is not None:
+            return FormalArgument(None, position, var_arg.typ, False)
         else:
             return None
 
@@ -1138,12 +1236,23 @@ class TupleType(Type):
 
 
 class TypedDictType(Type):
-    """The type of a TypedDict instance. TypedDict(K1=VT1, ..., Kn=VTn)
+    """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
-    A TypedDictType can be either named or anonymous.
-    If it is anonymous then its fallback will be an Instance of Mapping[str, V].
-    If it is named then its fallback will be an Instance of the named type (ex: "Point")
-    whose TypeInfo has a typeddict_type that is anonymous.
+    A TypedDict object is a dictionary with specific string (literal) keys. Each
+    key has a value with a distinct type that depends on the key. TypedDict objects
+    are normal dict objects at runtime.
+
+    A TypedDictType can be either named or anonymous. If it's anonymous, its
+    fallback will mypy_extensions._TypedDict (Instance). _TypedDict is a subclass
+    of Mapping[str, object] and defines all non-mapping dict methods that TypedDict
+    supports. Some dict methods are unsafe and not supported. _TypedDict isn't defined
+    at runtime.
+
+    If a TypedDict is named, its fallback will be an Instance of the named type
+    (ex: "Point") whose TypeInfo has a typeddict_type that is anonymous. This
+    is similar to how named tuples work.
+
+    TODO: The fallback structure is perhaps overly complicated.
     """
 
     items = None  # type: OrderedDict[str, Type]  # item_name -> item_type
@@ -1193,7 +1302,7 @@ class TypedDictType(Type):
                              Instance.deserialize(data['fallback']))
 
     def is_anonymous(self) -> bool:
-        return self.fallback.type.fullname() == 'typing.Mapping'
+        return self.fallback.type.fullname() == 'mypy_extensions._TypedDict'
 
     def as_anonymous(self) -> 'TypedDictType':
         if self.is_anonymous():
@@ -1216,10 +1325,7 @@ class TypedDictType(Type):
 
     def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
         anonymous = self.as_anonymous()
-        return anonymous.fallback.copy_modified(args=[  # i.e. Mapping
-            anonymous.fallback.args[0],                 # i.e. str
-            value_type
-        ])
+        return anonymous.fallback
 
     def names_are_wider_than(self, other: 'TypedDictType') -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
@@ -1241,6 +1347,153 @@ class TypedDictType(Type):
             if item_name in left.items:
                 continue
             yield (item_name, None, right_item_type)
+
+
+class RawExpressionType(Type):
+    """A synthetic type representing some arbitrary expression that does not cleanly
+    translate into a type.
+
+    This synthetic type is only used at the beginning stages of semantic analysis
+    and should be completely removing during the process for mapping UnboundTypes to
+    actual types: we either turn it into a LiteralType or an AnyType.
+
+    For example, suppose `Foo[1]` is initially represented as the following:
+
+        UnboundType(
+            name='Foo',
+            args=[
+                RawExpressionType(value=1, base_type_name='builtins.int'),
+            ],
+        )
+
+    As we perform semantic analysis, this type will transform into one of two
+    possible forms.
+
+    If 'Foo' was an alias for 'Literal' all along, this type is transformed into:
+
+        LiteralType(value=1, fallback=int_instance_here)
+
+    Alternatively, if 'Foo' is an unrelated class, we report an error and instead
+    produce something like this:
+
+        Instance(type=typeinfo_for_foo, args=[AnyType(TypeOfAny.from_error))
+
+    If the "note" field is not None, the provided note will be reported alongside the
+    error at this point.
+
+    Note: if "literal_value" is None, that means this object is representing some
+    expression that cannot possibly be a parameter of Literal[...]. For example,
+    "Foo[3j]" would be represented as:
+
+        UnboundType(
+            name='Foo',
+            args=[
+                RawExpressionType(value=None, base_type_name='builtins.complex'),
+            ],
+        )
+    """
+    def __init__(self,
+                 literal_value: Optional[LiteralValue],
+                 base_type_name: str,
+                 line: int = -1,
+                 column: int = -1,
+                 note: Optional[str] = None,
+                 ) -> None:
+        super().__init__(line, column)
+        self.literal_value = literal_value
+        self.base_type_name = base_type_name
+        self.note = note
+
+    def simple_name(self) -> str:
+        return self.base_type_name.replace("builtins.", "")
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
+        return visitor.visit_raw_expression_type(self)
+
+    def serialize(self) -> JsonDict:
+        assert False, "Synthetic types don't serialize"
+
+    def __hash__(self) -> int:
+        return hash((self.literal_value, self.base_type_name))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, RawExpressionType):
+            return (self.base_type_name == other.base_type_name
+                    and self.literal_value == other.literal_value)
+        else:
+            return NotImplemented
+
+
+class LiteralType(Type):
+    """The type of a Literal instance. Literal[Value]
+
+    A Literal always consists of:
+
+    1. A native Python object corresponding to the contained inner value
+    2. A fallback for this Literal. The fallback also corresponds to the
+       parent type this Literal subtypes.
+
+    For example, 'Literal[42]' is represented as
+    'LiteralType(value=42, fallback=instance_of_int)'
+    """
+    __slots__ = ('value', 'fallback')
+
+    def __init__(self, value: LiteralValue, fallback: Instance,
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.value = value
+        self.fallback = fallback
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_literal_type(self)
+
+    def __hash__(self) -> int:
+        return hash((self.value, self.fallback))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, LiteralType):
+            return self.fallback == other.fallback and self.value == other.value
+        else:
+            return NotImplemented
+
+    def value_repr(self) -> str:
+        """Returns the string representation of the underlying type.
+
+        This function is almost equivalent to running `repr(self.value)`,
+        except it includes some additional logic to correctly handle cases
+        where the value is a string, byte string, or a unicode string.
+        """
+        raw = repr(self.value)
+        fallback_name = self.fallback.type.fullname()
+        if fallback_name == 'builtins.bytes':
+            # Note: 'builtins.bytes' only appears in Python 3, so we want to
+            # explicitly prefix with a "b"
+            return 'b' + raw
+        elif fallback_name == 'builtins.unicode':
+            # Similarly, 'builtins.unicode' only appears in Python 2, where we also
+            # want to explicitly prefix
+            return 'u' + raw
+        else:
+            # 'builtins.str' could mean either depending on context, but either way
+            # we don't prefix: it's the "native" string. And of course, if value is
+            # some other type, we just return that string repr directly.
+            return raw
+
+    def serialize(self) -> Union[JsonDict, str]:
+        return {
+            '.class': 'LiteralType',
+            'value': self.value,
+            'fallback': self.fallback.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'LiteralType':
+        assert data['.class'] == 'LiteralType'
+        return LiteralType(
+            value=data['value'],
+            fallback=Instance.deserialize(data['fallback']),
+        )
 
 
 class StarType(Type):
@@ -1359,7 +1612,7 @@ class UnionType(Type):
 
     def relevant_items(self) -> List[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return self.items
         else:
             return [i for i in self.items if not isinstance(i, NoneTyp)]
@@ -1546,10 +1799,9 @@ class ForwardRef(Type):
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-if not MYPY:
-    from mypy.type_visitor import (  # noqa
-        TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
-    )
+from mypy.type_visitor import (  # noqa
+    TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+)
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -1567,9 +1819,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
 
-    def visit_unbound_type(self, t: UnboundType)-> str:
+    def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
-        if t.args != []:
+        if t.args:
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
@@ -1689,13 +1941,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = '{' + ', '.join(item_str(name, typ.accept(self))
                             for name, typ in t.items.items()) + '}'
         prefix = ''
-        suffix = ''
         if t.fallback and t.fallback.type:
-            if t.fallback.type.fullname() != 'typing.Mapping':
+            if t.fallback.type.fullname() != 'mypy_extensions._TypedDict':
                 prefix = repr(t.fallback.type.fullname()) + ', '
-            else:
-                suffix = ', fallback={}'.format(t.fallback.accept(self))
-        return 'TypedDict({}{}{})'.format(prefix, s, suffix)
+        return 'TypedDict({}{})'.format(prefix, s)
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> str:
+        return repr(t.literal_value)
+
+    def visit_literal_type(self, t: LiteralType) -> str:
+        return 'Literal[{}]'.format(t.value_repr())
 
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)
@@ -1916,6 +2171,21 @@ def union_items(typ: Type) -> List[Type]:
         return items
     else:
         return [typ]
+
+
+def is_generic_instance(tp: Type) -> bool:
+    return isinstance(tp, Instance) and bool(tp.args)
+
+
+def is_optional(t: Type) -> bool:
+    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+
+
+def remove_optional(typ: Type) -> Type:
+    if isinstance(typ, UnionType):
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+    else:
+        return typ
 
 
 names = globals().copy()  # type: Final

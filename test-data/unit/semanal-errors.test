@@ -198,21 +198,21 @@ import typing
 import m
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -221,7 +221,7 @@ import m
 from .x import y
 [out]
 tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
-tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -231,7 +231,7 @@ import m.a
 from .x import y
 [out]
 tmp/m/a.py:1: error: Cannot find module named 'm.x'
-tmp/m/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleNotImported]
 import typing
@@ -279,17 +279,17 @@ main:4: error: Name 'n' is not defined
 import typing
 import m.n
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Cannot find module named 'm.n'
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find module named 'm'
 
-[case testMissingPackage]
+[case testMissingPackage2]
 import typing
 from m.n import x
 from a.b import *
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:3: error: Cannot find module named 'a.b'
 
 [case testErrorInImportedModule]
@@ -318,9 +318,9 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Cannot find module named 'm.n'
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find module named 'm'
 
 [case testBreakOutsideLoop]
 break
@@ -877,7 +877,7 @@ A[TypeVar] # E: Invalid type "typing.TypeVar"
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
-A[1] # E: Type expected within [...]
+A[1] # E: Invalid type: try using Literal[1] instead?
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypes]
@@ -993,7 +993,7 @@ S = TypeVar('S', covariant=True, contravariant=True) \
 [case testInvalidTypevarValues]
 from typing import TypeVar
 b = TypeVar('b', *[int]) # E: Unexpected argument to TypeVar()
-c = TypeVar('c', int, 2) # E: Type expected
+c = TypeVar('c', int, 2) # E: Invalid type: try using Literal[2] instead?
 [out]
 
 [case testObsoleteTypevarValuesSyntax]
@@ -1056,8 +1056,16 @@ from typing import Generic as t # E: Name 't' already defined on line 2
 def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
 
-[case testInvalidStrLiteralType2]
-def f(x: 'int['): pass # E: syntax error in type comment
+[case testInvalidStrLiteralStrayBrace]
+def f(x: 'int['): pass # E: Invalid type comment or annotation
+[out]
+
+[case testInvalidStrLiteralSpaces]
+def f(x: 'A B'): pass # E: Invalid type comment or annotation
+[out]
+
+[case testInvalidMultilineLiteralType]
+def f() -> "A\nB": pass  # E: Invalid type comment or annotation
 [out]
 
 [case testInconsistentOverload]

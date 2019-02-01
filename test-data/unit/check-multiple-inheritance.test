@@ -240,3 +240,272 @@ def dec(f: Callable[..., T]) -> Callable[..., T]:
 [out]
 main:3: error: Cannot determine type of 'f' in base class 'B'
 main:3: error: Cannot determine type of 'f' in base class 'C'
+
+[case testMultipleInheritance_NestedClassesWithSameName]
+class Mixin1:
+    class Meta:
+        pass
+class Mixin2:
+    class Meta:
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:7: error: Definition of "Meta" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassesWithSameNameCustomMetaclass]
+class Metaclass(type):
+    pass
+class Mixin1:
+    class Meta(metaclass=Metaclass):
+        pass
+class Mixin2:
+    class Meta(metaclass=Metaclass):
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:9: error: Definition of "Meta" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassesWithSameNameOverloadedNew]
+from mixins import Mixin1, Mixin2
+class A(Mixin1, Mixin2):
+    pass
+[file mixins.py]
+class Mixin1:
+    class Meta:
+        pass
+class Mixin2:
+    class Meta:
+        pass
+[file mixins.pyi]
+from typing import overload, Any, Mapping, Dict
+class Mixin1:
+    class Meta:
+        @overload
+        def __new__(cls, *args, **kwargs: None) -> Mixin1.Meta:
+            pass
+        @overload
+        def __new__(cls, *args, **kwargs: Dict[str, Any]) -> Mixin1.Meta:
+            pass
+class Mixin2:
+    class Meta:
+        pass
+[builtins fixtures/dict.pyi]
+[out]
+main:2: error: Definition of "Meta" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassAndAttrHaveSameName]
+class Mixin1:
+    class Nested1:
+        pass
+class Mixin2:
+    Nested1: str
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:6: error: Definition of "Nested1" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassAndFunctionHaveSameName]
+class Mixin1:
+    class Nested1:
+        pass
+class Mixin2:
+    def Nested1(self) -> str:
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+main:7: error: Definition of "Nested1" in base class "Mixin1" is incompatible with definition in base class "Mixin2"
+
+[case testMultipleInheritance_NestedClassAndRefToOtherClass]
+class Outer:
+    pass
+class Mixin1:
+    class Nested1:
+        pass
+class Mixin2:
+    Nested1 = Outer
+class A(Mixin2, Mixin1):
+    pass
+[out]
+main:8: error: Definition of "Nested1" in base class "Mixin2" is incompatible with definition in base class "Mixin1"
+
+[case testMultipleInheritance_ReferenceToSubclassesFromSameMRO]
+class A:
+    def __init__(self, arg: str) -> None:
+        pass
+class B(A):
+    pass
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[out]
+
+[case testMultipleInheritance_ReferenceToSubclassesFromSameMROCustomMetaclass]
+class Metaclass(type):
+    pass
+class A(metaclass=Metaclass):
+    pass
+class B(A):
+    pass
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[out]
+
+[case testMultipleInheritance_ReferenceToSubclassesFromSameMROOverloadedNew]
+from mixins import A, B
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[file mixins.py]
+class A:
+    pass
+class B(A):
+    pass
+[file mixins.pyi]
+from typing import overload, Dict, Any
+class A:
+    @overload
+    def __new__(cls, *args, **kwargs: None) -> A:
+        pass
+    @overload
+    def __new__(cls, *args, **kwargs: Dict[str, Any]) -> A:
+        pass
+class B:
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+main:6: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testMultipleInheritance_ReferenceToGenericClasses]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Generic1(Generic[T]):
+    pass
+class Generic2(Generic[T]):
+    pass
+class Base1:
+    Nested = Generic1
+class Base2:
+    Nested = Generic2
+class A(Base1, Base2):
+    pass
+[out]
+main:11: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_GenericSubclasses_SuperclassFirst]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class ParentGeneric(Generic[T]):
+    pass
+class ChildGeneric(ParentGeneric[T]):
+    pass
+class Base1:
+    Nested = ParentGeneric
+class Base2:
+    Nested = ChildGeneric
+class A(Base1, Base2):
+    pass
+[out]
+main:11: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_GenericSubclasses_SubclassFirst]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class ParentGeneric(Generic[T]):
+    pass
+class ChildGeneric(ParentGeneric[T]):
+    pass
+class Base1:
+    Nested = ParentGeneric
+class Base2:
+    Nested = ChildGeneric
+class A(Base2, Base1):
+    pass
+[out]
+
+[case testMultipleInheritance_RefersToNamedTuples]
+from typing import NamedTuple
+class NamedTuple1:
+    attr1: int
+class NamedTuple2:
+    attr2: int
+class Base1:
+    Nested = NamedTuple1
+class Base2:
+    Nested = NamedTuple2
+class A(Base1, Base2):
+    pass
+[out]
+main:10: error: Definition of "Nested" in base class "Base1" is incompatible with definition in base class "Base2"
+
+[case testMultipleInheritance_NestedVariableRefersToSuperlassUnderSubclass]
+class A:
+    def __init__(self, arg: str) -> None:
+        pass
+class B(A):
+    pass
+class Base1:
+    NestedVar = B
+class Base2:
+    NestedVar = A
+class Combo(Base2, Base1): ...
+[out]
+main:10: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testNestedVariableRefersToSubclassOfAnotherNestedClass]
+class Mixin1:
+    class Meta:
+        pass
+class Outer(Mixin1.Meta):
+    pass
+class Mixin2:
+    NestedVar = Outer
+class Combo(Mixin2, Mixin1): ...
+[out]
+
+[case testNestedVariableRefersToCompletelyDifferentClasses]
+class A:
+    pass
+class B:
+    pass
+class Base1:
+    NestedVar = A
+class Base2:
+    NestedVar = B
+class Combo(Base2, Base1): ...
+[out]
+main:9: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testDoNotFailIfBothNestedClassesInheritFromAny]
+from typing import Any
+class Mixin1:
+    class Meta(Any):
+        pass
+class Mixin2:
+    class Meta(Any):
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]
+
+[case testDoNotFailIfOneOfNestedClassesIsOuterInheritedFromAny]
+from typing import Any
+class Outer(Any):
+    pass
+class Mixin1:
+    Meta = Outer
+class Mixin2:
+    class Meta(Any):
+        pass
+class A(Mixin1, Mixin2):
+    pass
+[out]

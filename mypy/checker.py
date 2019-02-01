@@ -31,16 +31,17 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery
+    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
+    is_optional, remove_optional
 )
-from mypy.sametypes import is_same_type, is_same_types
+from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
     analyze_descriptor_access, is_final_node
 )
-from mypy import messages
+from mypy import message_registry
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
@@ -48,8 +49,9 @@ from mypy.subtypes import (
 )
 from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars, has_no_typevars
-from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
+from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
+from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.mro import calculate_mro
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -61,8 +63,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
-
-from mypy import experiments
+from mypy import state
 
 MYPY = False
 if MYPY:
@@ -272,7 +273,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
-        with experiments.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional):
             self.errors.set_file(self.path, self.tree.fullname(), scope=self.tscope)
             self.tscope.enter_file(self.tree.fullname())
             with self.enter_partial_types():
@@ -293,7 +294,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                     [self.named_type('builtins.unicode')])
                 if not is_subtype(all_.type, seq_str):
                     str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
-                    self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
+                    self.fail(message_registry.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                             all_node)
 
             self.tscope.leave()
@@ -307,7 +308,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         This goes through deferred nodes, returning True if there were any.
         """
         self.recurse_into_functions = True
-        with experiments.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(self.path, self.tree.fullname(), scope=self.tscope)
@@ -431,7 +432,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # valid overloads.
             return None
         if len(defn.items) == 1:
-            self.fail('Single overload definition, multiple required', defn)
+            self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, defn)
 
         if defn.is_property:
             # HACK: Infer the type of the property.
@@ -442,7 +443,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.func.is_abstract:
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
-            self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
+            self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
@@ -504,7 +505,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #     def foo(x: str) -> str: ...
                     #
                     # See Python 2's map function for a concrete example of this kind of overload.
-                    with experiments.strict_optional_set(True):
+                    with state.strict_optional_set(True):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2):
                             self.msg.overloaded_signatures_overlap(
                                 i + 1, i + j + 2, item.func)
@@ -743,11 +744,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             del partial_types[var]
                     else:
                         # Trying to redefine something like partial empty list as function.
-                        self.fail(messages.INCOMPATIBLE_REDEFINITION, defn)
+                        self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
                 else:
                     # TODO: Update conditional type binder.
                     self.check_subtype(new_type, orig_type, defn,
-                                       messages.INCOMPATIBLE_REDEFINITION,
+                                       message_registry.INCOMPATIBLE_REDEFINITION,
                                        'redefinition with type',
                                        'original type')
 
@@ -798,7 +799,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
                             not isinstance(typ.ret_type, NoneTyp) and
                             not self.dynamic_funcs[-1]):
-                        self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
+                        self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
 
                     self.check_for_missing_annotations(fdef)
@@ -825,24 +826,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Refuse contravariant return type variable
                 if isinstance(typ.ret_type, TypeVarType):
                     if typ.ret_type.variance == CONTRAVARIANT:
-                        self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
+                        self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                              typ.ret_type)
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
                     if defn.is_async_generator:
                         if not self.is_async_generator_return_type(typ.ret_type):
-                            self.fail(messages.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ)
+                            self.fail(message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR,
+                                      typ)
                     else:
                         if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
-                            self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+                            self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
                     # Python 2 generators aren't allowed to return values.
                     if (self.options.python_version[0] == 2 and
                             isinstance(typ.ret_type, Instance) and
                             typ.ret_type.type.fullname() == 'typing.Generator'):
                         if not isinstance(typ.ret_type.args[2], (NoneTyp, AnyType)):
-                            self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
+                            self.fail(message_registry.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
                 # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
                 if defn.is_awaitable_coroutine:
@@ -881,16 +883,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if typ.arg_names[i] in ['self', 'cls']:
                                 if (self.options.python_version[0] < 3
                                         and is_same_type(erased, arg_type) and not isclass):
-                                    msg = ("Invalid type for self, or extra argument type "
-                                           "in function annotation")
+                                    msg = message_registry.INVALID_SELF_TYPE_OR_EXTRA_ARG
                                     note = '(Hint: typically annotations omit the type for self)'
                                 else:
-                                    msg = ("The erased type of self '{}' "
-                                           "is not a supertype of its class '{}'"
-                                           ).format(erased, ref_type)
+                                    msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                                        erased, ref_type)
                             else:
-                                msg = ("Self argument missing for a non-static method "
-                                       "(or an invalid type for self)")
+                                msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
                             self.fail(msg, defn)
                             if note:
                                 self.note(note, defn)
@@ -904,7 +903,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             ctx = arg_type  # type: Context
                             if ctx.line < 0:
                                 ctx = typ
-                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
+                            self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',
@@ -950,9 +949,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # entirely pass/Ellipsis.
                     if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
-                        self.msg.note(messages.INVALID_IMPLICIT_RETURN, defn)
+                        self.msg.note(message_registry.INVALID_IMPLICIT_RETURN, defn)
                     else:
-                        self.msg.fail(messages.MISSING_RETURN_STATEMENT, defn)
+                        self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 
@@ -983,20 +982,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
-                self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
+                self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = fdef.type.ret_type
                 if is_unannotated_any(ret_type):
-                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_generator:
                     if is_unannotated_any(self.get_generator_return_type(ret_type,
                                                                         fdef.is_coroutine)):
-                        self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
-                        self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
-                    self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
         body = block.body
@@ -1064,7 +1063,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         forward_inst = reverse_type.arg_types[1]
         if isinstance(forward_inst, TypeVarType):
             forward_inst = forward_inst.upper_bound
-        if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType)):
+        if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType, LiteralType)):
             forward_inst = forward_inst.fallback
         if isinstance(forward_inst, TypeType):
             item = forward_inst.item
@@ -1220,7 +1219,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if len(self.scope.stack) == 1:
             # module scope
             if name == '__getattribute__':
-                self.msg.fail('__getattribute__ is not valid at the module level', context)
+                self.msg.fail(message_registry.MODULE_LEVEL_GETATTRIBUTE, context)
                 return
             # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
             # show an error for Python < 3.7, but that would be annoying in code that supports
@@ -1475,6 +1474,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # are erased, then it is definitely an incompatibility.
 
                 override_ids = override.type_var_ids()
+                type_name = None
+                if isinstance(override.definition, FuncDef):
+                    type_name = override.definition.info.name()
 
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
@@ -1483,7 +1485,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if not is_subtype(original.arg_types[i],
                                       erase_override(override.arg_types[i])):
                         self.msg.argument_incompatible_with_supertype(
-                            i + 1, name, name_in_super, supertype, node)
+                            i + 1, name, type_name, name_in_super, supertype, node)
                         emitted_msg = True
 
                 if not is_subtype(erase_override(override.ret_type),
@@ -1526,7 +1528,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         for base in typ.mro[1:]:
             if base.is_final:
-                self.fail('Cannot inherit from final class "{}"'.format(base.name()), defn)
+                self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name()), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1604,6 +1606,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
 
+    def determine_type_of_class_member(self, sym: SymbolTableNode) -> Optional[Type]:
+        if sym.type is not None:
+            return sym.type
+        if isinstance(sym.node, FuncBase):
+            return self.function_type(sym.node)
+        if isinstance(sym.node, TypeInfo):
+            # nested class
+            return type_object_type(sym.node, self.named_type)
+        return None
+
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
         """Check if attribute name in base1 is compatible with base2 in multiple inheritance.
@@ -1617,19 +1629,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         first = base1[name]
         second = base2[name]
-        first_type = first.type
-        if first_type is None and isinstance(first.node, FuncBase):
-            first_type = self.function_type(first.node)
-        second_type = second.type
-        if second_type is None and isinstance(second.node, FuncBase):
-            second_type = self.function_type(second.node)
+        first_type = self.determine_type_of_class_member(first)
+        second_type = self.determine_type_of_class_member(second)
+
         # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
-            # Method override
-            first_sig = bind_self(first_type)
-            second_sig = bind_self(second_type)
-            ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
+            if first_type.is_type_obj() and second_type.is_type_obj():
+                # For class objects only check the subtype relationship of the classes,
+                # since we allow incompatible overrides of '__init__'/'__new__'
+                ok = is_subtype(left=fill_typevars_with_any(first_type.type_object()),
+                                right=fill_typevars_with_any(second_type.type_object()))
+            else:
+                first_sig = bind_self(first_type)
+                second_sig = bind_self(second_type)
+                ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
         else:
@@ -1667,7 +1681,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if lvalue_type is None:
                 # TODO: This is broken.
                 lvalue_type = AnyType(TypeOfAny.special_form)
-            message = '{} "{}"'.format(messages.INCOMPATIBLE_IMPORT_OF,
+            message = '{} "{}"'.format(message_registry.INCOMPATIBLE_IMPORT_OF,
                                        cast(NameExpr, assign.rvalue).name)
             self.check_simple_assignment(lvalue_type, assign.rvalue, node,
                                          msg=message, lvalue_name='local name',
@@ -1719,7 +1733,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.check_final(s)
         if (s.is_final_def and s.type and not has_no_typevars(s.type)
                 and self.scope.active_class() is not None):
-            self.fail("Final name declared in class body cannot depend on type variables", s)
+            self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -1786,7 +1800,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif (isinstance(lvalue, MemberExpr) and
                         lvalue.kind is None):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
-                    rvalue_type, infer_lvalue_type = self.check_member_assignment(
+                    rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
                         instance_type, lvalue_type, rvalue, lvalue)
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
@@ -1809,8 +1823,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
-                                         rvalue)
+                rvalue_type = self.expr_checker.accept(
+                    rvalue,
+                    in_final_declaration=inferred.is_final,
+                )
+                self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
@@ -1910,7 +1927,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     lvalue_node.is_staticmethod = True
 
             return self.check_subtype(compare_type, base_type, lvalue,
-                                      messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                      message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
                                       'base class "%s" defined the type as' % base.name())
         return True
@@ -1960,14 +1977,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not isinstance(base_node, Var):
             return True
         if node.is_classvar and not base_node.is_classvar:
-            self.fail('Cannot override instance variable '
-                      '(previously declared on base class "%s") '
-                      'with class variable' % base.name(), node)
+            self.fail(message_registry.CANNOT_OVERRIDE_INSTANCE_VAR.format(base.name()), node)
             return False
         elif not node.is_classvar and base_node.is_classvar:
-            self.fail('Cannot override class variable '
-                      '(previously declared on base class "%s") '
-                      'with instance variable' % base.name(), node)
+            self.fail(message_registry.CANNOT_OVERRIDE_CLASS_VAR.format(base.name()), node)
             return False
         return True
 
@@ -2469,7 +2482,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
-                                msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                msg: str = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                 lvalue_name: str = 'variable',
                                 rvalue_name: str = 'expression') -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
@@ -2490,59 +2503,80 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
-                                rvalue: Expression, context: Context) -> Tuple[Type, bool]:
+                                rvalue: Expression, context: Context) -> Tuple[Type, Type, bool]:
         """Type member assignment.
 
         This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
-        Return the inferred rvalue_type and whether to infer anything about the attribute type.
+        Return the inferred rvalue_type, inferred lvalue_type, and whether to use the binder
+        for this assignment.
+
+        Note: this method exists here and not in checkmember.py, because we need to take
+        care about interaction between binder and __set__().
         """
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
                 isinstance(instance_type, TypeType)):
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, True
+            return rvalue_type, attribute_type, True
 
         if not isinstance(attribute_type, Instance):
+            # TODO: support __set__() for union types.
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, True
+            return rvalue_type, attribute_type, True
 
+        get_type = analyze_descriptor_access(
+            instance_type, attribute_type, self.named_type,
+            self.msg, context, chk=self)
         if not attribute_type.type.has_readable_member('__set__'):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            if attribute_type.type.has_readable_member('__get__'):
-                attribute_type = analyze_descriptor_access(
-                    instance_type, attribute_type, self.named_type,
-                    self.msg, context, chk=self)
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, True
+            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
+            return rvalue_type, get_type, True
 
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
-            self.msg.fail("{}.__set__ is not callable".format(attribute_type), context)
-            return AnyType(TypeOfAny.from_error), False
+            self.msg.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type),
+                          context)
+            return AnyType(TypeOfAny.from_error), get_type, False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
         bound_method = bind_self(function, attribute_type)
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
+        # Here we just infer the type, the result should be type-checked like a normal assignment.
+        # For this we use the rvalue as type context.
+        self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
             dunder_set_type, [TempNode(instance_type), rvalue],
             [nodes.ARG_POS, nodes.ARG_POS], context)
+        self.msg.enable_errors()
 
-        if not isinstance(inferred_dunder_set_type, CallableType):
-            self.fail("__set__ is not callable", context)
-            return AnyType(TypeOfAny.from_error), True
+        # And now we type check the call second time, to show errors related
+        # to wrong arguments count, etc.
+        self.expr_checker.check_call(
+            dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
+
+        # should be handled by get_method above
+        assert isinstance(inferred_dunder_set_type, CallableType)
 
         if len(inferred_dunder_set_type.arg_types) < 2:
             # A message already will have been recorded in check_call
-            return AnyType(TypeOfAny.from_error), False
+            return AnyType(TypeOfAny.from_error), get_type, False
 
-        return inferred_dunder_set_type.arg_types[1], False
+        set_type = inferred_dunder_set_type.arg_types[1]
+        # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
+        # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
+        # by this assignment. Technically, this is not safe, but in practice this is
+        # what a user expects.
+        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
+        infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
+        return rvalue_type if infer else set_type, get_type, infer
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Expression, context: Context) -> None:
@@ -2565,9 +2599,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             method_type = self.expr_checker.analyze_external_member_access(
                 '__setitem__', basetype, context)
         lvalue.method_type = method_type
-        self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
-                                     [nodes.ARG_POS, nodes.ARG_POS],
-                                     context)
+        self.expr_checker.check_method_call(
+            '__setitem__', basetype, method_type, [lvalue.index, rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
 
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Expression) -> None:
@@ -2617,7 +2651,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return_type = self.return_types[-1]
 
             if isinstance(return_type, UninhabitedType):
-                self.fail(messages.NO_RETURN_EXPECTED, s)
+                self.fail(message_registry.NO_RETURN_EXPECTED, s)
                 return
 
             if s.expr:
@@ -2638,7 +2672,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                allow_none_return=allow_none_func_call)
 
                 if defn.is_async_generator:
-                    self.fail("'return' with value in async generator is not allowed", s)
+                    self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
                     return
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
@@ -2659,7 +2693,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Functions returning a value of type None are allowed to have a None return.
                     if is_lambda or isinstance(typ, NoneTyp):
                         return
-                    self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
+                    self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
                 else:
                     self.check_subtype(
                         subtype_label='got',
@@ -2667,7 +2701,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype_label='expected',
                         supertype=return_type,
                         context=s,
-                        msg=messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
+                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
                 # coroutines.
@@ -2679,7 +2713,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
 
                 if self.in_checked_function():
-                    self.fail(messages.RETURN_VALUE_EXPECTED, s)
+                    self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         """Type check an if statement."""
@@ -2691,11 +2725,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if isinstance(t, DeletedType):
                     self.msg.deleted_as_rvalue(t, s)
-
-                if self.options.strict_boolean:
-                    is_bool = isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'
-                    if not (is_bool or isinstance(t, AnyType)):
-                        self.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
 
                 if_map, else_map = self.find_isinstance_check(e)
 
@@ -2749,7 +2778,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.expr_checker.accept(s.msg)
 
         if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
-            self.warn(messages.MALFORMED_ASSERT, s)
+            self.warn(message_registry.MALFORMED_ASSERT, s)
 
         # If this is asserting some isinstance check, bind that type in the following code
         true_map, _ = self.find_isinstance_check(s.expr)
@@ -2791,7 +2820,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         expected_type = self.named_type('builtins.BaseException')  # type: Type
         if optional:
             expected_type = UnionType([expected_type, NoneTyp()])
-        self.check_subtype(typ, expected_type, s, messages.INVALID_EXCEPTION)
+        self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
@@ -2895,17 +2924,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(ttype, FunctionLike):
                 item = ttype.items()[0]
                 if not item.is_type_obj():
-                    self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                    self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
                     return AnyType(TypeOfAny.from_error)
                 exc_type = item.ret_type
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
-                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
                 return AnyType(TypeOfAny.from_error)
 
             if not is_subtype(exc_type, self.named_type('builtins.BaseException')):
-                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
                 return AnyType(TypeOfAny.from_error)
 
             all_types.append(exc_type)
@@ -2943,20 +2972,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-        method = echk.analyze_external_member_access('__aiter__', iterable, expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
-        method = echk.analyze_external_member_access('__anext__', iterator, expr)
-        awaitable = echk.check_call(method, [], [], expr)[0]
+        iterator = echk.check_method_call_by_name('__aiter__', iterable, [], [], expr)[0]
+        awaitable = echk.check_method_call_by_name('__anext__', iterator, [], [], expr)[0]
         item_type = echk.check_awaitable_expr(awaitable, expr,
-                                              messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+                                              message_registry.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
         return iterator, item_type
 
     def analyze_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
         """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-        method = echk.analyze_external_member_access('__iter__', iterable, expr)
-        iterator = echk.check_call(method, [], [], expr)[0]
+        iterator = echk.check_method_call_by_name('__iter__', iterable, [], [], expr)[0]
 
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
@@ -2969,9 +2995,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
-            method = echk.analyze_external_member_access(nextmethod, iterator,
-                                                         expr)
-            return iterator, echk.check_call(method, [], [], expr)[0]
+            return iterator, echk.check_method_call_by_name(nextmethod, iterator, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
@@ -3010,7 +3034,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         sig = self.function_type(e.func)  # type: Type
         for d in reversed(e.decorators):
             if refers_to_fullname(d, 'typing.overload'):
-                self.fail('Single overload definition, multiple required', e)
+                self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig)
@@ -3050,7 +3074,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         base_attr.node.is_property and
                         cast(Decorator,
                              base_attr.node.items[0]).var.is_settable_property):
-                    self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
+                    self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for expr, target in zip(s.expr, s.target):
@@ -3071,29 +3095,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = echk.accept(expr)
-        enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
-        obj = echk.check_call(enter, [], [], expr)[0]
+        obj = echk.check_method_call_by_name('__aenter__', ctx, [], [], expr)[0]
         obj = echk.check_awaitable_expr(
-            obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
+            obj, expr, message_registry.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
-        exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+        res = echk.check_method_call_by_name(
+            '__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
         echk.check_awaitable_expr(
-            res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
+            res, expr, message_registry.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
     def check_with_item(self, expr: Expression, target: Optional[Expression],
                         infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = echk.accept(expr)
-        enter = echk.analyze_external_member_access('__enter__', ctx, expr)
-        obj = echk.check_call(enter, [], [], expr)[0]
+        obj = echk.check_method_call_by_name('__enter__', ctx, [], [], expr)[0]
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
-        exit = echk.analyze_external_member_access('__exit__', ctx, expr)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        echk.check_method_call_by_name('__exit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
@@ -3417,7 +3438,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     #
 
     def check_subtype(self, subtype: Type, supertype: Type, context: Context,
-                      msg: str = messages.INCOMPATIBLE_TYPES,
+                      msg: str = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
                       supertype_label: Optional[str] = None) -> bool:
         """Generate an error if the subtype is not compatible with
@@ -3792,17 +3813,6 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
-def is_optional(t: Type) -> bool:
-    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
-
-
-def remove_optional(typ: Type) -> Type:
-    if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
-    else:
-        return typ
-
-
 def is_literal_not_implemented(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.NotImplemented'
 
@@ -3832,11 +3842,12 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
     elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType) for it in tp.items):
         return UnionType.make_simplified_union(tp.items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
-        # TypedDict always has non-optional string keys.
-        if tp.fallback.type.fullname() == 'typing.Mapping':
-            return tp.fallback.args[0]
-        elif tp.fallback.type.bases[0].type.fullname() == 'typing.Mapping':
-            return tp.fallback.type.bases[0].args[0]
+        # TypedDict always has non-optional string keys. Find the key type from the Mapping
+        # base class.
+        for base in tp.fallback.type.mro:
+            if base.fullname() == 'typing.Mapping':
+                return map_instance_to_supertype(tp.fallback, base).args[0]
+        assert False, 'No Mapping base class found for TypedDict fallback'
     return None
 
 

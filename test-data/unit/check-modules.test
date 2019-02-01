@@ -1,4 +1,5 @@
 -- Type checker test cases dealing with modules and imports.
+-- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
 [case testAccessImportedDefinitions]
 import m
@@ -80,12 +81,15 @@ def f() -> None: pass
 import typing
 def f() -> None:
     from m import a, b, f, A, B
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = a
-    f()
-    f(a)    # E: Too many arguments for "f"
-    a = A()
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    if int():
+        a = b \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = a
+        f()
+        f(a)    # E: Too many arguments for "f"
+        a = A()
+        a = B() \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
@@ -99,12 +103,13 @@ import typing
 class C:
     def f(self) -> None:
         from m import *
-        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        a = a
-        f()
-        f(a)    # E: Too many arguments for "f"
-        a = A()
-        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        if int():
+            a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+            a = a
+            f()
+            f(a)    # E: Too many arguments for "f"
+            a = A()
+            a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
@@ -175,10 +180,14 @@ x = object()
 import m
 
 i, s = None, None # type: (int, str)
-i = m.x
-i = m.y
-s = m.x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-s = m.y # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    i = m.x
+if int():
+    i = m.y
+if int():
+    s = m.x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    s = m.y # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [file m.py]
 x = y = 1
 [builtins fixtures/primitives.pyi]
@@ -200,7 +209,7 @@ import nonexistent
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModule2]
@@ -212,7 +221,7 @@ m.x = ''
 x = 1
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -225,7 +234,7 @@ m.x = ''
 x = 1
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -234,7 +243,7 @@ import nonexistent, another
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:1: error: Cannot find module named 'another'
 main:2: error: Unsupported left operand type for + ("None")
 
@@ -243,7 +252,7 @@ import nonexistent as x
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModuleUsingFromImport]
@@ -251,7 +260,7 @@ from nonexistent import x
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModuleUsingImportStar]
@@ -259,7 +268,7 @@ from nonexistent import *
 None + ''
 [out]
 main:1: error: Cannot find module named 'nonexistent'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
 [case testAccessingUnknownModule]
@@ -268,7 +277,7 @@ xyz.foo()
 xyz()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAccessingUnknownModule2]
 import xyz, bar
@@ -276,7 +285,7 @@ xyz.foo()
 bar()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:1: error: Cannot find module named 'bar'
 
 [case testAccessingUnknownModule3]
@@ -285,7 +294,7 @@ xyz.foo()
 z()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'xyz' is not defined
 
 [case testAccessingNameImportedFromUnknownModule]
@@ -294,14 +303,14 @@ y.foo()
 z()
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAccessingNameImportedFromUnknownModule2]
 from xyz import *
 y
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'y' is not defined
 
 [case testAccessingNameImportedFromUnknownModule3]
@@ -310,7 +319,7 @@ y
 z
 [out]
 main:1: error: Cannot find module named 'xyz'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
@@ -318,7 +327,7 @@ import xab
 def xab(): pass
 [out]
 main:1: error: Cannot find module named 'xab'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -329,7 +338,7 @@ import nonexistent
 [builtins fixtures/module.pyi]
 [out]
 tmp/x.py:1: error: Cannot find module named 'nonexistent'
-tmp/x.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+tmp/x.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:3: error: Module has no attribute "z"
 
 [case testUnknownModuleImportedWithinFunction]
@@ -339,7 +348,7 @@ def foobar(): pass
 foobar('')
 [out]
 main:2: error: Cannot find module named 'foobar'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Too many arguments for "foobar"
 
 [case testUnknownModuleImportedWithinFunction2]
@@ -349,7 +358,7 @@ def x(): pass
 x('')
 [out]
 main:2: error: Cannot find module named 'foobar'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Too many arguments for "x"
 
 [case testRelativeImports]
@@ -361,7 +370,8 @@ m.a.x = m.a.y # Error
 import typing
 from .b import A, B, x, y
 z = x
-z = y # Error
+if int():
+    z = y # Error
 [file m/b.py]
 import typing
 class A: pass
@@ -369,7 +379,7 @@ class B: pass
 x = A()
 y = B()
 [out]
-tmp/m/a.py:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+tmp/m/a.py:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testRelativeImports2]
@@ -630,7 +640,8 @@ from m import f
 def g() -> None:
     global f
     f = None
-    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+    if int():
+        f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
 [out]
@@ -1704,14 +1715,18 @@ a = 3
 import m, n, o
 
 x = m
-x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
-x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+if int():
+    x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+if int():
+    x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
 
 y = o
-y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
+if int():
+    y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
 
 xx = m
-xx = m
+if int():
+    xx = m
 reveal_type(xx.a)  # E: Revealed type is 'builtins.str'
 
 [file m.py]
@@ -1874,7 +1889,8 @@ import mod
 import othermod
 alias = mod.submod
 reveal_type(alias.whatever('/'))  # E: Revealed type is 'builtins.str*'
-alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
+if int():
+    alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
 [file mod.py]
 import submod
 [file submod.py]
@@ -2090,7 +2106,7 @@ import c
 -- TODO: it would be better for this to be in the other order
 tmp/b.py:1: error: Cannot find module named 'c'
 main:1: error: Cannot find module named 'c'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIndirectFromImportWithinCycle1]
 import a
@@ -2224,7 +2240,7 @@ def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
 main:1: error: Cannot find module named 'a.b'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit4]
 import a.b.c
@@ -2266,7 +2282,7 @@ def __getattr__(attr: str) -> int: ...
 [builtins fixtures/module.pyi]
 [out]
 main:1: error: Cannot find module named 'a.b'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit8]
 import a.b.c.d
@@ -2279,9 +2295,9 @@ def __getattr__(attr: str) -> Any: ...
 # empty (i.e. complete subpackage)
 [builtins fixtures/module.pyi]
 [out]
-main:1: error: Cannot find module named 'a.b.c'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'a.b.c.d'
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:1: error: Cannot find module named 'a.b.c'
 
 [case testModuleGetattrInit8a]
 import a.b.c  # Error
@@ -2294,7 +2310,7 @@ def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
 main:1: error: Cannot find module named 'a.b.c'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit10]
 # flags: --config-file tmp/mypy.ini
@@ -2314,7 +2330,7 @@ ignore_missing_imports = True
 [builtins fixtures/module.pyi]
 [out]
 main:3: error: Cannot find module named 'a.b.d'
-main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
 -- TODO: Fails because of missing ImportedName handling in mypy.typeanal
@@ -2525,3 +2541,154 @@ def __radd__(self) -> int: ...
 
 [case testFunctionWithInPlaceDunderName]
 def __iadd__(self) -> int: ...
+
+-- Tests for PEP 420 namespace packages.
+
+[case testClassicPackage]
+from foo.bar import x
+[file foo/__init__.py]
+# empty
+[file foo/bar.py]
+x = 0
+
+[case testClassicNotPackage]
+from foo.bar import x
+[file foo/bar.py]
+x = 0
+[out]
+main:1: error: Cannot find module named 'foo.bar'
+main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+
+[case testNamespacePackage]
+# flags: --namespace-packages
+from foo.bar import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file foo/bar.py]
+x = 0
+
+[case testNamespacePackageWithMypyPath]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bax import x
+from foo.bay import y
+from foo.baz import z
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+reveal_type(z)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bax.py]
+x = 0
+[file yy/foo/bay.py]
+y = 0
+[file foo/baz.py]
+z = 0
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testClassicPackageIgnoresEarlierNamespacePackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar import y
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar.py]
+x = ''
+[file yy/foo/bar.py]
+y = 0
+[file yy/foo/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackagePickFirstOnMypyPath]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar.py]
+x = 0
+[file yy/foo/bar.py]
+x = ''
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackageInsideClassicPackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar.baz import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar/baz.py]
+x = ''
+[file yy/foo/bar/baz.py]
+x = 0
+[file yy/foo/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testClassicPackageInsideNamespacePackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar.baz.boo import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar/baz/boo.py]
+x = ''
+[file xx/foo/bar/baz/__init__.py]
+[file yy/foo/bar/baz/boo.py]
+x = 0
+[file yy/foo/bar/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackagePlainImport]
+# flags: --namespace-packages
+import foo.bar.baz
+reveal_type(foo.bar.baz.x)  # E: Revealed type is 'builtins.int'
+[file foo/bar/baz.py]
+x = 0
+
+[case testModuleGetAttrAssignUnannotated]
+import roles
+# this should not crash
+roles.role = 1
+
+[file roles.pyi]
+def __getattr__(name): ...
+
+[case testModuleGetAttrAssignUnannotatedDouble]
+import roles
+# this also should not crash
+roles.role.attr = 1
+
+[file roles.pyi]
+def __getattr__(name): ...
+
+[case testModuleGetAttrAssignAny]
+import roles
+roles.role = 1
+
+[file roles.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[case testModuleGetAttrAssignError]
+import roles
+
+roles.role = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[file roles.pyi]
+def __getattr__(name: str) -> str: ...
+
+[case testModuleGetAttrAssignSubmodule]
+import roles
+roles.role = 1
+roles.missing.attr = 1
+
+[file roles/__init__.pyi]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+
+[case testModuleGetAttrAssignSubmoduleStrict]
+import roles
+roles.role = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+
+[file roles/__init__.pyi]
+from types import ModuleType
+def __getattr__(name: str) -> ModuleType: ...
+[builtins fixtures/module.pyi]

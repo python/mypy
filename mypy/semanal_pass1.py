@@ -14,24 +14,27 @@ definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
 This pass also infers the reachability of certain if statements, such as
-those with platform checks.
+those with platform checks. This lets us filter out unreachable imports
+at an early stage.
 """
 
 from typing import List, Tuple
 
-from mypy import experiments
+from mypy import state
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
-    MODULE_REF, implicit_module_attrs
+    implicit_module_attrs, AssertStmt,
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
-from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
+from mypy.semanal import SemanticAnalyzerPass2
+from mypy.reachability import infer_reachability_of_if_statement, assert_will_always_fail
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
+from mypy.renaming import VariableRenameVisitor
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
@@ -59,6 +62,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         and these will get resolved in later phases of semantic
         analysis.
         """
+        if options.allow_redefinition:
+            # Perform renaming across the AST to allow variable redefinitions
+            file.accept(VariableRenameVisitor())
         sem = self.sem
         self.sem.options = options  # Needed because we sometimes call into it
         self.pyversion = options.python_version
@@ -75,7 +81,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
         defs = file.defs
 
-        with experiments.strict_optional_set(options.strict_optional):
+        with state.strict_optional_set(options.strict_optional):
             # Add implicit definitions of module '__name__' etc.
             for name, t in implicit_module_attrs.items():
                 # unicode docstrings should be accepted in Python 2
@@ -92,8 +98,14 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
-            for d in defs:
+            for i, d in enumerate(defs):
                 d.accept(self)
+                if isinstance(d, AssertStmt) and assert_will_always_fail(d, options):
+                    # We've encountered an assert that's always false,
+                    # e.g. assert sys.platform == 'lol'.  Truncate the
+                    # list of statements.  This mutates file.defs too.
+                    del defs[i + 1:]
+                    break
 
             # Add implicit definition of literals/keywords to builtins, as we
             # cannot define a variable with them explicitly.
@@ -353,7 +365,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             assert self.sem.locals[-1] is not None
             if name in self.sem.locals[-1]:
                 # Flag redefinition unless this is a reimport of a module.
-                if not (node.kind == MODULE_REF and
+                if not (isinstance(node.node, MypyFile) and
                         self.sem.locals[-1][name].node == node.node):
                     self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
                     return

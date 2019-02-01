@@ -16,11 +16,13 @@ and also behaves as expected:
 
 .. code-block:: python
 
-   def degrees_to_radians(x: float) -> float:
+   import math
+
+   def degrees_to_radians(degrees: float) -> float:
        return math.pi * degrees / 180
 
    n = 90  # Inferred type 'int'
-   print(degrees_to_radians(n))   # Okay!
+   print(degrees_to_radians(n))  # Okay!
 
 You can also often use :ref:`protocol-types` to achieve a similar effect in
 a more principled and extensible fashion. Protocols don't apply to

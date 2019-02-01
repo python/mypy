@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny
+    FunctionLike, TypeOfAny, LiteralType,
 )
 import mypy.applytype
 import mypy.constraints
@@ -15,14 +15,13 @@ from mypy.erasetype import erase_type
 from mypy import messages, sametypes
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.sametypes import is_same_type
 from mypy.typestate import TypeState, SubtypeKind
-
-from mypy import experiments
+from mypy import state
 
 MYPY = False
 if MYPY:
@@ -165,7 +164,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object') or
                     isinstance(self.right, Instance) and self.right.type.is_protocol and
@@ -326,6 +325,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         else:
             return False
+
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        if isinstance(self.right, LiteralType):
+            return left == self.right
+        else:
+            return self._is_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
@@ -778,10 +783,10 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if right.is_ellipsis_args:
         return True
 
-    left_star = left.var_arg
-    left_star2 = left.kw_arg
-    right_star = right.var_arg
-    right_star2 = right.kw_arg
+    left_star = left.var_arg()
+    left_star2 = left.kw_arg()
+    right_star = right.var_arg()
+    right_star2 = right.kw_arg()
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -992,7 +997,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     return applied
 
 
-def restrict_subtype_away(t: Type, s: Type) -> Type:
+def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) -> Type:
     """Return t minus s.
 
     If we can't determine a precise result, return a supertype of the
@@ -1009,8 +1014,10 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
         # TODO: Implement more robust support for runtime isinstance() checks,
         # see issue #3827
         new_items = [item for item in t.relevant_items()
-                     if (not (is_proper_subtype(erase_type(item), erased_s) or
-                              is_proper_subtype(item, erased_s))
+                     if (not (is_proper_subtype(erase_type(item), erased_s,
+                                                ignore_promotions=ignore_promotions) or
+                              is_proper_subtype(item, erased_s,
+                                                ignore_promotions=ignore_promotions))
                          or isinstance(item, AnyType))]
         return UnionType.make_union(new_items)
     else:
@@ -1054,7 +1061,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, AnyType)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if experiments.STRICT_OPTIONAL:
+        if state.strict_optional:
             return (isinstance(self.right, NoneTyp) or
                     is_named_instance(self.right, 'builtins.object'))
         return True
@@ -1167,6 +1174,12 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     return False
             return True
         return self._is_proper_subtype(left.fallback, right)
+
+    def visit_literal_type(self, left: LiteralType) -> bool:
+        if isinstance(self.right, LiteralType):
+            return left == self.right
+        else:
+            return self._is_proper_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         # TODO: What's the right thing to do here?
