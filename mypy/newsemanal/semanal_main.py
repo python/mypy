@@ -87,7 +87,6 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
 
 def process_functions(graph: 'Graph', scc: List[str]) -> None:
     # Process functions.
-    deferred = []  # type: List[str]
     for module in scc:
         tree = graph[module].tree
         assert tree is not None
