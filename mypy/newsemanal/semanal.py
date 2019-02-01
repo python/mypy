@@ -125,15 +125,6 @@ TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.bytearray': 'builtins.str',
 })
 
-# When analyzing a function, should we analyze the whole function in one go, or
-# should we only perform one phase of the analysis? The latter is used for
-# nested functions. In the first phase we add the function to the symbol table
-# but don't process body. In the second phase we process function body. This
-# way we can have mutually recursive nested functions.
-FUNCTION_BOTH_PHASES = 0  # type: Final  # Everything in one go
-FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # type: Final  # Add to symbol table but postpone body
-FUNCTION_SECOND_PHASE = 2  # type: Final  # Only analyze body
-
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
@@ -193,14 +184,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
 
-    # Status of postponing analysis of nested function bodies. By using this we
-    # can have mutually recursive nested functions. Values are FUNCTION_x
-    # constants. Note that separate phasea are not used for methods.
-    postpone_nested_functions_stack = None  # type: List[int]
-    # Postponed functions collected if
-    # postpone_nested_functions_stack[-1] == FUNCTION_FIRST_PHASE_POSTPONE_SECOND.
-    postponed_functions_stack = None  # type: List[List[Node]]
-
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
@@ -228,6 +211,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
+        # Saved namespaces from previous iteration. Every top-level function/method body is
+        # analyzed in several iterations until all names are resolved. We need to save
+        # the local namespaces for the top level function and all nested functions between
+        # these iterations. See also semanal_main.process_top_level_function().
+        self.saved_locals = {}  # type: Dict[FuncItem, SymbolTable]
         self.imports = set()
         self.type = None
         self.type_stack = []
@@ -243,8 +231,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # missing name in these namespaces, we need to defer the current analysis target,
         # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
-        self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
-        self.postponed_functions_stack = []
         self.all_exports = []  # type: List[str]
         # Map from module id to list of explicitly exported names (i.e. names in __all__).
         self.export_map = {}  # type: Dict[str, List[str]]
@@ -451,67 +437,56 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.add_symbol(func.name(), func, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
-        phase_info = self.postpone_nested_functions_stack[-1]
-        if phase_info != FUNCTION_SECOND_PHASE:
-            self.function_stack.append(defn)
-            # First phase of analysis for function.
-            if not defn._fullname:
-                defn._fullname = self.qualified_name(defn.name())
-            if defn.type:
+        self.function_stack.append(defn)
+
+        if defn.type:
+            assert isinstance(defn.type, CallableType)
+            self.update_function_type_variables(defn.type, defn)
+        self.function_stack.pop()
+
+        defn.is_conditional = self.block_depth[-1] > 0
+
+        if self.is_class_scope():
+            # Method definition
+            assert self.type is not None
+            defn.info = self.type
+            if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                 assert isinstance(defn.type, CallableType)
-                self.update_function_type_variables(defn.type, defn)
-            self.function_stack.pop()
+                if isinstance(defn.type.ret_type, AnyType):
+                    defn.type = defn.type.copy_modified(ret_type=NoneTyp())
+            self.prepare_method_signature(defn, self.type)
 
-            defn.is_conditional = self.block_depth[-1] > 0
-
-            if self.is_class_scope():
-                # Method definition
-                assert self.type is not None
-                defn.info = self.type
-                if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
+        # Analyze function signature and initializers first.
+        with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+            if defn.type:
+                self.check_classvar_in_signature(defn.type)
+                assert isinstance(defn.type, CallableType)
+                # Signature must be analyzed in the surrounding scope so that
+                # class-level imported names and type variables are in scope.
+                analyzer = self.type_analyzer()
+                defn.type = analyzer.visit_callable_type(defn.type, nested=False)
+                self.add_type_alias_deps(analyzer.aliases_used)
+                self.check_function_signature(defn)
+                if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
-                    if isinstance(defn.type.ret_type, AnyType):
-                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
-                self.prepare_method_signature(defn, self.type)
+                    defn.type = set_callable_name(defn.type, defn)
+            for arg in defn.arguments:
+                if arg.initializer:
+                    arg.initializer.accept(self)
 
-            # Analyze function signature and initializers in the first phase
-            # (at least this mirrors what happens at runtime).
-            with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-                if defn.type:
-                    self.check_classvar_in_signature(defn.type)
-                    assert isinstance(defn.type, CallableType)
-                    # Signature must be analyzed in the surrounding scope so that
-                    # class-level imported names and type variables are in scope.
-                    analyzer = self.type_analyzer()
-                    defn.type = analyzer.visit_callable_type(defn.type, nested=False)
-                    self.add_type_alias_deps(analyzer.aliases_used)
-                    self.check_function_signature(defn)
-                    if isinstance(defn, FuncDef):
-                        assert isinstance(defn.type, CallableType)
-                        defn.type = set_callable_name(defn.type, defn)
-                for arg in defn.arguments:
-                    if arg.initializer:
-                        arg.initializer.accept(self)
-
-            if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
-                # Postpone this function (for the second phase).
-                self.postponed_functions_stack[-1].append(defn)
-                return
-        if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
-            # Second phase of analysis for function.
-            self.analyze_function(defn)
-            if defn.is_coroutine and isinstance(defn.type, CallableType):
-                if defn.is_async_generator:
-                    # Async generator types are handled elsewhere
-                    pass
-                else:
-                    # A coroutine defined as `async def foo(...) -> T: ...`
-                    # has external return type `Coroutine[Any, Any, T]`.
-                    any_type = AnyType(TypeOfAny.special_form)
-                    ret_type = self.named_type_or_none('typing.Coroutine',
-                        [any_type, any_type, defn.type.ret_type])
-                    assert ret_type is not None, "Internal error: typing.Coroutine not found"
-                    defn.type = defn.type.copy_modified(ret_type=ret_type)
+        self.analyze_function(defn)
+        if defn.is_coroutine and isinstance(defn.type, CallableType):
+            if defn.is_async_generator:
+                # Async generator types are handled elsewhere
+                pass
+            else:
+                # A coroutine defined as `async def foo(...) -> T: ...`
+                # has external return type `Coroutine[Any, Any, T]`.
+                any_type = AnyType(TypeOfAny.special_form)
+                ret_type = self.named_type_or_none('typing.Coroutine',
+                    [any_type, any_type, defn.type.ret_type])
+                assert ret_type is not None, "Internal error: typing.Coroutine not found"
+                defn.type = defn.type.copy_modified(ret_type=ret_type)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
@@ -630,6 +605,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         types = []
         non_overload_indexes = []
         impl = None  # type: Optional[OverloadPart]
+        # TODO: This is really bad, we should not modify defn.items neither here nor above.
+        if defn.impl:
+            # We are visiting this second time.
+            defn.items.append(defn.impl)
         for i, item in enumerate(defn.items):
             if i != 0:
                 # Assume that the first item was already visited
@@ -780,7 +759,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 a = self.type_analyzer()
                 a.bind_function_type_variables(cast(CallableType, defn.type), defn)
             self.function_stack.append(defn)
-            self.enter()
+            self.enter(defn)
             for arg in defn.arguments:
                 self.add_local(arg.variable, defn)
 
@@ -790,18 +769,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if is_method and not defn.is_static and not defn.is_class and defn.arguments:
                 defn.arguments[0].variable.is_self = True
 
-            # First analyze body of the function but ignore nested functions.
-            self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
-            self.postponed_functions_stack.append([])
             defn.body.accept(self)
-
-            # Analyze nested functions (if any) as a second phase.
-            self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
-            for postponed in self.postponed_functions_stack[-1]:
-                postponed.accept(self)
-            self.postpone_nested_functions_stack.pop()
-            self.postponed_functions_stack.pop()
-
             self.leave()
             self.function_stack.pop()
 
@@ -977,12 +945,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.type_stack.append(self.type)
         self.locals.append(None)  # Add class scope
         self.block_depth.append(-1)  # The class body increments this to 0
-        self.postpone_nested_functions_stack.append(FUNCTION_BOTH_PHASES)
         self.type = info
 
     def leave_class(self) -> None:
         """ Restore analyzer state. """
-        self.postpone_nested_functions_stack.pop()
         self.block_depth.pop()
         self.locals.pop()
         self.type = self.type_stack.pop()
@@ -3797,8 +3763,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             base = self.cur_mod_id
         return base + '.' + n
 
-    def enter(self) -> None:
-        self.locals.append(SymbolTable())
+    def enter(self, function: Optional[FuncItem] = None) -> None:
+        """Enter the function scope.
+
+        The argument can be omitted for temporary scopes (like comprehensions
+        and generator expressions) that can't have incomplete definitions.
+        """
+        if function:
+            names = self.saved_locals.setdefault(function, SymbolTable())
+        else:
+            names = SymbolTable()
+        self.locals.append(names)
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.

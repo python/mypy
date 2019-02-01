@@ -1,22 +1,18 @@
 -- Test cases for the new semantic analyzer
 
 [case testNewAnalyzerEmpty]
-# flags: --new-semantic-analyzer
 
 [case testNewAnalyzerSimpleAssignment]
-# flags: --new-semantic-analyzer
 x = 1
 x.y # E: "int" has no attribute "y"
 y # E: Name 'y' is not defined
 
 [case testNewAnalyzerSimpleAnnotation]
-# flags: --new-semantic-analyzer
 x: int = 0
 y: str = 0 \
     # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testNewAnalyzerSimpleClass]
-# flags: --new-semantic-analyzer
 class A:
     x: int
 a: A
@@ -24,12 +20,10 @@ a.x
 a.y # E: "A" has no attribute "y"
 
 [case testNewAnalyzerErrorInClassBody]
-# flags: --new-semantic-analyzer
 class A:
     x # E: Name 'x' is not defined
 
 [case testNewAnalyzerTypeAnnotationForwardReference]
-# flags: --new-semantic-analyzer
 class A:
     b: B
 class B:
@@ -42,7 +36,6 @@ b.a = a
 b.a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testNewAnalyzerTypeAnnotationCycle1]
-# flags: --new-semantic-analyzer
 import b
 [file a.py]
 import b
@@ -56,7 +49,6 @@ x: a.A
 reveal_type(x) # E: Revealed type is 'a.A'
 
 [case testNewAnalyzerTypeAnnotationCycle2]
-# flags: --new-semantic-analyzer
 import a
 [file a.py]
 from b import B
@@ -73,7 +65,6 @@ tmp/b.py:4: error: "A" not callable
 tmp/a.py:4: error: "B" not callable
 
 [case testNewAnalyzerTypeAnnotationCycle3]
-# flags: --new-semantic-analyzer
 import b
 [file a.py]
 from b import bad # E: Module 'b' has no attribute 'bad'
@@ -81,7 +72,6 @@ from b import bad # E: Module 'b' has no attribute 'bad'
 from a import bad2 # E: Module 'a' has no attribute 'bad2'
 
 [case testNewAnalyzerTypeAnnotationCycle4]
-# flags: --new-semantic-analyzer
 import b
 [file a.py]
 # TODO: Could we generate an error here as well?
@@ -90,7 +80,6 @@ from b import bad
 from a import bad # E: Module 'a' has no attribute 'bad'
 
 [case testNewAnalyzerSimpleFunction]
-# flags: --new-semantic-analyzer
 def f(x: int) -> str:
     return 'x'
 
@@ -99,7 +88,6 @@ def g(x: int) -> int:
     return y # E: Incompatible return value type (got "str", expected "int")
 
 [case testNewAnalyzerSimpleMethod]
-# flags: --new-semantic-analyzer
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -111,7 +99,6 @@ class A:
         return self.f() # E: Incompatible return value type (got "str", expected "int")
 
 [case testNewAnalyzerFunctionForwardRef]
-# flags: --new-semantic-analyzer
 def f() -> None:
     x = g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
     reveal_type(x) # E: Revealed type is 'builtins.str'
@@ -120,7 +107,6 @@ def g(x: str) -> str:
     return x
 
 [case testNewAnalyzerExportedImportThreePasses]
-# flags: --new-semantic-analyzer
 import b
 
 [file a.py]
@@ -140,12 +126,10 @@ def b1() -> str: pass
 reveal_type(b3()) # E: Revealed type is 'builtins.str'
 
 [case testNewAnalyzerBool]
-# flags: --new-semantic-analyzer
 reveal_type(True) # E: Revealed type is 'builtins.bool'
 reveal_type(False) # E: Revealed type is 'builtins.bool'
 
 [case testNewAnalyzerNewTypeMultiplePasses]
-# flags: --new-semantic-analyzer
 import b
 
 [file a.py]
@@ -177,7 +161,6 @@ import a
 N1 = NewType('N1', a.A)
 
 [case testNewAnalyzerInheritanceForwardRef]
-# flags: --new-semantic-analyzer
 class C(B):
     pass
 class B(A):
@@ -192,7 +175,6 @@ C('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected 
 B('').f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testNewAnalyzerInheritanceMROInCycle]
-# flags: --new-semantic-analyzer
 import a
 
 [file a.py]
@@ -221,7 +203,6 @@ class C(B):
     c: int
 
 [case testNewAnalyzerTypedDictClass]
-# flags: --new-semantic-analyzer
 from mypy_extensions import TypedDict
 import a
 class T1(TypedDict):
@@ -242,11 +223,10 @@ from a import TD2 as TD3
 
 [out]
 tmp/a.py:5: error: Revealed type is 'TypedDict('a.T2', {'x': builtins.int})'
-main:7: error: Revealed type is 'TypedDict('__main__.T1', {'x': __main__.A})'
+main:6: error: Revealed type is 'TypedDict('__main__.T1', {'x': __main__.A})'
 
 
 [case testNewAnalyzerTypedDictClassInheritance]
-# flags: --new-semantic-analyzer
 from mypy_extensions import TypedDict
 
 class T2(T1):
@@ -270,7 +250,6 @@ y: T4
 reveal_type(y) # E: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
 
 [case testNewAnalyzerRedefinitionAndDeferral]
-# flags: --new-semantic-analyzer
 import a
 
 [file a.py]
@@ -294,7 +273,6 @@ from a import x
 def f(): pass
 
 [case testNewAnalyzerRedefinitionAndDeferral2]
-# flags: --new-semantic-analyzer
 import a
 
 [file a.py]
@@ -306,7 +284,6 @@ class C2: pass # E: Name 'C2' already defined (possibly by an import)
 from a import C
 
 [case testNewAnalyzerRedefinitionAndDeferral3]
-# flags: --new-semantic-analyzer
 import a
 
 [file a.py]
@@ -321,7 +298,6 @@ reveal_type(b) # E: Revealed type is 'Any'
 from a import f
 
 [case testNewAnalyzerImportStarForwardRef]
-# flags: --new-semantic-analyzer
 import a
 
 [file a.py]
@@ -335,6 +311,90 @@ class A: pass # E: Name 'A' already defined (possibly by an import)
 [file b.py]
 class A: pass
 from a import x
+
+[case testNewAnalyzerClassInFunction]
+def main() -> None:
+    x: C
+    class C:
+        def __init__(self) -> None:
+            self.x: A
+            x()  # E: "C" not callable
+    reveal_type(x.x)  # E: Revealed type is '__main__.A@8'
+    class A: pass
+
+[case testNewAnalyzerMutuallyRecursiveFunctions]
+def main() -> None:
+    def f() -> int:
+        reveal_type(g())  # E: Revealed type is 'builtins.str'
+        return int()
+    def g() -> str:
+        reveal_type(f())  # E: Revealed type is 'builtins.int'
+        return str()
+
+[case testNewAnalyzerMissingNamesInFunctions]
+def main() -> None:
+    def f() -> None:
+        x  # E: Name 'x' is not defined
+        class C:
+            x  # E: Name 'x' is not defined
+
+[case testNewAnalyzerCyclicDefinitions]
+gx = gy  # E: Name 'gy' is not defined
+gy = gx
+def main() -> None:
+    class C:
+        def meth(self) -> None:
+            lx = ly  # E: Name 'ly' is not defined
+            ly = lx
+
+[case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
+from typing import overload, Union
+
+def main() -> None:
+    @overload
+    def f(x: int) -> int: ...
+    @overload
+    def f(x: str) -> str: ...
+    def f(x: Union[int, str]) -> Union[int, str]:
+        reveal_type(g(str()))  # E: Revealed type is 'builtins.str'
+        return x
+    @overload
+    def g(x: int) -> int: ...
+    @overload
+    def g(x: str) -> str: ...
+    def g(x: Union[int, str]) -> Union[int, str]:
+        reveal_type(f(int()))  # E: Revealed type is 'builtins.int'
+        return float()  # E: Incompatible return value type (got "float", expected "Union[int, str]")
+
+[case testNewAnalyzerNestedClassInMethod]
+class C:
+    class D:
+        def meth(self) -> None:
+            x: Out.In
+            reveal_type(x.t)  # E: Revealed type is 'builtins.int'
+            class Out:
+                class In:
+                    def meth(self) -> None:
+                        self.t: int
+
+[case testNewAnalyzerDeeplyNestedFunctions]
+class Out:
+    class In:
+        def meth(self) -> None:
+            x: C.D
+            reveal_type(x.t)  # E: Revealed type is '__main__.Test@10'
+            class C:
+                class D:
+                    def meth(self) -> None:
+                        self.t: Test
+                        class Test:
+                            def test(self) -> None:
+                                def one() -> int:
+                                    reveal_type(other())  # E: Revealed type is 'builtins.str'
+                                    return int()
+                                def other() -> str:
+                                    reveal_type(one())  # E: Revealed type is 'builtins.int'
+                                    return str()
 
 [case testNewAnalyzerNestedClass1]
 # flags: --new-semantic-analyzer
