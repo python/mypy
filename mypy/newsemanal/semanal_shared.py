@@ -57,6 +57,10 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def record_incomplete_ref(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
     def defer(self) -> None:
         raise NotImplementedError
 

@@ -42,7 +42,8 @@ Some important properties:
   things that were missing or incomplete in previous iterations.
 
 * Changes performed by the analysis need to be reversible, since mypy
-  daemon strips and reuses existing ASTs (to improve performance).
+  daemon strips and reuses existing ASTs (to improve performance and/or
+  reduce memory use).
 """
 
 from contextlib import contextmanager
@@ -1303,7 +1304,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 continue
 
             try:
-                base = self.expr_to_analyzed_type(base_expr)
+                base = self.expr_to_analyzed_type(base_expr, allow_placeholder=True)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
                 is_error = True
@@ -1451,7 +1452,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def expr_to_analyzed_type(self,
                               expr: Expression,
-                              report_invalid_types: bool = True) -> Optional[Type]:
+                              report_invalid_types: bool = True,
+                              allow_placeholder: bool = False) -> Optional[Type]:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
@@ -1463,7 +1465,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ, report_invalid_types=report_invalid_types)
+        return self.anal_type(typ, report_invalid_types=report_invalid_types,
+                              allow_placeholder=allow_placeholder)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
@@ -1833,6 +1836,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
                       allow_unbound_tvars: bool = False,
+                      allow_placeholder: bool = False,
                       report_invalid_types: bool = True,
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
@@ -1846,6 +1850,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             allow_tuple_literal=allow_tuple_literal,
                             report_invalid_types=report_invalid_types,
                             allow_unnormalized=self.is_stub_file,
+                            allow_placeholder=allow_placeholder,
                             third_pass=third_pass)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -1855,6 +1860,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  allow_placeholder: bool = False,
                   report_invalid_types: bool = True,
                   third_pass: bool = False) -> Optional[Type]:
         """Semantically analyze a type.
@@ -1866,6 +1872,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
                                allow_tuple_literal=allow_tuple_literal,
+                               allow_placeholder=allow_placeholder,
                                report_invalid_types=report_invalid_types,
                                third_pass=third_pass)
         tag = self.track_incomplete_refs()
@@ -3407,7 +3414,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # We always allow unbound type variables in IndexExpr, since we
                 # may be analysing a type alias definition rvalue. The error will be
                 # reported elsewhere if it is not the case.
-                typearg2 = self.anal_type(typearg, allow_unbound_tvars=True)
+                typearg2 = self.anal_type(typearg, allow_unbound_tvars=True, allow_placeholder=True)
                 if typearg2 is None:
                     self.defer()
                     return

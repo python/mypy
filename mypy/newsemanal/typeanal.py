@@ -157,6 +157,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
+                 allow_placeholder: bool = False,
                  report_invalid_types: bool = True,
                  third_pass: bool = False) -> None:
         self.api = api
@@ -175,6 +176,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_unnormalized = allow_unnormalized
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
+        # If false, record incomplete ref if we generate PlaceholderType.
+        self.allow_placeholder = allow_placeholder
         # Should we report an error whenever we encounter a RawExpressionType outside
         # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
         # we want to report an error, but the caller may want to do more specialized
@@ -212,7 +215,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
             if isinstance(node, PlaceholderTypeInfo):
-                self.api.defer()
+                if self.allow_placeholder:
+                    self.api.defer()
+                else:
+                    self.api.record_incomplete_ref()
                 return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
             if node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
