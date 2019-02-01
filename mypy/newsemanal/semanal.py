@@ -153,7 +153,7 @@ SUGGESTED_TEST_FIXTURES = {
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
-CORE_BUILTIN_CLASSES = ['object', 'bool', 'tuple', 'function', 'str']  # type: Final
+CORE_BUILTIN_CLASSES = ['object', 'bool', 'function']  # type: Final
 
 
 # Used for tracking incomplete references
