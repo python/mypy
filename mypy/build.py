@@ -2320,7 +2320,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
                                       for g in graph.values()),
                       graph_load_time=(t1 - t0),
                       fm_cache_size=len(manager.find_module_cache.results),
-                      fm_dir_cache_size=len(manager.find_module_cache.dirs),
                       )
     if not graph:
         print("Nothing to do?!")
