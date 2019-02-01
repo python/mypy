@@ -186,7 +186,7 @@ are trying to use has done neither of these things. In that case, you can try:
     :ref:`PEP 561 compliant packages <installed-packages>`.
 
 If the module is a third party library, but you cannot find any existing
-type hints nor have to time to write your own, you can *silence* the errors:
+type hints nor have time to write your own, you can *silence* the errors:
 
 1.  To silence a *single* missing import error, add a `# type: ignore` at the end of the
     line containing the import.
