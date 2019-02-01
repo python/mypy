@@ -57,10 +57,6 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def is_incomplete_type(self, fullname: str) -> bool:
-        raise NotImplementedError
-
-    @abstractmethod
     def defer(self) -> None:
         raise NotImplementedError
 

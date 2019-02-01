@@ -507,12 +507,10 @@ class BuildManager(BuildManagerBase):
             # Set of namespaces (module or class) that are being populated during semantic
             # analysis and may have missing definitions.
             self.incomplete_namespaces = set()  # type: Set[str]
-            self.incomplete_types = set()  # type: Set[str]
             self.new_semantic_analyzer = NewSemanticAnalyzer(
                 self.modules,
                 self.missing_modules,
                 self.incomplete_namespaces,
-                self.incomplete_types,
                 self.errors,
                 self.plugin)
         else:

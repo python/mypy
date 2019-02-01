@@ -216,7 +216,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
                  incomplete_namespaces: Set[str],
-                 incomplete_types: Set[str],
                  errors: Errors,
                  plugin: Plugin) -> None:
         """Construct semantic analyzer.
@@ -247,7 +246,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # missing name in these namespaces, we need to defer the current analysis target,
         # since it's possible that the name will be there once the namespace is complete.
         self.incomplete_namespaces = incomplete_namespaces
-        self.incomplete_types = incomplete_types
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = []  # type: List[str]
@@ -842,7 +840,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         fullname = self.qualified_name(defn.name)
         if not defn.info and not self.is_core_builtin_class(defn):
             self.add_symbol(defn.name, IncompleteType(fullname), defn)
-        self.mark_incomplete_type(fullname)
 
         tag = self.track_incomplete_refs()
 
@@ -3696,12 +3693,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         current analysis target.
         """
         return fullname in self.incomplete_namespaces
-
-    def mark_incomplete_type(self, fullname: str) -> None:
-        self.incomplete_types.add(fullname)
-
-    def is_incomplete_type(self, fullname: str) -> bool:
-        return fullname in self.incomplete_types
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[Var]:
