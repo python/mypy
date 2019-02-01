@@ -213,7 +213,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.implementation_artifact)
             if isinstance(node, IncompleteType):
                 self.api.defer()
-                return PlaceholderType(node.fullname(), t.args, t.line)
+                return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
             if node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
