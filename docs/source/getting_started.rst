@@ -62,12 +62,12 @@ A function without type annotations is considered to be *dynamically typed* by m
 By default, mypy will **not** type check dynamically typed functions. This means
 that with a few exceptions, mypy will not report any errors with regular unannotated Python.
 
-This is the case even if we misuse the function: for example, mypy would currently
-not report any errors if we tried running ``greeting(3)`` or ``greeting(b"Alice")``
+This is the case even if you misuse the function: for example, mypy would currently
+not report any errors if you tried running ``greeting(3)`` or ``greeting(b"Alice")``
 even though those function calls would result in errors at runtime.
 
-We can teach mypy to detect these kinds of bugs by adding *type annotations* (also
-known as *type hints*). For example, we can teach mypy that ``greeting`` both accepts
+You can teach mypy to detect these kinds of bugs by adding *type annotations* (also
+known as *type hints*). For example, you can teach mypy that ``greeting`` both accepts
 and returns a string like so:
 
 .. code-block:: python
@@ -75,7 +75,7 @@ and returns a string like so:
    def greeting(name: str) -> str:
        return 'Hello ' + name
 
-Our function is now *statically typed*: mypy can use the provided type hints to detect
+This function is now *statically typed*: mypy can use the provided type hints to detect
 incorrect usages of the ``greeting`` function. For example, it will reject the following
 calls since the arguments have invalid types:
 
@@ -118,8 +118,8 @@ More function signatures
 
 Here are a few more examples of adding type hints to function signatures.
 
-If a function does not explicitly return a value we give the return
-type as ``None``. Using a ``None`` result in a statically typed
+If a function does not explicitly return a value, give it a return
+type of ``None``. Using a ``None`` result in a statically typed
 context results in a type check error:
 
 .. code-block:: python
@@ -129,7 +129,7 @@ context results in a type check error:
 
    a = p()  # Error: "p" does not return a value
 
-Make sure to remember to include ``None``: if we don't, the function
+Make sure to remember to include ``None``: if you don't, the function
 will be dynamically typed. For example:
 
 .. code-block:: python
@@ -169,9 +169,9 @@ So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
 such as "a list of strings" or "an iterable of ints"? 
 
-We can find many of these more complex static types inside of the ``typing``
-module. For example, if we want to indicate that some function can accept
-a list of strings, we can use the ``List`` type from the ``typing`` module:
+You can find many of these more complex static types inside of the ``typing``
+module. For example, to indicate that some function can accept a list of
+strings, use the ``List`` type from the ``typing`` module:
 
 .. code-block:: python
 
@@ -192,11 +192,11 @@ accept one or more *type parameters*. In this case, we *parameterized* ``List``
 by writing ``List[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
-In this particular case, our type signature is perhaps a little too rigid.
+In this particular case, the type signature is perhaps a little too rigid.
 After all, there's no reason why this function must accept *specifically* a list --
-it would run just fine if we pass in a tuple, a set, or any custom iterable.
+it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
 
-We can express this idea by using the ``Iterable`` type instead of ``List``:
+You can express this idea using the ``Iterable`` type instead of ``List``:
 
 .. code-block:: python
 
@@ -206,8 +206,8 @@ We can express this idea by using the ``Iterable`` type instead of ``List``:
        for name in names:
            print('Hello ' + name)
 
-As a final example, suppose want to write a function that can accept *either*
-ints or strings, but no other types. We can express this using the ``Union`` type:
+As another example, suppose you want to write a function that can accept *either*
+ints or strings, but no other types. You can express this using the ``Union`` type:
 
 .. code-block:: python
 
@@ -219,11 +219,11 @@ ints or strings, but no other types. We can express this using the ``Union`` typ
        else:
            return user_id
 
-Similarly, suppose that we want our function to accept only strings or None. We can
+Similarly, suppose that you want the function to accept only strings or None. You can
 again use ``Union`` and use ``Union[str, None]`` -- or alternatively, use the type
 ``Optional[str]``. These two types are identical and interchangeable: ``Optional[str]``
 is just a shorthand or *alias* for ``Union[str, None]``. It exists mostly as a convenience
-to help our function signatures look a little cleaner:
+to help function signatures look a little cleaner:
 
 .. code-block:: python
 
@@ -276,25 +276,29 @@ of type ``List[float]`` and that ``num`` must be of type ``float``:
                output.append(num)
        return output
 
-Mypy will warn you if it is unable to determine the type of some variable.
-For example, suppose we assign an empty dictionary to some global variable:
+Mypy will warn you if it is unable to determine the type of some variable --
+for example, when assigning an empty dictionary to some global value:
 
 .. code-block:: python
 
     my_global_dict = {}  # Error: Need type annotation for 'my_global_dict'
 
-We can teach mypy what type ``my_global_dict`` is meant to have by giving it
-a type hint. For example, if we knew this variable is supposed to be a dict
-of ints to floats, we could annotate it like so:
+You can teach mypy what type ``my_global_dict`` is meant to have by giving it
+a type hint. For example, if you knew this variable is supposed to be a dict
+of ints to floats, you could annotate it using either variable annotations
+(introduced in Python 3.6 by :ref:`PEP 526 <pep526_>`_) or using a comment-based
+syntax like so:
 
 .. code-block:: python
 
-   # If you are using Python 3.6+, you can use variable annotations.
-   # See https://www.python.org/dev/peps/pep-0526/ for more on variable annotations.
+   # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-   # If you are using older versions of Python, you can use the comment-based syntax:
+   # If you want compatibility with older versions of Python
    my_global_dict = {}  # type: Dict[int, float]
+
+.. _pep526: https://www.python.org/dev/peps/pep-0526/
+
 
 .. _stubs-intro:
 
