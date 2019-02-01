@@ -64,7 +64,6 @@ from mypy.newsemanal.typeanal import (
     check_for_explicit_any
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import state
 from mypy.plugin import (
