@@ -338,6 +338,15 @@ def main() -> None:
         class C:
             x  # E: Name 'x' is not defined
 
+[case testNewAnalyzerCyclicDefinitions]
+gx = gy  # E: Name 'gy' is not defined
+gy = gx
+def main() -> None:
+    class C:
+        def meth(self) -> None:
+            lx = ly  # E: Name 'ly' is not defined
+            ly = lx
+
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
 from typing import overload, Union
 

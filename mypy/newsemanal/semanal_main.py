@@ -33,6 +33,7 @@ from mypy.nodes import (
 MYPY = False
 if MYPY:
     from mypy.build import Graph, State
+    from mypy.newsemanal.semanal import NewSemanticAnalyzer
 
 
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
@@ -85,7 +86,6 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
 
 
 def process_functions(graph: 'Graph', scc: List[str]) -> None:
-    # TODO: This doesn't quite work yet
     # Process functions.
     deferred = []  # type: List[str]
     for module in scc:
@@ -95,25 +95,38 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         symtable = tree.names
         targets = get_all_leaf_targets(symtable, module, None)
         for target, node, active_type in targets:
-            iteration = 0
-            # We need one more pass after incomplete is False.
-            more_passes = incomplete = True
-            # Start in the incomplete state (no missing names will be reported on first pass).
-            # Note that we use module name, since functions don't create qualified names.
-            deferred = [module]
-            analyzer.incomplete_namespaces.add(module)
-            while deferred and more_passes:
-                iteration += 1
-                if not incomplete or iteration == MAX_ITERATIONS:
-                    # OK, this is one last pass, now missing names will be reported.
-                    more_passes = False
-                    analyzer.incomplete_namespaces.discard(module)
-                deferred, incomplete = semantic_analyze_target(module, graph[module], node,
-                                                               active_type)
+            assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
+            process_top_level_function(analyzer, graph[module], module, node, active_type)
 
-            # After semantic analysis is done, discard local namespaces
-            # to avoid memory hoarding.
-            analyzer.saved_locals.clear()
+
+def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
+                               state: 'State', module: str,
+                               node: Union[FuncDef, OverloadedFuncDef, Decorator],
+                               active_type: Optional[TypeInfo]) -> None:
+    """Analyze single top-level function or method.
+
+    Process the body of the function (including nested functions) again and again,
+    until all names have been resolved (ot iteration limit reached).
+    """
+    iteration = 0
+    # We need one more iteration after incomplete is False (e.g. to report errors, if any).
+    more_iterations = incomplete = True
+    # Start in the incomplete state (no missing names will be reported on first pass).
+    # Note that we use module name, since functions don't create qualified names.
+    deferred = [module]
+    analyzer.incomplete_namespaces.add(module)
+    while deferred and more_iterations:
+        iteration += 1
+        if not incomplete or iteration == MAX_ITERATIONS:
+            # OK, this is one last pass, now missing names will be reported.
+            more_iterations = False
+            analyzer.incomplete_namespaces.discard(module)
+        deferred, incomplete = semantic_analyze_target(module, state, node,
+                                                       active_type)
+
+    # After semantic analysis is done, discard local namespaces
+    # to avoid memory hoarding.
+    analyzer.saved_locals.clear()
 
 
 TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]

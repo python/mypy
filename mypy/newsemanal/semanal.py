@@ -211,7 +211,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             errors: Report analysis errors using this instance
         """
         self.locals = [None]
-        # Saved namespaces from previous passes.
+        # Saved namespaces from previous iteration. Every top-level function/method body is
+        # analyzed in several iterations until all names are resolved. We need to save
+        # the local namespaces for the top level function and all nested functions between
+        # these iterations. See also semanal_main.process_top_level_function().
         self.saved_locals = {}  # type: Dict[FuncItem, SymbolTable]
         self.imports = set()
         self.type = None
@@ -602,6 +605,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         types = []
         non_overload_indexes = []
         impl = None  # type: Optional[OverloadPart]
+        # TODO: This is really bad, we should not modify defn.items neither here nor above.
         if defn.impl:
             # We are visiting this second time.
             defn.items.append(defn.impl)
@@ -3760,6 +3764,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return base + '.' + n
 
     def enter(self, function: Optional[FuncItem] = None) -> None:
+        """Enter the function scope.
+
+        The argument can be omitted for temporary scopes (like comprehensions
+        and generator expressions) that can't have incomplete definitions.
+        """
         if function:
             names = self.saved_locals.setdefault(function, SymbolTable())
         else:
