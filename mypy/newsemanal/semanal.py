@@ -1,7 +1,12 @@
 """The new semantic analyzer (work in progress).
 
 Bind names to definitions and do various other simple consistency
-checks. For example, consider this program:
+checks. It also detects special forms such as NamedTuple and cast().
+Multiple analysis iterations may be needed to analyze forward
+references and import cycles. Each iteration "fills in" additional
+bindings and references until everything has been bound.
+
+For example, consider this program:
 
   x = 1
   y = x
@@ -16,6 +21,28 @@ be analyzed, and the type of 'y' marked as being inferred.
 Semantic analysis of types is implemented in typeanal.py.
 
 See semanal_main.py for the top-level logic.
+
+Some important properties:
+
+* After semantic analysis is complete, no PlaceholderTypeInfo and
+  PlaceholderType instances should remain. During semantic analysis,
+  if we encounter one of these, the current target should be deferred.
+
+* A TypeInfo is only created once we know certain basic information about
+  a type, such as the MRO, existence of a Tuple base class (e.g., for named
+  tuples), and whether we have a TypedDict. We use a temporary
+  PlaceholderTypeInfo node in the symbol table if some such information is
+  missing.
+
+* For assignments, we only add a symbol table entry once we know the
+  sort of thing being defined (variable, NamedTuple, type alias, etc.).
+
+* Every part of the analysis step must support multiple iterations over
+  the same AST nodes, and each iteration must be able to fill in arbitrary
+  things that were missing or incomplete in previous iterations.
+
+* Changes performed by the analysis need to be reversible, since mypy
+  daemon strips and reuses existing ASTs (to improve performance).
 """
 
 from contextlib import contextmanager

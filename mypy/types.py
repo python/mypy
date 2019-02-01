@@ -1799,8 +1799,8 @@ class PlaceholderType(Type):
     """Temporary, yet-unknown type during semantic analysis.
 
     This is needed when there's a reference to a type before the real symbol
-    table entry of the target type is available (specifically, it's a
-    PlaceholderTypeInfo). Consider this example:
+    table entry of the target type is available (specifically, we use a
+    temporary PlaceholderTypeInfo symbol node). Consider this example:
 
       class str(Sequence[str]): ...
 
