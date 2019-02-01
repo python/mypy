@@ -3045,6 +3045,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if isinstance(n.node, TypeVarExpr) and self.tvar_scope.get_binding(n):
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
+            elif isinstance(n.node, IncompleteType):
+                self.defer()
             else:
                 expr.kind = n.kind
                 expr.node = n.node
@@ -3255,10 +3257,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             n = file.names.get(expr.name, None)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
-                if not n:
-                    return
                 n = self.rebind_symbol_table_node(n)
                 if n:
+                    if isinstance(n.node, IncompleteType):
+                        self.defer()
+                        return
                     # TODO: What if None?
                     expr.kind = n.kind
                     expr.fullname = n.fullname

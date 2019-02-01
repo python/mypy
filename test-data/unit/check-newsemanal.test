@@ -614,3 +614,33 @@ def f(x: T) -> T:
 
 reveal_type(f(D())) # E: Revealed type is '__main__.D*'
 f(E()) # E: Value of type variable "T" of "f" cannot be "E"
+
+[case testNewAnalyzerNameExprRefersToIncompleteType]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import f
+
+class C(D): pass
+class D: pass
+
+[file b.py]
+from a import C
+reveal_type(C()) # E: Revealed type is 'a.C'
+def f(): pass
+
+[case testNewAnalyzerMemberExprRefersToIncompleteType]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import f
+
+class C(D): pass
+class D: pass
+
+[file b.py]
+import a
+reveal_type(a.C()) # E: Revealed type is 'a.C'
+def f(): pass
