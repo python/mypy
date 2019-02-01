@@ -70,7 +70,8 @@ class FindModuleCache:
                  options: Optional[Options] = None) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
-        # Cache for get_toplevel_possibilities: dir_chain -> (id -> list(package_dirs))
+        # Cache for get_toplevel_possibilities:
+        # search_paths -> (toplevel_id -> list(package_dirs))
         self.initial_components = {}  # type: Dict[Tuple[str, ...], Dict[str, List[str]]]
         # Cache find_module: id -> result
         self.results = {}  # type: Dict[str, Optional[str]]
@@ -79,9 +80,13 @@ class FindModuleCache:
 
     def clear(self) -> None:
         self.results.clear()
+        self.initial_components.clear()
         self.ns_ancestors.clear()
 
     def find_lib_path_dirs(self, id: str, lib_path: Tuple[str, ...]) -> PackageDirs:
+        """Find which elements of a lib_path have the directory a module needs to exist.
+
+        This is run for the python_path, mypy_path, and typeshed_path search paths."""
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 
@@ -108,11 +113,11 @@ class FindModuleCache:
             return self.initial_components[lib_path].get(id, [])
 
         # Enumerate all the files in the directories on lib_path and produce the map
-        components = {}
+        components = {}  # type: Dict[str, List[str]]
         for dir in lib_path:
             try:
                 contents = self.fscache.listdir(dir)
-            except FileNotFoundError:
+            except OSError:
                 contents = []
             # False positives are fine for correctness here, since we will check
             # precisely later, so we only look at the root of every filename without
