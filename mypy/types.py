@@ -1798,15 +1798,17 @@ class ForwardRef(Type):
 class PlaceholderType(Type):
     """Temporary, yet-unknown type during semantic analysis.
 
-    This is needed when there's a reference to a type before the symbol table
-    entry of the target type is available. Consider this example:
+    This is needed when there's a reference to a type before the real symbol
+    table entry of the target type is available (specifically, it's a
+    PlaceholderTypeInfo). Consider this example:
 
       class str(Sequence[str]): ...
 
-    We use a PlaceholderType for the 'str' in 'Sequence[str]' since we can create
+    We use a PlaceholderType for the 'str' in 'Sequence[str]' since we can't create
     a TypeInfo for 'str' until all base classes have been resolved. We'll soon
-    perform another pass which replaces the base class with a complete type without
-    any placeholders. After semantic analysis, no placeholder types must exist.
+    perform another analysis iteration which replaces the base class with a complete
+    type without any placeholders. After semantic analysis, no placeholder types must
+    exist.
     """
 
     def __init__(self, fullname: str, args: List[Type], line: int) -> None:
