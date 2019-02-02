@@ -746,19 +746,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
 
-        if (callee.is_type_obj() and callee.type_object().is_abstract
+        if (callee.is_type_obj() and callee.type_object().is_not_instantiatable
                 # Exception for Type[...]
-                and not callee.from_type_type
-                and not callee.type_object().fallback_to_any):
+                and not callee.from_type_type):
             type = callee.type_object()
-            self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name(), type.abstract_attributes,
-                context)
-        elif (callee.is_type_obj() and callee.type_object().is_protocol
-              # Exception for Type[...]
-              and not callee.from_type_type):
-            self.chk.fail(message_registry.CANNOT_INSTANTIATE_PROTOCOL
-                          .format(callee.type_object().name()), context)
+            if type.is_abstract and not callee.type_object().fallback_to_any:
+                self.msg.cannot_instantiate_abstract_class(
+                    callee.type_object().name(), type.abstract_attributes,
+                    context)
+            elif type.is_protocol:
+                self.chk.fail(message_registry.CANNOT_INSTANTIATE_PROTOCOL
+                              .format(type.name()), context)
+            elif not (type.is_abstract or type.is_protocol):
+                # Other reason (e.g. marked as not-instantiatable by a plugin)
+                self.chk.fail(message_registry.CANNOT_INSTANTIATE.format(type.name()), context)
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds, arg_names,
@@ -1249,10 +1250,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             messages.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
         elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
-              caller_type.is_type_obj() and
-              (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol) and
+              caller_type.is_type_obj() and caller_type.type_object().is_not_instantiatable and
               isinstance(callee_type.item, Instance) and
-              (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)):
+              callee_type.item.type.is_not_instantiatable):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):

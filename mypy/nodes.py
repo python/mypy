@@ -2167,6 +2167,7 @@ class TypeInfo(SymbolNode):
     metaclass_type = None  # type: Optional[mypy.types.Instance]
 
     names = None  # type: SymbolTable      # Names defined directly in this type
+    is_not_instantiatable = False          # Is it allowed to instantiate the class?
     is_abstract = False                    # Does the class have any abstract attributes?
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
@@ -2261,6 +2262,7 @@ class TypeInfo(SymbolNode):
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
+        'is_not_instantiatable',
     ]  # type: Final[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2274,6 +2276,7 @@ class TypeInfo(SymbolNode):
         self.mro = []
         self._fullname = defn.fullname
         self.is_abstract = False
+        self.is_not_instantiatable = False
         self.abstract_attributes = []
         self.assuming = []
         self.assuming_proper = []

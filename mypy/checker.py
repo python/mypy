@@ -1808,12 +1808,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
                 if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
-                        (rvalue_type.type_object().is_abstract or
-                         rvalue_type.type_object().is_protocol) and
+                        rvalue_type.type_object().is_not_instantiatable and
                         isinstance(lvalue_type, TypeType) and
                         isinstance(lvalue_type.item, Instance) and
-                        (lvalue_type.item.type.is_abstract or
-                         lvalue_type.item.type.is_protocol)):
+                        lvalue_type.item.type.is_not_instantiatable):
                     self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):

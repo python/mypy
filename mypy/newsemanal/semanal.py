@@ -845,6 +845,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.analyze_namedtuple_classdef(defn):
                 return
 
+            defn.info.is_not_instantiatable = is_protocol
             defn.info.is_protocol = is_protocol
             self.analyze_metaclass(defn)
             defn.info.runtime_protocol = False
@@ -988,12 +989,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if isinstance(func, Decorator):
                     fdef = func.func
                     if fdef.is_abstract and name not in concrete:
+                        typ.is_not_instantiatable = True
                         typ.is_abstract = True
                         abstract.append(name)
                         if base is typ:
                             abstract_in_this_class.append(name)
                 elif isinstance(node, Var):
                     if node.is_abstract_var and name not in concrete:
+                        typ.is_not_instantiatable = True
                         typ.is_abstract = True
                         abstract.append(name)
                         if base is typ:

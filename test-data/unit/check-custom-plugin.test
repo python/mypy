@@ -536,3 +536,20 @@ func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})  # E: [[0, 0, 0, 2], [4]]
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
+
+[case testNotInstantiatable]
+# flags: --config-file tmp/mypy.ini
+def static_only(cls):
+    return cls
+
+@static_only
+class CannotBeInstantiated:
+    ONE = 1
+
+ins = CannotBeInstantiated()
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/staticonly.py
+
+[out]
+main:9: error: Class "CannotBeInstantiated" is not allowed to be instantiated

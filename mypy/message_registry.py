@@ -82,6 +82,7 @@ DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Fi
 DESCRIPTOR_SET_NOT_CALLABLE = "{}.__set__ is not callable"  # type: Final
 DESCRIPTOR_GET_NOT_CALLABLE = "{}.__get__ is not callable"  # type: Final
 MODULE_LEVEL_GETATTRIBUTE = '__getattribute__ is not valid at the module level'  # type: Final
+CANNOT_INSTANTIATE = 'Class "{}" is not allowed to be instantiated'  # type: Final
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
