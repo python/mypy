@@ -29,6 +29,12 @@ def use_c(c: C) -> int:
 
 use_t(C())
 
+# This trait is dead code but there's no reason it shouldn't compile
+@trait
+class ChildlessTrait:
+    def __init__(self) -> None:
+        pass
+
 [file driver.py]
 from native import A, T, C, use_c, use_t
 c = C()
