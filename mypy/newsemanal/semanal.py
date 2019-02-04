@@ -382,13 +382,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             v._fullname = 'builtins.%s' % name
             file_node.names[name] = SymbolTableNode(GDEF, v)
 
-    def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
-                        patches: List[Tuple[int, Callable[[], None]]]) -> None:
+    def refresh_partial(self,
+                        node: Union[MypyFile, FuncDef, OverloadedFuncDef],
+                        patches: List[Tuple[int, Callable[[], None]]],
+                        final_iteration: bool) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
         # TODO: Don't define any attributes here (better to do it in class body or __init__)
         self.deferred = False  # Set to true if another analysis pass is needed
         self.incomplete = False  # Set to true if current module namespace is missing things
+        self.final_iteration = final_iteration  # True if we shouldn't defer any more
         # These names couldn't be added to the symbol table due to incomplete deps.
         self.missing_names = set()  # type: Set[str]
 
@@ -1647,6 +1650,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # error messages by marking the imported name as unknown.
                     self.add_unknown_symbol(imported_id, imp, is_import=True)
                     continue
+                if isinstance(node.node, PlaceholderNode):
+                    if self.final_iteration:
+                        self.report_missing_module_attribute(import_id, id, imported_id, imp)
+                        return
+                    self.record_incomplete_ref()
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode):
                     # Import can redefine a variable. They get special treatment.
@@ -1662,26 +1670,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                          module_public=module_public,
                                          module_hidden=module_hidden)
             elif module and not missing:
-                # Missing attribute.
-                if self.is_incomplete_namespace(import_id):
-                    # We don't know whether the name will be there, since the namespace
-                    # is incomplete. Defer the current target.
-                    self.mark_incomplete(imported_id)
-                    return
-                message = "Module '{}' has no attribute '{}'".format(import_id, id)
-                extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
-                if extra:
-                    message += " {}".format(extra)
-                self.fail(message, imp)
-                self.add_unknown_symbol(imported_id, imp, is_import=True)
-
-                if import_id == 'typing':
-                    # The user probably has a missing definition in a test fixture. Let's verify.
-                    fullname = 'builtins.{}'.format(id.lower())
-                    if (self.lookup_fully_qualified_or_none(fullname) is None and
-                            fullname in SUGGESTED_TEST_FIXTURES):
-                        # Yes. Generate a helpful note.
-                        self.add_fixture_note(fullname, imp)
+                self.report_missing_module_attribute(import_id, id, imported_id, imp)
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
@@ -1710,6 +1699,29 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             node = self.lookup_fully_qualified_or_none(fullname)
             seen.add(fullname)
         return node
+
+    def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
+                                        context: Context) -> None:
+        # Missing attribute.
+        if self.is_incomplete_namespace(import_id):
+            # We don't know whether the name will be there, since the namespace
+            # is incomplete. Defer the current target.
+            self.mark_incomplete(imported_id)
+            return
+        message = "Module '{}' has no attribute '{}'".format(import_id, source_id)
+        extra = self.undefined_name_extra_info('{}.{}'.format(import_id, source_id))
+        if extra:
+            message += " {}".format(extra)
+        self.fail(message, context)
+        self.add_unknown_symbol(imported_id, context, is_import=True)
+
+        if import_id == 'typing':
+            # The user probably has a missing definition in a test fixture. Let's verify.
+            fullname = 'builtins.{}'.format(source_id.lower())
+            if (self.lookup_fully_qualified_or_none(fullname) is None and
+                    fullname in SUGGESTED_TEST_FIXTURES):
+                # Yes. Generate a helpful note.
+                self.add_fixture_note(fullname, context)
 
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,

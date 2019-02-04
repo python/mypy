@@ -66,11 +66,13 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
 
     worklist = scc[:]
     iteration = 0
+    final_iteration = False
     while worklist:
         iteration += 1
         if iteration == MAX_ITERATIONS:
             # Give up. Likely it's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
+            final_iteration = True
         elif iteration > MAX_ITERATIONS:
             assert False, 'Max iteration count reached in semantic analysis'
         all_deferred = []  # type: List[str]
@@ -78,7 +80,8 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
-            deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None)
+            deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None,
+                                                           final_iteration)
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
@@ -123,7 +126,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
             more_iterations = False
             analyzer.incomplete_namespaces.discard(module)
         deferred, incomplete = semantic_analyze_target(module, state, node,
-                                                       active_type)
+                                                       active_type, False)
 
     # After semantic analysis is done, discard local namespaces
     # to avoid memory hoarding.
@@ -152,7 +155,8 @@ def get_all_leaf_targets(symtable: SymbolTable,
 def semantic_analyze_target(target: str,
                             state: 'State',
                             node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
-                            active_type: Optional[TypeInfo]) -> Tuple[List[str], bool]:
+                            active_type: Optional[TypeInfo],
+                            final_iteration: bool) -> Tuple[List[str], bool]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -168,7 +172,7 @@ def semantic_analyze_target(target: str,
             if isinstance(node, Decorator):
                 # Decorator expressions will be processed as part of the module top level.
                 node = node.func
-            analyzer.refresh_partial(node, [])
+            analyzer.refresh_partial(node, [], final_iteration)
     if analyzer.deferred:
         return [target], analyzer.incomplete
     else:
