@@ -2668,7 +2668,7 @@ class TypeAlias(SymbolNode):
                    no_args=no_args, normalized=normalized)
 
 
-class PlaceholderTypeInfo(SymbolNode):
+class PlaceholderNode(SymbolNode):
     """Temporary node that will later become a type but is incomplete.
 
     These are only present during semantic analysis when using the new
@@ -2690,8 +2690,9 @@ class PlaceholderTypeInfo(SymbolNode):
     as this would cause issues with class type variable detection.
     """
 
-    def __init__(self, fullname: str) -> None:
+    def __init__(self, fullname: str, becomes_typeinfo: bool = False) -> None:
         self._fullname = fullname
+        self.becomes_typeinfo = becomes_typeinfo
         self.line = -1
 
     def name(self) -> str:
@@ -2701,10 +2702,10 @@ class PlaceholderTypeInfo(SymbolNode):
         return self._fullname
 
     def serialize(self) -> JsonDict:
-        assert False, "PlaceholderTypeInfo can't be serialized"
+        assert False, "PlaceholderNode can't be serialized"
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_placeholder_type_info(self)
+        return visitor.visit_placeholder_node(self)
 
 
 class SymbolTableNode:

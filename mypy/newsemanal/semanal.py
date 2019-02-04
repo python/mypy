@@ -69,7 +69,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    PlaceholderTypeInfo, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
     LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node
 )
@@ -833,7 +833,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
         if not defn.info and not self.is_core_builtin_class(defn):
-            self.add_symbol(defn.name, PlaceholderTypeInfo(fullname), defn)
+            self.add_symbol(defn.name, PlaceholderNode(fullname, True), defn)
 
         tag = self.track_incomplete_refs()
 
@@ -1539,7 +1539,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
-        if not sym or isinstance(sym.node, PlaceholderTypeInfo):
+        if not sym or isinstance(sym.node, PlaceholderNode):
             return None
         node = sym.node
         if isinstance(node, TypeAlias):
@@ -1648,7 +1648,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.add_unknown_symbol(imported_id, imp, is_import=True)
                     continue
                 existing_symbol = self.globals.get(imported_id)
-                if existing_symbol:
+                if existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode):
                     # Import can redefine a variable. They get special treatment.
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
@@ -2230,19 +2230,26 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Arguments are similar to "analyze_lvalue".
         """
-        if self.is_alias_for_final_name(lval.name):
+        name = lval.name
+
+        if lval.node:
+            # This has been bound already in a previous iteration.
+            return
+
+        if self.is_alias_for_final_name(name):
             if is_final:
                 self.fail("Cannot redefine an existing name as final", lval)
             else:
-                self.msg.cant_assign_to_final(lval.name, self.type is not None, lval)
+                self.msg.cant_assign_to_final(name, self.type is not None, lval)
 
         # Top-level definitions within some statements (at least while) are
         # not handled in the first pass, so they have to be added now.
         add_global = not self.is_func_scope() and not self.type
-        if add_global and lval.name not in self.globals:
+        if add_global and (name not in self.globals or
+                           isinstance(self.globals[name].node, PlaceholderNode)):
             # Define new global name.
             v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
-            self.add_symbol(lval.name, v, lval)
+            self.add_symbol(name, v, lval)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
                 # Since the is_new_def flag is set, this must have been analyzed
@@ -2252,26 +2259,26 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # A previously defined name cannot be redefined as a final name even when
                 # using renaming.
                 if (is_final
-                        and self.is_mangled_global(lval.name)
-                        and not self.is_initial_mangled_global(lval.name)):
+                        and self.is_mangled_global(name)
+                        and not self.is_initial_mangled_global(name)):
                     self.fail("Cannot redefine an existing name as final", lval)
-        elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
-              lval.name not in self.global_decls[-1] and
-              lval.name not in self.nonlocal_decls[-1]):
+        elif (self.locals[-1] is not None and name not in self.locals[-1] and
+              name not in self.global_decls[-1] and
+              name not in self.nonlocal_decls[-1]):
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
             self.add_local(v, lval)
-            if unmangle(lval.name) == '_':
+            if unmangle(name) == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
                 self.store_declared_types(lval, typ)
         elif not self.is_func_scope() and (self.type and
-                                           lval.name not in self.type.names):
+                                           name not in self.type.names):
             # Define a new attribute within class body.
-            if is_final and unmangle(lval.name) + "'" in self.type.names:
+            if is_final and unmangle(name) + "'" in self.type.names:
                 self.fail("Cannot redefine an existing name as final", lval)
             v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
-            self.add_symbol(lval.name, v, lval)
+            self.add_symbol(name, v, lval)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
 
@@ -3037,7 +3044,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if isinstance(n.node, TypeVarExpr) and self.tvar_scope.get_binding(n):
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
-            elif isinstance(n.node, PlaceholderTypeInfo):
+            elif isinstance(n.node, PlaceholderNode):
                 self.defer()
             else:
                 expr.kind = n.kind
@@ -3251,7 +3258,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if n and not n.module_hidden:
                 n = self.rebind_symbol_table_node(n)
                 if n:
-                    if isinstance(n.node, PlaceholderTypeInfo):
+                    if isinstance(n.node, PlaceholderNode):
                         self.defer()
                         return
                     # TODO: What if None?
@@ -3681,6 +3688,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         self.defer()
         self.incomplete = True
+        fullname = self.qualified_name(name)
+        self.add_symbol(name, PlaceholderNode(fullname, False), context=None)
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
@@ -3746,7 +3755,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 continue
             tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
-            if n and not isinstance(n.node, PlaceholderTypeInfo):
+            if n and not isinstance(n.node, PlaceholderNode):
                 # Found built-in class target. Create alias.
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
@@ -3848,7 +3857,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             kind = GDEF
         return kind
 
-    def add_symbol(self, name: str, node: SymbolNode, context: Context,
+    def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
                    module_public: bool = True, module_hidden: bool = False) -> None:
         """Add symbol to the currently active symbol table.
 
@@ -3881,7 +3890,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
         if (existing is not None
                 and context is not None
-                and not isinstance(existing.node, PlaceholderTypeInfo)):
+                and not isinstance(existing.node, PlaceholderNode)):
             if existing.node != symbol.node:
                 self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:

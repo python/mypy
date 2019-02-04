@@ -684,3 +684,44 @@ class D: pass
 import a
 reveal_type(a.C()) # E: Revealed type is 'a.C'
 def f(): pass
+
+[case testNewAnalyzerIncompleteRefShadowsBuiltin1]
+import a
+
+[file a.py]
+from typing import TypeVar, Generic
+
+from b import C as int
+
+x: int[str]
+
+reveal_type(x) # E: Revealed type is 'a.C[builtins.str]'
+
+T = TypeVar('T')
+class C(Generic[T]): pass
+
+[file b.py]
+from a import C
+
+[case testNewAnalyzerIncompleteRefShadowsBuiltin2]
+import b
+
+[file a.py]
+import b
+
+int = b.C
+
+class C: pass
+
+x: int
+reveal_type(x) # E: Revealed type is 'b.C'
+
+[file b.py]
+import a
+
+int = a.C
+
+class C: pass
+
+x: int
+reveal_type(x) # E: Revealed type is 'a.C'
