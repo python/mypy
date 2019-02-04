@@ -2668,6 +2668,45 @@ class TypeAlias(SymbolNode):
                    no_args=no_args, normalized=normalized)
 
 
+class PlaceholderTypeInfo(SymbolNode):
+    """Temporary node that will later become a type but is incomplete.
+
+    These are only present during semantic analysis when using the new
+    semantic analyzer. These are created if some dependencies of a type
+    definition are not yet complete. They are used to create
+    PlaceholderType instances for types that refer to incomplete types.
+    Example where this can be used:
+
+      class C(Sequence[C]): ...
+
+    We create a PlaceholderTypeInfo for C so that the type C in
+    Sequence[C] can be bound. (The long-term purpose of placeholder
+    types is to evolve into something that can support general
+    recursive types. The base class use case could be supported
+    through other means as well.)
+
+    PlaceholderTypeInfo can only refer to something that will become
+    a TypeInfo. It can't be used with type variables, in particular,
+    as this would cause issues with class type variable detection.
+    """
+
+    def __init__(self, fullname: str) -> None:
+        self._fullname = fullname
+        self.line = -1
+
+    def name(self) -> str:
+        return self._fullname.split('.')[-1]
+
+    def fullname(self) -> str:
+        return self._fullname
+
+    def serialize(self) -> JsonDict:
+        assert False, "PlaceholderTypeInfo can't be serialized"
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_placeholder_type_info(self)
+
+
 class SymbolTableNode:
     """Description of a name binding in a symbol table.
 

@@ -71,6 +71,8 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
         if iteration == MAX_ITERATIONS:
             # Give up. Likely it's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
+        elif iteration > MAX_ITERATIONS:
+            assert False, 'Max iteration count reached in semantic analysis'
         all_deferred = []  # type: List[str]
         while worklist:
             next_id = worklist.pop()

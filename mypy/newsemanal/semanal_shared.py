@@ -56,6 +56,14 @@ class SemanticAnalyzerCoreInterface:
             self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
+    @abstractmethod
+    def record_incomplete_ref(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def defer(self) -> None:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):

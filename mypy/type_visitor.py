@@ -23,6 +23,7 @@ from mypy.types import (
     RawExpressionType, Instance, NoneTyp, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
+    PlaceholderType,
 )
 
 
@@ -103,6 +104,9 @@ class TypeVisitor(Generic[T]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> T:
         raise RuntimeError('Internal error: unresolved forward reference')
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> T:
+        raise RuntimeError('Internal error: unresolved placeholder type {}'.format(t.fullname))
 
 
 @trait
@@ -236,6 +240,9 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         return t
 
+    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
+        return PlaceholderType(t.fullname, self.translate_types(t.args), t.line)
+
 
 @trait
 class TypeQuery(SyntheticTypeVisitor[T]):
@@ -319,6 +326,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         return self.strategy([])
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> T:
+        return self.query_types(t.args)
 
     def query_types(self, types: Iterable[Type]) -> T:
         """Perform a query for a list of types.

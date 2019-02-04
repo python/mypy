@@ -16,14 +16,14 @@ from mypy.types import (
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
-    LiteralType, RawExpressionType,
+    LiteralType, RawExpressionType, PlaceholderType
 )
 
 from mypy.nodes import (
     UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, ImportedName, TypeAlias, MypyFile
+    Decorator, ImportedName, TypeAlias, MypyFile, PlaceholderTypeInfo
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -157,6 +157,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
+                 allow_placeholder: bool = False,
                  report_invalid_types: bool = True,
                  third_pass: bool = False) -> None:
         self.api = api
@@ -175,6 +176,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_unnormalized = allow_unnormalized
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
+        # If false, record incomplete ref if we generate PlaceholderType.
+        self.allow_placeholder = allow_placeholder
         # Should we report an error whenever we encounter a RawExpressionType outside
         # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
         # we want to report an error, but the caller may want to do more specialized
@@ -211,6 +214,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
+            if isinstance(node, PlaceholderTypeInfo):
+                if self.allow_placeholder:
+                    self.api.defer()
+                else:
+                    self.api.record_incomplete_ref()
+                return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
             if node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
@@ -247,7 +256,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 an_args = self.anal_array(t.args)
                 return expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
             elif isinstance(node, TypeInfo):
-                return self.analyze_unbound_type_with_type_info(t, node)
+                return self.analyze_type_with_type_info(node, t.args, t)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym)
         else:  # sym is None
@@ -320,42 +329,42 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.analyze_literal_type(t)
         return None
 
-    def analyze_unbound_type_with_type_info(self, t: UnboundType, info: TypeInfo) -> Type:
+    def analyze_type_with_type_info(self, info: TypeInfo, args: List[Type], ctx: Context) -> Type:
         """Bind unbound type when were able to find target TypeInfo.
 
         This handles simple cases like 'int', 'modname.UserClass[str]', etc.
         """
-        if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
-            fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
-            return TupleType(self.anal_array(t.args), fallback, t.line)
+        if len(args) > 0 and info.fullname() == 'builtins.tuple':
+            fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
+            return TupleType(self.anal_array(args), fallback, ctx.line)
         # Analyze arguments and (usually) construct Instance type. The
         # number of type arguments and their values are
         # checked only later, since we do not always know the
         # valid count at this point. Thus we may construct an
         # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(t.args), t.line, t.column)
+        instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
         # Check type argument count.
         if len(instance.args) != len(info.type_vars):
             fix_instance(instance, self.fail)
-        if not t.args and self.options.disallow_any_generics and not self.defining_alias:
+        if not args and self.options.disallow_any_generics and not self.defining_alias:
             # We report/patch invalid built-in instances already during second pass.
             # This is done to avoid storing additional state on instances.
             # All other (including user defined) generics will be patched/reported
             # in the third pass.
             if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
                 alternative = nongen_builtins[info.fullname()]
-                self.fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
-                any_type = AnyType(TypeOfAny.from_error, line=t.line)
+                self.fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), ctx)
+                any_type = AnyType(TypeOfAny.from_error, line=ctx.line)
             else:
-                any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
+                any_type = AnyType(TypeOfAny.from_omitted_generics, line=ctx.line)
             instance.args = [any_type] * len(info.type_vars)
 
         tup = info.tuple_type
         if tup is not None:
             # The class has a Tuple[...] base class so it will be
             # represented as a tuple type.
-            if t.args:
-                self.fail('Generic tuple types not supported', t)
+            if args:
+                self.fail('Generic tuple types not supported', ctx)
                 return AnyType(TypeOfAny.from_error)
             return tup.copy_modified(items=self.anal_array(tup.items),
                                      fallback=instance)
@@ -363,8 +372,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if td is not None:
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
-            if t.args:
-                self.fail('Generic TypedDict types not supported', t)
+            if args:
+                self.fail('Generic TypedDict types not supported', ctx)
                 return AnyType(TypeOfAny.from_error)
             # Create a named TypedDictType
             return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
@@ -395,24 +404,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
-        # Option 3:
-        # If it is not something clearly bad (like a known function, variable,
-        # type variable, or module), and it is still not too late, we try deferring
-        # this type using a forward reference wrapper. It will be revisited in
-        # the third pass.
-        allow_forward_ref = not (self.third_pass or
-                                 isinstance(sym.node, (FuncDef, Decorator, MypyFile,
-                                                       TypeVarExpr)) or
-                                 (isinstance(sym.node, Var) and sym.node.is_ready))
-        if allow_forward_ref:
-            # We currently can't support subscripted forward refs in functions;
-            # see https://github.com/python/mypy/pull/3952#discussion_r139950690
-            # for discussion.
-            if t.args and not self.global_scope:
-                if not self.in_dynamic_func:
-                    self.fail('Unsupported forward reference to "{}"'.format(t.name), t)
-                return AnyType(TypeOfAny.from_error)
-            return ForwardRef(t)
         # None of the above options worked, we give up.
         self.fail('Invalid type "{}"'.format(name), t)
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
@@ -551,6 +542,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_forwardref_type(self, t: ForwardRef) -> Type:
         return t
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
+        n = self.api.lookup_fully_qualified(t.fullname)
+        if isinstance(n.node, PlaceholderTypeInfo):
+            self.api.defer()  # Still incomplete
+            return t
+        else:
+            # TODO: Handle non-TypeInfo
+            assert isinstance(n.node, TypeInfo)
+            return self.analyze_type_with_type_info(n.node, t.args, t)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.named_type('builtins.function')

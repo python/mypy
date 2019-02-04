@@ -32,7 +32,7 @@ if MYPY:
 
 from mypy_extensions import TypedDict
 
-from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
+from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.newsemanal.semanal_pass1 import ReachabilityAnalyzer
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
@@ -1840,6 +1840,8 @@ class State:
             analyzer = ReachabilityAnalyzer()
             with self.wrap_context():
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
+            # TODO: Do this while contructing the AST?
+            self.tree.names = SymbolTable()
         else:
             # Do the first pass of semantic analysis: add top-level
             # definitions in the file to the symbol table.  We must do

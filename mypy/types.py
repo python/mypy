@@ -1795,6 +1795,36 @@ class ForwardRef(Type):
         assert False, "Internal error: Unresolved forward reference to {}".format(name)
 
 
+class PlaceholderType(Type):
+    """Temporary, yet-unknown type during semantic analysis.
+
+    This is needed when there's a reference to a type before the real symbol
+    table entry of the target type is available (specifically, we use a
+    temporary PlaceholderTypeInfo symbol node). Consider this example:
+
+      class str(Sequence[str]): ...
+
+    We use a PlaceholderType for the 'str' in 'Sequence[str]' since we can't create
+    a TypeInfo for 'str' until all base classes have been resolved. We'll soon
+    perform another analysis iteration which replaces the base class with a complete
+    type without any placeholders. After semantic analysis, no placeholder types must
+    exist.
+    """
+
+    def __init__(self, fullname: str, args: List[Type], line: int) -> None:
+        super().__init__(line)
+        self.fullname = fullname  # Only used for debugging
+        self.args = args
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_placeholder_type(self)
+
+    def serialize(self) -> str:
+        # We should never get here since all placeholders should be replaced
+        # during semantic analysis.
+        assert False, "Internal error: unresolved placeholder type {}".format(self.fullname)
+
+
 # We split off the type visitor base classes to another module
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
@@ -1978,6 +2008,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return '~{}'.format(t.resolved.accept(self))
         else:
             return '~{}'.format(t.unbound.accept(self))
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> str:
+        return '<placeholder {}>'.format(t.fullname)
 
     def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)

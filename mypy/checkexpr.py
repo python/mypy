@@ -31,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderTypeInfo,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -212,6 +212,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                         alias_definition=e.is_alias_rvalue
                                                         or lvalue)
         else:
+            if isinstance(node, PlaceholderTypeInfo):
+                assert False, 'PlaceholderTypeInfo %r leaked to checker' % node.fullname()
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)

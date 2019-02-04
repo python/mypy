@@ -468,6 +468,7 @@ class C(Generic[T]):
 T = TypeVar('T')
 
 c: C[int]
+reveal_type(c) # E: Revealed type is '__main__.C[builtins.int]'
 c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 reveal_type(c.get()) # E: Revealed type is 'builtins.int*'
 
@@ -491,6 +492,18 @@ class C: pass
 T = TypeVar('T')
 S = TypeVar('S')
 class D(Generic[T, S]): pass
+
+[case testNewAnalyzerTypeAlias2]
+# flags: --new-semantic-analyzer
+from typing import Union
+
+class C(D): pass
+
+A = Union[C, int]
+x: A
+reveal_type(x) # E: Revealed type is 'Union[__main__.C, builtins.int]'
+
+class D: pass
 
 [case testNewAnalyzerBuiltinTypeAliases]
 # flags: --new-semantic-analyzer
@@ -614,3 +627,80 @@ class D(C[XY]): pass
 
 class X: pass
 class Y: pass
+
+[case testNewAnalyzerSubModuleInCycle]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+MYPY = False
+if MYPY:
+    from b.c import x
+[file b/__init__.pyi]
+import b.c
+[file b/c.pyi]
+x = 0
+import a
+
+[case testNewAnalyzerBaseClassSelfReference]
+# flags: --new-semantic-analyzer
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+
+a1: A[C] = C()
+a2: A[D] = C() \
+    # E: Incompatible types in assignment (expression has type "C", variable has type "A[D]")
+
+class C(A[C]):
+    pass
+
+class D(A[D]):
+    pass
+
+[case testNewAnalyzerTypeVarBoundForwardRef]
+# flags: --new-semantic-analyzer
+from typing import TypeVar
+
+T = TypeVar('T', bound='C')
+
+class C: pass
+class D(C): pass
+class E: pass
+
+def f(x: T) -> T:
+    return x
+
+reveal_type(f(D())) # E: Revealed type is '__main__.D*'
+f(E()) # E: Value of type variable "T" of "f" cannot be "E"
+
+[case testNewAnalyzerNameExprRefersToIncompleteType]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import f
+
+class C(D): pass
+class D: pass
+
+[file b.py]
+from a import C
+reveal_type(C()) # E: Revealed type is 'a.C'
+def f(): pass
+
+[case testNewAnalyzerMemberExprRefersToIncompleteType]
+# flags: --new-semantic-analyzer
+import a
+
+[file a.py]
+from b import f
+
+class C(D): pass
+class D: pass
+
+[file b.py]
+import a
+reveal_type(a.C()) # E: Revealed type is 'a.C'
+def f(): pass

@@ -358,6 +358,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
         pass
 
+    def visit_placeholder_type_info(self, o: 'mypy.nodes.PlaceholderTypeInfo') -> T:
+        pass
+
     # Statements
 
     def visit_block(self, o: 'mypy.nodes.Block') -> T:
