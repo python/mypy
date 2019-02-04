@@ -867,6 +867,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.prepare_class_def(defn, info)
             return
 
+        is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn, defn.info)
+        if is_named_tuple:
+            if info is None:
+                self.mark_incomplete(defn.name)
+            else:
+                self.prepare_class_def(defn, info)
+                with self.scope.class_scope(defn.info):
+                    self.named_tuple_analyzer.process_namedtuple_body(defn, info,
+                                                                      self.analyze_class_body_common)
+            return
+
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
 
@@ -877,10 +888,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         with self.scope.class_scope(defn.info):
             self.configure_base_classes(defn, base_types)
-
-            if self.analyze_namedtuple_classdef(defn):
-                return
-
             defn.info.is_protocol = is_protocol
             self.analyze_metaclass(defn)
             defn.info.runtime_protocol = False
@@ -899,42 +906,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.calculate_abstract_status(defn.info)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
-
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
-        """Analyze class-based named tuple if the NamedTuple base class is present.
-
-        TODO: Move this to NamedTupleAnalyzer?
-
-        Return True only if the class is a NamedTuple class.
-        """
-        named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
-        if named_tuple_info is None:
-            return False
-        # Temporarily clear the names dict so we don't get errors about duplicate names
-        # that were already set in build_namedtuple_typeinfo.
-        nt_names = named_tuple_info.names
-        named_tuple_info.names = SymbolTable()
-
-        self.analyze_class_body_common(defn)
-
-        # Make sure we didn't use illegal names, then reset the names in the typeinfo.
-        for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
-            if prohibited in named_tuple_info.names:
-                if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
-                    continue
-                ctx = named_tuple_info.names[prohibited].node
-                assert ctx is not None
-                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
-                          ctx)
-
-        # Restore the names in the original symbol table. This ensures that the symbol
-        # table contains the field objects created by build_namedtuple_typeinfo. Exclude
-        # __doc__, which can legally be overwritten by the class.
-        named_tuple_info.names.update({
-            key: value for key, value in nt_names.items()
-            if key not in named_tuple_info.names or key != '__doc__'
-        })
-        return True
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
