@@ -816,7 +816,7 @@ from typing import NamedTuple
 
 o: SubO
 
-reveal_type(SubO._make)
+reveal_type(SubO._make)  # E: Revealed type is 'def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]'
 reveal_type(o._replace(y=Other()))  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]'
 
 class SubO(Out): pass

@@ -6,7 +6,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Callable
 
 from mypy.types import (
-    Type, TupleType, AnyType, TypeOfAny, UnboundType, CallableType, TypeType
+    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
 )
 from mypy.newsemanal.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
@@ -359,7 +359,9 @@ class NamedTupleAnalyzer:
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
-        selftype = UnboundType(SELF_TVAR_NAME)
+        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+                         -1, [], info.tuple_type)
+        selftype = TypeVarType(tvd)
 
         def add_method(funcname: str,
                        ret: Type,
@@ -379,6 +381,7 @@ class NamedTupleAnalyzer:
             assert None not in types
             signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
                                      function_type)
+            signature.variables = [tvd]
             func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod
