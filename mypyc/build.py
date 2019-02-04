@@ -461,8 +461,8 @@ class MypycifyBuildExt(build_ext):
                 # before we have found out what the library filename is, so
                 # pass it in as a preprocessor define.
                 path = os.path.join(relative_lib_path, shared_file)
-                ext.extra_compile_args.append(
-                    '/DMYPYC_LIBRARY=\\"{}\\"'.format(path.replace('\\', '\\\\')))
+                ext.extra_compile_args = ext.extra_compile_args + [
+                    '/DMYPYC_LIBRARY=\\"{}\\"'.format(path.replace('\\', '\\\\'))]
             else:
                 # On other platforms we link against the library normally
                 ext.libraries.append(shared_name)
