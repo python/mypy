@@ -836,7 +836,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
         if not defn.info and not self.is_core_builtin_class(defn):
-            self.add_symbol(defn.name, PlaceholderNode(fullname, True), defn)
+            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn)
 
         tag = self.track_incomplete_refs()
 
@@ -852,20 +852,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         if result is None or self.found_incomplete_ref(tag):
             # Something was incomplete. Defer current target.
-            self.mark_incomplete(defn.name)
+            self.mark_incomplete(defn.name, defn)
             return
 
         base_types, base_error = result
         if any(isinstance(base, PlaceholderType) for base, _ in base_types):
             # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
             # are okay in nested positions, since they can't affect the MRO.
-            self.mark_incomplete(defn.name)
+            self.mark_incomplete(defn.name, defn)
             return
 
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
             if info is None:
-                self.mark_incomplete(defn.name)
+                self.mark_incomplete(defn.name, defn)
             else:
                 self.prepare_class_def(defn, info)
             return
@@ -1701,12 +1701,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return node
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
-                                        context: Context) -> None:
+                                        context: Node) -> None:
         # Missing attribute.
         if self.is_incomplete_namespace(import_id):
             # We don't know whether the name will be there, since the namespace
             # is incomplete. Defer the current target.
-            self.mark_incomplete(imported_id)
+            self.mark_incomplete(imported_id, context)
             return
         message = "Module '{}' has no attribute '{}'".format(import_id, source_id)
         extra = self.undefined_name_extra_info('{}.{}'.format(import_id, source_id))
@@ -1769,7 +1769,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.is_incomplete_namespace(i_id):
                 # Any names could be missing from the current namespace if the target module
                 # namespace is incomplete.
-                self.mark_incomplete('*')
+                self.mark_incomplete('*', i)
             self.add_submodules_to_parent_modules(i_id, True)
             for name, orig_node in m.names.items():
                 node = self.dereference_module_cross_ref(orig_node)
@@ -1883,8 +1883,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
-            for name in names_modified_by_assignment(s):
-                self.mark_incomplete(name)
+            for expr in names_modified_by_assignment(s):
+                self.mark_incomplete(expr.name, expr)
             return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
@@ -2507,7 +2507,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                               n_values,
                                               s)
         if res is None:
-            self.mark_incomplete(name)
+            self.mark_incomplete(name, s)
             return
         variance, upper_bound = res
 
@@ -3678,7 +3678,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         self.name_not_defined(name, ctx)
             if n and not n.module_hidden:
                 n = self.rebind_symbol_table_node(n)
-                if isinstance(n.node, PlaceholderNode):
+                if n and isinstance(n.node, PlaceholderNode):
                     self.record_incomplete_ref()
                 return n
             return None
@@ -3700,16 +3700,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer()
         self.num_incomplete_refs += 1
 
-    def mark_incomplete(self, name: str) -> None:
+    def mark_incomplete(self, name: str, node: Node) -> None:
         """Mark the current module namespace as incomplete (and defer current analysis target).
 
         Args:
             name: The name that we weren't able to define (or '*' if the name is unknown)
+            node: The node that refers to the name (definition or lvalue)
         """
         self.defer()
         self.incomplete = True
         fullname = self.qualified_name(name)
-        self.add_symbol(name, PlaceholderNode(fullname, False), context=None)
+        self.add_symbol(name, PlaceholderNode(fullname, node, False), context=None)
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
@@ -3784,7 +3785,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(name, alias_node, tree)
             elif self.found_incomplete_ref(tag):
                 # Built-in class target may not ready yet -- defer.
-                self.mark_incomplete(name)
+                self.mark_incomplete(name, tree)
             else:
                 # Test fixtures may be missing some builtin classes, which is okay.
                 pass
@@ -4149,22 +4150,22 @@ def apply_semantic_analyzer_patches(patches: List[Tuple[int, Callable[[], None]]
         patch_func()
 
 
-def names_modified_by_assignment(s: AssignmentStmt) -> List[str]:
+def names_modified_by_assignment(s: AssignmentStmt) -> List[NameExpr]:
     """Return all unqualified (short) names assigned to in an assignment statement."""
-    result = []  # type: List[str]
+    result = []  # type: List[NameExpr]
     for lvalue in s.lvalues:
         result += names_modified_in_lvalue(lvalue)
     return result
 
 
-def names_modified_in_lvalue(lvalue: Lvalue) -> List[str]:
+def names_modified_in_lvalue(lvalue: Lvalue) -> List[NameExpr]:
     """Return all NameExpr assignment targets in an Lvalue."""
     if isinstance(lvalue, NameExpr):
-        return [lvalue.name]
+        return [lvalue]
     elif isinstance(lvalue, StarExpr):
         return names_modified_in_lvalue(lvalue.expr)
     elif isinstance(lvalue, (ListExpr, TupleExpr)):
-        result = []  # type: List[str]
+        result = []  # type: List[NameExpr]
         for item in lvalue.items:
             result += names_modified_in_lvalue(item)
         return result

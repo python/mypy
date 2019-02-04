@@ -2669,29 +2669,49 @@ class TypeAlias(SymbolNode):
 
 
 class PlaceholderNode(SymbolNode):
-    """Temporary node that will later become a type but is incomplete.
+    """Temporary node that will later become a real SymbolNode.
 
     These are only present during semantic analysis when using the new
-    semantic analyzer. These are created if some dependencies of a type
-    definition are not yet complete. They are used to create
-    PlaceholderType instances for types that refer to incomplete types.
-    Example where this can be used:
+    semantic analyzer. These are created if some essential dependencies
+    of a definition are not yet complete.
+
+    A typical use is for names imported from a module which is still
+    incomplete (within an import cycle):
+
+      from m import f  # Initially may create PlaceholderNode
+
+    This is particularly important if the imported shadows a name from
+    an enclosing scope or builtins:
+
+      from m import int  # Placeholder avoids mixups with builtins.int
+
+    They are also used to create PlaceholderType instances for types
+    that refer to incomplete types. Example:
 
       class C(Sequence[C]): ...
 
-    We create a PlaceholderTypeInfo for C so that the type C in
-    Sequence[C] can be bound. (The long-term purpose of placeholder
-    types is to evolve into something that can support general
-    recursive types. The base class use case could be supported
-    through other means as well.)
+    We create a PlaceholderNode (with becomes_typeinfo=True) for C so
+    that the type C in Sequence[C] can be bound.
 
-    PlaceholderTypeInfo can only refer to something that will become
-    a TypeInfo. It can't be used with type variables, in particular,
-    as this would cause issues with class type variable detection.
+    Attributes:
+
+      fullname: Full name of of the PlaceholderNode.
+      node: AST node that contains the definition that caused this to
+          be created. This is needed to track when a placeholder should
+          be replaced with a real node, in case there are multiple
+          definitions/assignments for the same fullname.
+      becomes_typeinfo: If True, this refers something that will later
+          become a TypeInfo. It can't be used with type variables, in
+          particular, as this would cause issues with class type variable
+          detection.
+
+    The long-term purpose of placeholder nodes/types is to evolve into
+    something that can support general recursive types.
     """
 
-    def __init__(self, fullname: str, becomes_typeinfo: bool = False) -> None:
+    def __init__(self, fullname: str, node: Node, becomes_typeinfo: bool = False) -> None:
         self._fullname = fullname
+        self.node = node
         self.becomes_typeinfo = becomes_typeinfo
         self.line = -1
 
