@@ -1264,7 +1264,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         for base, base_expr in bases:
             if isinstance(base, TupleType):
-                if info.tuple_type:
+                if info.tuple_type and info.tuple_type != base:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                     defn.has_incompatible_baseclass = True
                 info.tuple_type = base
@@ -1853,7 +1853,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
+            existing_info = s.rvalue.analyzed.info  # type: Optional[TypeInfo]
+        else:
+            existing_info = None
+        self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope(),
+                                                                existing_info)
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)

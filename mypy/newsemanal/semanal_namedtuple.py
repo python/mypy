@@ -121,7 +121,8 @@ class NamedTupleAnalyzer:
                     default_items[name] = stmt.rvalue
         return items, types, default_items
 
-    def process_namedtuple_definition(self, s: AssignmentStmt, is_func_scope: bool) -> None:
+    def process_namedtuple_definition(self, s: AssignmentStmt, is_func_scope: bool,
+                                      existing_info: Optional[TypeInfo]) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table.
 
         Assume that s has already been successfully analyzed.
@@ -130,7 +131,10 @@ class NamedTupleAnalyzer:
             return
         lvalue = s.lvalues[0]
         name = lvalue.name
-        named_tuple = self.check_namedtuple(s.rvalue, name, is_func_scope)
+        if existing_info:
+            named_tuple = existing_info
+        else:
+            named_tuple = self.check_namedtuple(s.rvalue, name, is_func_scope)
         if named_tuple is None:
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
