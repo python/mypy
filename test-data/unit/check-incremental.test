@@ -3630,6 +3630,19 @@ def foo() -> None:
 [out2]
 tmp/main.py:2: error: "int" has no attribute "foo"
 
+[case testIncrementalFineGrainedCacheError1]
+# flags: --cache-fine-grained --no-sqlite-cache
+import a
+[file a.py]
+[file b.py]
+x = 0
+[file a.py.2]
+from b import x
+1 + 'lol'
+[out]
+[out2]
+tmp/a.py:2: error: Unsupported operand types for + ("int" and "str")
+
 [case testIncrementalBustedFineGrainedCache1]
 # flags: --cache-fine-grained --no-sqlite-cache
 import a
