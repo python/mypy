@@ -2235,64 +2235,50 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.fail('Invalid assignment target', lval)
 
     def analyze_name_lvalue(self,
-                            lval: NameExpr,
+                            lvalue: NameExpr,
                             explicit_type: bool,
                             is_final: bool) -> None:
         """Analyze an lvalue that targets a name expression.
 
         Arguments are similar to "analyze_lvalue".
         """
-        name = lval.name
+        name = lvalue.name
 
-        if lval.node:
+        if lvalue.node:
             # This has been bound already in a previous iteration.
             return
 
         if self.is_alias_for_final_name(name):
             if is_final:
-                self.fail("Cannot redefine an existing name as final", lval)
+                self.fail("Cannot redefine an existing name as final", lvalue)
             else:
-                self.msg.cant_assign_to_final(name, self.type is not None, lval)
+                self.msg.cant_assign_to_final(name, self.type is not None, lvalue)
 
-        # Top-level definitions within some statements (at least while) are
-        # not handled in the first pass, so they have to be added now.
-        add_global = not self.is_func_scope() and not self.type
-        if add_global and (name not in self.globals or
-                           isinstance(self.globals[name].node, PlaceholderNode)):
-            # Define new global name.
-            v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
-            self.add_symbol(name, v, lval)
-        elif isinstance(lval.node, Var) and lval.is_new_def:
-            if lval.kind == GDEF:
-                # Since the is_new_def flag is set, this must have been analyzed
-                # already in the first pass and added to the symbol table.
-                # An exception is typing module with incomplete test fixtures.
-                assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
-                # A previously defined name cannot be redefined as a final name even when
-                # using renaming.
+        kind = self.current_symbol_kind()
+        names = self.current_symbol_table()
+        existing = names.get(name)
+        if (existing
+                and isinstance(existing.node, PlaceholderNode)
+                and existing.node.node != lvalue):
+            # Placeholder associated with another node.
+            return
+
+        outer = self.is_global_or_nonlocal(name)
+        if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
+            var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
+            self.add_symbol(name, var, lvalue)
+            if kind == GDEF:
                 if (is_final
                         and self.is_mangled_global(name)
                         and not self.is_initial_mangled_global(name)):
-                    self.fail("Cannot redefine an existing name as final", lval)
-        elif (self.locals[-1] is not None and name not in self.locals[-1] and
-              name not in self.global_decls[-1] and
-              name not in self.nonlocal_decls[-1]):
-            # Define new local name.
-            v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
-            self.add_local(v, lval)
-            if unmangle(name) == '_':
-                # Special case for assignment to local named '_': always infer 'Any'.
-                typ = AnyType(TypeOfAny.special_form)
-                self.store_declared_types(lval, typ)
-        elif not self.is_func_scope() and (self.type and
-                                           name not in self.type.names):
-            # Define a new attribute within class body.
-            if is_final and unmangle(name) + "'" in self.type.names:
-                self.fail("Cannot redefine an existing name as final", lval)
-            v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
-            self.add_symbol(name, v, lval)
+                    self.fail("Cannot redefine an existing name as final", lvalue)
+            elif kind == MDEF:
+                assert self.type
+                if is_final and unmangle(name) + "'" in self.type.names:
+                    self.fail("Cannot redefine an existing name as final", lvalue)
         else:
-            self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
+            self.make_name_lvalue_point_to_existing_def(lvalue, explicit_type, is_final)
+        # TODO: Special local local '_' assignment to always infer 'Any'
 
     def is_mangled_global(self, name: str) -> bool:
         # A global is mangled if there exists at least one renamed variant.
@@ -3709,8 +3695,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         self.defer()
         self.incomplete = True
-        fullname = self.qualified_name(name)
-        self.add_symbol(name, PlaceholderNode(fullname, node, False), context=None)
+        if name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
+            fullname = self.qualified_name(name)
+            self.add_symbol(name, PlaceholderNode(fullname, node, False), context=None)
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
@@ -3898,9 +3885,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)
 
-    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
-                              context: Optional[Context] = None) -> None:
-        """Add symbol table node to the currently active symbol table."""
+    def current_symbol_table(self) -> SymbolTable:
         if self.is_func_scope():
             assert self.locals[-1] is not None
             names = self.locals[-1]
@@ -3908,6 +3893,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             names = self.type.names
         else:
             names = self.globals
+        return names
+
+    def is_global_or_nonlocal(self, name: str) -> bool:
+        return (self.is_func_scope()
+                and (name in self.global_decls[-1]
+                     or name in self.nonlocal_decls[-1]))
+
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
+                              context: Optional[Context] = None) -> None:
+        """Add symbol table node to the currently active symbol table."""
+        names = self.current_symbol_table()
         existing = names.get(name)
         if (existing is not None
                 and context is not None
