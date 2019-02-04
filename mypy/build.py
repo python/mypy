@@ -1315,13 +1315,16 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     see #4043 for an example.
     """
     path = manager.normpath(path)
-    cache_paths = get_cache_names(id, path, manager)
+    # We don't delete .deps files on errors, since the dependencies
+    # are mostly generated from other files and the metadata is
+    # tracked separately.
+    meta_path, data_path, _ = get_cache_names(id, path, manager)
+    cache_paths = [meta_path, data_path]
     manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 
     for filename in cache_paths:
         try:
-            if filename:
-                manager.metastore.remove(filename)
+            manager.metastore.remove(filename)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
