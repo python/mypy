@@ -70,8 +70,9 @@ class FindModuleCache:
                  options: Optional[Options] = None) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
-        # Cache find_lib_path_dirs: (dir_chain, search_paths) -> list(package_dirs, should_verify)
-        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
+        # Cache for get_toplevel_possibilities:
+        # search_paths -> (toplevel_id -> list(package_dirs))
+        self.initial_components = {}  # type: Dict[Tuple[str, ...], Dict[str, List[str]]]
         # Cache find_module: id -> result
         self.results = {}  # type: Dict[str, Optional[str]]
         self.ns_ancestors = {}  # type: Dict[str, str]
@@ -79,28 +80,54 @@ class FindModuleCache:
 
     def clear(self) -> None:
         self.results.clear()
-        self.dirs.clear()
+        self.initial_components.clear()
         self.ns_ancestors.clear()
 
-    def find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> PackageDirs:
-        # Cache some repeated work within distinct find_module calls: finding which
-        # elements of lib_path have even the subdirectory they'd need for the module
-        # to exist. This is shared among different module ids when they differ only
-        # in the last component.
-        # This is run for the python_path, mypy_path, and typeshed_path search paths
-        key = (dir_chain, lib_path)
-        if key not in self.dirs:
-            self.dirs[key] = self._find_lib_path_dirs(dir_chain, lib_path)
-        return self.dirs[key]
+    def find_lib_path_dirs(self, id: str, lib_path: Tuple[str, ...]) -> PackageDirs:
+        """Find which elements of a lib_path have the directory a module needs to exist.
 
-    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> PackageDirs:
+        This is run for the python_path, mypy_path, and typeshed_path search paths."""
+        components = id.split('.')
+        dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
+
         dirs = []
-        for pathitem in lib_path:
+        for pathitem in self.get_toplevel_possibilities(lib_path, components[0]):
             # e.g., '/usr/lib/python3.4/foo/bar'
             dir = os.path.normpath(os.path.join(pathitem, dir_chain))
             if self.fscache.isdir(dir):
                 dirs.append((dir, True))
         return dirs
+
+    def get_toplevel_possibilities(self, lib_path: Tuple[str, ...], id: str) -> List[str]:
+        """Find which elements of lib_path could contain a particular top-level module.
+
+        In practice, almost all modules can be routed to the correct entry in
+        lib_path by looking at just the first component of the module name.
+
+        We take advantage of this by enumerating the contents of all of the
+        directories on the lib_path and building a map of which entries in
+        the lib_path could contain each potential top-level module that appears.
+        """
+
+        if lib_path in self.initial_components:
+            return self.initial_components[lib_path].get(id, [])
+
+        # Enumerate all the files in the directories on lib_path and produce the map
+        components = {}  # type: Dict[str, List[str]]
+        for dir in lib_path:
+            try:
+                contents = self.fscache.listdir(dir)
+            except OSError:
+                contents = []
+            # False positives are fine for correctness here, since we will check
+            # precisely later, so we only look at the root of every filename without
+            # any concern for the exact details.
+            for name in contents:
+                name = os.path.splitext(name)[0]
+                components.setdefault(name, []).append(dir)
+
+        self.initial_components[lib_path] = components
+        return components.get(id, [])
 
     def find_module(self, id: str) -> Optional[str]:
         """Return the path of the module source file, or None if not found."""
@@ -175,9 +202,9 @@ class FindModuleCache:
             third_party_inline_dirs.clear()
             third_party_stubs_dirs.clear()
         python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
-        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
+        candidate_base_dirs = self.find_lib_path_dirs(id, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
-            self.find_lib_path_dirs(dir_chain, self.search_paths.typeshed_path)
+            self.find_lib_path_dirs(id, self.search_paths.typeshed_path)
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
