@@ -2673,15 +2673,17 @@ class PlaceholderTypeInfo(SymbolNode):
 
     These are only present during semantic analysis when using the new
     semantic analyzer. These are created if some dependencies of a type
-    definition are not yet complete. Their purpose is to allow
-    PlaceholderType instances to be created for types that refer to
-    incomplete types. Example where this is useful:
+    definition are not yet complete. They are used to create
+    PlaceholderType instances for types that refer to incomplete types.
+    Example where this can be used:
 
       class C(Sequence[C]): ...
 
     We create a PlaceholderTypeInfo for C so that the type C in
-    Sequence[C] can be bound. Without a placeholder, the class
-    definition couldn't be analyzed.
+    Sequence[C] can be bound. (The long-term purpose of placeholder
+    types is to evolve into something that can support general
+    recursive types. The base class use case could be supported
+    through other means as well.)
 
     PlaceholderTypeInfo can only refer to something that will become
     a TypeInfo. It can't be used with type variables, in particular,

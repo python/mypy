@@ -848,8 +848,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         result = self.analyze_base_classes(bases)
 
         if result is None or self.found_incomplete_ref(tag):
-            # Something was incomplete. Defer current target but also record
-            # that the class is a known type.
+            # Something was incomplete. Defer current target.
             self.mark_incomplete(defn.name)
             return
 
@@ -1105,13 +1104,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            tvars = self.analyze_class_typevar_declaration(base)
-            if tvars is not None:
+            result = self.analyze_class_typevar_declaration(base)
+            if result is not None:
                 if declared_tvars:
                     self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
-                declared_tvars.extend(tvars[0])
-                is_protocol = tvars[1]
+                tvars, is_protocol = result
+                declared_tvars.extend(tvars)
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
