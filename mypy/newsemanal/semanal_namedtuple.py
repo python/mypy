@@ -2,8 +2,8 @@
 
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
-
-from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Callable
+from contextlib import contextmanager
+from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
@@ -43,17 +43,24 @@ class NamedTupleAnalyzer:
         self.options = options
         self.api = api
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef,
-                                    existing_info: TypeInfo) -> Tuple[bool, Optional[TypeInfo]]:
-        # special case for NamedTuple
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> Tuple[bool, Optional[TypeInfo]]:
+        """Analyze if given class definition can be a named tuple definition.
+
+        Return a tuple where first item indicates whether this can possibly be a named tuple,
+        and the second item is the corresponding TypeInfo (may be None if not ready and should be
+        deferred).
+
+        If defn.info is present, it will be used instead of creating a new one.
+        (this is used by multi-iteration semantic analysis).
+        """
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname == 'typing.NamedTuple':
-                    if existing_info:
+                    if defn.info:
                         # Don't reprocess everything, potentially deferred methods will be
                         # reprocessed later.
-                        return True, existing_info
+                        return True, defn.info
                     result = self.check_namedtuple_classdef(defn)
                     if result is None:
                         return True, None
@@ -69,6 +76,14 @@ class NamedTupleAnalyzer:
 
     def check_namedtuple_classdef(
             self, defn: ClassDef) -> Optional[Tuple[List[str], List[Type], Dict[str, Expression]]]:
+        """Parse and validate fields in named tuple class definition.
+
+        Return a three tuple:
+          * field names
+          * field types
+          * field default values
+        or None, if any of the types are not ready.
+        """
         if self.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
             return [], [], {}
@@ -125,14 +140,15 @@ class NamedTupleAnalyzer:
                                       existing_info: Optional[TypeInfo]) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table.
 
-        Assume that s has already been successfully analyzed.
+        Assume that s has already been successfully analyzed. Use existing_info
+        if given instead of creating a new one.
         """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
         lvalue = s.lvalues[0]
         name = lvalue.name
         if existing_info:
-            named_tuple = existing_info
+            named_tuple = existing_info  # type: Optional[TypeInfo]
         else:
             named_tuple = self.check_namedtuple(s.rvalue, name, is_func_scope)
         if named_tuple is None:
@@ -421,18 +437,17 @@ class NamedTupleAnalyzer:
         info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
         return info
 
-    def process_namedtuple_body(self, defn: ClassDef, named_tuple_info: TypeInfo,
-                                body_analyzer: Callable[[ClassDef], None]) -> None:
-        """Analyze class-based named tuple if the NamedTuple base class is present.
+    @contextmanager
+    def save_namedtuple_body(self, named_tuple_info: TypeInfo) -> Iterator[None]:
+        """Analyze body of class-based named tuple if the NamedTuple base class is present.
 
-        Return True only if the class is a NamedTuple class.
+        Temporarily clear the names dict so we don't get errors about duplicate names
+        that were already set in build_namedtuple_typeinfo.
         """
-        # Temporarily clear the names dict so we don't get errors about duplicate names
-        # that were already set in build_namedtuple_typeinfo.
         nt_names = named_tuple_info.names
         named_tuple_info.names = SymbolTable()
 
-        body_analyzer(defn)
+        yield
 
         # Make sure we didn't use illegal names, then reset the names in the typeinfo.
         for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:

@@ -867,15 +867,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.prepare_class_def(defn, info)
             return
 
-        is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn, defn.info)
+        is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
         if is_named_tuple:
             if info is None:
                 self.mark_incomplete(defn.name)
             else:
                 self.prepare_class_def(defn, info)
                 with self.scope.class_scope(defn.info):
-                    self.named_tuple_analyzer.process_namedtuple_body(defn, info,
-                                                                      self.analyze_class_body_common)
+                    with self.named_tuple_analyzer.save_namedtuple_body(info):
+                        self.analyze_class_body_common(defn)
             return
 
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
