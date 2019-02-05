@@ -2244,12 +2244,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Arguments are similar to "analyze_lvalue".
         """
-        name = lvalue.name
-
         if lvalue.node:
             # This has been bound already in a previous iteration.
             return
 
+        name = lvalue.name
         if self.is_alias_for_final_name(name):
             if is_final:
                 self.fail("Cannot redefine an existing name as final", lvalue)
@@ -2267,20 +2266,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         outer = self.is_global_or_nonlocal(name)
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
+            # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
             self.add_symbol(name, var, lvalue)
-            if kind == GDEF:
-                if (is_final
-                        and self.is_mangled_global(name)
-                        and not self.is_initial_mangled_global(name)):
-                    self.fail("Cannot redefine an existing name as final", lvalue)
-            elif kind == MDEF:
-                assert self.type
-                if is_final and unmangle(name) + "'" in self.type.names:
-                    self.fail("Cannot redefine an existing name as final", lvalue)
+            if is_final and self.is_final_redefinition(kind, name):
+                self.fail("Cannot redefine an existing name as final", lvalue)
         else:
             self.make_name_lvalue_point_to_existing_def(lvalue, explicit_type, is_final)
-        # TODO: Special local local '_' assignment to always infer 'Any'
+        # TODO: Special case local '_' assignment to always infer 'Any'
+
+    def is_final_redefinition(self, kind: int, name: str) -> bool:
+        if kind == GDEF:
+            return self.is_mangled_global(name) and not self.is_initial_mangled_global(name)
+        elif kind == MDEF and self.type:
+            return unmangle(name) + "'" in self.type.names
+        return False
 
     def is_mangled_global(self, name: str) -> bool:
         # A global is mangled if there exists at least one renamed variant.
