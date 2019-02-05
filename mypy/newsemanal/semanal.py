@@ -2323,8 +2323,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             v.is_initialized_in_class = True
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
-        if kind == GDEF:
-            v.is_ready = False  # Type not inferred yet
+        v.is_ready = False  # Type not inferred yet
         lvalue.node = v
         lvalue.is_new_def = True
         lvalue.is_inferred_def = True

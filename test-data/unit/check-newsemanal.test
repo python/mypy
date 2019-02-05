@@ -344,7 +344,7 @@ gy = gx
 def main() -> None:
     class C:
         def meth(self) -> None:
-            lx = ly  # E: Name 'ly' is not defined
+            lx = ly  # E: Cannot determine type of 'ly'
             ly = lx
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
