@@ -19,19 +19,13 @@ from unittest import TestCase as Suite
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase, new_semanal_files
 
 skip = pytest.mark.skip
 
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
-
-
-# Files to run with new semantic analyzer.
-new_semanal_files = [
-    'check-basic.test',
-]
 
 
 def run_mypy(args: List[str]) -> None:

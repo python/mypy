@@ -17,6 +17,11 @@ from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
 root_dir = os.path.normpath(PREFIX)
 
+# Files to run with new semantic analyzer.
+new_semanal_files = [
+    'check-basic.test',
+]
+
 # File modify/create operation: copy module contents from source_path.
 UpdateFile = NamedTuple('UpdateFile', [('module', str),
                                        ('source_path', str),
@@ -195,6 +200,8 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.only_when = only_when
         if ((platform == 'windows' and sys.platform != 'win32')
                 or (platform == 'posix' and sys.platform == 'win32')):
+            skip = True
+        if os.getenv('NEWSEMANAL') and os.path.split(file) not in new_semanal_files:
             skip = True
         self.skip = skip
         self.data = data
