@@ -3608,21 +3608,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        if not n.node.mro:
-                            # We haven't yet analyzed the class `n.node`.  Fall back to direct
-                            # lookup in the names declared directly under it, without its base
-                            # classes.  This can happen when we have a forward reference to a
-                            # nested class, and the reference is bound before the outer class
-                            # has been fully semantically analyzed.
-                            #
-                            # A better approach would be to introduce a new analysis pass or
-                            # to move things around between passes, but this unblocks a common
-                            # use case even though this is a little limited in case there is
-                            # inheritance involved.
-                            result = n.node.names.get(parts[i])
-                        else:
-                            result = n.node.get(parts[i])
-                        n = result
+                        n = n.node.get(parts[i])
                     elif isinstance(n.node, MypyFile):
                         names = n.node.names
                         # Rebind potential references to old version of current module in
