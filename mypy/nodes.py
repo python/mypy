@@ -2669,7 +2669,7 @@ class TypeAlias(SymbolNode):
 
 
 class PlaceholderNode(SymbolNode):
-    """Temporary node that will later become a real SymbolNode.
+    """Temporary symbol node that will later become a real SymbolNode.
 
     These are only present during semantic analysis when using the new
     semantic analyzer. These are created if some essential dependencies
@@ -2685,6 +2685,15 @@ class PlaceholderNode(SymbolNode):
 
       from m import int  # Placeholder avoids mixups with builtins.int
 
+    Another case where this is useful is when there is another definition
+    or assignment:
+
+      from m import f
+      def f() -> None: ...
+
+    In the above example, the presence of PlaceholderNode allows us to
+    handle the second definition as a redefinition.
+
     They are also used to create PlaceholderType instances for types
     that refer to incomplete types. Example:
 
@@ -2697,9 +2706,7 @@ class PlaceholderNode(SymbolNode):
 
       fullname: Full name of of the PlaceholderNode.
       node: AST node that contains the definition that caused this to
-          be created. This is needed to track when a placeholder should
-          be replaced with a real node, in case there are multiple
-          definitions/assignments for the same fullname.
+          be created. This is only useful for debugging.
       becomes_typeinfo: If True, this refers something that will later
           become a TypeInfo. It can't be used with type variables, in
           particular, as this would cause issues with class type variable
