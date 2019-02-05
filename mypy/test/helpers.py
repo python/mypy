@@ -19,7 +19,7 @@ from unittest import TestCase as Suite
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase, new_semanal_files
+from mypy.test.data import DataDrivenTestCase
 
 skip = pytest.mark.skip
 
@@ -362,8 +362,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
     if testcase.config.getoption('--mypy-verbose'):
         options.verbosity = testcase.config.getoption('--mypy-verbose')
 
-    file_name = os.path.split(testcase.file)[-1]
-    if os.getenv('NEWSEMANAL') and file_name in new_semanal_files:
+    if os.getenv('NEWSEMANAL'):
         options.new_semantic_analyzer = True
 
     return options

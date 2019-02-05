@@ -14,13 +14,9 @@ import pytest  # type: ignore  # no pytest in typeshed
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
+from mypy.test.hacks import new_semanal_blacklist
 
 root_dir = os.path.normpath(PREFIX)
-
-# Files to run with new semantic analyzer.
-new_semanal_files = [
-    'check-type-promotion.test',
-]
 
 # File modify/create operation: copy module contents from source_path.
 UpdateFile = NamedTuple('UpdateFile', [('module', str),
@@ -201,7 +197,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         if ((platform == 'windows' and sys.platform != 'win32')
                 or (platform == 'posix' and sys.platform == 'win32')):
             skip = True
-        if os.getenv('NEWSEMANAL') and os.path.split(file)[-1] not in new_semanal_files:
+        if os.getenv('NEWSEMANAL') and os.path.split(file)[-1] in new_semanal_blacklist:
             skip = True
         self.skip = skip
         self.data = data
