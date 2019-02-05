@@ -21,8 +21,17 @@ TYPESHED = 'TypeshedSuite'
 PEP561 = 'TestPEP561'
 EVALUATION = 'PythonEvaluation'
 DAEMON = 'testdaemon'
+STUBGEN_CMD = 'StubgenCmdLine'
+STUBGEN_PY = 'StubgenPythonSuite'
 
-ALL_NON_FAST = [CMDLINE, SAMPLES, TYPESHED, PEP561, EVALUATION, DAEMON]
+ALL_NON_FAST = [CMDLINE,
+                SAMPLES,
+                TYPESHED,
+                PEP561,
+                EVALUATION,
+                DAEMON,
+                STUBGEN_CMD,
+                STUBGEN_PY]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similiar
@@ -35,7 +44,10 @@ cmds = {
     # Fast test cases only (this is the bulk of the test suite)
     'pytest-fast': 'pytest -k "not (%s)"' % ' or '.join(ALL_NON_FAST),
     # Test cases that invoke mypy (with small inputs)
-    'pytest-cmdline': 'pytest -k "%s"' % ' or '.join([CMDLINE, EVALUATION]),
+    'pytest-cmdline': 'pytest -k "%s"' % ' or '.join([CMDLINE,
+                                                      EVALUATION,
+                                                      STUBGEN_CMD,
+                                                      STUBGEN_PY]),
     # Test cases that may take seconds to run each
     'pytest-slow': 'pytest -k "%s"' % ' or '.join([SAMPLES, TYPESHED, PEP561, DAEMON]),
 }
