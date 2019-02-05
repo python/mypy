@@ -3347,8 +3347,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.expr.accept(self)
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
-        if expr.analyzed:
-            return
         base = expr.base
         base.accept(self)
         if (isinstance(base, RefExpr)
@@ -3357,6 +3355,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             expr.index.accept(self)
         elif ((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
               or refers_to_class_or_function(base)):
+            # We need to do full processing on every iteration, since some type
+            # arguments may contain placeholder types.
             self.analyze_type_application(expr)
         else:
             expr.index.accept(self)
