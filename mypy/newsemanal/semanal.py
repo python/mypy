@@ -3675,15 +3675,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.num_incomplete_refs += 1
 
     def mark_incomplete(self, name: str, node: Node) -> None:
-        """Mark the current module namespace as incomplete (and defer current analysis target).
+        """Mark a definition as incomplete (and defer current analysis target).
+
+        Also potentially mark the current namespace as incomplete.
 
         Args:
             name: The name that we weren't able to define (or '*' if the name is unknown)
             node: The node that refers to the name (definition or lvalue)
         """
         self.defer()
-        self.incomplete = True
-        if name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
+        if name == '*':
+            self.incomplete = True
+        elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
             self.add_symbol(name, PlaceholderNode(fullname, node, False), context=None)
         self.missing_names.add(name)
@@ -3747,17 +3750,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
-            if name in tree.names:
+            if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
                 continue
             tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
-            if n and not isinstance(n.node, PlaceholderNode):
-                # Found built-in class target. Create alias.
-                target = self.named_type_or_none(target_name, [])
-                assert target is not None
-                alias_node = TypeAlias(target, alias, line=-1, column=-1,  # there is no context
-                                       no_args=True, normalized=True)
-                self.add_symbol(name, alias_node, tree)
+            if n:
+                if isinstance(n.node, PlaceholderNode):
+                    self.mark_incomplete(name, tree)
+                else:
+                    # Found built-in class target. Create alias.
+                    target = self.named_type_or_none(target_name, [])
+                    assert target is not None
+                    alias_node = TypeAlias(target, alias, line=-1, column=-1,  # there is no context
+                                           no_args=True, normalized=True)
+                    self.add_symbol(name, alias_node, tree)
             elif self.found_incomplete_ref(tag):
                 # Built-in class target may not ready yet -- defer.
                 self.mark_incomplete(name, tree)
