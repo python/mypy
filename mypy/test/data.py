@@ -202,7 +202,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         if ((platform == 'windows' and sys.platform != 'win32')
                 or (platform == 'posix' and sys.platform == 'win32')):
             skip = True
-        if os.getenv('NEWSEMANAL') and os.path.split(file) not in new_semanal_files:
+        if os.getenv('NEWSEMANAL') and os.path.split(file)[-1] not in new_semanal_files:
             skip = True
         self.skip = skip
         self.data = data
