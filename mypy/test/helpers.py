@@ -362,6 +362,9 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
     if testcase.config.getoption('--mypy-verbose'):
         options.verbosity = testcase.config.getoption('--mypy-verbose')
 
+    if os.getenv('NEWSEMANAL'):
+        options.new_semantic_analyzer = True
+
     return options
 
 
