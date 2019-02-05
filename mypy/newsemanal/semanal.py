@@ -3543,6 +3543,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def lookup(self, name: str, ctx: Context,
                suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        """Look up an unqualified name in all active namespaces."""
         implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
