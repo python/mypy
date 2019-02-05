@@ -3390,7 +3390,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Return None if anything was incomplete.
         """
         index = expr.index
+        tag = self.track_incomplete_refs()
         self.analyze_type_expr(index)
+        if self.found_incomplete_ref(tag):
+            return None
         types = []  # type: List[Type]
         if isinstance(index, TupleExpr):
             items = index.items
