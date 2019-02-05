@@ -394,11 +394,13 @@ class Foo:
     def __setitem__(self, index: str, value: str) -> None: ...
     def __iter__(self) -> Iterator[str]: ...
     def __next__(self) -> str: ...
+    def __call__(self, *args: str) -> str: ...
     def m(self, arg: str) -> str: ...
 
 foo = Foo()
 reveal_type(foo.m(2)) # E: Revealed type is 'builtins.int'
 reveal_type(foo[3]) # E: Revealed type is 'builtins.int'
+reveal_type(foo(4, 5, 6)) # E: Revealed type is 'builtins.int'
 foo[4] = 5
 for x in foo:
     reveal_type(x) # E: Revealed type is 'builtins.int*'
@@ -536,3 +538,18 @@ func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})  # E: [[0, 0, 0, 2], [4]]
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
+
+[case testHookCallableInstance]
+# flags: --config-file tmp/mypy.ini
+from typing import Generic, TypeVar
+T = TypeVar("T")
+class Class(Generic[T]):
+    def __init__(self, one: T): ...
+    def __call__(self, two: T) -> int: ...
+reveal_type(Class("hi")("there"))  # E: Revealed type is 'builtins.str*'
+instance = Class(3.14)
+reveal_type(instance(2))  # E: Revealed type is 'builtins.float*'
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/callable_instance.py

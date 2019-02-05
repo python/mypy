@@ -31,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderTypeInfo,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -212,8 +212,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                         alias_definition=e.is_alias_rvalue
                                                         or lvalue)
         else:
-            if isinstance(node, PlaceholderTypeInfo):
-                assert False, 'PlaceholderTypeInfo %r leaked to checker' % node.fullname()
+            if isinstance(node, PlaceholderNode):
+                assert False, 'PlaceholderNode %r leaked to checker' % node.fullname()
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)
@@ -707,8 +707,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                   False, False, False, self.msg,
                                                   original_type=callee, chk=self.chk,
                                                   in_literal_context=self.is_literal_context())
+            callable_name = callee.type.fullname() + ".__call__"
+            # Apply method signature hook, if one exists
+            call_function = self.transform_callee_type(
+                callable_name, call_function, args, arg_kinds, context, arg_names, callee)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
-                                   callable_node, arg_messages)
+                                   callable_node, arg_messages, callable_name, callee)
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
