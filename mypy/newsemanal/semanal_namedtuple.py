@@ -49,20 +49,14 @@ class NamedTupleAnalyzer:
         Return a tuple where first item indicates whether this can possibly be a named tuple,
         and the second item is the corresponding TypeInfo (may be None if not ready and should be
         deferred).
-
-        If defn.info is present, it will be used instead of creating a new one.
-        (this is used by multi-iteration semantic analysis).
         """
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname == 'typing.NamedTuple':
-                    if defn.info:
-                        # Don't reprocess everything, potentially deferred methods will be
-                        # reprocessed later.
-                        return True, defn.info
                     result = self.check_namedtuple_classdef(defn)
                     if result is None:
+                        # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items = result
                     info = self.build_namedtuple_typeinfo(
@@ -71,7 +65,9 @@ class NamedTupleAnalyzer:
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
                     defn.analyzed.line = defn.line
                     defn.analyzed.column = defn.column
+                    # All done: this is a valid named tuple with all types known.
                     return True, info
+        # This can't be a valid named tuple.
         return False, None
 
     def check_namedtuple_classdef(
@@ -119,6 +115,7 @@ class NamedTupleAnalyzer:
                 else:
                     analyzed = self.api.anal_type(stmt.type)
                     if analyzed is None:
+                        # Something is incomplete. We need to defer this named tuple.
                         return None
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
@@ -136,21 +133,16 @@ class NamedTupleAnalyzer:
                     default_items[name] = stmt.rvalue
         return items, types, default_items
 
-    def process_namedtuple_definition(self, s: AssignmentStmt, is_func_scope: bool,
-                                      existing_info: Optional[TypeInfo]) -> None:
+    def process_namedtuple_definition(self, s: AssignmentStmt, is_func_scope: bool) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table.
 
-        Assume that s has already been successfully analyzed. Use existing_info
-        if given instead of creating a new one.
+        Assume that s has already been successfully analyzed.
         """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
         lvalue = s.lvalues[0]
         name = lvalue.name
-        if existing_info:
-            named_tuple = existing_info  # type: Optional[TypeInfo]
-        else:
-            named_tuple = self.check_namedtuple(s.rvalue, name, is_func_scope)
+        named_tuple = self.check_namedtuple(s.rvalue, name, is_func_scope)
         if named_tuple is None:
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
@@ -439,10 +431,12 @@ class NamedTupleAnalyzer:
 
     @contextmanager
     def save_namedtuple_body(self, named_tuple_info: TypeInfo) -> Iterator[None]:
-        """Analyze body of class-based named tuple if the NamedTuple base class is present.
+        """Preserve the generated body of class-based named tuple and then restore it.
 
         Temporarily clear the names dict so we don't get errors about duplicate names
-        that were already set in build_namedtuple_typeinfo.
+        that were already set in build_namedtuple_typeinfo (we already added the tuple
+        field names while generating the TypeInfo, and actual duplicates are
+        already reported).
         """
         nt_names = named_tuple_info.names
         named_tuple_info.names = SymbolTable()

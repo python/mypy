@@ -867,15 +867,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.prepare_class_def(defn, info)
             return
 
-        is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
-        if is_named_tuple:
-            if info is None:
-                self.mark_incomplete(defn.name)
-            else:
-                self.prepare_class_def(defn, info)
-                with self.scope.class_scope(defn.info):
-                    with self.named_tuple_analyzer.save_namedtuple_body(info):
-                        self.analyze_class_body_common(defn)
+        if self.analyze_namedtuple_classdef(defn):
             return
 
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
@@ -906,6 +898,25 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.calculate_abstract_status(defn.info)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        """Check if this class can define a named tuple."""
+        if defn.info and defn.info.tuple_type:
+            # Don't reprocess everything. We just need to process methods defined
+            # in the named tuple class body.
+            is_named_tuple, info = True, defn.info
+        else:
+            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
+        if is_named_tuple:
+            if info is None:
+                self.mark_incomplete(defn.name)
+            else:
+                self.prepare_class_def(defn, info)
+                with self.scope.class_scope(defn.info):
+                    with self.named_tuple_analyzer.save_namedtuple_body(info):
+                        self.analyze_class_body_common(defn)
+            return True
+        return False
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
@@ -1264,6 +1275,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         for base, base_expr in bases:
             if isinstance(base, TupleType):
+                # There may be an existing valid tuple type from previous semanal iterations.
+                # Use equality to check if it is the case.
                 if info.tuple_type and info.tuple_type != base:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                     defn.has_incompatible_baseclass = True
@@ -1854,11 +1867,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
-            existing_info = s.rvalue.analyzed.info  # type: Optional[TypeInfo]
+            pass  # This is a valid and analyzed named tuple definition, nothing to do here.
         else:
-            existing_info = None
-        self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope(),
-                                                                existing_info)
+            self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
