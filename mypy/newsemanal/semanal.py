@@ -1180,6 +1180,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return None
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
+        if sym and isinstance(sym.node, PlaceholderNode):
+            self.record_incomplete_ref()
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):

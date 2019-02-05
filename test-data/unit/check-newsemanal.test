@@ -339,7 +339,7 @@ def main() -> None:
             x  # E: Name 'x' is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
-gx = gy  # E: Name 'gy' is not defined
+gx = gy  # E: Cannot determine type of 'gy'
 gy = gx
 def main() -> None:
     class C:
