@@ -19,8 +19,7 @@ root_dir = os.path.normpath(PREFIX)
 
 # Files to run with new semantic analyzer.
 new_semanal_files = [
-    'check-basic.test',
-    'check-namedtuple.test',
+    'check-unreachable-code.test',
 ]
 
 # File modify/create operation: copy module contents from source_path.
