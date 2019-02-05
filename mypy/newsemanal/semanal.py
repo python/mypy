@@ -2258,11 +2258,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         kind = self.current_symbol_kind()
         names = self.current_symbol_table()
         existing = names.get(name)
-        if (existing
-                and isinstance(existing.node, PlaceholderNode)
-                and existing.node.node != lvalue):
-            # Placeholder associated with another node.
-            return
 
         outer = self.is_global_or_nonlocal(name)
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
