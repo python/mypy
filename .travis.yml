@@ -25,6 +25,12 @@ jobs:
     python: 3.6    # 3.6.3  pip  9.0.1
   - name: "run test suite with python 3.7"
     python: 3.7    # 3.7.0  pip 10.0.1
+  - name: "run test suite with python 3.7 (new semantic analyzer)"
+    python: 3.7
+    env:
+    - TOXENV=py
+    - EXTRA_ARGS="-n 12"
+    - NEWSEMANAL=1
   - name: "run test suite with python 3.8-dev"
     python: 3.8-dev
   - name: "type check our own code"

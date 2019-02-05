@@ -28,6 +28,12 @@ skip = pytest.mark.skip
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
 
 
+# Files to run with new semantic analyzer.
+new_semanal_files = [
+    'check-basic.test',
+]
+
+
 def run_mypy(args: List[str]) -> None:
     __tracebackhide__ = True
     outval, errval, status = api.run(args + ['--show-traceback',
@@ -361,6 +367,10 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
 
     if testcase.config.getoption('--mypy-verbose'):
         options.verbosity = testcase.config.getoption('--mypy-verbose')
+
+    file_name = os.path.split(testcase.file)[-1]
+    if os.getenv('NEWSEMANAL') and file_name in new_semanal_files:
+        options.new_semantic_analyzer = True
 
     return options
 
