@@ -3405,12 +3405,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # We always allow unbound type variables in IndexExpr, since we
             # may be analysing a type alias definition rvalue. The error will be
             # reported elsewhere if it is not the case.
-            typearg2 = self.anal_type(typearg, allow_unbound_tvars=True,
+            analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
                                       allow_placeholder=True)
-            if typearg2 is None:
+            if analyzed is None:
                 self.defer()
                 return None
-            types.append(typearg2)
+            types.append(analyzed)
         return types
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
