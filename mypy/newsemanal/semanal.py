@@ -907,12 +907,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if defn.info and defn.info.tuple_type:
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
-            is_named_tuple, info = True, defn.info
+            is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
         else:
             is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
         if is_named_tuple:
             if info is None:
-                self.mark_incomplete(defn.name)
+                self.mark_incomplete(defn.name, defn)
             else:
                 self.prepare_class_def(defn, info)
                 with self.scope.class_scope(defn.info):
@@ -1214,7 +1214,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             #       incremental mode and we should avoid it.
             if '@' not in defn.info._fullname:
                 local_name = defn.info._fullname + '@' + str(defn.line)
-                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                if defn.info.is_named_tuple:
+                    # Module already correctly set for named tuples.
+                    defn.info._fullname += '@' + str(defn.line)
+                else:
+                    defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
                 local_name = defn.info._fullname
@@ -1410,11 +1414,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                               allow_placeholder: bool = False) -> Optional[Type]:
         if isinstance(expr, CallExpr):
             expr.accept(self)
-            info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
-            if info is None:
+            is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
+                                                                              self.is_func_scope())
+            if not is_named_tuple:
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
+            elif not info:
+                self.defer()
+                return None
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
@@ -1880,16 +1888,31 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
-            pass  # This is a valid and analyzed named tuple definition, nothing to do here.
-        else:
-            self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
+        self.analyze_namedtuple_assign(s)
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_namedtuple_assign(self, s: AssignmentStmt) -> None:
+        """Check if s defines a namedtuple."""
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
+            return  # This is a valid and analyzed named tuple definition, nothing to do here.
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
+                                                                          self.is_func_scope())
+        if not is_named_tuple:
+            return
+        # Yes, it's a valid namedtuple, but defer if it is not ready.
+        if not info:
+            self.add_symbol(name, PlaceholderNode(self.qualified_name(name), lvalue, True),
+                            context=None)
+            self.mark_incomplete(name, lvalue)
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:

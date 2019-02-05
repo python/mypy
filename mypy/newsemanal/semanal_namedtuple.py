@@ -133,52 +133,41 @@ class NamedTupleAnalyzer:
                     default_items[name] = stmt.rvalue
         return items, types, default_items
 
-    def process_namedtuple_definition(self, s: AssignmentStmt, is_func_scope: bool) -> None:
-        """Check if s defines a namedtuple; if yes, store the definition in symbol table.
-
-        Assume that s has already been successfully analyzed.
-        """
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        named_tuple = self.check_namedtuple(s.rvalue, name, is_func_scope)
-        if named_tuple is None:
-            return
-        # Yes, it's a valid namedtuple definition. Add it to the symbol table.
-        node = self.api.lookup(name, s)
-        assert node is not None
-        node.kind = GDEF   # TODO locally defined namedtuple
-        node.node = named_tuple
-
     def check_namedtuple(self,
                          node: Expression,
                          var_name: Optional[str],
-                         is_func_scope: bool) -> Optional[TypeInfo]:
+                         is_func_scope: bool) -> Tuple[bool, Optional[TypeInfo]]:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
         which this is assigned, if any.
 
-        If it does, return the corresponding TypeInfo. Return None otherwise.
+        Return a tuple of two items:
+          * Can it be a valid named tuple?
+          * Corresponding TypeInfo, or None if not ready.
 
         If the definition is invalid but looks like a namedtuple,
         report errors but return (some) TypeInfo.
         """
         if not isinstance(node, CallExpr):
-            return None
+            return False, None
         call = node
         callee = call.callee
         if not isinstance(callee, RefExpr):
-            return None
+            return False, None
         fullname = callee.fullname
         if fullname == 'collections.namedtuple':
             is_typed = False
         elif fullname == 'typing.NamedTuple':
             is_typed = True
         else:
-            return None
-        items, types, defaults, ok = self.parse_namedtuple_args(call, fullname)
+            return False, None
+        result = self.parse_namedtuple_args(call, fullname)
+        if result:
+            items, types, defaults, ok = result
+        else:
+            # This is a valid named tuple but some types are not ready.
+            return True, None
         if not ok:
             # Error. Construct dummy return value.
             if var_name:
@@ -187,7 +176,7 @@ class NamedTupleAnalyzer:
                 name = 'namedtuple@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, [], [], {})
             self.store_namedtuple_info(info, name, call, is_typed)
-            return info
+            return True, info
         name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         if name != var_name or is_func_scope:
             # Give it a unique name derived from the line number.
@@ -202,8 +191,8 @@ class NamedTupleAnalyzer:
         info = self.build_namedtuple_typeinfo(name, items, types, default_items)
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
-        self.store_namedtuple_info(info, name, call, is_typed)
-        return info
+        self.store_namedtuple_info(info, var_name or name, call, is_typed)
+        return True, info
 
     def store_namedtuple_info(self, info: TypeInfo, name: str,
                               call: CallExpr, is_typed: bool) -> None:
@@ -213,7 +202,7 @@ class NamedTupleAnalyzer:
         call.analyzed.set_line(call.line, call.column)
 
     def parse_namedtuple_args(self, call: CallExpr, fullname: str
-                              ) -> Tuple[List[str], List[Type], List[Expression], bool]:
+                              ) -> Optional[Tuple[List[str], List[Type], List[Expression], bool]]:
         """Parse a namedtuple() call into data needed to construct a type.
 
         Returns a 4-tuple:
@@ -222,6 +211,7 @@ class NamedTupleAnalyzer:
         - Number of arguments that have a default value
         - Whether the definition typechecked.
 
+        Return None if at least one of the types is not ready.
         """
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
@@ -273,7 +263,12 @@ class NamedTupleAnalyzer:
                          for item in listexpr.items]
             else:
                 # The fields argument contains (name, type) tuples.
-                items, types, _, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+                result = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+                if result:
+                    items, types, _, ok = result
+                else:
+                    # One of the types is not ready, defer.
+                    return None
         if not types:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
@@ -286,8 +281,14 @@ class NamedTupleAnalyzer:
         return items, types, defaults, ok
 
     def parse_namedtuple_fields_with_types(self, nodes: List[Expression], context: Context
-                                           ) -> Tuple[List[str], List[Type], List[Expression],
-                                                      bool]:
+                                           ) -> Optional[Tuple[List[str], List[Type],
+                                                               List[Expression],
+                                                         bool]]:
+        """Parse typed named tuple fields.
+
+        Return (names, types, defaults, error ocurred), or None if at least one of
+        the types is not ready.
+        """
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
@@ -306,7 +307,8 @@ class NamedTupleAnalyzer:
                     return self.fail_namedtuple_arg('Invalid field type', type_node)
                 analyzed = self.api.anal_type(type)
                 # These should be all known, otherwise we would defer in visit_assignment_stmt().
-                assert analyzed is not None
+                if analyzed is None:
+                    return None
                 types.append(analyzed)
             else:
                 return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)

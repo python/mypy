@@ -123,7 +123,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
     analyzer.incomplete_namespaces.add(module)
     while deferred and more_iterations:
         iteration += 1
-        if not incomplete or iteration == MAX_ITERATIONS:
+        if not (deferred or incomplete) or iteration == MAX_ITERATIONS:
             # OK, this is one last pass, now missing names will be reported.
             more_iterations = False
             analyzer.incomplete_namespaces.discard(module)

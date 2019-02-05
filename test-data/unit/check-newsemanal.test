@@ -776,6 +776,26 @@ class C:
         In = NamedTuple('In', [('s', str), ('t', Other)])
         class Other: pass
 
+[case testNewAnalyzerNamedTupleClassNestedMethod]
+from typing import NamedTuple
+
+c = C()
+reveal_type(c.o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15], __main__.Other@18, fallback=__main__.C.Out@11]'
+reveal_type(c.o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15]'
+reveal_type(c.o.method())  # E: Revealed type is 'Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15]'
+
+class C:
+    def get_tuple(self) -> None:
+        self.o: Out
+        class Out(NamedTuple):
+            x: In
+            y: Other
+            def method(self) -> In: ...
+        class In(NamedTuple):
+            s: str
+            t: Other
+        class Other: pass
+
 [case testNewAnalyzerNamedTupleClassForwardMethod]
 from typing import NamedTuple
 
@@ -803,6 +823,61 @@ class SubO(Out): pass
 
 Out = NamedTuple('Out', [('x', In), ('y', Other)])
 In = NamedTuple('In', [('s', str), ('t', Other)])
+class Other: pass
+
+[case testNewAnalyzerNamedTupleMixed1]
+from typing import NamedTuple
+
+o: Out
+i: In
+
+class Out(NamedTuple):
+    x: In
+    y: Other
+
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other, fallback=__main__.In]'
+reveal_type(o.y)  # E: Revealed type is '__main__.Other'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.Other'
+reveal_type(i.t)  # E: Revealed type is '__main__.Other'
+
+In = NamedTuple('In', [('s', str), ('t', Other)])
+class Other: pass
+
+[case testNewAnalyzerNamedTupleMixed2]
+from typing import NamedTuple
+
+o: Out
+i: In
+
+Out = NamedTuple('Out', [('x', In), ('y', Other)])
+
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other, fallback=__main__.In]'
+reveal_type(o.y)  # E: Revealed type is '__main__.Other'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.Other'
+reveal_type(i.t)  # E: Revealed type is '__main__.Other'
+
+class In(NamedTuple):
+    s: str
+    t: Other
+class Other: pass
+
+[case testNewAnalyzerNamedTupleBaseClass]
+from typing import NamedTuple
+
+o: Out
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other, fallback=__main__.In]'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.Other'
+reveal_type(Out._make)  # E: Revealed type is 'def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+
+class Out(NamedTuple('Out', [('x', In), ('y', Other)])):
+    pass
+
+class In(NamedTuple):
+    s: str
+    t: Other
 class Other: pass
 
 [case testNewAnalyzerIncompleteRefShadowsBuiltin1]
