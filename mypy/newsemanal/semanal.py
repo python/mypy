@@ -3349,23 +3349,25 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_index_expr(self, expr: IndexExpr) -> None:
         if expr.analyzed:
             return
-        expr.base.accept(self)
-        if (isinstance(expr.base, RefExpr)
-                and isinstance(expr.base.node, TypeInfo)
-                and not expr.base.node.is_generic()):
-            expr.index.accept(self)
-        elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias) or
-                refers_to_class_or_function(expr.base)):
+        base = expr.base
+        index = expr.index
+        base.accept(self)
+        if (isinstance(base, RefExpr)
+                and isinstance(base.node, TypeInfo)
+                and not base.node.is_generic()):
+            index.accept(self)
+        elif (isinstance(base, RefExpr) and isinstance(base.node, TypeAlias) or
+                refers_to_class_or_function(base)):
             # Special form -- type application (either direct or via type aliasing).
 
-            self.analyze_type_expr(expr.index)
+            self.analyze_type_expr(index)
 
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
-            if isinstance(expr.index, TupleExpr):
-                items = expr.index.items
+            if isinstance(index, TupleExpr):
+                items = index.items
             else:
-                items = [expr.index]
+                items = [index]
             for item in items:
                 try:
                     typearg = expr_to_unanalyzed_type(item)
@@ -3381,12 +3383,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.defer()
                     return
                 types.append(typearg2)
-            expr.analyzed = TypeApplication(expr.base, types)
+            expr.analyzed = TypeApplication(base, types)
             expr.analyzed.line = expr.line
             # Types list, dict, set are not subscriptable, prohibit this if
             # subscripted either via type alias...
-            if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
-                alias = expr.base.node
+            if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
+                alias = base.node
                 if isinstance(alias.target, Instance):
                     name = alias.target.type.fullname()
                     if (alias.no_args and  # this avoids bogus errors for already reported aliases
@@ -3394,11 +3396,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
             # ...or directly.
             else:
-                n = self.lookup_type_node(expr.base)
+                n = self.lookup_type_node(base)
                 if n and n.fullname in nongen_builtins:
                     self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
         else:
-            expr.index.accept(self)
+            index.accept(self)
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
         try:
