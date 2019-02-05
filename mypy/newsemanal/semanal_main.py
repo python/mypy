@@ -100,11 +100,13 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         targets = get_all_leaf_targets(symtable, module, None)
         for target, node, active_type in targets:
             assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
-            process_top_level_function(analyzer, graph[module], module, node, active_type)
+            process_top_level_function(analyzer, graph[module], module, target, node, active_type)
 
 
 def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
-                               state: 'State', module: str,
+                               state: 'State',
+                               module: str,
+                               target: str,
                                node: Union[FuncDef, OverloadedFuncDef, Decorator],
                                active_type: Optional[TypeInfo]) -> None:
     """Analyze single top-level function or method.
@@ -125,8 +127,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
             # OK, this is one last pass, now missing names will be reported.
             more_iterations = False
             analyzer.incomplete_namespaces.discard(module)
-        deferred, incomplete = semantic_analyze_target(module, state, node,
-                                                       active_type, False)
+        deferred, incomplete = semantic_analyze_target(target, state, node, active_type, False)
 
     # After semantic analysis is done, discard local namespaces
     # to avoid memory hoarding.
