@@ -3633,37 +3633,25 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return self.lookup(name, ctx, suppress_errors=suppress_errors)
         else:
             parts = name.split('.')
+            namespace = self.cur_mod_id
             n = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        if not n.node.mro:
-                            # We haven't yet analyzed the class `n.node`.  Fall back to direct
-                            # lookup in the names declared directly under it, without its base
-                            # classes.  This can happen when we have a forward reference to a
-                            # nested class, and the reference is bound before the outer class
-                            # has been fully semantically analyzed.
-                            #
-                            # A better approach would be to introduce a new analysis pass or
-                            # to move things around between passes, but this unblocks a common
-                            # use case even though this is a little limited in case there is
-                            # inheritance involved.
-                            result = n.node.names.get(parts[i])
-                        else:
-                            result = n.node.get(parts[i])
-                        n = result
+                        n = n.node.get(parts[i])
                     elif isinstance(n.node, MypyFile):
+                        namespace = n.node.fullname()
                         names = n.node.names
                         # Rebind potential references to old version of current module in
                         # fine-grained incremental mode.
                         #
                         # TODO: Do this for all modules in the set of modified files.
-                        if n.node.fullname() == self.cur_mod_id:
+                        if namespace == self.cur_mod_id:
                             names = self.globals
                         n = names.get(parts[i], None)
-                        if n and isinstance(n.node, ImportedName):
-                            n = self.dereference_module_cross_ref(n)
-                        elif not n and '__getattr__' in names:
+                        if (not n
+                                and '__getattr__' in names
+                                and not self.is_incomplete_namespace(namespace)):
                             gvar = self.create_getattr_var(names['__getattr__'],
                                                            parts[i], parts[i])
                             if gvar:
@@ -3676,11 +3664,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # lookup_qualified(x.y.z) returns Var(x).
                     if not n:
                         if not suppress_errors:
-                            self.name_not_defined(name, ctx)
+                            self.name_not_defined(name, ctx, namespace=namespace)
                         break
                 if n:
                     if n and n.module_hidden:
-                        self.name_not_defined(name, ctx)
+                        self.name_not_defined(name, ctx, namespace=namespace)
             if n and not n.module_hidden:
                 n = self.rebind_symbol_table_node(n)
                 return n
@@ -4006,9 +3994,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 self.name_already_defined(n, ctx, self.globals[n])
 
-    def name_not_defined(self, name: str, ctx: Context) -> None:
-        # TODO: Reference to another namespace
-        if self.is_incomplete_namespace(self.cur_mod_id):
+    def name_not_defined(self, name: str, ctx: Context, namespace: Optional[str] = None) -> None:
+        if self.is_incomplete_namespace(namespace or self.cur_mod_id):
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
             self.record_incomplete_ref()
