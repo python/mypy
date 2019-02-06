@@ -842,8 +842,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         bases = defn.base_type_exprs
 
-        # TODO: Support metaclasses
-        # self.update_metaclass(defn)
+        self.update_metaclass(defn)
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
                                                                                      context=defn)
         # TODO: Support keyword arguments
@@ -870,6 +869,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.prepare_class_def(defn, info)
             return
 
+        if self.analyze_namedtuple_classdef(defn):
+            return
+
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
 
@@ -880,10 +882,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         with self.scope.class_scope(defn.info):
             self.configure_base_classes(defn, base_types)
-
-            if self.analyze_namedtuple_classdef(defn):
-                return
-
             defn.info.is_protocol = is_protocol
             self.analyze_metaclass(defn)
             defn.info.runtime_protocol = False
@@ -904,40 +902,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.leave_class()
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
-        """Analyze class-based named tuple if the NamedTuple base class is present.
-
-        TODO: Move this to NamedTupleAnalyzer?
-
-        Return True only if the class is a NamedTuple class.
-        """
-        named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
-        if named_tuple_info is None:
-            return False
-        # Temporarily clear the names dict so we don't get errors about duplicate names
-        # that were already set in build_namedtuple_typeinfo.
-        nt_names = named_tuple_info.names
-        named_tuple_info.names = SymbolTable()
-
-        self.analyze_class_body_common(defn)
-
-        # Make sure we didn't use illegal names, then reset the names in the typeinfo.
-        for prohibited in NAMEDTUPLE_PROHIBITED_NAMES:
-            if prohibited in named_tuple_info.names:
-                if nt_names.get(prohibited) is named_tuple_info.names[prohibited]:
-                    continue
-                ctx = named_tuple_info.names[prohibited].node
-                assert ctx is not None
-                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
-                          ctx)
-
-        # Restore the names in the original symbol table. This ensures that the symbol
-        # table contains the field objects created by build_namedtuple_typeinfo. Exclude
-        # __doc__, which can legally be overwritten by the class.
-        named_tuple_info.names.update({
-            key: value for key, value in nt_names.items()
-            if key not in named_tuple_info.names or key != '__doc__'
-        })
-        return True
+        """Check if this class can define a named tuple."""
+        if defn.info and defn.info.tuple_type:
+            # Don't reprocess everything. We just need to process methods defined
+            # in the named tuple class body.
+            is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
+        else:
+            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
+        if is_named_tuple:
+            if info is None:
+                self.mark_incomplete(defn.name, defn)
+            else:
+                self.prepare_class_def(defn, info)
+                with self.scope.class_scope(defn.info):
+                    with self.named_tuple_analyzer.save_namedtuple_body(info):
+                        self.analyze_class_body_common(defn)
+            return True
+        return False
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
@@ -1229,10 +1210,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # in globals under mangled unique names
             #
             # TODO: Putting local classes into globals breaks assumptions in fine-grained
-            #       incremental mode and we should avoid it.
+            #       incremental mode and we should avoid it. In general, this logic is too
+            #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
                 local_name = defn.info._fullname + '@' + str(defn.line)
-                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                if defn.info.is_named_tuple:
+                    # Module is already correctly set in _fullname for named tuples.
+                    defn.info._fullname += '@' + str(defn.line)
+                else:
+                    defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
                 local_name = defn.info._fullname
@@ -1298,7 +1284,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         for base, base_expr in bases:
             if isinstance(base, TupleType):
-                if info.tuple_type:
+                # There may be an existing valid tuple type from previous semanal iterations.
+                # Use equality to check if it is the case.
+                if info.tuple_type and info.tuple_type != base:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                     defn.has_incompatible_baseclass = True
                 info.tuple_type = base
@@ -1426,11 +1414,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                               allow_placeholder: bool = False) -> Optional[Type]:
         if isinstance(expr, CallExpr):
             expr.accept(self)
-            info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
-            if info is None:
+            is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
+                                                                              self.is_func_scope())
+            if not is_named_tuple:
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
+            elif not info:
+                self.defer()
+                return None
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
@@ -1491,6 +1483,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # TODO: A better approach would be to record this information
                 #       and assume that the type object supports arbitrary
                 #       attributes, similar to an 'Any' base class.
+                return
+            if isinstance(sym.node, PlaceholderNode):
+                self.defer()
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
@@ -1888,6 +1883,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
+        if self.analyze_namedtuple_assign(s):
+            return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
@@ -1896,13 +1893,29 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
+        """Check if s defines a namedtuple."""
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
+            return True  # This is a valid and analyzed named tuple definition, nothing to do here.
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
+                                                                          self.is_func_scope())
+        if not is_named_tuple:
+            return False
+        # Yes, it's a valid namedtuple, but defer if it is not ready.
+        if not info:
+            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -3347,58 +3360,74 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.expr.accept(self)
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
-        if expr.analyzed:
-            return
-        expr.base.accept(self)
-        if (isinstance(expr.base, RefExpr)
-                and isinstance(expr.base.node, TypeInfo)
-                and not expr.base.node.is_generic()):
+        base = expr.base
+        base.accept(self)
+        if (isinstance(base, RefExpr)
+                and isinstance(base.node, TypeInfo)
+                and not base.node.is_generic()):
             expr.index.accept(self)
-        elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias) or
-                refers_to_class_or_function(expr.base)):
-            # Special form -- type application (either direct or via type aliasing).
-
-            self.analyze_type_expr(expr.index)
-
-            # Translate index to an unanalyzed type.
-            types = []  # type: List[Type]
-            if isinstance(expr.index, TupleExpr):
-                items = expr.index.items
-            else:
-                items = [expr.index]
-            for item in items:
-                try:
-                    typearg = expr_to_unanalyzed_type(item)
-                except TypeTranslationError:
-                    self.fail('Type expected within [...]', expr)
-                    return
-                # We always allow unbound type variables in IndexExpr, since we
-                # may be analysing a type alias definition rvalue. The error will be
-                # reported elsewhere if it is not the case.
-                typearg2 = self.anal_type(typearg, allow_unbound_tvars=True,
-                                          allow_placeholder=True)
-                if typearg2 is None:
-                    self.defer()
-                    return
-                types.append(typearg2)
-            expr.analyzed = TypeApplication(expr.base, types)
-            expr.analyzed.line = expr.line
-            # Types list, dict, set are not subscriptable, prohibit this if
-            # subscripted either via type alias...
-            if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
-                alias = expr.base.node
-                if isinstance(alias.target, Instance):
-                    name = alias.target.type.fullname()
-                    if (alias.no_args and  # this avoids bogus errors for already reported aliases
-                            name in nongen_builtins and not alias.normalized):
-                        self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
-            # ...or directly.
-            else:
-                n = self.lookup_type_node(expr.base)
-                if n and n.fullname in nongen_builtins:
-                    self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
+        elif ((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
+              or refers_to_class_or_function(base)):
+            # We need to do full processing on every iteration, since some type
+            # arguments may contain placeholder types.
+            self.analyze_type_application(expr)
         else:
             expr.index.accept(self)
+
+    def analyze_type_application(self, expr: IndexExpr) -> None:
+        """Analyze special form -- type application (either direct or via type aliasing)."""
+        types = self.analyze_type_application_args(expr)
+        if types is None:
+            return
+        base = expr.base
+        expr.analyzed = TypeApplication(base, types)
+        expr.analyzed.line = expr.line
+        # Types list, dict, set are not subscriptable, prohibit this if
+        # subscripted either via type alias...
+        if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
+            alias = base.node
+            if isinstance(alias.target, Instance):
+                name = alias.target.type.fullname()
+                if (alias.no_args and  # this avoids bogus errors for already reported aliases
+                        name in nongen_builtins and not alias.normalized):
+                    self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
+        # ...or directly.
+        else:
+            n = self.lookup_type_node(base)
+            if n and n.fullname in nongen_builtins:
+                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
+
+    def analyze_type_application_args(self, expr: IndexExpr) -> Optional[List[Type]]:
+        """Analyze type arguments (index) in a type application.
+
+        Return None if anything was incomplete.
+        """
+        index = expr.index
+        tag = self.track_incomplete_refs()
+        self.analyze_type_expr(index)
+        if self.found_incomplete_ref(tag):
+            return None
+        types = []  # type: List[Type]
+        if isinstance(index, TupleExpr):
+            items = index.items
+        else:
+            items = [index]
+        for item in items:
+            try:
+                typearg = expr_to_unanalyzed_type(item)
+            except TypeTranslationError:
+                self.fail('Type expected within [...]', expr)
+                return None
+            # We always allow unbound type variables in IndexExpr, since we
+            # may be analysing a type alias definition rvalue. The error will be
+            # reported elsewhere if it is not the case.
+            analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
+                                      allow_placeholder=True)
+            if analyzed is None:
+                self.defer()
+                return None
+            types.append(analyzed)
+        return types
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
         try:
@@ -3662,7 +3691,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer()
         self.num_incomplete_refs += 1
 
-    def mark_incomplete(self, name: str, node: Node) -> None:
+    def mark_incomplete(self, name: str, node: Node,
+                        becomes_typeinfo: bool = False) -> None:
         """Mark a definition as incomplete (and defer current analysis target).
 
         Also potentially mark the current namespace as incomplete.
@@ -3670,13 +3700,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Args:
             name: The name that we weren't able to define (or '*' if the name is unknown)
             node: The node that refers to the name (definition or lvalue)
+            becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
+                named tuples that will create TypeInfos).
         """
         self.defer()
         if name == '*':
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
-            self.add_symbol(name, PlaceholderNode(fullname, node, False), context=None)
+            self.add_symbol(name, PlaceholderNode(fullname, node, becomes_typeinfo), context=None)
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
