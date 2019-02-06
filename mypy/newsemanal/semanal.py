@@ -3694,8 +3694,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Args:
             name: The name that we weren't able to define (or '*' if the name is unknown)
             node: The node that refers to the name (definition or lvalue)
-            becomes_typeinfo: Pass this to Placeholder (used by special forms like named tuples
-            that will create TypeInfos).
+            becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
+                named tuples that will create TypeInfos).
         """
         self.defer()
         if name == '*':
