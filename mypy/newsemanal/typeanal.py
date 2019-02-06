@@ -161,7 +161,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  report_invalid_types: bool = True,
                  third_pass: bool = False) -> None:
         self.api = api
-        self.lookup = api.lookup_qualified
+        self.lookup_qualified = api.lookup_qualified
         self.lookup_fqn_func = api.lookup_fully_qualified
         self.fail_func = api.fail
         self.note_func = api.note
@@ -199,7 +199,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return typ
 
     def visit_unbound_type_nonoptional(self, t: UnboundType) -> Type:
-        sym = self.lookup(t.name, t, suppress_errors=self.third_pass)
+        sym = self.lookup_qualified(t.name, t, suppress_errors=self.third_pass)
         if '.' in t.name:
             # Handle indirect references to imported names.
             #
@@ -614,7 +614,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 names.append(arg.name)
                 if arg.constructor is None:
                     return None
-                found = self.lookup(arg.constructor, arg)
+                found = self.lookup_qualified(arg.constructor, arg)
                 if found is None:
                     # Looking it up already put an error message in
                     return None
@@ -748,7 +748,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         names = []  # type: List[str]
         tvars = []  # type: List[TypeVarExpr]
         for arg in type.arg_types:
-            for name, tvar_expr in arg.accept(TypeVariableQuery(self.lookup, self.tvar_scope)):
+            for name, tvar_expr in arg.accept(TypeVariableQuery(self.lookup_qualified,
+                                                                self.tvar_scope)):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
@@ -757,7 +758,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # functions in the return type belong to those functions, not the
         # function we're currently analyzing.
         for name, tvar_expr in type.ret_type.accept(
-                TypeVariableQuery(self.lookup, self.tvar_scope, include_callables=False)):
+                TypeVariableQuery(self.lookup_qualified, self.tvar_scope,
+                                  include_callables=False)):
             if name not in names:
                 names.append(name)
                 tvars.append(tvar_expr)
@@ -770,7 +772,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return []  # We are in third pass, nothing new here
         if fun_type.variables:
             for var in fun_type.variables:
-                var_node = self.lookup(var.name, var)
+                var_node = self.lookup_qualified(var.name, var)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarExpr)
@@ -794,7 +796,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         if self.tvar_scope is None:
             return False
-        tvar_node = self.lookup(tvar, context)
+        tvar_node = self.lookup_qualified(tvar, context)
         if not tvar_node:
             return False
         return self.tvar_scope.get_binding(tvar_node) is not None
