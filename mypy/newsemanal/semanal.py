@@ -1211,11 +1211,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # in globals under mangled unique names
             #
             # TODO: Putting local classes into globals breaks assumptions in fine-grained
-            #       incremental mode and we should avoid it.
+            #       incremental mode and we should avoid it. In general, this logic is too
+            #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
                 local_name = defn.info._fullname + '@' + str(defn.line)
                 if defn.info.is_named_tuple:
-                    # Module already correctly set for named tuples.
+                    # Module is already correctly set in _fullname for named tuples.
                     defn.info._fullname += '@' + str(defn.line)
                 else:
                     defn.info._fullname = self.cur_mod_id + '.' + local_name
@@ -1910,9 +1911,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
-            self.add_symbol(name, PlaceholderNode(self.qualified_name(name), lvalue, True),
-                            context=None)
-            self.mark_incomplete(name, lvalue)
+            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -3684,7 +3683,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer()
         self.num_incomplete_refs += 1
 
-    def mark_incomplete(self, name: str, node: Node) -> None:
+    def mark_incomplete(self, name: str, node: Node,
+                        becomes_typeinfo: bool = False) -> None:
         """Mark a definition as incomplete (and defer current analysis target).
 
         Also potentially mark the current namespace as incomplete.
@@ -3692,13 +3692,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Args:
             name: The name that we weren't able to define (or '*' if the name is unknown)
             node: The node that refers to the name (definition or lvalue)
+            becomes_typeinfo: Pass this to Placeholder (used by special forms like named tuples
+            that will create TypeInfos).
         """
         self.defer()
         if name == '*':
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
-            self.add_symbol(name, PlaceholderNode(fullname, node, False), context=None)
+            self.add_symbol(name, PlaceholderNode(fullname, node, becomes_typeinfo), context=None)
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
