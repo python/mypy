@@ -1362,6 +1362,6 @@ _testNamedTupleNew.py:12: error: Revealed type is 'Tuple[builtins.int, fallback=
 [case testNewAnalyzerBasicTypeshed_newsemanal]
 from typing import Dict, List
 
-x: Dict[str, int]
+x: Dict[str, List[int]]
 reveal_type(x['test'][0])
 [out]

@@ -3782,8 +3782,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
-            if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
+            if name in tree.names and not isinstance(tree.names[name].node, (Var, PlaceholderNode)):
                 continue
+            if name in tree.names and isinstance(tree.names[name].node, Var):
+                del tree.names[name]
             tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
             if n:
