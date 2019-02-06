@@ -842,8 +842,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         bases = defn.base_type_exprs
 
-        # TODO: Support metaclasses
-        # self.update_metaclass(defn)
+        self.update_metaclass(defn)
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
                                                                                      context=defn)
         # TODO: Support keyword arguments
@@ -1484,6 +1483,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # TODO: A better approach would be to record this information
                 #       and assume that the type object supports arbitrary
                 #       attributes, similar to an 'Any' base class.
+                return
+            if isinstance(sym.node, PlaceholderNode):
+                self.defer()
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
