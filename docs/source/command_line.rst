@@ -371,6 +371,21 @@ of the above sections.
     This flag causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
+``--allow-redefinition``
+    By default, mypy won't allow a variable to be redefined with an
+    unrelated type. This flag enables redefinion of a variable with an
+    arbitrary type *in some contexts*: only redefinitions within the
+    same block and nesting depth as the original definition are allowed.
+    Example where this can be useful:
+
+    .. code-block:: python
+
+       def process(items: List[str]) -> None:
+           # 'items' has type List[str]
+           items = [item.split() for item in items]
+           # 'items' now has type List[List[str]]
+           ...
+
 ``--strict``
     This flag mode enables all optional error checking flags.  You can see the
     list of flags enabled by strict mode in the full ``mypy --help`` output.
