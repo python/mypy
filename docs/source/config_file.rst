@@ -122,8 +122,8 @@ assume here is some 3rd party library you've installed and are importing. These 
 1.  Selectively disallow untyped function definitions only within the ``mycode.foo``
     package -- that is, only for function definitions defined in the
     ``mycode/foo`` directory.
-    
-2.  Selectively *disable* the "function is returning any" warnings within 
+
+2.  Selectively *disable* the "function is returning any" warnings within
     ``mycode.bar`` only. This overrides the global default we set earlier.
 
 3.  Suppress any error messages generated when your codebase tries importing the
@@ -155,22 +155,22 @@ Note: this section describes options that can be used both globally and per-modu
 See below for a list of import discovery options that may be used
 :ref:`only globally <config-file-import-discovery-global>`.
 
-``ignore_missing_imports`` (bool, default False) 
+``ignore_missing_imports`` (bool, default False)
     Suppresses error messages about imports that cannot be resolved.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
 
-``follow_imports`` (string, default ``normal``) 
+``follow_imports`` (string, default ``normal``)
     Directs what to do with imports when the imported module is found
-    as a ``.py`` file and not part of the files, modules and packages 
+    as a ``.py`` file and not part of the files, modules and packages
     provided on the command line.
 
     The four possible values are ``normal``, ``silent``, ``skip`` and
     ``error``.  For explanations see the discussion for the
-    :ref:`--follow-imports <follow-imports>` command line flag. 
-    
+    :ref:`--follow-imports <follow-imports>` command line flag.
+
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
@@ -228,7 +228,7 @@ section of the command line docs.
     annotations.
 
 ``disallow_incomplete_defs`` (bool, default False)
-    Disallows defining functions with incomplete type annotations. 
+    Disallows defining functions with incomplete type annotations.
 
 ``check_untyped_defs`` (bool, default False)
     Type-checks the interior of functions without type annotations.
@@ -265,7 +265,7 @@ section of the command line docs.
 ``warn_unused_ignores`` (bool, default False)
     Warns about unneeded ``# type: ignore`` comments.
 
-``warn_no_return`` (bool, default True) 
+``warn_no_return`` (bool, default True)
     Shows errors for missing return statements on some execution paths.
 
 ``warn_return_any`` (bool, default False)
@@ -287,6 +287,12 @@ no analog available via the command line options.
 ``ignore_errors`` (bool, default False)
     Ignores all non-fatal errors.
 
+Miscellaneous strictness flags
+------------------------------
+
+``allow_redefinition`` (bool, default false)
+    Allows variables to be redefined with an arbitrary type, as long as the redefinition
+    is in the same block and nesting level as the original definition.
 
 Global-only options
 *******************
@@ -302,7 +308,7 @@ For more information, see the :ref:`import discovery <import-discovery>`
 section of the command line docs.
 
 Note: this section describes only global-only import discovery options. See above for
-a list of import discovery options that may be used 
+a list of import discovery options that may be used
 :ref:`both per-module and globally <config-file-import-discovery-per-module>`.
 
 ``namespace_packages`` (bool, default False)
@@ -330,7 +336,7 @@ Platform configuration
 For more information, see the :ref:`platform configuration <platform-configuration>`
 section of the command line docs.
 
-``python_version`` (string) 
+``python_version`` (string)
     Specifies the Python version used to parse and check the target
     program.  The string should be in the format ``DIGIT.DIGIT`` --
     for example ``2.7``.  The default is the version of the Python
@@ -343,11 +349,11 @@ section of the command line docs.
     ``sys.platform`` variable.
 
 ``always_true`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as 
+    Specifies a list of variables that mypy will treat as
     compile-time constants that are always true.
-    
-``always_false`` (comma-separated list of strings) 
-    Specifies a list of variables that mypy will treat as 
+
+``always_false`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as
     compile-time constants that are always false.
 
 
@@ -357,10 +363,10 @@ Incremental mode
 For more information, see the :ref:`incremental mode <incremental>`
 section of the command line docs.
 
-``incremental`` (bool, default True) 
+``incremental`` (bool, default True)
     Enables :ref:`incremental mode <incremental>`.
 
-``cache_dir`` (string, default ``.mypy_cache``) 
+``cache_dir`` (string, default ``.mypy_cache``)
     Specifies the location where mypy stores incremental cache info.
     Note that the cache is only read when incremental mode is enabled
     but is always written to, unless the value is set to ``/dev/nul``
@@ -378,7 +384,7 @@ Configuring error messages
 For more information, see the :ref:`configuring error messages <configuring-error-messages>`
 section of the command line docs.
 
-``show_error_context`` (bool, default False) 
+``show_error_context`` (bool, default False)
     Prefixes each error with the relevant context.
 
 ``show_column_numbers`` (bool, default False)
@@ -397,7 +403,7 @@ section of the command line docs.
 ``show_traceback`` (bool, default False)
     Shows traceback on fatal error.
 
-``custom_typing_module`` (string) 
+``custom_typing_module`` (string)
     Specifies a custom module to use as a substitute for the ``typing`` module.
 
 ``custom_typeshed_dir`` (string)
@@ -425,5 +431,3 @@ Miscellaneous
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
-
-
