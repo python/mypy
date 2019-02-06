@@ -401,6 +401,14 @@ def mypycify(paths: List[str],
             '/wd4101',  # unreferenced local variable
             '/wd4146',  # negating unsigned int
         ]
+        if multi_file:
+            # Disable whole program optimization in multi-file mode so
+            # that we actually get the compilation speed and memory
+            # use wins that multi-file mode is intended for.
+            cflags += [
+                '/GL-',
+                '/wd9025',  # warning about overriding /GL
+            ]
 
     # Copy the runtime library in
     rt_file = os.path.join(build_dir, 'CPy.c')
