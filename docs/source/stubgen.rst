@@ -112,7 +112,7 @@ semantic analysis of any Python modules. Use the following flags to
 alter the default behavior:
 
 ``--no-import``
-    Don't try to import modules. Instead use mypy's normal seatch mechanism to find
+    Don't try to import modules. Instead use mypy's normal search mechanism to find
     sources. This does not support C extension modules. This flag also disables
     runtime introspection functionality, which mypy uses to find the value of
     ``__all__``. As result the set of exported imported names in stubs may be
