@@ -1881,6 +1881,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
+        if self.analyze_namedtuple_assign(s):
+            return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
@@ -1889,7 +1891,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.analyze_namedtuple_assign(s)
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
@@ -1897,21 +1898,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
 
-    def analyze_namedtuple_assign(self, s: AssignmentStmt) -> None:
+    def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a namedtuple."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
-            return  # This is a valid and analyzed named tuple definition, nothing to do here.
+            return True  # This is a valid and analyzed named tuple definition, nothing to do here.
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
+            return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
                                                                           self.is_func_scope())
         if not is_named_tuple:
-            return
+            return False
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
