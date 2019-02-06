@@ -758,7 +758,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # functions in the return type belong to those functions, not the
         # function we're currently analyzing.
         for name, tvar_expr in type.ret_type.accept(
-                TypeVariableQuery(self.lookup_qualified, self.tvar_scope, include_callables=False)):
+                TypeVariableQuery(self.lookup_qualified, self.tvar_scope,
+                                  include_callables=False)):
             if name not in names:
                 names.append(name)
                 tvars.append(tvar_expr)
