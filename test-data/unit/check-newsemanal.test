@@ -685,6 +685,163 @@ import a
 reveal_type(a.C()) # E: Revealed type is 'a.C'
 def f(): pass
 
+[case testNewAnalyzerNamedTupleCall]
+from typing import NamedTuple
+
+o: Out
+i: In
+
+Out = NamedTuple('Out', [('x', In), ('y', Other)])
+
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other, fallback=__main__.In]'
+reveal_type(o.y)  # E: Revealed type is '__main__.Other'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.Other'
+reveal_type(i.t)  # E: Revealed type is '__main__.Other'
+
+In = NamedTuple('In', [('s', str), ('t', Other)])
+class Other: pass
+
+[case testNewAnalyzerNamedTupleClass]
+from typing import NamedTuple
+
+o: Out
+i: In
+
+class Out(NamedTuple):
+    x: In
+    y: Other
+
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other, fallback=__main__.In]'
+reveal_type(o.y)  # E: Revealed type is '__main__.Other'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.Other'
+reveal_type(i.t)  # E: Revealed type is '__main__.Other'
+
+class In(NamedTuple):
+    s: str
+    t: Other
+class Other: pass
+
+[case testNewAnalyzerNamedTupleCallNested]
+from typing import NamedTuple
+
+o: C.Out
+i: C.In
+
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]'
+reveal_type(o.y)  # E: Revealed type is '__main__.C.Other'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.C.Other'
+reveal_type(i.t)  # E: Revealed type is '__main__.C.Other'
+
+class C:
+    Out = NamedTuple('Out', [('x', In), ('y', Other)])
+    In = NamedTuple('In', [('s', str), ('t', Other)])
+    class Other: pass
+
+
+[case testNewAnalyzerNamedTupleClassNested]
+from typing import NamedTuple
+
+o: C.Out
+i: C.In
+
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]'
+reveal_type(o.y)  # E: Revealed type is '__main__.C.Other'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.C.Other'
+reveal_type(i.t)  # E: Revealed type is '__main__.C.Other'
+
+class C:
+    class Out(NamedTuple):
+        x: C.In
+        y: C.Other
+    class In(NamedTuple):
+        s: str
+        t: C.Other
+    class Other: pass
+
+[case testNewAnalyzerNamedTupleCallNestedMethod]
+from typing import NamedTuple
+
+c = C()
+reveal_type(c.o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@11], __main__.Other@12, fallback=__main__.C.Out@10]'
+reveal_type(c.o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@11]'
+
+class C:
+    def get_tuple(self) -> None:
+        self.o: Out
+        Out = NamedTuple('Out', [('x', In), ('y', Other)])
+        In = NamedTuple('In', [('s', str), ('t', Other)])
+        class Other: pass
+
+[case testNewAnalyzerNamedTupleClassNestedMethod]
+from typing import NamedTuple
+
+c = C()
+reveal_type(c.o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15], __main__.Other@18, fallback=__main__.C.Out@11]'
+reveal_type(c.o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15]'
+reveal_type(c.o.method())  # E: Revealed type is 'Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15]'
+
+class C:
+    def get_tuple(self) -> None:
+        self.o: Out
+        class Out(NamedTuple):
+            x: In
+            y: Other
+            def method(self) -> In: ...
+        class In(NamedTuple):
+            s: str
+            t: Other
+        class Other: pass
+
+[case testNewAnalyzerNamedTupleClassForwardMethod]
+from typing import NamedTuple
+
+n: NT
+reveal_type(n.get_other())  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.Other]'
+reveal_type(n.get_other().s)  # E: Revealed type is 'builtins.str'
+
+class NT(NamedTuple):
+    x: int
+    y: int
+    def get_other(self) -> Other: pass
+
+class Other(NamedTuple):
+    s: str
+
+[case testNewAnalyzerNamedTupleSpecialMethods]
+from typing import NamedTuple
+
+o: SubO
+
+reveal_type(SubO._make)  # E: Revealed type is 'def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]'
+reveal_type(o._replace(y=Other()))  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]'
+
+class SubO(Out): pass
+
+Out = NamedTuple('Out', [('x', In), ('y', Other)])
+In = NamedTuple('In', [('s', str), ('t', Other)])
+class Other: pass
+
+[case testNewAnalyzerNamedTupleBaseClass]
+from typing import NamedTuple
+
+o: Out
+reveal_type(o)  # E: Revealed type is 'Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+reveal_type(o.x)  # E: Revealed type is 'Tuple[builtins.str, __main__.Other, fallback=__main__.In]'
+reveal_type(o.x.t)  # E: Revealed type is '__main__.Other'
+reveal_type(Out._make)  # E: Revealed type is 'def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]'
+
+class Out(NamedTuple('Out', [('x', In), ('y', Other)])):
+    pass
+
+class In(NamedTuple):
+    s: str
+    t: Other
+class Other: pass
+
 [case testNewAnalyzerIncompleteRefShadowsBuiltin1]
 import a
 
