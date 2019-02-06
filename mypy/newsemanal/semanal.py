@@ -3347,58 +3347,74 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.expr.accept(self)
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
-        if expr.analyzed:
-            return
-        expr.base.accept(self)
-        if (isinstance(expr.base, RefExpr)
-                and isinstance(expr.base.node, TypeInfo)
-                and not expr.base.node.is_generic()):
+        base = expr.base
+        base.accept(self)
+        if (isinstance(base, RefExpr)
+                and isinstance(base.node, TypeInfo)
+                and not base.node.is_generic()):
             expr.index.accept(self)
-        elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias) or
-                refers_to_class_or_function(expr.base)):
-            # Special form -- type application (either direct or via type aliasing).
-
-            self.analyze_type_expr(expr.index)
-
-            # Translate index to an unanalyzed type.
-            types = []  # type: List[Type]
-            if isinstance(expr.index, TupleExpr):
-                items = expr.index.items
-            else:
-                items = [expr.index]
-            for item in items:
-                try:
-                    typearg = expr_to_unanalyzed_type(item)
-                except TypeTranslationError:
-                    self.fail('Type expected within [...]', expr)
-                    return
-                # We always allow unbound type variables in IndexExpr, since we
-                # may be analysing a type alias definition rvalue. The error will be
-                # reported elsewhere if it is not the case.
-                typearg2 = self.anal_type(typearg, allow_unbound_tvars=True,
-                                          allow_placeholder=True)
-                if typearg2 is None:
-                    self.defer()
-                    return
-                types.append(typearg2)
-            expr.analyzed = TypeApplication(expr.base, types)
-            expr.analyzed.line = expr.line
-            # Types list, dict, set are not subscriptable, prohibit this if
-            # subscripted either via type alias...
-            if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
-                alias = expr.base.node
-                if isinstance(alias.target, Instance):
-                    name = alias.target.type.fullname()
-                    if (alias.no_args and  # this avoids bogus errors for already reported aliases
-                            name in nongen_builtins and not alias.normalized):
-                        self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
-            # ...or directly.
-            else:
-                n = self.lookup_type_node(expr.base)
-                if n and n.fullname in nongen_builtins:
-                    self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
+        elif ((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
+              or refers_to_class_or_function(base)):
+            # We need to do full processing on every iteration, since some type
+            # arguments may contain placeholder types.
+            self.analyze_type_application(expr)
         else:
             expr.index.accept(self)
+
+    def analyze_type_application(self, expr: IndexExpr) -> None:
+        """Analyze special form -- type application (either direct or via type aliasing)."""
+        types = self.analyze_type_application_args(expr)
+        if types is None:
+            return
+        base = expr.base
+        expr.analyzed = TypeApplication(base, types)
+        expr.analyzed.line = expr.line
+        # Types list, dict, set are not subscriptable, prohibit this if
+        # subscripted either via type alias...
+        if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
+            alias = base.node
+            if isinstance(alias.target, Instance):
+                name = alias.target.type.fullname()
+                if (alias.no_args and  # this avoids bogus errors for already reported aliases
+                        name in nongen_builtins and not alias.normalized):
+                    self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
+        # ...or directly.
+        else:
+            n = self.lookup_type_node(base)
+            if n and n.fullname in nongen_builtins:
+                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
+
+    def analyze_type_application_args(self, expr: IndexExpr) -> Optional[List[Type]]:
+        """Analyze type arguments (index) in a type application.
+
+        Return None if anything was incomplete.
+        """
+        index = expr.index
+        tag = self.track_incomplete_refs()
+        self.analyze_type_expr(index)
+        if self.found_incomplete_ref(tag):
+            return None
+        types = []  # type: List[Type]
+        if isinstance(index, TupleExpr):
+            items = index.items
+        else:
+            items = [index]
+        for item in items:
+            try:
+                typearg = expr_to_unanalyzed_type(item)
+            except TypeTranslationError:
+                self.fail('Type expected within [...]', expr)
+                return None
+            # We always allow unbound type variables in IndexExpr, since we
+            # may be analysing a type alias definition rvalue. The error will be
+            # reported elsewhere if it is not the case.
+            analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
+                                      allow_placeholder=True)
+            if analyzed is None:
+                self.defer()
+                return None
+            types.append(analyzed)
+        return types
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
         try:
