@@ -883,6 +883,22 @@ class C: pass
 x: int
 reveal_type(x) # E: Revealed type is 'a.C'
 
+[case testNewAnalyzerNamespaceCompleteness]
+import a
+
+[file a.py]
+import b
+
+x: b.C
+
+[file b.py]
+from c import *
+class C: pass
+
+[file c.py]
+import a
+from b import C
+
 [case testNewAnalyzerMetaclass1]
 class A(metaclass=B):
     pass
