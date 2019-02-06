@@ -975,3 +975,61 @@ class Test:
     import a
     def __init__(self) -> None:
         some_module = self.a
+
+[case testNewAnalyzerTypeArgBoundCheck]
+from typing import TypeVar, Generic
+
+class F(E): pass
+class E: pass
+T = TypeVar('T', bound=E)
+class C(Generic[T]): pass
+
+class D(B): pass
+
+x: C[D] # E: Type argument "__main__.D" of "C" must be a subtype of "__main__.E"
+y: C[F]
+
+class B: pass
+
+[case testNewAnalyzerTypeArgValueRestriction]
+from typing import TypeVar, Generic
+
+class F(E): pass
+class E: pass
+T = TypeVar('T', E, str)
+class C(Generic[T]): pass
+
+class D(B): pass
+
+x: C[D] # E: Value of type variable "T" of "C" cannot be "D"
+y: C[E]
+z: C[str]
+
+class B: pass
+
+[case testNewAnalyzerTypeArgBoundCheckWithContext]
+# flags: --show-error-context
+import a
+[file a.py]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+
+def f(x: C[str]) -> None: # E
+    y: C[str] # E
+class A(C[str]): # E
+    z: C[str] # E
+    def g(self, x: C[str]) -> None: # E
+        a: C[str] # E
+[out]
+main:2: note: In module imported here:
+tmp/a.py: note: In function "f":
+tmp/a.py:6: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:7: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py: note: In class "A":
+tmp/a.py:8: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:9: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py: note: In member "g" of class "A":
+tmp/a.py:10: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:11: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
