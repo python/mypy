@@ -39,6 +39,8 @@ if MYPY:
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
 MAX_ITERATIONS = 10
 
+CORE_WARMUP = 2
+
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
@@ -65,6 +67,10 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     state.manager.incomplete_namespaces.update(scc)
 
     worklist = scc[:]
+    # HACK: process core stuff first.
+    if 'builtins' in worklist:
+        assert 'typing' in worklist and 'abc' in worklist
+        worklist = ['builtins', 'typing', 'abc'] * CORE_WARMUP + worklist
     iteration = 0
     final_iteration = False
     while worklist:
