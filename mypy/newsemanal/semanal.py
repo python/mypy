@@ -3963,7 +3963,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.name_already_defined(n, ctx, self.globals[n])
 
     def name_not_defined(self, name: str, ctx: Context, namespace: Optional[str] = None) -> None:
-        # TODO: Reference to another namespace
         if self.is_incomplete_namespace(namespace or self.cur_mod_id):
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
