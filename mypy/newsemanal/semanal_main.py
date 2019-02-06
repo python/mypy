@@ -39,7 +39,7 @@ if MYPY:
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
 MAX_ITERATIONS = 10
 
-CORE_WARMUP = 2
+CORE_WARMUP = 3
 
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
@@ -69,8 +69,9 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     worklist = scc[:]
     # HACK: process core stuff first.
     if 'builtins' in worklist:
+        print('Adding stuff')
         assert 'typing' in worklist and 'abc' in worklist
-        worklist = ['builtins', 'typing', 'abc'] * CORE_WARMUP + worklist
+        worklist += ['abc', 'builtins', 'typing'] * CORE_WARMUP
     iteration = 0
     final_iteration = False
     while worklist:
@@ -86,6 +87,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
+            print('processing', next_id)
             deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None,
                                                            final_iteration)
             all_deferred += deferred
