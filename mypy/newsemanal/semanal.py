@@ -1250,6 +1250,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(info, TypeInfo)
         else:
             info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
+            info.set_line(defn)
         return info
 
     def analyze_base_classes(
@@ -1963,19 +1964,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Returns True if Final[...] was present.
         """
-        if not s.type or not self.is_final_type(s.type):
+        if not s.unanalyzed_type or not self.is_final_type(s.unanalyzed_type):
             return False
-        assert isinstance(s.type, UnboundType)
-        if len(s.type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", s.type)
+        assert isinstance(s.unanalyzed_type, UnboundType)
+        if len(s.unanalyzed_type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
         invalid_bare_final = False
-        if not s.type.args:
+        if not s.unanalyzed_type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
-            s.type = s.type.args[0]
+            s.type = s.unanalyzed_type.args[0]
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
             self.fail("Invalid final declaration", s)
             return False
