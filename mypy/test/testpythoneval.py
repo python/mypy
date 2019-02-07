@@ -23,7 +23,7 @@ from typing import List
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, run_command
+from mypy.test.helpers import assert_string_arrays_equal, run_command, normalize_error_messages
 from mypy.util import try_find_python2_interpreter
 from mypy import api
 
@@ -94,10 +94,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         output.extend(interp_out)
     # Remove temp file.
     os.remove(program_path)
-    typeshed = os.path.sep + 'typeshed' + os.path.sep
+    output = normalize_error_messages(output)
     for i, line in enumerate(output):
-        if typeshed in line:
-            output[i] = line.split(typeshed)[-1]
+        if '/typeshed/' in line:
+            output[i] = line.split('/typeshed/')[-1]
     assert_string_arrays_equal(adapt_output(testcase), output,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
