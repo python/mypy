@@ -94,6 +94,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         output.extend(interp_out)
     # Remove temp file.
     os.remove(program_path)
+    typeshed = os.path.sep + 'typeshed' + os.path.sep
+    for i, line in enumerate(output):
+        if typeshed in line:
+            output[i] = line.split(typeshed)[-1]
     assert_string_arrays_equal(adapt_output(testcase), output,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
