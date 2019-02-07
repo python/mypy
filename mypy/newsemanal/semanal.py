@@ -348,6 +348,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                               self.modules['builtins'])
         if file_node.fullname() == 'builtins':
             self.prepare_builtins_namespace(file_node)
+        if file_node.fullname() == 'typing':
+            self.prepare_typing_namespace(file_node)
+
+    def prepare_typing_namespace(self, file_node: MypyFile) -> None:
+        """Remove dummy alias definitions.
+
+        They will be replaced with real aliases when corresponding targets are ready.
+        """
+        for stmt in file_node.defs.copy():
+            if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
+                    isinstance(stmt.lvalues[0], NameExpr)):
+                # Assignment to a simple name, remove it if it is a dummy alias.
+                if 'typing.' + stmt.lvalues[0].name in type_aliases:
+                    file_node.defs.remove(stmt)
 
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
         names = file_node.names
@@ -3770,10 +3784,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
-            if name in tree.names and not isinstance(tree.names[name].node, (Var, PlaceholderNode)):
+            if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
                 continue
-            if name in tree.names and isinstance(tree.names[name].node, Var):
-                del tree.names[name]
             tag = self.track_incomplete_refs()
             n = self.lookup_fully_qualified_or_none(target_name)
             if n:
