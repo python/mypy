@@ -1729,7 +1729,8 @@ class State:
         SCCs.
         """
         for dep in self.dependencies:
-            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+            if not self.options.new_semantic_analyzer:
+                self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
@@ -2558,9 +2559,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        if 'typing' in ascc:
-            scc.remove('typing')
-            scc.insert(0, 'typing')
+        if 'abc' in ascc:
+            scc.remove('abc')
+            scc.insert(0, 'abc')
         if manager.options.verbosity >= 2:
             for id in scc:
                 manager.trace("Priorities for %s:" % id,
