@@ -285,11 +285,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
         elif fullname == 'typing.Tuple':
-            # Tuple is special because it is involved in builtin import cycle.
-            try:
-                sym = self.api.lookup_fully_qualified('builtins.tuple')
-            except KeyError:
-                sym = None
+            # Tuple is special because it is involved in builtin import cycle
+            # and may be not ready when used.
+            sym = self.api.lookup_fully_qualified('builtins.tuple')
             if not sym or isinstance(sym.node, PlaceholderNode):
                 self.api.record_incomplete_ref()
                 return AnyType(TypeOfAny.special_form)
