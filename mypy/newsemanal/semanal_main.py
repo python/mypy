@@ -86,7 +86,6 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
-            print('processing', next_id)
             deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None,
                                                            final_iteration)
             all_deferred += deferred
