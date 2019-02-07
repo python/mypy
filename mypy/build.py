@@ -1729,8 +1729,7 @@ class State:
         SCCs.
         """
         for dep in self.dependencies:
-            if not self.options.new_semantic_analyzer:
-                self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
