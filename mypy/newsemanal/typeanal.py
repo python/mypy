@@ -356,7 +356,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Instance with an invalid number of type arguments.
         instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
         # Check type argument count.
-        if len(instance.args) != len(info.type_vars):
+        # TODO: remove this from here and replace with a proper separate pass.
+        if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail)
         if not args and self.options.disallow_any_generics and not self.defining_alias:
             # We report/patch invalid built-in instances already during second pass.
