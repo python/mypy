@@ -287,7 +287,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == 'typing.Tuple':
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
-            sym = self.api.lookup_fully_qualified('builtins.tuple')
+            sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
             if not sym or isinstance(sym.node, PlaceholderNode):
                 self.api.record_incomplete_ref()
                 return AnyType(TypeOfAny.special_form)
