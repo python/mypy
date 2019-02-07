@@ -2430,3 +2430,17 @@ class C(P): ...
 reveal_type(C.register(int))  # E: Revealed type is 'def () -> builtins.int'
 [typing fixtures/typing-full.pyi]
 [out]
+
+[case testProtocolVarianceAfterDecorators]
+# The test case is simplified, in reality this caused problems with @abstractmethod
+# in stubs and test fixtures.
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+def dec(x: T) -> T: ...
+alias = dec
+
+class P(Protocol[T]):
+    @alias
+    def meth(self, arg: T) -> T: ...
+[out]

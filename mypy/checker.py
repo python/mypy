@@ -1524,8 +1524,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
-        if typ.is_protocol and typ.defn.type_vars:
-            self.check_protocol_variance(defn)
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name()), defn)
@@ -1562,6 +1560,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                           callable_name=fullname)
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
+        if typ.is_protocol and typ.defn.type_vars:
+            self.check_protocol_variance(defn)
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
