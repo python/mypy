@@ -243,11 +243,10 @@ Issue tracker
 -------------
 
 Please report any bugs and enhancement ideas using the mypy issue
-tracker:
+tracker: https://github.com/python/mypy/issues
 
-  https://github.com/python/mypy/issues
-
-Feel free to also ask questions on the tracker.
+If you have any questions about using mypy or types, please ask
+in the typing gitter instead: https://gitter.im/python/typing
 
 
 mypy_mypyc
