@@ -2545,10 +2545,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert node is not None
         assert node.fullname is not None
         node.kind = self.current_symbol_kind()
-        type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
-        type_var.line = call.line
-        call.analyzed = type_var
-        node.node = type_var
+        if isinstance(node.node, TypeVarExpr):
+            # Existing definition from previous semanal iteration, use it.
+            type_var = node.node
+            type_var.values = values
+            type_var.upper_bound = upper_bound
+            type_var.variance = variance
+        else:
+            type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
+            type_var.line = call.line
+            call.analyzed = type_var
+            node.node = type_var
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
         name = unmangle(name)
