@@ -1358,14 +1358,3 @@ x = X(a=1, b='s')
 
 [out]
 _testNamedTupleNew.py:12: error: Revealed type is 'Tuple[builtins.int, fallback=_testNamedTupleNew.Child]'
-
-[case testNewAnalyzerBasicTypeshed_newsemanal]
-from typing import Dict, List, Tuple
-
-x: Dict[str, List[int]]
-reveal_type(x['test'][0])
-
-_t = Tuple[int, int]
-y: _t
-reveal_type(y)
-[out]

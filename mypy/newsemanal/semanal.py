@@ -2181,10 +2181,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         s.is_alias_def = True
         node = self.lookup(lvalue.name, lvalue)
-        if node is None:
-            node = SymbolTableNode(GDEF, Var(lvalue.name))
-            self.add_symbol_table_node(lvalue.name, node)
-        # assert node.node is not None
+        assert node is not None
+        assert node.node is not None
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
         # type variables, since they are erased from target type.
@@ -2212,7 +2210,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             s.rvalue.analyzed.column = res.column
         elif isinstance(s.rvalue, RefExpr):
             s.rvalue.is_alias_rvalue = True
-        node.node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
+        node.node = TypeAlias(res, node.node.fullname(), s.line, s.column,
                               alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             node.node.normalized = rvalue.node.normalized
