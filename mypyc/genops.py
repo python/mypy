@@ -31,7 +31,7 @@ from mypy.nodes import (
     IndexExpr, Block, Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue,
     BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
     TypeInfo, Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode,
-    MODULE_REF, PassStmt, PromoteExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr,
+    PassStmt, PromoteExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr,
     ComplexExpr, Decorator, DelStmt, DictionaryComprehension, EllipsisExpr, EnumCallExpr, ExecStmt,
     FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
@@ -2125,7 +2125,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.load_global(expr)
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
-        return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
+        return isinstance(expr.expr, RefExpr) and isinstance(expr.expr.node, MypyFile)
 
     def visit_member_expr(self, expr: MemberExpr) -> Value:
         # First check if this is maybe a final attribute.
