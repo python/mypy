@@ -1645,6 +1645,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
+                else:
+                    tmp = PlaceholderNode(module.fullname() + '.' + id, imp)
+                    self.add_symbol(as_id or id, tmp, imp)
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
@@ -1891,11 +1894,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
+        # print('visiting...', s.lvalues[0])
         if self.found_incomplete_ref(tag):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
             for expr in names_modified_by_assignment(s):
+                # print(expr.name, 'not ready')
                 self.mark_incomplete(expr.name, expr)
             return
         if self.analyze_namedtuple_assign(s):
@@ -2288,7 +2293,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
-        if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
+        if (not existing or isinstance(existing.node, PlaceholderNode) and existing.node.fullname() == self.qualified_name(lvalue.name)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
             self.add_symbol(name, var, lvalue)
@@ -3971,6 +3976,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def add_imported_symbol(self, name: str, node: SymbolTableNode, context: Context,
                             module_public: bool = True, module_hidden: bool = False) -> None:
         """Add an alias to an existing symbol through import."""
+        # print('Imorted', name, node.node)
         symbol = SymbolTableNode(node.kind, node.node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)

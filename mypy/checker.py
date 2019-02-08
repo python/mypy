@@ -2084,6 +2084,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 self.msg.cant_assign_to_final(name, sym.node.info is None, s)
                                 # ...but only once
                                 break
+                # print(lv, lv.node, lv.node.is_final, is_final_decl)
                 if lv.node.is_final and not is_final_decl:
                     self.msg.cant_assign_to_final(name, lv.node.info is None, s)
 
