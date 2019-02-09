@@ -167,14 +167,18 @@ def generate_c_function_stub(module: ModuleType,
         for signature in inferred:
             sig = []
             for arg in signature.args:
-                if arg.name == self_var or not arg.type:
-                    # no type
-                    sig.append(arg.name)
+                if arg.name == self_var:
+                    arg_def = self_var
                 else:
-                    # type info
-                    sig.append('{}: {}'.format(arg.name, strip_or_import(arg.type,
-                                                                         module,
-                                                                         imports)))
+                    arg_def = arg.name
+
+                    if arg.type:
+                        arg_def += ": " + strip_or_import(arg.type, module, imports)
+
+                    if arg.default:
+                        arg_def += " = ..."
+
+                sig.append(arg_def)
 
             if is_overloaded:
                 output.append('@overload')

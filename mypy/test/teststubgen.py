@@ -222,6 +222,10 @@ class StubgenUtilSuite(Suite):
                      [FunctionSig(name='func', args=[ArgSig(name='x', type=None)],
                                   ret_type='Any')])
 
+        assert_equal(infer_sig_from_docstring('\nfunc(x: str="")', 'func'),
+                     [FunctionSig(name='func', args=[ArgSig(name='x', type='str', default=True)],
+                                  ret_type='Any')])
+
     def test_infer_sig_from_docstring_duplicate_args(self) -> None:
         assert_equal(infer_sig_from_docstring('\nfunc(x, x) -> str\nfunc(x, y) -> int', 'func'),
                      [FunctionSig(name='func', args=[ArgSig(name='x'), ArgSig(name='y')],
@@ -387,6 +391,21 @@ class StubgencSuite(Suite):
         generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
                                  self_var='self', class_name='TestClass')
         assert_equal(output, ['def test(self, arg0: int) -> Any: ...'])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_with_docstring_empty_default(self) -> None:
+        class TestClass:
+            def test(self, arg0: str = "") -> None:
+                """
+                test(self: TestClass, arg0: str = "")
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, ['def test(self, arg0: str = ...) -> Any: ...'])
         assert_equal(imports, [])
 
     def test_generate_c_function_other_module_arg(self) -> None:
