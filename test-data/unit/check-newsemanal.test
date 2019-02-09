@@ -962,3 +962,10 @@ class B(type):
         return 0
 
 class C: pass
+
+[case testNewAnalyzerClassLevelImport]
+# flags: --ignore-missing-imports
+class Test:
+    import a
+    def __init__(self) -> None:
+        some_module = self.a
