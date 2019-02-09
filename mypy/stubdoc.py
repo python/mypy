@@ -22,9 +22,14 @@ Sig = Tuple[str, str]
 
 class ArgSig:
     """Signature info for a single argument."""
+
+    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')
+
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name
-        self.type = type
+        if type and not self._TYPE_RE.match(type):
+            raise ValueError("Invalid type: " + type)
+        self.type = type if type and self._TYPE_RE.match(type) else None
         # Does this argument have a default value?
         self.default = default
 
@@ -129,8 +134,13 @@ class DocStringParser:
 
             if token.string == ')':
                 self.state.pop()
-            self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
-                                    default=bool(self.arg_default)))
+            try:
+                self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
+                                        default=bool(self.arg_default)))
+            except ValueError:
+                # wrong type, use Any
+                self.args.append(ArgSig(name=self.arg_name, type=None,
+                                        default=bool(self.arg_default)))
             self.arg_name = ""
             self.arg_type = None
             self.arg_default = None

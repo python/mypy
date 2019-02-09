@@ -218,6 +218,10 @@ class StubgenUtilSuite(Suite):
 
         assert_equal(infer_sig_from_docstring('\nfunc[(x: foo.bar, invalid]', 'func'), [])
 
+        assert_equal(infer_sig_from_docstring('\nfunc(x: invalid::type<with_template>)', 'func'),
+                     [FunctionSig(name='func', args=[ArgSig(name='x', type=None)],
+                                  ret_type='Any')])
+
     def test_infer_arg_sig_from_docstring(self) -> None:
         assert_equal(infer_arg_sig_from_docstring("(*args, **kwargs)"),
                      [ArgSig(name='*args'), ArgSig(name='**kwargs')])
