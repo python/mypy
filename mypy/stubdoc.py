@@ -203,7 +203,15 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
     with contextlib.suppress(tokenize.TokenError):
         for token in tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline):
             state.add_token(token)
-    return state.get_signatures()
+    ret = state.get_signatures()
+
+    def is_unique_args(sig: FunctionSig) -> bool:
+        """return true if function argument names are unique"""
+        return len(sig.args) == len(set((x.name for x in sig.args)))
+
+    # return only signatures, that have unique argument names. mypy fails on non-uqniue arg names
+    # TODO: emit a warning for duplicate argument names
+    return [x for x in ret if is_unique_args(x)]
 
 
 def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
