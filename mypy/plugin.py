@@ -440,8 +440,15 @@ class Plugin(CommonPluginApi):
         """Adjust type of a class attribute.
 
         This method is called with attribute full name using the class where the attribute was
-        defined (or Var.info.fullname() for generated attributes). Currently, this hook is only
-        called for names that exist in the class MRO, for example in:
+        defined (or Var.info.fullname() for generated attributes).
+
+        For classes without __getattr__ or __getattribute__, this hook is only called for
+        names of fields/properties (but not methods) that exist in the instance MRO.
+
+        For classes that implement __getattr__ or __getattribute__, this hook is called
+        for all fields/properties, including nonexistent ones (but still not methods).
+
+        For example:
 
             class Base:
                 x: Any
@@ -454,7 +461,9 @@ class Plugin(CommonPluginApi):
             var.x
             var.y
 
-        this method is only called with '__main__.Base.x'.
+        get_attribute_hook is called with '__main__.Base.x' and '__main__.Base.y'.
+        However, if we had not implemented __getattr__ on Base, you would only get
+        the callback for 'var.x'; 'var.y' would produce an error without calling the hook.
         """
         return None
 

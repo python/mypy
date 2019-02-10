@@ -143,18 +143,48 @@ tmp/mypy.ini:2: error: Return value of "plugin" must be a subclass of "mypy.plug
 [case testAttributeTypeHookPlugin]
 # flags: --config-file tmp/mypy.ini
 from typing import Callable
-from m import Signal
+from m import Signal, DerivedSignal
 s: Signal[Callable[[int], None]] = Signal()
 s(1)
 s('') # E: Argument 1 has incompatible type "str"; expected "int"
+
+ds: DerivedSignal[Callable[[int], None]] = DerivedSignal()
+ds('') # E: Argument 1 has incompatible type "str"; expected "int"
 [file m.py]
 from typing import TypeVar, Generic, Callable
 T = TypeVar('T', bound=Callable[..., None])
 class Signal(Generic[T]):
     __call__: Callable[..., None]  # This type is replaced by the plugin
+
+class DerivedSignal(Signal[T]): ...
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/attrhook.py
+
+[case testAttributeHookPluginForDynamicClass]
+# flags: --config-file tmp/mypy.ini
+from m import Magic, DerivedMagic
+
+magic = Magic()
+reveal_type(magic.magic_field)  # E: Revealed type is 'builtins.str'
+reveal_type(magic.non_magic_method())  # E: Revealed type is 'builtins.int'
+reveal_type(magic.non_magic_field)  # E: Revealed type is 'builtins.int'
+magic.nonexistent_field  # E: Field does not exist
+reveal_type(magic.fallback_example)  # E: Revealed type is 'Any'
+reveal_type(DerivedMagic().magic_field)  # E: Revealed type is 'builtins.str'
+[file m.py]
+from typing import Any
+class Magic:
+    # Triggers plugin infrastructure:
+    def __getattr__(self, x: Any) -> Any: ...
+    def non_magic_method(self) -> int: ...
+    non_magic_field: int
+
+class DerivedMagic(Magic): ...
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/attrhook2.py
 
 [case testTypeAnalyzeHookPlugin]
 # flags: --config-file tmp/mypy.ini
