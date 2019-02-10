@@ -3966,6 +3966,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             var._fullname = target_name
         elif self.type:
             var._fullname = self.type.fullname() + "." + name
+            var.info = self.type
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
