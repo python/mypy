@@ -508,7 +508,7 @@ class C:
       # type: ('int') -> bool
       pass
 
-[builtins_py2 fixtures/bool.pyi]
+[builtins_py2 fixtures/bool_py2.pyi]
 
 [case cmpIgnoredPy3]
 
