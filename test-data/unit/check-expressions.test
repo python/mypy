@@ -490,7 +490,7 @@ class A:
     def __cmp__(self, o):
       # type: ('B') -> bool
       pass
-    def __eq__(self, o):  # type: ignore
+    def __eq__(self, o):
       # type: ('int') -> bool
       pass
 class B:
@@ -504,7 +504,7 @@ class C:
     def __cmp__(self, o):
       # type: ('A') -> bool
       pass
-    def __eq__(self, o):  # type: ignore
+    def __eq__(self, o):
       # type: ('int') -> bool
       pass
 
@@ -2079,12 +2079,10 @@ A() == B()  # E: Unsupported operand types for == ("A" and "B")
 
 [case testCustomContainsCheckStrictEquality]
 # flags: --strict-equality
-from typing import Container
 class A:
-    def __contains__(self, other: A) -> bool:  # type: ignore
+    def __contains__(self, other: A) -> bool:
         ...
 
 # Don't report non-overlapping check if there is already and error.
 42 in A()  # E: Unsupported operand types for in ("int" and "A")
 [builtins fixtures/bool.pyi]
-[typing fixtures/typing-full.pyi]

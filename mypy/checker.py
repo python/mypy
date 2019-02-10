@@ -3010,10 +3010,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     types.append(c_type)
             return UnionType.make_union(types)
         if isinstance(typ, Instance) and typ.type.has_base('typing.Container'):
-                supertype = self.named_type('typing.Container').type
-                super_instance = map_instance_to_supertype(typ, supertype)
-                assert len(super_instance.args) == 1
-                return super_instance.args[0]
+            supertype = self.named_type('typing.Container').type
+            super_instance = map_instance_to_supertype(typ, supertype)
+            assert len(super_instance.args) == 1
+            return super_instance.args[0]
         return None
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
