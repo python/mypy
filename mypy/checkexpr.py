@@ -44,7 +44,7 @@ from mypy.messages import MessageBuilder
 from mypy import message_registry
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.meet import narrow_declared_type
+from mypy.meet import narrow_declared_type, is_overlapping_types
 from mypy.subtypes import (
     is_subtype, is_proper_subtype, is_equivalent, find_member, non_method_protocol_members,
 )
@@ -1914,6 +1914,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 _, method_type = self.check_method_call_by_name(
                     '__contains__', right_type, [left], [ARG_POS], e, local_errors)
                 sub_result = self.bool_type()
+                # Container item type for strict type overlap checks. Note: we need to only
+                # check for nominal type, because a usual "Unsupported operands for in"
+                # will be reported for types incompatible with __contains__().
+                # See testCustomContainsCheckStrictEquality for an example.
+                cont_type = self.chk.analyze_container_item_type(right_type)
                 if isinstance(right_type, PartialType):
                     # We don't really know if this is an error or not, so just shut up.
                     pass
@@ -1928,17 +1933,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.bool_type(),
                         self.named_type('builtins.function'))
                     if not is_subtype(left_type, itertype):
-                        self.msg.unsupported_operand_types('in', left_type, right_type, e)
+                        self.msg.unsupported_operand_types('in', left_type, itertype, e)
+                # Only show dangerous overlap if there are no other errors.
+                elif (not local_errors.is_errors() and cont_type and
+                        self.dangerous_comparison(left_type, cont_type)):
+                    self.msg.dangerous_comparison(left_type, cont_type, 'container', e)
                 else:
                     self.msg.add_errors(local_errors)
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
+                err_count = self.msg.errors.total_errors()
                 sub_result, method_type = self.check_op(method, left_type, right, e,
-                                                    allow_reverse=True)
+                                                        allow_reverse=True)
+                # Only show dangerous overlap if there are no other errors. See
+                # testCustomEqCheckStrictEquality for an example.
+                if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
+                    right_type = self.accept(right)
+                    if self.dangerous_comparison(left_type, right_type):
+                        self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
 
             elif operator == 'is' or operator == 'is not':
-                self.accept(right)  # validate the right operand
+                right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
+                if self.dangerous_comparison(left_type, right_type):
+                    self.msg.dangerous_comparison(left_type, right_type, 'identity', e)
                 method_type = None
             else:
                 raise RuntimeError('Unknown comparison operator {}'.format(operator))
@@ -1953,6 +1971,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert result is not None
         return result
+
+    def dangerous_comparison(self, left: Type, right: Type) -> bool:
+        """Check for dangerous non-overlapping comparisons like 42 == 'no'.
+
+        Rules:
+            * X and None are non-overlapping in strict-optional mode, and
+            overlapping otherwise.
+            * Optional[X] and Optional[Y] are non-overlapping if X and Y are
+            non-overlapping, although technically None is overlap, it is most
+            likely an error.
+            * Any overlaps with everything, i.e. always safe.
+            * Promotions are ignored, so both 'abc' == b'abc' and 1 == 1.0
+            are errors.
+        """
+        if isinstance(left, UnionType) and isinstance(right, UnionType):
+            left = remove_optional(left)
+            right = remove_optional(right)
+        if self.chk.options.strict_equality:
+            return not is_overlapping_types(left, right, ignore_promotions=True)
+        return False
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:

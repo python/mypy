@@ -22,6 +22,7 @@ PER_MODULE_OPTIONS = {
     # Please keep this list sorted
     "allow_untyped_globals",
     "allow_redefinition",
+    "strict_equality",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -156,6 +157,10 @@ class Options:
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
         self.allow_redefinition = False
+
+        # Prohibit equality, identity, and container checks for non-overlapping types.
+        # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
+        self.strict_equality = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

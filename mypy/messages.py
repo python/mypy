@@ -975,6 +975,13 @@ class MessageBuilder:
                   .format(typevar_name, callable_name(callee) or 'function', self.format(typ)),
                   context)
 
+    def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
+        left_str = 'element' if kind == 'container' else 'left operand'
+        right_str = 'container item' if kind == 'container' else 'right operand'
+        message = 'Non-overlapping {} check ({} type: {}, {} type: {})'
+        left_typ, right_typ = self.format_distinctly(left, right)
+        self.fail(message.format(kind, left_str, left_typ, right_str, right_typ), ctx)
+
     def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
         self.fail(
             'Overload does not consistently use the "@{}" '.format(decorator)
