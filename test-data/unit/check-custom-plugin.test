@@ -143,15 +143,20 @@ tmp/mypy.ini:2: error: Return value of "plugin" must be a subclass of "mypy.plug
 [case testAttributeTypeHookPlugin]
 # flags: --config-file tmp/mypy.ini
 from typing import Callable
-from m import Signal
+from m import Signal, DerivedSignal
 s: Signal[Callable[[int], None]] = Signal()
 s(1)
 s('') # E: Argument 1 has incompatible type "str"; expected "int"
+
+ds: DerivedSignal[Callable[[int], None]] = DerivedSignal()
+ds('') # E: Argument 1 has incompatible type "str"; expected "int"
 [file m.py]
 from typing import TypeVar, Generic, Callable
 T = TypeVar('T', bound=Callable[..., None])
 class Signal(Generic[T]):
     __call__: Callable[..., None]  # This type is replaced by the plugin
+
+class DerivedSignal(Signal, Generic[T]): ...
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/attrhook.py

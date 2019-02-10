@@ -14,7 +14,7 @@ class AttrPlugin(Plugin):
 def signal_call_callback(ctx: AttributeContext) -> Type:
     if isinstance(ctx.type, Instance) and ctx.type.type.fullname() == 'm.Signal':
         return ctx.type.args[0]
-    return ctx.inferred_attr_type
+    return ctx.default_attr_type
 
 
 def plugin(version):
