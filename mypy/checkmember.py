@@ -343,7 +343,7 @@ def analyze_member_var_access(name: str,
                         result = getattr_type.ret_type
 
                         # Call the attribute hook before returning.
-                        fullname = '{}.{}'.format(info.fullname(), name)
+                        fullname = '{}.{}'.format(method.info.fullname(), name)
                         hook = mx.chk.plugin.get_attribute_hook(fullname)
                         if hook:
                             result = hook(AttributeContext(mx.original_type, result,
