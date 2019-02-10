@@ -1933,7 +1933,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.bool_type(),
                         self.named_type('builtins.function'))
                     if not is_subtype(left_type, itertype):
-                        self.msg.unsupported_operand_types('in', left_type, itertype, e)
+                        self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 # Only show dangerous overlap if there are no other errors.
                 elif (not local_errors.is_errors() and cont_type and
                         self.dangerous_comparison(left_type, cont_type)):

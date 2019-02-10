@@ -490,7 +490,7 @@ class A:
     def __cmp__(self, o):
       # type: ('B') -> bool
       pass
-    def __eq__(self, o):
+    def __eq__(self, o):  # type: ignore
       # type: ('int') -> bool
       pass
 class B:
@@ -504,7 +504,7 @@ class C:
     def __cmp__(self, o):
       # type: ('A') -> bool
       pass
-    def __eq__(self, o):
+    def __eq__(self, o):  # type: ignore
       # type: ('int') -> bool
       pass
 
@@ -604,7 +604,7 @@ class X:
 class Y:
     def __lt__(self, o: 'Y') -> A: pass
     def __gt__(self, o: 'Y') -> A: pass
-    def __eq__(self, o: 'Y') -> B: pass
+    def __eq__(self, o: 'Y') -> B: pass  # type: ignore
 [builtins fixtures/bool.pyi]
 
 
