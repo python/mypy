@@ -21,8 +21,8 @@ on, and everything is subject to change.
 - Infer signature of a single function using static analysis and integrate this
   functionality in mypy daemon.
 
-- Support variadic generics (focus on the use cases needed for precise typing of
-  decorators, see [issue](https://github.com/python/mypy/issues/3157)).
+- Support user defined variadic generics (focus on the use cases needed for precise
+  typing of decorators, see [issue](https://github.com/python/mypy/issues/3157)).
 
 - Dedicated support for NumPy and Python numeric stack (including
   integer generics/shape types, and a NumPy plugin, see
@@ -35,4 +35,4 @@ on, and everything is subject to change.
   Help with [typeshed transformation](https://github.com/python/typeshed/issues/2491)
   if needed.
 
-- Support deeper editor integrations.
+- Support selected IDE features and deeper editor integrations.
