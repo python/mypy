@@ -1041,3 +1041,11 @@ def f(): ...
 [file b.py]
 from a import f
 x: int
+
+[case testNewAnalyzerClassLevelImport]
+# flags: --ignore-missing-imports
+class Test:
+    import a
+    def __init__(self) -> None:
+        some_module = self.a
+

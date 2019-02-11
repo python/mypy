@@ -340,7 +340,15 @@ def analyze_member_var_access(name: str,
                     typ = map_instance_to_supertype(itype, method.info)
                     getattr_type = expand_type_by_instance(bound_method, typ)
                     if isinstance(getattr_type, CallableType):
-                        return getattr_type.ret_type
+                        result = getattr_type.ret_type
+
+                        # Call the attribute hook before returning.
+                        fullname = '{}.{}'.format(method.info.fullname(), name)
+                        hook = mx.chk.plugin.get_attribute_hook(fullname)
+                        if hook:
+                            result = hook(AttributeContext(mx.original_type, result,
+                                                           mx.context, mx.chk))
+                        return result
         else:
             setattr_meth = info.get_method('__setattr__')
             if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':

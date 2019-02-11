@@ -219,7 +219,9 @@ def _build(sources: List[BuildSource],
             TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
+        t0 = time.time()
         manager.metastore.commit()
+        manager.add_stats(cache_commit_time=time.time() - t0)
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
                     (time.time() - manager.start_time,
                      len(manager.modules),
@@ -550,7 +552,7 @@ class BuildManager(BuildManagerBase):
 
     def dump_stats(self) -> None:
         self.log("Stats:")
-        for key, value in self.stats_summary().items():
+        for key, value in sorted(self.stats_summary().items()):
             self.log("{:24}{}".format(key + ":", value))
 
     def use_fine_grained_cache(self) -> bool:
@@ -1094,6 +1096,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
 
+    t0 = time.time()
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
@@ -1111,6 +1114,8 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if not stat.S_ISREG(st.st_mode):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
+
+    manager.add_stats(validate_stat_time=time.time() - t0)
 
     # When we are using a fine-grained cache, we want our initial
     # build() to load all of the cache information and then do a
@@ -1136,10 +1141,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # Bazel ensures the cache is valid.
     mtime = 0 if bazel else int(st.st_mtime)
     if not bazel and (mtime != meta.mtime or path != meta.path):
+        t0 = time.time()
         try:
             source_hash = manager.fscache.md5(path)
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
+        manager.add_stats(validate_hash_time=time.time() - t0)
         if source_hash != meta.hash:
             if fine_grained_cache:
                 manager.log('Using stale metadata for {}: file {}'.format(id, path))
@@ -1149,6 +1156,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                     id, path))
                 return None
         else:
+            t0 = time.time()
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
             meta = meta._replace(mtime=mtime, path=path)
             # Construct a dict we can pass to json.dumps() (compare to write_cache()).
@@ -1177,7 +1185,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             meta_json, _, _ = get_cache_names(id, path, manager)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
+            t1 = time.time()
             manager.metastore.write(meta_json, meta_str)  # Ignore errors, just an optimization.
+            manager.add_stats(validate_update_time=time.time() - t1,
+                              validate_munging_time=t1 - t0)
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
@@ -1600,7 +1611,9 @@ class State:
                 self.interface_hash = self.meta.interface_hash
                 self.meta_source_hash = self.meta.hash
         self.add_ancestors()
+        t0 = time.time()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
+        self.manager.add_stats(validate_meta_time=time.time() - t0)
         if self.meta:
             # Make copies, since we may modify these and want to
             # compare them to the originals later.

@@ -184,11 +184,11 @@ For example in this code:
 mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
 so that the plugin can mimic the ``ctypes`` auto-convert behavior.
 
-**get_attribute_hook** can be used to give more precise type of an instance
-attribute. Note however, that this method is only called for variables that
-already exist in the class symbol table. If you want to add some generated
-variables/methods to the symbol table you can use one of the three hooks
-below.
+**get_attribute_hook** overrides instance member field lookups and property
+access (not assignments, and not method calls). This hook is only called for
+fields which already exist on the class. *Exception:* if ``__getattr__`` or
+``__getattribute__`` is a method on the class, the hook is called for all
+fields which do not refer to methods.
 
 **get_class_decorator_hook()** can be used to update class definition for
 given class decorators. For example, you can add some attributes to the class

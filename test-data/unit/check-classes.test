@@ -5707,3 +5707,11 @@ class C:
         self.spec = B()
         reveal_type(self.spec)  # E: Revealed type is '__main__.B'
 [builtins fixtures/bool.pyi]
+
+[case testClassLevelImport]
+# flags: --ignore-missing-imports
+class Test:
+    import a
+    def __init__(self) -> None:
+        some_module = self.a
+[out]
