@@ -40,7 +40,7 @@ Every value stored there must be JSON-serializable.
 import types
 
 from abc import abstractmethod
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
 from mypy.nodes import (
@@ -244,7 +244,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
+    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> Any:
         """Add node to global symbol table (or to nearest class if there is one)."""
         raise NotImplementedError
 
