@@ -1645,9 +1645,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
-                else:
-                    tmp = PlaceholderNode(module.fullname() + '.' + id, imp)
-                    self.add_symbol(as_id or id, tmp, imp)
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
@@ -1660,11 +1657,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
-                if not node:
-                    # Normalization failed because target is not defined. Avoid duplicate
-                    # error messages by marking the imported name as unknown.
-                    self.add_unknown_symbol(imported_id, imp, is_import=True)
-                    continue
                 if isinstance(node.node, PlaceholderNode):
                     if self.final_iteration:
                         self.report_missing_module_attribute(import_id, id, imported_id, imp)
@@ -1894,13 +1886,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        # print('visiting...', s.lvalues[0])
         if self.found_incomplete_ref(tag):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
             for expr in names_modified_by_assignment(s):
-                # print(expr.name, 'not ready')
                 self.mark_incomplete(expr.name, expr)
             return
         if self.analyze_namedtuple_assign(s):
@@ -1940,7 +1930,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
             self.analyze_lvalue(lval,
-                                explicit_type=s.type is not None,
+                                explicit_type=s.unanalyzed_type is not None,
                                 is_final=s.is_final_def)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
@@ -2293,10 +2283,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
-        if (not existing or isinstance(existing.node, PlaceholderNode) and existing.node.fullname() == self.qualified_name(lvalue.name)) and not outer:
+        if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
-            self.add_symbol(name, var, lvalue)
+            added = self.add_symbol(name, var, lvalue)
+            # Only bind expression if we succesfully added name to symbol table.
+            if added:
+                lvalue.node = var
+                if kind == GDEF:
+                    lvalue.fullname = var._fullname
+                else:
+                    lvalue.fullname = lvalue.name
             if is_final and self.is_final_redefinition(kind, name):
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
@@ -2352,14 +2349,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
         v.is_ready = False  # Type not inferred yet
-        lvalue.node = v
         lvalue.is_new_def = True
         lvalue.is_inferred_def = True
         lvalue.kind = kind
-        if kind == GDEF:
-            lvalue.fullname = v._fullname
-        else:
-            lvalue.fullname = lvalue.name
         return v
 
     def make_name_lvalue_point_to_existing_def(
@@ -3908,12 +3900,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return kind
 
     def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
-                   module_public: bool = True, module_hidden: bool = False) -> None:
+                   module_public: bool = True, module_hidden: bool = False) -> bool:
         """Add symbol to the currently active symbol table.
 
         Generally additions to symbol table should go through this method or
         one of the methods below so that kinds, redefinitions, conditional
         definitions, and skipped names are handled consistently.
+
+        Return True if we actually added the symbol, or False if we refused to do so
+        (because something is not ready).
         """
         if self.is_func_scope():
             kind = LDEF
@@ -3925,7 +3920,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
-        self.add_symbol_table_node(name, symbol, context)
+        return self.add_symbol_table_node(name, symbol, context)
 
     def current_symbol_table(self) -> SymbolTable:
         if self.is_func_scope():
@@ -3943,7 +3938,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                      or name in self.nonlocal_decls[-1]))
 
     def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
-                              context: Optional[Context] = None) -> None:
+                              context: Optional[Context] = None) -> bool:
         """Add symbol table node to the currently active symbol table."""
         names = self.current_symbol_table()
         existing = names.get(name)
@@ -3954,6 +3949,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
+            return True
+        return False
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
@@ -3976,7 +3973,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def add_imported_symbol(self, name: str, node: SymbolTableNode, context: Context,
                             module_public: bool = True, module_hidden: bool = False) -> None:
         """Add an alias to an existing symbol through import."""
-        # print('Imorted', name, node.node)
         symbol = SymbolTableNode(node.kind, node.node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
@@ -4041,18 +4037,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_fixture_note(fullname, ctx)
 
     def name_already_defined(self, name: str, ctx: Context,
-                    original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
+                             original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
         if isinstance(original_ctx, SymbolTableNode):
-            node = original_ctx.node
+            node = original_ctx.node  # type: Optional[SymbolNode]
         elif isinstance(original_ctx, SymbolNode):
             node = original_ctx
+        else:
+            node = None
 
         if isinstance(original_ctx, SymbolTableNode) and isinstance(original_ctx.node, MypyFile):
             # Since this is an import, original_ctx.node points to the module definition.
             # Therefore its line number is always 1, which is not useful for this
             # error message.
             extra_msg = ' (by an import)'
-        elif node and node.line != -1:
+        elif node and node.line != -1 and node.fullname().startswith(self.cur_mod_id):
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'

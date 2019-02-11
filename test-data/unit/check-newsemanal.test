@@ -279,7 +279,7 @@ import a
 from b import C as C2
 class C: pass
 
-class C2: pass # E: Name 'C2' already defined (possibly by an import)
+class C2: pass # E: Name 'C2' already defined on line 2
 [file b.py]
 from a import C
 
@@ -1030,4 +1030,14 @@ class B:
 
 class C(B):
     x = 1  # E: Cannot assign to final name "x"
-[out]
+
+[case testNewAnalyzerAssignmentAfterStarImport]
+import a
+[file a.py]
+from b import *
+
+x = 1
+def f(): ...
+[file b.py]
+from a import f
+x: int
