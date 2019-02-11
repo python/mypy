@@ -12,21 +12,23 @@ on, and everything is subject to change.
   ([issue](https://github.com/python/mypy/labels/topic-usability))
 
 - Refactor and simplify specific tricky parts of mypy internals, such
-  as the [conditional type binder](https://github.com/python/mypy/issues/3457),
-  [symbol tables](https://github.com/python/mypy/issues/3458) or
-  the various [semantic analysis passes](https://github.com/python/mypy/issues/3459).
+  as the [conditional type binder](https://github.com/python/mypy/issues/3457)
+  and the [semantic analyzer](https://github.com/python/mypy/issues/6204).
+
+- Use the redesigned semantic analyzer to support general recursive types
+  ([issue](https://github.com/python/mypy/issues/731)).
+
+- Support variadic generics (focus on the use cases needed for precise typing of
+  decorators, see [issue](https://github.com/python/mypy/issues/3157)).
+
+- Dedicated support for NumPy and Python numeric stack (including
+  integer generics/shape types, and a NumPy plugin, see
+  [issue](https://github.com/python/mypy/issues/3540)).
 
 - Invest some effort into systematically filling in missing
-  annotations and stubs in typeshed, with focus on features heavily
-  used at Dropbox. Better support for ORMs will be a separate
-  project.
-
-- Make the mypy plugin architecture more general and officially
-  supported. It should be able to support some typical ORM features at
-  least, such as metaclasses that add methods with automatically
-  inferred signatures and complex descriptors such as those used by
-  Django models.
-  ([issue](https://github.com/python/mypy/issues/1240))
+  stubs in typeshed, with focus on libraries heavily used at Dropbox.
+  Help with [typeshed transformation](https://github.com/python/typeshed/issues/2491)
+  if needed.
 
 - Implement editor plugins and/or document how to integrate mypy
   with popular editors. Support selected IDE features.
