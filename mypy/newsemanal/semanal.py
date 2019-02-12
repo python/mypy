@@ -1929,7 +1929,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
-        explicit = s.unanalyzed_type
+        explicit = s.unanalyzed_type is not None
         if self.is_final_type(s.unanalyzed_type):
             # We need to exclude bare Final.
             assert isinstance(s.unanalyzed_type, UnboundType)
@@ -2730,7 +2730,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
         return sym.node.fullname() == 'typing.ClassVar'
 
-    def is_final_type(self, typ: Type) -> bool:
+    def is_final_type(self, typ: Optional[Type]) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
