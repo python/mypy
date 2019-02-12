@@ -4060,6 +4060,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # error message.
             extra_msg = ' (by an import)'
         elif node and node.line != -1 and node.fullname().startswith(self.cur_mod_id):
+            # TODO: Using previous symbol node may give wrong line. We should use
+            #       the line number where the binding was established instead.
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
