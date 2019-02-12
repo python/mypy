@@ -68,6 +68,11 @@ class SemanticAnalyzerCoreInterface:
     def defer(self) -> None:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        """Is a module or class namespace potentially missing some definitions?"""
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):

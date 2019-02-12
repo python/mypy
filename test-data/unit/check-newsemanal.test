@@ -899,6 +899,12 @@ class C: pass
 import a
 from b import C
 
+[case testNewAnalyzerIncompleteFixture]
+from typing import Tuple
+
+x: Tuple[int]  # E: Name 'tuple' is not defined
+[builtins fixtures/complex.pyi]
+
 [case testNewAnalyzerMetaclass1]
 class A(metaclass=B):
     pass
