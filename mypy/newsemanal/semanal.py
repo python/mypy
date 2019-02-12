@@ -348,6 +348,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                               self.modules['builtins'])
         if file_node.fullname() == 'builtins':
             self.prepare_builtins_namespace(file_node)
+        if file_node.fullname() == 'typing':
+            self.prepare_typing_namespace(file_node)
+
+    def prepare_typing_namespace(self, file_node: MypyFile) -> None:
+        """Remove dummy alias definitions such as List = TypeAlias(object) from typing.
+
+        They will be replaced with real aliases when corresponding targets are ready.
+        """
+        for stmt in file_node.defs.copy():
+            if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
+                    isinstance(stmt.lvalues[0], NameExpr)):
+                # Assignment to a simple name, remove it if it is a dummy alias.
+                if 'typing.' + stmt.lvalues[0].name in type_aliases:
+                    file_node.defs.remove(stmt)
 
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
         names = file_node.names
@@ -2531,10 +2545,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert node is not None
         assert node.fullname is not None
         node.kind = self.current_symbol_kind()
-        type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
-        type_var.line = call.line
-        call.analyzed = type_var
-        node.node = type_var
+        if isinstance(node.node, TypeVarExpr):
+            # Existing definition from previous semanal iteration, use it.
+            type_var = node.node
+            type_var.values = values
+            type_var.upper_bound = upper_bound
+            type_var.variance = variance
+        else:
+            type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
+            type_var.line = call.line
+            call.analyzed = type_var
+            node.node = type_var
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
         name = unmangle(name)

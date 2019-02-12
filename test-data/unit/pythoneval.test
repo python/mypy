@@ -1358,3 +1358,14 @@ x = X(a=1, b='s')
 
 [out]
 _testNamedTupleNew.py:12: error: Revealed type is 'Tuple[builtins.int, fallback=_testNamedTupleNew.Child]'
+
+[case testNewAnalyzerBasicTypeshed_newsemanal]
+from typing import Dict, List, Tuple
+
+x: Dict[str, List[int]]
+reveal_type(x['test'][0])
+[out]
+typing.pyi: error: Class typing.Sequence has abstract attributes "__len__"
+typing.pyi: note: If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass
+builtins.pyi:39: error: Name '__class__' already defined on line 39
+_testNewAnalyzerBasicTypeshed_newsemanal.py:4: error: Revealed type is 'builtins.int*'

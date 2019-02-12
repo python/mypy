@@ -285,6 +285,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
         elif fullname == 'typing.Tuple':
+            # Tuple is special because it is involved in builtin import cycle
+            # and may be not ready when used.
+            sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
+            if not sym or isinstance(sym.node, PlaceholderNode):
+                if self.api.is_incomplete_namespace('builtins'):
+                    self.api.record_incomplete_ref()
+                else:
+                    self.fail("Name 'tuple' is not defined", t)
+                return AnyType(TypeOfAny.special_form)
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'
                 if self.options.disallow_any_generics and not self.is_typeshed_stub:
@@ -350,7 +359,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Instance with an invalid number of type arguments.
         instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
         # Check type argument count.
-        if len(instance.args) != len(info.type_vars):
+        # TODO: remove this from here and replace with a proper separate pass.
+        if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail)
         if not args and self.options.disallow_any_generics and not self.defining_alias:
             # We report/patch invalid built-in instances already during second pass.

@@ -43,6 +43,10 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+    @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         raise NotImplementedError
@@ -62,6 +66,11 @@ class SemanticAnalyzerCoreInterface:
 
     @abstractmethod
     def defer(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        """Is a module or class namespace potentially missing some definitions?"""
         raise NotImplementedError
 
 

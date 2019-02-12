@@ -39,6 +39,10 @@ if MYPY:
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
 MAX_ITERATIONS = 10
 
+# Number of passes over core modules before going on to the rest of the builtin SCC.
+CORE_WARMUP = 2
+core_modules = ['typing', 'builtins', 'abc', 'collections']
+
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
@@ -65,6 +69,10 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
     state.manager.incomplete_namespaces.update(scc)
 
     worklist = scc[:]
+    # HACK: process core stuff first. This is mostly needed to support defining
+    # named tuples in builtin SCC.
+    if all(m in worklist for m in core_modules):
+        worklist += list(reversed(core_modules)) * CORE_WARMUP
     iteration = 0
     final_iteration = False
     while worklist:
