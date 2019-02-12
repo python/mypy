@@ -289,7 +289,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
             if not sym or isinstance(sym.node, PlaceholderNode):
-                self.api.record_incomplete_ref()
+                if self.api.is_incomplete_namespace('builtins'):
+                    self.api.record_incomplete_ref()
+                else:
+                    self.fail("Name 'tuple' is not defined", t)
                 return AnyType(TypeOfAny.special_form)
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'

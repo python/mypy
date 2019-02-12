@@ -352,7 +352,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.prepare_typing_namespace(file_node)
 
     def prepare_typing_namespace(self, file_node: MypyFile) -> None:
-        """Remove dummy alias definitions.
+        """Remove dummy alias definitions such as List = TypeAlias(object) from typing.
 
         They will be replaced with real aliases when corresponding targets are ready.
         """
