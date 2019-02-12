@@ -421,7 +421,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
         # None of the above options worked, we give up.
-        self.fail('Invalid type "{}"'.format(name), t)
+        if self.api.final_iteration:
+            self.fail('Invalid type "{}"'.format(name), t)
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
             self.note_func("Forward references to type variables are prohibited", t)
             return AnyType(TypeOfAny.from_error)

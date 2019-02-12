@@ -1886,16 +1886,24 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
+    def can_be_an_alias(self, rv: Expression) -> bool:
+        if isinstance(rv, NameExpr):
+            n = self.lookup(rv.name, rv)
+            if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
+                return True
+        return False
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        if self.found_incomplete_ref(tag):
+        is_alias = self.can_be_an_alias(s.rvalue)
+        if self.found_incomplete_ref(tag) or is_alias:
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
             for expr in names_modified_by_assignment(s):
-                self.mark_incomplete(expr.name, expr)
+                self.mark_incomplete(expr.name, expr, becomes_typeinfo=is_alias)
             return
         if self.analyze_namedtuple_assign(s):
             return
@@ -2064,6 +2072,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             if analyzed is None:
+                return
+            if isinstance(analyzed, UnboundType) and not self.final_iteration:
+                self.defer()
                 return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and

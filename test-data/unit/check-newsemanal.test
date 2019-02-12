@@ -1003,9 +1003,7 @@ from a import x
 
 class B(List[B]): pass
 
-reveal_type(x)
-reveal_type(x[0])
-reveal_type(x[0][0])
+reveal_type(x[0][0])  # E: Revealed type is 'b.B*'
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyClass2]
@@ -1016,5 +1014,5 @@ x: A
 class A(List[B]): pass
 B = A
 
-reveal_type(x[0][0])
+reveal_type(x[0][0])  # E: Revealed type is '__main__.A*'
 [builtins fixtures/list.pyi]
