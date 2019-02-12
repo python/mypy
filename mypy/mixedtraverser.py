@@ -28,34 +28,34 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         if info:
             for base in info.bases:
                 base.accept(self)
+            self.visit_optional_type(info.typeddict_type)
 
     def visit_type_alias_expr(self, o: TypeAliasExpr) -> None:
         super().visit_type_alias_expr(o)
-        # TODO
+        o.type.accept(self)
 
     def visit_type_var_expr(self, o: TypeVarExpr) -> None:
         super().visit_type_var_expr(o)
-        # TODO
+        o.upper_bound.accept(self)
+        for value in o.values:
+            value.accept(self)
 
     def visit_typeddict_expr(self, o: TypedDictExpr) -> None:
         super().visit_typeddict_expr(o)
-        # TODO
+        self.visit_optional_type(o.info.typeddict_type)
 
     def visit_namedtuple_expr(self, o: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(o)
-        # TODO
-
-    def visit_enum_call_expr(self, o: EnumCallExpr) -> None:
-        super().visit_enum_call_expr(o)
-        # TODO
+        assert o.info.tuple_type
+        o.info.tuple_type.accept(self)
 
     def visit__promote_expr(self, o: PromoteExpr) -> None:
         super().visit__promote_expr(o)
-        # TODO
+        o.type.accept(self)
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> None:
         super().visit_newtype_expr(o)
-        # TODO
+        o.old_type.accept(self)
 
     # Statements
 

@@ -1033,3 +1033,52 @@ tmp/a.py:9: error: Type argument "builtins.str" of "C" must be a subtype of "bui
 tmp/a.py: note: In member "g" of class "A":
 tmp/a.py:10: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
 tmp/a.py:11: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+
+[case testNewAnalyzerTypeArgBoundCheckDifferentNodes]
+from typing import TypeVar, Generic, NamedTuple, NewType, Union, Any, cast, overload
+from mypy_extensions import TypedDict
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+class C2(Generic[T]): pass
+
+A = C[str] # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int" \
+           # E: Value of type variable "T" of "C" cannot be "str"
+B = Union[C[str], int] # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+S = TypeVar('S', bound=C[str]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+U = TypeVar('U', C[str], str) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+N = NamedTuple('N', [
+    ('x', C[str])]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class N2(NamedTuple):
+    x: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class TD(TypedDict):
+    x: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class TD2(TD):
+    y: C2[str]  # E: Type argument "builtins.str" of "C2" must be a subtype of "builtins.int"
+NT = NewType('NT',
+             C[str]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class D(
+        C[str]): # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    pass
+
+TD3 = TypedDict('TD3', {'x': C[str]}) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+
+a: Any
+for i in a: # type: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    pass
+
+with a as w: # type: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    pass
+
+cast(C[str], a)  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+C[str]()  # E: Value of type variable "T" of "C" cannot be "str"
+
+def f(s: S, y: U) -> None: pass  # No error here
+
+@overload
+def g(x: C[str]) -> int: ...  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+@overload
+def g(x: int) -> int: ...
+def g(x: Union[C[str], int]) -> int:  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    y: C[object]  # E: Type argument "builtins.object" of "C" must be a subtype of "builtins.int"
+    return 0
