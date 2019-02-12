@@ -975,3 +975,46 @@ class Test:
     import a
     def __init__(self) -> None:
         some_module = self.a
+
+[case testNewAnalyzerAliasAfterStarImport]
+import a
+[file a.py]
+from typing import Tuple
+from b import *
+
+reveal_type(x)
+x: TP
+TP = Tuple[int, str]
+[file b.py]
+from a import x
+
+reveal_type(x[1])
+
+[case testNewAnalyzerAliasToNotReadyClass]
+import a
+[file a.py]
+from b import B
+
+x: A
+A = B
+[file b.py]
+from typing import List
+from a import x
+
+class B(List[B]): pass
+
+reveal_type(x)
+reveal_type(x[0])
+reveal_type(x[0][0])
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClass2]
+from typing import List
+
+x: A
+
+class A(List[B]): pass
+B = A
+
+reveal_type(x[0][0])
+[builtins fixtures/list.pyi]

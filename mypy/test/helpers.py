@@ -363,7 +363,8 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options.verbosity = testcase.config.getoption('--mypy-verbose')
 
     if os.getenv('NEWSEMANAL'):
-        options.new_semantic_analyzer = True
+        if not flag_list or '--no-new-semantic-analyzer' not in flag_list:
+            options.new_semantic_analyzer = True
 
     return options
 
