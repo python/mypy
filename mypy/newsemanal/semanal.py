@@ -1928,9 +1928,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
+        # We cannot use s.type, because analyze_simple_literal_type() will set it.
+        explicit = s.unanalyzed_type
+        if self.is_final_type(s.unanalyzed_type):
+            # We need to exclude bare Final.
+            assert isinstance(s.unanalyzed_type, UnboundType)
+            if not s.unanalyzed_type.args:
+                explicit = False
         for lval in s.lvalues:
             self.analyze_lvalue(lval,
-                                explicit_type=s.unanalyzed_type is not None,
+                                explicit_type=explicit,
                                 is_final=s.is_final_def)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
@@ -2287,7 +2294,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
             added = self.add_symbol(name, var, lvalue)
-            # Only bind expression if we succesfully added name to symbol table.
+            # Only bind expression if we successfully added name to symbol table.
             if added:
                 lvalue.node = var
                 if kind == GDEF:
