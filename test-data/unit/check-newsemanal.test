@@ -1054,4 +1054,3 @@ class Test:
     import a
     def __init__(self) -> None:
         some_module = self.a
-
