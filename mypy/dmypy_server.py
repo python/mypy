@@ -262,10 +262,16 @@ class Server:
 
     # Command functions (run in the server via RPC).
 
-    def cmd_status(self) -> Dict[str, object]:
+    def cmd_status(self, fswatcher_dump_file: Optional[str] = None) -> Dict[str, object]:
         """Return daemon status."""
         res = {}  # type: Dict[str, object]
         res.update(get_meminfo())
+        if fswatcher_dump_file:
+            data = self.fswatcher.dump_file_data() if hasattr(self, 'fswatcher') else {}
+            # Using .dumps and then writing was noticably faster than using dump
+            s = json.dumps(data)
+            with open(fswatcher_dump_file, 'w') as f:
+                f.write(s)
         return res
 
     def cmd_stop(self) -> Dict[str, object]:
