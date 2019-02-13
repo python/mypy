@@ -140,7 +140,7 @@ $ dmypy stop
 Daemon stopped
 
 -- this is carefully constructed to be able to break if the quickstart system lets
--- something through incorrectly. in particular, the files need to ahve the same size
+-- something through incorrectly. in particular, the files need to have the same size
 [case testDaemonQuickstart]
 $ {python} -c "print('x=1')" >foo.py
 $ mypy --local-partial-types --cache-fine-grained --follow-imports=error -- foo.py
