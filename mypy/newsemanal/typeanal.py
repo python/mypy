@@ -423,6 +423,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # None of the above options worked, we give up.
         if self.api.final_iteration:
             self.fail('Invalid type "{}"'.format(name), t)
+        else:
+            self.api.defer()
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
             self.note_func("Forward references to type variables are prohibited", t)
             return AnyType(TypeOfAny.from_error)
@@ -693,7 +695,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # We report an error in only the first two cases. In the third case, we assume
             # some other region of the code has already reported a more relevant error.
             #
-            # TODO: Once we start adding support for enums, make sure we reprt a custom
+            # TODO: Once we start adding support for enums, make sure we report a custom
             # error for case 2 as well.
             if arg.type_of_any != TypeOfAny.from_error:
                 self.fail('Parameter {} of Literal[...] cannot be of type "Any"'.format(idx), ctx)

@@ -1016,3 +1016,14 @@ B = A
 
 reveal_type(x[0][0])  # E: Revealed type is '__main__.A*'
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClass3]
+from typing import List
+
+x: B
+B = A
+A = C
+class C(List[B]): pass
+
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+[builtins fixtures/list.pyi]

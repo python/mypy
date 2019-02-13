@@ -213,6 +213,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
 
+    # Is this the final iteration of semantic analysis?
+    final_iteration = False
+
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
@@ -2074,7 +2077,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if analyzed is None:
                 return
             if isinstance(analyzed, UnboundType) and not self.final_iteration:
-                self.defer()
                 return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
