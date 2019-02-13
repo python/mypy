@@ -144,7 +144,7 @@ Daemon stopped
 [case testDaemonQuickstart]
 $ {python} -c "print('x=1')" >foo.py
 $ mypy --local-partial-types --cache-fine-grained --follow-imports=error -- foo.py
-$ dmypy run --log-file=/tmp/fuckyou -- foo.py --follow-imports=error --use-fine-grained-cache --verbose
+$ dmypy run -- foo.py --follow-imports=error --use-fine-grained-cache
 Daemon started
 $ dmypy status --fswatcher-dump-file test.json
 Daemon is up and running
