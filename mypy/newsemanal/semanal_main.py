@@ -30,6 +30,7 @@ from mypy.nodes import (
     Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
+from mypy.state import strict_optional_set
 
 MYPY = False
 if MYPY:
@@ -197,4 +198,5 @@ def check_type_arguments(graph: 'Graph', scc: List[str]) -> None:
         assert state.tree
         analyzer = TypeArgumentAnalyzer(errors)
         with state.wrap_context():
-            state.tree.accept(analyzer)
+            with strict_optional_set(state.options.strict_optional):
+                state.tree.accept(analyzer)

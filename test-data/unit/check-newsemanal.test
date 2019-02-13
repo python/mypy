@@ -1082,3 +1082,31 @@ def g(x: int) -> int: ...
 def g(x: Union[C[str], int]) -> int:  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
     y: C[object]  # E: Type argument "builtins.object" of "C" must be a subtype of "builtins.int"
     return 0
+
+[case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
+# flags: --config-file tmp/mypy.ini
+import a
+
+[file b.py]
+from typing import TypeVar, Generic
+
+x: C[None]
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    pass
+
+[file a.py]
+from b import C
+
+x: C[None]  # E: Type argument "None" of "C" must be a subtype of "builtins.int"
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+[file mypy.ini]
+[[mypy-a]
+strict_optional = True
+[[mypy-b]
+strict_optional = False

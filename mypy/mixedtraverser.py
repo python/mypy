@@ -55,7 +55,7 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> None:
         super().visit_newtype_expr(o)
-        o.old_type.accept(self)
+        self.visit_optional_type(o.old_type)
 
     # Statements
 
