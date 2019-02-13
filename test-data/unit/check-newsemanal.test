@@ -976,20 +976,6 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 
-[case testNewAnalyzerAliasAfterStarImport]
-import a
-[file a.py]
-from typing import Tuple
-from b import *
-
-reveal_type(x)
-x: TP
-TP = Tuple[int, str]
-[file b.py]
-from a import x
-
-reveal_type(x[1])
-
 [case testNewAnalyzerAliasToNotReadyClass]
 import a
 [file a.py]
