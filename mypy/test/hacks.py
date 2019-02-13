@@ -22,7 +22,6 @@ new_semanal_blacklist = [
     'check-enum.test',
     'check-expressions.test',
     'check-fastparse.test',
-    'check-final.test',
     'check-flags.test',
     'check-functions.test',
     'check-generics.test',

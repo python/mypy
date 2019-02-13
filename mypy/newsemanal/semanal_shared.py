@@ -121,7 +121,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
+    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
         """Add node to global symbol table (or to nearest class if there is one)."""
         raise NotImplementedError
 
