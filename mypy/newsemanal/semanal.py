@@ -1886,8 +1886,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def can_be_an_alias(self, rv: Expression) -> bool:
+        if isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
+            return self.can_be_an_alias(rv.base)
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
+            if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
+                return True
+        elif isinstance(rv, MemberExpr):
+            fname = get_member_expr_fullname(rv)
+            n = self.lookup_qualified(fname, rv)
             if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
                 return True
         return False
@@ -2202,8 +2209,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # annotations (see the second rule).
             return
         rvalue = s.rvalue
+        tag = self.track_incomplete_refs()
         res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue)
-        if not res:
+        if not res or self.found_incomplete_ref(tag):
             return
         if (isinstance(res, Instance) and res.type.name() == lvalue.name and
                 res.type.module_name == self.cur_mod_id):
