@@ -1894,9 +1894,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return True
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
-            n = self.lookup_qualified(fname, rv)
-            if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
-                return True
+            if fname:
+                n = self.lookup_qualified(fname, rv)
+                if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
+                    return True
         return False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
