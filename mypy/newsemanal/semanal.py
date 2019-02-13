@@ -98,7 +98,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import get_prefix, correct_relative_import, unmangle
+from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
@@ -3946,7 +3946,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
                               context: Optional[Context] = None) -> bool:
-        """Add symbol table node to the currently active symbol table."""
+        """Add symbol table node to the currently active symbol table.
+
+        Return True if we actually added the symbol, or False if we refused to do so
+        (because something is not ready).
+        """
         names = self.current_symbol_table()
         existing = names.get(name)
         if (existing is not None
@@ -4059,7 +4063,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # Therefore its line number is always 1, which is not useful for this
             # error message.
             extra_msg = ' (by an import)'
-        elif node and node.line != -1 and node.fullname().startswith(self.cur_mod_id):
+        elif node and node.line != -1 and self.cur_mod_id in split_module_names(node.fullname()):
             # TODO: Using previous symbol node may give wrong line. We should use
             #       the line number where the binding was established instead.
             extra_msg = ' on line {}'.format(node.line)
