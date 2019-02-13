@@ -59,6 +59,8 @@ reveal_type(C().x)  # E: Revealed type is 'builtins.float'
 [out]
 
 [case testFinalInvalidDefinitions]
+# flags: --no-new-semantic-analyzer
+# Errors are shown in a different order with the new analyzer.
 from typing import Final, Any
 
 x = y = 1  # type: Final[float]  # E: Invalid final declaration
@@ -336,7 +338,7 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
-# flags: --allow-redefinition
+# flags: --allow-redefinition --no-new-semantic-analyzer
 from typing import Final
 
 x: Final = 1
@@ -364,7 +366,7 @@ z: Final = 2  # E: Name 'z' already defined on line 23 \
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleVar2]
-# flags: --allow-redefinition
+# flags: --allow-redefinition --no-new-semantic-analyzer
 from typing import Final
 
 x: Final = 1
@@ -381,7 +383,8 @@ y
 y: Final = 3  # E: Cannot redefine an existing name as final
 
 [case testFinalReassignModuleVar3]
-# flags: --disallow-redefinition
+# flags: --disallow-redefinition --no-new-semantic-analyzer
+# Error formatting is subtly different with new analyzer.
 from typing import Final
 
 x: Final = 1
@@ -400,16 +403,18 @@ def f2() -> None:
 
 y = 1 # E: Cannot assign to final name "y"
 y
-y: Final = 2  # E: Name 'y' already defined on line 18 \
+y: Final = 2  # E: Name 'y' already defined on line 19 \
               # E: Cannot redefine an existing name as final
 y = 3  # E: Cannot assign to final name "y"
 
 z: Final = 1
-z: Final = 2  # E: Name 'z' already defined on line 23 \
+z: Final = 2  # E: Name 'z' already defined on line 24 \
               # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleReexport]
+# flags: --no-new-semantic-analyzer
+# Error formatting is subtly different with the new analyzer.
 from typing import Final
 
 from lib import X
@@ -431,11 +436,10 @@ ID: Final  # Error!
 X: Final[int]
 [out]
 tmp/lib/const.pyi:3: error: Type in Final[...] can only be omitted if there is an initializer
-main:6: error: Cannot assign to final name "X"
-main:7: error: Name 'ID' already defined (possibly by an import)
-main:7: error: Cannot redefine an existing name as final
-main:8: error: Cannot assign to final name "ID"
-
+main:8: error: Cannot assign to final name "X"
+main:9: error: Name 'ID' already defined (possibly by an import)
+main:9: error: Cannot redefine an existing name as final
+main:10: error: Cannot assign to final name "ID"
 
 [case testFinalReassignFuncScope]
 from typing import Final
@@ -484,6 +488,8 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
+# flags: --no-new-semantic-analyzer
+# Methods are processed after top-level in new analyzer.
 from typing import Final
 
 class C:
@@ -984,6 +990,8 @@ class D(A, B):  # E: Cannot inherit from final class "B"
 [out]
 
 [case testFinalCantOverrideWriteable]
+# flags: --no-new-semantic-analyzer
+# Properties with setters not yet supported.
 from typing import Any, Final, final
 
 class B:

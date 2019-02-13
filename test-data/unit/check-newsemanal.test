@@ -279,7 +279,7 @@ import a
 from b import C as C2
 class C: pass
 
-class C2: pass # E: Name 'C2' already defined (possibly by an import)
+class C2: pass # E: Name 'C2' already defined on line 2
 [file b.py]
 from a import C
 
@@ -968,6 +968,85 @@ class B(type):
         return 0
 
 class C: pass
+
+[case testNewAnalyzerFinalDefiningModuleVar]
+from typing import Final
+
+x: Final = C()
+y: Final[C] = D()
+bad: Final[D] = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+
+reveal_type(x)  # E: Revealed type is '__main__.C'
+reveal_type(y)  # E: Revealed type is '__main__.C'
+class D(C): ...
+class C: ...
+
+[case testNewAnalyzerFinalDefiningInstanceVar]
+from typing import Final
+
+class C:
+    def __init__(self, x: D) -> None:
+        self.x: Final = x
+        self.y: Final[C] = E(D())
+reveal_type(C(D()).x)  # E: Revealed type is '__main__.D'
+reveal_type(C(D()).y)  # E: Revealed type is '__main__.C'
+
+class D: ...
+class E(C): ...
+
+[case testNewAnalyzerFinalReassignModuleVar]
+from typing import Final
+
+x: Final = A()
+x = A()  # E: Cannot assign to final name "x"
+
+x2: Final = A()
+def f2() -> None:
+    global x2
+    def f() -> None:
+        g()
+    x2 = A()  # E: Cannot assign to final name "x2"
+    def g() -> None:
+        f()
+
+class A: ...
+
+[case testNewAnalyzerFinalReassignModuleReexport]
+import a
+[file a.py]
+from b import ID, A
+
+class C(A): ...
+ID = C()  # E: Cannot assign to final name "ID"
+[file b.py]
+from typing import Final
+from a import C
+
+class A:
+    x: C
+
+ID: Final = A()
+
+[case testNewAnalyzerFinalOverrideInSubclass]
+from typing import Final
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+
+class C(B):
+    x = 1  # E: Cannot assign to final name "x"
+
+[case testNewAnalyzerAssignmentAfterStarImport]
+import a
+[file a.py]
+from b import *
+
+x = 1
+def f(): ...
+[file b.py]
+from a import f
+x: int
 
 [case testNewAnalyzerClassLevelImport]
 # flags: --ignore-missing-imports
