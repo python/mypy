@@ -1887,6 +1887,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def can_be_an_alias(self, rv: Expression) -> bool:
         if isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
+            self.analyze_alias(rv)
             return self.can_be_an_alias(rv.base)
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
@@ -2086,8 +2087,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             if analyzed is None:
-                return
-            if isinstance(analyzed, UnboundType) and not self.final_iteration:
                 return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and

@@ -1170,3 +1170,21 @@ reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.list[builtin
 reveal_type(y[0])  # E: Revealed type is 'Union[builtins.int, builtins.list[builtins.int]]'
 y: C
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerForwardAliasFromUnion]
+from typing import Union, List
+
+A = Union['B', 'C']
+
+class D:
+    x: List[A]
+
+    def test(self) -> None:
+        reveal_type(self.x[0].y)  # E: Revealed type is 'builtins.int'
+
+
+class B:
+    y: int
+class C:
+    y: int
+[builtins fixtures/list.pyi]

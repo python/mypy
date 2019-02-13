@@ -121,7 +121,7 @@ def analyze_type_alias(node: Expression,
         api.fail('Invalid type alias', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
-                            allow_unnormalized=allow_unnormalized, defining_alias=True)
+                            allow_unnormalized=allow_unnormalized, defining_alias=True, allow_placeholder=True)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
     res = type.accept(analyzer)
