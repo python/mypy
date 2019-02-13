@@ -921,14 +921,15 @@ def read_deps_cache(manager: BuildManager,
         return None
 
     module_deps_metas = deps_meta['deps_meta']
-    for id, meta in module_deps_metas.items():
-        try:
-            matched = manager.getmtime(meta['path']) == meta['mtime']
-        except FileNotFoundError:
-            matched = False
-        if not matched:
-            manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
-            return None
+    if not manager.options.skip_cache_mtime_checks:
+        for id, meta in module_deps_metas.items():
+            try:
+                matched = manager.getmtime(meta['path']) == meta['mtime']
+            except FileNotFoundError:
+                matched = False
+            if not matched:
+                manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
+                return None
 
     return module_deps_metas
 
@@ -1099,12 +1100,13 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     t0 = time.time()
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
-    # Check data_json; assume if its mtime matches it's good.
-    # TODO: stat() errors
-    data_mtime = manager.getmtime(meta.data_json)
-    if data_mtime != meta.data_mtime:
-        manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
-        return None
+    if not manager.options.skip_cache_mtime_checks:
+        # Check data_json; assume if its mtime matches it's good.
+        # TODO: stat() errors
+        data_mtime = manager.getmtime(meta.data_json)
+        if data_mtime != meta.data_mtime:
+            manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
+            return None
 
     path = manager.normpath(path)
     try:

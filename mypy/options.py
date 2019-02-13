@@ -178,6 +178,7 @@ class Options:
         self.sqlite_cache = False
         self.debug_cache = False
         self.skip_version_check = False
+        self.skip_cache_mtime_checks = False
         self.fine_grained_incremental = False
         # Include fine-grained dependencies in written cache files
         self.cache_fine_grained = False
