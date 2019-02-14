@@ -2042,7 +2042,7 @@ x is 42
 # flags: --strict-equality --strict-optional
 
 x: str
-if x is not None:  # E: Non-overlapping identity check (left operand type: "str", right operand type: "None")
+if x is not None:  # OK even with strict-optional
     pass
 [builtins fixtures/bool.pyi]
 
@@ -2086,3 +2086,36 @@ class A:
 # Don't report non-overlapping check if there is already and error.
 42 in A()  # E: Unsupported operand types for in ("int" and "A")
 [builtins fixtures/bool.pyi]
+
+[case testStrictEqualityTypeVsCallable]
+# flags: --strict-equality
+from typing import Type, List
+class C: ...
+class D(C): ...
+class Bad: ...
+
+subclasses: List[Type[C]]
+C in subclasses
+D in subclasses
+Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad]", container item type: "Type[C]")
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityMetaclass]
+# flags: --strict-equality
+from typing import List, Type
+
+class Meta(type): ...
+
+class A(metaclass=Meta): ...
+class B(metaclass=Meta): ...
+class C: ...
+
+o: Type[object]
+exp: List[Meta]
+
+A in exp
+C in exp  # E: Non-overlapping container check (element type: "Type[C]", container item type: "Meta")
+o in exp
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
