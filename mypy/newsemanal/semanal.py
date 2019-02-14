@@ -1885,10 +1885,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
-    def can_be_an_alias(self, rv: Expression) -> bool:
+    def is_not_ready_alias(self, rv: Expression) -> bool:
+        """Does this expression look like a not ready type alias?
+
+        This includes 'Ref' and 'Ref[Arg1, Arg2, ...]', where 'Ref'
+        refers to a PlaceholderNode with becomes_typeinfo=True.
+        """
         if isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-            self.analyze_alias(rv)
-            return self.can_be_an_alias(rv.base)
+            return self.is_not_ready_alias(rv.base)
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
             if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
@@ -1905,7 +1909,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        is_alias = self.can_be_an_alias(s.rvalue)
+        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.base, RefExpr):
+            # Special case: analyze index expression _as a type_ to trigger
+            # incomplete refs for string forward references, for example
+            # Union['ClassA', 'ClassB']
+            self.analyze_alias(s.rvalue, allow_placeholder=True)
+        is_alias = self.is_not_ready_alias(s.rvalue)
         if self.found_incomplete_ref(tag) or is_alias:
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
@@ -2146,8 +2155,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         return None
 
-    def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],
-                                                         Set[str], List[str]]:
+    def analyze_alias(self, rvalue: Expression,
+                      allow_placeholder: bool = False) -> Tuple[Optional[Type], List[str],
+                                                                Set[str], List[str]]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of
@@ -2167,6 +2177,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  self.options,
                                  self.is_typeshed_stub_file,
                                  allow_unnormalized=self.is_stub_file,
+                                 allow_placeholder=allow_placeholder,
                                  in_dynamic_func=dynamic,
                                  global_scope=global_scope)
         typ = None  # type: Optional[Type]

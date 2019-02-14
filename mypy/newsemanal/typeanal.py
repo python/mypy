@@ -65,6 +65,7 @@ def analyze_type_alias(node: Expression,
                        options: Options,
                        is_typeshed_stub: bool,
                        allow_unnormalized: bool = False,
+                       allow_placeholder: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
     """Analyze r.h.s. of a (potential) type alias definition.
@@ -121,7 +122,8 @@ def analyze_type_alias(node: Expression,
         api.fail('Invalid type alias', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
-                            allow_unnormalized=allow_unnormalized, defining_alias=True, allow_placeholder=True)
+                            allow_unnormalized=allow_unnormalized, defining_alias=True,
+                            allow_placeholder=allow_placeholder)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
     res = type.accept(analyzer)
