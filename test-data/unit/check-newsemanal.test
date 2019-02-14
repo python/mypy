@@ -1054,3 +1054,24 @@ class Test:
     import a
     def __init__(self) -> None:
         some_module = self.a
+
+[case testNewAnalyzerProperty]
+class A:
+    @property
+    def x(self) -> B:
+        return 0  # E: Incompatible return value type (got "int", expected "B")
+
+    @property
+    def y(self) -> B:
+        pass
+
+    @y.setter
+    def y(self, x: B) -> None:
+        pass
+
+class B: pass
+
+a = A()
+reveal_type(a.x)  # E: Revealed type is '__main__.B'
+a.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/property.pyi]

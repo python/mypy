@@ -1368,5 +1368,4 @@ reveal_type(x['test'][0])
 typing.pyi:251: error: Class typing.Sequence has abstract attributes "__len__"
 typing.pyi:251: note: If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass
 ast.pyi:31: error: Name 'PyCF_ONLY_AST' already defined (possibly by an import)
-builtins.pyi:39: error: Name '__class__' already defined on line 39
 _testNewAnalyzerBasicTypeshed_newsemanal.py:4: error: Revealed type is 'builtins.int*'
