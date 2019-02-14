@@ -68,8 +68,8 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
+    PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node
 )
@@ -1629,7 +1629,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
-            node = self.dereference_module_cross_ref(node)
 
             missing = False
             possible_module_id = import_id + '.' + id
@@ -1637,7 +1636,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
-            if not node or node.kind == UNBOUND_IMPORTED:
+            if not node:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
                     kind = self.current_symbol_kind()
@@ -1656,7 +1655,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
                     continue
-            if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
+            if node and not node.module_hidden:
                 if isinstance(node.node, PlaceholderNode):
                     if self.final_iteration:
                         self.report_missing_module_attribute(import_id, id, imported_id, imp)
@@ -1682,30 +1681,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Missing module.
                 missing_name = import_id + '.' + id
                 self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
-
-    def dereference_module_cross_ref(
-            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
-        """Dereference cross references to other modules (if any).
-
-        If the node is not a cross reference, return it unmodified.
-        """
-        seen = set()  # type: Set[str]
-        # Continue until we reach a node that's nota cross reference (or until we find
-        # nothing).
-        while node and isinstance(node.node, ImportedName):
-            fullname = node.node.fullname()
-            if fullname in self.modules:
-                # This is a module reference.
-                kind = self.current_symbol_kind()
-                return SymbolTableNode(kind, self.modules[fullname])
-            if fullname in seen:
-                # Looks like a reference cycle. Just break it.
-                # TODO: Generate a more specific error message.
-                node = None
-                break
-            node = self.lookup_fully_qualified_or_none(fullname)
-            seen.add(fullname)
-        return node
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
@@ -1778,8 +1753,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # namespace is incomplete.
                 self.mark_incomplete('*', i)
             self.add_submodules_to_parent_modules(i_id, True)
-            for name, orig_node in m.names.items():
-                node = self.dereference_module_cross_ref(orig_node)
+            for name, node in m.names.items():
                 if node is None:
                     continue
                 # if '__all__' exists, all nodes not included have had module_public set to
@@ -3287,7 +3261,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None)
-            n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.rebind_symbol_table_node(n)
                 if n:

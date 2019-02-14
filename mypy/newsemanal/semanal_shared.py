@@ -56,11 +56,6 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def dereference_module_cross_ref(
-            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
-        raise NotImplementedError
-
-    @abstractmethod
     def record_incomplete_ref(self) -> None:
         raise NotImplementedError
 
