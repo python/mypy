@@ -223,29 +223,24 @@ def is_overlapping_types(left: Type,
     if isinstance(left, TypeType) and isinstance(right, TypeType):
         return _is_overlapping_types(left.item, right.item)
 
-    # Type[C] vs Callable[..., C], where the latter is class object.
-    if isinstance(left, CallableType) and left.is_type_obj() and isinstance(right, TypeType):
-        if _is_overlapping_types(left.ret_type, right.item):
-            return True
-    if isinstance(right, CallableType) and right.is_type_obj() and isinstance(left, TypeType):
-        if _is_overlapping_types(right.ret_type, left.item):
-            return True
+    def _type_object_overlap(left: Type, right: Type) -> bool:
+        """Special cases for type object types overlaps."""
+        # Type[C] vs Callable[..., C], where the latter is class object.
+        if isinstance(left, CallableType) and left.is_type_obj() and isinstance(right, TypeType):
+            if _is_overlapping_types(left.ret_type, right.item):
+                return True
+        # Type[C] vs Meta, where Meta is a metaclass for C.
+        if (isinstance(left, TypeType) and isinstance(right, Instance) and
+                isinstance(left.item, Instance)):
+            left_meta = left.item.type.metaclass_type
+            if left_meta is not None and _is_overlapping_types(left_meta, right):
+                return True
+            if left_meta is None and right.type.has_base('builtins.type'):
+                return True
+        return False
 
-    # Type[C] vs Meta, where Meta is a metaclass for C.
-    if (isinstance(left, TypeType) and isinstance(right, Instance) and
-            isinstance(left.item, Instance)):
-        left_meta = left.item.type.metaclass_type
-        if left_meta is not None and _is_overlapping_types(left_meta, right):
-            return True
-        if left_meta is None and right.type.has_base('builtins.type'):
-            return True
-    if (isinstance(right, TypeType) and isinstance(left, Instance) and
-            isinstance(right.item, Instance)):
-        right_meta = right.item.type.metaclass_type
-        if right_meta is not None and _is_overlapping_types(right_meta, left):
-            return True
-        if right_meta is None and left.type.has_base('builtins.type'):
-            return True
+    if _type_object_overlap(left, right) or _type_object_overlap(right, left):
+        return True
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
         return is_callable_compatible(left, right,
