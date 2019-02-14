@@ -540,9 +540,7 @@ def get_meminfo() -> Dict[str, Any]:
             # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
             import resource  # Since it doesn't exist on Windows.
             rusage = resource.getrusage(resource.RUSAGE_SELF)
-            # mypyc doesn't like unreachable code, so trick mypy into thinking
-            # the branch is reachable
-            if sys.platform == 'darwin' or bool():
+            if sys.platform == 'darwin':
                 factor = 1
             else:
                 factor = 1024  # Linux
