@@ -510,10 +510,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
         return self.sem.lookup_fully_qualified(fullname)
 
-    def dereference_module_cross_ref(
-            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
-        return self.sem.dereference_module_cross_ref(node)
-
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         self.sem.fail(msg, ctx, serious, blocker=blocker)

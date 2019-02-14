@@ -553,6 +553,9 @@ def process_options(args: List[str],
     incremental_group.add_argument(
         '--skip-version-check', action='store_true',
         help="Allow using cache written by older mypy version")
+    incremental_group.add_argument(
+        '--skip-cache-mtime-checks', action='store_true',
+        help="Skip cache internal consistency checks based on mtime")
 
     internals_group = parser.add_argument_group(
         title='Mypy internals',
