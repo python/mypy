@@ -1976,21 +1976,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
 
         Rules:
-            * X and None are non-overlapping in strict-optional mode, and
-            overlapping otherwise.
+            * X and None are overlapping even in strict-optional mode. This is to allow
+            'assert x is not None' for x defined as 'x = None  # type: str' in class body
+            (otherwise mypy itself would have couple dozen errors because of this).
             * Optional[X] and Optional[Y] are non-overlapping if X and Y are
             non-overlapping, although technically None is overlap, it is most
             likely an error.
             * Any overlaps with everything, i.e. always safe.
             * Promotions are ignored, so both 'abc' == b'abc' and 1 == 1.0
-            are errors.
+            are errors. This is mostly needed for bytes vs unicode, and
+            int vs float are added just for consistency.
         """
+        if not self.chk.options.strict_equality:
+            return False
+        if isinstance(left, NoneTyp) or isinstance(right, NoneTyp):
+            return False
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
-        if self.chk.options.strict_equality:
-            return not is_overlapping_types(left, right, ignore_promotions=True)
-        return False
+        return not is_overlapping_types(left, right, ignore_promotions=True)
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
