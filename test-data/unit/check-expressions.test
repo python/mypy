@@ -2095,7 +2095,7 @@ class D(C): ...
 class Bad: ...
 
 subclasses: List[Type[C]]
-C in subclasses
+object in subclasses
 D in subclasses
 Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad]", container item type: "Type[C]")
 [builtins fixtures/list.pyi]
