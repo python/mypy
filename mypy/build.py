@@ -562,6 +562,8 @@ class BuildManager(BuildManagerBase):
         if not self.shadow_map:
             return path
 
+        path = self.normpath(path)
+
         previously_checked = path in self.shadow_equivalence_map
         if not previously_checked:
             for source, shadow in self.shadow_map.items():
@@ -984,7 +986,10 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON, the
       data JSON, and the fine-grained deps JSON, respectively.
     """
-    pair = manager.options.cache_map.get(path)
+    if manager.options.cache_map:
+        pair = manager.options.cache_map.get(manager.normpath(path))
+    else:
+        pair = None
     if pair is not None:
         # The cache map paths were specified relative to the base directory,
         # but the filesystem metastore APIs operates relative to the cache
@@ -1108,7 +1113,9 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
             return None
 
-    path = manager.normpath(path)
+    if bazel:
+        # Normalize path under bazel to make sure it isn't absolute
+        path = manager.normpath(path)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1247,7 +1254,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
     bazel = manager.options.bazel
 
     # Obtain file paths.
-    path = manager.normpath(path)
     meta_json, data_json, _ = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {}'.format(
         id, path, meta_json, data_json))
@@ -1340,7 +1346,6 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     This avoids inconsistent states with cache files from different mypy runs,
     see #4043 for an example.
     """
-    path = manager.normpath(path)
     # We don't delete .deps files on errors, since the dependencies
     # are mostly generated from other files and the metadata is
     # tracked separately.
