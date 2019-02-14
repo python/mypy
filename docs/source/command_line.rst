@@ -401,8 +401,7 @@ of the above sections.
        if text != b'other bytes':  # Error: non-overlapping check!
            ...
 
-       if text is not None:  # Error: non-overlapping check, 'text' can't be None.
-           ...
+       assert text is not None  # OK, this special case is allowed.
 
 ``--strict``
     This flag mode enables all optional error checking flags.  You can see the
