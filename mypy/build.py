@@ -906,11 +906,12 @@ def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, in
         try:
             with open(options.quickstart_file, "r") as f:
                 raw_quickstart = json.load(f)
+
+            quickstart = {}
+            for file, (x, y, z) in raw_quickstart.items():
+                quickstart[file] = (x, y, z)
         except Exception:
             pass
-        quickstart = {}
-        for file, (x, y, z) in raw_quickstart.items():
-            quickstart[file] = (x, y, z)
     return quickstart
 
 
