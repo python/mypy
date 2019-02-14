@@ -2832,11 +2832,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.fail("@final cannot be used with non-method functions", d)
         for i in reversed(removed):
             del dec.decorators[i]
-        if not dec.is_overload or dec.var.is_property:
-            if self.type:
-                dec.var.info = self.type
-                dec.var.is_initialized_in_class = True
-            self.add_symbol(dec.var.name(), dec, dec)
+        if (not dec.is_overload or dec.var.is_property) and self.type:
+            dec.var.info = self.type
+            dec.var.is_initialized_in_class = True
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
