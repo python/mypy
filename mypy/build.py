@@ -910,8 +910,8 @@ def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, in
             quickstart = {}
             for file, (x, y, z) in raw_quickstart.items():
                 quickstart[file] = (x, y, z)
-        except Exception:
-            pass
+        except Exception as e:
+            print("Warning: Failed to load quickstart file: {}\n".format(str(e)))
     return quickstart
 
 
