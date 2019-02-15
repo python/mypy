@@ -29,6 +29,8 @@ from typing import List, Tuple, Optional, Union
 from mypy.nodes import (
     Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
 )
+from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
+from mypy.state import strict_optional_set
 
 MYPY = False
 if MYPY:
@@ -54,6 +56,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
     # before functions. This limitation is unlikely to go away soon.
     process_top_levels(graph, scc)
     process_functions(graph, scc)
+    check_type_arguments(graph, scc)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
@@ -186,3 +189,14 @@ def semantic_analyze_target(target: str,
         return [target], analyzer.incomplete
     else:
         return [], analyzer.incomplete
+
+
+def check_type_arguments(graph: 'Graph', scc: List[str]) -> None:
+    for module in scc:
+        state = graph[module]
+        errors = state.manager.errors
+        assert state.tree
+        analyzer = TypeArgumentAnalyzer(errors)
+        with state.wrap_context():
+            with strict_optional_set(state.options.strict_optional):
+                state.tree.accept(analyzer)

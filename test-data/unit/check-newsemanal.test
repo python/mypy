@@ -1055,6 +1055,141 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 
+[case testNewAnalyzerTypeArgBoundCheck]
+from typing import TypeVar, Generic
+
+class F(E): pass
+class E: pass
+T = TypeVar('T', bound=E)
+class C(Generic[T]): pass
+
+class D(B): pass
+
+x: C[D] # E: Type argument "__main__.D" of "C" must be a subtype of "__main__.E"
+y: C[F]
+
+class B: pass
+
+[case testNewAnalyzerTypeArgValueRestriction]
+from typing import TypeVar, Generic
+
+class F(E): pass
+class E: pass
+T = TypeVar('T', E, str)
+class C(Generic[T]): pass
+
+class D(B): pass
+
+x: C[D] # E: Value of type variable "T" of "C" cannot be "D"
+y: C[E]
+z: C[str]
+
+class B: pass
+
+[case testNewAnalyzerTypeArgBoundCheckWithContext]
+# flags: --show-error-context
+import a
+[file a.py]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+
+def f(x: C[str]) -> None: # E
+    y: C[str] # E
+class A(C[str]): # E
+    z: C[str] # E
+    def g(self, x: C[str]) -> None: # E
+        a: C[str] # E
+[out]
+main:2: note: In module imported here:
+tmp/a.py: note: In function "f":
+tmp/a.py:6: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:7: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py: note: In class "A":
+tmp/a.py:8: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:9: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py: note: In member "g" of class "A":
+tmp/a.py:10: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:11: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+
+[case testNewAnalyzerTypeArgBoundCheckDifferentNodes]
+from typing import TypeVar, Generic, NamedTuple, NewType, Union, Any, cast, overload
+from mypy_extensions import TypedDict
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+class C2(Generic[T]): pass
+
+A = C[str] # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int" \
+           # E: Value of type variable "T" of "C" cannot be "str"
+B = Union[C[str], int] # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+S = TypeVar('S', bound=C[str]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+U = TypeVar('U', C[str], str) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+N = NamedTuple('N', [
+    ('x', C[str])]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class N2(NamedTuple):
+    x: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class TD(TypedDict):
+    x: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class TD2(TD):
+    y: C2[str]  # E: Type argument "builtins.str" of "C2" must be a subtype of "builtins.int"
+NT = NewType('NT',
+             C[str]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+class D(
+        C[str]): # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    pass
+
+TD3 = TypedDict('TD3', {'x': C[str]}) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+
+a: Any
+for i in a: # type: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    pass
+
+with a as w: # type: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    pass
+
+cast(C[str], a)  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+C[str]()  # E: Value of type variable "T" of "C" cannot be "str"
+
+def f(s: S, y: U) -> None: pass  # No error here
+
+@overload
+def g(x: C[str]) -> int: ...  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+@overload
+def g(x: int) -> int: ...
+def g(x: Union[C[str], int]) -> int:  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    y: C[object]  # E: Type argument "builtins.object" of "C" must be a subtype of "builtins.int"
+    return 0
+
+[case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
+# flags: --config-file tmp/mypy.ini
+import a
+
+[file b.py]
+from typing import TypeVar, Generic
+
+x: C[None]
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    pass
+
+[file a.py]
+from b import C
+
+x: C[None]  # E: Type argument "None" of "C" must be a subtype of "builtins.int"
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+[file mypy.ini]
+[[mypy-a]
+strict_optional = True
+[[mypy-b]
+strict_optional = False
+
 [case testNewAnalyzerProperty]
 class A:
     @property
