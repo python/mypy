@@ -527,6 +527,11 @@ def process_options(args: List[str],
                         help="Allow unconditional variable redefinition with a new type",
                         group=strictness_group)
 
+    add_invertible_flag('--strict-equality', default=False, strict_flag=False,
+                        help="Prohibit equality, identity, and container checks for"
+                             " non-overlapping types",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
