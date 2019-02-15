@@ -214,7 +214,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     function_stack = None  # type: List[FuncItem]
 
     # Is this the final iteration of semantic analysis?
-    final_iteration = False
+    _final_iteration = False
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
@@ -274,10 +274,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.scope = Scope()
 
     # mypyc doesn't properly handle implementing an abstractproperty
-    # with a regular attribute so we make it a property
+    # with a regular attribute so we make them properties
     @property
     def is_typeshed_stub_file(self) -> bool:
         return self._is_typeshed_stub_file
+
+    @property
+    def final_iteration(self) -> bool:
+        return self._final_iteration
 
     def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         """Add dependency from trigger to a target.
@@ -426,7 +430,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # TODO: Don't define any attributes here (better to do it in class body or __init__)
         self.deferred = False  # Set to true if another analysis pass is needed
         self.incomplete = False  # Set to true if current module namespace is missing things
-        self.final_iteration = final_iteration  # True if we shouldn't defer any more
+        self._final_iteration = final_iteration  # True if we shouldn't defer any more
         # These names couldn't be added to the symbol table due to incomplete deps.
         self.missing_names = set()  # type: Set[str]
 
