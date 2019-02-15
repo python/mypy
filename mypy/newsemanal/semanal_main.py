@@ -58,7 +58,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # before functions. This limitation is unlikely to go away soon.
     process_top_levels(graph, scc)
     process_functions(graph, scc)
-    check_type_arguments(graph, scc)
+    check_type_arguments(graph, scc, errors)
     process_abstract(graph, scc, errors)
 
 
@@ -196,10 +196,9 @@ def semantic_analyze_target(target: str,
         return [], analyzer.incomplete
 
 
-def check_type_arguments(graph: 'Graph', scc: List[str]) -> None:
+def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
-        errors = state.manager.errors
         assert state.tree
         analyzer = TypeArgumentAnalyzer(errors)
         with state.wrap_context():
