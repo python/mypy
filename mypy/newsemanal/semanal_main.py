@@ -31,11 +31,13 @@ from mypy.nodes import (
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
+from mypy.newsemanal.semanal import NewSemanticAnalyzer
+from mypy.newsemanal.semanal_abstract import calculate_abstract_status
+from mypy.errors import Errors
 
 MYPY = False
 if MYPY:
     from mypy.build import Graph, State
-    from mypy.newsemanal.semanal import NewSemanticAnalyzer
 
 
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
@@ -46,7 +48,7 @@ CORE_WARMUP = 2
 core_modules = ['typing', 'builtins', 'abc', 'collections']
 
 
-def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
+def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
@@ -57,6 +59,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
     process_top_levels(graph, scc)
     process_functions(graph, scc)
     check_type_arguments(graph, scc)
+    process_abstract(graph, scc, errors)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
@@ -202,3 +205,10 @@ def check_type_arguments(graph: 'Graph', scc: List[str]) -> None:
         with state.wrap_context():
             with strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
+
+
+def process_abstract(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+    for module in scc:
+        tree = graph[module].tree
+        assert tree
+        calculate_abstract_status(tree, errors)
