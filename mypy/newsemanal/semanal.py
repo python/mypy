@@ -1878,14 +1878,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
-    def is_not_ready_alias(self, rv: Expression) -> bool:
-        """Does this expression look like a not ready type alias?
+    def is_not_ready_type_ref(self, rv: Expression) -> bool:
+        """Does this expression refers to a not-ready class?
 
         This includes 'Ref' and 'Ref[Arg1, Arg2, ...]', where 'Ref'
         refers to a PlaceholderNode with becomes_typeinfo=True.
         """
         if isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-            return self.is_not_ready_alias(rv.base)
+            return self.is_not_ready_type_ref(rv.base)
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
             if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
@@ -1905,15 +1905,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.base, RefExpr):
             # Special case: analyze index expression _as a type_ to trigger
             # incomplete refs for string forward references, for example
-            # Union['ClassA', 'ClassB']
+            # Union['ClassA', 'ClassB'].
+            # We throw away the results of the analysis and we only care about
+            # the detection of incomplete references (this doesn't change the expression
+            # in place).
             self.analyze_alias(s.rvalue, allow_placeholder=True)
-        is_alias = self.is_not_ready_alias(s.rvalue)
-        if self.found_incomplete_ref(tag) or is_alias:
+        top_level_not_ready = self.is_not_ready_type_ref(s.rvalue)
+        # NOTE: the first check is insufficient. We want to defer creation of a Var.
+        if self.found_incomplete_ref(tag) or top_level_not_ready:
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
             for expr in names_modified_by_assignment(s):
-                self.mark_incomplete(expr.name, expr, becomes_typeinfo=is_alias)
+                # NOTE: Currently for aliases like 'X = List[Y]', where 'Y' is not ready
+                # we proceed forward and create a Var. The latter will be replaced with
+                # a type alias it r.h.s. is a valid alias.
+                self.mark_incomplete(expr.name, expr, becomes_typeinfo=top_level_not_ready)
             return
         if self.analyze_namedtuple_assign(s):
             return

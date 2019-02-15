@@ -409,7 +409,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
         # None of the above options worked, we give up.
+        # NOTE: 'final_iteration' is iteration when we hit the maximum number of iterations limit.
         if self.api.final_iteration:
+            # TODO: This is problematic, since we will have to wait until the maximum number
+            #       of iterations to report an invalid type.
             self.fail('Invalid type "{}"'.format(name), t)
         else:
             self.api.defer()
