@@ -244,7 +244,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # analyzed in several iterations until all names are resolved. We need to save
         # the local namespaces for the top level function and all nested functions between
         # these iterations. See also semanal_main.process_top_level_function().
-        self.saved_locals = {}  # type: Dict[FuncItem, SymbolTable]
+        self.saved_locals = {} \
+            # type: Dict[Union[FuncItem, GeneratorExpr, DictionaryComprehension], SymbolTable]
         self.imports = set()
         self.type = None
         self.type_stack = []
@@ -3491,7 +3492,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
-        self.enter()
+        self.enter(expr)
         self.analyze_comp_for(expr)
         expr.key.accept(self)
         expr.value.accept(self)
@@ -3499,7 +3500,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
-        self.enter()
+        self.enter(expr)
         self.analyze_comp_for(expr)
         expr.left_expr.accept(self)
         self.leave()
@@ -3851,16 +3852,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             base = self.cur_mod_id
         return base + '.' + n
 
-    def enter(self, function: Optional[FuncItem] = None) -> None:
-        """Enter the function scope.
-
-        The argument can be omitted for temporary scopes (like comprehensions
-        and generator expressions) that can't have incomplete definitions.
-        """
-        if function:
-            names = self.saved_locals.setdefault(function, SymbolTable())
-        else:
-            names = SymbolTable()
+    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
+        """Enter a function, generator or comprehension scope."""
+        names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())

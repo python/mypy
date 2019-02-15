@@ -1055,6 +1055,27 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 
+[case testNewAnalyzerListComprehension]
+from typing import List
+a: List[A]
+a = [x for x in a]
+b: List[B] = [x for x in a] # E: List comprehension has incompatible type List[A]; expected List[B]
+class A: pass
+class B: pass
+[builtins fixtures/for.pyi]
+
+[case testNewAnalyzerDictionaryComprehension]
+from typing import Dict, List, Tuple
+abd: Dict[A, B]
+abl: List[Tuple[A, B]]
+abd = {a: b for a, b in abl}
+x: Dict[B, A] = {a: b for a, b in abl} # E: Key expression in dictionary comprehension has incompatible type "A"; expected type "B" \
+  # E: Value expression in dictionary comprehension has incompatible type "B"; expected type "A"
+y: A = {a: b for a, b in abl} # E: Incompatible types in assignment (expression has type "Dict[A, B]", variable has type "A")
+class A: pass
+class B: pass
+[builtins fixtures/dict.pyi]
+
 [case testNewAnalyzerTypeArgBoundCheck]
 from typing import TypeVar, Generic
 
