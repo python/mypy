@@ -1055,6 +1055,174 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 
+[case testNewAnalyzerAliasToNotReadyClass]
+import a
+[file a.py]
+from b import B
+
+x: A
+A = B
+[file b.py]
+from typing import List
+from a import x
+
+class B(List[B]): pass
+
+reveal_type(x[0][0])  # E: Revealed type is 'b.B*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClass2]
+from typing import List
+
+x: A
+
+class A(List[B]): pass
+B = A
+
+reveal_type(x[0][0])  # E: Revealed type is '__main__.A*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClass3]
+from typing import List
+
+x: B
+B = A
+A = C
+class C(List[B]): pass
+
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyNestedClass]
+import a
+[file a.py]
+from b import Out
+
+x: A
+A = Out.B
+[file b.py]
+from typing import List
+from a import x
+
+class Out:
+    class B(List[B]): pass
+
+reveal_type(x[0][0])  # E: Revealed type is 'b.Out.B*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyNestedClass2]
+from typing import List
+
+x: Out.A
+
+class Out:
+    class A(List[B]): pass
+B = Out.A
+
+reveal_type(x[0][0])  # E: Revealed type is '__main__.Out.A*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClassGeneric]
+import a
+[file a.py]
+from typing import Tuple
+from b import B, T
+
+x: A[int]
+A = B[Tuple[T, T]]
+[file b.py]
+from typing import List, Generic, TypeVar
+from a import x
+
+class B(List[B], Generic[T]): pass
+T = TypeVar('T')
+reveal_type(x)  # E: Revealed type is 'b.B[Tuple[builtins.int, builtins.int]]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClassInGeneric]
+import a
+[file a.py]
+from typing import Tuple
+from b import B
+
+x: A
+A = Tuple[B, B]
+[file b.py]
+from typing import List
+from a import x
+
+class B(List[B]): pass
+
+reveal_type(x)  # E: Revealed type is 'Tuple[b.B, b.B]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyClassDoubleGeneric]
+from typing import List, TypeVar, Union
+
+T = TypeVar('T')
+
+x: B[int]
+B = A[List[T]]
+A = Union[int, T]
+class C(List[B[int]]): pass
+
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.list[builtins.int]]'
+reveal_type(y[0])  # E: Revealed type is 'Union[builtins.int, builtins.list[builtins.int]]'
+y: C
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerForwardAliasFromUnion]
+from typing import Union, List
+
+A = Union['B', 'C']
+
+class D:
+    x: List[A]
+
+    def test(self) -> None:
+        reveal_type(self.x[0].y)  # E: Revealed type is 'builtins.int'
+
+class B:
+    y: int
+class C:
+    y: int
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyTwoDeferrals-skip]
+from typing import List
+
+x: B
+B = List[C]
+A = C
+class C(List[A]): pass
+
+reveal_type(x)
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyDirectBase-skip]
+from typing import List
+
+x: B
+B = List[C]
+class C(B): pass
+
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C]'
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyMixed]
+from typing import List, Union
+x: A
+
+A = Union[B, C]
+
+class B(List[A]): pass
+class C(List[A]): pass
+
+reveal_type(x)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(x[0])  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+[builtins fixtures/list.pyi]
+
 [case testNewAnalyzerListComprehension]
 from typing import List
 a: List[A]

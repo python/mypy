@@ -178,26 +178,30 @@ Alias = Tuple[int, T]
 [out]
 
 [case testRecursiveAliasesErrors1]
+# flags: --no-new-semantic-analyzer
+# Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
 A = Union[A, int]
 B = Callable[[B], int]
 C = Type[C]
 [out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
 main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:6: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testRecursiveAliasesErrors2]
+# flags: --no-new-semantic-analyzer
+# Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
 A = Union[B, int]
 B = Callable[[C], int]
 C = Type[A]
 [out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
 main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:6: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testDoubleForwardAlias]
 from typing import List
@@ -219,6 +223,8 @@ reveal_type(x[0].x) # E: Revealed type is 'builtins.str'
 [out]
 
 [case testJSONAliasApproximation]
+# flags: --no-new-semantic-analyzer
+# Recursive aliases are not supported yet.
 from typing import List, Union, Dict
 x: JSON
 JSON = Union[int, str, List[JSON], Dict[str, JSON]] # type: ignore
@@ -228,35 +234,39 @@ if isinstance(x, list):
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
-[case testProhibitedForwardRefToTypeVar]
+[case testForwardRefToTypeVar]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, List
-
-a: List[T]
-
+reveal_type(a)  # E: Revealed type is 'builtins.list[builtins.int]'
+a: A[int]
+A = List[T]
 T = TypeVar('T')
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Invalid type "__main__.T"
-main:3: note: Forward references to type variables are prohibited
 
-[case testUnsupportedForwardRef]
+[case testFunctionForwardRefAlias]
+# flags: --new-semantic-analyzer
 from typing import List, TypeVar
 
 T = TypeVar('T')
 
-def f(x: T) -> None:
-    y: A[T]  # E: Unsupported forward reference to "A"
+def f(x: T) -> List[T]:
+    y: A[T]
+    reveal_type(y)  # E: Revealed type is 'builtins.list[T`-1]'
+    return [x] + y
 
 A = List[T]
 [builtins fixtures/list.pyi]
 [out]
 
-[case testUnsupportedForwardRef2]
+[case testFunctionForwardRefAlias2]
+# flags: --new-semantic-analyzer
 from typing import List, TypeVar
 
 def f() -> None:
     X = List[int]
-    x: A[X]  # E: Unsupported forward reference to "A"
+    x: A[X]
+    reveal_type(x)  # E: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
 
 T = TypeVar('T')
 A = List[T]
@@ -468,6 +478,7 @@ class Parameter:
 
 [case testAliasInImportCycle3]
 # cmd: mypy -m t t2
+# flags: --new-semantic-analyzer
 [file t.py]
 MYPY = False
 if MYPY:
@@ -475,10 +486,8 @@ if MYPY:
 x: A
 reveal_type(x)  # E: Revealed type is 't2.D'
 
-# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
-reveal_type(A)  # E: Revealed type is 'Any' \
-                # E: Cannot determine type of 'A'
-A()  # E: Cannot determine type of 'A'
+reveal_type(A)  # E: Revealed type is 'def () -> t2.D'
+A()
 [file t2.py]
 import t
 class D: pass
@@ -579,6 +588,7 @@ def foo(x: Bogus[int]) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testOverrideByIdemAliasCorrectType]
+# flags: --no-new-semantic-analyzer
 C = C
 class C:  # type: ignore
     pass
@@ -605,6 +615,7 @@ class C:
 [out]
 
 [case testConditionalExceptionAlias]
+# flags: --no-new-semantic-analyzer
 try:
     E = E
 except BaseException:

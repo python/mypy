@@ -68,6 +68,11 @@ class SemanticAnalyzerCoreInterface:
         """Is a module or class namespace potentially missing some definitions?"""
         raise NotImplementedError
 
+    @abstractproperty
+    def final_iteration(self) -> bool:
+        """Is this the final iteration of semantic analysis?"""
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):

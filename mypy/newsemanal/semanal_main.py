@@ -138,8 +138,10 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
             # OK, this is one last pass, now missing names will be reported.
             more_iterations = False
             analyzer.incomplete_namespaces.discard(module)
-        deferred, incomplete = semantic_analyze_target(target, state, node, active_type, False)
+        deferred, incomplete = semantic_analyze_target(target, state, node, active_type,
+                                                       not more_iterations)
 
+    analyzer.incomplete_namespaces.discard(module)
     # After semantic analysis is done, discard local namespaces
     # to avoid memory hoarding.
     analyzer.saved_locals.clear()

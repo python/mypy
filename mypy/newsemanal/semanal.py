@@ -213,6 +213,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
 
+    # Is this the final iteration of semantic analysis?
+    final_iteration = False
+
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
@@ -1875,16 +1878,49 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
+    def is_not_ready_type_ref(self, rv: Expression) -> bool:
+        """Does this expression refers to a not-ready class?
+
+        This includes 'Ref' and 'Ref[Arg1, Arg2, ...]', where 'Ref'
+        refers to a PlaceholderNode with becomes_typeinfo=True.
+        """
+        if isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
+            return self.is_not_ready_type_ref(rv.base)
+        if isinstance(rv, NameExpr):
+            n = self.lookup(rv.name, rv)
+            if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
+                return True
+        elif isinstance(rv, MemberExpr):
+            fname = get_member_expr_fullname(rv)
+            if fname:
+                n = self.lookup_qualified(fname, rv)
+                if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
+                    return True
+        return False
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        if self.found_incomplete_ref(tag):
+        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.base, RefExpr):
+            # Special case: analyze index expression _as a type_ to trigger
+            # incomplete refs for string forward references, for example
+            # Union['ClassA', 'ClassB'].
+            # We throw away the results of the analysis and we only care about
+            # the detection of incomplete references (this doesn't change the expression
+            # in place).
+            self.analyze_alias(s.rvalue, allow_placeholder=True)
+        top_level_not_ready = self.is_not_ready_type_ref(s.rvalue)
+        # NOTE: the first check is insufficient. We want to defer creation of a Var.
+        if self.found_incomplete_ref(tag) or top_level_not_ready:
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
             for expr in names_modified_by_assignment(s):
-                self.mark_incomplete(expr.name, expr)
+                # NOTE: Currently for aliases like 'X = List[Y]', where 'Y' is not ready
+                # we proceed forward and create a Var. The latter will be replaced with
+                # a type alias it r.h.s. is a valid alias.
+                self.mark_incomplete(expr.name, expr, becomes_typeinfo=top_level_not_ready)
             return
         if self.analyze_namedtuple_assign(s):
             return
@@ -2119,8 +2155,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         return None
 
-    def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],
-                                                         Set[str], List[str]]:
+    def analyze_alias(self, rvalue: Expression,
+                      allow_placeholder: bool = False) -> Tuple[Optional[Type], List[str],
+                                                                Set[str], List[str]]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of
@@ -2140,6 +2177,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  self.options,
                                  self.is_typeshed_stub_file,
                                  allow_unnormalized=self.is_stub_file,
+                                 allow_placeholder=allow_placeholder,
                                  in_dynamic_func=dynamic,
                                  global_scope=global_scope)
         typ = None  # type: Optional[Type]
@@ -2182,8 +2220,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # annotations (see the second rule).
             return
         rvalue = s.rvalue
+        tag = self.track_incomplete_refs()
         res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue)
-        if not res:
+        if not res or self.found_incomplete_ref(tag):
             return
         if (isinstance(res, Instance) and res.type.name() == lvalue.name and
                 res.type.module_name == self.cur_mod_id):
@@ -2220,7 +2259,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             s.rvalue.analyzed.column = res.column
         elif isinstance(s.rvalue, RefExpr):
             s.rvalue.is_alias_rvalue = True
-        node.node = TypeAlias(res, node.node.fullname(), s.line, s.column,
+        node.node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
                               alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             node.node.normalized = rvalue.node.normalized

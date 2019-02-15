@@ -65,6 +65,7 @@ def analyze_type_alias(node: Expression,
                        options: Options,
                        is_typeshed_stub: bool,
                        allow_unnormalized: bool = False,
+                       allow_placeholder: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
     """Analyze r.h.s. of a (potential) type alias definition.
@@ -121,7 +122,8 @@ def analyze_type_alias(node: Expression,
         api.fail('Invalid type alias', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
-                            allow_unnormalized=allow_unnormalized, defining_alias=True)
+                            allow_unnormalized=allow_unnormalized, defining_alias=True,
+                            allow_placeholder=allow_placeholder)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
     res = type.accept(analyzer)
@@ -407,7 +409,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
         # None of the above options worked, we give up.
-        self.fail('Invalid type "{}"'.format(name), t)
+        # NOTE: 'final_iteration' is iteration when we hit the maximum number of iterations limit.
+        if self.api.final_iteration:
+            # TODO: This is problematic, since we will have to wait until the maximum number
+            #       of iterations to report an invalid type.
+            self.fail('Invalid type "{}"'.format(name), t)
+        else:
+            self.api.defer()
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
             self.note_func("Forward references to type variables are prohibited", t)
             return AnyType(TypeOfAny.from_error)
@@ -678,7 +686,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # We report an error in only the first two cases. In the third case, we assume
             # some other region of the code has already reported a more relevant error.
             #
-            # TODO: Once we start adding support for enums, make sure we reprt a custom
+            # TODO: Once we start adding support for enums, make sure we report a custom
             # error for case 2 as well.
             if arg.type_of_any != TypeOfAny.from_error:
                 self.fail('Parameter {} of Literal[...] cannot be of type "Any"'.format(idx), ctx)
