@@ -20,10 +20,10 @@ from mypy.types import (
 )
 
 from mypy.nodes import (
-    UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
+    TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, ImportedName, TypeAlias, MypyFile, PlaceholderNode
+    Decorator, TypeAlias, MypyFile, PlaceholderNode
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -200,20 +200,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_unbound_type_nonoptional(self, t: UnboundType) -> Type:
         sym = self.lookup_qualified(t.name, t, suppress_errors=self.third_pass)
-        if '.' in t.name:
-            # Handle indirect references to imported names.
-            #
-            # TODO: Do this for module-local references as well and remove ImportedName
-            #    type check below.
-            sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
             node = sym.node
-            if isinstance(node, ImportedName):
-                # Forward reference to an imported name that hasn't been processed yet.
-                # To maintain backward compatibility, these get translated to Any.
-                #
-                # TODO: Remove this special case.
-                return AnyType(TypeOfAny.implementation_artifact)
             if isinstance(node, PlaceholderNode):
                 if node.becomes_typeinfo:
                     # Reference to placeholder type.
@@ -227,9 +215,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.api.record_incomplete_ref()
                     return AnyType(TypeOfAny.special_form)
             if node is None:
-                # UNBOUND_IMPORTED can happen if an unknown name was imported.
-                if sym.kind != UNBOUND_IMPORTED:
-                    self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
+                self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType(TypeOfAny.special_form)
             fullname = node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)

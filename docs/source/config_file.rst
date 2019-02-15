@@ -294,6 +294,10 @@ Miscellaneous strictness flags
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
+``strict_equality``  (bool, default False)
+   Prohibit equality checks, identity checks, and container checks between
+   non-overlapping types.
+
 Global-only options
 *******************
 

@@ -169,6 +169,9 @@ class Errors:
         new.scope = self.scope
         return new
 
+    def total_errors(self) -> int:
+        return sum(len(errs) for errs in self.error_info_map.values())
+
     def set_ignore_prefix(self, prefix: str) -> None:
         """Set path prefix that will be removed from all paths."""
         prefix = os.path.normpath(prefix)

@@ -59,6 +59,7 @@ p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
 
 status_parser = p = subparsers.add_parser('status', help="Show daemon status")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
+p.add_argument('--fswatcher-dump-file', help="Collect information about the current file state")
 
 stop_parser = p = subparsers.add_parser('stop', help="Stop daemon (asks it politely to go away)")
 
@@ -268,7 +269,9 @@ def do_status(args: argparse.Namespace) -> None:
     # Both check_status() and request() may raise BadStatus,
     # which will be handled by main().
     check_status(status)
-    response = request(args.status_file, 'status', timeout=5)
+    response = request(args.status_file, 'status',
+                       fswatcher_dump_file=args.fswatcher_dump_file,
+                       timeout=5)
     if args.verbose or 'error' in response:
         show_stats(response)
     if 'error' in response:
