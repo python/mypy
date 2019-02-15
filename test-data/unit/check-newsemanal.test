@@ -1182,11 +1182,45 @@ class D:
     def test(self) -> None:
         reveal_type(self.x[0].y)  # E: Revealed type is 'builtins.int'
 
-
 class B:
     y: int
 class C:
     y: int
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyTwoDeferrals-skip]
+from typing import List
+
+x: B
+B = List[C]
+A = C
+class C(List[A]): pass
+
+reveal_type(x)
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyDirectBase-skip]
+from typing import List
+
+x: B
+B = List[C]
+class C(B): pass
+
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C]'
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyMixed]
+from typing import List, Union
+x: A
+
+A = Union[B, C]
+
+class B(List[A]): pass
+class C(List[A]): pass
+
+reveal_type(x)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(x[0])  # E: Revealed type is 'Union[__main__.B, __main__.C]'
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerListComprehension]
