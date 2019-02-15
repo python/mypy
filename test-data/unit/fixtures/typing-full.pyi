@@ -39,10 +39,10 @@ S = TypeVar('S')
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
 
 @runtime
-class Container(Protocol[T_contra]):
+class Container(Protocol[T_co]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins
-    def __contains__(self, arg: T_contra) -> int: pass
+    def __contains__(self, arg: object) -> int: pass
 
 @runtime
 class Sized(Protocol):
@@ -117,7 +117,7 @@ class AsyncIterator(AsyncIterable[T], Protocol):
     @abstractmethod
     def __anext__(self) -> Awaitable[T]: pass
 
-class Sequence(Iterable[T_co]):
+class Sequence(Iterable[T_co], Container[T_co]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
 

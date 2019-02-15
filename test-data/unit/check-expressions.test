@@ -508,7 +508,7 @@ class C:
       # type: ('int') -> bool
       pass
 
-[builtins_py2 fixtures/bool.pyi]
+[builtins_py2 fixtures/bool_py2.pyi]
 
 [case cmpIgnoredPy3]
 
@@ -604,7 +604,7 @@ class X:
 class Y:
     def __lt__(self, o: 'Y') -> A: pass
     def __gt__(self, o: 'Y') -> A: pass
-    def __eq__(self, o: 'Y') -> B: pass
+    def __eq__(self, o: 'Y') -> B: pass  # type: ignore
 [builtins fixtures/bool.pyi]
 
 
@@ -1947,3 +1947,175 @@ a.__pow__() # E: Too few arguments for "__pow__" of "int"
 x, y = [], [] # E: Need type annotation for 'x' \
             # E: Need type annotation for 'y'
 [builtins fixtures/list.pyi]
+
+[case testStrictEqualityEq]
+# flags: --strict-equality
+class A: ...
+class B: ...
+class C(B): ...
+
+A() == B()  # E: Non-overlapping equality check (left operand type: "A", right operand type: "B")
+B() == C()
+C() == B()
+A() != B()  # E: Non-overlapping equality check (left operand type: "A", right operand type: "B")
+B() != C()
+C() != B()
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityIs]
+# flags: --strict-equality
+class A: ...
+class B: ...
+class C(B): ...
+
+A() is B()  # E: Non-overlapping identity check (left operand type: "A", right operand type: "B")
+B() is C()
+C() is B()
+A() is not B()  # E: Non-overlapping identity check (left operand type: "A", right operand type: "B")
+B() is not C()
+C() is not B()
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityContains]
+# flags: --strict-equality
+class A: ...
+class B: ...
+class C(B): ...
+
+A() in [B()]  # E: Non-overlapping container check (element type: "A", container item type: "B")
+B() in [C()]
+C() in [B()]
+A() not in [B()]  # E: Non-overlapping container check (element type: "A", container item type: "B")
+B() not in [C()]
+C() not in [B()]
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityUnions]
+# flags: --strict-equality
+from typing import Container, Union
+
+class A: ...
+class B: ...
+
+a: Union[int, str]
+b: Union[A, B]
+
+a == 42
+b == 42  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "int")
+
+a is 42
+b is 42  # E: Non-overlapping identity check (left operand type: "Union[A, B]", right operand type: "int")
+
+ca: Union[Container[int], Container[str]]
+cb: Union[Container[A], Container[B]]
+
+42 in ca
+42 in cb  # E: Non-overlapping container check (element type: "int", container item type: "Union[A, B]")
+[builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityNoPromote]
+# flags: --strict-equality
+'a' == b'a'  # E: Non-overlapping equality check (left operand type: "str", right operand type: "bytes")
+b'a' in 'abc'  # E: Non-overlapping container check (element type: "bytes", container item type: "str")
+
+x: str
+y: bytes
+x != y  # E: Non-overlapping equality check (left operand type: "str", right operand type: "bytes")
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityAny]
+# flags: --strict-equality
+from typing import Any, Container
+
+x: Any
+c: Container[str]
+x in c
+x == 42
+x is 42
+[builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityStrictOptional]
+# flags: --strict-equality --strict-optional
+
+x: str
+if x is not None:  # OK even with strict-optional
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityNoStrictOptional]
+# flags: --strict-equality --no-strict-optional
+
+x: str
+if x is not None:  # OK without strict-optional
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityEqNoOptionalOverlap]
+# flags: --strict-equality --strict-optional
+from typing import Optional
+
+x: Optional[str]
+y: Optional[int]
+if x == y:  # E: Non-overlapping equality check (left operand type: "Optional[str]", right operand type: "Optional[int]")
+    ...
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqCheckStrictEquality]
+# flags: --strict-equality
+class A:
+    def __eq__(self, other: A) -> bool:  # type: ignore
+        ...
+class B:
+    def __eq__(self, other: B) -> bool:  # type: ignore
+        ...
+
+# Don't report non-overlapping check if there is already and error.
+A() == B()  # E: Unsupported operand types for == ("A" and "B")
+[builtins fixtures/bool.pyi]
+
+[case testCustomContainsCheckStrictEquality]
+# flags: --strict-equality
+class A:
+    def __contains__(self, other: A) -> bool:
+        ...
+
+# Don't report non-overlapping check if there is already and error.
+42 in A()  # E: Unsupported operand types for in ("int" and "A")
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityTypeVsCallable]
+# flags: --strict-equality
+from typing import Type, List
+class C: ...
+class D(C): ...
+class Bad: ...
+
+subclasses: List[Type[C]]
+object in subclasses
+D in subclasses
+Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad]", container item type: "Type[C]")
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityMetaclass]
+# flags: --strict-equality
+from typing import List, Type
+
+class Meta(type): ...
+
+class A(metaclass=Meta): ...
+class B(metaclass=Meta): ...
+class C: ...
+
+o: Type[object]
+exp: List[Meta]
+
+A in exp
+C in exp  # E: Non-overlapping container check (element type: "Type[C]", container item type: "Meta")
+o in exp
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]

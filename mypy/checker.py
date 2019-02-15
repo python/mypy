@@ -2997,6 +2997,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 nextmethod = 'next'
             return iterator, echk.check_method_call_by_name(nextmethod, iterator, [], [], expr)[0]
 
+    def analyze_container_item_type(self, typ: Type) -> Optional[Type]:
+        """Check if a type is a nominal container of a union of such.
+
+        Return the corresponding container item type.
+        """
+        if isinstance(typ, UnionType):
+            types = []  # type: List[Type]
+            for item in typ.items:
+                c_type = self.analyze_container_item_type(item)
+                if c_type:
+                    types.append(c_type)
+            return UnionType.make_union(types)
+        if isinstance(typ, Instance) and typ.type.has_base('typing.Container'):
+            supertype = self.named_type('typing.Container').type
+            super_instance = map_instance_to_supertype(typ, supertype)
+            assert len(super_instance.args) == 1
+            return super_instance.args[0]
+        return None
+
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""

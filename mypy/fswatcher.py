@@ -1,7 +1,7 @@
 """Watch parts of the file system for changes."""
 
 from mypy.fscache import FileSystemCache
-from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set
+from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 
 FileData = NamedTuple('FileData', [('st_mtime', float),
@@ -31,6 +31,9 @@ class FileSystemWatcher:
         self.fs = fs
         self._paths = set()  # type: Set[str]
         self._file_data = {}  # type: Dict[str, Optional[FileData]]
+
+    def dump_file_data(self) -> Dict[str, Tuple[float, int, str]]:
+        return {k: v for k, v in self._file_data.items() if v is not None}
 
     def set_file_data(self, path: str, data: FileData) -> None:
         self._file_data[path] = data
