@@ -336,6 +336,7 @@ reveal_type(w)  # E: Revealed type is '__main__.C[builtins.int]'
 [out]
 
 [case testTypeAliasesToNamedTuple]
+# flags: --new-semantic-analyzer
 from nt import C, D, E
 
 A1 = C
@@ -358,11 +359,11 @@ reveal_type(a2)  # E: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
 a3 = A3()
 reveal_type(a3)  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
 
-Cls.A1('no')  # E: Argument 1 has incompatible type "str"; expected "int"
+Cls.A1('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 ca1 = Cls.A1(1)
 reveal_type(ca1)  # E: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
 
-Cls.A2(0)  # E: Argument 1 has incompatible type "int"; expected "str"
+Cls.A2(0)  # E: Argument 1 to "D" has incompatible type "int"; expected "str"
 ca2 = Cls.A2('yes')
 reveal_type(ca2)  # E: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
 

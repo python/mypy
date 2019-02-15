@@ -89,7 +89,7 @@ from mypy.nodes import implicit_module_attrs
 from mypy.newsemanal.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any
+    check_for_explicit_any, type_constructors
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
@@ -177,6 +177,9 @@ CORE_BUILTIN_CLASSES = ['object', 'bool', 'function']  # type: Final
 
 # Used for tracking incomplete references
 Tag = int
+
+
+MAX_WAIT = 5
 
 
 class NewSemanticAnalyzer(NodeVisitor[None],
@@ -272,6 +275,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
+        self.wait_list = {}  # type: Dict[str, Dict[str,int]]
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -536,6 +540,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
                 defn.type = analyzer.visit_callable_type(defn.type, nested=False)
+                if has_placeholder(defn.type):
+                    self.defer()
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
                 if isinstance(defn, FuncDef):
@@ -1882,14 +1888,36 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
-    def is_not_ready_type_ref(self, rv: Expression) -> bool:
-        """Does this expression refers to a not-ready class?
+    def is_none_alias(self, node: Expression) -> bool:
+        if isinstance(node, CallExpr):
+            if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
+                    isinstance(node.args[0], NameExpr)):
+                call = self.lookup_qualified(node.callee.name, node.callee)
+                arg = self.lookup_qualified(node.args[0].name, node.args[0])
+                if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
+                        arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
+                    return True
+        return False
 
-        This includes 'Ref' and 'Ref[Arg1, Arg2, ...]', where 'Ref'
-        refers to a PlaceholderNode with becomes_typeinfo=True.
-        """
-        if isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-            return self.is_not_ready_type_ref(rv.base)
+    def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
+        """Does this expression refers to a type?"""
+        if not isinstance(rv, RefExpr):
+            return False
+        if isinstance(rv.node, TypeVarExpr):
+            self.fail('Type variable "{}" is invalid as target for type alias'.format(
+                rv.fullname), rv)
+            return False
+
+        valid_refs = {'typing.Any', 'typing.Tuple', 'typing.Callable'} if bare else type_constructors
+
+        if isinstance(rv.node, TypeAlias) or rv.fullname in valid_refs:
+            return True
+
+        if isinstance(rv.node, TypeInfo):
+            if bare:
+                return True
+            return not rv.node.is_enum
+
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
             if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
@@ -1902,38 +1930,64 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     return True
         return False
 
+    def should_wait(self, rv: Expression) -> bool:
+        wait_list = self.wait_list.setdefault(self.cur_mod_id, {})
+        if isinstance(rv, NameExpr):
+            n = self.lookup(rv.name, rv)
+            if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
+                if rv.name in wait_list:
+                    if wait_list[rv.name] == MAX_WAIT:
+                        return False
+                    wait_list[rv.name] += 1
+                else:
+                    wait_list[rv.name] = 0
+                return True
+        elif isinstance(rv, MemberExpr):
+            fname = get_member_expr_fullname(rv)
+            if fname:
+                n = self.lookup_qualified(fname, rv)
+                if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
+                    if fname in wait_list:
+                        if wait_list[fname] == MAX_WAIT:
+                            return False
+                        wait_list[fname] += 1
+                    else:
+                        wait_list[fname] = 0
+                    return True
+        elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
+            return self.should_wait(rv.base)
+        return False
+
+    def can_be_type_alias(self, rv: Expression) -> bool:
+        if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
+            return True
+        if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
+            return True
+        if self.is_none_alias(rv):
+            return True
+        return False
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.base, RefExpr):
-            # Special case: analyze index expression _as a type_ to trigger
-            # incomplete refs for string forward references, for example
-            # Union['ClassA', 'ClassB'].
-            # We throw away the results of the analysis and we only care about
-            # the detection of incomplete references (this doesn't change the expression
-            # in place).
-            self.analyze_alias(s.rvalue, allow_placeholder=True)
-        top_level_not_ready = self.is_not_ready_type_ref(s.rvalue)
-        # NOTE: the first check is insufficient. We want to defer creation of a Var.
-        if self.found_incomplete_ref(tag) or top_level_not_ready:
+        if self.found_incomplete_ref(tag) or self.should_wait(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
             for expr in names_modified_by_assignment(s):
-                # NOTE: Currently for aliases like 'X = List[Y]', where 'Y' is not ready
-                # we proceed forward and create a Var. The latter will be replaced with
-                # a type alias it r.h.s. is a valid alias.
-                self.mark_incomplete(expr.name, expr, becomes_typeinfo=top_level_not_ready)
+                self.mark_incomplete(expr.name, expr)
             return
         if self.analyze_namedtuple_assign(s):
+            return
+        if self.check_and_set_up_type_alias(s):
+            s.is_alias_def = True
             return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
         self.apply_dynamic_class_hook(s)
-        self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
@@ -2101,6 +2155,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             if analyzed is None:
                 return
+            if has_placeholder(analyzed):
+                self.defer()
+                return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
@@ -2196,7 +2253,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             qualified_tvars = []
         return typ, alias_tvars, depends_on, qualified_tvars
 
-    def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
+    def check_and_set_up_type_alias(self, s: AssignmentStmt) -> bool:
         """Check if assignment creates a type alias and set it up as needed.
 
         For simple aliases like L = List we use a simpler mechanism, just copying TypeInfo.
@@ -2206,10 +2263,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         lvalue = s.lvalues[0]
         if len(s.lvalues) > 1 or not isinstance(lvalue, NameExpr):
             # First rule: Only simple assignments like Alias = ... create aliases.
-            return
-        if s.type:
+            return False
+        if s.unanalyzed_type is not None:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
-            return
+            return False
         non_global_scope = self.type or self.is_func_scope()
         if isinstance(s.rvalue, RefExpr) and non_global_scope and lvalue.is_inferred_def:
             # Third rule: Non-subscripted right hand side creates a variable
@@ -2222,20 +2279,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             #
             # without this rule, this typical use case will require a lot of explicit
             # annotations (see the second rule).
-            return
+            return False
         rvalue = s.rvalue
-        tag = self.track_incomplete_refs()
-        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue)
-        if not res or self.found_incomplete_ref(tag):
-            return
-        if (isinstance(res, Instance) and res.type.name() == lvalue.name and
-                res.type.module_name == self.cur_mod_id):
-            # Aliases like C = C is a no-op.
-            return
-        s.is_alias_def = True
-        node = self.lookup(lvalue.name, lvalue)
-        assert node is not None
-        assert node.node is not None
+        if not self.can_be_type_alias(rvalue):
+            return False
+        if self.is_none_alias(rvalue):
+            res = NoneTyp()
+            alias_tvars, depends_on, qualified_tvars = [], set(), []
+        else:
+            tag = self.track_incomplete_refs()
+            res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue, allow_placeholder=True)
+            if not res:
+                return False
+            if self.found_incomplete_ref(tag):
+                self.add_symbol(lvalue.name, PlaceholderNode(self.qualified_name(lvalue.name), rvalue, True), None)
+                return True
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
         # type variables, since they are erased from target type.
@@ -2243,13 +2301,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
         # (because the type is stored)
-        if not lvalue.is_inferred_def:
-            # Type aliases can't be re-defined.
-            if isinstance(node.node, (TypeAlias, TypeInfo)):
+        existing = self.current_symbol_table().get(lvalue.name)
+        # Type aliases can't be re-defined.
+        if existing and (isinstance(existing.node, Var) or
+                         isinstance(existing.node, TypeAlias) and not s.is_alias_def):
+            if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail('Cannot assign multiple types to name "{}"'
                           ' without an explicit "Type[...]" annotation'
                           .format(lvalue.name), lvalue)
-            return
+            return False
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
                                context=s)
         # when this type alias gets "inlined", the Any is not explicit anymore,
@@ -2263,10 +2323,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             s.rvalue.analyzed.column = res.column
         elif isinstance(s.rvalue, RefExpr):
             s.rvalue.is_alias_rvalue = True
-        node.node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
-                              alias_tvars=alias_tvars, no_args=no_args)
+        alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
+                               alias_tvars=alias_tvars, no_args=no_args)
+        if existing:
+            existing.node = alias_node
+        else:
+            self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
-            node.node.normalized = rvalue.node.normalized
+            alias_node.normalized = rvalue.node.normalized
+        return True
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        explicit_type: bool = False,
@@ -4150,6 +4215,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
+
+
+class HasPlaceholders(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        return True
+
+
+def has_placeholder(typ) -> bool:
+    return typ.accept(HasPlaceholders())
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

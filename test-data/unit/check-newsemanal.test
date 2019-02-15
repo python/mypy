@@ -1055,7 +1055,7 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 
-[case testNewAnalyzerAliasToNotReadyClass]
+[case testNewAnalyzerAliasToNotReadyClass1]
 import a
 [file a.py]
 from b import B
@@ -1188,7 +1188,7 @@ class C:
     y: int
 [builtins fixtures/list.pyi]
 
-[case testNewAnalyzerAliasToNotReadyTwoDeferrals-skip]
+[case testNewAnalyzerAliasToNotReadyTwoDeferrals]
 from typing import List
 
 x: B
@@ -1196,10 +1196,11 @@ B = List[C]
 A = C
 class C(List[A]): pass
 
-reveal_type(x)
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C]'
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
 [builtins fixtures/list.pyi]
 
-[case testNewAnalyzerAliasToNotReadyDirectBase-skip]
+[case testNewAnalyzerAliasToNotReadyDirectBase]
 from typing import List
 
 x: B
@@ -1207,7 +1208,39 @@ B = List[C]
 class C(B): pass
 
 reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C]'
-reveal_type(x[0][0])  # E: Revealed type is '__main__.C'
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyTwoDeferralsFunction]
+import a
+[file a.py]
+from typing import List
+from b import D
+
+def f(x: B) -> List[B]: ...
+B = List[C]
+A = C
+class C(List[A]): pass
+[file b.py]
+from a import f
+class D: ...
+reveal_type(f)  # E: Revealed type is 'def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyDirectBaseFunction]
+import a
+[file a.py]
+from typing import List
+from b import D
+
+def f(x: B) -> List[B]: ...
+B = List[C]
+class C(B): pass
+
+[file b.py]
+from a import f
+class D: ...
+reveal_type(f)  # E: Revealed type is 'def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]'
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyMixed]
