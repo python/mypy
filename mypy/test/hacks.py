@@ -10,7 +10,6 @@ new_semanal_blacklist = [
     'check-abstract.test',
     'check-async-await.test',
     'check-attr.test',
-    'check-basic.test',
     'check-bound.test',
     'check-callable.test',
     'check-classes.test',

@@ -284,6 +284,30 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
+    def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
+        """Manually add implicit definitions of module '__name__' etc."""
+        for name, t in implicit_module_attrs.items():
+            # unicode docstrings should be accepted in Python 2
+            if name == '__doc__':
+                if self.options.python_version >= (3, 0):
+                    typ = UnboundType('__builtins__.str')  # type: Type
+                else:
+                    typ = UnionType([UnboundType('__builtins__.str'),
+                                     UnboundType('__builtins__.unicode')])
+            else:
+                assert t is not None, 'type should be specified for {}'.format(name)
+                typ = UnboundType(t)
+
+            an_type = self.anal_type(typ)
+            if an_type:
+                var = Var(name, an_type)
+                var._fullname = self.qualified_name(name)
+                var.is_ready = True
+                self.add_symbol(name, var, None)
+            else:
+                self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
+                self.defer()
+
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
@@ -310,13 +334,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if 'builtins' in self.modules:
                 self.globals['__builtins__'] = SymbolTableNode(GDEF,
                                                                self.modules['builtins'])
-
-            for name in implicit_module_attrs:
-                v = self.globals[name].node
-                if isinstance(v, Var):
-                    assert v.type is not None, "Type of implicit attribute not set"
-                    v.type = self.anal_type(v.type)
-                    v.is_ready = True
 
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
@@ -419,6 +436,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
+        self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
             self.accept(d)
         if file_node.fullname() == 'typing':
