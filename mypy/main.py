@@ -621,6 +621,8 @@ def process_options(args: List[str],
     other_group = parser.add_argument_group(
         title='Miscellaneous')
     other_group.add_argument(
+        '--quickstart-file', help=argparse.SUPPRESS)
+    other_group.add_argument(
         '--junit-xml', help="Write junit.xml to the given file")
     other_group.add_argument(
         '--scripts-are-modules', action='store_true',
@@ -879,6 +881,7 @@ config_types = {
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'quickstart_file': str,
     'junit_xml': str,
     # These two are for backwards compatibility
     'silent_imports': bool,

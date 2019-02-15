@@ -174,6 +174,11 @@ class Options:
         # Config file name
         self.config_file = None  # type: Optional[str]
 
+        # A filename containing a JSON mapping from filenames to
+        # mtime/size/hash arrays, used to avoid having to recalculate
+        # source hashes as often.
+        self.quickstart_file = None  # type: Optional[str]
+
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
 

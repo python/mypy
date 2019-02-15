@@ -138,3 +138,34 @@ mypy-daemon: error: Missing target module, package, files, or command.
 == Return code: 2
 $ dmypy stop
 Daemon stopped
+
+-- this is carefully constructed to be able to break if the quickstart system lets
+-- something through incorrectly. in particular, the files need to have the same size
+[case testDaemonQuickstart]
+$ {python} -c "print('x=1')" >foo.py
+$ {python} -c "print('x=1')" >bar.py
+$ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.6 -- foo.py bar.py
+$ {python} -c "import shutil; shutil.copy('.mypy_cache/3.6/bar.meta.json', 'asdf.json')"
+-- update bar's timestamp but don't change the file
+$ {python} -c "import time;time.sleep(1)"
+$ {python} -c "print('x=1')" >bar.py
+$ dmypy run -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6
+Daemon started
+$ dmypy status --fswatcher-dump-file test.json
+Daemon is up and running
+$ dmypy stop
+Daemon stopped
+-- copy the original bar cache file back so that the mtime mismatches
+$ {python} -c "import shutil; shutil.copy('asdf.json', '.mypy_cache/3.6/bar.meta.json')"
+-- sleep guarantees timestamp changes
+$ {python} -c "import time;time.sleep(1)"
+$ {python} -c "print('lol')" >foo.py
+$ dmypy run --log-file=log -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6 --quickstart-file test.json
+Daemon started
+foo.py:1: error: Name 'lol' is not defined
+== Return code: 1
+-- make sure no errors made it to the log file
+$ {python} -c "import sys; sys.stdout.write(open('log').read())"
+-- make sure the meta file didn't get updated. we use this as an imperfect proxy for
+-- whether the source file got rehashed, which we don't want it to have been.
+$ {python} -c "x = open('.mypy_cache/3.6/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"

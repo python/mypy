@@ -472,6 +472,9 @@ class BuildManager(BuildManagerBase):
                        but is disabled if fine-grained cache loading fails
                        and after an initial fine-grained load. This doesn't
                        determine whether we write cache files or not.
+      quickstart_state:
+                       A cache of filename -> mtime/size/hash info used to avoid
+                       needing to hash source files when using a cache with mismatching mtimes
       stats:           Dict with various instrumentation numbers, it is used
                        not only for debugging, but also required for correctness,
                        in particular to check consistency of the fine-grained dependency cache.
@@ -549,6 +552,7 @@ class BuildManager(BuildManagerBase):
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
+        self.quickstart_state = read_quickstart_file(options)
 
     def dump_stats(self) -> None:
         self.log("Stats:")
@@ -893,6 +897,24 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     return snapshot
 
 
+def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, int, str]]]:
+    quickstart = None  # type: Optional[Dict[str, Tuple[float, int, str]]]
+    if options.quickstart_file:
+        # This is very "best effort". If the file is missing or malformed,
+        # just ignore it.
+        raw_quickstart = {}  # type: Dict[str, Any]
+        try:
+            with open(options.quickstart_file, "r") as f:
+                raw_quickstart = json.load(f)
+
+            quickstart = {}
+            for file, (x, y, z) in raw_quickstart.items():
+                quickstart[file] = (x, y, z)
+        except Exception as e:
+            print("Warning: Failed to load quickstart file: {}\n".format(str(e)))
+    return quickstart
+
+
 def read_deps_cache(manager: BuildManager,
                     graph: Graph) -> Optional[Dict[str, FgDepMeta]]:
     """Read and validate the fine-grained dependencies cache.
@@ -1108,6 +1130,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
             return None
 
+    orig_path = path
     path = manager.normpath(path)
     try:
         st = manager.get_stat(path)
@@ -1143,6 +1166,17 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # Bazel ensures the cache is valid.
     mtime = 0 if bazel else int(st.st_mtime)
     if not bazel and (mtime != meta.mtime or path != meta.path):
+        if manager.quickstart_state and orig_path in manager.quickstart_state:
+            # If the mtime and the size of the file recorded in the quickstart dump matches
+            # what we see on disk, we know (assume) that the hash matches the quickstart
+            # data as well. If that hash matches the hash in the metadata, then we know
+            # the file is up to date even though the mtime is wrong, without needing to hash it.
+            qmtime, qsize, qhash = manager.quickstart_state[orig_path]
+            if int(qmtime) == mtime and qsize == size and qhash == meta.hash:
+                manager.log('Metadata fresh (by quickstart) for {}: file {}'.format(id, path))
+                meta = meta._replace(mtime=mtime, path=path)
+                return meta
+
         t0 = time.time()
         try:
             source_hash = manager.fscache.md5(path)
@@ -1168,7 +1202,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'mtime': mtime,
                 'size': size,
                 'hash': source_hash,
-                'data_mtime': data_mtime,
+                'data_mtime': meta.data_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
                 'child_modules': meta.child_modules,
