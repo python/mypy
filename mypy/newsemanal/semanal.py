@@ -3853,11 +3853,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return base + '.' + n
 
     def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
-        """Enter the function scope.
-
-        The argument can be omitted for temporary scopes (like comprehensions
-        and generator expressions) that can't have incomplete definitions.
-        """
+        """Enter a function, generator or comprehension scope."""
         names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
         self.global_decls.append(set())
