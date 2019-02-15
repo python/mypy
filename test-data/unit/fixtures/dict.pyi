@@ -39,11 +39,12 @@ class list(Sequence[T]): # needed by some test cases
     def __getitem__(self, x: int) -> T: pass
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
+    def __contains__(self, item: object) -> bool: pass
 
 class tuple(Generic[T]): pass
 class function: pass
 class float: pass
-class bool: pass
+class bool(int): pass
 
 class ellipsis: pass
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass

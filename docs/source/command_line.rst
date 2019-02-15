@@ -386,6 +386,23 @@ of the above sections.
            # 'items' now has type List[List[str]]
            ...
 
+``--strict-equality``
+    By default, mypy allows always-false comparisons like ``42 == 'no'``.
+    Use this flag to prohibit such comparisons of non-overlapping types, and
+    similar identity and container checks:
+
+    .. code-block:: python
+
+       from typing import Text
+
+       text: Text
+       if b'some bytes' in text:  # Error: non-overlapping check!
+           ...
+       if text != b'other bytes':  # Error: non-overlapping check!
+           ...
+
+       assert text is not None  # OK, this special case is allowed.
+
 ``--strict``
     This flag mode enables all optional error checking flags.  You can see the
     list of flags enabled by strict mode in the full ``mypy --help`` output.

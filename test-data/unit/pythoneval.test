@@ -1365,7 +1365,10 @@ from typing import Dict, List, Tuple
 x: Dict[str, List[int]]
 reveal_type(x['test'][0])
 [out]
+-- N.B: These errors are *wrong* and the new semantic analyzer can't yet
+-- fully analyze typeshed
 typing.pyi:251: error: Class typing.Sequence has abstract attributes "__len__"
 typing.pyi:251: note: If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass
+codecs.pyi:49: error: Cannot overwrite NamedTuple attribute "__init__"
 ast.pyi:31: error: Name 'PyCF_ONLY_AST' already defined (possibly by an import)
 _testNewAnalyzerBasicTypeshed_newsemanal.py:4: error: Revealed type is 'builtins.int*'

@@ -35,6 +35,7 @@ class list(Sequence[T]):
     def __setitem__(self, x: int, v: T) -> None: pass
     def __getitem__(self, x: int) -> T: pass
     def __add__(self, x: List[T]) -> T: pass
+    def __contains__(self, item: object) -> bool: pass
 
 class dict(Mapping[KT, VT]):
     @overload

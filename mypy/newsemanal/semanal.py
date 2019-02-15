@@ -247,7 +247,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # analyzed in several iterations until all names are resolved. We need to save
         # the local namespaces for the top level function and all nested functions between
         # these iterations. See also semanal_main.process_top_level_function().
-        self.saved_locals = {}  # type: Dict[FuncItem, SymbolTable]
+        self.saved_locals = {} \
+            # type: Dict[Union[FuncItem, GeneratorExpr, DictionaryComprehension], SymbolTable]
         self.imports = set()
         self.type = None
         self.type_stack = []
@@ -287,6 +288,30 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
+    def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
+        """Manually add implicit definitions of module '__name__' etc."""
+        for name, t in implicit_module_attrs.items():
+            # unicode docstrings should be accepted in Python 2
+            if name == '__doc__':
+                if self.options.python_version >= (3, 0):
+                    typ = UnboundType('__builtins__.str')  # type: Type
+                else:
+                    typ = UnionType([UnboundType('__builtins__.str'),
+                                     UnboundType('__builtins__.unicode')])
+            else:
+                assert t is not None, 'type should be specified for {}'.format(name)
+                typ = UnboundType(t)
+
+            an_type = self.anal_type(typ)
+            if an_type:
+                var = Var(name, an_type)
+                var._fullname = self.qualified_name(name)
+                var.is_ready = True
+                self.add_symbol(name, var, None)
+            else:
+                self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
+                self.defer()
+
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
@@ -313,13 +338,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if 'builtins' in self.modules:
                 self.globals['__builtins__'] = SymbolTableNode(GDEF,
                                                                self.modules['builtins'])
-
-            for name in implicit_module_attrs:
-                v = self.globals[name].node
-                if isinstance(v, Var):
-                    assert v.type is not None, "Type of implicit attribute not set"
-                    v.type = self.anal_type(v.type)
-                    v.is_ready = True
 
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
@@ -422,6 +440,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
+        self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
             self.accept(d)
         if file_node.fullname() == 'typing':
@@ -3505,7 +3524,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
-        self.enter()
+        self.enter(expr)
         self.analyze_comp_for(expr)
         expr.key.accept(self)
         expr.value.accept(self)
@@ -3513,7 +3532,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
-        self.enter()
+        self.enter(expr)
         self.analyze_comp_for(expr)
         expr.left_expr.accept(self)
         self.leave()
@@ -3865,16 +3884,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             base = self.cur_mod_id
         return base + '.' + n
 
-    def enter(self, function: Optional[FuncItem] = None) -> None:
-        """Enter the function scope.
-
-        The argument can be omitted for temporary scopes (like comprehensions
-        and generator expressions) that can't have incomplete definitions.
-        """
-        if function:
-            names = self.saved_locals.setdefault(function, SymbolTable())
-        else:
-            names = SymbolTable()
+    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
+        """Enter a function, generator or comprehension scope."""
+        names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
