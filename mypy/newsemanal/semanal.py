@@ -68,8 +68,8 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
+    PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node
 )
@@ -98,7 +98,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import get_prefix, correct_relative_import, unmangle
+from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
@@ -1250,6 +1250,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(info, TypeInfo)
         else:
             info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
+            info.set_line(defn)
         return info
 
     def analyze_base_classes(
@@ -1628,7 +1629,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
-            node = self.dereference_module_cross_ref(node)
 
             missing = False
             possible_module_id = import_id + '.' + id
@@ -1636,7 +1636,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
-            if not node or node.kind == UNBOUND_IMPORTED:
+            if not node:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
                     kind = self.current_symbol_kind()
@@ -1655,12 +1655,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
                     continue
-            if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
-                if not node:
-                    # Normalization failed because target is not defined. Avoid duplicate
-                    # error messages by marking the imported name as unknown.
-                    self.add_unknown_symbol(imported_id, imp, is_import=True)
-                    continue
+            if node and not node.module_hidden:
                 if isinstance(node.node, PlaceholderNode):
                     if self.final_iteration:
                         self.report_missing_module_attribute(import_id, id, imported_id, imp)
@@ -1686,30 +1681,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Missing module.
                 missing_name = import_id + '.' + id
                 self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
-
-    def dereference_module_cross_ref(
-            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
-        """Dereference cross references to other modules (if any).
-
-        If the node is not a cross reference, return it unmodified.
-        """
-        seen = set()  # type: Set[str]
-        # Continue until we reach a node that's nota cross reference (or until we find
-        # nothing).
-        while node and isinstance(node.node, ImportedName):
-            fullname = node.node.fullname()
-            if fullname in self.modules:
-                # This is a module reference.
-                kind = self.current_symbol_kind()
-                return SymbolTableNode(kind, self.modules[fullname])
-            if fullname in seen:
-                # Looks like a reference cycle. Just break it.
-                # TODO: Generate a more specific error message.
-                node = None
-                break
-            node = self.lookup_fully_qualified_or_none(fullname)
-            seen.add(fullname)
-        return node
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
@@ -1782,8 +1753,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # namespace is incomplete.
                 self.mark_incomplete('*', i)
             self.add_submodules_to_parent_modules(i_id, True)
-            for name, orig_node in m.names.items():
-                node = self.dereference_module_cross_ref(orig_node)
+            for name, node in m.names.items():
                 if node is None:
                     continue
                 # if '__all__' exists, all nodes not included have had module_public set to
@@ -1932,9 +1902,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
+        # We cannot use s.type, because analyze_simple_literal_type() will set it.
+        explicit = s.unanalyzed_type is not None
+        if self.is_final_type(s.unanalyzed_type):
+            # We need to exclude bare Final.
+            assert isinstance(s.unanalyzed_type, UnboundType)
+            if not s.unanalyzed_type.args:
+                explicit = False
         for lval in s.lvalues:
             self.analyze_lvalue(lval,
-                                explicit_type=s.type is not None,
+                                explicit_type=explicit,
                                 is_final=s.is_final_def)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
@@ -1963,19 +1940,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Returns True if Final[...] was present.
         """
-        if not s.type or not self.is_final_type(s.type):
+        if not s.unanalyzed_type or not self.is_final_type(s.unanalyzed_type):
             return False
-        assert isinstance(s.type, UnboundType)
-        if len(s.type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", s.type)
+        assert isinstance(s.unanalyzed_type, UnboundType)
+        if len(s.unanalyzed_type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
         invalid_bare_final = False
-        if not s.type.args:
+        if not s.unanalyzed_type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
-            s.type = s.type.args[0]
+            s.type = s.unanalyzed_type.args[0]
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
             self.fail("Invalid final declaration", s)
             return False
@@ -2290,7 +2267,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
-            self.add_symbol(name, var, lvalue)
+            added = self.add_symbol(name, var, lvalue)
+            # Only bind expression if we successfully added name to symbol table.
+            if added:
+                lvalue.node = var
+                if kind == GDEF:
+                    lvalue.fullname = var._fullname
+                else:
+                    lvalue.fullname = lvalue.name
             if is_final and self.is_final_redefinition(kind, name):
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
@@ -2346,14 +2330,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
         v.is_ready = False  # Type not inferred yet
-        lvalue.node = v
         lvalue.is_new_def = True
         lvalue.is_inferred_def = True
         lvalue.kind = kind
-        if kind == GDEF:
-            lvalue.fullname = v._fullname
-        else:
-            lvalue.fullname = lvalue.name
         return v
 
     def make_name_lvalue_point_to_existing_def(
@@ -2725,7 +2704,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
         return sym.node.fullname() == 'typing.ClassVar'
 
-    def is_final_type(self, typ: Type) -> bool:
+    def is_final_type(self, typ: Optional[Type]) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
@@ -2853,11 +2832,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.fail("@final cannot be used with non-method functions", d)
         for i in reversed(removed):
             del dec.decorators[i]
-        if not dec.is_overload or dec.var.is_property:
-            if self.type:
-                dec.var.info = self.type
-                dec.var.is_initialized_in_class = True
-            self.add_symbol(dec.var.name(), dec, dec)
+        if (not dec.is_overload or dec.var.is_property) and self.type:
+            dec.var.info = self.type
+            dec.var.is_initialized_in_class = True
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
@@ -3282,7 +3259,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None)
-            n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.rebind_symbol_table_node(n)
                 if n:
@@ -3902,12 +3878,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return kind
 
     def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
-                   module_public: bool = True, module_hidden: bool = False) -> None:
+                   module_public: bool = True, module_hidden: bool = False) -> bool:
         """Add symbol to the currently active symbol table.
 
         Generally additions to symbol table should go through this method or
         one of the methods below so that kinds, redefinitions, conditional
         definitions, and skipped names are handled consistently.
+
+        Return True if we actually added the symbol, or False if we refused to do so
+        (because something is not ready).
         """
         if self.is_func_scope():
             kind = LDEF
@@ -3919,7 +3898,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
-        self.add_symbol_table_node(name, symbol, context)
+        return self.add_symbol_table_node(name, symbol, context)
 
     def current_symbol_table(self) -> SymbolTable:
         if self.is_func_scope():
@@ -3937,8 +3916,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                      or name in self.nonlocal_decls[-1]))
 
     def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
-                              context: Optional[Context] = None) -> None:
-        """Add symbol table node to the currently active symbol table."""
+                              context: Optional[Context] = None) -> bool:
+        """Add symbol table node to the currently active symbol table.
+
+        Return True if we actually added the symbol, or False if we refused to do so
+        (because something is not ready).
+        """
         names = self.current_symbol_table()
         existing = names.get(name)
         if (existing is not None
@@ -3948,6 +3931,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
+            return True
+        return False
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
@@ -4035,18 +4020,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_fixture_note(fullname, ctx)
 
     def name_already_defined(self, name: str, ctx: Context,
-                    original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
+                             original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                             ) -> None:
         if isinstance(original_ctx, SymbolTableNode):
-            node = original_ctx.node
+            node = original_ctx.node  # type: Optional[SymbolNode]
         elif isinstance(original_ctx, SymbolNode):
             node = original_ctx
+        else:
+            node = None
 
         if isinstance(original_ctx, SymbolTableNode) and isinstance(original_ctx.node, MypyFile):
             # Since this is an import, original_ctx.node points to the module definition.
             # Therefore its line number is always 1, which is not useful for this
             # error message.
             extra_msg = ' (by an import)'
-        elif node and node.line != -1:
+        elif node and node.line != -1 and self.cur_mod_id in split_module_names(node.fullname()):
+            # TODO: Using previous symbol node may give wrong line. We should use
+            #       the line number where the binding was established instead.
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'

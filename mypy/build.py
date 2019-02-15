@@ -472,6 +472,9 @@ class BuildManager(BuildManagerBase):
                        but is disabled if fine-grained cache loading fails
                        and after an initial fine-grained load. This doesn't
                        determine whether we write cache files or not.
+      quickstart_state:
+                       A cache of filename -> mtime/size/hash info used to avoid
+                       needing to hash source files when using a cache with mismatching mtimes
       stats:           Dict with various instrumentation numbers, it is used
                        not only for debugging, but also required for correctness,
                        in particular to check consistency of the fine-grained dependency cache.
@@ -549,6 +552,7 @@ class BuildManager(BuildManagerBase):
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
+        self.quickstart_state = read_quickstart_file(options)
 
     def dump_stats(self) -> None:
         self.log("Stats:")
@@ -561,6 +565,8 @@ class BuildManager(BuildManagerBase):
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if not self.shadow_map:
             return path
+
+        path = self.normpath(path)
 
         previously_checked = path in self.shadow_equivalence_map
         if not previously_checked:
@@ -893,6 +899,24 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     return snapshot
 
 
+def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, int, str]]]:
+    quickstart = None  # type: Optional[Dict[str, Tuple[float, int, str]]]
+    if options.quickstart_file:
+        # This is very "best effort". If the file is missing or malformed,
+        # just ignore it.
+        raw_quickstart = {}  # type: Dict[str, Any]
+        try:
+            with open(options.quickstart_file, "r") as f:
+                raw_quickstart = json.load(f)
+
+            quickstart = {}
+            for file, (x, y, z) in raw_quickstart.items():
+                quickstart[file] = (x, y, z)
+        except Exception as e:
+            print("Warning: Failed to load quickstart file: {}\n".format(str(e)))
+    return quickstart
+
+
 def read_deps_cache(manager: BuildManager,
                     graph: Graph) -> Optional[Dict[str, FgDepMeta]]:
     """Read and validate the fine-grained dependencies cache.
@@ -921,14 +945,15 @@ def read_deps_cache(manager: BuildManager,
         return None
 
     module_deps_metas = deps_meta['deps_meta']
-    for id, meta in module_deps_metas.items():
-        try:
-            matched = manager.getmtime(meta['path']) == meta['mtime']
-        except FileNotFoundError:
-            matched = False
-        if not matched:
-            manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
-            return None
+    if not manager.options.skip_cache_mtime_checks:
+        for id, meta in module_deps_metas.items():
+            try:
+                matched = manager.getmtime(meta['path']) == meta['mtime']
+            except FileNotFoundError:
+                matched = False
+            if not matched:
+                manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
+                return None
 
     return module_deps_metas
 
@@ -983,7 +1008,10 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON, the
       data JSON, and the fine-grained deps JSON, respectively.
     """
-    pair = manager.options.cache_map.get(path)
+    if manager.options.cache_map:
+        pair = manager.options.cache_map.get(manager.normpath(path))
+    else:
+        pair = None
     if pair is not None:
         # The cache map paths were specified relative to the base directory,
         # but the filesystem metastore APIs operates relative to the cache
@@ -1099,14 +1127,17 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     t0 = time.time()
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
-    # Check data_json; assume if its mtime matches it's good.
-    # TODO: stat() errors
-    data_mtime = manager.getmtime(meta.data_json)
-    if data_mtime != meta.data_mtime:
-        manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
-        return None
+    if not manager.options.skip_cache_mtime_checks:
+        # Check data_json; assume if its mtime matches it's good.
+        # TODO: stat() errors
+        data_mtime = manager.getmtime(meta.data_json)
+        if data_mtime != meta.data_mtime:
+            manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
+            return None
 
-    path = manager.normpath(path)
+    if bazel:
+        # Normalize path under bazel to make sure it isn't absolute
+        path = manager.normpath(path)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1141,6 +1172,17 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # Bazel ensures the cache is valid.
     mtime = 0 if bazel else int(st.st_mtime)
     if not bazel and (mtime != meta.mtime or path != meta.path):
+        if manager.quickstart_state and path in manager.quickstart_state:
+            # If the mtime and the size of the file recorded in the quickstart dump matches
+            # what we see on disk, we know (assume) that the hash matches the quickstart
+            # data as well. If that hash matches the hash in the metadata, then we know
+            # the file is up to date even though the mtime is wrong, without needing to hash it.
+            qmtime, qsize, qhash = manager.quickstart_state[path]
+            if int(qmtime) == mtime and qsize == size and qhash == meta.hash:
+                manager.log('Metadata fresh (by quickstart) for {}: file {}'.format(id, path))
+                meta = meta._replace(mtime=mtime, path=path)
+                return meta
+
         t0 = time.time()
         try:
             source_hash = manager.fscache.md5(path)
@@ -1166,7 +1208,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'mtime': mtime,
                 'size': size,
                 'hash': source_hash,
-                'data_mtime': data_mtime,
+                'data_mtime': meta.data_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
                 'child_modules': meta.child_modules,
@@ -1245,7 +1287,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
     bazel = manager.options.bazel
 
     # Obtain file paths.
-    path = manager.normpath(path)
     meta_json, data_json, _ = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {}'.format(
         id, path, meta_json, data_json))
@@ -1338,7 +1379,6 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     This avoids inconsistent states with cache files from different mypy runs,
     see #4043 for an example.
     """
-    path = manager.normpath(path)
     # We don't delete .deps files on errors, since the dependencies
     # are mostly generated from other files and the metadata is
     # tracked separately.

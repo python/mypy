@@ -262,10 +262,16 @@ class Server:
 
     # Command functions (run in the server via RPC).
 
-    def cmd_status(self) -> Dict[str, object]:
+    def cmd_status(self, fswatcher_dump_file: Optional[str] = None) -> Dict[str, object]:
         """Return daemon status."""
         res = {}  # type: Dict[str, object]
         res.update(get_meminfo())
+        if fswatcher_dump_file:
+            data = self.fswatcher.dump_file_data() if hasattr(self, 'fswatcher') else {}
+            # Using .dumps and then writing was noticably faster than using dump
+            s = json.dumps(data)
+            with open(fswatcher_dump_file, 'w') as f:
+                f.write(s)
         return res
 
     def cmd_stop(self) -> Dict[str, object]:
@@ -540,9 +546,7 @@ def get_meminfo() -> Dict[str, Any]:
             # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
             import resource  # Since it doesn't exist on Windows.
             rusage = resource.getrusage(resource.RUSAGE_SELF)
-            # mypyc doesn't like unreachable code, so trick mypy into thinking
-            # the branch is reachable
-            if sys.platform == 'darwin' or bool():
+            if sys.platform == 'darwin':
                 factor = 1
             else:
                 factor = 1024  # Linux

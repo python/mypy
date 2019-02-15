@@ -527,6 +527,11 @@ def process_options(args: List[str],
                         help="Allow unconditional variable redefinition with a new type",
                         group=strictness_group)
 
+    add_invertible_flag('--strict-equality', default=False, strict_flag=False,
+                        help="Prohibit equality, identity, and container checks for"
+                             " non-overlapping types",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -553,6 +558,9 @@ def process_options(args: List[str],
     incremental_group.add_argument(
         '--skip-version-check', action='store_true',
         help="Allow using cache written by older mypy version")
+    incremental_group.add_argument(
+        '--skip-cache-mtime-checks', action='store_true',
+        help="Skip cache internal consistency checks based on mtime")
 
     internals_group = parser.add_argument_group(
         title='Mypy internals',
@@ -612,6 +620,8 @@ def process_options(args: List[str],
 
     other_group = parser.add_argument_group(
         title='Miscellaneous')
+    other_group.add_argument(
+        '--quickstart-file', help=argparse.SUPPRESS)
     other_group.add_argument(
         '--junit-xml', help="Write junit.xml to the given file")
     other_group.add_argument(
@@ -871,6 +881,7 @@ config_types = {
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'quickstart_file': str,
     'junit_xml': str,
     # These two are for backwards compatibility
     'silent_imports': bool,

@@ -72,6 +72,8 @@ def parse_script(input: List[str]) -> List[List[str]]:
 def run_cmd(input: str) -> Tuple[int, str]:
     if input.startswith('dmypy '):
         input = sys.executable + ' -m mypy.' + input
+    if input.startswith('mypy '):
+        input = sys.executable + ' -m' + input
     env = os.environ.copy()
     env['PYTHONPATH'] = PREFIX
     try:

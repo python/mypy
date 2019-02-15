@@ -19,7 +19,8 @@ T = TypeVar('T')
 
 # This won't ever be true at runtime, but we consider it true during
 # mypyc compilations.
-if sys.platform == 'mypyc':
+MYPYC = False
+if MYPYC:
     Bogus = FlexibleAlias[T, Any]
 else:
     Bogus = FlexibleAlias[T, T]

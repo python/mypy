@@ -1107,3 +1107,16 @@ class A(Generic[T]):
 def f(c: A) -> None:  # E: Missing type parameters for generic type
     pass
 [out]
+
+[case testStrictEqualityPerFile]
+# flags: --config-file tmp/mypy.ini
+import b
+42 == 'no'  # E: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+[file b.py]
+42 == 'no'
+[file mypy.ini]
+[[mypy]
+strict_equality = True
+[[mypy-b]
+strict_equality = False
+[builtins fixtures/bool.pyi]
