@@ -41,6 +41,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             super().visit_block(o)
 
     def visit_instance(self, t: Instance) -> None:
+        # Type argument counts were checked in the main semantic analyzer pass. We assume
+        # that the counts are correct here.
         info = t.type
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
             if tvar.values:

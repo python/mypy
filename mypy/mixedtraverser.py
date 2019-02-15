@@ -23,6 +23,8 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         self.visit_optional_type(o.type)
 
     def visit_class_def(self, o: ClassDef) -> None:
+        # TODO: Should we visit generated methods/variables as well, either here or in
+        #       TraverserVisitor?
         super().visit_class_def(o)
         info = o.info
         if info:
