@@ -34,6 +34,7 @@ from mypy.state import strict_optional_set
 from mypy.newsemanal.semanal import NewSemanticAnalyzer
 from mypy.newsemanal.semanal_abstract import calculate_abstract_status
 from mypy.errors import Errors
+from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 
 MYPY = False
 if MYPY:
@@ -186,10 +187,13 @@ def semantic_analyze_target(target: str,
                                    fnam=tree.path,
                                    options=state.options,
                                    active_type=active_type):
-            if isinstance(node, Decorator):
+            refresh_node = node
+            if isinstance(refresh_node, Decorator):
                 # Decorator expressions will be processed as part of the module top level.
-                node = node.func
-            analyzer.refresh_partial(node, [], final_iteration)
+                refresh_node = refresh_node.func
+            analyzer.refresh_partial(refresh_node, [], final_iteration)
+            if isinstance(node, Decorator):
+                infer_decorator_signature_if_simple(node, analyzer)
     if analyzer.deferred:
         return [target], analyzer.incomplete
     else:
