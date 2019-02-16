@@ -3671,6 +3671,16 @@ print(z)
 1
 2
 
+[case testUnannotatedFunction]
+def g(x: int) -> int:
+    return x * 2
+
+def f(x):
+    return g(x)
+[file driver.py]
+from native import f
+assert f(3) == 6
+
 [case testCheckVersion]
 import sys
 

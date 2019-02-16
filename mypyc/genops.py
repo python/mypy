@@ -367,11 +367,17 @@ class Mapper:
         assert False, 'unexpected type %s' % type(typ)
 
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
-        assert isinstance(fdef.type, CallableType)
-        args = [RuntimeArg(arg.variable.name(), self.type_to_rtype(fdef.type.arg_types[i]),
-                arg.kind)
-                for i, arg in enumerate(fdef.arguments)]
-        ret = self.type_to_rtype(fdef.type.ret_type)
+        if isinstance(fdef.type, CallableType):
+            arg_types = [self.type_to_rtype(arg) for arg in fdef.type.arg_types]
+            ret = self.type_to_rtype(fdef.type.ret_type)
+        else:
+            # Handle unannotated functions
+            arg_types = [object_rprimitive for arg in fdef.arguments]
+            ret = object_rprimitive
+
+        args = [RuntimeArg(arg.variable.name(), arg_type, arg.kind)
+                for arg, arg_type in zip(fdef.arguments, arg_types)]
+
         # We force certain dunder methods to return objects to support letting them
         # return NotImplemented. It also avoids some pointless boxing and unboxing,
         # since tp_richcompare needs an object anyways.
