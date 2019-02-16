@@ -1280,7 +1280,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         func_reg = None  # type: Optional[Value]
 
-        is_nested = fitem in self.nested_fitems
+        # We treat lambdas as always being nested because we we always generate
+        # a class for lambdas, no matter where they are. (It would probably also
+        # work to special case toplevel lambdas and generate a non-class function.)
+        is_nested = fitem in self.nested_fitems or isinstance(fitem, LambdaExpr)
+
         contains_nested = fitem in self.encapsulating_fitems
         is_decorated = fitem in self.fdefs_to_decorators
         self.enter(FuncInfo(fitem, name, class_name, self.gen_func_ns(),
@@ -3955,7 +3959,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Define the actual callable class ClassIR, and set its environment to point at the
         # previously defined environment class.
         callable_class_ir = ClassIR(name, self.module_name, is_generated=True)
-        callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(self.fn_infos[-2].env_class)
+        # If the enclosing class doesn't contain nested (which will happen if
+        # this is a toplevel lambda), don't set up an environment.
+        if self.fn_infos[-2].contains_nested:
+            callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(self.fn_infos[-2].env_class)
         callable_class_ir.mro = [callable_class_ir]
         self.fn_info.callable_class = ImplicitClass(callable_class_ir)
         self.classes.append(callable_class_ir)
@@ -4034,13 +4041,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # - a nested function, then the callable class is instantiated from the current callable
         #   class' '__call__' function, and hence the callable class' environment register is used.
         # - neither, then we use the environment register of the original function.
+        curr_env_reg = None
         if self.fn_info.is_generator:
             curr_env_reg = self.fn_info.generator_class.curr_env_reg
         elif self.fn_info.is_nested:
             curr_env_reg = self.fn_info.callable_class.curr_env_reg
-        else:
+        elif self.fn_info.contains_nested:
             curr_env_reg = self.fn_info.curr_env_reg
-        self.add(SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+        if curr_env_reg:
+            self.add(SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
         return func_reg
 
     def setup_env_class(self) -> ClassIR:

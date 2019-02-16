@@ -194,8 +194,15 @@ def o() -> int:
     # Should return 26.
     return x + y + a[0] + a[1] + b
 
+global_upvar = 20
+
+toplevel_lambda = lambda x: 10 + global_upvar + x
+
 [file driver.py]
-from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, triple, if_else, for_loop, while_loop, free_vars, lambdas, outer, inner, A
+from native import (
+    a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, triple, if_else, for_loop, while_loop,
+    free_vars, lambdas, outer, inner, A, toplevel_lambda
+)
 
 assert a()() == None
 assert b()()() == 'b.first.second: nested function'
@@ -234,3 +241,5 @@ assert outer() == 'outer: normal function'
 assert inner() == 'inner: normal function'
 
 assert A(3).outer(4) == 12
+
+assert toplevel_lambda(5) == 35
