@@ -2015,3 +2015,16 @@ class IteratorBox(Box[Iterator[T]]): ...
 def g() -> int:
     ...
 [builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodInGenericFunction]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+
+def func(x: S) -> S:
+    return C[S].get()
+[builtins fixtures/classmethod.pyi]
