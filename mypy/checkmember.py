@@ -15,6 +15,7 @@ from mypy.nodes import (
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars
+from mypy.erasetype import erase_typevars
 from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
 from mypy.plugin import AttributeContext
@@ -617,11 +618,47 @@ def analyze_class_attribute_access(itype: Instance,
             symnode = node.node
             assert isinstance(symnode, Var)
             return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
-        if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
-            mx.msg.fail(message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)
+
+        # Find the class where method/variable was defined.
+        if isinstance(node.node, Decorator):
+            super_info = node.node.var.info  # type: Optional[TypeInfo]
+        elif isinstance(node.node, (Var, FuncBase)):
+            super_info = node.node.info
+        else:
+            super_info = None
+
+        # Map the type to how it would look as a defining class. For example:
+        #     class C(Generic[T]): ...
+        #     class D(C[Tuple[T, S]]): ...
+        #     D[int, str].method()
+        # Here itype is D[int, str], isuper is C[Tuple[int, str]].
+        if not super_info:
+            isuper = None
+        else:
+            isuper = map_instance_to_supertype(itype, super_info)
+
+        if isinstance(node.node, Var):
+            assert isuper is not None
+            # Check if original variable type has type variables. For example:
+            #     class C(Generic[T]):
+            #         x: T
+            #     C.x  # Error, ambiguous access
+            #     C[int].x  # Also an error, since C[int] is same as C at runtime
+            if isinstance(t, TypeVarType) or get_type_vars(t):
+                # Exception: access on Type[...], including first argument of class methods is OK.
+                if not isinstance(mx.original_type, TypeType):
+                    mx.msg.fail(message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)
+
+            # Erase non-mapped variables, but keep mapped ones, even if there is an error.
+            # In the above example this means that we infer following types:
+            #     C.x -> Any
+            #     C[int].x -> int
+            t = erase_typevars(expand_type_by_instance(t, isuper))
+
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
-        result = add_class_tvars(t, itype, is_classmethod, mx.builtin_type, mx.original_type)
+        result = add_class_tvars(t, itype, isuper, is_classmethod, mx.builtin_type,
+                                 mx.original_type)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                                mx.msg, mx.context, chk=mx.chk)
@@ -656,7 +693,7 @@ def analyze_class_attribute_access(itype: Instance,
         return function_type(cast(FuncBase, node.node), mx.builtin_type('builtins.function'))
 
 
-def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
+def add_class_tvars(t: Type, itype: Instance, isuper: Optional[Instance], is_classmethod: bool,
                     builtin_type: Callable[[str], Instance],
                     original_type: Type) -> Type:
     """Instantiate type variables during analyze_class_attribute_access,
@@ -666,7 +703,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
         @classmethod
         def foo(cls: Type[Q]) -> Tuple[T, Q]: ...
 
-    class B(A): pass
+    class B(A[str]): pass
 
     B.foo()
 
@@ -674,15 +711,20 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     """
     # TODO: verify consistency between Q and T
     info = itype.type  # type: TypeInfo
+    if is_classmethod:
+        assert isuper is not None
+        t = expand_type_by_instance(t, isuper)
+    ids = {t.id for t in itype.args if isinstance(t, TypeVarType)}
+
     if isinstance(t, CallableType):
-        # TODO: Should we propagate type variable values?
         tvars = [TypeVarDef(n, n, i + 1, [], builtin_type('builtins.object'), tv.variance)
-                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
+                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)
+                 if tv.id in ids]
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(CallableType, add_class_tvars(item, itype, is_classmethod,
+        return Overloaded([cast(CallableType, add_class_tvars(item, itype, isuper, is_classmethod,
                                                               builtin_type, original_type))
                            for item in t.items()])
     return t
