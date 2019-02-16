@@ -4418,7 +4418,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                   sig_arg_kinds,
                                                   sig_arg_names,
                                                   lambda n: AnyType(TypeOfAny.special_form))
-        assert all(len(lst) <= 1 for lst in formal_to_actual)
         return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]
 
     def get_func_target(self, fdef: FuncDef) -> AssignmentTarget:
