@@ -3959,7 +3959,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Same as above, but skipping the local namespace.
 
         This doesn't check for previous definition and is only used
-        for serialization of method-level named tuples.
+        for serialization of method-level classes.
         """
         if self.type is not None:
             names = self.type.names
