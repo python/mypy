@@ -3352,8 +3352,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if isinstance(t, TypeType):
                                 union_list.append(t.item)
                             else:
-                                #  this is an error that should be reported earlier
-                                #  if we reach here, we refuse to do any type inference
+                                # This is an error that should be reported earlier
+                                # if we reach here, we refuse to do any type inference.
                                 return {}, {}
                         vartype = UnionType(union_list)
                     elif isinstance(vartype, TypeType):
@@ -3362,8 +3362,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             vartype.type.fullname() == 'builtins.type'):
                         vartype = self.named_type('builtins.object')
                     else:
-                        # any other object whose type we don't know precisely
-                        # for example, Any or a custom metaclass
+                        # Any other object whose type we don't know precisely
+                        # for example, Any or a custom metaclass.
                         return {}, {}  # unknown type
                     yes_map, no_map = conditional_type_map(expr, vartype, type)
                     yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
