@@ -1794,8 +1794,9 @@ class State:
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
+        Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]  # noqa
         if self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.new_semantic_analyzer
+            analyzer = self.manager.new_semantic_analyzer  # type: Analyzer
         else:
             analyzer = self.manager.semantic_analyzer
         for dep in self.dependencies:
