@@ -192,16 +192,14 @@ class NamedTupleAnalyzer:
         if var_name:
             self.store_namedtuple_info(info, var_name, call, is_typed)
         if name != var_name:
-            # Also store it as a global just in case it would remain anonymous.
-            # (Or in the nearest class if there is one.)
-            self.store_namedtuple_info(info, name, call, is_typed)
+            # Store function level (or broken) named tuple also in a name
+            # space that is going to be serialized.
+            self.api.add_symbol_skip_local(name, info)
         return True, info
 
     def store_namedtuple_info(self, info: TypeInfo, name: str,
                               call: CallExpr, is_typed: bool) -> None:
-        # TODO: Extend semantic analyzer API and use correct kind?
-        stnode = SymbolTableNode(GDEF, info)
-        self.api.add_symbol_table_node(name, stnode)
+        self.api.add_symbol(name, info, call)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
 
