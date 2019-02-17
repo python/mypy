@@ -4931,3 +4931,20 @@ import pack.mod
 import a
 [out]
 [out2]
+
+[case testNewAnalyzerIncrementalBrokenNamedTuple]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import NT
+x: NT
+[file a.py.2]
+from b import NT
+x: NT
+reveal_type(x)
+[file b.py]
+from typing import NamedTuple
+NT = NamedTuple('BadName', [('x', int)])
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'

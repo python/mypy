@@ -1794,8 +1794,12 @@ class State:
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
+        if self.manager.options.new_semantic_analyzer:
+            analyzer = self.manager.new_semantic_analyzer
+        else:
+            analyzer = self.manager.semantic_analyzer
         for dep in self.dependencies:
-            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+            analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.

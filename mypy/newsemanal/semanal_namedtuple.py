@@ -189,13 +189,17 @@ class NamedTupleAnalyzer:
         else:
             default_items = {}
         info = self.build_namedtuple_typeinfo(name, items, types, default_items)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        self.store_namedtuple_info(info, var_name or name, call, is_typed)
+        if var_name:
+            self.store_namedtuple_info(info, var_name, call, is_typed)
+        if name != var_name:
+            # Also store it as a global just in case it would remain anonymous.
+            # (Or in the nearest class if there is one.)
+            self.store_namedtuple_info(info, name, call, is_typed)
         return True, info
 
     def store_namedtuple_info(self, info: TypeInfo, name: str,
                               call: CallExpr, is_typed: bool) -> None:
+        # TODO: Extend semantic analyzer API and use correct kind?
         stnode = SymbolTableNode(GDEF, info)
         self.api.add_symbol_table_node(name, stnode)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
