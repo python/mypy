@@ -410,8 +410,8 @@ def u(x: T, y: S) -> Union[S, T]: pass
 a: Any
 t_a: Type[A]
 
-reveal_type(u(M(*a), t_a)) # E: Revealed type is 'Union[Type[__main__.A], __main__.M*]'
-reveal_type(u(t_a, M(*a))) # E: Revealed type is 'Union[__main__.M*, Type[__main__.A]]'
+reveal_type(u(M(*a), t_a)) # E: Revealed type is '__main__.M*'
+reveal_type(u(t_a, M(*a))) # E: Revealed type is '__main__.M*'
 
 reveal_type(u(M2(*a), t_a)) # E: Revealed type is 'Union[Type[__main__.A], __main__.M2*]'
 reveal_type(u(t_a, M2(*a))) # E: Revealed type is 'Union[__main__.M2*, Type[__main__.A]]'

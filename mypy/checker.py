@@ -3358,9 +3358,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         vartype = UnionType(union_list)
                     elif isinstance(vartype, TypeType):
                         vartype = vartype.item
+                    elif (isinstance(vartype, Instance) and
+                            vartype.type.fullname() == 'builtins.type'):
+                        vartype = self.named_type('builtins.object')
                     else:
                         # any other object whose type we don't know precisely
-                        # for example, Any or Instance of type type
+                        # for example, Any or a custom metaclass
                         return {}, {}  # unknown type
                     yes_map, no_map = conditional_type_map(expr, vartype, type)
                     yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))

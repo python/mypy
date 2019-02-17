@@ -49,7 +49,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                                 for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
-    elif isinstance(declared, (Instance, TupleType)):
+    elif isinstance(declared, (Instance, TupleType, TypeType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))

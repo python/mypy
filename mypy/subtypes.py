@@ -1210,6 +1210,12 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             if right.type.fullname() == 'builtins.object':
                 return True
+            item = left.item
+            if isinstance(item, TypeVarType):
+                item = item.upper_bound
+            if isinstance(item, Instance):
+                metaclass = item.type.metaclass_type
+                return metaclass is not None and self._is_proper_subtype(metaclass, right)
         return False
 
 
