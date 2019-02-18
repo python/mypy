@@ -10,16 +10,20 @@ from mypy.errors import Errors
 
 
 def calculate_abstract_status(file: MypyFile, errors: Errors) -> None:
-    names = file.names
-    process(names, file.is_stub, errors)
+    """Calculate the abstract status of all classes in the symbol table in file.
+
+    Also check that ABCMeta is used correctly.
+    """
+    process(file.names, file.is_stub, file.fullname(), errors)
 
 
-def process(names: SymbolTable, is_stub_file: bool, errors: Errors) -> None:
+def process(names: SymbolTable, is_stub_file: bool, prefix: str, errors: Errors) -> None:
     for name, symnode in names.items():
         node = symnode.node
-        if isinstance(node, TypeInfo):
+        if isinstance(node, TypeInfo) and node.fullname().startswith(prefix):
             calculate_class_abstract_status(node, is_stub_file, errors)
-            process(node.names, is_stub_file, errors)
+            new_prefix = prefix + '.' + node.name()
+            process(node.names, is_stub_file, new_prefix, errors)
 
 
 def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:
