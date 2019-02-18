@@ -21,7 +21,7 @@ new_semanal_blacklist = [
     'check-expressions.test',
     'check-fastparse.test',
     'check-flags.test',
-    #'check-functions.test',
+    'check-functions.test',
     'check-generics.test',
     'check-incomplete-fixture.test',
     'check-incremental.test',
