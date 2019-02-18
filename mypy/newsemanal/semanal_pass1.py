@@ -1,8 +1,5 @@
 """Block/import reachability analysis."""
 
-from contextlib import contextmanager
-from typing import Iterator
-
 from mypy.nodes import (
     MypyFile, AssertStmt, IfStmt, Block, AssignmentStmt, ExpressionStmt, ReturnStmt, ForStmt,
     Import, ImportAll, ImportFrom, ClassDef, FuncDef
@@ -59,18 +56,15 @@ class ReachabilityAnalyzer(TraverserVisitor):
                 break
 
     def visit_import_from(self, node: ImportFrom) -> None:
-        if self.is_global_scope:
-            node.is_top_level = True
+        node.is_top_level = self.is_global_scope
         super().visit_import_from(node)
 
     def visit_import_all(self, node: ImportAll) -> None:
-        if self.is_global_scope:
-            node.is_top_level = True
+        node.is_top_level = self.is_global_scope
         super().visit_import_all(node)
 
     def visit_import(self, node: Import) -> None:
-        if self.is_global_scope:
-            node.is_top_level = True
+        node.is_top_level = self.is_global_scope
         super().visit_import(node)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
