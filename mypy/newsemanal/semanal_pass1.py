@@ -1,7 +1,11 @@
 """Block/import reachability analysis."""
 
+from contextlib import contextmanager
+from typing import Iterator
+
 from mypy.nodes import (
-    MypyFile, AssertStmt, IfStmt, Block, AssignmentStmt, ExpressionStmt, ReturnStmt, ForStmt
+    MypyFile, AssertStmt, IfStmt, Block, AssignmentStmt, ExpressionStmt, ReturnStmt, ForStmt,
+    Import, ImportAll, ImportFrom, ClassDef, FuncDef
 )
 from mypy.traverser import TraverserVisitor
 from mypy.options import Options
@@ -40,6 +44,7 @@ class ReachabilityAnalyzer(TraverserVisitor):
         self.cur_mod_id = mod_id
         self.cur_mod_node = file
         self.options = options
+        self.is_global_scope = True
 
         for i, defn in enumerate(file.defs):
             defn.accept(self)
@@ -49,6 +54,38 @@ class ReachabilityAnalyzer(TraverserVisitor):
                 # list of statements.  This mutates file.defs too.
                 del file.defs[i + 1:]
                 break
+
+    @contextmanager
+    def non_global_scope(self) -> Iterator[None]:
+        prev_scope = self.is_global_scope
+        self.is_global_scope = False
+        try:
+            yield
+        finally:
+            self.is_global_scope = prev_scope
+
+    def visit_class_def(self, node: ClassDef) -> None:
+        with self.non_global_scope():
+            super().visit_class_def(node)
+
+    def visit_func_def(self, node: FuncDef) -> None:
+        with self.non_global_scope():
+            super().visit_func_def(node)
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        if self.is_global_scope:
+            node.is_top_level = True
+        super().visit_import_from(node)
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        if self.is_global_scope:
+            node.is_top_level = True
+        super().visit_import_all(node)
+
+    def visit_import(self, node: Import) -> None:
+        if self.is_global_scope:
+            node.is_top_level = True
+        super().visit_import(node)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, self.options)
