@@ -249,6 +249,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 target = node.target
                 an_args = self.anal_array(t.args)
                 res = expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
+                # The only case where expand_type_alias() can return an incorrect instance is
+                # when it is top-level instance, so no need to recurse.
                 if (isinstance(res, Instance) and len(res.args) != len(res.type.type_vars) and
                         not self.defining_alias):
                     fix_instance(res, self.fail)
