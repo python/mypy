@@ -47,30 +47,16 @@ class ReachabilityAnalyzer(TraverserVisitor):
         self.is_global_scope = True
 
         for i, defn in enumerate(file.defs):
+            if isinstance(defn, (ClassDef, FuncDef)):
+                self.is_global_scope = False
             defn.accept(self)
+            self.is_global_scope = True
             if isinstance(defn, AssertStmt) and assert_will_always_fail(defn, options):
                 # We've encountered an assert that's always false,
                 # e.g. assert sys.platform == 'lol'.  Truncate the
                 # list of statements.  This mutates file.defs too.
                 del file.defs[i + 1:]
                 break
-
-    @contextmanager
-    def non_global_scope(self) -> Iterator[None]:
-        prev_scope = self.is_global_scope
-        self.is_global_scope = False
-        try:
-            yield
-        finally:
-            self.is_global_scope = prev_scope
-
-    def visit_class_def(self, node: ClassDef) -> None:
-        with self.non_global_scope():
-            super().visit_class_def(node)
-
-    def visit_func_def(self, node: FuncDef) -> None:
-        with self.non_global_scope():
-            super().visit_func_def(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         if self.is_global_scope:
