@@ -579,8 +579,9 @@ reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins
 [out]
 main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
+-- Error formatting is a bit different with new analyzer
 [case testGenericTypeAliasesWrongAliases]
-# flags: --show-column-numbers --python-version 3.6 --no-strict-optional
+# flags: --show-column-numbers --python-version 3.6 --no-strict-optional --no-new-semantic-analyzer
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')
@@ -1480,7 +1481,10 @@ class A(Generic[T]):
         g(self.a)
         g(n) # E: Argument 1 to "g" has incompatible type "int"; expected "T"
 
+-- This is non-trivial with new analyzer (and also in fine grained incremental):
+-- We need to store whole tvar_scope, not only active class.
 [case testFunctionInGenericInnerClassTypeVariable]
+# flags: --no-new-semantic-analyzer
 from typing import TypeVar, Generic
 
 T = TypeVar('T')
