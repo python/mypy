@@ -578,7 +578,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
-    def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
+    def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
 
         We reject straight redefinitions of functions, as they are usually
@@ -587,6 +587,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
           def f(): ...
           def f(): ...  # Error: 'f' redefined
         """
+        if isinstance(new, Decorator):
+            new = new.func
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
@@ -2793,6 +2795,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
+        dec.func.is_conditional = self.block_depth[-1] > 0
         if not dec.is_overload:
             self.add_symbol(dec.name(), dec, dec)
         dec.func._fullname = self.qualified_name(dec.name())
@@ -3958,11 +3961,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and not isinstance(existing.node, PlaceholderNode)):
             if existing.node != symbol.node:
-                if (isinstance(symbol.node, FuncDef)
-                        and self.set_original_def(existing.node, symbol.node)):
+                if isinstance(symbol.node, (FuncDef, Decorator)):
                     # Redefinition of a function. Must keep track of it in the symbol
                     # table with a dummy name.
                     names[name + '!'] = symbol
+                if (isinstance(symbol.node, (FuncDef, Decorator))
+                        and self.set_original_def(existing.node, symbol.node)):
+                    pass
                 else:
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
