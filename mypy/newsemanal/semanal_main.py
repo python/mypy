@@ -31,11 +31,14 @@ from mypy.nodes import (
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
+from mypy.newsemanal.semanal import NewSemanticAnalyzer
+from mypy.newsemanal.semanal_abstract import calculate_abstract_status
+from mypy.errors import Errors
+from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 
 MYPY = False
 if MYPY:
     from mypy.build import Graph, State
-    from mypy.newsemanal.semanal import NewSemanticAnalyzer
 
 
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
@@ -46,7 +49,7 @@ CORE_WARMUP = 2
 core_modules = ['typing', 'builtins', 'abc', 'collections']
 
 
-def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
+def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
@@ -56,7 +59,8 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str]) -> None:
     # before functions. This limitation is unlikely to go away soon.
     process_top_levels(graph, scc)
     process_functions(graph, scc)
-    check_type_arguments(graph, scc)
+    check_type_arguments(graph, scc, errors)
+    process_abstract_status(graph, scc, errors)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
@@ -183,22 +187,31 @@ def semantic_analyze_target(target: str,
                                    fnam=tree.path,
                                    options=state.options,
                                    active_type=active_type):
-            if isinstance(node, Decorator):
+            refresh_node = node
+            if isinstance(refresh_node, Decorator):
                 # Decorator expressions will be processed as part of the module top level.
-                node = node.func
-            analyzer.refresh_partial(node, [], final_iteration)
+                refresh_node = refresh_node.func
+            analyzer.refresh_partial(refresh_node, [], final_iteration)
+            if isinstance(node, Decorator):
+                infer_decorator_signature_if_simple(node, analyzer)
     if analyzer.deferred:
         return [target], analyzer.incomplete
     else:
         return [], analyzer.incomplete
 
 
-def check_type_arguments(graph: 'Graph', scc: List[str]) -> None:
+def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
-        errors = state.manager.errors
         assert state.tree
         analyzer = TypeArgumentAnalyzer(errors)
         with state.wrap_context():
             with strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
+
+
+def process_abstract_status(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+    for module in scc:
+        tree = graph[module].tree
+        assert tree
+        calculate_abstract_status(tree, errors)

@@ -937,7 +937,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
         defn.defs.accept(self)
-        self.calculate_abstract_status(defn.info)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
 
@@ -1027,56 +1026,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             elif decorator.fullname in ('typing.final',
                                         'typing_extensions.final'):
                 defn.info.is_final = True
-
-    def calculate_abstract_status(self, typ: TypeInfo) -> None:
-        """Calculate abstract status of a class.
-
-        Set is_abstract of the type to True if the type has an unimplemented
-        abstract attribute.  Also compute a list of abstract attributes.
-        """
-        concrete = set()  # type: Set[str]
-        abstract = []  # type: List[str]
-        abstract_in_this_class = []  # type: List[str]
-        for base in typ.mro:
-            for name, symnode in base.names.items():
-                node = symnode.node
-                if isinstance(node, OverloadedFuncDef):
-                    # Unwrap an overloaded function definition. We can just
-                    # check arbitrarily the first overload item. If the
-                    # different items have a different abstract status, there
-                    # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Optional[Node]
-                else:
-                    func = node
-                if isinstance(func, Decorator):
-                    fdef = func.func
-                    if fdef.is_abstract and name not in concrete:
-                        typ.is_abstract = True
-                        abstract.append(name)
-                        if base is typ:
-                            abstract_in_this_class.append(name)
-                elif isinstance(node, Var):
-                    if node.is_abstract_var and name not in concrete:
-                        typ.is_abstract = True
-                        abstract.append(name)
-                        if base is typ:
-                            abstract_in_this_class.append(name)
-                concrete.add(name)
-        # In stubs, abstract classes need to be explicitly marked because it is too
-        # easy to accidentally leave a concrete class abstract by forgetting to
-        # implement some methods.
-        typ.abstract_attributes = sorted(abstract)
-        if not self.is_stub_file:
-            return
-        if (typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta'):
-            return
-        if typ.is_protocol:
-            return
-        if abstract and not abstract_in_this_class:
-            attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
-            self.fail("Class {} has abstract attributes {}".format(typ.fullname(), attrs), typ)
-            self.note("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
-                      typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
@@ -3954,6 +3903,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_public=module_public,
                                  module_hidden=module_hidden)
         return self.add_symbol_table_node(name, symbol, context)
+
+    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
+        """Same as above, but skipping the local namespace.
+
+        This doesn't check for previous definition and is only used
+        for serialization of method-level classes.
+
+        Classes defined within methods can be exposed through an
+        attribute type, but method-level symbol tables aren't serialized.
+        This method can be used to add such classes to an enclosing,
+        serialized symbol table.
+        """
+        # TODO: currently this is only used by named tuples. Use this method
+        # also by typed dicts and normal classes, see issue #6422.
+        if self.type is not None:
+            names = self.type.names
+            kind = MDEF
+        else:
+            names = self.globals
+            kind = GDEF
+        symbol = SymbolTableNode(kind, node)
+        names[name] = symbol
 
     def current_symbol_table(self) -> SymbolTable:
         if self.is_func_scope():
