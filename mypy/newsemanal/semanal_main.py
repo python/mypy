@@ -60,7 +60,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     process_top_levels(graph, scc)
     process_functions(graph, scc)
     check_type_arguments(graph, scc, errors)
-    process_abstract(graph, scc, errors)
+    process_abstract_status(graph, scc, errors)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
@@ -210,7 +210,7 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
                 state.tree.accept(analyzer)
 
 
-def process_abstract(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+def process_abstract_status(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         tree = graph[module].tree
         assert tree

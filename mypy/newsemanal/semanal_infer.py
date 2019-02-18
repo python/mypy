@@ -93,6 +93,12 @@ def calculate_return_type(expr: Expression) -> Optional[Type]:
 
 
 def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
+    """Return the return type, if expression refers to a callable that returns a callable.
+
+    But only do this if the return type has no type variables. Return None otherwise.
+    This approximates things a lot as this is supposed to be called before type checking
+    when full type information is not available yet.
+    """
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, FuncDef):
             typ = expr.node.type
