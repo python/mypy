@@ -1399,3 +1399,21 @@ a = A()
 reveal_type(a.x)  # E: Revealed type is '__main__.B'
 a.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
 [builtins fixtures/property.pyi]
+
+[case testNewAnalyzerImportPriosB]
+import b
+[file a.py]
+from b import x
+reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[file b.py]
+import a
+x = (1, 2)
+
+[case testNewAnalyzerImportPriosA]
+import a
+[file a.py]
+from b import x
+reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[file b.py]
+import a
+x = (1, 2)

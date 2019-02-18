@@ -5,7 +5,8 @@ from typing import Optional, List, Callable
 from mypy_extensions import trait
 
 from mypy.nodes import (
-    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
+    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF,
+    SymbolNode
 )
 from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance
@@ -122,7 +123,23 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
 
     @abstractmethod
     def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
-        """Add node to global symbol table (or to nearest class if there is one)."""
+        """Add node to the current symbol table."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
+                   module_public: bool = True, module_hidden: bool = False) -> bool:
+        """Add symbol to the current symbol table."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
+        """Add symbol to the current symbol table, skipping locals.
+
+        This is used to store symbol nodes in a symbol table that
+        is going to be serialized (local namespaces are not serialized).
+        See implementation docstring for more details.
+        """
         raise NotImplementedError
 
     @abstractmethod
