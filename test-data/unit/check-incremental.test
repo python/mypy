@@ -4931,3 +4931,40 @@ import pack.mod
 import a
 [out]
 [out2]
+
+[case testNewAnalyzerIncrementalBrokenNamedTuple]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import NT
+x: NT
+[file a.py.2]
+from b import NT
+x: NT
+reveal_type(x)
+[file b.py]
+from typing import NamedTuple
+NT = NamedTuple('BadName', [('x', int)])
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
+
+[case testNewAnalyzerIncrementalMethodNamedTuple]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import C
+x: C
+[file a.py.2]
+from b import C
+x: C
+reveal_type(x.h)
+[file b.py]
+from typing import NamedTuple
+class C:
+    def __init__(self) -> None:
+        self.h: Hidden
+        Hidden = NamedTuple('Hidden', [('x', int)])
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[builtins.int, fallback=b.C.Hidden@5]'

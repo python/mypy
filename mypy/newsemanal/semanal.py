@@ -3955,6 +3955,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_hidden=module_hidden)
         return self.add_symbol_table_node(name, symbol, context)
 
+    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
+        """Same as above, but skipping the local namespace.
+
+        This doesn't check for previous definition and is only used
+        for serialization of method-level classes.
+
+        Classes defined within methods can be exposed through an
+        attribute type, but method-level symbol tables aren't serialized.
+        This method can be used to add such classes to an enclosing,
+        serialized symbol table.
+        """
+        # TODO: currently this is only used by named tuples. Use this method
+        # also by typed dicts and normal classes, see issue #6422.
+        if self.type is not None:
+            names = self.type.names
+            kind = MDEF
+        else:
+            names = self.globals
+            kind = GDEF
+        symbol = SymbolTableNode(kind, node)
+        names[name] = symbol
+
     def current_symbol_table(self) -> SymbolTable:
         if self.is_func_scope():
             assert self.locals[-1] is not None
