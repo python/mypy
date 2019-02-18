@@ -12,9 +12,9 @@ def infer_decorator_signature_if_simple(dec: Decorator,
                                         analyzer: SemanticAnalyzerInterface) -> None:
     """Try to infer the type of the decorated function.
 
-    This lets us resolve references to decorated functions during
-    type checking when there are cyclic imports, as otherwise the
-    type might not be available when we need it.
+    This lets us resolve additional references to decorated functions
+    during type checking. Otherwise the type might not be available
+    when we need it, since module top levels can't be deferred.
 
     This basically uses a simple special-purpose type inference
     engine just for decorators.
@@ -29,10 +29,8 @@ def infer_decorator_signature_if_simple(dec: Decorator,
                 AnyType(TypeOfAny.special_form),
                 analyzer.named_type('__builtins__.function'),
                 name=dec.var.name())
-            print(1, dec.var.type)
         elif isinstance(dec.func.type, CallableType):
             dec.var.type = dec.func.type
-            print(2, dec.var.type)
         return
     decorator_preserves_type = True
     for expr in dec.decorators:
@@ -47,7 +45,6 @@ def infer_decorator_signature_if_simple(dec: Decorator,
         # No non-identity decorators left. We can trivially infer the type
         # of the function here.
         dec.var.type = function_type(dec.func, analyzer.named_type('__builtins__.function'))
-        print(3, dec.var.type)
     if dec.decorators:
         return_type = calculate_return_type(dec.decorators[0])
         if return_type and isinstance(return_type, AnyType):
@@ -61,7 +58,6 @@ def infer_decorator_signature_if_simple(dec: Decorator,
             orig_sig = function_type(dec.func, analyzer.named_type('__builtins__.function'))
             sig.name = orig_sig.items()[0].name
             dec.var.type = sig
-            print(4, dec.var.type)
 
 
 def is_identity_signature(sig: Type) -> bool:

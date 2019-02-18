@@ -31,6 +31,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
 
     Set is_abstract of the type to True if the type has an unimplemented
     abstract attribute.  Also compute a list of abstract attributes.
+    Report error is required ABCMeta metaclass is missing.
     """
     concrete = set()  # type: Set[str]
     abstract = []  # type: List[str]
