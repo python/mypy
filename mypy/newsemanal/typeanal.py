@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
-    LiteralType, RawExpressionType, PlaceholderType
+    LiteralType, RawExpressionType, PlaceholderType, TypeTranslator
 )
 
 from mypy.nodes import (
@@ -248,7 +248,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 all_vars = node.alias_tvars
                 target = node.target
                 an_args = self.anal_array(t.args)
-                return expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
+                res = expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
+                if (isinstance(res, Instance) and len(res.args) != len(res.type.type_vars) and
+                        not self.defining_alias):
+                    fix_instance(res, self.fail)
+                return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
             else:
@@ -347,7 +351,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Instance with an invalid number of type arguments.
         instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
         # Check type argument count.
-        # TODO: remove this from here and replace with a proper separate pass.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail)
         if not args and self.options.disallow_any_generics and not self.defining_alias:
@@ -1281,3 +1284,18 @@ def make_optional_type(t: Type) -> Type:
         return UnionType(items + [NoneTyp()], t.line, t.column)
     else:
         return UnionType([t, NoneTyp()], t.line, t.column)
+
+
+def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> Type:
+    return t.accept(InstanceFixer(fail))
+
+
+class InstanceFixer(TypeTranslator):
+    def __init__(self, fail: Callable[[str, Context], None]) -> None:
+        self.fail = fail
+
+    def visit_instance(self, t: Instance) -> Type:
+        t = super().visit_instance(t)
+        if isinstance(t, Instance) and len(t.args) != len(t.type.type_vars):
+            fix_instance(t, self.fail)
+        return t
