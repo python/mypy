@@ -3962,9 +3962,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and not isinstance(existing.node, PlaceholderNode)):
             if existing.node != symbol.node:
                 if isinstance(symbol.node, (FuncDef, Decorator)):
-                    # Redefinition of a function. Must keep track of it in the symbol
-                    # table with a dummy name.
-                    names[name + '!'] = symbol
+                    self.add_func_redefinition(names, name, symbol)
                 if (isinstance(symbol.node, (FuncDef, Decorator))
                         and self.set_original_def(existing.node, symbol.node)):
                     pass
@@ -3974,6 +3972,29 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             names[name] = symbol
             return True
         return False
+
+    def add_func_redefinition(self, names: SymbolTable, name: str,
+                              symbol: SymbolTableNode) -> None:
+        """Add a symbol table node that reflects a redefinition of a function.
+
+        Redefinitions need to be added to the symbol table so that they can be found
+        through AST traversal, but they have dummy names of form 'name-redefinition[N]',
+        where N ranges over 2, 3, ... (omitted for the first redefinition).
+        """
+        i = 1
+        while True:
+            if i == 1:
+                new_name = '{}-redefinition'.format(name)
+            else:
+                new_name = '{}-redefinition{}'.format(name, i)
+            existing = names.get(new_name)
+            if existing is None:
+                names[new_name] = symbol
+                return
+            elif existing.node is symbol.node:
+                # Already there
+                return
+            i += 1
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:

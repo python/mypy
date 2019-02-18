@@ -1431,7 +1431,7 @@ elif bool():
         pass
 else:
     def f(x: int) -> None:
-        ''()  # E: "int" not callable
+        ''()  # E: "str" not callable
 
 reveal_type(g) # E: Revealed type is 'def (x: builtins.int)'
 
@@ -1466,3 +1466,13 @@ else:
 reveal_type(f) # E: Revealed type is 'def (x: builtins.str)'
 [file m.py]
 def f(x: str) -> None: pass
+
+[case testNewAnalyzerConditionallyDefineFuncOverVar]
+from typing import Callable
+
+if int():
+    f: Callable[[str], None]
+else:
+    def f(x: str) -> None:
+        ...
+reveal_type(f) # E: Revealed type is 'def (builtins.str)'
