@@ -1424,11 +1424,15 @@ if int():
         pass
     def g(x: int) -> None:
         pass
-else:
+elif bool():
     def f(x: int) -> None:
         1()  # E: "int" not callable
     def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
         pass
+else:
+    def f(x: int) -> None:
+        ''()  # E: "int" not callable
+
 reveal_type(g) # E: Revealed type is 'def (x: builtins.int)'
 
 [case testNewAnalyzerConditionalFuncDefer]
