@@ -134,7 +134,12 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
 
     @abstractmethod
     def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
-        """Add symbol to the current symbol table, skipping locals."""
+        """Add symbol to the current symbol table, skipping locals.
+
+        This is used to store symbol nodes in a symbol table that
+        is going to be serialized (local namespaces are not serialized).
+        See implementation docstring for more details.
+        """
         raise NotImplementedError
 
     @abstractmethod
