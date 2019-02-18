@@ -212,7 +212,7 @@ class NamedTupleAnalyzer:
         #     because classes are (de)serialized using their actual fullname, not
         #     the name of l.h.s.
         #   * If this is a method level named tuple. It can leak from the method
-        #     via assignment to self attribute and therefore need to be serialized
+        #     via assignment to self attribute and therefore needs to be serialized
         #     (local namespaces are not serialized).
         #   * If it is a base class expression. It was not stored above, since
         #     there is no var_name (but it still needs to be serialized
