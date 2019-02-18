@@ -3610,8 +3610,8 @@ cache_fine_grained = False
 [file mypy.ini.2]
 [[mypy]
 cache_fine_grained = True
-[rechecked a, builtins]
-[stale a, builtins]
+[rechecked a, builtins, typing]
+[stale a, builtins, typing]
 
 [case testIncrementalPackageNameOverload]
 # cmd: mypy -m main a
@@ -3656,8 +3656,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins]
-[rechecked a, b, builtins]
+[stale a, b, builtins, typing]
+[rechecked a, b, builtins, typing]
 
 [case testIncrementalBustedFineGrainedCache2]
 # flags2: --cache-fine-grained
@@ -3668,8 +3668,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
-[stale a, b, builtins]
-[rechecked a, b, builtins]
+[stale a, b, builtins, typing]
+[rechecked a, b, builtins, typing]
 
 [case testIncrementalBustedFineGrainedCache3]
 # flags: --cache-fine-grained --no-sqlite-cache
@@ -3683,8 +3683,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins]
-[rechecked a, b, builtins]
+[stale a, b, builtins, typing]
+[rechecked a, b, builtins, typing]
 
 [case testIncrementalWorkingFineGrainedCache]
 # flags: --cache-fine-grained

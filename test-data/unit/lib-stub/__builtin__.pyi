@@ -1,3 +1,6 @@
+from typing import Generic, TypeVar
+_T = TypeVar('_T')
+
 Any = 0
 
 class object:
@@ -17,7 +20,7 @@ class float: pass
 class str: pass
 class unicode: pass
 
-class tuple: pass
+class tuple(Generic[_T]): pass
 class function: pass
 
 class ellipsis: pass
