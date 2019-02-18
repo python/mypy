@@ -2629,11 +2629,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        # HACK: similar is needed for 'typing', for untangling the builtins SCC when new semantic
-        # analyzer is used.
-        if 'typing' in ascc:
-            scc.remove('typing')
-            scc.insert(0, 'typing')
         if manager.options.verbosity >= 2:
             for id in scc:
                 manager.trace("Priorities for %s:" % id,

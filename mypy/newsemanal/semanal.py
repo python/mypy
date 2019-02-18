@@ -1684,6 +1684,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
+        if existing_symbol.node is module_symbol.node:
+            # We added this symbol on previous iteration.
+            return False
         if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
                 isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo, Decorator, TypeAlias))):
             # This is a valid import over an existing definition in the file. Construct a dummy
