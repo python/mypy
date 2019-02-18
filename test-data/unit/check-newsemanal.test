@@ -1443,3 +1443,21 @@ x = ['a', 'b']
 reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
 x.extend(y)
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerImportPriosB]
+import b
+[file a.py]
+from b import x
+reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[file b.py]
+import a
+x = (1, 2)
+
+[case testNewAnalyzerImportPriosA]
+import a
+[file a.py]
+from b import x
+reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[file b.py]
+import a
+x = (1, 2)

@@ -7,7 +7,6 @@ if MYPY:
 
 # Files to not run with new semantic analyzer.
 new_semanal_blacklist = [
-    'check-abstract.test',
     'check-async-await.test',
     'check-attr.test',
     'check-bound.test',
