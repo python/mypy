@@ -1430,3 +1430,19 @@ else:
     def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
         pass
 reveal_type(g) # E: Revealed type is 'def (x: builtins.int)'
+
+[case testNewAnalyzerConditionalDecoratedFunc]
+from typing import Callable
+
+def dec(f: Callable[[int], None]) -> Callable[[str], None]:
+    pass
+
+if int():
+    from m import f
+else:
+    @dec
+    def f(x: int) -> None:
+        1()  # E: "int" not callable
+reveal_type(f) # E: Revealed type is 'def (x: builtins.str)'
+[file m.py]
+def f(x: str) -> None: pass
