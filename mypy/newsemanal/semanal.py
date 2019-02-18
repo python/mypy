@@ -3963,10 +3963,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if existing.node != symbol.node:
                 if isinstance(symbol.node, (FuncDef, Decorator)):
                     self.add_func_redefinition(names, name, symbol)
-                if (isinstance(symbol.node, (FuncDef, Decorator))
+                if not (isinstance(symbol.node, (FuncDef, Decorator))
                         and self.set_original_def(existing.node, symbol.node)):
-                    pass
-                else:
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
