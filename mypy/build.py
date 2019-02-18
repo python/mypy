@@ -2833,7 +2833,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         if not manager.options.new_semantic_analyzer:
             manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc)
+        semantic_analysis_for_scc(graph, scc, manager.errors)
     else:
         for id in stale:
             graph[id].semantic_analysis()
