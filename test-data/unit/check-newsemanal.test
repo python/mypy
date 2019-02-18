@@ -1417,3 +1417,16 @@ reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
 [file b.py]
 import a
 x = (1, 2)
+
+[case testNewAnalyzerConditionalFunc]
+if int():
+    def f(x: int) -> None:
+        pass
+    def g(x: int) -> None:
+        pass
+else:
+    def f(x: int) -> None:
+        1()  # E: "int" not callable
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+        pass
+reveal_type(g) # E: Revealed type is 'def (x: builtins.int)'

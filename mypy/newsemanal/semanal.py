@@ -491,8 +491,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not defn.is_decorated and not defn.is_overload:
-            self.add_func_to_symbol_table(defn)
+        defn.is_conditional = self.block_depth[-1] > 0
+
+        # Add module-level function to symbol table on first iteration
+        # (recurse_into_functions == False). Also add nested functions
+        # always, since they won't be processed as separate targets.
+        if not self.recurse_into_functions or len(self.function_stack) > 0:
+            if not defn.is_decorated and not defn.is_overload:
+                self.add_func_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
@@ -514,8 +520,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(defn.type, CallableType)
             self.update_function_type_variables(defn.type, defn)
         self.function_stack.pop()
-
-        defn.is_conditional = self.block_depth[-1] > 0
 
         if self.is_class_scope():
             # Method definition
@@ -3954,7 +3958,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and not isinstance(existing.node, PlaceholderNode)):
             if existing.node != symbol.node:
-                self.name_already_defined(name, context, existing)
+                if (isinstance(symbol.node, FuncDef)
+                        and self.set_original_def(existing.node, symbol.node)):
+                    # Redefinition of a function. Must keep track of it in the symbol
+                    # table with a dummy name.
+                    names[name + '!'] = symbol
+                else:
+                    self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
             return True
