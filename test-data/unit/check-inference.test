@@ -1962,7 +1962,7 @@ b = None  # type: Union[str, tuple]
 def f(): pass
 def g(x: Union[int, str]): pass
 c = a if f() else b
-g(c) # E: Argument 1 to "g" has incompatible type "Union[int, str, tuple]"; expected "Union[int, str]"
+g(c) # E: Argument 1 to "g" has incompatible type "Union[int, str, Tuple[Any, ...]]"; expected "Union[int, str]"
 
 [case testUnificationMultipleInheritance]
 class A: pass
