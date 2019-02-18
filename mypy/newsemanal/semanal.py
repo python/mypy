@@ -3795,8 +3795,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Found built-in class target. Create alias.
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
-                    target = fix_instance_types(target, self.fail)
-                    alias_node = TypeAlias(target, alias,
+                    # Transform List to List[Any], etc.
+                    fixed_target = fix_instance_types(target, self.fail)
+                    alias_node = TypeAlias(fixed_target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
                     self.add_symbol(name, alias_node, tree)

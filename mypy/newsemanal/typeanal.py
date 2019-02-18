@@ -1294,8 +1294,8 @@ class InstanceFixer(TypeTranslator):
     def __init__(self, fail: Callable[[str, Context], None]) -> None:
         self.fail = fail
 
-    def visit_instance(self, t: Instance) -> Type:
-        t = super().visit_instance(t)
+    def visit_instance(self, typ: Instance) -> Type:
+        t = super().visit_instance(typ)
         if isinstance(t, Instance) and len(t.args) != len(t.type.type_vars):
             fix_instance(t, self.fail)
         return t
