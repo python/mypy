@@ -1287,6 +1287,11 @@ def make_optional_type(t: Type) -> Type:
 
 
 def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> Type:
+    """Recursively fix all instance types (type argument count) in a given type.
+
+    For example 'Union[Dict, List[str, int]]' will be transformed into
+    'Union[Dict[Any, Any], List[Any]]'.
+    """
     return t.accept(InstanceFixer(fail))
 
 
