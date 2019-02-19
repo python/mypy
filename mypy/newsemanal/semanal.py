@@ -1921,7 +1921,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a typed dict."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
-            return True  # This is a valid and analyzed named tuple definition, nothing to do here.
+            return True  # This is a valid and analyzed typed dict definition, nothing to do here.
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return False
         lvalue = s.lvalues[0]
@@ -1930,13 +1930,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                                        self.is_func_scope())
         if not is_typed_dict:
             return False
-        # Yes, it's a valid namedtuple, but defer if it is not ready.
+        # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
         else:
             # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
             # type checker will try to infer Any for the l.h.s.
             # Remove this after new analyzer is the default one!
+            lvalue.fullname = self.qualified_name(name)
             lvalue.node = self.make_name_lvalue_var(lvalue, self.current_symbol_kind(),
                                                     inferred=True)
         return True
