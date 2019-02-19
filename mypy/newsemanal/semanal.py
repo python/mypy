@@ -2634,6 +2634,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           report_invalid_types=False)
                     if analyzed is None:
+                        # It is fine to simply use a temporary Any because we don't need the bound
+                        # for anything before main pass of semantic analysis is finished.
                         analyzed = AnyType(TypeOfAny.special_form)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
@@ -2682,6 +2684,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return info
 
     def analyze_types(self, items: List[Expression]) -> List[Type]:
+        """Analyze types from values expressions in type variable definition."""
         result = []  # type: List[Type]
         for node in items:
             try:
@@ -2689,6 +2692,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if analyzed is not None:
                     result.append(analyzed)
                 else:
+                    # It is fine to simply use temporary Anys because we don't need values
+                    # for anything before main pass of semantic analysis is finished.
                     result.append(AnyType(TypeOfAny.special_form))
             except TypeTranslationError:
                 self.fail('Type expected', node)
