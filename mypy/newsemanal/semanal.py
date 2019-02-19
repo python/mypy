@@ -491,8 +491,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not defn.is_decorated and not defn.is_overload:
-            self.add_func_to_symbol_table(defn)
+        defn.is_conditional = self.block_depth[-1] > 0
+
+        # We don't add module top-level functions to symbol tables
+        # when we analyze their bodies in the second phase on analysis,
+        # since they were added in the first phase. Nested functions
+        # get always added, since they aren't separate targets.
+        if not self.recurse_into_functions or len(self.function_stack) > 0:
+            if not defn.is_decorated and not defn.is_overload:
+                self.add_func_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
@@ -514,8 +521,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(defn.type, CallableType)
             self.update_function_type_variables(defn.type, defn)
         self.function_stack.pop()
-
-        defn.is_conditional = self.block_depth[-1] > 0
 
         if self.is_class_scope():
             # Method definition
@@ -574,7 +579,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
-    def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
+    def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
 
         We reject straight redefinitions of functions, as they are usually
@@ -583,6 +588,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
           def f(): ...
           def f(): ...  # Error: 'f' redefined
         """
+        if isinstance(new, Decorator):
+            new = new.func
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
@@ -2792,6 +2799,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
+        dec.func.is_conditional = self.block_depth[-1] > 0
         if not dec.is_overload:
             self.add_symbol(dec.name(), dec, dec)
         dec.func._fullname = self.qualified_name(dec.name())
@@ -3957,11 +3965,38 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and not isinstance(existing.node, PlaceholderNode)):
             if existing.node != symbol.node:
-                self.name_already_defined(name, context, existing)
+                if isinstance(symbol.node, (FuncDef, Decorator)):
+                    self.add_func_redefinition(names, name, symbol)
+                if not (isinstance(symbol.node, (FuncDef, Decorator))
+                        and self.set_original_def(existing.node, symbol.node)):
+                    self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
             return True
         return False
+
+    def add_func_redefinition(self, names: SymbolTable, name: str,
+                              symbol: SymbolTableNode) -> None:
+        """Add a symbol table node that reflects a redefinition of a function.
+
+        Redefinitions need to be added to the symbol table so that they can be found
+        through AST traversal, but they have dummy names of form 'name-redefinition[N]',
+        where N ranges over 2, 3, ... (omitted for the first redefinition).
+        """
+        i = 1
+        while True:
+            if i == 1:
+                new_name = '{}-redefinition'.format(name)
+            else:
+                new_name = '{}-redefinition{}'.format(name, i)
+            existing = names.get(new_name)
+            if existing is None:
+                names[new_name] = symbol
+                return
+            elif existing.node is symbol.node:
+                # Already there
+                return
+            i += 1
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:

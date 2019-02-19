@@ -1417,3 +1417,68 @@ reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
 [file b.py]
 import a
 x = (1, 2)
+
+[case testNewAnalyzerConditionalFunc]
+if int():
+    def f(x: int) -> None:
+        pass
+    def g(x: int) -> None:
+        pass
+elif bool():
+    def f(x: int) -> None:
+        1()  # E: "int" not callable
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+        pass
+else:
+    def f(x: int) -> None:
+        ''()  # E: "str" not callable
+
+reveal_type(g) # E: Revealed type is 'def (x: builtins.int)'
+
+[case testNewAnalyzerConditionalFuncDefer]
+if int():
+    def f(x: A) -> None:
+        pass
+    def g(x: A) -> None:
+        pass
+else:
+    def f(x: A) -> None:
+        1()  # E: "int" not callable
+    def g(x: str) -> None:  # E: All conditional function variants must have identical signatures
+        pass
+
+reveal_type(g) # E: Revealed type is 'def (x: __main__.A)'
+
+class A: pass
+
+[case testNewAnalyzerConditionalDecoratedFunc]
+from typing import Callable
+
+def dec(f: Callable[[int], None]) -> Callable[[str], None]:
+    pass
+
+if int():
+    from m import f
+else:
+    @dec
+    def f(x: int) -> None:
+        1()  # E: "int" not callable
+reveal_type(f) # E: Revealed type is 'def (x: builtins.str)'
+[file m.py]
+def f(x: str) -> None: pass
+
+[case testNewAnalyzerConditionallyDefineFuncOverVar]
+from typing import Callable
+
+if int():
+    f: Callable[[str], None]
+else:
+    def f(x: str) -> None:
+        ...
+reveal_type(f) # E: Revealed type is 'def (builtins.str)'
+
+[case testNewAnalyzerConditionallyDefineFuncOverClass]
+class C:
+    1()  # E: "int" not callable
+def C() -> None:  # E: Name 'C' already defined on line 1
+    ''()  # E: "str" not callable

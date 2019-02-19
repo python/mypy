@@ -160,7 +160,11 @@ def get_all_leaf_targets(symtable: SymbolTable,
     """Return all leaf targets in a symbol table (module-level and methods)."""
     result = []  # type: List[TargetInfo]
     for name, node in symtable.items():
-        new_prefix = prefix + '.' + name
+        shortname = name
+        if '-redef' in name:
+            # Restore original name from mangled name of multiply defined function
+            shortname = name.split('-redef')[0]
+        new_prefix = prefix + '.' + shortname
         if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
             if node.node.fullname() == new_prefix:
                 if isinstance(node.node, TypeInfo):
