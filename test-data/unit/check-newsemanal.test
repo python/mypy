@@ -1526,3 +1526,17 @@ class C:
     1()  # E: "int" not callable
 def C() -> None:  # E: Name 'C' already defined on line 1
     ''()  # E: "str" not callable
+
+[case testNewAnalyzerClassKeywordsForward]
+class C(B, other=A): ...
+class B: ...
+class A: ...
+
+[case testNewAnalyzerClassKeywordsCyclic]
+from typing import List
+
+class C(List[C], other=C): ...
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerClassKeywordsError]
+class C(other=asdf): ...  # E: Name 'asdf' is not defined

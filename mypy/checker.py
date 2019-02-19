@@ -22,7 +22,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT,
+    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash
@@ -1614,6 +1614,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(sym.node, TypeInfo):
             # nested class
             return type_object_type(sym.node, self.named_type)
+        if isinstance(sym.node, TypeVarExpr):
+            # Use of TypeVars is rejected in an expression/runtime context, so
+            # we don't need to check supertype compatibility for them.
+            return AnyType(TypeOfAny.special_form)
         return None
 
     def check_compatibility(self, name: str, base1: TypeInfo,
