@@ -2207,7 +2207,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
-        res = fix_instance_types(res, self.fail)
+        fix_instance_types(res, self.fail)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
@@ -3796,8 +3796,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fixed_target = fix_instance_types(target, self.fail)
-                    alias_node = TypeAlias(fixed_target, alias,
+                    fix_instance_types(target, self.fail)
+                    alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
                     self.add_symbol(name, alias_node, tree)
