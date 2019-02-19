@@ -577,7 +577,10 @@ class C:
 
 [builtins fixtures/list.pyi]
 
+-- This is tricky with new analyzer:
+-- We need to know the analyzed type of a function while still processing top-level.
 [case testAttrsUsingBadConverter]
+# flags: --no-new-semantic-analyzer
 import attr
 from typing import overload
 @overload
