@@ -587,7 +587,7 @@ f1(1) # E: Argument 1 to "f1" has incompatible type "int"; expected "str"
 reveal_type(f1('')) # E: Revealed type is 'builtins.str'
 f2(1) # E: Argument 1 to "f2" has incompatible type "int"; expected "str"
 
-[case testNewAnalyzerTypeApplicationForwardReference]
+[case testNewAnalyzerTypeVarForwardReference]
 from typing import TypeVar, Generic
 
 T = TypeVar('T')
@@ -600,7 +600,10 @@ class D(C[XY], Generic[XY]): pass
 class X: pass
 class Y: pass
 
-[case testNewAnalyzerTypeApplicationForwardReference2]
+x: D[int]  # E: Value of type variable "XY" of "D" cannot be "int"
+y: D[Y]
+
+[case testNewAnalyzerTypeVarForwardReference2]
 from typing import TypeVar, Generic
 
 T = TypeVar('T')
@@ -612,6 +615,56 @@ class D(C[XY]): pass
 
 class X: pass
 class Y: pass
+
+x: D[int]  # E: Value of type variable "XY" of "D" cannot be "int"
+y: D[Y]
+
+[case testNewAnalyzerTypeVarForwardReferenceValuesDeferred]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+XY = TypeVar('XY', X, Y)
+
+class C(Generic[T]): pass
+
+class D(C[XY], Generic[XY]): pass
+
+class X(Defer): pass
+class Y(Defer): pass
+class Defer: ...
+
+x: D[int]  # E: Value of type variable "XY" of "D" cannot be "int"
+y: D[Y]
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerTypeVarForwardReferenceBoundDeferred]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+TY = TypeVar('TY', bound=Y)
+
+class C(Generic[T]): pass
+
+class D(C[TY], Generic[TY]): pass
+
+class Y(Defer): pass
+class Defer: ...
+
+x: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "__main__.Y"
+y: D[Y]
+
+[case testNewAnalyzerTypeVarForwardReferenceErrors]
+from typing import TypeVar, Generic
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None: ...
+def func(x: U) -> U: ...
+
+U = TypeVar('U', asdf, asdf)  # E: Name 'asdf' is not defined
+T = TypeVar('T', bound=asdf)  # E: Name 'asdf' is not defined
+
+reveal_type(C)  # E: Revealed type is 'def [T <: Any] (x: T`1) -> __main__.C[T`1]'
+reveal_type(func)  # E: Revealed type is 'def [U in (Any, Any)] (x: U`-1) -> U`-1'
 
 [case testNewAnalyzerSubModuleInCycle]
 import a
