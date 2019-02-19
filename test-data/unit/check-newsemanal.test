@@ -1476,3 +1476,9 @@ else:
     def f(x: str) -> None:
         ...
 reveal_type(f) # E: Revealed type is 'def (builtins.str)'
+
+[case testNewAnalyzerConditionallyDefineFuncOverClass]
+class C:
+    1()  # E: "int" not callable
+def C() -> None:  # E: Name 'C' already defined on line 1
+    ''()  # E: "str" not callable

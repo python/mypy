@@ -493,9 +493,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         defn.is_conditional = self.block_depth[-1] > 0
 
-        # Add module-level function to symbol table on first iteration
-        # (recurse_into_functions == False). Also add nested functions
-        # always, since they won't be processed as separate targets.
+        # We don't add module top-level functions to symbol tables
+        # when we analyze their bodies in the second phase on analysis,
+        # since they were added in the first phase. Nested functions
+        # get always added, since they aren't separate targets.
         if not self.recurse_into_functions or len(self.function_stack) > 0:
             if not defn.is_decorated and not defn.is_overload:
                 self.add_func_to_symbol_table(defn)
