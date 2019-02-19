@@ -788,8 +788,7 @@ for nx in nt:
 
 t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
-    # TODO(Ivan): This will be OK when tuple fallback patches are added (like above)
-    reveal_type(x) # E: Revealed type is 'Any'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
 [builtins fixtures/for.pyi]
 [out]
 
