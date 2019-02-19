@@ -70,7 +70,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
-    LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
+    nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node
 )
 from mypy.tvar_scope import TypeVarScope
@@ -84,12 +84,11 @@ from mypy.types import (
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
 )
-from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.newsemanal.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any
+    check_for_explicit_any, fix_instance_types
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
@@ -101,7 +100,7 @@ from mypy.plugin import (
 from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface, set_callable_name
-from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
+from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.newsemanal.semanal_typeddict import TypedDictAnalyzer
 from mypy.newsemanal.semanal_enum import EnumCallAnalyzer
 from mypy.newsemanal.semanal_newtype import NewTypeAnalyzer
@@ -2215,6 +2214,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
+        fix_instance_types(res, self.fail)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
@@ -2350,6 +2350,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             v.is_initialized_in_class = True
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
+        else:
+            # fullanme should never stay None
+            v._fullname = lvalue.name
         v.is_ready = False  # Type not inferred yet
         lvalue.is_new_def = True
         lvalue.is_inferred_def = True
@@ -3800,6 +3803,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Found built-in class target. Create alias.
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
+                    # Transform List to List[Any], etc.
+                    fix_instance_types(target, self.fail)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)

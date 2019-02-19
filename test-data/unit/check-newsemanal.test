@@ -1400,6 +1400,50 @@ reveal_type(a.x)  # E: Revealed type is '__main__.B'
 a.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
 [builtins fixtures/property.pyi]
 
+[case testNewAnalyzerAliasesFixedFew]
+from typing import List, Generic, TypeVar
+
+def func(x: List[C[T]]) -> T:
+    ...
+x: A
+A = List[C]
+
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C[Any]]'
+reveal_type(func(x))  # E: Revealed type is 'Any'
+class C(Generic[T]):
+    ...
+
+T = TypeVar('T')
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasesFixedMany]
+from typing import List, Generic, TypeVar
+
+def func(x: List[C[T]]) -> T:
+    ...
+
+x: A
+A = List[C[int, str]]  # E: "C" expects 1 type argument, but 2 given
+
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C[Any]]'
+reveal_type(func(x))  # E: Revealed type is 'Any'
+
+class C(Generic[T]):
+    ...
+T = TypeVar('T')
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerBuiltinAliasesFixed]
+from typing import List, Optional
+x: Optional[List] = None
+y: List[str]
+
+reveal_type(x)  # E: Revealed type is 'Union[builtins.list[Any], None]'
+x = ['a', 'b']
+reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+x.extend(y)
+[builtins fixtures/list.pyi]
+
 [case testNewAnalyzerImportPriosB]
 import b
 [file a.py]
