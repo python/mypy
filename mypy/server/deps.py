@@ -741,7 +741,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
-            typ = typ.fallback
+            typ = typ.partial_fallback
         if isinstance(typ, Instance):
             trigger = make_trigger(typ.type.fullname() + '.' + method)
             self.add_dependency(trigger)
@@ -823,7 +823,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
-            typ = typ.fallback
+            typ = typ.partial_fallback
         if isinstance(typ, Instance):
             member = '%s.%s' % (typ.type.fullname(), name)
             return [make_trigger(member)]
@@ -919,7 +919,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = []
         for item in typ.items:
             triggers.extend(self.get_type_triggers(item))
-        triggers.extend(self.get_type_triggers(typ.fallback))
+        triggers.extend(self.get_type_triggers(typ.partial_fallback))
         return triggers
 
     def visit_type_type(self, typ: TypeType) -> List[str]:

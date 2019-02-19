@@ -383,8 +383,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         for item in typ.items:
             item.accept(self)
         # Fallback can be None for implicit tuple types that haven't been semantically analyzed.
-        if typ.fallback is not None:
-            typ.fallback.accept(self)
+        if typ.partial_fallback is not None:
+            typ.partial_fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)

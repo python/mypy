@@ -1179,9 +1179,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                     defn.has_incompatible_baseclass = True
                 info.tuple_type = base
-                base_types.append(base.fallback)
+                base_types.append(base.partial_fallback)
                 if isinstance(base_expr, CallExpr):
-                    defn.analyzed = NamedTupleExpr(base.fallback.type)
+                    defn.analyzed = NamedTupleExpr(base.partial_fallback.type)
                     defn.analyzed.line = defn.line
                     defn.analyzed.column = defn.column
             elif isinstance(base, Instance):
