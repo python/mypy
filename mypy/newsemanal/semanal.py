@@ -2634,7 +2634,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           report_invalid_types=False)
                     if analyzed is None:
-                        return None
+                        analyzed = AnyType(TypeOfAny.special_form)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2689,8 +2689,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if analyzed is not None:
                     result.append(analyzed)
                 else:
-                    # TODO: Is this the right thing to do? Or maybe return Optional[List[Type]]?
-                    result.append(AnyType(TypeOfAny.from_error))
+                    result.append(AnyType(TypeOfAny.special_form))
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))
