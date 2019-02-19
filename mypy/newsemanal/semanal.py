@@ -2518,7 +2518,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                               n_values,
                                               s)
         if res is None:
-            self.mark_incomplete(name, s)
             return
         variance, upper_bound = res
 
@@ -2633,7 +2632,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           report_invalid_types=False)
                     if analyzed is None:
-                        return None
+                        # It is fine to simply use a temporary Any because we don't need the bound
+                        # for anything before main pass of semantic analysis is finished. We will
+                        # incrementally populate `TypeVarExpr` if some part is missing during main
+                        # pass iterations.
+                        # NOTE: It is safe to not call self.defer() here, because the only way
+                        # we can get None from self.anal_type() is if self.found_incomplete_refs()
+                        # returned True. In turn, the only way it can happen is if someone called
+                        # self.record_incomplete_ref(), and the latter unconditionally calls
+                        # self.defer().
+                        analyzed = AnyType(TypeOfAny.special_form)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2681,6 +2689,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return info
 
     def analyze_types(self, items: List[Expression]) -> List[Type]:
+        """Analyze types from values expressions in type variable definition."""
         result = []  # type: List[Type]
         for node in items:
             try:
@@ -2688,8 +2697,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if analyzed is not None:
                     result.append(analyzed)
                 else:
-                    # TODO: Is this the right thing to do? Or maybe return Optional[List[Type]]?
-                    result.append(AnyType(TypeOfAny.from_error))
+                    # It is fine to simply use temporary Anys because we don't need values
+                    # for anything before main pass of semantic analysis is finished.
+                    result.append(AnyType(TypeOfAny.special_form))
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))
