@@ -214,15 +214,16 @@ class TypedDictAnalyzer:
             required_keys = set(items) if total else set()
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-            if var_name:
-                self.api.add_symbol(var_name, info, node)
             if name != var_name or is_func_scope:
                 self.api.add_symbol_skip_local(name, info)
+        if var_name:
+            self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return True, info
 
-    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[List[str], List[Type], bool, bool]]:
+    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[List[str], List[Type],
+                                                                     bool, bool]]:
         """Parse typed dict call expression.
 
         Return names, types, totality, was there an error during parsing.
