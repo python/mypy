@@ -44,8 +44,7 @@ attr_attrib_makers = {
     'attr.attr',
 }  # type: Final
 
-# TODO: should we use underscored names like for named tuples?
-SELF_TVAR_NAME = 'AT'  # type: Final
+SELF_TVAR_NAME = '_AT'  # type: Final
 
 
 class Converter:
