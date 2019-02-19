@@ -2519,7 +2519,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                               n_values,
                                               s)
         if res is None:
-            self.mark_incomplete(name, s)
             return
         variance, upper_bound = res
 
@@ -2635,7 +2634,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                           report_invalid_types=False)
                     if analyzed is None:
                         # It is fine to simply use a temporary Any because we don't need the bound
-                        # for anything before main pass of semantic analysis is finished.
+                        # for anything before main pass of semantic analysis is finished. We will
+                        # incrementally populate `TypeVarExpr` if some part is missing during main
+                        # pass iterations.
                         analyzed = AnyType(TypeOfAny.special_form)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
