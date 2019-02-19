@@ -891,8 +891,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.update_metaclass(defn)
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
                                                                                      context=defn)
-        # TODO: Support keyword arguments
-        # self.analyze_class_keywords(defn)
+        self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
 
         if result is None or self.found_incomplete_ref(tag):
