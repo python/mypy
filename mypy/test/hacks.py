@@ -41,7 +41,6 @@ new_semanal_blacklist = [
     'check-serialize.test',
     'check-statements.test',
     'check-tuples.test',
-    'check-typeddict.test',
     'check-typevar-values.test',
     'check-unions.test',
     'check-unreachable-code.test',

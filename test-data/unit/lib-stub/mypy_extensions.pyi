@@ -1,6 +1,7 @@
 # NOTE: Requires fixtures/dict.pyi
 from typing import Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn
 import sys
+import abc
 
 _T = TypeVar('_T')
 _U = TypeVar('_U')
@@ -20,7 +21,7 @@ def KwArg(type: _T = ...) -> _T: ...
 
 
 # Fallback type for all typed dicts (does not exist at runtime)
-class _TypedDict(Mapping[str, object]):
+class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def copy(self: _T) -> _T: ...
     # Using NoReturn so that only calls using the plugin hook can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
