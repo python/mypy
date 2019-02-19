@@ -94,6 +94,7 @@ class Attribute:
                 converter_type = converter.node.type
             elif converter and converter.type:
                 converter_type = converter.type
+
             init_type = None
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])

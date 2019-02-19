@@ -580,7 +580,7 @@ class C:
 -- This is tricky with new analyzer:
 -- We need to know the analyzed type of a function while still processing top-level.
 [case testAttrsUsingBadConverter]
-# flags: --no-new-semantic-analyzer
+# flags: --no-new-semantic-analyzer --no-strict-optional
 import attr
 from typing import overload
 @overload
@@ -599,11 +599,11 @@ class A:
     bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
 reveal_type(A)
 [out]
-main:15: error: Cannot determine __init__ type from converter
-main:15: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
 main:16: error: Cannot determine __init__ type from converter
-main:16: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
-main:17: error: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
+main:16: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:17: error: Cannot determine __init__ type from converter
+main:17: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:18: error: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
 [builtins fixtures/list.pyi]
 
 [case testAttrsUsingUnsupportedConverter]

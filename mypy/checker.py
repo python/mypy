@@ -1615,7 +1615,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # nested class
             return type_object_type(sym.node, self.named_type)
         if isinstance(sym.node, TypeVarExpr):
-            # no need to check type vars since they can't be used at runtime.
+            # No need to check type vars since they can't be used at runtime.
             return AnyType(TypeOfAny.special_form)
         return None
 
