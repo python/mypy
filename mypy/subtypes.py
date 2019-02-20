@@ -294,7 +294,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             for l, r in zip(left.items, right.items):
                 if not self._is_subtype(l, r):
                     return False
-            lfallback = mypy.typeops.tuple_fallback(left)
             rfallback = mypy.typeops.tuple_fallback(right)
             if is_named_instance(rfallback, 'builtins.tuple'):
                 # No need to verify fallback. This is useful since the calculated fallback
@@ -302,8 +301,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # non-unions. For example, join(int, str) == object, whereas
                 # join(Union[int, C], Union[str, C]) == Union[int, str, C].
                 return True
+            lfallback = mypy.typeops.tuple_fallback(left)
             if not self._is_subtype(lfallback, rfallback):
-                print('here', lfallback, rfallback)
                 return False
             return True
         else:

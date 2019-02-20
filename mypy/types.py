@@ -1173,11 +1173,13 @@ class TupleType(Type):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
 
     Instance variables:
-        items: tuple item types
-        partial_fallback: the underlying instance type that is used for non-tuple methods
-            (this is builtins.tuple[Any] for regular tuples, but it's different for named tuples
-            and classes with a tuple base class)
-        implicit: if True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
+        items: Tuple item types
+        partial_fallback: The (imprecise) underlying instance type that is used
+            for non-tuple methods. This is generally builtins.tuple[Any] for
+            regular tuples, but it's different for named tuples and classes with
+            a tuple base class. Use mypy.typeops.tuple_fallback to calculate the
+            precise fallback type derived from item types.
+        implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
     items = None  # type: List[Type]

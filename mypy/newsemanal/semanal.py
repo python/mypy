@@ -100,7 +100,7 @@ from mypy.plugin import (
 from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import (
-    SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+    SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
 )
 from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.newsemanal.semanal_typeddict import TypedDictAnalyzer
@@ -111,7 +111,6 @@ from mypy.reachability import (
     MYPY_TRUE, MYPY_FALSE
 )
 from mypy.mro import calculate_mro, MroError
-from mypy.join import join_type_list
 
 MYPY = False
 if MYPY:
@@ -1340,13 +1339,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             defn.analyzed.column = defn.column
 
         if base.partial_fallback.type.fullname() == 'builtins.tuple':
-            # Fallback can only be safely calculated after semantic analysis, since it
-            # uses type joins.
-
-            def patch() -> None:
-                base.partial_fallback.args[0] = join_type_list(list(base.items))
-
-            self.schedule_patch(PRIORITY_FALLBACKS, patch)
+            # Fallback can only be safely calculated after semantic analysis, since base
+            # classes may be incomplete. Postpone the calculation.
+            self.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(base))
 
         return base.partial_fallback
 

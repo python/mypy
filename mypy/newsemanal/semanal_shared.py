@@ -9,8 +9,9 @@ from mypy.nodes import (
     SymbolNode
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance
+from mypy.types import Type, FunctionLike, Instance, TupleType
 from mypy.tvar_scope import TypeVarScope
+from mypy import join
 
 MYPY = False
 if False:
@@ -186,3 +187,14 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
             return sig.with_name(fdef.name())
     else:
         return sig
+
+
+def calculate_tuple_fallback(typ: TupleType) -> None:
+    """Calculate a precise item type for the fallback of a tuple type.
+
+    This must be called only after the main semantic analysis pass, since joins
+    aren't available before that.
+    """
+    fallback = typ.partial_fallback
+    assert fallback.type.fullname() == 'builtins.tuple'
+    fallback.args[0] = join.join_type_list(list(typ.items))
