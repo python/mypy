@@ -1,7 +1,7 @@
 """Miscellaneuus type operations and helpers for use during type checking.
 
-NOTE: These must not be accessed from mypy.nodes, mypy.types to avoid import
-      cycles. These must not be accessed from the semantic analysis main pass
+NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
+      cycles. These must not be called from the semantic analysis main pass
       since these may assume that MROs are ready.
 """
 
