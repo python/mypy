@@ -3823,7 +3823,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.mark_incomplete(name, tree)
             else:
                 # Test fixtures may be missing some builtin classes, which is okay.
-                pass
+                # Also some targets are not available on Python 2, like collections.ChainMap.
+                # Kill the placeholder if there is one.
+                if name in tree.names:
+                    assert isinstance(tree.names[name].node, PlaceholderNode)
+                    del tree.names[name]
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
