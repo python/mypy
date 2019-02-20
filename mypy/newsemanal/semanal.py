@@ -99,7 +99,9 @@ from mypy.plugin import (
 )
 from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
-from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface, set_callable_name
+from mypy.newsemanal.semanal_shared import (
+    SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+)
 from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.newsemanal.semanal_typeddict import TypedDictAnalyzer
 from mypy.newsemanal.semanal_enum import EnumCallAnalyzer
@@ -109,6 +111,7 @@ from mypy.reachability import (
     MYPY_TRUE, MYPY_FALSE
 )
 from mypy.mro import calculate_mro, MroError
+from mypy.join import join_type_list
 
 MYPY = False
 if MYPY:
@@ -1291,6 +1294,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     defn.analyzed = NamedTupleExpr(base.partial_fallback.type)
                     defn.analyzed.line = defn.line
                     defn.analyzed.column = defn.column
+
+                tuple_base = base
+
+                def patch() -> None:
+                    tuple_base.partial_fallback.args[0] = join_type_list(list(tuple_base.items))
+
+                # Fallback can only be safely calculated after semantic analysis, since it
+                # uses type joins.
+                self.schedule_patch(PRIORITY_FALLBACKS, patch)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail("Cannot subclass NewType", defn)

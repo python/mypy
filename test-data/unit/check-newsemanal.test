@@ -1526,3 +1526,37 @@ class C:
     1()  # E: "int" not callable
 def C() -> None:  # E: Name 'C' already defined on line 1
     ''()  # E: "str" not callable
+
+[case testNewAnalyzerTupleIteration]
+from typing import Union, Tuple, NamedTuple
+
+class A: pass
+class B(A): pass
+class C(A): pass
+
+class T(Tuple[B, C]):
+    pass
+
+class NTInt(NamedTuple):
+    x: int
+    y: int
+
+class NTStr(NamedTuple):
+    x: str
+    y: str
+
+t1: T
+reveal_type(t1.__iter__) # E: Revealed type is 'def () -> typing.Iterator[__main__.A*]'
+
+t2: NTInt
+reveal_type(t2.__iter__) # E: Revealed type is 'def () -> typing.Iterator[builtins.int*]'
+nt: Union[NTInt, NTStr]
+reveal_type(nt.__iter__) # E: Revealed type is 'Union[def () -> typing.Iterator[builtins.int*], def () -> typing.Iterator[builtins.str*]]'
+for nx in nt:
+    reveal_type(nx) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+t: Union[Tuple[int, int], Tuple[str, str]]
+for x in t:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+[builtins fixtures/for.pyi]
+[out]
