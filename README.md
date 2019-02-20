@@ -47,6 +47,20 @@ def fib(n: int) -> Iterator[int]:
         yield a
         a, b = b, a + b
 ```
+here is a sample python code using for , if and elif:
+
+
+for a in range(1, 100, 1):
+     if a % 3 == 0:
+          print("Crackle")
+     elif a % 5 == 0:
+          print("pop")
+     elif a % 3 == 0 and a % 5 == 0:
+          print("CracklePop")
+
+```
+
+
 See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
 For Python 2.7, the standard annotations are written as comments:
