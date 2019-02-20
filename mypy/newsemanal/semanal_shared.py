@@ -19,12 +19,8 @@ if False:
 # Priorities for ordering of patches within the final "patch" phase of semantic analysis
 # (after pass 3):
 
-# Fix forward references (needs to happen first)
-PRIORITY_FORWARD_REF = 0  # type: Final
 # Fix fallbacks (does joins)
 PRIORITY_FALLBACKS = 1  # type: Final
-# Checks type var values (does subtype checks)
-PRIORITY_TYPEVAR_VALUES = 2  # type: Final
 
 
 @trait
