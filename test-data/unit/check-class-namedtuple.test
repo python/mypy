@@ -587,7 +587,9 @@ reveal_type(takes_base(Base(1)))  # E: Revealed type is 'builtins.int'
 reveal_type(takes_base(Child(1)))  # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
 
+-- Depends on collecting functions via AST, not symbol tables.
 [case testNewNamedTupleIllegalNames]
+# flags: --no-new-semantic-analyzer
 from typing import Callable, NamedTuple
 
 class XMethBad(NamedTuple):

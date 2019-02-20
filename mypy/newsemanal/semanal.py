@@ -1915,6 +1915,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
+            # type checker will try to infer Any for the l.h.s.
+            # Remove this after new analyzer is the default one!
+            lvalue.fullname = self.qualified_name(name)
+            lvalue.is_inferred_def = True
+            lvalue.kind = kind = self.current_symbol_kind()
+            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
