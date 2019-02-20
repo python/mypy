@@ -346,7 +346,7 @@ x._replace(5)  # E: Too many positional arguments for "_replace" of "X"
 [builtins fixtures/list.pyi]
 
 [case testNamedTupleReplaceAsClass]
-# flags: --new-semantic-analyzer
+# flags: --new-semantic-analyzer --no-strict-optional
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
