@@ -1593,3 +1593,46 @@ class C(List[C], other=C): ...
 
 [case testNewAnalyzerClassKeywordsError]
 class C(other=asdf): ...  # E: Name 'asdf' is not defined
+
+[case testNewAnalyzerMissingImport]
+# flags: --ignore-missing-imports
+import non_existing
+
+x: C
+class C: ...
+
+[case testNewAnalyzerMissingImportFrom]
+# flags: --ignore-missing-imports
+from non_existing import stuff
+
+x: C
+class C: ...
+
+[case testNewAnalyzerFollowSkip]
+# flags: --follow-imports=skip
+from other import y
+x: C
+class C: ...
+[file other.py]
+y = 1
+
+[case testNewAnalyzerMissingImportErrors]
+# flags: --ignore-missing-imports
+from non_existing import stuff, other_stuff
+
+stuff = 1  # OK
+other_stuff: int = 1  # E: Name 'other_stuff' already defined (possibly by an import)
+
+x: C
+class C: ...
+
+[case testNewAnalyzerMissingImportErrorsRedefinition]
+# flags: --ignore-missing-imports
+
+class Other: ...
+from non_existing import Other  # E: Name 'Other' already defined on line 3
+from non_existing import Cls
+class Cls: ...  # E: Name 'Cls' already defined (possibly by an import)
+
+x: C
+class C: ...

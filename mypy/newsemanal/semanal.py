@@ -4066,6 +4066,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
                            target_name: Optional[str] = None) -> None:
         """Add symbol that we don't know what it points to (due to error, for example)."""
+        if is_import:
+            existing = self.current_symbol_table().get(name)
+            if existing and isinstance(existing.node, Var) and existing.node.is_suppressed_import:
+                # This missing import was already added -- nothing to do here.
+                return
         var = Var(name)
         if self.options.logical_deps and target_name is not None:
             # This makes it possible to add logical fine-grained dependencies
