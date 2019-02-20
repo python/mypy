@@ -71,7 +71,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node
+    REVEAL_LOCALS, is_final_node, TypedDictExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1885,6 +1885,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         if self.analyze_namedtuple_assign(s):
             return
+        if self.analyze_typeddict_assign(s):
+            return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
@@ -1893,7 +1895,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
         if not s.type:
@@ -1915,6 +1916,30 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        return True
+
+    def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
+        """Check if s defines a typed dict."""
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
+            return True  # This is a valid and analyzed typed dict definition, nothing to do here.
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(s.rvalue, name,
+                                                                       self.is_func_scope())
+        if not is_typed_dict:
+            return False
+        # Yes, it's a valid typed dict, but defer if it is not ready.
+        if not info:
+            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
+            # type checker will try to infer Any for the l.h.s.
+            # Remove this after new analyzer is the default one!
+            lvalue.fullname = self.qualified_name(name)
+            lvalue.node = self.make_name_lvalue_var(lvalue, self.current_symbol_kind(),
+                                                    inferred=True)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
