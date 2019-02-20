@@ -947,7 +947,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
-        if defn.info and defn.info.tuple_type:
+        if defn.info and defn.info.is_named_tuple:
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
@@ -1277,11 +1277,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         base_types = []  # type: List[Instance]
         info = defn.info
 
+        info.tuple_type = None
         for base, base_expr in bases:
             if isinstance(base, TupleType):
-                # There may be an existing valid tuple type from previous semanal iterations.
-                # Use equality to check if it is the case.
-                if info.tuple_type and info.tuple_type != base:
+                if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                     defn.has_incompatible_baseclass = True
                 info.tuple_type = base

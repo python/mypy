@@ -1368,5 +1368,4 @@ reveal_type(x['test'][0])
 -- N.B: These errors are *wrong* and the new semantic analyzer can't yet
 -- fully analyze typeshed
 ast.pyi:31: error: Name 'PyCF_ONLY_AST' already defined (possibly by an import)
-codecs.pyi:49: error: Cannot overwrite NamedTuple attribute "__init__"
 _testNewAnalyzerBasicTypeshed_newsemanal.py:4: error: Revealed type is 'builtins.int*'

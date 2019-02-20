@@ -1636,3 +1636,10 @@ class Cls: ...  # E: Name 'Cls' already defined (possibly by an import)
 
 x: C
 class C: ...
+
+[case testNewAnalyzerTupleInit]
+from typing import Tuple
+
+c: C
+class C(Tuple[int, str]):
+    def __init__(self) -> None: pass
