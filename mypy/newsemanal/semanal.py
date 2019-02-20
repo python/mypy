@@ -1659,7 +1659,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
-                self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
+                self.add_unknown_symbol(imported_id, imp, target_name=missing_name)
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
@@ -1674,7 +1674,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if extra:
             message += " {}".format(extra)
         self.fail(message, context)
-        self.add_unknown_symbol(imported_id, context, is_import=True)
+        self.add_unknown_symbol(imported_id, context)
 
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -4045,7 +4045,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             module_public=module_public,
                             module_hidden=module_hidden)
         else:
-            self.add_unknown_symbol(as_id, context, is_import=True, target_name=id)
+            self.add_unknown_symbol(as_id, context, target_name=id)
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
         """Add local variable or function."""
@@ -4062,14 +4062,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)
 
-    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
+    def add_unknown_symbol(self, name: str, context: Context,
                            target_name: Optional[str] = None) -> None:
         """Add symbol that we don't know what it points to (due to error, for example)."""
-        if is_import:
-            existing = self.current_symbol_table().get(name)
-            if existing and isinstance(existing.node, Var) and existing.node.is_suppressed_import:
-                # This missing import was already added -- nothing to do here.
-                return
+        existing = self.current_symbol_table().get(name)
+        if existing and isinstance(existing.node, Var) and existing.node.is_suppressed_import:
+            # This missing import was already added -- nothing to do here.
+            return
         var = Var(name)
         if self.options.logical_deps and target_name is not None:
             # This makes it possible to add logical fine-grained dependencies
@@ -4083,12 +4082,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        if is_import:
-            any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
-        else:
-            any_type = AnyType(TypeOfAny.from_error)
+        any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         var.type = any_type
-        var.is_suppressed_import = is_import
+        var.is_suppressed_import = True
         self.add_symbol(name, var, context)
 
     def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
