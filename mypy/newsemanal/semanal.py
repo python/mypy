@@ -947,7 +947,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
-        if defn.info and defn.info.tuple_type:
+        if defn.info and defn.info.is_named_tuple:
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
