@@ -5766,3 +5766,41 @@ i: type = A
 assert issubclass(i, A)
 reveal_type(i.x)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeTypeVar]
+from typing import Type, TypeVar, Generic
+
+class Base: ...
+class Sub(Base): ...
+
+T = TypeVar('T', bound=Base)
+
+class C(Generic[T]):
+    def meth(self, cls: Type[T]) -> None:
+        if not issubclass(cls, Sub):
+            return
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Sub]'
+    def other(self, cls: Type[T]) -> None:
+        if not issubclass(cls, Sub):
+            return
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Sub]'
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeSubclass]
+# flags: --strict-optional
+from typing import Type, Optional
+class Base: ...
+class One(Base): ...
+class Other(Base): ...
+
+def test() -> None:
+    x: Optional[Type[Base]]
+    if int():
+        x = One
+    elif int():
+        x = Other
+    else:
+        return
+    reveal_type(x)  # E: Revealed type is 'Union[Type[__main__.One], Type[__main__.Other]]'
+[builtins fixtures/isinstancelist.pyi]

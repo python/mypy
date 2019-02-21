@@ -49,10 +49,10 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                                 for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
-    elif isinstance(declared, (Instance, TupleType, TypeType)):
-        return meet_types(declared, narrowed)
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+    elif isinstance(declared, (Instance, TupleType, TypeType)):
+        return meet_types(declared, narrowed)
     return narrowed
 
 
@@ -484,6 +484,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
             return result
+        elif isinstance(self.s, TypeType) and t.is_type_obj():
+            # TODO: what if t is generic?
+            return TypeType.make_normalized(meet_types(self.s.item, t.ret_type))
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
             call = unpack_callback_protocol(self.s)
             if call:

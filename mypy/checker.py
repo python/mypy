@@ -3922,7 +3922,11 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     if type_map is None:
         return None
     for expr, typ in type_map.items():
-        if not isinstance(typ, (UnionType, Instance)):
+        t = typ
+        if isinstance(t, TypeVarType):
+            t = t.upper_bound
+        # TODO: should we only allow unions of instances as per PEP 484?
+        if not isinstance(t, (UnionType, Instance)):
             # unknown type; error was likely reported earlier
             return {}
         converted_type_map[expr] = TypeType.make_normalized(typ)
