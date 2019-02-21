@@ -1917,8 +1917,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
         else:
             # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
-            # type checker will try to infer Any for the l.h.s.
-            # Remove this after new analyzer is the default one!
+            # type checker will try to infer Any for the l.h.s. causing named tuple class
+            # object to have type Any when it appears in runtime context.
+            # Remove this and update the checker after new analyzer is the default one!
+            # See also #6458.
             lvalue.fullname = self.qualified_name(name)
             lvalue.is_inferred_def = True
             lvalue.kind = kind = self.current_symbol_kind()
