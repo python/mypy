@@ -346,12 +346,13 @@ x._replace(5)  # E: Too many positional arguments for "_replace" of "X"
 [builtins fixtures/list.pyi]
 
 [case testNamedTupleReplaceAsClass]
+# flags: --new-semantic-analyzer --no-strict-optional
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 X._replace(x, x=1, y=2)
-X._replace(x=1, y=2)  # E: Missing positional argument "self" in call to "_replace" of "X"
+X._replace(x=1, y=2)  # E: Missing positional argument "_self" in call to "_replace" of "X"
 
 [builtins fixtures/list.pyi]
 
@@ -497,7 +498,9 @@ b = B._make([''])  # type: B
 
 [builtins fixtures/list.pyi]
 
+-- Depends on tuple fallback PR
 [case testNamedTupleIncompatibleRedefinition]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 class Crash(NamedTuple):
     count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
@@ -573,6 +576,7 @@ tmp/b.py:4: error: Revealed type is 'Tuple[Any, fallback=a.N]'
 tmp/b.py:7: error: Revealed type is 'Tuple[Any, fallback=a.N]'
 
 [case testSimpleSelfReferentialNamedTuple]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 class MyNamedTuple(NamedTuple):
     parent: 'MyNamedTuple'
@@ -583,8 +587,8 @@ def bar(nt: MyNamedTuple) -> MyNamedTuple:
 x: MyNamedTuple
 reveal_type(x.parent)
 [out]
-main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:9: error: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
+main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:10: error: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
 
 -- Some crazy self-referential named tuples and types dicts
 -- to be sure that everything works
@@ -611,6 +615,7 @@ class B:
 [out]
 
 [case testSelfRefNT1]
+# flags: --no-new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
 Node = NamedTuple('Node', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
@@ -623,6 +628,7 @@ reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[b
 
 
 [case testSelfRefNT2]
+# flags: --no-new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [ # E
@@ -637,10 +643,11 @@ n: A
 reveal_type(n) # E: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A], builtins.int, fallback=__main__.B]], fallback=__main__.A]'
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:8: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT3]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple): # E
@@ -659,9 +666,10 @@ lst = [m, n]
 reveal_type(lst[0]) # E: Revealed type is 'Tuple[builtins.object, builtins.object]'
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT4]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 class B(NamedTuple): # E
@@ -676,10 +684,11 @@ n: A
 reveal_type(n.y[0]) # E: Revealed type is 'Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]'
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:8: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT5]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 B = NamedTuple('B', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
@@ -697,6 +706,7 @@ reveal_type(f) # E: Revealed type is 'def (m: Tuple[Tuple[builtins.str, Tuple[An
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
+# flags: --no-new-semantic-analyzer
 from typing import List, NamedTuple, Union
 
 Exp = Union['A', 'B']  # E: Recursive types not fully supported yet, nested types replaced with "Any"
@@ -716,6 +726,7 @@ my_eval(A([B(1), B(2)])) # OK
 [out]
 
 [case testNamedTupleImportCycle]
+# flags: --new-semantic-analyzer
 import b
 [file a.py]
 class C:
@@ -725,10 +736,8 @@ from b import tp
 x: tp
 reveal_type(x.x)  # E: Revealed type is 'builtins.int'
 
-# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
-reveal_type(tp)  # E: Revealed type is 'Any' \
-                 # E: Cannot determine type of 'tp'
-tp('x')  # E: Cannot determine type of 'tp'
+reveal_type(tp)  # E: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=b.tp]'
+tp('x')  # E: Argument 1 to "tp" has incompatible type "str"; expected "int"
 
 [file b.py]
 from a import C
@@ -738,6 +747,7 @@ tp = NamedTuple('tp', [('x', int)])
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
+# flags: --no-new-semantic-analyzer
 from typing import List, NamedTuple
 
 class Command(NamedTuple):  # type: ignore

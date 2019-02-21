@@ -8,6 +8,7 @@ from mypy.types import Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyTyp
 
 def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
+
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
     tv = []  # type: List[Type]
@@ -21,7 +22,7 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 
 def fill_typevars_with_any(typ: TypeInfo) -> Union[Instance, TupleType]:
-    """ Apply a correct number of Any's as type arguments to a type."""
+    """Apply a correct number of Any's as type arguments to a type."""
     inst = Instance(typ, [AnyType(TypeOfAny.special_form)] * len(typ.defn.type_vars))
     if typ.tuple_type is None:
         return inst
