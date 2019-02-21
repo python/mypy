@@ -1937,8 +1937,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # type checker will try to infer Any for the l.h.s.
             # Remove this after new analyzer is the default one!
             lvalue.fullname = self.qualified_name(name)
-            lvalue.node = self.make_name_lvalue_var(lvalue, self.current_symbol_kind(),
-                                                    inferred=True)
+            lvalue.is_inferred_def = True
+            lvalue.kind = kind = self.current_symbol_kind()
+            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
@@ -2314,11 +2315,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             added = self.add_symbol(name, var, lvalue)
             # Only bind expression if we successfully added name to symbol table.
             if added:
+                lvalue.is_new_def = True
+                lvalue.is_inferred_def = True
+                lvalue.kind = kind
                 lvalue.node = var
                 if kind == GDEF:
                     lvalue.fullname = var._fullname
                 else:
                     lvalue.fullname = lvalue.name
+                if self.is_func_scope():
+                    if unmangle(name) == '_':
+                        # Special case for assignment to local named '_': always infer 'Any'.
+                        typ = AnyType(TypeOfAny.special_form)
+                        self.store_declared_types(lvalue, typ)
             if is_final and self.is_final_redefinition(kind, name):
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
@@ -2377,9 +2386,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # fullanme should never stay None
             v._fullname = lvalue.name
         v.is_ready = False  # Type not inferred yet
-        lvalue.is_new_def = True
-        lvalue.is_inferred_def = True
-        lvalue.kind = kind
         return v
 
     def make_name_lvalue_point_to_existing_def(

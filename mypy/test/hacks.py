@@ -24,7 +24,6 @@ new_semanal_blacklist = [
     'check-incomplete-fixture.test',
     'check-incremental.test',
     'check-inference-context.test',
-    'check-inference.test',
     'check-isinstance.test',
     'check-literal.test',
     'check-modules.test',
