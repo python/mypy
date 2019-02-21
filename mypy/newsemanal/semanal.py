@@ -71,7 +71,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node
+    REVEAL_LOCALS, is_final_node, TypedDictExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -949,7 +949,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
-        if defn.info and defn.info.tuple_type:
+        if defn.info and defn.info.is_named_tuple:
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
@@ -1279,6 +1279,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         base_types = []  # type: List[Instance]
         info = defn.info
 
+        info.tuple_type = None
         for base, base_expr in bases:
             if isinstance(base, TupleType):
                 actual_base = self.configure_tuple_base_class(defn, base, base_expr)
@@ -1673,7 +1674,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
-                self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
+                self.add_unknown_imported_symbol(imported_id, imp, target_name=missing_name)
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
@@ -1688,7 +1689,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if extra:
             message += " {}".format(extra)
         self.fail(message, context)
-        self.add_unknown_symbol(imported_id, context, is_import=True)
+        self.add_unknown_imported_symbol(imported_id, context)
 
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -1898,6 +1899,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         if self.analyze_namedtuple_assign(s):
             return
+        if self.analyze_typeddict_assign(s):
+            return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
@@ -1906,7 +1909,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
         if not s.type:
@@ -1928,6 +1930,31 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        return True
+
+    def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
+        """Check if s defines a typed dict."""
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
+            return True  # This is a valid and analyzed typed dict definition, nothing to do here.
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(s.rvalue, name,
+                                                                       self.is_func_scope())
+        if not is_typed_dict:
+            return False
+        # Yes, it's a valid typed dict, but defer if it is not ready.
+        if not info:
+            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
+            # type checker will try to infer Any for the l.h.s.
+            # Remove this after new analyzer is the default one!
+            lvalue.fullname = self.qualified_name(name)
+            lvalue.is_inferred_def = True
+            lvalue.kind = kind = self.current_symbol_kind()
+            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
@@ -2303,11 +2330,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             added = self.add_symbol(name, var, lvalue)
             # Only bind expression if we successfully added name to symbol table.
             if added:
+                lvalue.is_new_def = True
+                lvalue.is_inferred_def = True
+                lvalue.kind = kind
                 lvalue.node = var
                 if kind == GDEF:
                     lvalue.fullname = var._fullname
                 else:
                     lvalue.fullname = lvalue.name
+                if self.is_func_scope():
+                    if unmangle(name) == '_':
+                        # Special case for assignment to local named '_': always infer 'Any'.
+                        typ = AnyType(TypeOfAny.special_form)
+                        self.store_declared_types(lvalue, typ)
             if is_final and self.is_final_redefinition(kind, name):
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
@@ -2366,9 +2401,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # fullanme should never stay None
             v._fullname = lvalue.name
         v.is_ready = False  # Type not inferred yet
-        lvalue.is_new_def = True
-        lvalue.is_inferred_def = True
-        lvalue.kind = kind
         return v
 
     def make_name_lvalue_point_to_existing_def(
@@ -4034,7 +4066,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             module_public=module_public,
                             module_hidden=module_hidden)
         else:
-            self.add_unknown_symbol(as_id, context, is_import=True, target_name=id)
+            self.add_unknown_imported_symbol(as_id, context, target_name=id)
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
         """Add local variable or function."""
@@ -4051,9 +4083,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)
 
-    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
-                           target_name: Optional[str] = None) -> None:
-        """Add symbol that we don't know what it points to (due to error, for example)."""
+    def add_unknown_imported_symbol(self, name: str, context: Context,
+                                    target_name: Optional[str] = None) -> None:
+        """Add symbol that we don't know what it points to because resolving an import failed.
+
+        This can happen if a module is missing, or it is present, but doesn't have
+        the imported attribute. The `target_name` is the name of symbol in the namespace
+        it is imported from. For example, for 'from mod import x as y' the target_name is
+        'mod.x'. This is currently used only to track logical dependencies.
+        """
+        existing = self.current_symbol_table().get(name)
+        if existing and isinstance(existing.node, Var) and existing.node.is_suppressed_import:
+            # This missing import was already added -- nothing to do here.
+            return
         var = Var(name)
         if self.options.logical_deps and target_name is not None:
             # This makes it possible to add logical fine-grained dependencies
@@ -4067,12 +4109,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        if is_import:
-            any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
-        else:
-            any_type = AnyType(TypeOfAny.from_error)
+        any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         var.type = any_type
-        var.is_suppressed_import = is_import
+        var.is_suppressed_import = True
         self.add_symbol(name, var, context)
 
     def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
