@@ -14,7 +14,7 @@ import mypy.sametypes
 from mypy.erasetype import erase_type
 # Circular import; done in the function instead.
 # import mypy.solve
-from mypy import messages, sametypes
+from mypy import messages
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
@@ -467,7 +467,8 @@ def is_protocol_implementation(left: Instance, right: Instance,
     TypeState.record_protocol_subtype_check(left.type, right.type)
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
-        if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
+        if (mypy.sametypes.is_same_type(l, left)
+                and mypy.sametypes.is_same_type(r, right)):
             return True
     with pop_on_exit(assuming, left, right):
         for member in right.type.protocol_members:
@@ -1104,7 +1105,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     elif variance == CONTRAVARIANT:
                         return self._is_proper_subtype(rightarg, leftarg)
                     else:
-                        return sametypes.is_same_type(leftarg, rightarg)
+                        return mypy.sametypes.is_same_type(leftarg, rightarg)
                 # Map left type to corresponding right instances.
                 left = map_instance_to_supertype(left, right.type)
 
