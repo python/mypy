@@ -33,7 +33,7 @@ from mypy.nodes import (
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
 from mypy.newsemanal.semanal import NewSemanticAnalyzer, apply_semantic_analyzer_patches
-from mypy.newsemanal.semanal_abstract import calculate_class_abstract_status
+from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 
@@ -227,18 +227,3 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
             if isinstance(node.node, TypeInfo):
                 calculate_class_abstract_status(node.node, tree.is_stub, errors)
                 calculate_class_vars(node.node)
-
-
-def calculate_class_vars(info: TypeInfo) -> None:
-    # Subclass attribute assignments with no type annotation should be
-    # assumed to be classvar if overriding a declared classvar from the base
-    # class.
-    for name, sym in info.names.items():
-        node = sym.node
-        if isinstance(node, Var) and node.info and node.is_inferred and not node.is_classvar:
-            for base in info.mro[1:]:
-                member = base.names.get(name)
-                if (member is not None
-                        and isinstance(member.node, Var)
-                        and member.node.is_classvar):
-                    node.is_classvar = True
