@@ -169,48 +169,36 @@ class TypedDictAnalyzer:
         required_keys = set(fields) if total else set()
         return fields, types, required_keys
 
-    def process_typeddict_definition(self, s: AssignmentStmt, is_func_scope: bool) -> None:
-        """Check if s defines an assignment-based TypedDict type.
-
-        If yes, store the definition in symbol table.
-        """
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        typed_dict = self.check_typeddict(s.rvalue, name, is_func_scope)
-        if typed_dict is None:
-            return
-        # Yes, it's a valid TypedDict definition. Add it to the symbol table.
-        node = self.api.lookup(name, s)
-        if node:
-            node.kind = GDEF   # TODO locally defined TypedDict
-            node.node = typed_dict
-
     def check_typeddict(self,
                         node: Expression,
                         var_name: Optional[str],
-                        is_func_scope: bool) -> Optional[TypeInfo]:
+                        is_func_scope: bool) -> Tuple[bool, Optional[TypeInfo]]:
         """Check if a call defines a TypedDict.
 
         The optional var_name argument is the name of the variable to
         which this is assigned, if any.
 
-        If it does, return the corresponding TypeInfo. Return None otherwise.
+        Return a pair (is it a typed dict, corresponding TypeInfo).
 
         If the definition is invalid but looks like a TypedDict,
-        report errors but return (some) TypeInfo.
+        report errors but return (some) TypeInfo. If some type is not ready,
+        return (True, None).
         """
         if not isinstance(node, CallExpr):
-            return None
+            return False, None
         call = node
         callee = call.callee
         if not isinstance(callee, RefExpr):
-            return None
+            return False, None
         fullname = callee.fullname
         if fullname != 'mypy_extensions.TypedDict':
-            return None
-        items, types, total, ok = self.parse_typeddict_args(call)
+            return False, None
+        res = self.parse_typeddict_args(call)
+        if res is None:
+            # This is a valid typed dict, but some type is not ready.
+            # The caller should defer this until next iteration.
+            return True, None
+        items, types, total, ok = res
         if not ok:
             # Error. Construct dummy return value.
             info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
@@ -225,15 +213,22 @@ class TypedDictAnalyzer:
                 name += '@' + str(call.line)
             required_keys = set(items) if total else set()
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
-            # Store it as a global just in case it would remain anonymous.
-            # (Or in the nearest class if there is one.)
-            stnode = SymbolTableNode(GDEF, info)
-            self.api.add_symbol_table_node(name, stnode)
+            # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
+            if name != var_name or is_func_scope:
+                self.api.add_symbol_skip_local(name, info)
+        if var_name:
+            self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
-        return info
+        return True, info
 
-    def parse_typeddict_args(self, call: CallExpr) -> Tuple[List[str], List[Type], bool, bool]:
+    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[List[str], List[Type],
+                                                                     bool, bool]]:
+        """Parse typed dict call expression.
+
+        Return names, types, totality, was there an error during parsing.
+        If some type is not ready, return None.
+        """
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
@@ -259,7 +254,11 @@ class TypedDictAnalyzer:
                 return self.fail_typeddict_arg(
                     'TypedDict() "total" argument must be True or False', call)
         dictexpr = args[1]
-        items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        if res is None:
+            # One of the types is not ready, defer.
+            return None
+        items, types, ok = res
         for t in types:
             check_for_explicit_any(t, self.options, self.api.is_typeshed_stub_file, self.msg,
                                    context=call)
@@ -274,7 +273,11 @@ class TypedDictAnalyzer:
     def parse_typeddict_fields_with_types(
             self,
             dict_items: List[Tuple[Optional[Expression], Expression]],
-            context: Context) -> Tuple[List[str], List[Type], bool]:
+            context: Context) -> Optional[Tuple[List[str], List[Type], bool]]:
+        """Parse typed dict items passed as pairs (name expression, type expression).
+
+        Return names, types, was there an error. If some type is not ready, return None.
+        """
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for (field_name_expr, field_type_expr) in dict_items:
@@ -290,7 +293,8 @@ class TypedDictAnalyzer:
                 self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False
             analyzed = self.api.anal_type(type)
-            assert analyzed is not None  # TODO: Handle None values
+            if analyzed is None:
+                return None
             types.append(analyzed)
         return items, types, True
 

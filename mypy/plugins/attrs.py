@@ -9,7 +9,8 @@ from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
-    SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED
+    SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
+    TypeVarExpr
 )
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
@@ -42,6 +43,8 @@ attr_attrib_makers = {
     'attr.attrib',
     'attr.attr',
 }  # type: Final
+
+SELF_TVAR_NAME = '_AT'  # type: Final
 
 
 class Converter:
@@ -112,7 +115,7 @@ class Attribute:
             if self.converter.is_attr_converters_optional and init_type:
                 # If the converter was attr.converter.optional(type) then add None to
                 # the allowed init_type.
-                init_type = UnionType.make_simplified_union([init_type, NoneTyp()])
+                init_type = UnionType.make_union([init_type, NoneTyp()])
 
             if not init_type:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
@@ -512,8 +515,13 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef('AT', 'AT', -1, [], object_type)
+    tvd = TypeVarDef(SELF_TVAR_NAME, ctx.cls.info.fullname() + '.' + SELF_TVAR_NAME,
+                     -1, [], object_type)
     tvd_type = TypeVarType(tvd)
+    self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, ctx.cls.info.fullname() + '.' + SELF_TVAR_NAME,
+                                 [], object_type)
+    ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
+
     args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
     for method in ['__lt__', '__le__', '__gt__', '__ge__']:
         adder.add_method(method, args, bool_type, self_type=tvd_type, tvd=tvd)

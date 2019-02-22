@@ -22,7 +22,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT,
+    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash
@@ -1614,6 +1614,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(sym.node, TypeInfo):
             # nested class
             return type_object_type(sym.node, self.named_type)
+        if isinstance(sym.node, TypeVarExpr):
+            # Use of TypeVars is rejected in an expression/runtime context, so
+            # we don't need to check supertype compatibility for them.
+            return AnyType(TypeOfAny.special_form)
         return None
 
     def check_compatibility(self, name: str, base1: TypeInfo,
@@ -3152,8 +3156,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return None
 
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
-        """Creates a fake type that represents the intersection of an
-        Instance and a CallableType.
+        """Creates a fake type that represents the intersection of an Instance and a CallableType.
 
         It operates by creating a bare-minimum dummy TypeInfo that
         subclasses type and adds a __call__ method matching callable_type.
@@ -3207,8 +3210,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def partition_by_callable(self, typ: Type,
                               unsound_partition: bool) -> Tuple[List[Type], List[Type]]:
-        """Takes in a type and partitions that type into callable subtypes and
-        uncallable subtypes.
+        """Partitions a type into callable subtypes and uncallable subtypes.
 
         Thus, given:
         `callables, uncallables = partition_by_callable(type)`
@@ -3220,8 +3222,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         clearly callable is in fact not callable. Otherwise we generate a
         new subtype that *is* callable.
 
-        Guaranteed to not return [], []
-
+        Guaranteed to not return [], [].
         """
         if isinstance(typ, FunctionLike) or isinstance(typ, TypeType):
             return [typ], []
@@ -3512,9 +3513,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return self.suppress_none_errors and any(self.contains_none(t) for t in related_types)
 
     def named_type(self, name: str) -> Instance:
-        """Return an instance type with type given by the name and no
-        type arguments. For example, named_type('builtins.object')
-        produces the object type.
+        """Return an instance type with given name and implicit Any type args.
+
+        For example, named_type('builtins.object') produces the 'object' type.
         """
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)

@@ -870,3 +870,21 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x): pass
 [out]
+
+
+-- Special cases
+-- -------------
+
+
+[case testNestedAbstractClass]
+from abc import abstractmethod, ABCMeta
+
+class A:
+    class B(metaclass=ABCMeta):
+        @abstractmethod
+        def f(self) -> None: pass
+
+    class C(B): pass
+
+A.B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
+A.C()  # E: Cannot instantiate abstract class 'C' with abstract attribute 'f'

@@ -74,9 +74,8 @@ for y in x:
 [out]
 -- These errors are pretty bad, but keeping this test anyway to
 -- avoid things getting worse.
-main:2: error: "tuple" expects no type arguments, but 1 given
-main:3: error: Value of type "tuple" is not indexable
-main:4: error: "tuple" has no attribute "__iter__" (not iterable)
+main:3: error: Value of type "Tuple[int, ...]" is not indexable
+main:4: error: "Tuple[int, ...]" has no attribute "__iter__" (not iterable)
 
 [case testClassmethodMissingFromStubs]
 class A:
