@@ -71,7 +71,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node, TypedDictExpr
+    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1930,6 +1930,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
+            # type checker will try to infer Any for the l.h.s. causing named tuple class
+            # object to have type Any when it appears in runtime context.
+            # Remove this and update the checker after new analyzer is the default one!
+            # See also #6458.
+            lvalue.fullname = self.qualified_name(name)
+            lvalue.is_inferred_def = True
+            lvalue.kind = kind = self.current_symbol_kind()
+            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
@@ -3845,6 +3855,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
+            if type_aliases_target_versions[alias] > self.options.python_version:
+                # This alias is not available on this Python version.
+                continue
             name = alias.split('.')[-1]
             if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
                 continue
@@ -3868,7 +3881,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.mark_incomplete(name, tree)
             else:
                 # Test fixtures may be missing some builtin classes, which is okay.
-                pass
+                # Kill the placeholder if there is one.
+                if name in tree.names:
+                    assert isinstance(tree.names[name].node, PlaceholderNode)
+                    del tree.names[name]
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
