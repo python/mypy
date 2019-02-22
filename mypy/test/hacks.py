@@ -11,7 +11,6 @@ new_semanal_blacklist = [
     'check-bound.test',
     'check-callable.test',
     'check-classes.test',
-    'check-classvar.test',
     'check-custom-plugin.test',
     'check-dataclasses.test',
     'check-default-plugin.test',

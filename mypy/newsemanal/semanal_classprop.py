@@ -1,29 +1,12 @@
-"""Calculate the abstract status of classes.
+"""Calculate some properties of classes.
 
-This happens after semantic analysis and before type checking.
+These happen after semantic analysis and before type checking.
 """
 
 from typing import List, Set, Optional
 
 from mypy.nodes import Node, MypyFile, SymbolTable, TypeInfo, Var, Decorator, OverloadedFuncDef
 from mypy.errors import Errors
-
-
-def calculate_abstract_status(file: MypyFile, errors: Errors) -> None:
-    """Calculate the abstract status of all classes in the symbol table in file.
-
-    Also check that ABCMeta is used correctly.
-    """
-    process(file.names, file.is_stub, file.fullname(), errors)
-
-
-def process(names: SymbolTable, is_stub_file: bool, prefix: str, errors: Errors) -> None:
-    for name, symnode in names.items():
-        node = symnode.node
-        if isinstance(node, TypeInfo) and node.fullname().startswith(prefix):
-            calculate_class_abstract_status(node, is_stub_file, errors)
-            new_prefix = prefix + '.' + node.name()
-            process(node.names, is_stub_file, new_prefix, errors)
 
 
 def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:
@@ -78,3 +61,24 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             report("Class {} has abstract attributes {}".format(typ.fullname(), attrs), 'error')
             report("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
                    'note')
+
+
+def calculate_class_vars(info: TypeInfo) -> None:
+    """Try to infer additional class variables.
+
+    Subclass attribute assignments with no type annotation are assumed
+    to be classvar if overriding a declared classvar from the base
+    class.
+
+    This must happen after the main semantic analysis pass, since
+    this depends on base class bodies having been fully analyzed.
+    """
+    for name, sym in info.names.items():
+        node = sym.node
+        if isinstance(node, Var) and node.info and node.is_inferred and not node.is_classvar:
+            for base in info.mro[1:]:
+                member = base.names.get(name)
+                if (member is not None
+                        and isinstance(member.node, Var)
+                        and member.node.is_classvar):
+                    node.is_classvar = True

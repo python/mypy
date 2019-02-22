@@ -27,12 +27,13 @@ will be incomplete.
 from typing import List, Tuple, Optional, Union, Callable
 
 from mypy.nodes import (
-    Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
+    Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef,
+    Var
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
 from mypy.newsemanal.semanal import NewSemanticAnalyzer, apply_semantic_analyzer_patches
-from mypy.newsemanal.semanal_abstract import calculate_abstract_status
+from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 
@@ -68,7 +69,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     apply_semantic_analyzer_patches(patches)
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
-    process_abstract_status(graph, scc, errors)
+    calculate_class_properties(graph, scc, errors)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:
@@ -119,8 +120,7 @@ def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
         tree = graph[module].tree
         assert tree is not None
         analyzer = graph[module].manager.new_semantic_analyzer
-        symtable = tree.names
-        targets = get_all_leaf_targets(symtable, module, None)
+        targets = get_all_leaf_targets(tree)
         for target, node, active_type in targets:
             assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
             process_top_level_function(analyzer,
@@ -169,23 +169,12 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
 TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
 
 
-def get_all_leaf_targets(symtable: SymbolTable,
-                         prefix: str,
-                         active_type: Optional[TypeInfo]) -> List[TargetInfo]:
+def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
     """Return all leaf targets in a symbol table (module-level and methods)."""
     result = []  # type: List[TargetInfo]
-    for name, node in symtable.items():
-        shortname = name
-        if '-redef' in name:
-            # Restore original name from mangled name of multiply defined function
-            shortname = name.split('-redef')[0]
-        new_prefix = prefix + '.' + shortname
-        if isinstance(node.node, (FuncDef, TypeInfo, OverloadedFuncDef, Decorator)):
-            if node.node.fullname() == new_prefix:
-                if isinstance(node.node, TypeInfo):
-                    result += get_all_leaf_targets(node.node.names, new_prefix, node.node)
-                else:
-                    result.append((new_prefix, node.node, active_type))
+    for fullname, node, active_type in file.local_definitions():
+        if isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator)):
+            result.append((fullname, node.node, active_type))
     return result
 
 
@@ -230,8 +219,11 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
                 state.tree.accept(analyzer)
 
 
-def process_abstract_status(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         tree = graph[module].tree
         assert tree
-        calculate_abstract_status(tree, errors)
+        for _, node, _ in tree.local_definitions():
+            if isinstance(node.node, TypeInfo):
+                calculate_class_abstract_status(node.node, tree.is_stub, errors)
+                calculate_class_vars(node.node)

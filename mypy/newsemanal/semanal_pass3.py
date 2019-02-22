@@ -130,18 +130,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze_types(types, analyzed)
         if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
             self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
-        # Subclass attribute assignments with no type annotation should be
-        # assumed to be classvar if overriding a declared classvar from the base
-        # class.
-        if (isinstance(s.lvalues[0], NameExpr) and s.lvalues[0].kind == MDEF
-                and isinstance(s.lvalues[0].node, Var)):
-            var = s.lvalues[0].node
-            if var.info and var.is_inferred and not var.is_classvar:
-                for base in var.info.mro[1:]:
-                    tnode = base.names.get(var.name())
-                    if (tnode is not None and isinstance(tnode.node, Var)
-                            and tnode.node.is_classvar):
-                        var.is_classvar = True
         super().visit_assignment_stmt(s)
 
     # Helpers
