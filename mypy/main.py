@@ -720,10 +720,11 @@ def process_options(args: List[str],
     if dummy.list_error_codes:
         import mypy.errors
         errors = mypy.errors.Errors()
+        errors.initialize_error_codes()
         plugin, _ = build.load_plugins(options, errors)
-        mypy.errors.initialize_error_codes(errors, plugin)
-        for msg_id in sorted(errors.error_codes.id_to_literal):
-            print('%s  %r' % (msg_id, errors.error_codes.id_to_literal[msg_id]))
+        error_codes = {code: msg for msg, code in errors.error_codes.items()}
+        for code in sorted(error_codes):
+            print('%s  %r' % (code, error_codes[code]))
         return None, options
 
     config_file = dummy.config_file

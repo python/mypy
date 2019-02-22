@@ -1,5 +1,3 @@
-import re
-
 from typing import List, Optional, Any, Dict
 
 from mypy.nodes import (
@@ -10,8 +8,6 @@ from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
 from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance
 from mypy.typevars import fill_typevars
-
-VALID_ERROR_CODE = re.compile('[a-z0-9_]+$')
 
 
 def _get_decorator_bool_argument(
@@ -135,23 +131,13 @@ def try_getting_str_literal(expr: Expression, typ: Type) -> Optional[str]:
         return None
 
 
-def extract_error_codes(namespace: str, obj: Any) -> Dict[str, str]:
-    """Read error code attributes from an object.
-
+def extract_error_codes(obj: Any) -> Dict[str, str]:
+    """
     Any attribute of obj that is all caps (i.e. a constant) and holds a string is considered
     an error code.
 
     Arguments:
-      namespace: a prefix to be added to all error code names.  This is usually the name of the
-                 plugin that is calling this function.
       obj: object from which to read error codes.
     """
-    if namespace:
-        if not namespace.endswith('_'):
-            namespace += '_'
-        namespace = namespace.lower()
-        if not VALID_ERROR_CODE.match(namespace):
-            raise RuntimeError("Error namespace must contain only letters, "
-                               "numbers, and underscores")
-    return {namespace + name.lower(): msg for name, msg in vars(obj).items()
+    return {name.lower(): msg for name, msg in vars(obj).items()
             if name.upper() and not name.startswith('_') and isinstance(msg, str)}

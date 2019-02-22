@@ -39,8 +39,6 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
-T = TypeVar('T', bound=Callable[..., Any])
-
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
     ARG_OPT: "DefaultArg",
@@ -119,7 +117,7 @@ class MessageBuilder:
         if self.disable_count <= 0:
             msg_id = id
             if msg_id is None:
-                msg_id = self.errors.error_codes.literal_to_id.get(msg)
+                msg_id = self.errors.error_codes.get(msg)
             if format_args:
                 msg = msg.format(*format_args)
             self.errors.report(context.get_line() if context else -1,

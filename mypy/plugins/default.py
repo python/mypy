@@ -94,8 +94,7 @@ class DefaultPlugin(Plugin):
 
     def get_error_codes(self) -> Dict[str, str]:
         from mypy.plugins import attrs
-        error_codes = extract_error_codes('attrs', attrs.Errors)
-        return error_codes
+        return extract_error_codes(attrs.Errors)
 
 
 def open_callback(ctx: FunctionContext) -> Type:

@@ -41,7 +41,7 @@ from mypy.newsemanal.semanal import NewSemanticAnalyzer
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, report_internal_error, initialize_error_codes
+from mypy.errors import Errors, CompileError, report_internal_error
 from mypy.util import DecodeError, decode_python_encoding, is_sub_path
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -59,6 +59,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
+
 from mypy.mypyc_hacks import BuildManagerBase
 
 
@@ -195,9 +196,8 @@ def _build(sources: List[BuildSource],
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers,
                     options.show_error_codes)
+    errors.initialize_error_codes()
     plugin, snapshot = load_plugins(options, errors)
-
-    initialize_error_codes(errors, plugin)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -329,17 +329,33 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
     import importlib
     snapshot = {}  # type: Dict[str, str]
 
+    def plugin_error(message: str) -> None:
+        errors.report(line, 0, message)
+        errors.raise_error()
+
+    def load_plugin(plugin: Plugin, module_name: str) -> None:
+        try:
+            error_codes = plugin.get_error_codes()
+        except Exception:
+            plugin_error('Error calling get_error_codes of {}'.format(module_name))
+            raise
+
+        try:
+            error_codes = {module_name + '-' + name: msg for name, msg in error_codes.items()}
+        except Exception:
+            plugin_error('Error processing result of get_error_codes ({})'.format(module_name))
+            raise
+        errors.register_error_codes(error_codes)
+
     default_plugin = DefaultPlugin(options)  # type: Plugin
+    load_plugin(default_plugin, 'mypy.plugins.default')
+
     if not options.config_file:
         return default_plugin, snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
         line = 1  # We need to pick some line number that doesn't look too confusing
-
-    def plugin_error(message: str) -> None:
-        errors.report(line, 0, message)
-        errors.raise_error()
 
     custom_plugins = []  # type: List[Plugin]
     errors.set_file(options.config_file, None)
@@ -394,11 +410,15 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))
         try:
-            custom_plugins.append(plugin_type(options))
-            snapshot[module_name] = take_module_snapshot(module)
+            plugin = plugin_type(options)  # type: Plugin
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
+        else:
+            load_plugin(plugin, module_name)
+            custom_plugins.append(plugin)
+            snapshot[module_name] = take_module_snapshot(module)
+
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
 

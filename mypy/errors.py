@@ -11,7 +11,6 @@ from mypy.version import __version__ as mypy_version
 
 MYPY = False
 if MYPY:
-    from mypy.plugin import Plugin
     from typing_extensions import Final
 
 T = TypeVar('T')
@@ -95,22 +94,6 @@ class ErrorInfo:
         self.id = id
 
 
-class ErrorRegistry:
-
-    def __init__(self) -> None:
-        # mapping of message string literal to id
-        self.literal_to_id = {}  # type: Dict[str, str]
-        # mapping of message id to string literal
-        self.id_to_literal = {}  # type: Dict[str, str]
-
-    def register_errors(self, mapping: Dict[str, str]) -> int:
-        updates = {msg: name for name, msg in mapping.items()}
-        # FIXME: check for name clashes
-        self.literal_to_id.update(updates)
-        self.id_to_literal.update(mapping)
-        return len(updates)
-
-
 class Errors:
     """Container for compile errors.
 
@@ -162,7 +145,8 @@ class Errors:
     target_module = None  # type: Optional[str]
     scope = None  # type: Optional[Scope]
 
-    error_codes = None  # type: ErrorRegistry
+    # Mapping of error string literal to code
+    error_codes = None  # type: Dict[str, str]
 
     def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False,
@@ -170,7 +154,6 @@ class Errors:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
-        self.error_codes = ErrorRegistry()
         self.initialize()
 
     def initialize(self) -> None:
@@ -185,6 +168,7 @@ class Errors:
         self.only_once_messages = set()
         self.scope = None
         self.target_module = None
+        self.error_codes = {}
 
     def reset(self) -> None:
         self.initialize()
@@ -197,6 +181,7 @@ class Errors:
         new.function_or_member = self.function_or_member[:]
         new.target_module = self.target_module
         new.scope = self.scope
+        new.error_codes = self.error_codes.copy()
         return new
 
     def total_errors(self) -> int:
@@ -566,6 +551,24 @@ class Errors:
             i += 1
         return res
 
+    def register_error_codes(self, mapping: Dict[str, str]) -> None:
+        """Add error codes and their message literals to the list of known errors.
+
+        Args:
+            mapping: map of error code to message literal
+        """
+        # reverse the lookup
+        updates = {msg: name for name, msg in mapping.items()}
+        # FIXME: check for name clashes
+        self.error_codes.update(updates)
+
+    def initialize_error_codes(self) -> None:
+        """Populate error codes"""
+        from mypy.plugins.common import extract_error_codes
+        import mypy.message_registry
+        # read native error codes from the message registry
+        self.register_error_codes(extract_error_codes(mypy.message_registry))
+
 
 class CompileError(Exception):
     """Exception raised when there is a compile error.
@@ -660,13 +663,3 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
-
-
-def initialize_error_codes(errors: Errors, plugin: 'Plugin') -> None:
-    """Populate errors.error_codes"""
-    from mypy.plugins.common import extract_error_codes
-    import mypy.message_registry
-    # read native error codes from the message registry
-    errors.error_codes.register_errors(extract_error_codes('', mypy.message_registry))
-    # read custom error codes from plugins
-    errors.error_codes.register_errors(plugin.get_error_codes())
