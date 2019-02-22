@@ -923,7 +923,7 @@ In Python 2 code, these methods are also supported:
 * ``has_key(key)``
 * ``viewitems()``
 * ``viewkeys()``
-* ``viervalues()``
+* ``viewvalues()``
 
 .. note::
 
