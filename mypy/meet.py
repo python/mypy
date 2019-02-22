@@ -484,9 +484,12 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
             return result
-        elif isinstance(self.s, TypeType) and t.is_type_obj():
-            # TODO: what if t is generic?
-            return TypeType.make_normalized(meet_types(self.s.item, t.ret_type))
+        elif isinstance(self.s, TypeType) and t.is_type_obj() and not t.is_generic():
+            # In this case we are able to potentially produce a better meet.
+            res = meet_types(self.s.item, t.ret_type)
+            if not isinstance(res, (NoneTyp, UninhabitedType)):
+                return TypeType.make_normalized(res)
+            return self.default(self.s)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
             call = unpack_callback_protocol(self.s)
             if call:
@@ -570,6 +573,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return t
+        elif isinstance(self.s, CallableType):
+            return self.meet(t, self.s)
         else:
             return self.default(self.s)
 
