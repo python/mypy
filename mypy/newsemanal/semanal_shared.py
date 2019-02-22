@@ -17,8 +17,8 @@ MYPY = False
 if False:
     from typing_extensions import Final
 
-# Priorities for ordering of patches within the final "patch" phase of semantic analysis
-# (after pass 3):
+# Priorities for ordering of patches within the "patch" phase of semantic analysis
+# (after the main pass):
 
 # Fix fallbacks (does joins)
 PRIORITY_FALLBACKS = 1  # type: Final
@@ -194,6 +194,14 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
 
     This must be called only after the main semantic analysis pass, since joins
     aren't available before that.
+
+    Note that there is an apparent chicken and egg problem with respect
+    to verifying type arguments against bounds. Verifying bounds might
+    require fallbacks, but we might use the bounds to calculate the
+    fallbacks. In partice this is not a problem, since the worst that
+    can happen is that we have invalid type argument values, and these
+    can happen in later stages as well (they will generate errors, but
+    we don't prevent their existence).
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname() == 'builtins.tuple'

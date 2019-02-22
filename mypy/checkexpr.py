@@ -2787,6 +2787,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     tt = self.accept(item, type_context_items[j])
                     j += 1
                 items.append(tt)
+        # This is a partial fallback item type. A precise type will be calculated on demand.
         fallback_item = AnyType(TypeOfAny.special_form)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 

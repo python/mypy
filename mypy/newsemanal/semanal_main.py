@@ -63,7 +63,10 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # before functions. This limitation is unlikely to go away soon.
     process_top_levels(graph, scc, patches)
     process_functions(graph, scc, patches)
+    # We use patch callbacks to fix up things when we expect relatively few
+    # callbacks to be required.
     apply_semantic_analyzer_patches(patches)
+    # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     process_abstract_status(graph, scc, errors)
 
@@ -215,11 +218,6 @@ def semantic_analyze_target(target: str,
         return [target], analyzer.incomplete
     else:
         return [], analyzer.incomplete
-
-
-def process_patches(graph: 'Graph', scc: List[str]) -> None:
-    for module in scc:
-        graph[module].semantic_analysis_apply_patches()
 
 
 def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None:
