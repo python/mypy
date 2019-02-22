@@ -4,7 +4,7 @@ import os
 from abc import abstractmethod
 from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
 )
 from mypy_extensions import trait
 
@@ -206,6 +206,10 @@ class SymbolNode(Node):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
+# Items: fullname, related symbol table node, surrounding type (if any)
+Definition = Tuple[str, 'SymbolTableNode', Optional['TypeInfo']]
+
+
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -251,6 +255,13 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = set()
+
+    def local_definitions(self) -> Iterator[Definition]:
+        """Return all definitions within the module (including nested).
+
+        This doesn't include imported definitions.
+        """
+        return local_definitions(self.names, self.fullname())
 
     def name(self) -> str:
         return '' if not self._fullname else self._fullname.split('.')[-1]
@@ -2930,6 +2941,11 @@ class SymbolTableNode:
 
 
 class SymbolTable(Dict[str, SymbolTableNode]):
+    """Static representation of a namespace dictionary.
+
+    This is used for module, class and function namespaces.
+    """
+
     def __str__(self) -> str:
         a = []  # type: List[str]
         for key, value in self.items():
@@ -3059,3 +3075,24 @@ def is_class_var(expr: NameExpr) -> bool:
 def is_final_node(node: Optional[SymbolNode]) -> bool:
     """Check whether `node` corresponds to a final attribute."""
     return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final
+
+
+def local_definitions(names: SymbolTable,
+                      name_prefix: str,
+                      info: Optional[TypeInfo] = None) -> Iterator[Definition]:
+    """Iterate over local definitions (not imported) in a symbol table.
+
+    Recursively iterate over class members and nested classes.
+    """
+    # TODO: What should the name be? Or maybe remove it?
+    for name, symnode in names.items():
+        shortname = name
+        if '-redef' in name:
+            # Restore original name from mangled name of multiply defined function
+            shortname = name.split('-redef')[0]
+        fullname = name_prefix + '.' + shortname
+        node = symnode.node
+        if node and node.fullname() == fullname:
+            yield fullname, symnode, info
+            if isinstance(node, TypeInfo):
+                yield from local_definitions(node.names, fullname, node)
