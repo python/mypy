@@ -24,14 +24,14 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union, Callable
 
 from mypy.nodes import (
     Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
-from mypy.newsemanal.semanal import NewSemanticAnalyzer
+from mypy.newsemanal.semanal import NewSemanticAnalyzer, apply_semantic_analyzer_patches
 from mypy.newsemanal.semanal_abstract import calculate_abstract_status
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
@@ -39,6 +39,9 @@ from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 MYPY = False
 if MYPY:
     from mypy.build import Graph, State
+
+
+Patches = List[Tuple[int, Callable[[], None]]]
 
 
 # Perform up to this many semantic analysis iterations until giving up trying to bind all names.
@@ -54,16 +57,21 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
 
     Assume that reachability analysis has already been performed.
     """
+    patches = []  # type: Patches
     # Note that functions can't define new module-level attributes
     # using 'global x', since module top levels are fully processed
     # before functions. This limitation is unlikely to go away soon.
-    process_top_levels(graph, scc)
-    process_functions(graph, scc)
+    process_top_levels(graph, scc, patches)
+    process_functions(graph, scc, patches)
+    # We use patch callbacks to fix up things when we expect relatively few
+    # callbacks to be required.
+    apply_semantic_analyzer_patches(patches)
+    # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     process_abstract_status(graph, scc, errors)
 
 
-def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
+def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:
     # Process top levels until everything has been bound.
 
     # Initialize ASTs and symbol tables.
@@ -96,7 +104,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
             state = graph[next_id]
             assert state.tree is not None
             deferred, incomplete = semantic_analyze_target(next_id, state, state.tree, None,
-                                                           final_iteration)
+                                                           final_iteration, patches)
             all_deferred += deferred
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
@@ -105,7 +113,7 @@ def process_top_levels(graph: 'Graph', scc: List[str]) -> None:
         worklist = list(reversed(all_deferred))
 
 
-def process_functions(graph: 'Graph', scc: List[str]) -> None:
+def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
     # Process functions.
     for module in scc:
         tree = graph[module].tree
@@ -115,7 +123,13 @@ def process_functions(graph: 'Graph', scc: List[str]) -> None:
         targets = get_all_leaf_targets(symtable, module, None)
         for target, node, active_type in targets:
             assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
-            process_top_level_function(analyzer, graph[module], module, target, node, active_type)
+            process_top_level_function(analyzer,
+                                       graph[module],
+                                       module,
+                                       target,
+                                       node,
+                                       active_type,
+                                       patches)
 
 
 def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
@@ -123,7 +137,8 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
                                module: str,
                                target: str,
                                node: Union[FuncDef, OverloadedFuncDef, Decorator],
-                               active_type: Optional[TypeInfo]) -> None:
+                               active_type: Optional[TypeInfo],
+                               patches: Patches) -> None:
     """Analyze single top-level function or method.
 
     Process the body of the function (including nested functions) again and again,
@@ -143,7 +158,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
             more_iterations = False
             analyzer.incomplete_namespaces.discard(module)
         deferred, incomplete = semantic_analyze_target(target, state, node, active_type,
-                                                       not more_iterations)
+                                                       not more_iterations, patches)
 
     analyzer.incomplete_namespaces.discard(module)
     # After semantic analysis is done, discard local namespaces
@@ -178,7 +193,8 @@ def semantic_analyze_target(target: str,
                             state: 'State',
                             node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
                             active_type: Optional[TypeInfo],
-                            final_iteration: bool) -> Tuple[List[str], bool]:
+                            final_iteration: bool,
+                            patches: Patches) -> Tuple[List[str], bool]:
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -195,7 +211,7 @@ def semantic_analyze_target(target: str,
             if isinstance(refresh_node, Decorator):
                 # Decorator expressions will be processed as part of the module top level.
                 refresh_node = refresh_node.func
-            analyzer.refresh_partial(refresh_node, [], final_iteration)
+            analyzer.refresh_partial(refresh_node, patches, final_iteration)
             if isinstance(node, Decorator):
                 infer_decorator_signature_if_simple(node, analyzer)
     if analyzer.deferred:

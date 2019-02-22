@@ -919,7 +919,7 @@ class CallableType(FunctionLike):
         assert self.is_type_obj()
         ret = self.ret_type
         if isinstance(ret, TupleType):
-            ret = ret.fallback
+            ret = ret.partial_fallback
         if isinstance(ret, TypeVarType):
             ret = ret.upper_bound
         assert isinstance(ret, Instance)
@@ -1173,22 +1173,24 @@ class TupleType(Type):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
 
     Instance variables:
-        items: tuple item types
-        fallback: the underlying instance type that is used for non-tuple methods
-            (this is currently always builtins.tuple, but it could be different for named
-            tuples, for example)
-        implicit: if True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
+        items: Tuple item types
+        partial_fallback: The (imprecise) underlying instance type that is used
+            for non-tuple methods. This is generally builtins.tuple[Any] for
+            regular tuples, but it's different for named tuples and classes with
+            a tuple base class. Use mypy.typeops.tuple_fallback to calculate the
+            precise fallback type derived from item types.
+        implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
     items = None  # type: List[Type]
-    fallback = None  # type: Instance
+    partial_fallback = None  # type: Instance
     implicit = False
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  column: int = -1, implicit: bool = False) -> None:
         super().__init__(line, column)
         self.items = items
-        self.fallback = fallback
+        self.partial_fallback = fallback
         self.implicit = implicit
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.items) == 0
@@ -1200,17 +1202,17 @@ class TupleType(Type):
         return visitor.visit_tuple_type(self)
 
     def __hash__(self) -> int:
-        return hash((tuple(self.items), self.fallback))
+        return hash((tuple(self.items), self.partial_fallback))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TupleType):
             return NotImplemented
-        return self.items == other.items and self.fallback == other.fallback
+        return self.items == other.items and self.partial_fallback == other.partial_fallback
 
     def serialize(self) -> JsonDict:
         return {'.class': 'TupleType',
                 'items': [t.serialize() for t in self.items],
-                'fallback': self.fallback.serialize(),
+                'partial_fallback': self.partial_fallback.serialize(),
                 'implicit': self.implicit,
                 }
 
@@ -1218,20 +1220,20 @@ class TupleType(Type):
     def deserialize(cls, data: JsonDict) -> 'TupleType':
         assert data['.class'] == 'TupleType'
         return TupleType([deserialize_type(t) for t in data['items']],
-                         Instance.deserialize(data['fallback']),
+                         Instance.deserialize(data['partial_fallback']),
                          implicit=data['implicit'])
 
     def copy_modified(self, *, fallback: Optional[Instance] = None,
                       items: Optional[List[Type]] = None) -> 'TupleType':
         if fallback is None:
-            fallback = self.fallback
+            fallback = self.partial_fallback
         if items is None:
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
     def slice(self, begin: Optional[int], stride: Optional[int],
               end: Optional[int]) -> 'TupleType':
-        return TupleType(self.items[begin:end:stride], self.fallback,
+        return TupleType(self.items[begin:end:stride], self.partial_fallback,
                          self.line, self.column, self.implicit)
 
 
@@ -1955,10 +1957,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)
-        if t.fallback and t.fallback.type:
-            fallback_name = t.fallback.type.fullname()
+        if t.partial_fallback and t.partial_fallback.type:
+            fallback_name = t.partial_fallback.type.fullname()
             if fallback_name != 'builtins.tuple':
-                return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
+                return 'Tuple[{}, fallback={}]'.format(s, t.partial_fallback.accept(self))
         return 'Tuple[{}]'.format(s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:

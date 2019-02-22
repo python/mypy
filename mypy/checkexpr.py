@@ -59,6 +59,7 @@ from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
+from mypy.typeops import tuple_fallback
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -347,7 +348,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             info = object_type.fallback.type.get_containing_type_info(method_name)
             type_name = info.fullname() if info is not None else None
         elif isinstance(object_type, TupleType):
-            type_name = object_type.fallback.type.fullname()
+            type_name = tuple_fallback(object_type).type.fullname()
 
         if type_name is not None:
             return '{}.{}'.format(type_name, method_name)
@@ -722,7 +723,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_call(item, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TupleType):
-            return self.check_call(callee.fallback, args, arg_kinds, context,
+            return self.check_call(tuple_fallback(callee), args, arg_kinds, context,
                                    arg_names, callable_node, arg_messages, callable_name,
                                    object_type)
         else:
@@ -835,8 +836,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if callee:
                 return callee
         # We support Type of namedtuples but not of tuples in general
-        if isinstance(item, TupleType) and item.fallback.type.fullname() != 'builtins.tuple':
-            return self.analyze_type_type_callee(item.fallback, context)
+        if (isinstance(item, TupleType)
+                and tuple_fallback(item).type.fullname() != 'builtins.tuple'):
+            return self.analyze_type_type_callee(tuple_fallback(item), context)
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
@@ -2666,8 +2668,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
         elif (isinstance(item, TupleType) and
               # Tuple[str, int]() fails at runtime, only named tuples and subclasses work.
-              item.fallback.type.fullname() != 'builtins.tuple'):
-            return type_object_type(item.fallback.type, self.named_type)
+              tuple_fallback(item).type.fullname() != 'builtins.tuple'):
+            return type_object_type(tuple_fallback(item).type, self.named_type)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
         else:
@@ -2785,7 +2787,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     tt = self.accept(item, type_context_items[j])
                     j += 1
                 items.append(tt)
-        fallback_item = join.join_type_list(items)
+        # This is a partial fallback item type. A precise type will be calculated on demand.
+        fallback_item = AnyType(TypeOfAny.special_form)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
@@ -2973,7 +2976,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # Could be anything.
                     return
                 if isinstance(item, TupleType):
-                    item = item.fallback  # Handle named tuples and other Tuple[...] subclasses.
+                    # Handle named tuples and other Tuple[...] subclasses.
+                    item = tuple_fallback(item)
                 if not isinstance(item, Instance):
                     # A complicated type object type. Too tricky, give up.
                     # TODO: Do something more clever here.
@@ -2997,7 +3001,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return
                 if isinstance(instance_type, TupleType):
                     # Needed for named tuples and other Tuple[...] subclasses.
-                    instance_type = instance_type.fallback
+                    instance_type = tuple_fallback(instance_type)
                 if type_info not in instance_type.type.mro:
                     self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
@@ -3287,7 +3291,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # these two should be carefully kept in sync.
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
-        if isinstance(typ, (TupleType, LiteralType)):
+        if isinstance(typ, TupleType):
+            typ = tuple_fallback(typ)
+        if isinstance(typ, LiteralType):
             typ = typ.fallback
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
@@ -3305,7 +3311,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(item, TypeVarType):
                 item = item.upper_bound
             if isinstance(item, TupleType):
-                item = item.fallback
+                item = tuple_fallback(item)
             if isinstance(item, Instance) and item.type.metaclass_type is not None:
                 return self.has_member(item.type.metaclass_type, member)
             if isinstance(item, AnyType):
@@ -3645,7 +3651,7 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
         if isinstance(actual, Overloaded):
             actual = actual.items()[0].fallback
         if isinstance(actual, TupleType):
-            actual = actual.fallback
+            actual = tuple_fallback(actual)
         if isinstance(actual, Instance) and formal.type in actual.type.mro:
             # Try performing a quick check as an optimization
             return True

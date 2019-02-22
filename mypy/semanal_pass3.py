@@ -356,7 +356,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     if isinstance(new_b, Instance):
                         new_bases.append(new_b)
                     elif isinstance(new_b, TupleType):
-                        new_bases.append(new_b.fallback)
+                        new_bases.append(new_b.partial_fallback)
                     else:
                         self.fail("Argument 2 to NewType(...) must be subclassable"
                                   " (got {})".format(new_b), node)
@@ -696,7 +696,7 @@ class ForwardReferenceResolver(TypeTranslator):
         if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         items = [it.accept(self) for it in t.items]
-        fallback = self.visit_instance(t.fallback, from_fallback=True)
+        fallback = self.visit_instance(t.partial_fallback, from_fallback=True)
         assert isinstance(fallback, Instance)
         return TupleType(items, fallback, t.line, t.column)
 

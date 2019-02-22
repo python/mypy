@@ -63,6 +63,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
+from mypy.typeops import tuple_fallback
 from mypy import state
 
 MYPY = False
@@ -1063,7 +1064,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         forward_inst = reverse_type.arg_types[1]
         if isinstance(forward_inst, TypeVarType):
             forward_inst = forward_inst.upper_bound
-        if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType, LiteralType)):
+        elif isinstance(forward_inst, TupleType):
+            forward_inst = tuple_fallback(forward_inst)
+        elif isinstance(forward_inst, (FunctionLike, TypedDictType, LiteralType)):
             forward_inst = forward_inst.fallback
         if isinstance(forward_inst, TypeType):
             item = forward_inst.item
@@ -1955,7 +1958,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self_type = self.scope.active_self_type()
                     assert self_type is not None, "Internal error: base lookup outside class"
                     if isinstance(self_type, TupleType):
-                        instance = self_type.fallback
+                        instance = tuple_fallback(self_type)
                     else:
                         instance = self_type
                     itype = map_instance_to_supertype(instance, base)
@@ -3260,7 +3263,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # when we dummy up a new type.
         ityp = typ
         if isinstance(typ, TupleType):
-            ityp = typ.fallback
+            ityp = tuple_fallback(typ)
 
         if isinstance(ityp, Instance):
             method = ityp.type.get_method('__call__')

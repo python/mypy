@@ -15,6 +15,7 @@ from mypy.subtypes import (
 )
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
+from mypy.typeops import tuple_fallback
 from mypy import state
 
 # TODO Describe this module.
@@ -211,9 +212,9 @@ def is_overlapping_types(left: Type,
     if is_tuple(left) and is_tuple(right):
         return are_tuples_overlapping(left, right, ignore_promotions=ignore_promotions)
     elif isinstance(left, TupleType):
-        left = left.fallback
+        left = tuple_fallback(left)
     elif isinstance(right, TupleType):
-        right = right.fallback
+        right = tuple_fallback(right)
 
     # Next, we handle single-variant types that cannot be inherently partially overlapping,
     # but do require custom logic to inspect.
@@ -515,7 +516,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             for i in range(t.length()):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
-            return TupleType(items, t.fallback)
+            return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
             if self.s.type.fullname() == 'builtins.tuple' and self.s.args:

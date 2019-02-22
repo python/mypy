@@ -483,7 +483,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
         any_type = AnyType(TypeOfAny.special_form)
         # If the fallback isn't filled in yet, its type will be the falsey FakeInfo
-        fallback = (t.fallback if t.fallback.type
+        fallback = (t.partial_fallback if t.partial_fallback.type
                     else self.named_type('builtins.tuple', [any_type]))
         return TupleType(self.anal_array(t.items), fallback, t.line)
 

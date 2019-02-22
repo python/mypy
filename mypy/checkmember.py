@@ -22,6 +22,7 @@ from mypy.typeanal import set_any_tvars
 from mypy import message_registry
 from mypy import subtypes
 from mypy import meet
+from mypy.typeops import tuple_fallback
 
 MYPY = False
 if MYPY:  # import for forward declaration only
@@ -122,7 +123,10 @@ def _analyze_member_access(name: str,
         return analyze_type_callable_member_access(name, typ, mx)
     elif isinstance(typ, TypeType):
         return analyze_type_type_member_access(name, typ, mx)
-    elif isinstance(typ, (TupleType, TypedDictType, LiteralType, FunctionLike)):
+    elif isinstance(typ, TupleType):
+        # Actually look up from the fallback instance type.
+        return _analyze_member_access(name, tuple_fallback(typ), mx)
+    elif isinstance(typ, (TypedDictType, LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, typ.fallback, mx)
     elif isinstance(typ, NoneTyp):
@@ -195,7 +199,7 @@ def analyze_type_callable_member_access(name: str,
     # TODO super?
     ret_type = typ.items()[0].ret_type
     if isinstance(ret_type, TupleType):
-        ret_type = ret_type.fallback
+        ret_type = tuple_fallback(ret_type)
     if isinstance(ret_type, Instance):
         if not mx.is_operator:
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
@@ -235,7 +239,7 @@ def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext)
         if isinstance(typ.item.upper_bound, Instance):
             item = typ.item.upper_bound
     elif isinstance(typ.item, TupleType):
-        item = typ.item.fallback
+        item = tuple_fallback(typ.item)
     elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
         item = typ.item.fallback
     elif isinstance(typ.item, TypeType):
@@ -804,7 +808,7 @@ def map_type_from_supertype(typ: Type,
     # Create the type of self in subtype, of form t[a1, ...].
     inst_type = fill_typevars(sub_info)
     if isinstance(inst_type, TupleType):
-        inst_type = inst_type.fallback
+        inst_type = tuple_fallback(inst_type)
     # Map the type of self to supertype. This gets us a description of the
     # supertype type variables in terms of subtype variables, i.e. t[t1, ...]
     # so that any type variables in tN are to be interpreted in subtype

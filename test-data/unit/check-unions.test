@@ -782,14 +782,16 @@ class NTStr(NamedTuple):
     x: str
     y: str
 
+t1: NTInt
+reveal_type(t1.__iter__) # E: Revealed type is 'def () -> typing.Iterator[builtins.int*]'
 nt: Union[NTInt, NTStr]
+reveal_type(nt.__iter__) # E: Revealed type is 'Union[def () -> typing.Iterator[builtins.int*], def () -> typing.Iterator[builtins.str*]]'
 for nx in nt:
     reveal_type(nx) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
 
 t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
-    # TODO(Ivan): This will be OK when tuple fallback patches are added (like above)
-    reveal_type(x) # E: Revealed type is 'Any'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
 [builtins fixtures/for.pyi]
 [out]
 

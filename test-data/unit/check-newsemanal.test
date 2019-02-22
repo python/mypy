@@ -1580,6 +1580,65 @@ class C:
 def C() -> None:  # E: Name 'C' already defined on line 1
     ''()  # E: "str" not callable
 
+[case testNewAnalyzerTupleIteration]
+from typing import Union, Tuple, NamedTuple
+
+class T(Tuple[B, C]):
+    pass
+
+class A: pass
+class B(A): pass
+class C(A): pass
+
+class NTInt(NamedTuple):
+    x: int
+    y: int
+
+class NTStr(NamedTuple):
+    x: str
+    y: str
+
+t1: T
+reveal_type(t1.__iter__) # E: Revealed type is 'def () -> typing.Iterator[__main__.A*]'
+
+t2: NTInt
+reveal_type(t2.__iter__) # E: Revealed type is 'def () -> typing.Iterator[builtins.int*]'
+nt: Union[NTInt, NTStr]
+reveal_type(nt.__iter__) # E: Revealed type is 'Union[def () -> typing.Iterator[builtins.int*], def () -> typing.Iterator[builtins.str*]]'
+for nx in nt:
+    reveal_type(nx) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+t: Union[Tuple[int, int], Tuple[str, str]]
+for x in t:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
+[builtins fixtures/for.pyi]
+[out]
+
+[case testNewAnalyzerFallbackUpperBoundCheckAndFallbacks]
+from typing import TypeVar, Generic, Tuple
+
+class A: pass
+class B: pass
+class C(B): pass
+
+S = TypeVar('S', bound=Tuple[G[A], ...])
+
+class GG(Generic[S]): pass
+
+g: GG[Tuple[G[B], G[C]]] \
+  # E: Type argument "__main__.B" of "G" must be a subtype of "__main__.A" \
+  # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A" \
+  # E: Type argument "Tuple[__main__.G[__main__.B], __main__.G[__main__.C]]" of "GG" must be a subtype of "builtins.tuple[__main__.G[__main__.A]]"
+
+T = TypeVar('T', bound=A, covariant=True)
+
+class G(Generic[T]): pass
+
+t: Tuple[G[B], G[C]] # E: Type argument "__main__.B" of "G" must be a subtype of "__main__.A" \
+                     # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A"
+reveal_type(t.__iter__) # E: Revealed type is 'def () -> typing.Iterator[__main__.G*[__main__.B]]'
+[builtins fixtures/tuple.pyi]
+
 [case testNewAnalyzerClassKeywordsForward]
 class C(B, other=A): ...
 class B: ...

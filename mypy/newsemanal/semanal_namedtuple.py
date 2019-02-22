@@ -1,7 +1,8 @@
 """Semantic analysis of named tuple definitions.
 
-This is conceptually part of mypy.semanal (semantic analyzer pass 2).
+This is conceptually part of mypy.newsemanal.semanal.
 """
+
 from contextlib import contextmanager
 from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 
@@ -9,7 +10,7 @@ from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
 )
 from mypy.newsemanal.semanal_shared import (
-    SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+    SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
 )
 from mypy.nodes import (
     Var, EllipsisExpr, Argument, StrExpr, BytesExpr, UnicodeExpr, ExpressionStmt, NameExpr,
@@ -19,7 +20,6 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy import join
 
 MYPY = False
 if MYPY:
@@ -364,17 +364,14 @@ class NamedTupleAnalyzer:
 
         info = self.api.basic_new_typeinfo(name, fallback)
         info.is_named_tuple = True
-        info.tuple_type = TupleType(types, fallback)
-
-        def patch() -> None:
-            # Calculate the correct value type for the fallback tuple.
-            assert info.tuple_type, "TupleType type deleted before calling the patch"
-            fallback.args[0] = join.join_type_list(list(info.tuple_type.items))
+        tuple_base = TupleType(types, fallback)
+        info.tuple_type = tuple_base
 
         # We can't calculate the complete fallback type until after semantic
-        # analysis, since otherwise MROs might be incomplete. Postpone a callback
-        # function that patches the fallback.
-        self.api.schedule_patch(PRIORITY_FALLBACKS, patch)
+        # analysis, since otherwise base classes might be incomplete. Postpone a
+        # callback function that patches the fallback.
+        self.api.schedule_patch(PRIORITY_FALLBACKS,
+                                lambda: calculate_tuple_fallback(tuple_base))
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:

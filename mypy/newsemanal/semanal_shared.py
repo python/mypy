@@ -9,22 +9,19 @@ from mypy.nodes import (
     SymbolNode
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance
+from mypy.types import Type, FunctionLike, Instance, TupleType
 from mypy.tvar_scope import TypeVarScope
+from mypy import join
 
 MYPY = False
 if False:
     from typing_extensions import Final
 
-# Priorities for ordering of patches within the final "patch" phase of semantic analysis
-# (after pass 3):
+# Priorities for ordering of patches within the "patch" phase of semantic analysis
+# (after the main pass):
 
-# Fix forward references (needs to happen first)
-PRIORITY_FORWARD_REF = 0  # type: Final
 # Fix fallbacks (does joins)
 PRIORITY_FALLBACKS = 1  # type: Final
-# Checks type var values (does subtype checks)
-PRIORITY_TYPEVAR_VALUES = 2  # type: Final
 
 
 @trait
@@ -190,3 +187,22 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
             return sig.with_name(fdef.name())
     else:
         return sig
+
+
+def calculate_tuple_fallback(typ: TupleType) -> None:
+    """Calculate a precise item type for the fallback of a tuple type.
+
+    This must be called only after the main semantic analysis pass, since joins
+    aren't available before that.
+
+    Note that there is an apparent chicken and egg problem with respect
+    to verifying type arguments against bounds. Verifying bounds might
+    require fallbacks, but we might use the bounds to calculate the
+    fallbacks. In partice this is not a problem, since the worst that
+    can happen is that we have invalid type argument values, and these
+    can happen in later stages as well (they will generate errors, but
+    we don't prevent their existence).
+    """
+    fallback = typ.partial_fallback
+    assert fallback.type.fullname() == 'builtins.tuple'
+    fallback.args[0] = join.join_type_list(list(typ.items))

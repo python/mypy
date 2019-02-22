@@ -99,7 +99,9 @@ from mypy.plugin import (
 )
 from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
-from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface, set_callable_name
+from mypy.newsemanal.semanal_shared import (
+    SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
+)
 from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.newsemanal.semanal_typeddict import TypedDictAnalyzer
 from mypy.newsemanal.semanal_enum import EnumCallAnalyzer
@@ -1280,15 +1282,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         info.tuple_type = None
         for base, base_expr in bases:
             if isinstance(base, TupleType):
-                if info.tuple_type:
-                    self.fail("Class has two incompatible bases derived from tuple", defn)
-                    defn.has_incompatible_baseclass = True
-                info.tuple_type = base
-                base_types.append(base.fallback)
-                if isinstance(base_expr, CallExpr):
-                    defn.analyzed = NamedTupleExpr(base.fallback.type)
-                    defn.analyzed.line = defn.line
-                    defn.analyzed.column = defn.column
+                actual_base = self.configure_tuple_base_class(defn, base, base_expr)
+                base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail("Cannot subclass NewType", defn)
@@ -1319,16 +1314,36 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         info.bases = base_types
 
-        # Calculate the MRO. It might be incomplete at this point if
-        # the bases of defn include classes imported from other
-        # modules in an import loop. We'll recompute it in SemanticAnalyzerPass3.
+        # Calculate the MRO.
         if not self.verify_base_classes(defn):
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
             return
-        # TODO: Ideally we should move MRO calculation to a later stage, but this is
-        # not easy, see issue #5536.
         self.calculate_class_mro(defn, self.object_type)
+
+    def configure_tuple_base_class(self,
+                                   defn: ClassDef,
+                                   base: TupleType,
+                                   base_expr: Expression) -> Instance:
+        info = defn.info
+
+        # There may be an existing valid tuple type from previous semanal iterations.
+        # Use equality to check if it is the case.
+        if info.tuple_type and info.tuple_type != base:
+            self.fail("Class has two incompatible bases derived from tuple", defn)
+            defn.has_incompatible_baseclass = True
+        info.tuple_type = base
+        if isinstance(base_expr, CallExpr):
+            defn.analyzed = NamedTupleExpr(base.partial_fallback.type)
+            defn.analyzed.line = defn.line
+            defn.analyzed.column = defn.column
+
+        if base.partial_fallback.type.fullname() == 'builtins.tuple':
+            # Fallback can only be safely calculated after semantic analysis, since base
+            # classes may be incomplete. Postpone the calculation.
+            self.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(base))
+
+        return base.partial_fallback
 
     def calculate_class_mro(self, defn: ClassDef,
                             obj_type: Optional[Callable[[], Instance]] = None) -> None:
