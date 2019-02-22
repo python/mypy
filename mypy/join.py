@@ -14,7 +14,7 @@ from mypy.subtypes import (
     is_protocol_implementation, find_member
 )
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
-from mypy import typeops
+import mypy.typeops
 from mypy import state
 
 
@@ -244,8 +244,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = []  # type: List[Type]
             for i in range(t.length()):
                 items.append(self.join(t.items[i], self.s.items[i]))
-            fallback = join_instances(typeops.tuple_fallback(self.s),
-                                      typeops.tuple_fallback(t))
+            fallback = join_instances(mypy.typeops.tuple_fallback(self.s),
+                                      mypy.typeops.tuple_fallback(t))
             assert isinstance(fallback, Instance)
             return TupleType(items, fallback)
         else:
@@ -301,7 +301,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
         elif isinstance(typ, TupleType):
-            return self.default(typeops.tuple_fallback(typ))
+            return self.default(mypy.typeops.tuple_fallback(typ))
         elif isinstance(typ, TypedDictType):
             return self.default(typ.fallback)
         elif isinstance(typ, FunctionLike):
