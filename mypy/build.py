@@ -1794,8 +1794,13 @@ class State:
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
+        Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]  # noqa
+        if self.manager.options.new_semantic_analyzer:
+            analyzer = self.manager.new_semantic_analyzer  # type: Analyzer
+        else:
+            analyzer = self.manager.semantic_analyzer
         for dep in self.dependencies:
-            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+            analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
@@ -2624,11 +2629,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        # HACK: similar is needed for 'typing', for untangling the builtins SCC when new semantic
-        # analyzer is used.
-        if 'typing' in ascc:
-            scc.remove('typing')
-            scc.insert(0, 'typing')
         if manager.options.verbosity >= 2:
             for id in scc:
                 manager.trace("Priorities for %s:" % id,
@@ -2828,7 +2828,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         if not manager.options.new_semantic_analyzer:
             manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc)
+        semantic_analysis_for_scc(graph, scc, manager.errors)
     else:
         for id in stale:
             graph[id].semantic_analysis()

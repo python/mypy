@@ -1,7 +1,7 @@
 from typing import Dict, Sequence, Optional
 
 import mypy.subtypes
-from mypy.sametypes import is_same_type
+import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType
 from mypy.messages import MessageBuilder
@@ -37,7 +37,7 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
             if isinstance(type, TypeVarType) and type.values:
                 # Allow substituting T1 for T if every allowed value of T1
                 # is also a legal value of T.
-                if all(any(is_same_type(v, v1) for v in values)
+                if all(any(mypy.sametypes.is_same_type(v, v1) for v in values)
                        for v1 in type.values):
                     continue
             matching = []

@@ -9,7 +9,8 @@ from mypy.types import (
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
-from mypy.sametypes import is_same_type
+import mypy.sametypes
+import mypy.typeops
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
@@ -199,7 +200,7 @@ def is_same_constraints(x: List[Constraint], y: List[Constraint]) -> bool:
 def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
     return (c1.type_var == c2.type_var
             and c1.op == c2.op
-            and is_same_type(c1.target, c2.target))
+            and mypy.sametypes.is_same_type(c1.target, c2.target))
 
 
 def simplify_away_incomplete_types(types: List[Type]) -> List[Type]:
@@ -282,7 +283,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if template.type.protocol_members == ['__call__']:
                 # Special case: a generic callback protocol
-                if not any(is_same_type(template, t) for t in template.type.inferring):
+                if not any(mypy.sametypes.is_same_type(template, t)
+                           for t in template.type.inferring):
                     template.type.inferring.append(template)
                     call = mypy.subtypes.find_member('__call__', template, actual)
                     assert call is not None
@@ -340,7 +342,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # Note that we use is_protocol_implementation instead of is_subtype
                     # because some type may be considered a subtype of a protocol
                     # due to _promote, but still not implement the protocol.
-                    not any(is_same_type(template, t) for t in template.type.inferring) and
+                    not any(mypy.sametypes.is_same_type(template, t)
+                            for t in template.type.inferring) and
                     mypy.subtypes.is_protocol_implementation(instance, erased)):
                 template.type.inferring.append(template)
                 self.infer_constraints_from_protocol_members(res, instance, template,
@@ -349,7 +352,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 return res
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
                   # We avoid infinite recursion for structural subtypes also here.
-                  not any(is_same_type(instance, i) for i in instance.type.inferring) and
+                  not any(mypy.sametypes.is_same_type(instance, i)
+                          for i in instance.type.inferring) and
                   mypy.subtypes.is_protocol_implementation(erased, instance)):
                 instance.type.inferring.append(instance)
                 self.infer_constraints_from_protocol_members(res, instance, template,
@@ -370,7 +374,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 res.extend(cb)
             return res
         elif isinstance(actual, TupleType) and self.direction == SUPERTYPE_OF:
-            return infer_constraints(template, actual.fallback, self.direction)
+            return infer_constraints(template,
+                                     mypy.typeops.tuple_fallback(actual),
+                                     self.direction)
         else:
             return []
 

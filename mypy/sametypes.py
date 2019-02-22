@@ -5,6 +5,7 @@ from mypy.types import (
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
 )
+from mypy.typeops import tuple_fallback
 
 
 def is_same_type(left: Type, right: Type) -> bool:
@@ -99,7 +100,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return (is_same_type(left.fallback, self.right.fallback)
+            return (is_same_type(tuple_fallback(left), tuple_fallback(self.right))
                     and is_same_types(left.items, self.right.items))
         else:
             return False

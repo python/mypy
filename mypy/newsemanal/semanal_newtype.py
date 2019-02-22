@@ -40,7 +40,8 @@ class NewTypeAnalyzer:
 
         # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type,
+                                                             old_type.partial_fallback)
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:

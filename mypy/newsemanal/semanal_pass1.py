@@ -1,7 +1,8 @@
 """Block/import reachability analysis."""
 
 from mypy.nodes import (
-    MypyFile, AssertStmt, IfStmt, Block, AssignmentStmt, ExpressionStmt, ReturnStmt, ForStmt
+    MypyFile, AssertStmt, IfStmt, Block, AssignmentStmt, ExpressionStmt, ReturnStmt, ForStmt,
+    Import, ImportAll, ImportFrom, ClassDef, FuncDef
 )
 from mypy.traverser import TraverserVisitor
 from mypy.options import Options
@@ -40,15 +41,31 @@ class ReachabilityAnalyzer(TraverserVisitor):
         self.cur_mod_id = mod_id
         self.cur_mod_node = file
         self.options = options
+        self.is_global_scope = True
 
         for i, defn in enumerate(file.defs):
+            if isinstance(defn, (ClassDef, FuncDef)):
+                self.is_global_scope = False
             defn.accept(self)
+            self.is_global_scope = True
             if isinstance(defn, AssertStmt) and assert_will_always_fail(defn, options):
                 # We've encountered an assert that's always false,
                 # e.g. assert sys.platform == 'lol'.  Truncate the
                 # list of statements.  This mutates file.defs too.
                 del file.defs[i + 1:]
                 break
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        node.is_top_level = self.is_global_scope
+        super().visit_import_from(node)
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        node.is_top_level = self.is_global_scope
+        super().visit_import_all(node)
+
+    def visit_import(self, node: Import) -> None:
+        node.is_top_level = self.is_global_scope
+        super().visit_import(node)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, self.options)

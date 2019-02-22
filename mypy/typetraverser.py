@@ -53,7 +53,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_tuple_type(self, t: TupleType) -> None:
         self.traverse_types(t.items)
-        t.fallback.accept(self)
+        t.partial_fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         self.traverse_types(t.items.values())

@@ -70,8 +70,8 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
-    LITERAL_YES, nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node
+    nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
+    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -84,12 +84,11 @@ from mypy.types import (
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
 )
-from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.newsemanal.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any
+    check_for_explicit_any, fix_instance_types
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
@@ -100,8 +99,10 @@ from mypy.plugin import (
 )
 from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
 from mypy.scope import Scope
-from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface, set_callable_name
-from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
+from mypy.newsemanal.semanal_shared import (
+    SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
+)
+from mypy.newsemanal.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.newsemanal.semanal_typeddict import TypedDictAnalyzer
 from mypy.newsemanal.semanal_enum import EnumCallAnalyzer
 from mypy.newsemanal.semanal_newtype import NewTypeAnalyzer
@@ -491,8 +492,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        if not defn.is_decorated and not defn.is_overload:
-            self.add_func_to_symbol_table(defn)
+        defn.is_conditional = self.block_depth[-1] > 0
+
+        # We don't add module top-level functions to symbol tables
+        # when we analyze their bodies in the second phase on analysis,
+        # since they were added in the first phase. Nested functions
+        # get always added, since they aren't separate targets.
+        if not self.recurse_into_functions or len(self.function_stack) > 0:
+            if not defn.is_decorated and not defn.is_overload:
+                self.add_func_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
@@ -514,8 +522,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert isinstance(defn.type, CallableType)
             self.update_function_type_variables(defn.type, defn)
         self.function_stack.pop()
-
-        defn.is_conditional = self.block_depth[-1] > 0
 
         if self.is_class_scope():
             # Method definition
@@ -574,7 +580,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
-    def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
+    def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
 
         We reject straight redefinitions of functions, as they are usually
@@ -583,6 +589,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
           def f(): ...
           def f(): ...  # Error: 'f' redefined
         """
+        if isinstance(new, Decorator):
+            new = new.func
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
@@ -885,8 +893,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.update_metaclass(defn)
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
                                                                                      context=defn)
-        # TODO: Support keyword arguments
-        # self.analyze_class_keywords(defn)
+        self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
 
         if result is None or self.found_incomplete_ref(tag):
@@ -937,13 +944,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
         defn.defs.accept(self)
-        self.calculate_abstract_status(defn.info)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
-        if defn.info and defn.info.tuple_type:
+        if defn.info and defn.info.is_named_tuple:
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
@@ -1027,56 +1033,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             elif decorator.fullname in ('typing.final',
                                         'typing_extensions.final'):
                 defn.info.is_final = True
-
-    def calculate_abstract_status(self, typ: TypeInfo) -> None:
-        """Calculate abstract status of a class.
-
-        Set is_abstract of the type to True if the type has an unimplemented
-        abstract attribute.  Also compute a list of abstract attributes.
-        """
-        concrete = set()  # type: Set[str]
-        abstract = []  # type: List[str]
-        abstract_in_this_class = []  # type: List[str]
-        for base in typ.mro:
-            for name, symnode in base.names.items():
-                node = symnode.node
-                if isinstance(node, OverloadedFuncDef):
-                    # Unwrap an overloaded function definition. We can just
-                    # check arbitrarily the first overload item. If the
-                    # different items have a different abstract status, there
-                    # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Optional[Node]
-                else:
-                    func = node
-                if isinstance(func, Decorator):
-                    fdef = func.func
-                    if fdef.is_abstract and name not in concrete:
-                        typ.is_abstract = True
-                        abstract.append(name)
-                        if base is typ:
-                            abstract_in_this_class.append(name)
-                elif isinstance(node, Var):
-                    if node.is_abstract_var and name not in concrete:
-                        typ.is_abstract = True
-                        abstract.append(name)
-                        if base is typ:
-                            abstract_in_this_class.append(name)
-                concrete.add(name)
-        # In stubs, abstract classes need to be explicitly marked because it is too
-        # easy to accidentally leave a concrete class abstract by forgetting to
-        # implement some methods.
-        typ.abstract_attributes = sorted(abstract)
-        if not self.is_stub_file:
-            return
-        if (typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta'):
-            return
-        if typ.is_protocol:
-            return
-        if abstract and not abstract_in_this_class:
-            attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
-            self.fail("Class {} has abstract attributes {}".format(typ.fullname(), attrs), typ)
-            self.note("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
-                      typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
@@ -1323,19 +1279,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         base_types = []  # type: List[Instance]
         info = defn.info
 
+        info.tuple_type = None
         for base, base_expr in bases:
             if isinstance(base, TupleType):
-                # There may be an existing valid tuple type from previous semanal iterations.
-                # Use equality to check if it is the case.
-                if info.tuple_type and info.tuple_type != base:
-                    self.fail("Class has two incompatible bases derived from tuple", defn)
-                    defn.has_incompatible_baseclass = True
-                info.tuple_type = base
-                base_types.append(base.fallback)
-                if isinstance(base_expr, CallExpr):
-                    defn.analyzed = NamedTupleExpr(base.fallback.type)
-                    defn.analyzed.line = defn.line
-                    defn.analyzed.column = defn.column
+                actual_base = self.configure_tuple_base_class(defn, base, base_expr)
+                base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail("Cannot subclass NewType", defn)
@@ -1366,16 +1314,36 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         info.bases = base_types
 
-        # Calculate the MRO. It might be incomplete at this point if
-        # the bases of defn include classes imported from other
-        # modules in an import loop. We'll recompute it in SemanticAnalyzerPass3.
+        # Calculate the MRO.
         if not self.verify_base_classes(defn):
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
             return
-        # TODO: Ideally we should move MRO calculation to a later stage, but this is
-        # not easy, see issue #5536.
         self.calculate_class_mro(defn, self.object_type)
+
+    def configure_tuple_base_class(self,
+                                   defn: ClassDef,
+                                   base: TupleType,
+                                   base_expr: Expression) -> Instance:
+        info = defn.info
+
+        # There may be an existing valid tuple type from previous semanal iterations.
+        # Use equality to check if it is the case.
+        if info.tuple_type and info.tuple_type != base:
+            self.fail("Class has two incompatible bases derived from tuple", defn)
+            defn.has_incompatible_baseclass = True
+        info.tuple_type = base
+        if isinstance(base_expr, CallExpr):
+            defn.analyzed = NamedTupleExpr(base.partial_fallback.type)
+            defn.analyzed.line = defn.line
+            defn.analyzed.column = defn.column
+
+        if base.partial_fallback.type.fullname() == 'builtins.tuple':
+            # Fallback can only be safely calculated after semantic analysis, since base
+            # classes may be incomplete. Postpone the calculation.
+            self.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(base))
+
+        return base.partial_fallback
 
     def calculate_class_mro(self, defn: ClassDef,
                             obj_type: Optional[Callable[[], Instance]] = None) -> None:
@@ -1706,7 +1674,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
-                self.add_unknown_symbol(imported_id, imp, is_import=True, target_name=missing_name)
+                self.add_unknown_imported_symbol(imported_id, imp, target_name=missing_name)
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
@@ -1721,7 +1689,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if extra:
             message += " {}".format(extra)
         self.fail(message, context)
-        self.add_unknown_symbol(imported_id, context, is_import=True)
+        self.add_unknown_imported_symbol(imported_id, context)
 
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -1735,6 +1703,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
+        if existing_symbol.node is module_symbol.node:
+            # We added this symbol on previous iteration.
+            return False
         if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
                 isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo, Decorator, TypeAlias))):
             # This is a valid import over an existing definition in the file. Construct a dummy
@@ -1928,6 +1899,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         if self.analyze_namedtuple_assign(s):
             return
+        if self.analyze_typeddict_assign(s):
+            return
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
@@ -1936,7 +1909,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
         if not s.type:
@@ -1958,6 +1930,41 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
+            # type checker will try to infer Any for the l.h.s. causing named tuple class
+            # object to have type Any when it appears in runtime context.
+            # Remove this and update the checker after new analyzer is the default one!
+            # See also #6458.
+            lvalue.fullname = self.qualified_name(name)
+            lvalue.is_inferred_def = True
+            lvalue.kind = kind = self.current_symbol_kind()
+            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
+        return True
+
+    def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
+        """Check if s defines a typed dict."""
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
+            return True  # This is a valid and analyzed typed dict definition, nothing to do here.
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(s.rvalue, name,
+                                                                       self.is_func_scope())
+        if not is_typed_dict:
+            return False
+        # Yes, it's a valid typed dict, but defer if it is not ready.
+        if not info:
+            self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
+            # type checker will try to infer Any for the l.h.s.
+            # Remove this after new analyzer is the default one!
+            lvalue.fullname = self.qualified_name(name)
+            lvalue.is_inferred_def = True
+            lvalue.kind = kind = self.current_symbol_kind()
+            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
@@ -2256,6 +2263,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
+        fix_instance_types(res, self.fail)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
@@ -2332,11 +2340,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             added = self.add_symbol(name, var, lvalue)
             # Only bind expression if we successfully added name to symbol table.
             if added:
+                lvalue.is_new_def = True
+                lvalue.is_inferred_def = True
+                lvalue.kind = kind
                 lvalue.node = var
                 if kind == GDEF:
                     lvalue.fullname = var._fullname
                 else:
                     lvalue.fullname = lvalue.name
+                if self.is_func_scope():
+                    if unmangle(name) == '_':
+                        # Special case for assignment to local named '_': always infer 'Any'.
+                        typ = AnyType(TypeOfAny.special_form)
+                        self.store_declared_types(lvalue, typ)
             if is_final and self.is_final_redefinition(kind, name):
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
@@ -2391,10 +2407,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             v.is_initialized_in_class = True
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
+        else:
+            # fullanme should never stay None
+            v._fullname = lvalue.name
         v.is_ready = False  # Type not inferred yet
-        lvalue.is_new_def = True
-        lvalue.is_inferred_def = True
-        lvalue.kind = kind
         return v
 
     def make_name_lvalue_point_to_existing_def(
@@ -2557,7 +2573,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                               n_values,
                                               s)
         if res is None:
-            self.mark_incomplete(name, s)
             return
         variance, upper_bound = res
 
@@ -2672,7 +2687,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           report_invalid_types=False)
                     if analyzed is None:
-                        return None
+                        # It is fine to simply use a temporary Any because we don't need the bound
+                        # for anything before main pass of semantic analysis is finished. We will
+                        # incrementally populate `TypeVarExpr` if some part is missing during main
+                        # pass iterations.
+                        # NOTE: It is safe to not call self.defer() here, because the only way
+                        # we can get None from self.anal_type() is if self.found_incomplete_refs()
+                        # returned True. In turn, the only way it can happen is if someone called
+                        # self.record_incomplete_ref(), and the latter unconditionally calls
+                        # self.defer().
+                        analyzed = AnyType(TypeOfAny.special_form)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2720,6 +2744,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return info
 
     def analyze_types(self, items: List[Expression]) -> List[Type]:
+        """Analyze types from values expressions in type variable definition."""
         result = []  # type: List[Type]
         for node in items:
             try:
@@ -2727,8 +2752,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if analyzed is not None:
                     result.append(analyzed)
                 else:
-                    # TODO: Is this the right thing to do? Or maybe return Optional[List[Type]]?
-                    result.append(AnyType(TypeOfAny.from_error))
+                    # It is fine to simply use temporary Anys because we don't need values
+                    # for anything before main pass of semantic analysis is finished.
+                    result.append(AnyType(TypeOfAny.special_form))
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))
@@ -2840,6 +2866,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             lnode.node = rnode.node
 
     def visit_decorator(self, dec: Decorator) -> None:
+        dec.func.is_conditional = self.block_depth[-1] > 0
         if not dec.is_overload:
             self.add_symbol(dec.name(), dec, dec)
         dec.func._fullname = self.qualified_name(dec.name())
@@ -3828,6 +3855,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
+            if type_aliases_target_versions[alias] > self.options.python_version:
+                # This alias is not available on this Python version.
+                continue
             name = alias.split('.')[-1]
             if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
                 continue
@@ -3840,6 +3870,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Found built-in class target. Create alias.
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
+                    # Transform List to List[Any], etc.
+                    fix_instance_types(target, self.fail)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -3849,7 +3881,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.mark_incomplete(name, tree)
             else:
                 # Test fixtures may be missing some builtin classes, which is okay.
-                pass
+                # Kill the placeholder if there is one.
+                if name in tree.names:
+                    assert isinstance(tree.names[name].node, PlaceholderNode)
+                    del tree.names[name]
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -3955,6 +3990,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_hidden=module_hidden)
         return self.add_symbol_table_node(name, symbol, context)
 
+    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
+        """Same as above, but skipping the local namespace.
+
+        This doesn't check for previous definition and is only used
+        for serialization of method-level classes.
+
+        Classes defined within methods can be exposed through an
+        attribute type, but method-level symbol tables aren't serialized.
+        This method can be used to add such classes to an enclosing,
+        serialized symbol table.
+        """
+        # TODO: currently this is only used by named tuples. Use this method
+        # also by typed dicts and normal classes, see issue #6422.
+        if self.type is not None:
+            names = self.type.names
+            kind = MDEF
+        else:
+            names = self.globals
+            kind = GDEF
+        symbol = SymbolTableNode(kind, node)
+        names[name] = symbol
+
     def current_symbol_table(self) -> SymbolTable:
         if self.is_func_scope():
             assert self.locals[-1] is not None
@@ -3983,11 +4040,38 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and not isinstance(existing.node, PlaceholderNode)):
             if existing.node != symbol.node:
-                self.name_already_defined(name, context, existing)
+                if isinstance(symbol.node, (FuncDef, Decorator)):
+                    self.add_func_redefinition(names, name, symbol)
+                if not (isinstance(symbol.node, (FuncDef, Decorator))
+                        and self.set_original_def(existing.node, symbol.node)):
+                    self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
             return True
         return False
+
+    def add_func_redefinition(self, names: SymbolTable, name: str,
+                              symbol: SymbolTableNode) -> None:
+        """Add a symbol table node that reflects a redefinition of a function.
+
+        Redefinitions need to be added to the symbol table so that they can be found
+        through AST traversal, but they have dummy names of form 'name-redefinition[N]',
+        where N ranges over 2, 3, ... (omitted for the first redefinition).
+        """
+        i = 1
+        while True:
+            if i == 1:
+                new_name = '{}-redefinition'.format(name)
+            else:
+                new_name = '{}-redefinition{}'.format(name, i)
+            existing = names.get(new_name)
+            if existing is None:
+                names[new_name] = symbol
+                return
+            elif existing.node is symbol.node:
+                # Already there
+                return
+            i += 1
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
@@ -3998,7 +4082,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                             module_public=module_public,
                             module_hidden=module_hidden)
         else:
-            self.add_unknown_symbol(as_id, context, is_import=True, target_name=id)
+            self.add_unknown_imported_symbol(as_id, context, target_name=id)
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
         """Add local variable or function."""
@@ -4015,9 +4099,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)
 
-    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
-                           target_name: Optional[str] = None) -> None:
-        """Add symbol that we don't know what it points to (due to error, for example)."""
+    def add_unknown_imported_symbol(self, name: str, context: Context,
+                                    target_name: Optional[str] = None) -> None:
+        """Add symbol that we don't know what it points to because resolving an import failed.
+
+        This can happen if a module is missing, or it is present, but doesn't have
+        the imported attribute. The `target_name` is the name of symbol in the namespace
+        it is imported from. For example, for 'from mod import x as y' the target_name is
+        'mod.x'. This is currently used only to track logical dependencies.
+        """
+        existing = self.current_symbol_table().get(name)
+        if existing and isinstance(existing.node, Var) and existing.node.is_suppressed_import:
+            # This missing import was already added -- nothing to do here.
+            return
         var = Var(name)
         if self.options.logical_deps and target_name is not None:
             # This makes it possible to add logical fine-grained dependencies
@@ -4031,12 +4125,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             var._fullname = self.qualified_name(name)
         var.is_ready = True
-        if is_import:
-            any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
-        else:
-            any_type = AnyType(TypeOfAny.from_error)
+        any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         var.type = any_type
-        var.is_suppressed_import = is_import
+        var.is_suppressed_import = True
         self.add_symbol(name, var, context)
 
     def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
