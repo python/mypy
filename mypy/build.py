@@ -59,6 +59,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
+from mypy.renaming import VariableRenameVisitor
 
 from mypy.mypyc_hacks import BuildManagerBase
 
@@ -1916,6 +1917,9 @@ class State:
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
             # TODO: Do this while contructing the AST?
             self.tree.names = SymbolTable()
+            if options.allow_redefinition:
+                # Perform renaming across the AST to allow variable redefinitions
+                self.tree.accept(VariableRenameVisitor())
         else:
             # Do the first pass of semantic analysis: add top-level
             # definitions in the file to the symbol table.  We must do
