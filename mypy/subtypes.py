@@ -1193,7 +1193,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_type_type(self, left: TypeType) -> bool:
-        # TODO: Handle metaclasses?
         right = self.right
         if isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
