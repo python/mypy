@@ -341,11 +341,10 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
             raise
 
         try:
-            error_codes = {module_name + '-' + name: msg for name, msg in error_codes.items()}
+            errors.register_error_codes(module_name, error_codes)
         except Exception:
             plugin_error('Error processing result of get_error_codes ({})'.format(module_name))
             raise
-        errors.register_error_codes(error_codes)
 
     default_plugin = DefaultPlugin(options)  # type: Plugin
     load_plugin(default_plugin, 'mypy.plugins.default')

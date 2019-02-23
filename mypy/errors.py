@@ -551,14 +551,15 @@ class Errors:
             i += 1
         return res
 
-    def register_error_codes(self, mapping: Dict[str, str]) -> None:
+    def register_error_codes(self, namespace: str, error_codes: Dict[str, str]) -> None:
         """Add error codes and their message literals to the list of known errors.
 
         Args:
-            mapping: map of error code to message literal
+            namespace: used to indentify the source of the error code (usually a plugin)
+            error_codes: map of error code to message literal
         """
         # reverse the lookup
-        updates = {msg: name for name, msg in mapping.items()}
+        updates = {msg: namespace + ':' + name for name, msg in error_codes.items()}
         # FIXME: check for name clashes
         self.error_codes.update(updates)
 
@@ -567,7 +568,7 @@ class Errors:
         from mypy.plugins.common import extract_error_codes
         import mypy.message_registry
         # read native error codes from the message registry
-        self.register_error_codes(extract_error_codes(mypy.message_registry))
+        self.register_error_codes('mypy', extract_error_codes(mypy.message_registry))
 
 
 class CompileError(Exception):
