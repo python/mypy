@@ -5715,3 +5715,92 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 [out]
+
+[case testIsInstanceTypeVsMetaclass]
+from typing import Type
+class Meta(type):
+    pass
+class Thing(metaclass=Meta):
+    pass
+
+def foo(x: Type[Thing]) -> Type[Thing]:
+    assert isinstance(x, Meta)
+    return x
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeVsUnionOfType]
+from typing import Type, Union
+
+class AA: pass
+class AB: pass
+
+class M: pass
+
+class A(M, AA): pass
+class B(M, AB): pass
+
+AOrB = Union[A, B]
+
+class T(object):
+    def __init__(self, typ: Type[AOrB] = A) -> None:
+        assert isinstance(typ, type(M))
+        self.typ: Type[AOrB] = typ
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeIsSubclass]
+from typing import Union, Type
+
+class C: ...
+
+x: Union[C, Type[C]]
+
+if isinstance(x, type) and issubclass(x, C):
+    reveal_type(x)  # E: Revealed type is 'Type[__main__.C]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeByAssert]
+class A:
+    x = 42
+
+i: type = A
+assert issubclass(i, A)
+reveal_type(i.x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeTypeVar]
+from typing import Type, TypeVar, Generic
+
+class Base: ...
+class Sub(Base): ...
+
+T = TypeVar('T', bound=Base)
+
+class C(Generic[T]):
+    def meth(self, cls: Type[T]) -> None:
+        if not issubclass(cls, Sub):
+            return
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Sub]'
+    def other(self, cls: Type[T]) -> None:
+        if not issubclass(cls, Sub):
+            return
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.Sub]'
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceTypeSubclass]
+# flags: --strict-optional
+from typing import Type, Optional
+class Base: ...
+class One(Base): ...
+class Other(Base): ...
+
+def test() -> None:
+    x: Optional[Type[Base]]
+    if int():
+        x = One
+    elif int():
+        x = Other
+    else:
+        return
+    reveal_type(x)  # E: Revealed type is 'Union[Type[__main__.One], Type[__main__.Other]]'
+[builtins fixtures/isinstancelist.pyi]

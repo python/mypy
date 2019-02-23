@@ -3356,15 +3356,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if isinstance(t, TypeType):
                                 union_list.append(t.item)
                             else:
-                                #  this is an error that should be reported earlier
-                                #  if we reach here, we refuse to do any type inference
+                                # This is an error that should be reported earlier
+                                # if we reach here, we refuse to do any type inference.
                                 return {}, {}
                         vartype = UnionType(union_list)
                     elif isinstance(vartype, TypeType):
                         vartype = vartype.item
+                    elif (isinstance(vartype, Instance) and
+                            vartype.type.fullname() == 'builtins.type'):
+                        vartype = self.named_type('builtins.object')
                     else:
-                        # any other object whose type we don't know precisely
-                        # for example, Any or Instance of type type
+                        # Any other object whose type we don't know precisely
+                        # for example, Any or a custom metaclass.
                         return {}, {}  # unknown type
                     yes_map, no_map = conditional_type_map(expr, vartype, type)
                     yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
@@ -3923,7 +3926,11 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     if type_map is None:
         return None
     for expr, typ in type_map.items():
-        if not isinstance(typ, (UnionType, Instance)):
+        t = typ
+        if isinstance(t, TypeVarType):
+            t = t.upper_bound
+        # TODO: should we only allow unions of instances as per PEP 484?
+        if not isinstance(t, (UnionType, Instance)):
             # unknown type; error was likely reported earlier
             return {}
         converted_type_map[expr] = TypeType.make_normalized(typ)
