@@ -703,7 +703,7 @@ def add_class_tvars(t: Type, itype: Instance, isuper: Optional[Instance], is_cla
     """Instantiate type variables during analyze_class_attribute_access,
     e.g T and Q in the following:
 
-    def A(Generic(T)):
+    class A(Generic[T]):
         @classmethod
         def foo(cls: Type[Q]) -> Tuple[T, Q]: ...
 
@@ -718,12 +718,28 @@ def add_class_tvars(t: Type, itype: Instance, isuper: Optional[Instance], is_cla
     if is_classmethod:
         assert isuper is not None
         t = expand_type_by_instance(t, isuper)
-    ids = {t.id for t in itype.args if isinstance(t, TypeVarType)}
+    # We add class type variables if the class method is accessed on class object
+    # without applied type arguments, this matches the behavior of __init__().
+    # For example (continuing the example in docstring):
+    #     A       # The type of callable is def [T] () -> A[T], _not_ def () -> A[Any]
+    #     A[int]  # The type of callable is def () -> A[int]
+    # and
+    #     A.foo       # The type is generic def [T] () -> Tuple[T, A[T]]
+    #     A[int].foo  # The type is non-generic def () -> Tuple[int, A[int]]
+    #
+    # This behaviour is useful for defining alternative constructors for generic classes.
+    # To achieve such behaviour, we add the class type variables that are still free
+    # (i.e. appear in the return type of the class object on which the method was accessed).
+    free_ids = {t.id for t in itype.args if isinstance(t, TypeVarType)}
 
     if isinstance(t, CallableType):
+        # NOTE: in practice either all or none of the variables are free, since
+        # visit_type_application() will detect any type argument count mismatch and apply
+        # a correct number of Anys.
         tvars = [TypeVarDef(n, n, i + 1, [], builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)
-                 if tv.id in ids]
+                 # use 'is' to avoid id clashes with unrelated variables
+                 if any(tv.id is id for id in free_ids)]
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
         return t.copy_modified(variables=tvars + t.variables)
