@@ -1845,3 +1845,208 @@ def g(x: T) -> T: return x
 [out]
 main:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
 main:4: error: Revealed type is 'def [T] (x: T`-1) -> T`-1'
+
+[case testGenericClassMethodSimple]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+
+class D(C[str]): ...
+
+reveal_type(D.get())  # E: Revealed type is 'builtins.str*'
+reveal_type(D().get())  # E: Revealed type is 'builtins.str*'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodExpansion]
+from typing import Generic, TypeVar, Tuple
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+class D(C[Tuple[T, T]]): ...
+class E(D[str]): ...
+
+reveal_type(E.get())  # E: Revealed type is 'Tuple[builtins.str*, builtins.str*]'
+reveal_type(E().get())  # E: Revealed type is 'Tuple[builtins.str*, builtins.str*]'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodExpansionReplacingTypeVar]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+
+class D(C[S]): ...
+class E(D[int]): ...
+
+reveal_type(E.get())  # E: Revealed type is 'builtins.int*'
+reveal_type(E().get())  # E: Revealed type is 'builtins.int*'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodUnboundOnClass]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+    @classmethod
+    def make_one(cls, x: T) -> C[T]: ...
+
+reveal_type(C.get)  # E: Revealed type is 'def [T] () -> T`1'
+reveal_type(C[int].get)  # E: Revealed type is 'def () -> builtins.int*'
+reveal_type(C.make_one)  # E: Revealed type is 'def [T] (x: T`1) -> __main__.C[T`1]'
+reveal_type(C[int].make_one)  # E: Revealed type is 'def (x: builtins.int*) -> __main__.C[builtins.int*]'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodUnboundOnSubClass]
+from typing import Generic, TypeVar, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+    @classmethod
+    def make_one(cls, x: T) -> C[T]: ...
+class D(C[Tuple[T, S]]): ...
+class E(D[S, str]): ...
+
+reveal_type(D.make_one)  # E: Revealed type is 'def [T, S] (x: Tuple[T`1, S`2]) -> __main__.C[Tuple[T`1, S`2]]'
+reveal_type(D[int, str].make_one)  # E: Revealed type is 'def (x: Tuple[builtins.int*, builtins.str*]) -> __main__.C[Tuple[builtins.int*, builtins.str*]]'
+reveal_type(E.make_one)  # E: Revealed type is 'def [S] (x: Tuple[S`1, builtins.str*]) -> __main__.C[Tuple[S`1, builtins.str*]]'
+reveal_type(E[int].make_one)  # E: Revealed type is 'def (x: Tuple[builtins.int*, builtins.str*]) -> __main__.C[Tuple[builtins.int*, builtins.str*]]'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric]
+from typing import Generic, TypeVar, Any, Tuple, Type
+
+T = TypeVar('T')
+S = TypeVar('S')
+Q = TypeVar('Q', bound=A[Any])
+
+class A(Generic[T]):
+    @classmethod
+    def foo(cls: Type[Q]) -> Tuple[T, Q]: ...
+
+class B(A[T], Generic[T, S]):
+    def meth(self) -> None:
+        reveal_type(A[T].foo)  # E: Revealed type is 'def () -> Tuple[T`1, __main__.A*[T`1]]'
+    @classmethod
+    def other(cls) -> None:
+        reveal_type(cls.foo)  # E: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
+reveal_type(B.foo)  # E: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAttrUnboundOnClass]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class C(Generic[T]):
+    x: T
+    @classmethod
+    def get(cls) -> T:
+        return cls.x  # OK
+
+x = C.x  # E: Access to generic instance variables via class is ambiguous
+reveal_type(x)  # E: Revealed type is 'Any'
+xi = C[int].x  # E: Access to generic instance variables via class is ambiguous
+reveal_type(xi)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAttrUnboundOnSubClass]
+from typing import Generic, TypeVar, Tuple
+T = TypeVar('T')
+
+class C(Generic[T]):
+    x: T
+class D(C[int]): ...
+class E(C[int]):
+    x = 42
+
+x = D.x  # E: Access to generic instance variables via class is ambiguous
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+E.x  # OK
+
+[case testGenericClassMethodOverloaded]
+from typing import Generic, TypeVar, overload, Tuple
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @overload
+    @classmethod
+    def get(cls) -> T: ...
+    @overload
+    @classmethod
+    def get(cls, n: int) -> Tuple[T, ...]: ...
+    @classmethod
+    def get(cls, n: int = 0):
+        pass
+
+class D(C[str]): ...
+
+reveal_type(D.get())  # E: Revealed type is 'builtins.str'
+reveal_type(D.get(42))  # E: Revealed type is 'builtins.tuple[builtins.str]'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodAnnotation]
+from typing import Generic, TypeVar, Type
+T = TypeVar('T')
+
+class Maker(Generic[T]):
+    x: T
+    @classmethod
+    def get(cls) -> T: ...
+
+class B(Maker[B]): ...
+
+def f(o: Maker[T]) -> T:
+    if bool():
+        return o.x
+    return o.get()
+b = f(B())
+reveal_type(b)  # E: Revealed type is '__main__.B*'
+
+def g(t: Type[Maker[T]]) -> T:
+    if bool():
+        return t.x
+    return t.get()
+bb = g(B)
+reveal_type(bb)  # E: Revealed type is '__main__.B*'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodAnnotationDecorator]
+from typing import Generic, Callable, TypeVar, Iterator
+
+T = TypeVar('T')
+
+class Box(Generic[T]):
+    @classmethod
+    def wrap(cls, generator: Callable[[], T]) -> Box[T]: ...
+
+class IteratorBox(Box[Iterator[T]]): ...
+
+@IteratorBox.wrap  # E: Argument 1 to "wrap" of "Box" has incompatible type "Callable[[], int]"; expected "Callable[[], Iterator[<nothing>]]"
+def g() -> int:
+    ...
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassMethodInGenericFunction]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    @classmethod
+    def get(cls) -> T: ...
+
+def func(x: S) -> S:
+    return C[S].get()
+[builtins fixtures/classmethod.pyi]

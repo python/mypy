@@ -2602,8 +2602,8 @@ class C(A):
     x = ['12']
 
 reveal_type(A.x) # E: Revealed type is 'builtins.list[Any]'
-reveal_type(B.x) # E: Revealed type is 'builtins.list[builtins.int*]'
-reveal_type(C.x) # E: Revealed type is 'builtins.list[builtins.str*]'
+reveal_type(B.x) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(C.x) # E: Revealed type is 'builtins.list[builtins.str]'
 
 [builtins fixtures/list.pyi]
 

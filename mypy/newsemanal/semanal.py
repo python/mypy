@@ -923,7 +923,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.prepare_class_def(defn)
 
         defn.type_vars = tvar_defs
-        defn.info.type_vars = [tvar.fullname for tvar in tvar_defs]
+        defn.info.type_vars = [tvar.name for tvar in tvar_defs]
         if base_error:
             defn.info.fallback_to_any = True
 
