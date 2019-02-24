@@ -5,6 +5,7 @@ docstrings and Sphinx docs (.rst files).
 """
 import re
 import io
+import sys
 import contextlib
 import tokenize
 
@@ -22,8 +23,13 @@ Sig = Tuple[str, str]
 
 class ArgSig:
     """Signature info for a single argument."""
+
+    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')
+
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name
+        if type and not self._TYPE_RE.match(type):
+            raise ValueError("Invalid type: " + type)
         self.type = type
         # Does this argument have a default value?
         self.default = default
@@ -129,8 +135,13 @@ class DocStringParser:
 
             if token.string == ')':
                 self.state.pop()
-            self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
-                                    default=bool(self.arg_default)))
+            try:
+                self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
+                                        default=bool(self.arg_default)))
+            except ValueError:
+                # wrong type, use Any
+                self.args.append(ArgSig(name=self.arg_name, type=None,
+                                        default=bool(self.arg_default)))
             self.arg_name = ""
             self.arg_type = None
             self.arg_default = None
@@ -171,7 +182,7 @@ class DocStringParser:
 
 
 def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSig]]:
-    """Concert function signature to list of TypedFunctionSig
+    """Convert function signature to list of TypedFunctionSig
 
     Look for function signatures of function in docstring. Signature is a string of
     the format <function_name>(<signature>) -> <return type> or perhaps without
@@ -193,7 +204,20 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
     with contextlib.suppress(tokenize.TokenError):
         for token in tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline):
             state.add_token(token)
-    return state.get_signatures()
+    sigs = state.get_signatures()
+
+    def is_unique_args(sig: FunctionSig) -> bool:
+        """return true if function argument names are unique"""
+        return len(sig.args) == len(set((arg.name for arg in sig.args)))
+
+    # Warn about invalid signatures
+    invalid_sigs = [sig for sig in sigs if not is_unique_args(sig)]
+    if invalid_sigs:
+        print("Warning: Invalid signatures found:", file=sys.stderr)
+        print("\n".join(str(sig) for sig in invalid_sigs), file=sys.stderr)
+
+    # return only signatures, that have unique argument names. mypy fails on non-uqniue arg names
+    return [sig for sig in sigs if is_unique_args(sig)]
 
 
 def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
