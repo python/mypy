@@ -1702,3 +1702,7 @@ from typing import Tuple
 c: C
 class C(Tuple[int, str]):
     def __init__(self) -> None: pass
+
+[case testNewAnalyzerFunctionError]
+def f(x: asdf) -> None:  # E: Name 'asdf' is not defined
+    pass
