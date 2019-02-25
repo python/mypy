@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional, TypeVar
+from typing import cast, Callable, List, Optional, TypeVar, Any
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
@@ -624,10 +624,12 @@ def analyze_class_attribute_access(itype: Instance,
             return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
 
         # Find the class where method/variable was defined.
-        if isinstance(node.node, Decorator):
-            super_info = node.node.var.info  # type: Optional[TypeInfo]
-        elif isinstance(node.node, (Var, FuncBase)):
-            super_info = node.node.info
+        # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
+        node_node = node.node  # type: Any
+        if isinstance(node_node, Decorator):
+            super_info = node_node.var.info  # type: Optional[TypeInfo]
+        elif isinstance(node_node, (Var, FuncBase)):
+            super_info = node_node.info
         else:
             super_info = None
 
