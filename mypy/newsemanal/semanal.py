@@ -541,7 +541,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Signature must be analyzed in the surrounding scope so that
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
-                defn.type = analyzer.visit_callable_type(defn.type, nested=False)
+                tag = self.track_incomplete_refs()
+                result = analyzer.visit_callable_type(defn.type, nested=False)
+                if self.found_incomplete_ref(tag):
+                    return
+                defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
                 if isinstance(defn, FuncDef):
