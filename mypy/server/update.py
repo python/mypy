@@ -580,7 +580,7 @@ def update_module_isolated(module: str,
         # There was a blocking error, so module AST is incomplete. Restore old modules.
         restore([module])
         return BlockedUpdate(module, path, remaining_modules, err.messages)
-    if not manager.new_semantic_analyzer:
+    if not manager.options.new_semantic_analyzer:
         state.semantic_analysis_pass_three()
         state.semantic_analysis_apply_patches()
 

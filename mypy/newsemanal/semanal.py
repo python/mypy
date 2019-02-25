@@ -692,6 +692,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if i != 0:
                 # Assume that the first item was already visited
                 item.is_overload = True
+                item._fullname = self.qualified_name(item.name())
                 item.accept(self)
             # TODO: support decorated overloaded functions properly
             if isinstance(item, Decorator):
@@ -891,7 +892,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bases = defn.base_type_exprs
 
         self.update_metaclass(defn)
-        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
+        defn.base_type_exprs.extend(defn.removed_base_type_exprs)
+        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
         self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
@@ -1055,6 +1057,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def clean_up_bases_and_infer_type_variables(
             self,
+            defn: ClassDef,
             base_type_exprs: List[Expression],
             context: Context) -> Tuple[List[Expression],
                                        List[TypeVarDef],
@@ -1072,7 +1075,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Returns (remaining base expressions, inferred type variables, is protocol).
         """
-        base_type_exprs = base_type_exprs[:]
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
         is_protocol = False
@@ -1114,6 +1116,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             declared_tvars = all_tvars
         for i in reversed(removed):
+            defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
