@@ -27,8 +27,7 @@ will be incomplete.
 from typing import List, Tuple, Optional, Union, Callable
 
 from mypy.nodes import (
-    Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef,
-    Var
+    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, local_definitions
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
@@ -36,6 +35,7 @@ from mypy.newsemanal.semanal import NewSemanticAnalyzer, apply_semantic_analyzer
 from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
+from mypy.checker import FineGrainedDeferredNode
 
 MYPY = False
 if MYPY:
@@ -70,6 +70,26 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
+
+
+def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
+                             graph: 'Graph') -> None:
+    patches = []  # type: Patches
+    if any(isinstance(n.node, MypyFile) for n in nodes):
+        # Process module top level first (if needed).
+        process_top_levels(graph, [state.id], patches)
+    analyzer = state.manager.new_semantic_analyzer
+    for n in nodes:
+        if isinstance(n.node, MypyFile):
+            # Already done above.
+            continue
+        process_top_level_function(analyzer, state, state.id,
+                                   n.node.fullname(), n.node, n.active_typeinfo, patches)
+    apply_semantic_analyzer_patches(patches)
+
+    # TODO: skip unnecessary parts using by adding recurse_into_functions.
+    check_type_arguments(graph, [state.id], state.manager.errors)
+    calculate_class_properties(graph, [state.id], state.manager.errors)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:
