@@ -893,6 +893,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         self.update_metaclass(defn)
         defn.base_type_exprs.extend(defn.removed_base_type_exprs)
+        defn.removed_base_type_exprs.clear()
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
         self.analyze_class_keywords(defn)
