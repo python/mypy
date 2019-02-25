@@ -83,6 +83,7 @@ class NodeStripVisitor(TraverserVisitor):
             return
         # Revert change made during semantic analysis main pass.
         node.items = node.unanalyzed_items.copy()
+        node.impl = None
         node.is_final = False
         super().visit_overloaded_func_def(node)
 

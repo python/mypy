@@ -1702,3 +1702,13 @@ from typing import Tuple
 c: C
 class C(Tuple[int, str]):
     def __init__(self) -> None: pass
+
+[case testNewAnalyzerNotAnAlias]
+class Meta(type):
+    x = int()
+
+y = C.x
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+
+class C(metaclass=Meta):
+    pass

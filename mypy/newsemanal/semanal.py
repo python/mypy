@@ -1868,7 +1868,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
             if fname:
-                n = self.lookup_qualified(fname, rv)
+                n = self.lookup_qualified(fname, rv, suppress_errors=True)
                 if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
                     return True
         return False
