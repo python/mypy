@@ -3,7 +3,7 @@ import sys
 import traceback
 from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, Any
 
 from mypy.scope import Scope
 from mypy.options import Options
@@ -249,7 +249,7 @@ class Errors:
                only_once: bool = False,
                origin_line: Optional[int] = None,
                offset: int = 0,
-               id: Optional[str] = None) -> None:
+               format_args: Optional[Tuple[Any, ...]] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -260,6 +260,7 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
+            format_args: arguments to pass to message.format()
         """
         if self.scope:
             type = self.scope.current_type_name()
@@ -270,17 +271,24 @@ class Errors:
             type = None
             function = None
 
+        if self.show_error_codes:
+            msg_id = self.error_codes.get(message)
+        else:
+            msg_id = None
+
         if column is None:
             column = -1
         if file is None:
             file = self.file
         if offset:
             message = " " * offset + message
+        if format_args:
+            message = message.format(*format_args)
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          function, line, column, severity, message,
                          blocker, only_once,
                          origin=(self.file, origin_line) if origin_line else None,
-                         target=self.current_target(), id=id)
+                         target=self.current_target(), id=msg_id)
         self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:

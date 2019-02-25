@@ -112,19 +112,14 @@ class MessageBuilder:
 
     def report(self, msg: str, format_args: Tuple[Any, ...], context: Optional[Context],
                severity: str, file: Optional[str] = None, origin: Optional[Context] = None,
-               offset: int = 0, id: Optional[str] = None) -> None:
+               offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
-            msg_id = id
-            if msg_id is None:
-                msg_id = self.errors.error_codes.get(msg)
-            if format_args:
-                msg = msg.format(*format_args)
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None,
-                               id=msg_id)
+                               format_args=format_args)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
