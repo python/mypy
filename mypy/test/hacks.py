@@ -30,7 +30,6 @@ new_semanal_blacklist = [
     'check-overloading.test',
     'check-protocols.test',
     'check-python2.test',
-    'check-redefine.test',
     'check-semanal-error.test',
     'check-serialize.test',
     'check-statements.test',
