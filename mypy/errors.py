@@ -392,7 +392,8 @@ class Errors:
                     srcloc = file
                 if self.show_error_codes:
                     s = '{}: {}: {}: {}'.format(srcloc, severity,
-                                                id if id is not None else 'unknown', message)
+                                                id if id is not None else 'uncategorized_error',
+                                                message)
                 else:
                     s = '{}: {}: {}'.format(srcloc, severity, message)
             else:
