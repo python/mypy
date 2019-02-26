@@ -1572,6 +1572,7 @@ main:3: error: Too few arguments for "f"
 ==
 
 [case testImportStarMutuallyRecursive]
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 from b import *
