@@ -401,8 +401,9 @@ from . import command
 from . import backends
 
 [file blamodule/backends/__init__.py]
-from .Bla import Bla
-reveal_type(Bla().method())  # E: Revealed type is 'builtins.str'
+# flags: --new-semantic-analyzer
+from .Bla import Bla # E: Name 'Bla' already defined (by an import)
+Bla().method()  # E: Module not callable
 
 [file blamodule/backends/Bla.py]
 from .. import *
@@ -413,6 +414,8 @@ class Bla:
 
 [file blamodule/command.py]
 def call() -> str: pass
+
+[builtins fixtures/module.pyi]
 
 [case testNoCrashOnImportFromStarPython2]
 # flags: --py2
