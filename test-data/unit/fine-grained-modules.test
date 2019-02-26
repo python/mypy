@@ -1992,7 +1992,9 @@ def f(x: str) -> None: pass
 ==
 main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
+-- Depends on #6314
 [case testFineAddedMissingStubsPackagePartialGetAttr]
+# flags: --no-new-semantic-analyzer
 import package.missing
 package.missing.f(int())
 [file package/__init__.pyi]
@@ -2002,7 +2004,7 @@ def __getattr__(attr: str) -> Any: ...
 def f(x: str) -> None: pass
 [out]
 ==
-main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
 [case testFineAddedMissingStubsIgnore]
 from missing import f  # type: ignore
