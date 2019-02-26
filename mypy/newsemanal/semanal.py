@@ -3929,10 +3929,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
-            base = self.type._fullname
+            return self.type._fullname + '.' + n
+        elif self.is_func_scope():
+            return n
         else:
-            base = self.cur_mod_id
-        return base + '.' + n
+            return self.cur_mod_id + '.' + n
 
     def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
         """Enter a function, generator or comprehension scope."""

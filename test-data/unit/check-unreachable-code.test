@@ -437,14 +437,12 @@ x = 1
 
 
 [case testSysPlatformInMethodImport2]
+# flags: --new-semantic-analyzer
 import sys
 class A:
     def foo(self) -> None:
         if sys.platform == 'fictional':
-            # TODO: This is inconsistent with how top-level functions work
-            #     (https://github.com/python/mypy/issues/4324)
-            import b as a # E: Cannot find module named 'b' \
-            # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+            import b as a
         else:
             import a
         a.x
