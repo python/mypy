@@ -4548,9 +4548,7 @@ class Bar(TypedDict):
 
 def foo(node: NodeType) -> int:
     x = node
-    # TODO: This is incorrect (https://github.com/python/mypy/issues/5930), but ensure that it
-    #       doesn't crash at least
-    return x['x']  # E: Incompatible return value type (got "object", expected "int")
+    return x['x']
 [builtins fixtures/isinstancelist.pyi]
 [out]
 

@@ -166,8 +166,9 @@ class A(NamedTuple('N', [1])): pass # E: Tuple expected as NamedTuple() field
 class B(A): pass
 
 [case testInvalidNamedTupleBaseClass2]
+# flags: --new-semantic-analyzer
 class A(NamedTuple('N', [1])): pass
 class B(A): pass
 [out]
-main:1: error: Name 'NamedTuple' is not defined
-main:1: error: Invalid base class
+main:2: error: Invalid base class
+main:2: error: Name 'NamedTuple' is not defined

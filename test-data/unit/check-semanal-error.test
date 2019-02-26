@@ -49,15 +49,16 @@ A().foo(1)
 A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testInvalidBaseClass2]
+# flags: --new-semantic-analyzer
 X = 1
 class A(X): # E
     x = 1
 A().foo(1)
 A().x = '' # E
 [out]
-main:2: error: Invalid type "__main__.X"
-main:2: error: Invalid base class
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:3: error: Invalid base class
+main:3: error: Invalid type "__main__.X"
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 [case testInvalidNumberOfTypeArgs]
@@ -81,8 +82,9 @@ x = 1
 yield from x # E: 'yield from' outside function
 
 [case testImportFuncDup]
+# flags: --new-semantic-analyzer
 import m
-def m() -> None: ...  # ok
+def m() -> None: ...  # E: Name 'm' already defined (by an import)
 
 [file m.py]
 [out]
@@ -94,4 +96,3 @@ def m() -> None: ...  # ok
 def f() -> None: ...  # ok
 
 [out]
-

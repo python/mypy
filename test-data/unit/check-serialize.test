@@ -1301,6 +1301,7 @@ C = str
 tmp/a.py:2: error: Revealed type is 'builtins.str'
 
 [case testSerializeForwardReferenceToImportedAliasInProperty]
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 import b
@@ -1321,8 +1322,7 @@ from m import C
 C = str
 [builtins fixtures/property.pyi]
 [out2]
--- TODO: Should be 'builtins.str'
-tmp/a.py:2: error: Revealed type is 'Any'
+tmp/a.py:2: error: Revealed type is 'builtins.str'
 
 [case testSerializeNestedClassStuff]
 # flags: --verbose

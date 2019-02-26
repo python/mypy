@@ -158,7 +158,9 @@ class StrConv(NodeVisitor[str]):
         # (in this case base_type_exprs is empty).
         if o.base_type_exprs:
             if o.info and o.info.bases:
-                a.insert(1, ('BaseType', o.info.bases))
+                if (len(o.info.bases) != 1
+                        or o.info.bases[0].type.fullname() != 'builtins.object'):
+                    a.insert(1, ('BaseType', o.info.bases))
             else:
                 a.insert(1, ('BaseTypeExpr', o.base_type_exprs))
         if o.type_vars:
