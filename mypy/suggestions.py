@@ -1,6 +1,6 @@
 import re
 
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Dict
 
 import mypy.build
 import mypy.checker
@@ -9,6 +9,7 @@ from mypy.nodes import (ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT,
                         FuncDef, MypyFile, SymbolTable, SymbolNode, TypeInfo,
                         MysteryTuple)
 from mypy.server.update import FineGrainedBuildManager
+from mypy.server.target import module_prefix, split_target
 
 
 class SuggestionFailure(Exception):
@@ -36,19 +37,26 @@ class SuggestionEngine:
             target = '%s.%s' % (modname, funcname)
         depskey = '<%s>' % target
 
+        deps = self.fgmanager.deps.get(depskey, set())
+
+        module_deps = {}  # type: Dict[str, Set[str]]
+        for dep in deps:
+            prefix = module_prefix(self.fgmanager.graph, dep)
+            if prefix is not None:
+                module_deps.setdefault(prefix, set()).add(dep)
+
+
         mystery_hits = []  # type: List[MysteryTuple]
-        for modid, modstate in self.fgmanager.graph.items():
-            deps = modstate.compute_fine_grained_deps()
-            if depskey in deps:
-                callers = deps[depskey]
-                assert modstate.tree is not None
-                try:
-                    modstate.tree.mystery_target = target
-                    modstate.tree.mystery_hits = mystery_hits
-                    self.analyze_module(modstate, callers)
-                finally:
-                    modstate.tree.mystery_target = None
-                    modstate.tree.mystery_hits = []
+        for modid, callers in module_deps.items():
+            modstate = self.fgmanager.graph[modid]
+            assert modstate.tree is not None
+            try:
+                modstate.tree.mystery_target = target
+                modstate.tree.mystery_hits = mystery_hits
+                self.analyze_module(modstate, callers)
+            finally:
+                modstate.tree.mystery_target = None
+                modstate.tree.mystery_hits = []
 
         return ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
                 for path, line, arg_kinds, arg_names, arg_types in mystery_hits]
@@ -89,29 +97,19 @@ class SuggestionEngine:
     def find_node(self, key: str) -> Tuple[str, Optional[str], str, FuncDef]:
         # TODO: Also return OverloadedFuncDef -- currently these are ignored.
         graph = self.fgmanager.graph
-        parts = key.split('.')
-        tail = []  # type: List[str]
-        # Initially <parts> is the whole key and <tail> is empty.
-        # It's a hit if <parts> is a known module, and <tail> is
-        # either <class>.<method> or just <function>.  Repeatedly
-        # investigate <parts>.<tail> and if it's not a hit move the
-        # last part from <parts> into <tail>, until <parts> is
-        # exhausted.
-        while parts:
-            modname = '.'.join(parts)
-            if modname in graph:
-                # Good, <parts> represents a module and <tail> is non-empty.
-                if len(tail) == 2:
-                    classname, funcname = tail
-                    return (modname, classname, funcname,
-                            self.find_method_node(graph[modname], classname, funcname))
-                if len(tail) == 1:
-                    funcname = tail[0]
-                    return (modname, None, funcname,
-                            self.find_function_node(graph[modname], funcname))
-            # Push one part to the right.
-            tail.insert(0, parts.pop())
-        raise SuggestionFailure("Cannot find %s" % (key,))
+        target = split_target(graph, key)
+        if not target:
+            raise SuggestionFailure("Cannot find %s" % (key,))
+        modname, tail = target
+
+        if '.' in tail:
+            classname, funcname = tail.split('.')
+            return (modname, classname, funcname,
+                    self.find_method_node(graph[modname], classname, funcname))
+        else:
+            funcname = tail
+            return (modname, None, funcname,
+                    self.find_function_node(graph[modname], funcname))
 
     def find_method_node(self, state: mypy.build.State,
                          classname: str, funcname: str) -> FuncDef:
