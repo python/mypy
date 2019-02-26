@@ -1209,3 +1209,27 @@ else:
     reveal_type(x) # E: Revealed type is 'Union[Tuple[__main__.B], None]'
 
 [builtins fixtures/tuple.pyi]
+
+[case testUnionOfTupleIndex]
+from typing import Union, Tuple
+
+tup: Union[Tuple[int, str], Tuple[int, int, str]]
+reveal_type(tup[0])  # E: Revealed type is 'builtins.int'
+reveal_type(tup[1])  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+reveal_type(tup[2])  # E: Revealed type is 'Union[Any, builtins.str]' \
+                     # E: Tuple index out of range
+reveal_type(tup[:])  # E: Revealed type is 'Union[Tuple[builtins.int, builtins.str], Tuple[builtins.int, builtins.int, builtins.str]]'
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOfTupleIndexMixed]
+from typing import Union, Tuple, List
+
+tup: Union[Tuple[int, str], List[int]]
+reveal_type(tup[0])  # E: Revealed type is 'builtins.int'
+reveal_type(tup[1])  # E: Revealed type is 'Union[builtins.str, builtins.int*]'
+reveal_type(tup[2])  # E: Revealed type is 'Union[Any, builtins.int*]' \
+                     # E: Tuple index out of range
+reveal_type(tup[:])  # E: Revealed type is 'Union[Tuple[builtins.int, builtins.str], builtins.list[builtins.int*]]'
+
+[builtins fixtures/tuple.pyi]

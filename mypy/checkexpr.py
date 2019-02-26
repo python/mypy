@@ -2012,14 +2012,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   arg_kinds: List[int],
                                   context: Context,
                                   local_errors: Optional[MessageBuilder] = None,
+                                  original_type: Optional[Type] = None
                                   ) -> Tuple[Type, Type]:
         """Type check a call to a named method on an object.
 
-        Return tuple (result type, inferred method type).
+        Return tuple (result type, inferred method type). The 'original_type'
+        is used for error messages.
         """
         local_errors = local_errors or self.msg
+        original_type = original_type or base_type
         method_type = analyze_member_access(method, base_type, context, False, False, True,
-                                            local_errors, original_type=base_type, chk=self.chk,
+                                            local_errors, original_type=original_type,
+                                            chk=self.chk,
                                             in_literal_context=self.is_literal_context())
         return self.check_method_call(
             method, base_type, method_type, args, arg_kinds, context, local_errors)
@@ -2441,10 +2445,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # It's actually a type application.
             return self.accept(e.analyzed)
         left_type = self.accept(e.base)
-        if isinstance(left_type, TupleType) and self.chk.in_checked_function():
+        return self.visit_index_with_type(left_type, e)
+
+    def visit_index_with_type(self, left_type: Type, e: IndexExpr,
+                              original_type: Optional[Type] = None) -> Type:
+        """Analyze type of an index expression for a given type of base expression.
+
+        The 'original_type' is used for error messages (currently used for union types).
+        """
+        index = e.index
+        if isinstance(left_type, UnionType):
+            original_type = original_type or left_type
+            return UnionType.make_simplified_union([self.visit_index_with_type(typ, e,
+                                                                               original_type)
+                                                    for typ in left_type.relevant_items()])
+        elif isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They return a more specific type when
             # indexed by an integer literal.
-            index = e.index
             if isinstance(index, SliceExpr):
                 return self.visit_tuple_slice_helper(left_type, index)
 
@@ -2452,7 +2469,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if n is not None:
                 if n < 0:
                     n += len(left_type.items)
-                if n >= 0 and n < len(left_type.items):
+                if 0 <= n < len(left_type.items):
                     return left_type.items[n]
                 else:
                     self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
@@ -2466,7 +2483,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
             result, method_type = self.check_method_call_by_name(
-                '__getitem__', left_type, [e.index], [ARG_POS], e)
+                '__getitem__', left_type, [e.index], [ARG_POS], e,
+                original_type=original_type)
             e.method_type = method_type
             return result
 
