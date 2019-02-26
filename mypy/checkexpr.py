@@ -2455,7 +2455,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         index = e.index
         if isinstance(left_type, UnionType):
-            return UnionType.make_simplified_union([self.visit_index_with_type(typ, e, left_type)
+            original_type = original_type or left_type
+            return UnionType.make_simplified_union([self.visit_index_with_type(typ, e,
+                                                                               original_type)
                                                     for typ in left_type.relevant_items()])
         elif isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They return a more specific type when
