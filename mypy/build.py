@@ -1748,7 +1748,7 @@ class State:
             self.manager.errors.raise_error()
 
     @contextlib.contextmanager
-    def wrap_context(self) -> Iterator[None]:
+    def wrap_context(self, check_blockers: bool = True) -> Iterator[None]:
         save_import_context = self.manager.errors.import_context()
         self.manager.errors.set_import_context(self.import_context)
         try:
@@ -1758,7 +1758,8 @@ class State:
         except Exception as err:
             report_internal_error(err, self.path, 0, self.manager.errors, self.options)
         self.manager.errors.set_import_context(save_import_context)
-        self.check_blockers()
+        if check_blockers:
+            self.check_blockers()
 
     def load_fine_grained_deps(self) -> Dict[str, Set[str]]:
         return self.manager.load_fine_grained_deps(self.id)
