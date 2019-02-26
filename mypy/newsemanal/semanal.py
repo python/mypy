@@ -2412,7 +2412,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
         else:
-            # fullanme should never stay None
             v._fullname = lvalue.name
         v.is_ready = False  # Type not inferred yet
         return v
@@ -3929,10 +3928,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
-            base = self.type._fullname
+            return self.type._fullname + '.' + n
+        elif self.is_func_scope():
+            return n
         else:
-            base = self.cur_mod_id
-        return base + '.' + n
+            return self.cur_mod_id + '.' + n
 
     def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
         """Enter a function, generator or comprehension scope."""
