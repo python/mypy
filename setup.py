@@ -9,6 +9,9 @@ if sys.version_info < (3, 4, 0):
     sys.stderr.write("ERROR: You need Python 3.4 or later to use mypy.\n")
     exit(1)
 
+# we'll import stuff from the source tree, let's ensure is on the sys path
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
 # This requires setuptools when building; setuptools is not needed
 # when installing from a wheel file (though it is still neeeded for
 # alternative forms of installing, as suggested by README.md).
