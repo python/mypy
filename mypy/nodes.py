@@ -2873,7 +2873,7 @@ class SymbolTableNode:
     @property
     def type(self) -> 'Optional[mypy.types.Type]':
         node = self.node
-        if (isinstance(node, (Var, SYMBOL_FUNCBASE_TYPES)) and node.type is not None):
+        if isinstance(node, (Var, SYMBOL_FUNCBASE_TYPES)) and node.type is not None:
             return node.type
         elif isinstance(node, Decorator):
             return node.var.type
