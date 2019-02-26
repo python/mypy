@@ -175,6 +175,7 @@ def h() -> None:
 a.py:1: error: Module 'b' has no attribute 'C'
 
 [case testReferenceToTypeThroughCycleAndReplaceWithFunction]
+# flags: --new-semantic-analyzer
 import a
 
 [file a.py]
@@ -205,6 +206,7 @@ def h() -> None:
 ==
 a.py:3: error: Invalid type "b.C"
 b.py:6: error: Need type annotation for 'c'
+b.py:7: error: Cannot determine type of 'c'
 
 -- TODO: More import cycle:
 --

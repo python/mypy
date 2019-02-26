@@ -5310,6 +5310,7 @@ a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
 [case testChangeTypeVarToFunction]
+# flags: --new-semantic-analyzer
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5329,15 +5330,16 @@ def T() -> None:
     pass
 [out]
 ==
-main:3: error: "C" expects no type arguments, but 1 given
-main:3: error: Invalid type "a.T"
-main:5: error: Free type variable expected in Generic[...]
-main:6: error: Invalid type "a.T"
-main:9: error: Invalid type "a.T"
-main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
-main:9: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
+main:4: error: Invalid type "a.T"
+main:6: error: Free type variable expected in Generic[...]
+main:7: error: Invalid type "a.T"
+main:10: error: Invalid type "a.T"
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:10: error: Invalid type "a.T"
 
 [case testChangeTypeVarToModule]
+# flags: --new-semantic-analyzer
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5358,13 +5360,12 @@ import T
 [out]
 ==
 ==
-main:3: error: "C" expects no type arguments, but 1 given
-main:3: error: Invalid type "T"
-main:5: error: Free type variable expected in Generic[...]
-main:6: error: Invalid type "T"
-main:9: error: Invalid type "T"
-main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
-main:9: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
+main:4: error: Invalid type "T"
+main:6: error: Free type variable expected in Generic[...]
+main:7: error: Invalid type "T"
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:10: error: Invalid type "T"
 
 [case testChangeClassToModule]
 import a
@@ -5390,6 +5391,7 @@ main:4: error: Module not callable
 main:7: error: Invalid type "C"
 
 [case testChangeTypeVarToTypeAlias]
+# flags: --new-semantic-analyzer
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5408,10 +5410,9 @@ from typing import TypeVar
 T = int
 [out]
 ==
-main:3: error: "C" expects no type arguments, but 1 given
-main:5: error: Free type variable expected in Generic[...]
-main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
-main:9: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
+main:6: error: Free type variable expected in Generic[...]
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
 import a
