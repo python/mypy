@@ -381,9 +381,11 @@ class NamedTupleAnalyzer:
             var._fullname = '%s.%s' % (info.fullname(), var.name())
             info.names[var.name()] = SymbolTableNode(MDEF, var)
 
-        vars = [Var(item, typ) for item, typ in zip(items, types)]
-        for var in vars:
+        fields = [Var(item, typ) for item, typ in zip(items, types)]
+        for var in fields:
             add_field(var, is_property=True)
+        # Don't share vars between fields and method arguments.
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
 
         tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
         add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
