@@ -63,6 +63,7 @@ MypyFile:1(
     PassStmt:6()))
 
 [case testAbstractGenericClass]
+# flags: --new-semantic-analyzer
 from abc import abstractmethod
 from typing import Generic, TypeVar
 T = TypeVar('T')
@@ -71,27 +72,27 @@ class A(Generic[T]):
   def f(self) -> 'A[T]': pass
 [out]
 MypyFile:1(
-  ImportFrom:1(abc, [abstractmethod])
-  ImportFrom:2(typing, [Generic, TypeVar])
-  AssignmentStmt:3(
+  ImportFrom:2(abc, [abstractmethod])
+  ImportFrom:3(typing, [Generic, TypeVar])
+  AssignmentStmt:4(
     NameExpr(T* [__main__.T])
-    TypeVarExpr:3())
-  ClassDef:4(
+    TypeVarExpr:4())
+  ClassDef:5(
     A
     TypeVars(
       T)
     BaseType(
       builtins.object)
-    Decorator:5(
+    Decorator:6(
       Var(f)
-      FuncDef:6(
+      FuncDef:7(
         f
         Args(
           Var(self))
         def (self: __main__.A[T`1]) -> __main__.A[T`1]
         Abstract
-        Block:6(
-          PassStmt:6())))))
+        Block:7(
+          PassStmt:7())))))
 
 [case testFullyQualifiedAbstractMethodDecl]
 # flags: --new-semantic-analyzer

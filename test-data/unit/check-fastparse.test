@@ -395,13 +395,13 @@ from pack import *
 from . import *
 
 [case testNoCrashOnImportFromStarNested]
+# flags: --new-semantic-analyzer
 import blamodule
 [file blamodule/__init__.py]
 from . import command
 from . import backends
 
 [file blamodule/backends/__init__.py]
-# flags: --new-semantic-analyzer
 from .Bla import Bla # E: Name 'Bla' already defined (by an import)
 Bla().method()  # E: Module not callable
 
