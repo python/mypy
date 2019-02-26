@@ -1,3 +1,8 @@
+"""
+This module essentially copies functionality of server/aststrip.py. See its docstring for details.
+TODO: copy docstring here, when this is the default implementation.
+"""
+
 import contextlib
 from typing import Union, Iterator, Optional, List
 
@@ -13,11 +18,7 @@ from mypy.server.aststrip import nothing
 
 
 def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> None:
-    """Reset a fine-grained incremental target to state after semantic analysis pass 1.
-
-    NOTE: Currently we opportunistically only reset changes that are known to otherwise
-        cause trouble.
-    """
+    """Reset a fine-grained incremental target to state before main pass of semantic analysis."""
     visitor = NodeStripVisitor()
     if isinstance(node, MypyFile):
         visitor.strip_file_top_level(node)

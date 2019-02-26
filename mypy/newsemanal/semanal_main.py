@@ -72,7 +72,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
-    # Clean-up builtins, so that TypeVar etc. are not accessible witgout importing.
+    # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
     if 'builtins' in scc:
         remove_imported_names_from_symtable(graph['builtins'].tree.names, 'builtins')
 
@@ -92,7 +92,7 @@ def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode
                                    n.node.fullname(), n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
 
-    # TODO: skip unnecessary parts using by adding recurse_into_functions.
+    # TODO: skip unnecessary parts by adding recurse_into_functions flag.
     check_type_arguments(graph, [state.id], state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
 
