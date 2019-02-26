@@ -60,7 +60,7 @@ class NamedTupleAnalyzer:
                         return True, None
                     items, types, default_items = result
                     info = self.build_namedtuple_typeinfo(
-                        defn.name, items, types, default_items)
+                        defn.name, items, types, default_items, defn.line)
                     defn.info = info
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
                     defn.analyzed.line = defn.line
@@ -174,7 +174,7 @@ class NamedTupleAnalyzer:
                 name = var_name
             else:
                 name = 'namedtuple@' + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, [], [], {})
+            info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
             self.store_namedtuple_info(info, name, call, is_typed)
             return True, info
         name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
@@ -199,7 +199,7 @@ class NamedTupleAnalyzer:
             }
         else:
             default_items = {}
-        info = self.build_namedtuple_typeinfo(name, items, types, default_items)
+        info = self.build_namedtuple_typeinfo(name, items, types, default_items, node.line)
         # If var_name is not None (i.e. this is not a base class expression), we always
         # store the generated TypeInfo under var_name in the current scope, so that
         # other definitions can use it.
@@ -346,8 +346,12 @@ class NamedTupleAnalyzer:
         self.fail(message, context)
         return [], [], [], False
 
-    def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
-                                  default_items: Mapping[str, Expression]) -> TypeInfo:
+    def build_namedtuple_typeinfo(self,
+                                  name: str,
+                                  items: List[str],
+                                  types: List[Type],
+                                  default_items: Mapping[str, Expression],
+                                  line: int) -> TypeInfo:
         strtype = self.api.named_type('__builtins__.str')
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type('__builtins__.tuple', [implicit_any])
@@ -366,6 +370,7 @@ class NamedTupleAnalyzer:
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base
+        info.line = line
 
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a
