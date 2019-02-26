@@ -1,10 +1,16 @@
 from typing import List, Callable
 
 from mypyc.ops import (
-    object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, EmitterInterface
+    object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface
 )
-from mypyc.ops_primitive import func_op, binary_op, simple_emit
+from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op
 
+
+name_ref_op('builtins.str',
+            result_type=object_rprimitive,
+            error_kind=ERR_NEVER,
+            emit=simple_emit('{dest} = (PyObject *)&PyUnicode_Type;'),
+            is_borrowed=True)
 
 func_op(name='builtins.str',
         arg_types=[object_rprimitive],

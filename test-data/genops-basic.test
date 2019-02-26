@@ -2366,53 +2366,51 @@ def __top_level__():
     r28 :: object
     r29 :: str
     r30 :: object
-    r31 :: str
+    r31 :: tuple[str, object]
     r32 :: object
-    r33 :: tuple[str, object]
+    r33 :: tuple[object, object]
     r34 :: object
-    r35 :: tuple[object, object]
-    r36 :: object
-    r37 :: dict
-    r38 :: str
-    r39, r40 :: object
-    r41 :: dict
-    r42 :: str
-    r43 :: bool
-    r44 :: short_int
+    r35 :: dict
+    r36 :: str
+    r37, r38 :: object
+    r39 :: dict
+    r40 :: str
+    r41 :: bool
+    r42 :: short_int
+    r43 :: str
+    r44 :: dict
     r45 :: str
-    r46 :: dict
-    r47 :: str
-    r48, r49, r50 :: object
-    r51 :: tuple
-    r52 :: dict
-    r53 :: str
-    r54 :: bool
-    r55 :: dict
-    r56 :: str
-    r57, r58, r59 :: object
-    r60 :: dict
+    r46, r47, r48 :: object
+    r49 :: tuple
+    r50 :: dict
+    r51 :: str
+    r52 :: bool
+    r53 :: dict
+    r54 :: str
+    r55, r56, r57 :: object
+    r58 :: dict
+    r59 :: str
+    r60 :: bool
     r61 :: str
-    r62 :: bool
+    r62 :: dict
     r63 :: str
-    r64 :: dict
-    r65 :: str
-    r66 :: object
-    r67 :: dict
-    r68 :: str
-    r69, r70 :: object
-    r71 :: dict
-    r72 :: str
-    r73 :: bool
-    r74, r75, r76 :: short_int
-    r77, r78, r79 :: object
-    r80 :: list
-    r81 :: dict
-    r82 :: str
-    r83, r84 :: object
-    r85 :: dict
-    r86 :: str
-    r87 :: bool
-    r88 :: None
+    r64 :: object
+    r65 :: dict
+    r66 :: str
+    r67, r68 :: object
+    r69 :: dict
+    r70 :: str
+    r71 :: bool
+    r72, r73, r74 :: short_int
+    r75, r76, r77 :: object
+    r78 :: list
+    r79 :: dict
+    r80 :: str
+    r81, r82 :: object
+    r83 :: dict
+    r84 :: str
+    r85 :: bool
+    r86 :: None
 L0:
     r0 = builtins.module :: static
     r1 = builtins.None :: object
@@ -2452,66 +2450,64 @@ L4:
     r27 = (r25, r26)
     r28 = box(tuple[str, object], r27)
     r29 = unicode_7 :: static  ('b')
-    r30 = builtins.module :: static
-    r31 = unicode_8 :: static  ('str')
-    r32 = getattr r30, r31
-    r33 = (r29, r32)
-    r34 = box(tuple[str, object], r33)
-    r35 = (r28, r34)
-    r36 = box(tuple[object, object], r35)
-    r37 = __main__.globals :: static
-    r38 = unicode_4 :: static  ('NamedTuple')
-    r39 = r37[r38] :: dict
-    r40 = py_call(r39, r24, r36)
-    r41 = __main__.globals :: static
-    r42 = unicode_5 :: static  ('Lol')
-    r43 = r41.__setitem__(r42, r40) :: dict
-    r44 = 1
-    r45 = unicode_9 :: static
-    r46 = __main__.globals :: static
-    r47 = unicode_5 :: static  ('Lol')
-    r48 = r46[r47] :: dict
-    r49 = box(short_int, r44)
-    r50 = py_call(r48, r49, r45)
-    r51 = cast(tuple, r50)
-    r52 = __main__.globals :: static
-    r53 = unicode_10 :: static  ('x')
-    r54 = r52.__setitem__(r53, r51) :: dict
-    r55 = __main__.globals :: static
-    r56 = unicode_2 :: static  ('List')
-    r57 = r55[r56] :: dict
-    r58 = int
-    r59 = r57[r58] :: object
-    r60 = __main__.globals :: static
-    r61 = unicode_11 :: static  ('Foo')
-    r62 = r60.__setitem__(r61, r59) :: dict
-    r63 = unicode_12 :: static  ('Bar')
-    r64 = __main__.globals :: static
-    r65 = unicode_11 :: static  ('Foo')
-    r66 = r64[r65] :: dict
-    r67 = __main__.globals :: static
-    r68 = unicode_3 :: static  ('NewType')
-    r69 = r67[r68] :: dict
-    r70 = py_call(r69, r63, r66)
-    r71 = __main__.globals :: static
-    r72 = unicode_12 :: static  ('Bar')
-    r73 = r71.__setitem__(r72, r70) :: dict
-    r74 = 1
-    r75 = 2
-    r76 = 3
+    r30 = str
+    r31 = (r29, r30)
+    r32 = box(tuple[str, object], r31)
+    r33 = (r28, r32)
+    r34 = box(tuple[object, object], r33)
+    r35 = __main__.globals :: static
+    r36 = unicode_4 :: static  ('NamedTuple')
+    r37 = r35[r36] :: dict
+    r38 = py_call(r37, r24, r34)
+    r39 = __main__.globals :: static
+    r40 = unicode_5 :: static  ('Lol')
+    r41 = r39.__setitem__(r40, r38) :: dict
+    r42 = 1
+    r43 = unicode_8 :: static
+    r44 = __main__.globals :: static
+    r45 = unicode_5 :: static  ('Lol')
+    r46 = r44[r45] :: dict
+    r47 = box(short_int, r42)
+    r48 = py_call(r46, r47, r43)
+    r49 = cast(tuple, r48)
+    r50 = __main__.globals :: static
+    r51 = unicode_9 :: static  ('x')
+    r52 = r50.__setitem__(r51, r49) :: dict
+    r53 = __main__.globals :: static
+    r54 = unicode_2 :: static  ('List')
+    r55 = r53[r54] :: dict
+    r56 = int
+    r57 = r55[r56] :: object
+    r58 = __main__.globals :: static
+    r59 = unicode_10 :: static  ('Foo')
+    r60 = r58.__setitem__(r59, r57) :: dict
+    r61 = unicode_11 :: static  ('Bar')
+    r62 = __main__.globals :: static
+    r63 = unicode_10 :: static  ('Foo')
+    r64 = r62[r63] :: dict
+    r65 = __main__.globals :: static
+    r66 = unicode_3 :: static  ('NewType')
+    r67 = r65[r66] :: dict
+    r68 = py_call(r67, r61, r64)
+    r69 = __main__.globals :: static
+    r70 = unicode_11 :: static  ('Bar')
+    r71 = r69.__setitem__(r70, r68) :: dict
+    r72 = 1
+    r73 = 2
+    r74 = 3
+    r75 = box(short_int, r72)
+    r76 = box(short_int, r73)
     r77 = box(short_int, r74)
-    r78 = box(short_int, r75)
-    r79 = box(short_int, r76)
-    r80 = [r77, r78, r79]
-    r81 = __main__.globals :: static
-    r82 = unicode_12 :: static  ('Bar')
-    r83 = r81[r82] :: dict
-    r84 = py_call(r83, r80)
-    r85 = __main__.globals :: static
-    r86 = unicode_13 :: static  ('y')
-    r87 = r85.__setitem__(r86, r84) :: dict
-    r88 = None
-    return r88
+    r78 = [r75, r76, r77]
+    r79 = __main__.globals :: static
+    r80 = unicode_11 :: static  ('Bar')
+    r81 = r79[r80] :: dict
+    r82 = py_call(r81, r78)
+    r83 = __main__.globals :: static
+    r84 = unicode_12 :: static  ('y')
+    r85 = r83.__setitem__(r84, r82) :: dict
+    r86 = None
+    return r86
 
 [case testChainedConditional]
 def g(x: int) -> int:
