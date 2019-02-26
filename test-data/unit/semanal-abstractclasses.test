@@ -80,6 +80,8 @@ MypyFile:1(
     A
     TypeVars(
       T)
+    BaseType(
+      builtins.object)
     Decorator:5(
       Var(f)
       FuncDef:6(
@@ -92,18 +94,18 @@ MypyFile:1(
           PassStmt:6())))))
 
 [case testFullyQualifiedAbstractMethodDecl]
+# flags: --new-semantic-analyzer
 import abc
 from abc import ABCMeta
 import typing
-
 class A(metaclass=ABCMeta):
   @abc.abstractmethod
   def g(self) -> 'A': pass
 [out]
 MypyFile:1(
-  Import:1(abc)
-  ImportFrom:2(abc, [ABCMeta])
-  Import:3(typing)
+  Import:2(abc)
+  ImportFrom:3(abc, [ABCMeta])
+  Import:4(typing)
   ClassDef:5(
     A
     Metaclass(NameExpr(ABCMeta [abc.ABCMeta]))

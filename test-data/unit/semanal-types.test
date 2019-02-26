@@ -170,8 +170,8 @@ MypyFile:1(
       NameExpr(b [__main__.b]))))
 
 [case testGenericType]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic, Any
-
 t = TypeVar('t')
 
 class A(Generic[t]): pass
@@ -180,7 +180,7 @@ x = None # type: A[B]
 y = None # type: A[Any]
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic, Any])
+  ImportFrom:2(typing, [TypeVar, Generic, Any])
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
@@ -188,6 +188,8 @@ MypyFile:1(
     A
     TypeVars(
       t)
+    BaseType(
+      builtins.object)
     PassStmt:5())
   ClassDef:6(
     B
@@ -202,6 +204,7 @@ MypyFile:1(
     __main__.A[Any]))
 
 [case testGenericType2]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic, Any
 t = TypeVar('t')
 s = TypeVar('s')
@@ -210,23 +213,25 @@ class B: pass
 x = None # type: A[B, Any]
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic, Any])
-  AssignmentStmt:2(
-    NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
+  ImportFrom:2(typing, [TypeVar, Generic, Any])
   AssignmentStmt:3(
-    NameExpr(s* [__main__.s])
+    NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  ClassDef:4(
+  AssignmentStmt:4(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:4())
+  ClassDef:5(
     A
     TypeVars(
       t
       s)
-    PassStmt:4())
-  ClassDef:5(
-    B
+    BaseType(
+      builtins.object)
     PassStmt:5())
-  AssignmentStmt:6(
+  ClassDef:6(
+    B
+    PassStmt:6())
+  AssignmentStmt:7(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
     __main__.A[__main__.B, Any]))
@@ -264,6 +269,7 @@ MypyFile:1(
         IntExpr(1)))))
 
 [case testCast]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic, Any, cast
 t = TypeVar('t')
 class c: pass
@@ -273,28 +279,30 @@ cast(c, 1)
 cast(d[c], c)
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic, Any, cast])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic, Any, cast])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
-    c
-    PassStmt:3())
+    TypeVarExpr:3())
   ClassDef:4(
+    c
+    PassStmt:4())
+  ClassDef:5(
     d
     TypeVars(
       t)
-    PassStmt:4())
-  ExpressionStmt:5(
-    CastExpr:5(
-      IntExpr(1)
-      Any))
+    BaseType(
+      builtins.object)
+    PassStmt:5())
   ExpressionStmt:6(
     CastExpr:6(
       IntExpr(1)
-      __main__.c))
+      Any))
   ExpressionStmt:7(
     CastExpr:7(
+      IntExpr(1)
+      __main__.c))
+  ExpressionStmt:8(
+    CastExpr:8(
       NameExpr(c [__main__.c])
       __main__.d[__main__.c])))
 
@@ -330,6 +338,7 @@ MypyFile:1(
       _m._n.C)))
 
 [case testCastTargetWithTwoTypeArgs]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic, cast
 t = TypeVar('t')
 s = TypeVar('s')
@@ -337,21 +346,23 @@ class C(Generic[t, s]): pass
 cast(C[str, int], C)
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic, cast])
-  AssignmentStmt:2(
-    NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
+  ImportFrom:2(typing, [TypeVar, Generic, cast])
   AssignmentStmt:3(
-    NameExpr(s* [__main__.s])
+    NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  ClassDef:4(
+  AssignmentStmt:4(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:4())
+  ClassDef:5(
     C
     TypeVars(
       t
       s)
-    PassStmt:4())
-  ExpressionStmt:5(
-    CastExpr:5(
+    BaseType(
+      builtins.object)
+    PassStmt:5())
+  ExpressionStmt:6(
+    CastExpr:6(
       NameExpr(C [__main__.C])
       __main__.C[builtins.str, builtins.int])))
 
@@ -435,101 +446,113 @@ MypyFile:1(
       PassStmt:4())))
 
 [case testNestedGenericFunctionTypeVariable]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: A[t], y) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     A
     TypeVars(
       t)
-    PassStmt:3())
-  FuncDef:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  FuncDef:5(
     f
     Args(
       Var(x)
       Var(y))
     def [t] (x: __main__.A[t`-1], y: Any)
-    Block:4(
-      PassStmt:4())))
+    Block:5(
+      PassStmt:5())))
 
 [case testNestedGenericFunctionTypeVariable2]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Tuple, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Tuple[int, t]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Tuple, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Tuple, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     A
     TypeVars(
       t)
-    PassStmt:3())
-  FuncDef:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  FuncDef:5(
     f
     Args(
       Var(x))
     def [t] (x: Tuple[builtins.int, t`-1])
-    Block:4(
-      PassStmt:4())))
+    Block:5(
+      PassStmt:5())))
 
 [case testNestedGenericFunctionTypeVariable3]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Callable, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Callable[[int, t], int]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Callable, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Callable, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     A
     TypeVars(
       t)
-    PassStmt:3())
-  FuncDef:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  FuncDef:5(
     f
     Args(
       Var(x))
     def [t] (x: def (builtins.int, t`-1) -> builtins.int)
-    Block:4(
-      PassStmt:4())))
+    Block:5(
+      PassStmt:5())))
 
 [case testNestedGenericFunctionTypeVariable4]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Callable, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Callable[[], t]) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Callable, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Callable, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     A
     TypeVars(
       t)
-    PassStmt:3())
-  FuncDef:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  FuncDef:5(
     f
     Args(
       Var(x))
     def [t] (x: def () -> t`-1)
-    Block:4(
-      PassStmt:4())))
+    Block:5(
+      PassStmt:5())))
 
 [case testGenericFunctionTypeVariableInReturnType]
 from typing import TypeVar
@@ -585,15 +608,15 @@ MypyFile:1(
           PassStmt:4())))))
 
 [case testClassTvar]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
-
 t = TypeVar('t')
 
 class c(Generic[t]):
   def f(self) -> t: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
+  ImportFrom:2(typing, [TypeVar, Generic])
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
@@ -601,6 +624,8 @@ MypyFile:1(
     c
     TypeVars(
       t)
+    BaseType(
+      builtins.object)
     FuncDef:6(
       f
       Args(
@@ -610,8 +635,8 @@ MypyFile:1(
         PassStmt:6()))))
 
 [case testClassTvar2]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
-
 t = TypeVar('t')
 s = TypeVar('s')
 
@@ -619,7 +644,7 @@ class c(Generic[t, s]):
   def f(self, x: s) -> t: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
+  ImportFrom:2(typing, [TypeVar, Generic])
   AssignmentStmt:3(
     NameExpr(t* [__main__.t])
     TypeVarExpr:3())
@@ -631,6 +656,8 @@ MypyFile:1(
     TypeVars(
       t
       s)
+    BaseType(
+      builtins.object)
     FuncDef:7(
       f
       Args(
@@ -641,28 +668,31 @@ MypyFile:1(
         PassStmt:7()))))
 
 [case testGenericBaseClass]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class d(Generic[t]): pass
 class c(d[t], Generic[t]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     d
     TypeVars(
       t)
-    PassStmt:3())
-  ClassDef:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  ClassDef:5(
     c
     TypeVars(
       t)
     BaseType(
       __main__.d[t`1])
-    PassStmt:4()))
+    PassStmt:5()))
 
 [case testTupleType]
 from typing import Tuple
@@ -855,6 +885,7 @@ MypyFile:1(
         NameExpr(g [l])))))
 
 [case testImplicitGenericTypeArgs]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 s = TypeVar('s')
@@ -862,25 +893,28 @@ class A(Generic[t, s]): pass
 x = None # type: A
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
-    NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
+  ImportFrom:2(typing, [TypeVar, Generic])
   AssignmentStmt:3(
-    NameExpr(s* [__main__.s])
+    NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  ClassDef:4(
+  AssignmentStmt:4(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:4())
+  ClassDef:5(
     A
     TypeVars(
       t
       s)
-    PassStmt:4())
-  AssignmentStmt:5(
+    BaseType(
+      builtins.object)
+    PassStmt:5())
+  AssignmentStmt:6(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
     __main__.A[Any, Any]))
 
 [case testImplicitTypeArgsAndGenericBaseClass]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 s = TypeVar('s')
@@ -888,52 +922,58 @@ class B(Generic[s]): pass
 class A(B, Generic[t]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
-    NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
+  ImportFrom:2(typing, [TypeVar, Generic])
   AssignmentStmt:3(
-    NameExpr(s* [__main__.s])
+    NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  ClassDef:4(
+  AssignmentStmt:4(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:4())
+  ClassDef:5(
     B
     TypeVars(
       s)
-    PassStmt:4())
-  ClassDef:5(
+    BaseType(
+      builtins.object)
+    PassStmt:5())
+  ClassDef:6(
     A
     TypeVars(
       t)
     BaseType(
       __main__.B[Any])
-    PassStmt:5()))
+    PassStmt:6()))
 
 [case testTypeApplication]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 x = A[int]()
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     A
     TypeVars(
       t)
-    PassStmt:3())
-  AssignmentStmt:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  AssignmentStmt:5(
     NameExpr(x* [__main__.x])
-    CallExpr:4(
-      TypeApplication:4(
+    CallExpr:5(
+      TypeApplication:5(
         NameExpr(A [__main__.A])
         Types(
           builtins.int))
       Args())))
 
 [case testTypeApplicationWithTwoTypeArgs]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic, Any
 t = TypeVar('t')
 s = TypeVar('s')
@@ -941,23 +981,25 @@ class A(Generic[t, s]): pass
 x = A[int, Any]()
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic, Any])
-  AssignmentStmt:2(
-    NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
+  ImportFrom:2(typing, [TypeVar, Generic, Any])
   AssignmentStmt:3(
-    NameExpr(s* [__main__.s])
+    NameExpr(t* [__main__.t])
     TypeVarExpr:3())
-  ClassDef:4(
+  AssignmentStmt:4(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:4())
+  ClassDef:5(
     A
     TypeVars(
       t
       s)
-    PassStmt:4())
-  AssignmentStmt:5(
+    BaseType(
+      builtins.object)
+    PassStmt:5())
+  AssignmentStmt:6(
     NameExpr(x* [__main__.x])
-    CallExpr:5(
-      TypeApplication:5(
+    CallExpr:6(
+      TypeApplication:6(
         NameExpr(A [__main__.A])
         Types(
           builtins.int
@@ -992,24 +1034,27 @@ MypyFile:1(
         IntExpr(1)))))
 
 [case testTypeApplicationWithStringLiteralType]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 A['int']()
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
     NameExpr(t* [__main__.t])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     A
     TypeVars(
       t)
-    PassStmt:3())
-  ExpressionStmt:4(
-    CallExpr:4(
-      TypeApplication:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  ExpressionStmt:5(
+    CallExpr:5(
+      TypeApplication:5(
         NameExpr(A [__main__.A])
         Types(
           builtins.int))
@@ -1033,22 +1078,25 @@ MypyFile:1(
       PassStmt:1())))
 
 [case testQualifiedGeneric]
+# flags: --new-semantic-analyzer
 from typing import TypeVar
 import typing
 T = TypeVar('T')
 class A(typing.Generic[T]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar])
-  Import:2(typing)
-  AssignmentStmt:3(
+  ImportFrom:2(typing, [TypeVar])
+  Import:3(typing)
+  AssignmentStmt:4(
     NameExpr(T* [__main__.T])
-    TypeVarExpr:3())
-  ClassDef:4(
+    TypeVarExpr:4())
+  ClassDef:5(
     A
     TypeVars(
       T)
-    PassStmt:4()))
+    BaseType(
+      builtins.object)
+    PassStmt:5()))
 
 [case testQualifiedTypevar]
 import typing
@@ -1131,6 +1179,7 @@ MypyFile:1(
         PassStmt:4()))))
 
 [case testImportTypevar]
+# flags: --new-semantic-analyzer
 from typing import Generic
 from _m import T
 class A(Generic[T]):
@@ -1140,18 +1189,21 @@ from typing import TypeVar
 T = TypeVar('T')
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Generic])
-  ImportFrom:2(_m, [T])
-  ClassDef:3(
+  ImportFrom:2(typing, [Generic])
+  ImportFrom:3(_m, [T])
+  ClassDef:4(
     A
     TypeVars(
       T)
-    AssignmentStmt:4(
+    BaseType(
+      builtins.object)
+    AssignmentStmt:5(
       NameExpr(y [m])
       NameExpr(None [builtins.None])
       T`1)))
 
 [case testQualifiedReferenceToTypevarInClass]
+# flags: --new-semantic-analyzer
 from typing import Generic
 import _m
 class A(Generic[_m.T]):
@@ -1163,24 +1215,26 @@ from typing import TypeVar
 T = TypeVar('T')
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Generic])
-  Import:2(_m)
-  ClassDef:3(
+  ImportFrom:2(typing, [Generic])
+  Import:3(_m)
+  ClassDef:4(
     A
     TypeVars(
       _m.T)
-    AssignmentStmt:4(
+    BaseType(
+      builtins.object)
+    AssignmentStmt:5(
       NameExpr(a [m])
       NameExpr(None [builtins.None])
       _m.T`1)
-    FuncDef:5(
+    FuncDef:6(
       f
       Args(
         Var(self)
         Var(x))
       def (self: __main__.A[_m.T`1], x: _m.T`1) -> Any
-      Block:5(
-        AssignmentStmt:6(
+      Block:6(
+        AssignmentStmt:7(
           NameExpr(b [l])
           NameExpr(None [builtins.None])
           _m.T`1)))))
@@ -1313,23 +1367,26 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testGenericClassWithValueSet]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 T = TypeVar('T', int, str)
 class C(Generic[T]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
     NameExpr(T* [__main__.T])
-    TypeVarExpr:2(
+    TypeVarExpr:3(
       Values(
         builtins.int
         builtins.str)))
-  ClassDef:3(
+  ClassDef:4(
     C
     TypeVars(
       T in (builtins.int, builtins.str))
-    PassStmt:3()))
+    BaseType(
+      builtins.object)
+    PassStmt:4()))
 
 [case testGenericFunctionWithBound]
 from typing import TypeVar
@@ -1351,21 +1408,24 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testGenericClassWithBound]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 T = TypeVar('T', bound=int)
 class C(Generic[T]): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar, Generic])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
     NameExpr(T* [__main__.T])
-    TypeVarExpr:2(
+    TypeVarExpr:3(
       UpperBound(builtins.int)))
-  ClassDef:3(
+  ClassDef:4(
     C
     TypeVars(
       T <: builtins.int)
-    PassStmt:3()))
+    BaseType(
+      builtins.object)
+    PassStmt:4()))
 
 [case testSimpleDucktypeDecorator]
 from typing import _promote

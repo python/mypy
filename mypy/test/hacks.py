@@ -49,15 +49,5 @@ new_semanal_blacklist = [
     'fine-grained-cycles.test',
     'fine-grained-modules.test',
     'fine-grained.test',
-    'semanal-abstractclasses.test',
-    'semanal-modules.test',
-    'semanal-classvar.test',
     'semanal-errors.test',
-    'semenal-literal.test',
-    'semanal-namedtuple.test',
-    'semanal-statements.test',
-    'semanal-symtable.test',
-    'semanal-typealiases.test',
-    'semanal-typeinfo.test',
-    'semanal-types.test'
 ]  # type: Final

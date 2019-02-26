@@ -204,6 +204,7 @@ MypyFile:1(
       PassStmt:3())))
 
 [case testGenericTypeAlias]
+# flags: --new-semantic-analyzer
 from typing import Generic, TypeVar
 T = TypeVar('T')
 class G(Generic[T]): pass
@@ -211,25 +212,27 @@ A = G[int]
 def f(x: A) -> None: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Generic, TypeVar])
-  AssignmentStmt:2(
+  ImportFrom:2(typing, [Generic, TypeVar])
+  AssignmentStmt:3(
     NameExpr(T* [__main__.T])
-    TypeVarExpr:2())
-  ClassDef:3(
+    TypeVarExpr:3())
+  ClassDef:4(
     G
     TypeVars(
       T)
-    PassStmt:3())
-  AssignmentStmt:4(
+    BaseType(
+      builtins.object)
+    PassStmt:4())
+  AssignmentStmt:5(
     NameExpr(A* [__main__.A])
     TypeAliasExpr(__main__.G[builtins.int]))
-  FuncDef:5(
+  FuncDef:6(
     f
     Args(
       Var(x))
     def (x: __main__.G[builtins.int])
-    Block:5(
-      PassStmt:5())))
+    Block:6(
+      PassStmt:6())))
 
 [case testGenericTypeAlias2]
 from typing import List
