@@ -27,7 +27,7 @@ will be incomplete.
 from typing import List, Tuple, Optional, Union, Callable
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, local_definitions
+    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
@@ -92,8 +92,7 @@ def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode
                                    n.node.fullname(), n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
 
-    # TODO: skip unnecessary parts by adding recurse_into_functions flag.
-    check_type_arguments(graph, [state.id], state.manager.errors)
+    check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
 
 
@@ -244,10 +243,21 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
                 state.tree.accept(analyzer)
 
 
+def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], state: 'State',
+                                    errors: Errors) -> None:
+    analyzer = TypeArgumentAnalyzer(errors)
+    with state.wrap_context():
+        with strict_optional_set(state.options.strict_optional):
+            for target in targets:
+                analyzer.recurse_into_functions = not isinstance(target.node, MypyFile)
+                target.node.accept(analyzer)
+
+
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         tree = graph[module].tree
         assert tree
+        # TODO: calculate properties also for classes nested in functions.
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 calculate_class_abstract_status(node.node, tree.is_stub, errors)
