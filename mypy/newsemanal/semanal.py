@@ -3704,7 +3704,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Give up.
         if not implicit_name and not suppress_errors:
             self.name_not_defined(name, ctx)
-            self.check_for_obsolete_short_name(name, ctx)
         else:
             if implicit_name:
                 return implicit_node
@@ -4163,6 +4162,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
+        self.check_for_obsolete_short_name(name, ctx)
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(name)
