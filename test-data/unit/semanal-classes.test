@@ -594,8 +594,6 @@ MypyFile:1(
   ClassDef:2(
     B
     FallbackToAny
-    BaseType(
-      builtins.object)
     PassStmt:3())
   IgnoredLines(1))
 
@@ -629,6 +627,4 @@ MypyFile:1(
   ClassDef:3(
     B
     FallbackToAny
-    BaseType(
-      builtins.object)
     PassStmt:4()))
