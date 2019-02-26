@@ -3,12 +3,13 @@ from typing import Union, Iterator, Optional, List
 
 from mypy.nodes import (
     FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
-    ImportFrom, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, IndexExpr, ImportAll, ForStmt, Block, CLASSDEF_NO_INFO
+    ImportFrom, CallExpr, Decorator, OverloadedFuncDef, Node, TupleExpr, ListExpr,
+    SuperExpr, IndexExpr, ImportAll, ForStmt, Block, CLASSDEF_NO_INFO, TypeInfo
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
 from mypy.typestate import TypeState
+from mypy.server.aststrip import nothing
 
 
 def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> None:
@@ -26,6 +27,8 @@ def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> None:
 
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
+        self.type = None  # type: Optional[TypeInfo]
+        self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for
         # processing module top levels.
         self.recurse_into_functions = True
@@ -52,7 +55,8 @@ class NodeStripVisitor(TraverserVisitor):
         node.removed_base_type_exprs = []
         node.defs.body = [s for s in node.defs.body
                           if s not in to_delete]
-        super().visit_class_def(node)
+        with self.enter_class(node.info):
+            super().visit_class_def(node)
         TypeState.reset_subtype_caches_for(node.info)
         node.info = CLASSDEF_NO_INFO
 
@@ -61,12 +65,13 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
-        # All nodes are non-final after the first pass.
+        # All nodes are non-final initially.
         node.is_final = False
         if node.type:
             assert isinstance(node.type, CallableType)
             node.type.variables = []
-        super().visit_func_def(node)
+        with self.enter_method(node.info) if node.info else nothing():
+            super().visit_func_def(node)
 
     def visit_decorator(self, node: Decorator) -> None:
         node.var.type = None
@@ -74,7 +79,7 @@ class NodeStripVisitor(TraverserVisitor):
             expr.accept(self)
         if self.recurse_into_functions:
             # Only touch the final status if we re-process
-            # a method target
+            # a method target.
             node.var.is_final = False
             node.func.accept(self)
 
@@ -91,16 +96,15 @@ class NodeStripVisitor(TraverserVisitor):
         node.type = node.unanalyzed_type
         node.is_final_def = False
         node.is_alias_def = False
+        if self.type and not self.is_class_body:
+            for lvalue in node.lvalues:
+                self.process_lvalue_in_method(lvalue)
         super().visit_assignment_stmt(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
-        # Imports can include both overriding symbols and fresh ones,
-        # and we need to clear both.
         node.assignments = []
 
     def visit_import_all(self, node: ImportAll) -> None:
-        # Imports can include both overriding symbols and fresh ones,
-        # and we need to clear both.
         node.assignments = []
         node.imported_names = []
 
@@ -135,3 +139,35 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_super_expr(self, node: SuperExpr) -> None:
         node.info = None
         super().visit_super_expr(node)
+
+    def process_lvalue_in_method(self, lvalue: Node) -> None:
+        if isinstance(lvalue, MemberExpr):
+            if lvalue.is_new_def:
+                # Remove defined attribute from the class symbol table. If is_new_def is
+                # true for a MemberExpr, we know that it must be an assignment through
+                # self, since only those can define new attributes.
+                assert self.type is not None
+                self.type.names.pop(lvalue.name, None)
+        elif isinstance(lvalue, (TupleExpr, ListExpr)):
+            for item in lvalue.items:
+                self.process_lvalue_in_method(item)
+
+    @contextlib.contextmanager
+    def enter_class(self, info: TypeInfo) -> Iterator[None]:
+        old_type = self.type
+        old_is_class_body = self.is_class_body
+        self.type = info
+        self.is_class_body = True
+        yield
+        self.type = old_type
+        self.is_class_body = old_is_class_body
+
+    @contextlib.contextmanager
+    def enter_method(self, info: TypeInfo) -> Iterator[None]:
+        old_type = self.type
+        old_is_class_body = self.is_class_body
+        self.type = info
+        self.is_class_body = False
+        yield
+        self.type = old_type
+        self.is_class_body = old_is_class_body

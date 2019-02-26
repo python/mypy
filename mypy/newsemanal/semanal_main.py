@@ -31,7 +31,9 @@ from mypy.nodes import (
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
-from mypy.newsemanal.semanal import NewSemanticAnalyzer, apply_semantic_analyzer_patches
+from mypy.newsemanal.semanal import (
+    NewSemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
+)
 from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
@@ -70,6 +72,9 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
+    # Clean-up builtins, so that TypeVar etc. are not accessible witgout importing.
+    if 'builtins' in scc:
+        remove_imported_names_from_symtable(graph['builtins'].tree.names, 'builtins')
 
 
 def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode],

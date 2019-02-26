@@ -631,6 +631,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # @overload.
 
         defn._fullname = self.qualified_name(defn.name())
+        # TODO: avoid modifying items.
+        defn.items = defn.unanalyzed_items.copy()
 
         first_item = defn.items[0]
         first_item.is_overload = True
@@ -688,10 +690,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         types = []
         non_overload_indexes = []
         impl = None  # type: Optional[OverloadPart]
-        # TODO: This is really bad, we should not modify defn.items neither here nor above.
-        if defn.impl:
-            # We are visiting this second time.
-            defn.items.append(defn.impl)
         for i, item in enumerate(defn.items):
             if i != 0:
                 # Assume that the first item was already visited
