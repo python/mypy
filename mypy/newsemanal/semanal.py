@@ -3762,7 +3762,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if n and n.module_hidden:
                         self.name_not_defined(name, ctx, namespace=namespace)
             if n and not n.module_hidden:
-                n = self.rebind_symbol_table_node(n)
                 return n
             return None
 
