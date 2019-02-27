@@ -183,7 +183,9 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         #       every option, combine the bounds with meet/join.
         elif all(len(option) == len(valid_options[0]) for option in valid_options[1:]):
             # same length, more shape check below
-            to_join_constraint_group = [list(c_t) for c_t in zip(*valid_options)]  # type: List[List[Constraint]]
+            to_join_constraint_group = [
+                list(c_t) for c_t in zip(*valid_options)
+            ]  # type: List[List[Constraint]]
             joined_constraints = []  # type: List[Constraint]
             for to_join_constraint_list in to_join_constraint_group:
                 if any(
@@ -195,7 +197,6 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
                 joined_constraints.append(to_join_constraint_list[0])
                 if not all(is_same_constraint(to_join_constraint_list[0], c)
                            for c in to_join_constraint_list[1:]):
-                    # Multiple sets of constraints that are all the same. Just pick any one of them.
                     joined_constraints[-1].target = AnyType(TypeOfAny.explicit)
             else:
                 # not break from loop
