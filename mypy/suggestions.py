@@ -2,9 +2,9 @@ import re
 
 from typing import List, Optional, Set, Tuple, Dict
 
-import mypy.build
 import mypy.checker
 import mypy.types
+from mypy.build import State
 from mypy.nodes import (ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT,
                         FuncDef, MypyFile, SymbolTable, SymbolNode, TypeInfo,
                         MysteryTuple)
@@ -49,14 +49,14 @@ class SuggestionEngine:
         mystery_hits = []  # type: List[MysteryTuple]
         for modid, callers in module_deps.items():
             modstate = self.fgmanager.graph[modid]
-            assert modstate.tree is not None
+            tree = self.ensure_tree(modstate)
             try:
-                modstate.tree.mystery_target = target
-                modstate.tree.mystery_hits = mystery_hits
+                tree.mystery_target = target
+                tree.mystery_hits = mystery_hits
                 self.analyze_module(modstate, callers)
             finally:
-                modstate.tree.mystery_target = None
-                modstate.tree.mystery_hits = []
+                tree.mystery_target = None
+                tree.mystery_hits = []
 
         return ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
                 for path, line, arg_kinds, arg_names, arg_types in mystery_hits]
@@ -83,7 +83,7 @@ class SuggestionEngine:
             args.append(arg)
         return "(%s)" % (", ".join(args))
 
-    def analyze_module(self, state: mypy.build.State, callers: Set[str]) -> None:
+    def analyze_module(self, state: State, callers: Set[str]) -> None:
         deferred_set = set()
         for caller in callers:
             try:
@@ -111,11 +111,20 @@ class SuggestionEngine:
             return (modname, None, funcname,
                     self.find_function_node(graph[modname], funcname))
 
-    def find_method_node(self, state: mypy.build.State,
+    def ensure_tree(self, state: State) -> MypyFile:
+        if not state.tree or state.tree.is_cache_skeleton:
+            assert state.path is not None
+            res = self.fgmanager.update([(state.id, state.path)], [])
+            if res:
+                raise SuggestionFailure("Error while trying to load %s" % state.id)
+        assert state.tree is not None
+        return state.tree
+
+
+    def find_method_node(self, state: State,
                          classname: str, funcname: str) -> FuncDef:
         modname = state.id
-        tree = state.tree  # type: Optional[MypyFile]
-        assert tree is not None
+        tree = self.ensure_tree(state)
         moduledict = tree.names  # type: SymbolTable
         if classname not in moduledict:
             raise SuggestionFailure("Unknown class %s.%s" % (modname, classname))
@@ -131,10 +140,9 @@ class SuggestionEngine:
                                     (modname, classname, funcname))
         return node
 
-    def find_function_node(self, state: mypy.build.State, funcname: str) -> FuncDef:
+    def find_function_node(self, state: State, funcname: str) -> FuncDef:
         modname = state.id
-        tree = state.tree  # type: Optional[MypyFile]
-        assert tree is not None
+        tree = self.ensure_tree(state)
         moduledict = tree.names  # type: SymbolTable
         if funcname not in moduledict:
             raise SuggestionFailure("Unknown function %s.%s" % (modname, funcname))
