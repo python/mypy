@@ -174,13 +174,32 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         valid_options = [option for option in options if option is not None]
     if len(valid_options) == 1:
         return valid_options[0]
-    elif (len(valid_options) > 1 and
-          all(is_same_constraints(valid_options[0], c)
-              for c in valid_options[1:])):
-        # Multiple sets of constraints that are all the same. Just pick any one of them.
+    elif len(valid_options) > 1:
+        if all(is_same_constraints(valid_options[0], c)
+               for c in valid_options[1:]):
+            # Multiple sets of constraints that are all the same. Just pick any one of them.
+            return valid_options[0]
         # TODO: More generally, if a given (variable, direction) pair appears in
         #       every option, combine the bounds with meet/join.
-        return valid_options[0]
+        elif all(len(option) == len(valid_options[0]) for option in valid_options[1:]):
+            # same length, more shape check below
+            to_join_constraint_group = [list(c_t) for c_t in zip(*valid_options)]  # type: List[List[Constraint]]
+            joined_constraints = []  # type: List[Constraint]
+            for to_join_constraint_list in to_join_constraint_group:
+                if any(
+                        (c.op != to_join_constraint_list[0].op or
+                         c.type_var != to_join_constraint_list[0].type_var)
+                        for c in to_join_constraint_list[1:]
+                ):
+                    break
+                joined_constraints.append(to_join_constraint_list[0])
+                if not all(is_same_constraint(to_join_constraint_list[0], c)
+                           for c in to_join_constraint_list[1:]):
+                    # Multiple sets of constraints that are all the same. Just pick any one of them.
+                    joined_constraints[-1].target = AnyType(TypeOfAny.explicit)
+            else:
+                # not break from loop
+                return joined_constraints
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.

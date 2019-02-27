@@ -990,3 +990,23 @@ def union_test3():
     return x + 1
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testUninhabitedUnionDict]
+from typing import Any, Union, List
+
+def tl(t: Union[List[int], List[str]]):
+    reveal_type(t) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+
+tl([])
+
+[builtins fixtures/list.pyi]
+
+[case testUninhabitedUnionList]
+from typing import Any, Dict, Union
+
+def td(t: Union[Dict[int, Any], Dict[str, Any]]):
+    reveal_type(t) # E: Revealed type is 'Union[builtins.dict[builtins.int, Any], builtins.dict[builtins.str, Any]]'
+
+td({})
+
+[builtins fixtures/dict.pyi]
