@@ -926,9 +926,9 @@ def reprocess_nodes(manager: BuildManager,
         else:
             strip_target_new(deferred.node)
     if not options.new_semantic_analyzer:
-         re_analyze_nodes(file_node, nodes, manager, options)
+        re_analyze_nodes(file_node, nodes, manager, options)
     else:
-         process_selected_targets(graph[module_id], nodes, graph)
+        process_selected_targets(graph[module_id], nodes, graph)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.

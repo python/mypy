@@ -494,6 +494,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         defn.is_conditional = self.block_depth[-1] > 0
 
+        # Set full names even for those items that aren't added to a symbol table.
+        # For example, for overload items.
+        defn._fullname = self.qualified_name(defn.name())
+
         # We don't add module top-level functions to symbol tables
         # when we analyze their bodies in the second phase on analysis,
         # since they were added in the first phase. Nested functions
@@ -512,7 +516,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.is_class_scope():
             assert self.type is not None
             func.info = self.type
-        func._fullname = self.qualified_name(func.name())
         self.add_symbol(func.name(), func, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
@@ -694,7 +697,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if i != 0:
                 # Assume that the first item was already visited
                 item.is_overload = True
-                item._fullname = self.qualified_name(item.name())
                 item.accept(self)
             # TODO: support decorated overloaded functions properly
             if isinstance(item, Decorator):
@@ -1874,6 +1876,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
             if fname:
+                # The r.h.s. for variable definitions may be not a type reference but just
+                # an instance attribute, so suppress the errors.
                 n = self.lookup_qualified(fname, rv, suppress_errors=True)
                 if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
                     return True
