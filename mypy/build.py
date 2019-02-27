@@ -317,7 +317,7 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins(options: Options, errors: Errors) -> Tuple[ChainedPlugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
@@ -330,7 +330,7 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
 
     default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
-        return default_plugin, snapshot
+        return ChainedPlugin(options, [default_plugin]), snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
@@ -489,7 +489,7 @@ class BuildManager(BuildManagerBase):
                  reports: Optional['Reports'],
                  options: Options,
                  version_id: str,
-                 plugin: Plugin,
+                 plugin: ChainedPlugin,
                  plugins_snapshot: Dict[str, str],
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],

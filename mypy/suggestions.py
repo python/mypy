@@ -1,15 +1,65 @@
-import re
-
-from typing import List, Optional, Set, Tuple, Dict
+from typing import List, Optional, Set, Tuple, Dict, Callable, Union, NamedTuple, TypeVar
 
 import mypy.checker
 import mypy.types
+from mypy.types import Type
 from mypy.build import State
 from mypy.nodes import (ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT,
-                        FuncDef, MypyFile, SymbolTable, SymbolNode, TypeInfo,
-                        MysteryTuple)
+                        FuncDef, MypyFile, SymbolTable, SymbolNode, TypeInfo)
 from mypy.server.update import FineGrainedBuildManager
 from mypy.server.target import module_prefix, split_target
+from mypy.plugin import Plugin, ChainedPlugin, FunctionContext, MethodContext
+
+Callsite = NamedTuple(
+    'Callsite',
+    [('path', str),
+     ('line', int),
+     ('arg_kinds', List[List[int]]),
+     ('callee_arg_names', List[Optional[str]]),
+     ('arg_names', List[List[Optional[str]]]),
+     ('arg_types', List[List[Type]])])
+
+
+class SuggestionPlugin(Plugin):
+    def __init__(self, target: str) -> None:
+        self.target = target
+        # List of call sites found by dmypy suggest:
+        # (path, line, <arg kinds>, <arg names>, <arg types>)
+        self.mystery_hits = []  # type: List[Callsite]
+
+    def get_function_hook(self, fullname: str
+                          ) -> Optional[Callable[[FunctionContext], Type]]:
+        if fullname == self.target:
+            return self.log
+        else:
+            return None
+
+    def get_method_hook(self, fullname: str
+                          ) -> Optional[Callable[[MethodContext], Type]]:
+        if fullname == self.target:
+            return self.log
+        else:
+            return None
+
+    def log(self, ctx: Union[FunctionContext, MethodContext]) -> Type:
+        self.mystery_hits.append(Callsite(
+            ctx.api.path,
+            ctx.context.line,
+            ctx.arg_kinds,
+            ctx.callee_arg_names,
+            ctx.arg_names,
+            ctx.arg_types))
+        return ctx.default_return_type
+
+
+T = TypeVar('T')
+
+def dedup(old: List[T]) -> List[T]:
+    new = []  # type: List[T]
+    for x in old:
+        if x not in new:
+            new.append(x)
+    return new
 
 
 class SuggestionFailure(Exception):
@@ -46,40 +96,42 @@ class SuggestionEngine:
                 module_deps.setdefault(prefix, set()).add(dep)
 
 
-        mystery_hits = []  # type: List[MysteryTuple]
+        plugin = self.fgmanager.manager.plugin
+        collector_plugin = SuggestionPlugin(function)
+
         for modid, callers in module_deps.items():
             modstate = self.fgmanager.graph[modid]
-            tree = self.ensure_tree(modstate)
+            plugin._plugins.insert(0, collector_plugin)
             try:
-                tree.mystery_target = target
-                tree.mystery_hits = mystery_hits
+                tree = self.ensure_tree(modstate)
                 self.analyze_module(modstate, callers)
             finally:
-                tree.mystery_target = None
-                tree.mystery_hits = []
+                plugin._plugins.pop(0)
 
-        return ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
-                for path, line, arg_kinds, arg_names, arg_types in mystery_hits]
+        # print()
+        # print("COLLECTED:", collector_plugin.mystery_hits)
+
+        return dedup(
+            ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
+             for path, line, arg_kinds, _, arg_names, arg_types in collector_plugin.mystery_hits]
+        )
 
     def format_args(self,
-                    arg_kinds: List[int],
-                    arg_names: List[Optional[str]],
-                    arg_types: List[mypy.types.Type]) -> str:
+                    arg_kinds: List[List[int]],
+                    arg_names: List[List[Optional[str]]],
+                    arg_types: List[List[Type]]) -> str:
         args = []  # type: List[str]
-        for i, typ in enumerate(arg_types):
-            arg = str(typ)
-            arg = arg.replace("*", "")  # Get rid of "inferred" indicators.
-            if i < len(arg_kinds):
-                kind = arg_kinds[i]
-            else:
-                kind = ARG_POS
-            if kind == ARG_STAR:
-                arg = '*' + arg
-            elif kind == ARG_STAR2:
-                arg = '**' + arg
-            elif kind in (ARG_NAMED, ARG_NAMED_OPT):
-                if i < len(arg_names) and arg_names[i]:
-                    arg = "%s=%s" % (arg_names[i], arg)
+        for i in range(len(arg_types)):
+            for kind, name, typ in zip(arg_kinds[i], arg_names[i], arg_types[i]):
+                arg = str(typ)
+                arg = arg.replace("*", "")  # Get rid of "inferred" indicators.
+                if kind == ARG_STAR:
+                    arg = '*' + arg
+                elif kind == ARG_STAR2:
+                    arg = '**' + arg
+                elif kind in (ARG_NAMED, ARG_NAMED_OPT):
+                    if name:
+                        arg = "%s=%s" % (name, arg)
             args.append(arg)
         return "(%s)" % (", ".join(args))
 
@@ -119,7 +171,6 @@ class SuggestionEngine:
                 raise SuggestionFailure("Error while trying to load %s" % state.id)
         assert state.tree is not None
         return state.tree
-
 
     def find_method_node(self, state: State,
                          classname: str, funcname: str) -> FuncDef:

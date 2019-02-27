@@ -210,9 +210,6 @@ class SymbolNode(Node):
 Definition = Tuple[str, 'SymbolTableNode', Optional['TypeInfo']]
 
 
-MysteryTuple = Tuple[str, int, List[int], List[Optional[str]], List['mypy.types.Type']]
-
-
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -241,12 +238,6 @@ class MypyFile(SymbolNode):
     is_partial_stub_package = False
     # Plugin-created dependencies
     plugin_deps = None  # type: Dict[str, Set[str]]
-
-    # Full name of dmypy suggest targets (format: pkg.mod.cls.func)
-    mystery_target = None  # type: Optional[str]
-    # List of call sites found by dmypy suggest:
-    # (path, line, <arg kinds>, <arg names>, <arg types>)
-    mystery_hits = []  # type: List[MysteryTuple]
 
     def __init__(self,
                  defs: List[Statement],

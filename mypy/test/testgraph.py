@@ -9,7 +9,7 @@ from mypy.build import topsort, strongly_connected_components, sorted_components
 from mypy.version import __version__
 from mypy.options import Options
 from mypy.report import Reports
-from mypy.plugin import Plugin
+from mypy.plugin import ChainedPlugin
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
 
@@ -50,7 +50,7 @@ class GraphSuite(Suite):
             reports=Reports('', {}),
             options=options,
             version_id=__version__,
-            plugin=Plugin(options),
+            plugin=ChainedPlugin(options, []),
             plugins_snapshot={},
             errors=errors,
             flush_errors=lambda msgs, serious: None,
