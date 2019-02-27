@@ -278,6 +278,7 @@ class FineGrainedSuite(DataSuite):
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
+
 def normalize_messages(messages: List[str]) -> List[str]:
     return [re.sub('^tmp' + re.escape(os.sep), '', message)
             for message in messages]

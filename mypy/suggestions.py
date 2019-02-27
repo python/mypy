@@ -2,7 +2,7 @@ from typing import List, Optional, Set, Tuple, Dict, Callable, Union, NamedTuple
 
 import mypy.checker
 import mypy.types
-from mypy.types import Type
+from mypy.types import Type, AnyType, TypeOfAny, CallableType
 from mypy.build import State
 from mypy.nodes import (ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT,
                         FuncDef, MypyFile, SymbolTable, SymbolNode, TypeInfo)
@@ -35,7 +35,7 @@ class SuggestionPlugin(Plugin):
             return None
 
     def get_method_hook(self, fullname: str
-                          ) -> Optional[Callable[[MethodContext], Type]]:
+                        ) -> Optional[Callable[[MethodContext], Type]]:
         if fullname == self.target:
             return self.log
         else:
@@ -53,6 +53,7 @@ class SuggestionPlugin(Plugin):
 
 
 T = TypeVar('T')
+
 
 def dedup(old: List[T]) -> List[T]:
     new = []  # type: List[T]
@@ -74,42 +75,37 @@ class SuggestionEngine:
 
     def __init__(self, fgmanager: FineGrainedBuildManager):
         self.fgmanager = fgmanager
+        self.manager = fgmanager.manager
 
     def suggest(self, function: str) -> str:
         suggestions = self.get_suggestions(function)
         return "\n".join(suggestions)
 
+    def get_trivial_type(self, fdef: FuncDef) -> Type:
+        return CallableType(
+            [AnyType(TypeOfAny.unannotated) for a in fdef.arg_kinds],
+            fdef.arg_kinds,
+            fdef.arg_names,
+            AnyType(TypeOfAny.unannotated),
+            self.manager.semantic_analyzer.builtin_type('builtins.function'))
+
     def get_suggestions(self, function: str) -> List[str]:
-        modname, classname, funcname, node = self.find_node(function)
-        if classname:
-            target = '%s.%s.%s' % (modname, classname, funcname)
-        else:
-            target = '%s.%s' % (modname, funcname)
-        depskey = '<%s>' % target
-
-        deps = self.fgmanager.deps.get(depskey, set())
-
-        module_deps = {}  # type: Dict[str, Set[str]]
-        for dep in deps:
-            prefix = module_prefix(self.fgmanager.graph, dep)
-            if prefix is not None:
-                module_deps.setdefault(prefix, set()).add(dep)
-
-
         plugin = self.fgmanager.manager.plugin
+        overrides = self.manager.semantic_analyzer.func_type_overrides
+        graph = self.fgmanager.graph
+
+        modname, classname, funcname, node = self.find_node(function)
+        new_type = self.get_trivial_type(node)
+
         collector_plugin = SuggestionPlugin(function)
 
-        for modid, callers in module_deps.items():
-            modstate = self.fgmanager.graph[modid]
-            plugin._plugins.insert(0, collector_plugin)
-            try:
-                tree = self.ensure_tree(modstate)
-                self.analyze_module(modstate, callers)
-            finally:
-                plugin._plugins.pop(0)
-
-        # print()
-        # print("COLLECTED:", collector_plugin.mystery_hits)
+        plugin._plugins.insert(0, collector_plugin)
+        overrides[function] = new_type
+        try:
+            self.reload(graph[modname])
+        finally:
+            plugin._plugins.pop(0)
+            del overrides[function]
 
         return dedup(
             ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
@@ -163,12 +159,15 @@ class SuggestionEngine:
             return (modname, None, funcname,
                     self.find_function_node(graph[modname], funcname))
 
+    def reload(self, state: State, check_errors: bool = False) -> None:
+        assert state.path is not None
+        res = self.fgmanager.update([(state.id, state.path)], [])
+        if check_errors and res:
+            raise SuggestionFailure("Error while trying to load %s" % state.id)
+
     def ensure_tree(self, state: State) -> MypyFile:
         if not state.tree or state.tree.is_cache_skeleton:
-            assert state.path is not None
-            res = self.fgmanager.update([(state.id, state.path)], [])
-            if res:
-                raise SuggestionFailure("Error while trying to load %s" % state.id)
+            self.reload(state, check_errors=True)
         assert state.tree is not None
         return state.tree
 

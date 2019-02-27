@@ -218,6 +218,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
 
+    func_type_overrides = None  # type: Dict[str, Type]
+
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
@@ -250,6 +252,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
+        self.func_type_overrides = {}
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make it a property
@@ -479,6 +482,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         [any_type, any_type, defn.type.ret_type])
                     assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
+
+        if defn._fullname in self.func_type_overrides:
+            defn.type = self.func_type_overrides[defn._fullname]
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
