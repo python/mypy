@@ -494,8 +494,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         defn.is_conditional = self.block_depth[-1] > 0
 
-        # Set full names even for those items that aren't added to a symbol table.
-        # For example, for overload items.
+        # Set full names even for those definitionss that aren't added
+        # to a symbol table. For example, for overload items.
         defn._fullname = self.qualified_name(defn.name())
 
         # We don't add module top-level functions to symbol tables
@@ -516,6 +516,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.is_class_scope():
             assert self.type is not None
             func.info = self.type
+        func._fullname = self.qualified_name(func.name())
         self.add_symbol(func.name(), func, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
