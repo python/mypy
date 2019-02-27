@@ -137,9 +137,6 @@ class Foo:
 
 Foo.lol = 50  # E: Only class variables defined as ClassVar can be assigned to
 
-print(x)
-del x  # E: Unimplemented del operation
-
 def decorator(x: Any) -> Any:
     return x
 

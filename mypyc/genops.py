@@ -3423,29 +3423,28 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.functions.append(func_ir)
 
     def visit_del_stmt(self, o: DelStmt) -> None:
-        if isinstance(o.expr, TupleExpr):
-            for expr_item in o.expr.items:
-                self.visit_del_item(expr_item)
-        else:
-            self.visit_del_item(o.expr)
+        self.visit_del_item(self.get_assignment_target(o.expr), o.line)
 
-    def visit_del_item(self, expr: Expression) -> None:
-        if isinstance(expr, IndexExpr):
-            base_reg = self.accept(expr.base)
-            index_reg = self.accept(expr.index)
+    def visit_del_item(self, target: AssignmentTarget, line: int) -> None:
+        if isinstance(target, AssignmentTargetIndex):
             self.translate_special_method_call(
-                base_reg,
+                target.base,
                 '__delitem__',
-                [index_reg],
+                [target.index],
                 result_type=None,
-                line=expr.line
+                line=line
             )
-        elif isinstance(expr, MemberExpr):
-            base_reg = self.accept(expr.expr)
-            key = self.load_static_unicode(expr.name)
-            self.add(PrimitiveOp([base_reg, key], py_delattr_op, expr.line))
-        else:
-            self.error("Unimplemented del operation", expr.line)
+        elif isinstance(target, AssignmentTargetAttr):
+            key = self.load_static_unicode(target.attr)
+            self.add(PrimitiveOp([target.obj, key], py_delattr_op, line))
+        elif isinstance(target, AssignmentTargetRegister):
+            # Delete a local by assigning an error value to it, which will
+            # prompt the insertion of uninit checks.
+            self.add(Assign(target.register,
+                            self.add(LoadErrorValue(target.type, undefines=True))))
+        elif isinstance(target, AssignmentTargetTuple):
+            for subtarget in target.items:
+                self.visit_del_item(subtarget, line)
 
     def visit_super_expr(self, o: SuperExpr) -> Value:
         # self.warning('can not optimize super() expression', o.line)

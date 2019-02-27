@@ -968,10 +968,16 @@ class LoadErrorValue(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, rtype: RType, line: int = -1, is_borrowed: bool = False) -> None:
+    def __init__(self, rtype: RType, line: int = -1,
+                 is_borrowed: bool = False,
+                 undefines: bool = False) -> None:
         super().__init__(line)
         self.type = rtype
         self.is_borrowed = is_borrowed
+        # Undefines is true if this should viewed by the definedness
+        # analysis pass as making the register it is assigned to
+        # undefined (and thus checks should be added on uses).
+        self.undefines = undefines
 
     def sources(self) -> List[Value]:
         return []

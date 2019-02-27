@@ -2481,14 +2481,50 @@ def delAttributeMultiple() -> None:
         print(dummy.y)
     except AttributeError:
         print("dummy.y successfully deleted")
+
+def delLocal(b: bool) -> None:
+    dummy = 10
+    if b:
+        del dummy
+    try:
+        print(dummy)
+    except Exception as e:
+        print(e)
+
+def delLocalLoop() -> None:
+    # Try deleting a local in a loop to make sure the control flow analysis works
+    dummy = 1
+    for i in range(10):
+        print(dummy)
+        dummy *= 2
+        if i == 4:
+            del dummy
+
+global_var = 10
+del global_var
+
 [file driver.py]
-from native import delList, delDict, delListMultiple, delDictMultiple, delAttribute, delAttributeMultiple
+from native import (
+    delList, delDict, delListMultiple, delDictMultiple, delAttribute,
+    delAttributeMultiple, delLocal, delLocalLoop,
+)
+import native
 delList()
 delDict()
 delListMultiple()
 delDictMultiple()
 delAttribute()
 delAttributeMultiple()
+try:
+    print(native.global_var)
+except AttributeError:
+    print("native.global_var successfully deleted")
+delLocal(True)
+delLocal(False)
+try:
+    delLocalLoop()
+except Exception as e:
+    print(e)
 [out]
 (1, 2, 3)
 (1, 3)
@@ -2510,6 +2546,15 @@ three 3
 dummy.x successfully deleted
 dummy.x successfully deleted
 dummy.y successfully deleted
+native.global_var successfully deleted
+local variable 'dummy' referenced before assignment
+10
+1
+2
+4
+8
+16
+local variable 'dummy' referenced before assignment
 
 [case testProperty]
 from typing import Callable

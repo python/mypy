@@ -218,7 +218,11 @@ class DefinedVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
-        return {op.dest}, set()
+        # Loading an error value may undefine the register.
+        if isinstance(op.src, LoadErrorValue) and op.src.undefines:
+            return set(), {op.dest}
+        else:
+            return {op.dest}, set()
 
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],

@@ -676,13 +676,11 @@ def delListMultiple():
     r0, r1, r2, r3, r4, r5, r6 :: short_int
     r7, r8, r9, r10, r11, r12, r13 :: object
     r14, l :: list
-    r15 :: short_int
-    r16 :: object
-    r17 :: bool
-    r18 :: short_int
-    r19 :: object
-    r20 :: bool
-    r21 :: short_int
+    r15, r16, r17 :: short_int
+    r18 :: object
+    r19 :: bool
+    r20 :: object
+    r21 :: bool
     r22 :: object
     r23 :: bool
     r24 :: None
@@ -704,13 +702,13 @@ L0:
     r14 = [r7, r8, r9, r10, r11, r12, r13]
     l = r14
     r15 = 1
-    r16 = box(short_int, r15)
-    r17 = l.__delitem__(r16) :: object
-    r18 = 2
-    r19 = box(short_int, r18)
-    r20 = l.__delitem__(r19) :: object
-    r21 = 3
-    r22 = box(short_int, r21)
+    r16 = 2
+    r17 = 3
+    r18 = box(short_int, r15)
+    r19 = l.__delitem__(r18) :: object
+    r20 = box(short_int, r16)
+    r21 = l.__delitem__(r20) :: object
+    r22 = box(short_int, r17)
     r23 = l.__delitem__(r22) :: object
     r24 = None
     return r24
@@ -733,10 +731,8 @@ def delDictMultiple():
     r15 :: object
     r16 :: bool
     d :: dict
-    r17 :: str
-    r18 :: bool
-    r19 :: str
-    r20 :: bool
+    r17, r18 :: str
+    r19, r20 :: bool
     r21 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
@@ -758,9 +754,9 @@ L0:
     r16 = r8.__setitem__(r6, r15) :: dict
     d = r8
     r17 = unicode_1 :: static  ('one')
-    r18 = d.__delitem__(r17) :: object
-    r19 = unicode_4 :: static  ('four')
-    r20 = d.__delitem__(r19) :: object
+    r18 = unicode_4 :: static  ('four')
+    r19 = d.__delitem__(r17) :: object
+    r20 = d.__delitem__(r18) :: object
     r21 = None
     return r21
 def Dummy.__init__(self, x, y):
