@@ -896,6 +896,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bases = defn.base_type_exprs
 
         self.update_metaclass(defn)
+        # Restore base classes after previous iteration (things like Generic[T] might be removed).
         defn.base_type_exprs.extend(defn.removed_base_type_exprs)
         defn.removed_base_type_exprs.clear()
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
@@ -1121,6 +1122,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             declared_tvars = all_tvars
         for i in reversed(removed):
+            # We need to actually remove the base class expressions like Generic[T],
+            # mostly because otherwise they will create spurious dependencies in fine
+            # grained incremental mode.
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]

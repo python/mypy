@@ -18,7 +18,12 @@ from mypy.server.aststrip import nothing
 
 
 def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> None:
-    """Reset a fine-grained incremental target to state before main pass of semantic analysis."""
+    """Reset a fine-grained incremental target to state before main pass of semantic analysis.
+
+    The most notable difference from the old version of strip_target() is that new semantic
+    analyzer doesn't have first pass where Vars and TypeInfos are pre-populated, so the stripping
+    is more thorough and straightforward.
+    """
     visitor = NodeStripVisitor()
     if isinstance(node, MypyFile):
         visitor.strip_file_top_level(node)
@@ -28,7 +33,9 @@ def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> None:
 
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
+        # The current active class.
         self.type = None  # type: Optional[TypeInfo]
+        # This is True at class scope, but not in methods.
         self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for
         # processing module top levels.
@@ -99,6 +106,7 @@ class NodeStripVisitor(TraverserVisitor):
         node.is_alias_def = False
         if self.type and not self.is_class_body:
             for lvalue in node.lvalues:
+                # Revert assignments made via self attributes.
                 self.process_lvalue_in_method(lvalue)
         super().visit_assignment_stmt(node)
 
@@ -123,7 +131,7 @@ class NodeStripVisitor(TraverserVisitor):
         super().visit_member_expr(node)
 
     def visit_index_expr(self, node: IndexExpr) -> None:
-        node.analyzed = None  # was a type alias
+        node.analyzed = None  # was a type alias or type application
         super().visit_index_expr(node)
 
     def strip_ref_expr(self, node: RefExpr) -> None:
@@ -148,6 +156,9 @@ class NodeStripVisitor(TraverserVisitor):
                 # true for a MemberExpr, we know that it must be an assignment through
                 # self, since only those can define new attributes.
                 assert self.type is not None
+                # This is a difference from the old version of strip_target():
+                # We use names.pop() instead of just accessing the key since the key
+                # might be already deleted, if we already stripped the module top level.
                 self.type.names.pop(lvalue.name, None)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             for item in lvalue.items:
