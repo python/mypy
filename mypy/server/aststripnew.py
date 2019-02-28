@@ -18,7 +18,8 @@ from mypy.typestate import TypeState
 from mypy.server.aststrip import nothing
 
 
-def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> List[Callable[[], None]]:
+def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]
+                     ) -> List[Callable[[], None]]:
     """Reset a fine-grained incremental target to state before main pass of semantic analysis.
 
     The most notable difference from the old version of strip_target() is that new semantic
