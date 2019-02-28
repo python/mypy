@@ -209,7 +209,27 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
-                nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)
+
+                uninhabited_as_subtype = any(t.type.has_base(_t) for _t in (
+                    'builtins.dict',
+                    'builtins.list',
+                    'builtins.set',
+                    'builtins.tuple',
+                ))
+
+                def map_variance(lefta, righta, variance: int) -> int:
+                    if variance == COVARIANT or variance == CONTRAVARIANT:
+                        return variance
+                    if isinstance(lefta, UninhabitedType):
+                        return COVARIANT
+                    elif isinstance(righta, UninhabitedType):
+                        return CONTRAVARIANT
+                    return variance
+
+                nominal = all(self.check_type_parameter(
+                    lefta,
+                    righta,
+                    map_variance(lefta, righta, tvar.variance) if uninhabited_as_subtype else tvar.variance)
                               for lefta, righta, tvar in
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
