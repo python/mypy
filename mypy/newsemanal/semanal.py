@@ -1881,7 +1881,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
             if fname:
-                # The r.h.s. for variable definitions may be not a type reference but just
+                # The r.h.s. for variable definitions may not be a type reference but just
                 # an instance attribute, so suppress the errors.
                 n = self.lookup_qualified(fname, rv, suppress_errors=True)
                 if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
