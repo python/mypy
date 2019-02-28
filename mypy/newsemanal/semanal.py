@@ -313,6 +313,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
 
+            existing = file_node.names.get(name)
+            if existing is not None and not isinstance(existing.node, PlaceholderNode):
+                # Already exists.
+                continue
+
             an_type = self.anal_type(typ)
             if an_type:
                 var = Var(name, an_type)
@@ -4058,8 +4063,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
         if (existing is not None
                 and context is not None
-                and not isinstance(existing.node, PlaceholderNode)):
+                and (not isinstance(existing.node, PlaceholderNode)
+                     or isinstance(symbol.node, PlaceholderNode))):
             if existing.node != symbol.node:
+                if (isinstance(existing.node, PlaceholderNode)
+                        and isinstance(symbol.node, PlaceholderNode)):
+                    return
                 if isinstance(symbol.node, (FuncDef, Decorator)):
                     self.add_func_redefinition(names, name, symbol)
                 if not (isinstance(symbol.node, (FuncDef, Decorator))

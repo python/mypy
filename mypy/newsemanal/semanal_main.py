@@ -194,7 +194,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
     # Note that we use module name, since functions don't create qualified names.
     deferred = [module]
     analyzer.incomplete_namespaces.add(module)
-    while deferred and not final_iteration:
+    while deferred:
         if not (deferred or incomplete) or final_iteration:
             # OK, this is one last pass, now missing names will be reported.
             analyzer.incomplete_namespaces.discard(module)
