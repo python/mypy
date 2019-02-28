@@ -2496,7 +2496,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
                     # Note that `explicit_type` might has been erased for bare `Final`,
-                    # so we also check if `final_cb` is passed.
+                    # so we also check if `is_final` is passed.
                     (cur_node is None and (explicit_type or is_final))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)

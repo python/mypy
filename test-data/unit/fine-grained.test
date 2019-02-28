@@ -8642,3 +8642,34 @@ main:3: error: Revealed type is 'Literal[u'foo']'
 main:3: error: Revealed type is 'Literal['foo']'
 ==
 main:3: error: Revealed type is 'Literal[u'foo']'
+
+[case testReprocessModuleTopLevelWhileMethodDefinesAttr]
+import a
+[file a.py]
+from b import B
+
+B().x
+
+[file a.py.3]
+from b import B
+
+x = B().x
+
+[file b.py]
+from c import f
+f(int())
+
+class B:
+    def meth(self) -> None:
+        self.x: int
+
+[file c.py]
+def f(x: int) -> None: ...
+
+[file c.py.2]
+from typing import Union
+def f(x: Union[int, str]) -> None: ...
+
+[out]
+==
+==

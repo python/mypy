@@ -920,15 +920,18 @@ def reprocess_nodes(manager: BuildManager,
     manager.errors.clear_errors_in_targets(file_node.path, targets)
 
     # Strip semantic analysis information.
+    patches = []  # type: List[Callable[[], None]]
     for deferred in nodes:
         if not manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
-            strip_target_new(deferred.node)
+            patches = strip_target_new(deferred.node)
     if not options.new_semantic_analyzer:
         re_analyze_nodes(file_node, nodes, manager, options)
     else:
         process_selected_targets(graph[module_id], nodes, graph)
+        for patch in patches:
+            patch()
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
