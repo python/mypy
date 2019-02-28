@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional, TypeVar, Any
+from typing import cast, Callable, List, Optional, TypeVar
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
@@ -10,7 +10,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
     ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias, TempNode,
-    is_final_node
+    is_final_node, SYMBOL_FUNCBASE_TYPES,
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -624,12 +624,10 @@ def analyze_class_attribute_access(itype: Instance,
             return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
 
         # Find the class where method/variable was defined.
-        # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
-        node_node = node.node  # type: Any
-        if isinstance(node_node, Decorator):
-            super_info = node_node.var.info  # type: Optional[TypeInfo]
-        elif isinstance(node_node, (Var, FuncBase)):
-            super_info = node_node.info
+        if isinstance(node.node, Decorator):
+            super_info = node.node.var.info  # type: Optional[TypeInfo]
+        elif isinstance(node.node, (Var, SYMBOL_FUNCBASE_TYPES)):
+            super_info = node.node.info
         else:
             super_info = None
 

@@ -403,7 +403,18 @@ FUNCBASE_FLAGS = [
 
 
 class FuncBase(Node):
-    """Abstract base class for function-like nodes"""
+    """Abstract base class for function-like nodes.
+
+    N.B: Although this has SymbolNode subclasses (FuncDef,
+    OverloadedFuncDef), avoid calling isinstance(..., FuncBase) on
+    something that is typed as SymbolNode.  This is to work around
+    mypy bug #3603, in which mypy doesn't understand multiple
+    inheritance very well, and will assume that a SymbolNode
+    cannot be a FuncBase.
+
+    Instead, test against SYMBOL_FUNCBASE_TYPES, which enumerates
+    SymbolNode subclasses that are also FuncBase subclasses.
+    """
 
     __slots__ = ('type',
                  'unanalyzed_type',
@@ -666,6 +677,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         del ret.max_pos
         del ret.min_args
         return ret
+
+
+# All types that are both SymbolNodes and FuncBases. See the FuncBase
+# docstring for the rationale.
+SYMBOL_FUNCBASE_TYPES = (OverloadedFuncDef, FuncDef)
 
 
 class Decorator(SymbolNode, Statement):
@@ -2857,10 +2873,7 @@ class SymbolTableNode:
     @property
     def type(self) -> 'Optional[mypy.types.Type]':
         node = self.node
-        if (isinstance(node, Var) and node.type is not None):
-            return node.type
-        # mypy thinks this branch is unreachable but it is wrong (#3603)
-        elif (isinstance(node, FuncBase) and node.type is not None):
+        if isinstance(node, (Var, SYMBOL_FUNCBASE_TYPES)) and node.type is not None:
             return node.type
         elif isinstance(node, Decorator):
             return node.var.type
