@@ -38,5 +38,4 @@ new_semanal_blacklist = [
     'fine-grained-cycles.test',
     'fine-grained-modules.test',
     'fine-grained.test',
-    #'semanal-errors.test',
 ]  # type: Final
