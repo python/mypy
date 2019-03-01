@@ -214,7 +214,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
 
-    # Is this the final iteration of semantic analysis?
+    # Set to True if semantic analysis defines a name, or replaces a
+    # placeholder definition. If some iteration makes no progress,
+    # there can be at most one additional final iteration (see below).
+    progress = False
+
+    # Is this the final iteration of semantic analysis (where we report
+    # unbound names due to cyclic definitions)?
     _final_iteration = False
 
     loop_depth = 0         # Depth of breakable loops
@@ -306,6 +312,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             else:
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
+
+            existing = file_node.names.get(name)
+            if existing is not None and not isinstance(existing.node, PlaceholderNode):
+                # Already exists.
+                continue
 
             an_type = self.anal_type(typ)
             if an_type:
@@ -4052,8 +4063,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
         if (existing is not None
                 and context is not None
-                and not isinstance(existing.node, PlaceholderNode)):
-            if existing.node != symbol.node:
+                and (not isinstance(existing.node, PlaceholderNode)
+                     or isinstance(symbol.node, PlaceholderNode))):
+            # There is an existing node, so this may be a redefinition.
+            # If the new node points to the same node as the old one,
+            # or if both old and new nodes are placeholders, we don't
+            # need to do anything.
+            if (existing.node != symbol.node
+                    and not (isinstance(existing.node, PlaceholderNode)
+                             and isinstance(symbol.node, PlaceholderNode))):
                 if isinstance(symbol.node, (FuncDef, Decorator)):
                     self.add_func_redefinition(names, name, symbol)
                 if not (isinstance(symbol.node, (FuncDef, Decorator))
@@ -4061,6 +4079,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
+            self.progress = True
             return True
         return False
 
@@ -4260,6 +4279,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
+
+    def report_hang(self) -> None:
+        self.errors.report(-1, -1,
+                           'Internal error: maximum semantic analysis iteration count reached',
+                           blocker=True)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
