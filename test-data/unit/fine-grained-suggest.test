@@ -1,5 +1,5 @@
-[case testSuggest]
-# suggest: foo.foo
+[case testSuggestCallsites]
+# suggest: !foo.foo
 [file foo.py]
 def foo(arg):
     return 12
@@ -21,8 +21,8 @@ bar.py:6: (*builtins.list[builtins.str])
 bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 ==
 
-[case testStep2Suggest]
-# suggest2: foo.foo
+[case testStep2SuggestCallsites]
+# suggest2: !foo.foo
 [file foo.py]
 def foo(arg):
     return 12
@@ -43,3 +43,82 @@ bar.py:3: (builtins.str)
 bar.py:4: (arg=builtins.str)
 bar.py:6: (*builtins.list[builtins.str])
 bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+
+[case testInferSuggest]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def lol() -> int: ...
+def foo(arg, lol=None):
+    if isinstance(arg, int):
+        arg+1
+    else:
+        assert arg
+        arg+'1'
+[file bar.py]
+from typing import Any
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(lol=10, arg=10)
+    foo(None)
+def untyped(x) -> None:
+    foo(x)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+def (arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =)
+==
+
+[case testInferMethodSuggest1]
+# flags: --strict-optional
+# suggest: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def __init__(self) -> None:
+        self.y = '10'
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return arg+1
+        else:
+            assert arg
+            return arg+self.y
+[file bar.py]
+from typing import Any
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> builtins.object
+==
+
+[case testInferMethodSuggest2]
+# flags: --strict-optional
+# suggest: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def i(self, x: int) -> int: return x
+    def s(self, x: str) -> str: return x
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return self.i(arg)
+        else:
+            assert arg
+            return self.s(arg)
+[file bar.py]
+from typing import Any, Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    a: Union[str, int] = x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> Union[builtins.int, builtins.str]
+==

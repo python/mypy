@@ -387,6 +387,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # First phase of analysis for function.
             if not defn._fullname:
                 defn._fullname = self.qualified_name(defn.name())
+            # Methods don't get handled in pass 1 so we handle overriding their
+            # type here.
+            if self.is_class_scope() and defn._fullname in self.func_type_overrides:
+                defn.unanalyzed_type = defn.type = self.func_type_overrides[defn._fullname]
             if defn.type:
                 assert isinstance(defn.type, CallableType)
                 self.update_function_type_variables(defn.type, defn)
@@ -482,9 +486,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         [any_type, any_type, defn.type.ret_type])
                     assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
-
-        if defn._fullname in self.func_type_overrides:
-            defn.type = self.func_type_overrides[defn._fullname]
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""

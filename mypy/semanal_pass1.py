@@ -170,8 +170,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if sem.type is not None:
             # Don't process methods during pass 1.
             return
-        func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
+        if func._fullname in self.sem.func_type_overrides:
+            func.unanalyzed_type = func.type = self.sem.func_type_overrides[func._fullname]
+        func.is_conditional = sem.block_depth[-1] > 0
         at_module = sem.is_module_scope() and not decorated
         if (at_module and func.name() == '__getattr__' and
                 self.sem.cur_mod_node.is_package_init_file() and self.sem.cur_mod_node.is_stub):
