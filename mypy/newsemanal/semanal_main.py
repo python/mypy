@@ -150,7 +150,7 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
             if not incomplete:
                 state.manager.incomplete_namespaces.discard(next_id)
         if final_iteration:
-            assert not all_deferred
+            assert not all_deferred, 'Must not defer during final iteration'
         # Reverse to process the targets in the same order on every iteration. This avoids
         # processing the same target twice in a row, which is inefficient.
         worklist = list(reversed(all_deferred))
@@ -201,7 +201,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
         deferred, incomplete, progress = semantic_analyze_target(target, state, node, active_type,
                                                                  final_iteration, patches)
         if final_iteration:
-            assert not deferred
+            assert not deferred, 'Must not defer during final iteration'
         if not progress:
             final_iteration = True
 
