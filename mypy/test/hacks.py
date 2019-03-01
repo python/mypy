@@ -26,5 +26,4 @@ new_semanal_blacklist = [
     'check-statements.test',
     'check-unions.test',
     'check-unreachable-code.test',
-    'semanal-errors.test',
 ]  # type: Final

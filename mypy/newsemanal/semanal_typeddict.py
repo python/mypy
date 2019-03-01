@@ -213,6 +213,7 @@ class TypedDictAnalyzer:
                 name += '@' + str(call.line)
             required_keys = set(items) if total else set()
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
+            info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
             if name != var_name or is_func_scope:
                 self.api.add_symbol_skip_local(name, info)

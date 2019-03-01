@@ -72,6 +72,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
+    check_blockers(graph, scc)
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
     if 'builtins' in scc:
         cleanup_builtin_scc(graph['builtins'])
@@ -233,7 +234,7 @@ def semantic_analyze_target(target: str,
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]
     analyzer.globals = tree.names
-    with state.wrap_context():
+    with state.wrap_context(check_blockers=False):
         with analyzer.file_context(file_node=tree,
                                    fnam=tree.path,
                                    options=state.options,
@@ -285,3 +286,8 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
             if isinstance(node.node, TypeInfo):
                 calculate_class_abstract_status(node.node, tree.is_stub, errors)
                 calculate_class_vars(node.node)
+
+
+def check_blockers(graph: 'Graph', scc: List[str]) -> None:
+    for module in scc:
+        graph[module].check_blockers()

@@ -1748,7 +1748,16 @@ class State:
             self.manager.errors.raise_error()
 
     @contextlib.contextmanager
-    def wrap_context(self) -> Iterator[None]:
+    def wrap_context(self, check_blockers: bool = True) -> Iterator[None]:
+        """Temporarily change the error import context to match this state.
+
+        Also report an internal error if an unexpected exception was raised
+        and raise an exception on a blocking error, unless
+        check_blockers is False. Skipping blocking error reporting is used
+        in the new semantic analyzer so that we can report all blocking
+        errors for a file (across multiple targets) to maintain backward
+        compatibility.
+        """
         save_import_context = self.manager.errors.import_context()
         self.manager.errors.set_import_context(self.import_context)
         try:
@@ -1758,7 +1767,9 @@ class State:
         except Exception as err:
             report_internal_error(err, self.path, 0, self.manager.errors, self.options)
         self.manager.errors.set_import_context(save_import_context)
-        self.check_blockers()
+        # TODO: Move this away once we've removed the old semantic analyzer?
+        if check_blockers:
+            self.check_blockers()
 
     def load_fine_grained_deps(self) -> Dict[str, Set[str]]:
         return self.manager.load_fine_grained_deps(self.id)
