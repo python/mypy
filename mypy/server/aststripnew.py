@@ -86,6 +86,7 @@ class NodeStripVisitor(TraverserVisitor):
         for name, sym in node.info.names.items():
             if isinstance(sym.node, Var) and sym.implicit:
                 explicit_self_type = sym.node.explicit_self_type
+
                 def patch() -> None:
                     existing = node.info.get(name)
                     current_existing = node.info.names.get(name)
