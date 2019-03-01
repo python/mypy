@@ -5169,7 +5169,9 @@ if int():
 ==
 aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
+-- Depends on #6289
 [case testClassBasedEnumPropagation1]
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 from b import C
@@ -5268,7 +5270,9 @@ n = c
 ==
 aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
+-- Depends on #6289
 [case testFuncBasedEnumPropagation1]
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 from b import C
@@ -5310,6 +5314,7 @@ a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
 [case testChangeTypeVarToFunction]
+# flags: --new-semantic-analyzer
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5329,15 +5334,15 @@ def T() -> None:
     pass
 [out]
 ==
-main:3: error: "C" expects no type arguments, but 1 given
-main:3: error: Invalid type "a.T"
-main:5: error: Free type variable expected in Generic[...]
-main:6: error: Invalid type "a.T"
-main:9: error: Invalid type "a.T"
-main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
-main:9: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
+main:4: error: Invalid type "a.T"
+main:6: error: Free type variable expected in Generic[...]
+main:7: error: Invalid type "a.T"
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:10: error: Invalid type "a.T"
 
 [case testChangeTypeVarToModule]
+# flags: --new-semantic-analyzer
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5358,13 +5363,12 @@ import T
 [out]
 ==
 ==
-main:3: error: "C" expects no type arguments, but 1 given
-main:3: error: Invalid type "T"
-main:5: error: Free type variable expected in Generic[...]
-main:6: error: Invalid type "T"
-main:9: error: Invalid type "T"
-main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
-main:9: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
+main:4: error: Invalid type "T"
+main:6: error: Free type variable expected in Generic[...]
+main:7: error: Invalid type "T"
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:10: error: Invalid type "T"
 
 [case testChangeClassToModule]
 import a
@@ -5390,6 +5394,7 @@ main:4: error: Module not callable
 main:7: error: Invalid type "C"
 
 [case testChangeTypeVarToTypeAlias]
+# flags: --new-semantic-analyzer
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5408,10 +5413,9 @@ from typing import TypeVar
 T = int
 [out]
 ==
-main:3: error: "C" expects no type arguments, but 1 given
-main:5: error: Free type variable expected in Generic[...]
-main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
-main:9: error: "C" expects no type arguments, but 1 given
+main:4: error: "C" expects no type arguments, but 1 given
+main:6: error: Free type variable expected in Generic[...]
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
 import a
@@ -7480,6 +7484,25 @@ class B:
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
+[case testLiskovFineVariableCleanDefInMethodStar-only_when_nocache]
+from typing import List
+import b
+class A(b.B):
+    def meth(self) -> None:
+        self.x, *self.y = None, None  # type: str, List[str]
+[file b.py]
+from typing import List
+class B:
+    y: List[str]
+[file b.py.2]
+from typing import List
+class B:
+    y: List[int]
+[builtins fixtures/list.pyi]
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "List[str]", base class "B" defined the type as "List[int]")
+
 [case testLiskovFineVariableCleanDefInMethodNested-only_when_nocache]
 from b import B
 def outer() -> None:
@@ -7790,6 +7813,7 @@ b.py:5: error: Name 'a' already defined on line 2
 b.py:5: error: Name 'a' already defined on line 2
 
 [case testFakeOverloadCrash2]
+# flags: --new-semantic-analyzer
 # this test just should not crash
 import a
 [file a.py]
@@ -7821,10 +7845,12 @@ def bar(x: T) -> T:
 x = 1
 [out]
 a.py:1: error: Name 'TypeVar' is not defined
+a.py:7: error: Invalid type "a.T"
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Invalid type "a.T"
 ==
 a.py:1: error: Name 'TypeVar' is not defined
+a.py:7: error: Invalid type "a.T"
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Invalid type "a.T"
 
@@ -8165,6 +8191,76 @@ main:5: error: Cannot override final attribute "p" (previously declared in base 
 main:8: error: Cannot assign to final attribute "p"
 main:8: error: Cannot override final attribute "p" (previously declared in base class "C")
 
+[case testFinalBodyReprocessedAndStillFinal]
+import a
+[file a.py]
+from c import C
+class A:
+    def meth(self) -> None: ...
+
+[file a.py.3]
+from c import C
+class A(C):
+    def meth(self) -> None: ...
+
+[file c.py]
+from typing import final
+from d import D
+
+class C:
+    @final
+    def meth(self) -> None:
+        D(int())
+[file d.py]
+class D:
+    def __init__(self, x: int) -> None: ...
+[file d.py.2]
+from typing import Optional
+class D:
+    def __init__(self, x: Optional[int]) -> None: ...
+[out]
+==
+==
+a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
+
+[case testFinalBodyReprocessedAndStillFinalOverloaded]
+import a
+[file a.py]
+from c import C
+class A:
+    def meth(self) -> None: ...
+
+[file a.py.3]
+from c import C
+class A(C):
+    def meth(self) -> None: ...
+
+[file c.py]
+from typing import final, overload, Union
+from d import D
+
+class C:
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    @final
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        D(int())
+        return x
+[file d.py]
+class D:
+    def __init__(self, x: int) -> None: ...
+[file d.py.2]
+from typing import Optional
+class D:
+    def __init__(self, x: Optional[int]) -> None: ...
+[out]
+==
+==
+a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
+a.py:3: error: Signature of "meth" incompatible with supertype "C"
+
 [case testIfMypyUnreachableClass]
 from a import x
 
@@ -8206,8 +8302,9 @@ x = 'no way'
 ==
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+-- Depends on #6412
 [case testNamedTupleForwardFunctionDirect]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --no-new-semantic-analyzer
 from typing import NamedTuple
 from b import B
 
@@ -8219,8 +8316,9 @@ B = func
 ==
 main:5: error: Invalid type "b.B"
 
+-- Depends on #6412
 [case testNamedTupleForwardFunctionIndirect]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --no-new-semantic-analyzer
 from typing import NamedTuple
 from a import A
 
@@ -8235,8 +8333,9 @@ B = func
 ==
 main:5: error: Invalid type "a.A"
 
+-- Depends on #6412
 [case testNamedTupleForwardFunctionIndirectReveal]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --no-new-semantic-analyzer
 import m
 [file m.py]
 from typing import NamedTuple
@@ -8543,3 +8642,34 @@ main:3: error: Revealed type is 'Literal[u'foo']'
 main:3: error: Revealed type is 'Literal['foo']'
 ==
 main:3: error: Revealed type is 'Literal[u'foo']'
+
+[case testReprocessModuleTopLevelWhileMethodDefinesAttr]
+import a
+[file a.py]
+from b import B
+
+B().x
+
+[file a.py.3]
+from b import B
+
+x = B().x
+
+[file b.py]
+from c import f
+f(int())
+
+class B:
+    def meth(self) -> None:
+        self.x: int
+
+[file c.py]
+def f(x: int) -> None: ...
+
+[file c.py.2]
+from typing import Union
+def f(x: Union[int, str]) -> None: ...
+
+[out]
+==
+==
