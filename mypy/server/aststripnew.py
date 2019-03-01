@@ -85,13 +85,15 @@ class NodeStripVisitor(TraverserVisitor):
         """Produce callbacks that re-add attributes defined on self."""
         for name, sym in node.info.names.items():
             if isinstance(sym.node, Var) and sym.implicit:
+                explicit_self_type = sym.node.explicit_self_type
                 def patch() -> None:
                     existing = node.info.get(name)
+                    current_existing = node.info.names.get(name)
                     # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
                     # regarding the existing variable in class body or in a superclass.
-                    # TODO: copy the logic better (always create a Var if there is explicit type)
-                    if (not existing or
-                            isinstance(existing.node, Var) and existing.node.is_abstract_var):
+                    if (existing is None or
+                            isinstance(existing.node, Var) and existing.node.is_abstract_var or
+                            current_existing is None and explicit_self_type):
                         node.info.names[name] = sym
 
                 self.patches.append(patch)

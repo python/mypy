@@ -8673,3 +8673,37 @@ def f(x: Union[int, str]) -> None: ...
 [out]
 ==
 ==
+
+[case testReprocessModuleTopLevelWhileMethodDefinesAttrExplicit]
+import a
+[file a.py]
+from b import B
+
+B().x
+
+[file a.py.3]
+from b import B
+
+x = B().x
+
+[file b.py]
+from c import f
+f(int())
+
+class A:
+    x: int
+
+class B(A):
+    def meth(self) -> None:
+        self.x: int
+
+[file c.py]
+def f(x: int) -> None: ...
+
+[file c.py.2]
+from typing import Union
+def f(x: Union[int, str]) -> None: ...
+
+[out]
+==
+==

@@ -2520,6 +2520,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     v._fullname = self.qualified_name(lval.name)
                     v.info = self.type
                     v.is_ready = False
+                    v.explicit_self_type = explicit_type or is_final
                     lval.def_var = v
                     lval.node = v
                     # TODO: should we also set lval.kind = MDEF?
