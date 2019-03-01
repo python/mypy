@@ -4065,10 +4065,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
                      or isinstance(symbol.node, PlaceholderNode))):
-            if existing.node != symbol.node:
-                if (isinstance(existing.node, PlaceholderNode)
-                        and isinstance(symbol.node, PlaceholderNode)):
-                    return
+            if (existing.node != symbol.node
+                    and not (isinstance(existing.node, PlaceholderNode)
+                             and isinstance(symbol.node, PlaceholderNode))):
                 if isinstance(symbol.node, (FuncDef, Decorator)):
                     self.add_func_redefinition(names, name, symbol)
                 if not (isinstance(symbol.node, (FuncDef, Decorator))
