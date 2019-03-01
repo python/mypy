@@ -4065,6 +4065,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
                      or isinstance(symbol.node, PlaceholderNode))):
+            # There is an existing node, so this may be a redefinition.
+            # If the new node points to the same node as the old one,
+            # or if both old and new nodes are placeholders, we don't
+            # need to do anything.
             if (existing.node != symbol.node
                     and not (isinstance(existing.node, PlaceholderNode)
                              and isinstance(symbol.node, PlaceholderNode))):
