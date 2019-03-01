@@ -126,13 +126,17 @@ def assert_module_equivalence(name: str,
 
 
 def assert_target_equivalence(name: str,
-                              expected: List[str], actual: List[str]) -> None:
+                              expected: Optional[List[str]], actual: List[str]) -> None:
     """Compare actual and expected targets (order sensitive)."""
-    assert_string_arrays_equal(
-        expected,
-        actual,
-        ('Actual targets ({}) do not match expected targets ({}) '
-         'for "[{} ...]"').format(', '.join(actual), ', '.join(expected), name))
+    if expected is not None:
+        assert_string_arrays_equal(
+            expected,
+            actual,
+            ('Actual targets ({}) do not match expected targets ({}) '
+             'for "[{} ...]"').format(
+                 ', '.join(actual),
+                 ', '.join(expected),
+                 name))
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
