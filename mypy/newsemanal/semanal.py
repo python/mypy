@@ -4276,6 +4276,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
 
+    def report_hang(self) -> None:
+        self.errors.report(-1, -1,
+                           'Internal error: maximum semantic analysis iteration count reached',
+                           blocker=True)
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):

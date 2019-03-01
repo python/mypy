@@ -47,6 +47,10 @@ if MYPY:
 Patches = List[Tuple[int, Callable[[], None]]]
 
 
+# If we perform this many iterations, raise an exception since we are likely stuck.
+MAX_ITERATIONS = 20
+
+
 # Number of passes over core modules before going on to the rest of the builtin SCC.
 CORE_WARMUP = 2
 core_modules = ['typing', 'builtins', 'abc', 'collections']
@@ -130,7 +134,12 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
     if all(m in worklist for m in core_modules):
         worklist += list(reversed(core_modules)) * CORE_WARMUP
     final_iteration = False
+    iteration = 0
     while worklist:
+        iteration += 1
+        if iteration > MAX_ITERATIONS:
+            state.manager.new_semantic_analyzer.report_hang()
+            break
         if final_iteration:
             # Give up. It's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
@@ -194,7 +203,12 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
     # Note that we use module name, since functions don't create qualified names.
     deferred = [module]
     analyzer.incomplete_namespaces.add(module)
+    iteration = 0
     while deferred:
+        iteration += 1
+        if iteration == MAX_ITERATIONS:
+            analyzer.report_hang()
+            break
         if not (deferred or incomplete) or final_iteration:
             # OK, this is one last pass, now missing names will be reported.
             analyzer.incomplete_namespaces.discard(module)
