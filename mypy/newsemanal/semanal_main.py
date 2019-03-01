@@ -27,15 +27,17 @@ will be incomplete.
 from typing import List, Tuple, Optional, Union, Callable
 
 from mypy.nodes import (
-    Node, SymbolTable, SymbolNode, MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef,
-    Var
+    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
-from mypy.newsemanal.semanal import NewSemanticAnalyzer, apply_semantic_analyzer_patches
+from mypy.newsemanal.semanal import (
+    NewSemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
+)
 from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
+from mypy.checker import FineGrainedDeferredNode
 
 MYPY = False
 if MYPY:
@@ -70,6 +72,46 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
+    # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
+    if 'builtins' in scc:
+        cleanup_builtin_scc(graph['builtins'])
+
+
+def cleanup_builtin_scc(state: 'State') -> None:
+    """Remove imported names from builtins namespace.
+
+    This way names imported from typing in builtins.pyi aren't available
+    by default (without importing them). We can only do this after processing
+    the whole SCC is finished, when the imported names aren't needed for
+    processing builtins.pyi itself.
+    """
+    assert state.tree is not None
+    remove_imported_names_from_symtable(state.tree.names, 'builtins')
+
+
+def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
+                             graph: 'Graph') -> None:
+    """Semantically analyze only selected nodes in a given module.
+
+    This essentially mirrors the logic of semantic_analysis_for_scc()
+    except that we process only some targets. This is used in fine grained
+    incremental mode, when propagating an update.
+    """
+    patches = []  # type: Patches
+    if any(isinstance(n.node, MypyFile) for n in nodes):
+        # Process module top level first (if needed).
+        process_top_levels(graph, [state.id], patches)
+    analyzer = state.manager.new_semantic_analyzer
+    for n in nodes:
+        if isinstance(n.node, MypyFile):
+            # Already done above.
+            continue
+        process_top_level_function(analyzer, state, state.id,
+                                   n.node.fullname(), n.node, n.active_typeinfo, patches)
+    apply_semantic_analyzer_patches(patches)
+
+    check_type_arguments_in_targets(nodes, state, state.manager.errors)
+    calculate_class_properties(graph, [state.id], state.manager.errors)
 
 
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:
@@ -219,10 +261,26 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
                 state.tree.accept(analyzer)
 
 
+def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], state: 'State',
+                                    errors: Errors) -> None:
+    """Check type arguments against type variable bounds and restrictions.
+
+    This mirrors the logic in check_type_arguments() except that we process only
+    some targets. This is used in fine grained incremental mode.
+    """
+    analyzer = TypeArgumentAnalyzer(errors)
+    with state.wrap_context():
+        with strict_optional_set(state.options.strict_optional):
+            for target in targets:
+                analyzer.recurse_into_functions = not isinstance(target.node, MypyFile)
+                target.node.accept(analyzer)
+
+
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         tree = graph[module].tree
         assert tree
+        # TODO: calculate properties also for classes nested in functions.
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 calculate_class_abstract_status(node.node, tree.is_stub, errors)

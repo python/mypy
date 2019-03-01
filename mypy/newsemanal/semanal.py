@@ -494,6 +494,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         defn.is_conditional = self.block_depth[-1] > 0
 
+        # Set full names even for those definitionss that aren't added
+        # to a symbol table. For example, for overload items.
+        defn._fullname = self.qualified_name(defn.name())
+
         # We don't add module top-level functions to symbol tables
         # when we analyze their bodies in the second phase on analysis,
         # since they were added in the first phase. Nested functions
@@ -631,6 +635,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # @overload.
 
         defn._fullname = self.qualified_name(defn.name())
+        # TODO: avoid modifying items.
+        defn.items = defn.unanalyzed_items.copy()
 
         first_item = defn.items[0]
         first_item.is_overload = True
@@ -688,10 +694,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         types = []
         non_overload_indexes = []
         impl = None  # type: Optional[OverloadPart]
-        # TODO: This is really bad, we should not modify defn.items neither here nor above.
-        if defn.impl:
-            # We are visiting this second time.
-            defn.items.append(defn.impl)
         for i, item in enumerate(defn.items):
             if i != 0:
                 # Assume that the first item was already visited
@@ -895,7 +897,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bases = defn.base_type_exprs
 
         self.update_metaclass(defn)
-        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(bases,
+        # Restore base classes after previous iteration (things like Generic[T] might be removed).
+        defn.base_type_exprs.extend(defn.removed_base_type_exprs)
+        defn.removed_base_type_exprs.clear()
+        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
         self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
@@ -1059,6 +1064,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def clean_up_bases_and_infer_type_variables(
             self,
+            defn: ClassDef,
             base_type_exprs: List[Expression],
             context: Context) -> Tuple[List[Expression],
                                        List[TypeVarDef],
@@ -1076,7 +1082,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Returns (remaining base expressions, inferred type variables, is protocol).
         """
-        base_type_exprs = base_type_exprs[:]
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
         is_protocol = False
@@ -1118,6 +1123,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             declared_tvars = all_tvars
         for i in reversed(removed):
+            # We need to actually remove the base class expressions like Generic[T],
+            # mostly because otherwise they will create spurious dependencies in fine
+            # grained incremental mode.
+            defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
@@ -1872,7 +1881,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
             if fname:
-                n = self.lookup_qualified(fname, rv)
+                # The r.h.s. for variable definitions may not be a type reference but just
+                # an instance attribute, so suppress the errors.
+                n = self.lookup_qualified(fname, rv, suppress_errors=True)
                 if n and isinstance(n.node, PlaceholderNode) and n.node.becomes_typeinfo:
                     return True
         return False
@@ -2485,7 +2496,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
                     # Note that `explicit_type` might has been erased for bare `Final`,
-                    # so we also check if `final_cb` is passed.
+                    # so we also check if `is_final` is passed.
                     (cur_node is None and (explicit_type or is_final))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
@@ -3760,7 +3771,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if n and n.module_hidden:
                         self.name_not_defined(name, ctx, namespace=namespace)
             if n and not n.module_hidden:
-                n = self.rebind_symbol_table_node(n)
                 return n
             return None
 

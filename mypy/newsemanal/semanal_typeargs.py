@@ -21,6 +21,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def __init__(self, errors: Errors) -> None:
         self.errors = errors
         self.scope = Scope()
+        # Should we also analyze function definitions, or only module top-levels?
+        self.recurse_into_functions = True
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.errors.set_file(o.path, o.fullname(), scope=self.scope)
@@ -29,6 +31,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.scope.leave()
 
     def visit_func(self, defn: FuncItem) -> None:
+        if not self.recurse_into_functions:
+            return
         with self.scope.function_scope(defn):
             super().visit_func(defn)
 
