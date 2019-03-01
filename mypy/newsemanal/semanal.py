@@ -214,13 +214,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
 
-    # Made True if semantic analysis defines a name, or makes a definition
-    # more precise. If some iteration makes no progress, the next iteration
-    # is going to be the final one.
+    # Set to True if semantic analysis defines a name, or replaces a
+    # placeholder definition. If some iteration makes no progress,
+    # there can be at most one additional final iteration (see below).
     progress = False
 
-    # Is this the final iteration of semantic analysis  (when we report
-    # unbound names)?
+    # Is this the final iteration of semantic analysis (where we report
+    # unbound names due to cyclic definitions)?
     _final_iteration = False
 
     loop_depth = 0         # Depth of breakable loops

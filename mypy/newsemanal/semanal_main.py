@@ -229,6 +229,13 @@ def semantic_analyze_target(target: str,
                             active_type: Optional[TypeInfo],
                             final_iteration: bool,
                             patches: Patches) -> Tuple[List[str], bool, bool]:
+    """Semantically analyze a single target.
+
+    Return tuple with these items:
+    - list of deferred targets
+    - was some definition incomplete
+    - were any new names were defined (or placeholders replaced)
+    """
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
