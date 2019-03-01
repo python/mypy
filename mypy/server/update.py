@@ -185,6 +185,8 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
+        # Targets processed during last update (for testing only).
+        self.processed_targets = []  # type: List[str]
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -207,6 +209,7 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
+        self.processed_targets.clear()
         changed_modules = changed_modules + removed_modules
         removed_set = {module for module, _ in removed_modules}
         self.changed_modules = changed_modules
@@ -255,7 +258,7 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self.manager, self.graph, self.deps, set(), {next_id},
+                    self, self.graph, self.deps, set(), {next_id},
                     self.previous_targets_with_errors)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
@@ -345,6 +348,7 @@ class FineGrainedBuildManager:
             old_snapshots[module] = snapshot
 
         manager.errors.reset()
+        self.processed_targets.append(module)
         result = update_module_isolated(module, path, manager, previous_modules, graph,
                                         force_removed)
         if isinstance(result, BlockedUpdate):
@@ -366,7 +370,7 @@ class FineGrainedBuildManager:
         if module in graph:
             merge_dependencies(graph[module].compute_fine_grained_deps(), self.deps)
         remaining += propagate_changes_using_dependencies(
-            manager, graph, self.deps, triggered,
+            self, graph, self.deps, triggered,
             {module},
             targets_with_errors=set())
         t2 = time.time()
@@ -764,7 +768,7 @@ def replace_modules_with_new_variants(
 
 
 def propagate_changes_using_dependencies(
-        manager: BuildManager,
+        manager: FineGrainedBuildManager,
         graph: Dict[str, State],
         deps: Dict[str, Set[str]],
         triggered: Set[str],
@@ -785,7 +789,7 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo, unloaded, stale_protos = find_targets_recursive(manager, graph,
+        todo, unloaded, stale_protos = find_targets_recursive(manager.manager, graph,
                                                               triggered, deps, up_to_date_modules)
         # TODO: we sort to make it deterministic, but this is *incredibly* ad hoc
         remaining_modules.extend((id, graph[id].xpath) for id in sorted(unloaded))
@@ -796,8 +800,8 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                manager.log_fine_grained('process target with error: %s' % target)
-                more_nodes, _ = lookup_target(manager, target)
+                manager.manager.log_fine_grained('process target with error: %s' % target)
+                more_nodes, _ = lookup_target(manager.manager, target)
                 todo[id].update(more_nodes)
         triggered = set()
         # First invalidate subtype caches in all stale protocols.
@@ -815,8 +819,8 @@ def propagate_changes_using_dependencies(
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
         targets_with_errors = set()
-        if is_verbose(manager):
-            manager.log_fine_grained('triggered: %r' % list(triggered))
+        if is_verbose(manager.manager):
+            manager.manager.log_fine_grained('triggered: %r' % list(triggered))
 
     return remaining_modules
 
@@ -881,7 +885,7 @@ def find_targets_recursive(
     return result, unloaded_files, stale_protos
 
 
-def reprocess_nodes(manager: BuildManager,
+def reprocess_nodes(manager: FineGrainedBuildManager,
                     graph: Dict[str, State],
                     module_id: str,
                     nodeset: Set[FineGrainedDeferredNode],
@@ -891,11 +895,11 @@ def reprocess_nodes(manager: BuildManager,
     Return fired triggers.
     """
     if module_id not in graph:
-        manager.log_fine_grained('%s not in graph (blocking errors or deleted?)' %
+        manager.manager.log_fine_grained('%s not in graph (blocking errors or deleted?)' %
                     module_id)
         return set()
 
-    file_node = manager.modules[module_id]
+    file_node = manager.manager.modules[module_id]
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
     old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
@@ -909,7 +913,7 @@ def reprocess_nodes(manager: BuildManager,
     nodes = sorted(nodeset, key=key)
 
     options = graph[module_id].options
-    manager.errors.set_file_ignored_lines(
+    manager.manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors)
 
     targets = set()
@@ -917,17 +921,18 @@ def reprocess_nodes(manager: BuildManager,
         target = target_from_node(module_id, node.node)
         if target is not None:
             targets.add(target)
-    manager.errors.clear_errors_in_targets(file_node.path, targets)
+    manager.manager.errors.clear_errors_in_targets(file_node.path, targets)
 
     # Strip semantic analysis information.
     patches = []  # type: List[Callable[[], None]]
     for deferred in nodes:
-        if not manager.options.new_semantic_analyzer:
+        manager.processed_targets.append(deferred.node.fullname())
+        if not manager.manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
             patches = strip_target_new(deferred.node)
     if not options.new_semantic_analyzer:
-        re_analyze_nodes(file_node, nodes, manager, options)
+        re_analyze_nodes(file_node, nodes, manager.manager, options)
     else:
         process_selected_targets(graph[module_id], nodes, graph)
         for patch in patches:

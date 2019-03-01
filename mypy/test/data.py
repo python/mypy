@@ -53,6 +53,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
     rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
     triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
+    targets = {}  # type: Dict[int, List[str]]  # Fine-grained targets (per fine-grained update)
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
@@ -90,6 +91,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             assert passnum > 0
             modules = (set() if item.arg is None else {t.strip() for t in item.arg.split(',')})
             rechecked_modules[passnum] = modules
+        elif re.match(r'targets[0-9]*$', item.id):
+            passnum = 1 if item.id == 'targets' else int(item.id[len('targets'):])
+            assert passnum > 0
+            reprocessed = [] if item.arg is None else [t.strip() for t in item.arg.split(',')]
+            targets[passnum] = reprocessed
         elif item.id == 'delete':
             # File to delete during a multi-step test case
             assert item.arg is not None
@@ -153,6 +159,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.deleted_paths = deleted_paths
     case.triggered = triggered or []
     case.normalize_output = normalize_output
+    case.expected_fine_grained_targets = targets
 
 
 class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
@@ -170,6 +177,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     files = None  # type: List[Tuple[str, str]]
     expected_stale_modules = None  # type: Dict[int, Set[str]]
     expected_rechecked_modules = None  # type: Dict[int, Set[str]]
+    expected_fine_grained_targets = None  # type: Dict[int, List[str]]
 
     # Files/directories to clean up after test case; (is directory, path) tuples
     clean_up = None  # type: List[Tuple[bool, str]]
