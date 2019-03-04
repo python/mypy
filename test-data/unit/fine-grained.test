@@ -8670,6 +8670,36 @@ def f(x: int) -> None: ...
 from typing import Union
 def f(x: Union[int, str]) -> None: ...
 
+[targets2 c, b]
+[targets3 a]
+[out]
+==
+==
+
+[case testCheckReprocessedTargets-only_when_nocache]
+from b import B
+
+class C(B):
+    def meth(self) -> None:
+        from b import f
+        f()
+
+[file b.py]
+class B: ...
+def f() -> int: ...
+
+[file b.py.2]
+class A: ...
+class B(A): ...
+def f() -> int: ...
+
+[file b.py.3]
+class A: ...
+class B(A): ...
+def f() -> str: ...
+
+[targets2 b, __main__, __main__.C.meth, __main__, __main__.C.meth]
+[targets3 b, __main__.C.meth]
 [out]
 ==
 ==
