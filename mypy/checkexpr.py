@@ -2047,6 +2047,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         local_errors = local_errors or self.msg
         original_type = original_type or base_type
+        if isinstance(base_type, UnionType):
+            res = []  # type: List[Type]
+            meth_res = []  # type: List[Type]
+            for typ in base_type.relevant_items():
+                local_errors.disable_type_names += 1
+                item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
+                                                                 context, local_errors,
+                                                                 original_type)
+                local_errors.disable_type_names -= 1
+                res.append(item)
+                meth_res.append(meth_item)
+            return UnionType.make_simplified_union(res), UnionType.make_simplified_union(meth_res)
+
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             local_errors, original_type=original_type,
                                             chk=self.chk,
