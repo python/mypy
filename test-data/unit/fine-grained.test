@@ -8703,3 +8703,116 @@ def f() -> str: ...
 [out]
 ==
 ==
+
+[case testReprocessModuleTopLevelWhileMethodDefinesAttrExplicit]
+import a
+[file a.py]
+from b import B
+
+B().x
+
+[file b.py]
+from c import f
+f(int())
+
+class A:
+    x: int
+
+class B(A):
+    def meth(self) -> None:
+        self.x: int
+
+[file c.py]
+def f(x: int) -> None: ...
+
+[file c.py.2]
+from typing import Union
+def f(x: Union[int, str]) -> None: ...
+
+[file a.py.3]
+from b import B
+
+# Double-check the variable is still accessible.
+B().x
+
+[targets2 c, b]
+[targets3 a]
+[out]
+==
+==
+
+[case testReprocessModuleTopLevelWhileMethodDefinesAttrBothExplicitAndInClass]
+import a
+[file a.py]
+from b import B
+
+B().x
+
+[file b.py]
+from c import f
+f(int())
+
+class A:
+    x: int
+
+class B(A):
+    x: int
+    def meth(self) -> None:
+        self.x: int
+
+[file c.py]
+def f(x: int) -> None: ...
+
+[file c.py.2]
+from typing import Union
+def f(x: Union[int, str]) -> None: ...
+
+[file a.py.3]
+from b import B
+
+# Double-check the variable is still accessible.
+B().x
+
+[targets2 c, b]
+[targets3 a]
+[out]
+==
+==
+
+[case testReprocessModuleTopLevelWhileMethodDefinesAttrProtocol]
+import a
+[file a.py]
+from b import B
+
+B().x
+
+[file b.py]
+from typing import Protocol
+from c import f
+f(int())
+
+class A(Protocol):
+    x: int
+
+class B(A):
+    def meth(self) -> None:
+        self.x = 42
+
+[file c.py]
+def f(x: int) -> None: ...
+
+[file c.py.2]
+from typing import Union
+def f(x: Union[int, str]) -> None: ...
+
+[file a.py.3]
+from b import B
+
+# Double-check the variable is still accessible.
+B().x
+
+[targets2 c, b]
+[targets3 a]
+[out]
+==
+==

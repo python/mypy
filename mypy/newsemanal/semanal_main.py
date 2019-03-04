@@ -92,12 +92,15 @@ def cleanup_builtin_scc(state: 'State') -> None:
 
 
 def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
-                             graph: 'Graph') -> None:
+                             graph: 'Graph', strip_patches: List[Callable[[], None]]) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
     except that we process only some targets. This is used in fine grained
     incremental mode, when propagating an update.
+
+    The strip_patches are additional patches that may be produced by aststrip.py to
+    re-introduce implicitly declared instance variables (attributes defined on self).
     """
     patches = []  # type: Patches
     if any(isinstance(n.node, MypyFile) for n in nodes):
@@ -111,6 +114,8 @@ def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode
         process_top_level_function(analyzer, state, state.id,
                                    n.node.fullname(), n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
+    for patch in strip_patches:
+        patch()
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
