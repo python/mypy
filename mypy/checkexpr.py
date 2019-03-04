@@ -297,6 +297,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.msg.untyped_function_call(callee_type, e)
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
+        base_type = None
+        member = None
         if not isinstance(e.callee, RefExpr):
             fullname = None
         else:
@@ -306,15 +308,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 fullname = e.callee.node.target.type.fullname()
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
-                    and e.callee.expr in self.chk.type_map
-                    and isinstance(callee_type, FunctionLike)):
-                # For method calls we include the defining class for the method
-                # in the full name (example: 'typing.Mapping.get').
-                callee_expr_type = self.chk.type_map[e.callee.expr]
-                fullname = self.method_fullname(callee_expr_type, e.callee.name)
-                if fullname is not None:
-                    object_type = callee_expr_type
-        ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
+                    and e.callee.expr in self.chk.type_map):
+                if isinstance(callee_type, FunctionLike):
+                    # For method calls we include the defining class for the method
+                    # in the full name (example: 'typing.Mapping.get').
+                    callee_expr_type = self.chk.type_map[e.callee.expr]
+                    fullname = self.method_fullname(callee_expr_type, e.callee.name)
+                    if fullname is not None:
+                        object_type = callee_expr_type
+                if fullname is None:
+                    base_type = self.chk.type_map[e.callee.expr]
+                    member = e.callee.name
+        ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname,
+                                                         object_type, base_type, member)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
             if e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass'):
                 self.check_runtime_protocol_test(e)
@@ -645,15 +651,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          callee_type: Type,
                                          e: CallExpr,
                                          callable_name: Optional[str],
-                                         object_type: Optional[Type]) -> Type:
+                                         object_type: Optional[Type],
+                                         base_type: Optional[Type] = None,
+                                         member: Optional[str] = None) -> Type:
         """Type check call expression.
 
         The given callee type overrides the type of the callee
         expression.
         """
-        # Try to refine the call signature using plugin hooks before checking the call.
-        callee_type = self.transform_callee_type(
-            callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+        if callable_name:
+            # Try to refine the call signature using plugin hooks before checking the call.
+            callee_type = self.transform_callee_type(
+                callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+        elif isinstance(base_type, UnionType):
+            assert member
+            res = []  # type: List[Type]
+            for typ in base_type.items:
+                self.msg.disable_errors()
+                item = analyze_member_access(member, typ, e, False, False, False,
+                                             self.msg, original_type=base_type, chk=self.chk,
+                                             in_literal_context=self.is_literal_context())
+                self.msg.enable_errors()
+                item = self.narrow_type_from_binder(e.callee, item)
+                if isinstance(item, (NoneTyp, UninhabitedType)):
+                    continue
+                callable_name = self.method_fullname(typ, member)
+                object_type = typ if callable_name else None
+                res.append(self.check_call_expr_with_callee_type(item, e, callable_name,
+                                                                 object_type))
+            return UnionType.make_simplified_union(res)
 
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee,
