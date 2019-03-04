@@ -258,8 +258,8 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self, self.graph, self.deps, set(), {next_id},
-                    self.previous_targets_with_errors)
+                    self.manager, self.graph, self.deps, set(), {next_id},
+                    self.previous_targets_with_errors, self.processed_targets)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
                     # Preserve state needed for the next update.
@@ -370,9 +370,9 @@ class FineGrainedBuildManager:
         if module in graph:
             merge_dependencies(graph[module].compute_fine_grained_deps(), self.deps)
         remaining += propagate_changes_using_dependencies(
-            self, graph, self.deps, triggered,
+            manager, graph, self.deps, triggered,
             {module},
-            targets_with_errors=set())
+            targets_with_errors=set(), processed_targets=self.processed_targets)
         t2 = time.time()
         manager.add_stats(
             update_isolated_time=t1 - t0,
@@ -768,16 +768,21 @@ def replace_modules_with_new_variants(
 
 
 def propagate_changes_using_dependencies(
-        manager: FineGrainedBuildManager,
+        manager: BuildManager,
         graph: Dict[str, State],
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str]) -> List[Tuple[str, str]]:
+        targets_with_errors: Set[str],
+        processed_targets: List[str]) -> List[Tuple[str, str]]:
     """Transitively rechecks targets based on triggers and the dependency map.
 
     Returns a list (module id, path) tuples representing modules that contain
-    a target that needs to be reprocessed but that has not been parsed yet."""
+    a target that needs to be reprocessed but that has not been parsed yet.
+
+    Processed targets should be appended to processed_targets (used in tests only,
+    to test the order of processing targets).
+    """
 
     num_iter = 0
     remaining_modules = []  # type: List[Tuple[str, str]]
@@ -789,7 +794,7 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo, unloaded, stale_protos = find_targets_recursive(manager.manager, graph,
+        todo, unloaded, stale_protos = find_targets_recursive(manager, graph,
                                                               triggered, deps, up_to_date_modules)
         # TODO: we sort to make it deterministic, but this is *incredibly* ad hoc
         remaining_modules.extend((id, graph[id].xpath) for id in sorted(unloaded))
@@ -800,8 +805,8 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                manager.manager.log_fine_grained('process target with error: %s' % target)
-                more_nodes, _ = lookup_target(manager.manager, target)
+                manager.log_fine_grained('process target with error: %s' % target)
+                more_nodes, _ = lookup_target(manager, target)
                 todo[id].update(more_nodes)
         triggered = set()
         # First invalidate subtype caches in all stale protocols.
@@ -813,14 +818,14 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
+            triggered |= reprocess_nodes(manager, graph, id, nodes, deps, processed_targets)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
         targets_with_errors = set()
-        if is_verbose(manager.manager):
-            manager.manager.log_fine_grained('triggered: %r' % list(triggered))
+        if is_verbose(manager):
+            manager.log_fine_grained('triggered: %r' % list(triggered))
 
     return remaining_modules
 
@@ -885,21 +890,22 @@ def find_targets_recursive(
     return result, unloaded_files, stale_protos
 
 
-def reprocess_nodes(manager: FineGrainedBuildManager,
+def reprocess_nodes(manager: BuildManager,
                     graph: Dict[str, State],
                     module_id: str,
                     nodeset: Set[FineGrainedDeferredNode],
-                    deps: Dict[str, Set[str]]) -> Set[str]:
+                    deps: Dict[str, Set[str]],
+                    processed_targets: List[str]) -> Set[str]:
     """Reprocess a set of nodes within a single module.
 
     Return fired triggers.
     """
     if module_id not in graph:
-        manager.manager.log_fine_grained('%s not in graph (blocking errors or deleted?)' %
+        manager.log_fine_grained('%s not in graph (blocking errors or deleted?)' %
                     module_id)
         return set()
 
-    file_node = manager.manager.modules[module_id]
+    file_node = manager.modules[module_id]
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
     old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
@@ -913,7 +919,7 @@ def reprocess_nodes(manager: FineGrainedBuildManager,
     nodes = sorted(nodeset, key=key)
 
     options = graph[module_id].options
-    manager.manager.errors.set_file_ignored_lines(
+    manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors)
 
     targets = set()
@@ -921,18 +927,18 @@ def reprocess_nodes(manager: FineGrainedBuildManager,
         target = target_from_node(module_id, node.node)
         if target is not None:
             targets.add(target)
-    manager.manager.errors.clear_errors_in_targets(file_node.path, targets)
+    manager.errors.clear_errors_in_targets(file_node.path, targets)
 
     # Strip semantic analysis information.
     patches = []  # type: List[Callable[[], None]]
     for deferred in nodes:
-        manager.processed_targets.append(deferred.node.fullname())
-        if not manager.manager.options.new_semantic_analyzer:
+        processed_targets.append(deferred.node.fullname())
+        if not manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
             patches = strip_target_new(deferred.node)
     if not options.new_semantic_analyzer:
-        re_analyze_nodes(file_node, nodes, manager.manager, options)
+        re_analyze_nodes(file_node, nodes, manager, options)
     else:
         process_selected_targets(graph[module_id], nodes, graph)
         for patch in patches:
