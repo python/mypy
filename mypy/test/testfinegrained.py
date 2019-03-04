@@ -139,8 +139,8 @@ class FineGrainedSuite(DataSuite):
                 testcase.expected_rechecked_modules.get(step - 1),
                 updated)
             assert_target_equivalence(
-                'targets' + str(step - 1),
-                testcase.expected_fine_grained_targets.get(step - 1),
+                'targets' + str(step),
+                testcase.expected_fine_grained_targets.get(step),
                 targets)
 
             new_messages = normalize_messages(new_messages)

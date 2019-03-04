@@ -8670,8 +8670,8 @@ def f(x: int) -> None: ...
 from typing import Union
 def f(x: Union[int, str]) -> None: ...
 
-[targets c, b]
-[targets2 a]
+[targets2 c, b]
+[targets3 a]
 [out]
 ==
 ==
@@ -8698,8 +8698,8 @@ class A: ...
 class B(A): ...
 def f() -> str: ...
 
-[targets b, __main__, __main__.C.meth, __main__, __main__.C.meth]
-[targets2 b, __main__.C.meth]
+[targets2 b, __main__, __main__.C.meth, __main__, __main__.C.meth]
+[targets3 b, __main__.C.meth]
 [out]
 ==
 ==
