@@ -185,6 +185,8 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
+        # Targets processed during last update (for testing only).
+        self.processed_targets = []  # type: List[str]
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -207,6 +209,7 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
+        self.processed_targets.clear()
         changed_modules = changed_modules + removed_modules
         removed_set = {module for module, _ in removed_modules}
         self.changed_modules = changed_modules
@@ -256,7 +259,7 @@ class FineGrainedBuildManager:
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
                     self.manager, self.graph, self.deps, set(), {next_id},
-                    self.previous_targets_with_errors)
+                    self.previous_targets_with_errors, self.processed_targets)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
                     # Preserve state needed for the next update.
@@ -345,6 +348,7 @@ class FineGrainedBuildManager:
             old_snapshots[module] = snapshot
 
         manager.errors.reset()
+        self.processed_targets.append(module)
         result = update_module_isolated(module, path, manager, previous_modules, graph,
                                         force_removed)
         if isinstance(result, BlockedUpdate):
@@ -368,7 +372,7 @@ class FineGrainedBuildManager:
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
-            targets_with_errors=set())
+            targets_with_errors=set(), processed_targets=self.processed_targets)
         t2 = time.time()
         manager.add_stats(
             update_isolated_time=t1 - t0,
@@ -769,11 +773,16 @@ def propagate_changes_using_dependencies(
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str]) -> List[Tuple[str, str]]:
+        targets_with_errors: Set[str],
+        processed_targets: List[str]) -> List[Tuple[str, str]]:
     """Transitively rechecks targets based on triggers and the dependency map.
 
     Returns a list (module id, path) tuples representing modules that contain
-    a target that needs to be reprocessed but that has not been parsed yet."""
+    a target that needs to be reprocessed but that has not been parsed yet.
+
+    Processed targets should be appended to processed_targets (used in tests only,
+    to test the order of processing targets).
+    """
 
     num_iter = 0
     remaining_modules = []  # type: List[Tuple[str, str]]
@@ -809,7 +818,7 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
+            triggered |= reprocess_nodes(manager, graph, id, nodes, deps, processed_targets)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
@@ -885,7 +894,8 @@ def reprocess_nodes(manager: BuildManager,
                     graph: Dict[str, State],
                     module_id: str,
                     nodeset: Set[FineGrainedDeferredNode],
-                    deps: Dict[str, Set[str]]) -> Set[str]:
+                    deps: Dict[str, Set[str]],
+                    processed_targets: List[str]) -> Set[str]:
     """Reprocess a set of nodes within a single module.
 
     Return fired triggers.
@@ -922,6 +932,7 @@ def reprocess_nodes(manager: BuildManager,
     # Strip semantic analysis information.
     patches = []  # type: List[Callable[[], None]]
     for deferred in nodes:
+        processed_targets.append(deferred.node.fullname())
         if not manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
