@@ -89,12 +89,16 @@ class NodeStripVisitor(TraverserVisitor):
 
                 def patch() -> None:
                     existing = node.info.get(name)
-                    current_existing = node.info.names.get(name)
+                    defined_in_this_class = name in node.info.names
                     # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
-                    # regarding the existing variable in class body or in a superclass.
+                    # regarding the existing variable in class body or in a superclass:
+                    # If the attribute of self is not defined in superclasses, create a new Var.
                     if (existing is None or
-                            isinstance(existing.node, Var) and existing.node.is_abstract_var or
-                            current_existing is None and explicit_self_type):
+                            # (An abstract Var is considered as not defined.)
+                            (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
+                            # Also an explicit declaration on self creates a new Var unless
+                            # there is already one defined in the class body.
+                            explicit_self_type and not defined_in_this_class):
                         node.info.names[name] = sym
 
                 self.patches.append(patch)
