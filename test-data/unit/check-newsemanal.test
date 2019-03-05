@@ -2020,3 +2020,18 @@ class C(Generic[T]): ...
 
 class A: ...
 class D: ...
+
+[case testNewAnalyzerAddedSubStarImport_incremental]
+# TODO: This can be removed once testAddedSubStarImport is enabled in check-incremental.test.
+# cmd: mypy -m a pack pack.mod b
+# cmd2: mypy -m other
+[file a.py]
+from pack import *
+[file pack/__init__.py]
+[file pack/mod.py]
+[file b.py]
+import pack.mod
+[file other.py]
+import a
+[out]
+[out2]
