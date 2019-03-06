@@ -1047,7 +1047,7 @@ class B: pass
 [builtins fixtures/for.pyi]
 
 [case testReusingInferredForIndex2]
-# flags: --allow-redefinition --no-new-semantic-analyzer
+# flags: --allow-redefinition
 
 def f() -> None:
     for a in [A()]: pass
@@ -2457,7 +2457,7 @@ _ = 0
 _ = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testUnusedTargetNotClass]
-# flags: --allow-redefinition --no-new-semantic-analyzer
+# flags: --allow-redefinition
 class C:
     _, _ = 0, 0
     _ = ''

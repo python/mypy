@@ -338,7 +338,7 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
-# flags: --allow-redefinition --no-new-semantic-analyzer
+# flags: --allow-redefinition --new-semantic-analyzer
 from typing import Final
 
 x: Final = 1
@@ -361,12 +361,11 @@ y: Final = 2  # E: Cannot redefine an existing name as final
 y = 3  # E: Cannot assign to final name "y"
 
 z: Final = 1
-z: Final = 2  # E: Name 'z' already defined on line 23 \
-              # E: Cannot redefine an existing name as final
+z: Final = 2  # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleVar2]
-# flags: --allow-redefinition --no-new-semantic-analyzer
+# flags: --allow-redefinition
 from typing import Final
 
 x: Final = 1
