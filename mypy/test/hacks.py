@@ -11,7 +11,6 @@ new_semanal_blacklist = [
     'check-classes.test',
     'check-custom-plugin.test',
     'check-dataclasses.test',
-    'check-enum.test',
     'check-expressions.test',
     'check-flags.test',
     'check-functions.test',
