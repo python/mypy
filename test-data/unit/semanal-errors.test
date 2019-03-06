@@ -938,13 +938,11 @@ a[1], a[2] = None, None # type: int, int \
 [out]
 
 [case testMissingGenericImport]
-# flags: --no-new-semantic-analyzer
-# This should be fixed by PR #6488
 from typing import TypeVar
 T = TypeVar('T')
 class A(Generic[T]): pass
 [out]
-main:5: error: Name 'Generic' is not defined
+main:3: error: Name 'Generic' is not defined
 
 [case testInvalidTypeWithinGeneric]
 from typing import Generic
