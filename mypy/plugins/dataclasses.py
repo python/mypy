@@ -4,7 +4,7 @@ from typing import Dict, List, Set, Tuple
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Expression, FuncDef, JsonDict, NameExpr,
-    SymbolTableNode, TempNode, TypeInfo, Var,
+    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
@@ -20,6 +20,8 @@ dataclass_makers = {
     'dataclass',
     'dataclasses.dataclass',
 }  # type: Final
+
+SELF_TVAR_NAME = '_DT'  # type: Final
 
 
 class DataclassAttribute:
@@ -77,6 +79,12 @@ class DataclassTransformer:
         ctx = self._ctx
         info = self._ctx.cls.info
         attributes = self.collect_attributes()
+        if ctx.api.options.new_semantic_analyzer:
+            # Check if attribute types are ready.
+            for attr in attributes:
+                if info[attr.name].type is None:
+                    ctx.api.defer()
+                    return
         decorator_arguments = {
             'init': _get_decorator_bool_argument(self._ctx, 'init', True),
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
@@ -92,6 +100,14 @@ class DataclassTransformer:
                 return_type=NoneTyp(),
             )
 
+        if (decorator_arguments['eq'] and info.get('__eq__') is None or
+                decorator_arguments['order']):
+            # Type variable for self types in generated methods.
+            obj_type = ctx.api.named_type('__builtins__.object')
+            self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+                                         [], obj_type)
+            info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
+
         # Add an eq method, but only if the class doesn't already have one.
         if decorator_arguments['eq'] and info.get('__eq__') is None:
             for method_name in ['__eq__', '__ne__']:
@@ -99,7 +115,8 @@ class DataclassTransformer:
                 # the same type as self (covariant).  Note the
                 # "self_type" parameter to add_method.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                cmp_tvar_def = TypeVarDef('T', 'T', -1, [], obj_type)
+                cmp_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+                                          -1, [], obj_type)
                 cmp_other_type = TypeVarType(cmp_tvar_def)
                 cmp_return_type = ctx.api.named_type('__builtins__.bool')
 
@@ -121,7 +138,8 @@ class DataclassTransformer:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                order_tvar_def = TypeVarDef('T', 'T', -1, [], obj_type)
+                order_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+                                            -1, [], obj_type)
                 order_other_type = TypeVarType(order_tvar_def)
                 order_return_type = ctx.api.named_type('__builtins__.bool')
                 order_args = [

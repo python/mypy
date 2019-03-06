@@ -393,8 +393,9 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
+-- Blocked by #6454
 [case testDataclassOrderingWithCustomMethods]
-# flags: --python-version 3.6
+# flags: --python-version 3.6  --no-new-semantic-analyzer
 from dataclasses import dataclass
 
 @dataclass(order=True)

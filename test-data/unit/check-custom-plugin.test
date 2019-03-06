@@ -491,16 +491,18 @@ class Instr(Generic[T]): ...
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 
 [case testDynamicClassPluginNegatives]
-# flags: --config-file tmp/mypy.ini
+# flags: --new-semantic-analyzer --config-file tmp/mypy.ini
 from mod import declarative_base, Column, Instr, non_declarative_base
 
 Bad1 = non_declarative_base()
 Bad2 = Bad3 = declarative_base()
 
-class C1(Bad1): ...  # E: Invalid base class
-class C2(Bad2): ...  # E: Invalid base class
-class C3(Bad3): ...  # E: Invalid base class
-
+class C1(Bad1): ...  # E: Invalid base class \
+                     # E: Invalid type "__main__.Bad1"
+class C2(Bad2): ...  # E: Invalid base class \
+                     # E: Invalid type "__main__.Bad2"
+class C3(Bad3): ...  # E: Invalid base class \
+                     # E: Invalid type "__main__.Bad3"
 [file mod.py]
 from typing import Generic, TypeVar
 def declarative_base(): ...
