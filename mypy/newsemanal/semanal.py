@@ -84,6 +84,7 @@ from mypy.types import (
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
 )
+from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.newsemanal.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
@@ -1942,7 +1943,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
             if fname:
-                n = self.lookup_qualified(fname, rv)
+                n = self.lookup_qualified(fname, rv, suppress_errors=True)
                 if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
                     if fname in wait_list:
                         if wait_list[fname] == MAX_WAIT:
