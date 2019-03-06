@@ -9,7 +9,6 @@ if MYPY:
 new_semanal_blacklist = [
     'check-async-await.test',
     'check-classes.test',
-    'check-enum.test',
     'check-expressions.test',
     'check-flags.test',
     'check-functions.test',

@@ -1,8 +1,9 @@
-from typing import Any, TypeVar, Union, Type, Sized, Iterator, Mapping
+from typing import Any, TypeVar, Union, Type, Sized, Iterator
 
 _T = TypeVar('_T')
 
 class EnumMeta(type, Sized):
+    def __len__(self) -> int: pass  # to make it non-abstract
     def __iter__(self: Type[_T]) -> Iterator[_T]: pass
     def __reversed__(self: Type[_T]) -> Iterator[_T]: pass
     def __getitem__(self: Type[_T], name: str) -> _T: pass

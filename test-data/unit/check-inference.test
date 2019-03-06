@@ -1552,9 +1552,7 @@ def add():
     map[1] = 2
 [builtins fixtures/dict.pyi]
 
--- Depends on #6425
 [case testSpecialCaseEmptyListInitialization]
-# flags: --no-new-semantic-analyzer
 def f(blocks: Any): # E: Name 'Any' is not defined
     to_process = [] # E: Need type annotation for 'to_process'
     to_process = list(blocks)

@@ -990,8 +990,6 @@ class D(A, B):  # E: Cannot inherit from final class "B"
 [out]
 
 [case testFinalCantOverrideWriteable]
-# flags: --no-new-semantic-analyzer
-# Properties with setters not yet supported.
 from typing import Any, Final, final
 
 class B:
