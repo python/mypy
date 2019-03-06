@@ -99,6 +99,9 @@ programs, even if they have type errors:
 
     $ python3 PROGRAM
 
+You can also try mypy in an [online playground](https://mypy-play.net/) (developed by
+Yusuke Miyazaki).
+
 [statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
 
 
