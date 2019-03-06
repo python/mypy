@@ -44,7 +44,7 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr, ForStmt, Block, SymbolNode,
+    ListExpr, ForStmt, Block, SymbolNode, StarExpr
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -127,8 +127,6 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
-        # All nodes are non-final after the first pass.
-        node.is_final = False
         # Type variable binder binds tvars before the type is analyzed.
         # It should be refactored, before that we just undo this change here.
         # TODO: this will be not necessary when #4814 is fixed.
@@ -143,10 +141,12 @@ class NodeStripVisitor(TraverserVisitor):
         for expr in node.decorators:
             expr.accept(self)
         if self.recurse_into_functions:
-            # Only touch the final status if we re-process
-            # a method target
-            node.var.is_final = False
             node.func.accept(self)
+        else:
+            # Only touch the final status if we re-process
+            # the top level, since decorators are processed there.
+            node.func.is_final = False
+            node.var.is_final = False
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
@@ -199,6 +199,8 @@ class NodeStripVisitor(TraverserVisitor):
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             for item in lvalue.items:
                 self.process_lvalue_in_method(item)
+        elif isinstance(lvalue, StarExpr):
+            self.process_lvalue_in_method(lvalue.expr)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         # Imports can include both overriding symbols and fresh ones,

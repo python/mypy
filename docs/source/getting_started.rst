@@ -104,7 +104,7 @@ when you are prototyping a new feature, it may be convenient to initially implem
 the code using dynamic typing and only add type hints later once the code is more stable.
 
 Once you are finished migrating or prototyping your code, you can make mypy warn you
-if you add a dynamic function by mistake by using the ``--disallow-unchecked-defs``
+if you add a dynamic function by mistake by using the ``--disallow-untyped-defs``
 flag. See :ref:`command-line` for more information on configuring mypy.
 
 .. note::

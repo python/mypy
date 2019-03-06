@@ -199,8 +199,8 @@ class TypeFixer(TypeVisitor[None]):
         if tt.items:
             for it in tt.items:
                 it.accept(self)
-        if tt.fallback is not None:
-            tt.fallback.accept(self)
+        if tt.partial_fallback is not None:
+            tt.partial_fallback.accept(self)
 
     def visit_typeddict_type(self, tdt: TypedDictType) -> None:
         if tdt.items:

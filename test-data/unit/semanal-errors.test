@@ -755,8 +755,17 @@ class D(str): pass # ok
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testCyclicInheritance]
+[case testCyclicInheritance1]
+# flags: --no-new-semantic-analyzer
+# Crashes with new semantic analyzer: https://github.com/python/mypy/issues/6495
 class A(A): pass # E: Cycle in inheritance hierarchy
+[out]
+
+[case testCyclicInheritance2]
+# flags: --no-new-semantic-analyzer
+# Crashes with new semantic analyzer: https://github.com/python/mypy/issues/6495
+class A(B): pass
+class B(A): pass # E: Cycle in inheritance hierarchy
 [out]
 
 [case testAssignToTypeDef]
@@ -929,11 +938,13 @@ a[1], a[2] = None, None # type: int, int \
 [out]
 
 [case testMissingGenericImport]
+# flags: --no-new-semantic-analyzer
+# This should be fixed by PR #6488
 from typing import TypeVar
 T = TypeVar('T')
 class A(Generic[T]): pass
 [out]
-main:3: error: Name 'Generic' is not defined
+main:5: error: Name 'Generic' is not defined
 
 [case testInvalidTypeWithinGeneric]
 from typing import Generic

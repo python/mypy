@@ -190,7 +190,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
                          # TODO: This appears to be unsafe.
-                         cast(Any, t.fallback.accept(self)),
+                         cast(Any, t.partial_fallback.accept(self)),
                          t.line, t.column)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:

@@ -1,7 +1,8 @@
 """Semantic analysis of named tuple definitions.
 
-This is conceptually part of mypy.semanal (semantic analyzer pass 2).
+This is conceptually part of mypy.newsemanal.semanal.
 """
+
 from contextlib import contextmanager
 from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 
@@ -9,7 +10,7 @@ from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
 )
 from mypy.newsemanal.semanal_shared import (
-    SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+    SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
 )
 from mypy.nodes import (
     Var, EllipsisExpr, Argument, StrExpr, BytesExpr, UnicodeExpr, ExpressionStmt, NameExpr,
@@ -19,7 +20,6 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy import join
 
 MYPY = False
 if MYPY:
@@ -60,7 +60,7 @@ class NamedTupleAnalyzer:
                         return True, None
                     items, types, default_items = result
                     info = self.build_namedtuple_typeinfo(
-                        defn.name, items, types, default_items)
+                        defn.name, items, types, default_items, defn.line)
                     defn.info = info
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
                     defn.analyzed.line = defn.line
@@ -174,12 +174,23 @@ class NamedTupleAnalyzer:
                 name = var_name
             else:
                 name = 'namedtuple@' + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, [], [], {})
+            info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
             self.store_namedtuple_info(info, name, call, is_typed)
             return True, info
         name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         if name != var_name or is_func_scope:
-            # Give it a unique name derived from the line number.
+            # There are three special cases where need to give it a unique name derived
+            # from the line number:
+            #   * There is a name mismatch with l.h.s., therefore we need to disambiguate
+            #     situations like:
+            #         A = NamedTuple('Same', [('x', int)])
+            #         B = NamedTuple('Same', [('y', str)])
+            #   * This is a base class expression, since it often matches the class name:
+            #         class NT(NamedTuple('NT', [...])):
+            #             ...
+            #   * This is a local (function or method level) named tuple, since
+            #     two methods of a class can define a named tuple with the same name,
+            #     and they will be stored in the same namespace (see below).
             name += '@' + str(call.line)
         if len(defaults) > 0:
             default_items = {
@@ -188,16 +199,32 @@ class NamedTupleAnalyzer:
             }
         else:
             default_items = {}
-        info = self.build_namedtuple_typeinfo(name, items, types, default_items)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        self.store_namedtuple_info(info, var_name or name, call, is_typed)
+        info = self.build_namedtuple_typeinfo(name, items, types, default_items, node.line)
+        # If var_name is not None (i.e. this is not a base class expression), we always
+        # store the generated TypeInfo under var_name in the current scope, so that
+        # other definitions can use it.
+        if var_name:
+            self.store_namedtuple_info(info, var_name, call, is_typed)
+        # There are three cases where we need to store the generated TypeInfo
+        # second time (for the purpose of serialization):
+        #   * If there is a name mismatch like One = NamedTuple('Other', [...])
+        #     we also store the info under name 'Other@lineno', this is needed
+        #     because classes are (de)serialized using their actual fullname, not
+        #     the name of l.h.s.
+        #   * If this is a method level named tuple. It can leak from the method
+        #     via assignment to self attribute and therefore needs to be serialized
+        #     (local namespaces are not serialized).
+        #   * If it is a base class expression. It was not stored above, since
+        #     there is no var_name (but it still needs to be serialized
+        #     since it is in MRO of some class).
+        if name != var_name or is_func_scope:
+            # NOTE: we skip local namespaces since they are not serialized.
+            self.api.add_symbol_skip_local(name, info)
         return True, info
 
     def store_namedtuple_info(self, info: TypeInfo, name: str,
                               call: CallExpr, is_typed: bool) -> None:
-        stnode = SymbolTableNode(GDEF, info)
-        self.api.add_symbol_table_node(name, stnode)
+        self.api.add_symbol(name, info, call)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
 
@@ -319,8 +346,12 @@ class NamedTupleAnalyzer:
         self.fail(message, context)
         return [], [], [], False
 
-    def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
-                                  default_items: Mapping[str, Expression]) -> TypeInfo:
+    def build_namedtuple_typeinfo(self,
+                                  name: str,
+                                  items: List[str],
+                                  types: List[Type],
+                                  default_items: Mapping[str, Expression],
+                                  line: int) -> TypeInfo:
         strtype = self.api.named_type('__builtins__.str')
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type('__builtins__.tuple', [implicit_any])
@@ -337,17 +368,15 @@ class NamedTupleAnalyzer:
 
         info = self.api.basic_new_typeinfo(name, fallback)
         info.is_named_tuple = True
-        info.tuple_type = TupleType(types, fallback)
-
-        def patch() -> None:
-            # Calculate the correct value type for the fallback tuple.
-            assert info.tuple_type, "TupleType type deleted before calling the patch"
-            fallback.args[0] = join.join_type_list(list(info.tuple_type.items))
+        tuple_base = TupleType(types, fallback)
+        info.tuple_type = tuple_base
+        info.line = line
 
         # We can't calculate the complete fallback type until after semantic
-        # analysis, since otherwise MROs might be incomplete. Postpone a callback
-        # function that patches the fallback.
-        self.api.schedule_patch(PRIORITY_FALLBACKS, patch)
+        # analysis, since otherwise base classes might be incomplete. Postpone a
+        # callback function that patches the fallback.
+        self.api.schedule_patch(PRIORITY_FALLBACKS,
+                                lambda: calculate_tuple_fallback(tuple_base))
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -357,9 +386,14 @@ class NamedTupleAnalyzer:
             var._fullname = '%s.%s' % (info.fullname(), var.name())
             info.names[var.name()] = SymbolTableNode(MDEF, var)
 
-        vars = [Var(item, typ) for item, typ in zip(items, types)]
-        for var in vars:
+        fields = [Var(item, typ) for item, typ in zip(items, types)]
+        for var in fields:
             add_field(var, is_property=True)
+        # We can't share Vars between fields and method arguments, since they
+        # have different full names (the latter are normally used as local variables
+        # in functions, so their full names are set to short names when generated methods
+        # are analyzed).
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
 
         tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
         add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
@@ -380,9 +414,9 @@ class NamedTupleAnalyzer:
                        is_new: bool = False,
                        ) -> None:
             if is_classmethod or is_new:
-                first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
+                first = [Argument(Var('_cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
             else:
-                first = [Argument(Var('self'), selftype, None, ARG_POS)]
+                first = [Argument(Var('_self'), selftype, None, ARG_POS)]
             args = first + args
 
             types = [arg.type_annotation for arg in args]

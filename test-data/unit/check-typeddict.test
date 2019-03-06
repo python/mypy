@@ -1323,6 +1323,7 @@ reveal_type(x['a']['b']) # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testSelfRecursiveTypedDictInheriting]
+# flags: --no-new-semantic-analyzer
 from mypy_extensions import TypedDict
 
 class MovieBase(TypedDict):
@@ -1338,6 +1339,7 @@ reveal_type(m['director']['name']) # E: Revealed type is 'builtins.str'
 [out]
 
 [case testSubclassOfRecursiveTypedDict]
+# flags: --no-new-semantic-analyzer
 from typing import List
 from mypy_extensions import TypedDict
 
@@ -1387,6 +1389,7 @@ tmp/b.py:4: error: Revealed type is 'TypedDict('a.N', {'a': builtins.str})'
 tmp/b.py:5: error: Revealed type is 'builtins.str'
 
 [case testTypedDictImportCycle]
+# flags: --new-semantic-analyzer
 import b
 [file a.py]
 class C:
@@ -1396,10 +1399,8 @@ from b import tp
 x: tp
 reveal_type(x['x'])  # E: Revealed type is 'builtins.int'
 
-# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
-reveal_type(tp)  # E: Revealed type is 'Any' \
-                 # E: Cannot determine type of 'tp'
-tp('x')  # E: Cannot determine type of 'tp'
+reveal_type(tp)  # E: Revealed type is 'def () -> b.tp'
+tp(x='no')  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 
 [file b.py]
 from a import C

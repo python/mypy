@@ -564,6 +564,7 @@ main: error: Invalid base class
 main:4: error: Invalid base class
 
 [case testTupleAsBaseClass]
+# flags: --new-semantic-analyzer
 import m
 [file m.pyi]
 from typing import Tuple
@@ -571,7 +572,7 @@ class A(Tuple[int, str]): pass
 [builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
-  Import:1(m))
+  Import:2(m))
 MypyFile:1(
   tmp/m.pyi
   ImportFrom:1(typing, [Tuple])
@@ -580,7 +581,7 @@ MypyFile:1(
     TupleType(
       Tuple[builtins.int, builtins.str])
     BaseType(
-      builtins.tuple[Any])
+      builtins.tuple[builtins.object])
     PassStmt:2()))
 
 [case testBaseClassFromIgnoredModule]
@@ -593,8 +594,6 @@ MypyFile:1(
   ClassDef:2(
     B
     FallbackToAny
-    BaseType(
-      builtins.object)
     PassStmt:3())
   IgnoredLines(1))
 
@@ -628,6 +627,4 @@ MypyFile:1(
   ClassDef:3(
     B
     FallbackToAny
-    BaseType(
-      builtins.object)
     PassStmt:4()))

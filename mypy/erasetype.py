@@ -73,7 +73,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.fallback.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return t.fallback.accept(self)
+        return t.partial_fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.fallback.accept(self)

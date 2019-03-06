@@ -15,6 +15,7 @@ from mypy.subtypes import (
 )
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
+from mypy.typeops import tuple_fallback
 from mypy import state
 
 # TODO Describe this module.
@@ -49,10 +50,10 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                                 for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
-    elif isinstance(declared, (Instance, TupleType)):
-        return meet_types(declared, narrowed)
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+    elif isinstance(declared, (Instance, TupleType, TypeType)):
+        return meet_types(declared, narrowed)
     return narrowed
 
 
@@ -211,9 +212,9 @@ def is_overlapping_types(left: Type,
     if is_tuple(left) and is_tuple(right):
         return are_tuples_overlapping(left, right, ignore_promotions=ignore_promotions)
     elif isinstance(left, TupleType):
-        left = left.fallback
+        left = tuple_fallback(left)
     elif isinstance(right, TupleType):
-        right = right.fallback
+        right = tuple_fallback(right)
 
     # Next, we handle single-variant types that cannot be inherently partially overlapping,
     # but do require custom logic to inspect.
@@ -484,6 +485,12 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
             return result
+        elif isinstance(self.s, TypeType) and t.is_type_obj() and not t.is_generic():
+            # In this case we are able to potentially produce a better meet.
+            res = meet_types(self.s.item, t.ret_type)
+            if not isinstance(res, (NoneTyp, UninhabitedType)):
+                return TypeType.make_normalized(res)
+            return self.default(self.s)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
             call = unpack_callback_protocol(self.s)
             if call:
@@ -515,7 +522,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             for i in range(t.length()):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
-            return TupleType(items, t.fallback)
+            return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
             if self.s.type.fullname() == 'builtins.tuple' and self.s.args:
@@ -567,6 +574,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return t
+        elif isinstance(self.s, CallableType):
+            return self.meet(t, self.s)
         else:
             return self.default(self.s)
 

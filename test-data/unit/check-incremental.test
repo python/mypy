@@ -2951,10 +2951,10 @@ from a import A
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> a.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__ne__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
-reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
-reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
-reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -2990,10 +2990,10 @@ class A:
 main:2: error: Revealed type is 'def (a: builtins.int) -> a.A'
 main:3: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 main:4: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-main:5: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
-main:6: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
-main:7: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
-main:8: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:5: error: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:6: error: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:7: error: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:8: error: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:17: error: Unsupported operand types for < ("A" and "int")
 main:18: error: Unsupported operand types for <= ("A" and "int")
 main:19: error: Unsupported operand types for > ("A" and "int")
@@ -3610,8 +3610,8 @@ cache_fine_grained = False
 [file mypy.ini.2]
 [[mypy]
 cache_fine_grained = True
-[rechecked a, builtins]
-[stale a, builtins]
+[rechecked a, builtins, typing]
+[stale a, builtins, typing]
 
 [case testIncrementalPackageNameOverload]
 # cmd: mypy -m main a
@@ -3656,8 +3656,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins]
-[rechecked a, b, builtins]
+[stale a, b, builtins, typing]
+[rechecked a, b, builtins, typing]
 
 [case testIncrementalBustedFineGrainedCache2]
 # flags2: --cache-fine-grained
@@ -3668,8 +3668,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
-[stale a, b, builtins]
-[rechecked a, b, builtins]
+[stale a, b, builtins, typing]
+[rechecked a, b, builtins, typing]
 
 [case testIncrementalBustedFineGrainedCache3]
 # flags: --cache-fine-grained --no-sqlite-cache
@@ -3683,8 +3683,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins]
-[rechecked a, b, builtins]
+[stale a, b, builtins, typing]
+[rechecked a, b, builtins, typing]
 
 [case testIncrementalWorkingFineGrainedCache]
 # flags: --cache-fine-grained
@@ -4931,3 +4931,40 @@ import pack.mod
 import a
 [out]
 [out2]
+
+[case testNewAnalyzerIncrementalBrokenNamedTuple]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import NT
+x: NT
+[file a.py.2]
+from b import NT
+x: NT
+reveal_type(x)
+[file b.py]
+from typing import NamedTuple
+NT = NamedTuple('BadName', [('x', int)])
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
+
+[case testNewAnalyzerIncrementalMethodNamedTuple]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import C
+x: C
+[file a.py.2]
+from b import C
+x: C
+reveal_type(x.h)
+[file b.py]
+from typing import NamedTuple
+class C:
+    def __init__(self) -> None:
+        self.h: Hidden
+        Hidden = NamedTuple('Hidden', [('x', int)])
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[builtins.int, fallback=b.C.Hidden@5]'

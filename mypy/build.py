@@ -59,6 +59,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
+from mypy.renaming import VariableRenameVisitor
 
 from mypy.mypyc_hacks import BuildManagerBase
 
@@ -1747,7 +1748,16 @@ class State:
             self.manager.errors.raise_error()
 
     @contextlib.contextmanager
-    def wrap_context(self) -> Iterator[None]:
+    def wrap_context(self, check_blockers: bool = True) -> Iterator[None]:
+        """Temporarily change the error import context to match this state.
+
+        Also report an internal error if an unexpected exception was raised
+        and raise an exception on a blocking error, unless
+        check_blockers is False. Skipping blocking error reporting is used
+        in the new semantic analyzer so that we can report all blocking
+        errors for a file (across multiple targets) to maintain backward
+        compatibility.
+        """
         save_import_context = self.manager.errors.import_context()
         self.manager.errors.set_import_context(self.import_context)
         try:
@@ -1757,7 +1767,9 @@ class State:
         except Exception as err:
             report_internal_error(err, self.path, 0, self.manager.errors, self.options)
         self.manager.errors.set_import_context(save_import_context)
-        self.check_blockers()
+        # TODO: Move this away once we've removed the old semantic analyzer?
+        if check_blockers:
+            self.check_blockers()
 
     def load_fine_grained_deps(self) -> Dict[str, Set[str]]:
         return self.manager.load_fine_grained_deps(self.id)
@@ -1765,9 +1777,17 @@ class State:
     def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
-        data = json.loads(self.manager.metastore.read(self.meta.data_json))
+        t0 = time.time()
+        raw = self.manager.metastore.read(self.meta.data_json)
+        t1 = time.time()
+        data = json.loads(raw)
+        t2 = time.time()
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
+        t3 = time.time()
+        self.manager.add_stats(data_read_time=t1 - t0,
+                               data_json_load_time=t2 - t1,
+                               deserialize_time=t3 - t2)
         if not temporary:
             self.manager.modules[self.id] = self.tree
             self.manager.add_stats(fresh_trees=1)
@@ -1794,8 +1814,13 @@ class State:
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
+        Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]  # noqa
+        if self.manager.options.new_semantic_analyzer:
+            analyzer = self.manager.new_semantic_analyzer  # type: Analyzer
+        else:
+            analyzer = self.manager.semantic_analyzer
         for dep in self.dependencies:
-            self.manager.semantic_analyzer.add_submodules_to_parent_modules(dep, True)
+            analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
@@ -1911,6 +1936,9 @@ class State:
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
             # TODO: Do this while contructing the AST?
             self.tree.names = SymbolTable()
+            if options.allow_redefinition:
+                # Perform renaming across the AST to allow variable redefinitions
+                self.tree.accept(VariableRenameVisitor())
         else:
             # Do the first pass of semantic analysis: add top-level
             # definitions in the file to the symbol table.  We must do
@@ -2624,11 +2652,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        # HACK: similar is needed for 'typing', for untangling the builtins SCC when new semantic
-        # analyzer is used.
-        if 'typing' in ascc:
-            scc.remove('typing')
-            scc.insert(0, 'typing')
         if manager.options.verbosity >= 2:
             for id in scc:
                 manager.trace("Priorities for %s:" % id,
@@ -2828,7 +2851,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         if not manager.options.new_semantic_analyzer:
             manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc)
+        semantic_analysis_for_scc(graph, scc, manager.errors)
     else:
         for id in stale:
             graph[id].semantic_analysis()

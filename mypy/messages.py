@@ -208,8 +208,8 @@ class MessageBuilder:
             return typ.name
         elif isinstance(typ, TupleType):
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
-            if typ.fallback.type.fullname() != 'builtins.tuple':
-                return self.format_bare(typ.fallback)
+            if typ.partial_fallback.type.fullname() != 'builtins.tuple':
+                return self.format_bare(typ.partial_fallback)
             items = []
             for t in typ.items:
                 items.append(self.format_bare(t))
@@ -1225,7 +1225,11 @@ class MessageBuilder:
             # This will be only confusing a user even more.
             return
 
-        if isinstance(subtype, (TupleType, TypedDictType)):
+        if isinstance(subtype, TupleType):
+            if not isinstance(subtype.partial_fallback, Instance):
+                return
+            subtype = subtype.partial_fallback
+        elif isinstance(subtype, TypedDictType):
             if not isinstance(subtype.fallback, Instance):
                 return
             subtype = subtype.fallback
