@@ -5169,9 +5169,7 @@ if int():
 ==
 aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
--- Depends on #6289
 [case testClassBasedEnumPropagation1]
-# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 from b import C
@@ -5270,9 +5268,7 @@ n = c
 ==
 aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
--- Depends on #6289
 [case testFuncBasedEnumPropagation1]
-# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 from b import C
