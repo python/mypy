@@ -5,10 +5,11 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from typing import Tuple, Optional
 
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType, TypeOfAny
+from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
-    UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, GDEF, MDEF, ARG_POS
+    UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, MDEF, ARG_POS,
+    PlaceholderNode
 )
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
@@ -26,17 +27,17 @@ class NewTypeAnalyzer:
         self.api = api
         self.msg = msg
 
-    def process_newtype_declaration(self, s: AssignmentStmt) -> None:
+    def process_newtype_declaration(self, s: AssignmentStmt) -> bool:
         """Check if s declares a NewType; if yes, store it in symbol table."""
         # Extract and check all information from newtype declaration
         name, call = self.analyze_newtype_declaration(s)
         if name is None or call is None:
-            return
+            return False
 
         old_type = self.check_newtype_args(name, call, s)
         call.analyzed = NewTypeExpr(name, old_type, line=call.line)
         if old_type is None:
-            return
+            return True
 
         # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
@@ -50,7 +51,7 @@ class NewTypeAnalyzer:
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
             self.fail(message.format(self.msg.format(old_type)), s)
-            return
+            return True
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
                                context=s)
@@ -59,13 +60,9 @@ class NewTypeAnalyzer:
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
         # If so, add it to the symbol table.
-        node = self.api.lookup(name, s)
-        if node is None:
-            self.fail("Could not find {} in current namespace".format(name), s)
-            return
-        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
-        node.kind = GDEF
-        call.analyzed.info = node.node = newtype_class_info
+        self.api.add_symbol(name, newtype_class_info, s)
+        call.analyzed.info = newtype_class_info
+        return True
 
     def analyze_newtype_declaration(self,
             s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
@@ -78,11 +75,14 @@ class NewTypeAnalyzer:
                 and s.rvalue.callee.fullname == 'typing.NewType'):
             lvalue = s.lvalues[0]
             name = s.lvalues[0].name
-            if not lvalue.is_inferred_def:
-                if s.type:
-                    self.fail("Cannot declare the type of a NewType declaration", s)
-                else:
-                    self.fail("Cannot redefine '%s' as a NewType" % name, s)
+
+            if s.type:
+                self.fail("Cannot declare the type of a NewType declaration", s)
+
+            names = self.api.current_symbol_table()
+            existing = names.get(name)
+            if existing and not isinstance(existing.node, (NewTypeExpr, PlaceholderNode)):
+                self.fail("Cannot redefine '%s' as a NewType" % name, s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
             # overwritten later with a fully complete NewTypeExpr if there are no other

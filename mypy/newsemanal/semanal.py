@@ -71,7 +71,8 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions
+    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
+    EnumCallExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1940,6 +1941,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     return True
         elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
             return self.should_wait(rv.base)
+        elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
+            # Only relevant for builtin SCC where things like 'TypeVar' may be not ready.
+            return self.should_wait(rv.callee)
         return False
 
     def can_be_type_alias(self, rv: Expression) -> bool:
@@ -1952,7 +1956,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        s.is_final_def = self.unwrap_final(s)
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait(s.rvalue):
@@ -1962,25 +1965,51 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
+
+        # The r.h.s. is now ready to be classified, first check if it is a special form:
+        # * type alias
+        if self.check_and_set_up_type_alias(s):
+            s.is_alias_def = True
+            return
+
+        # * type variable definition
+        if self.process_typevar_declaration(s):
+            return
+
+        # * type constructors
         if self.analyze_namedtuple_assign(s):
             return
         if self.analyze_typeddict_assign(s):
             return
-        if self.check_and_set_up_type_alias(s):
-            s.is_alias_def = True
+        if self.newtype_analyzer.process_newtype_declaration(s):
             return
+        if self.analyze_enum_assign(s):
+            return
+
+        # OK, this is a regular assignment, perform the necessary analysis steps.
+        s.is_final_def = self.unwrap_final(s)
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
         self.apply_dynamic_class_hook(s)
-        self.newtype_analyzer.process_newtype_declaration(s)
-        self.process_typevar_declaration(s)
-        self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_enum_assign(self, s: AssignmentStmt) -> bool:
+        if not self.enum_call_analyzer.process_enum_call(s, self.is_func_scope()):
+            return False
+        # TODO: This is needed for one-to-one compatibility with old analyzer.
+        # See also the TODOs for named tuples and typed dicts: #6458.
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        lvalue.fullname = self.qualified_name(lvalue.name)
+        lvalue.is_inferred_def = True
+        lvalue.kind = kind = self.current_symbol_kind()
+        lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
+        return True
 
     def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a namedtuple."""
@@ -2635,24 +2664,26 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # This has been flagged elsewhere as an error, so just ignore here.
             pass
 
-    def process_typevar_declaration(self, s: AssignmentStmt) -> None:
+    def process_typevar_declaration(self, s: AssignmentStmt) -> bool:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
         call = self.get_typevar_declaration(s)
         if not call:
-            return
+            return False
 
         lvalue = s.lvalues[0]
         assert isinstance(lvalue, NameExpr)
+        if s.type:
+            self.fail("Cannot declare the type of a type variable", s)
+            return False
         name = lvalue.name
-        if not lvalue.is_inferred_def:
-            if s.type:
-                self.fail("Cannot declare the type of a type variable", s)
-            else:
-                self.fail("Cannot redefine '%s' as a type variable" % name, s)
-            return
+        names = self.current_symbol_table()
+        existing = names.get(name)
+        if existing and not isinstance(existing.node, (TypeVarExpr, PlaceholderNode)):
+            self.fail("Cannot redefine '%s' as a type variable" % name, s)
+            return False
 
         if not self.check_typevar_name(call, name, s):
-            return
+            return False
 
         # Constraining types
         n_values = call.arg_kinds[1:].count(ARG_POS)
@@ -2664,7 +2695,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                               n_values,
                                               s)
         if res is None:
-            return
+            return False
         variance, upper_bound = res
 
         if self.options.disallow_any_unimported:
@@ -2688,21 +2719,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             upper_bound = AnyType(TypeOfAny.implementation_artifact)
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
-        node = self.lookup(name, s)
-        assert node is not None
-        assert node.fullname is not None
-        node.kind = self.current_symbol_kind()
-        if isinstance(node.node, TypeVarExpr):
+        if existing and isinstance(existing.node, TypeVarExpr):
             # Existing definition from previous semanal iteration, use it.
-            type_var = node.node
+            type_var = existing.node
             type_var.values = values
             type_var.upper_bound = upper_bound
             type_var.variance = variance
         else:
-            type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
+            type_var = TypeVarExpr(name, self.qualified_name(name),
+                                   values, upper_bound, variance)
             type_var.line = call.line
             call.analyzed = type_var
-            node.node = type_var
+            self.add_symbol(name, type_var, s)
+        return True
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
         name = unmangle(name)

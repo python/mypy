@@ -19,20 +19,23 @@ class EnumCallAnalyzer:
         self.options = options
         self.api = api
 
-    def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> None:
+    def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> bool:
         """Check if s defines an Enum; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
+            return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         enum_call = self.check_enum_call(s.rvalue, name, is_func_scope)
         if enum_call is None:
-            return
+            return False
         # Yes, it's a valid Enum definition. Add it to the symbol table.
-        node = self.api.lookup(name, s)
-        if node:
-            node.kind = GDEF   # TODO locally defined Enum
-            node.node = enum_call
+        names = self.api.current_symbol_table()
+        existing = names.get(name)
+        if existing:
+            existing.node = enum_call
+        else:
+            self.api.add_symbol(name, enum_call, s)
+        return True
 
     def check_enum_call(self,
                         node: Expression,

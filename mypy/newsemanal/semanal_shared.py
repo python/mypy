@@ -6,7 +6,7 @@ from mypy_extensions import trait
 
 from mypy.nodes import (
     Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF,
-    SymbolNode
+    SymbolNode, SymbolTable
 )
 from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance, TupleType
@@ -121,6 +121,10 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @abstractmethod
     def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
         """Add node to the current symbol table."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def current_symol_table(self) -> SymbolTable:
         raise NotImplementedError
 
     @abstractmethod
