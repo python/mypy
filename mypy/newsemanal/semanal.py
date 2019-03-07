@@ -181,9 +181,6 @@ CORE_BUILTIN_CLASSES = ['object', 'bool', 'function']  # type: Final
 Tag = int
 
 
-MAX_WAIT = 5
-
-
 class NewSemanticAnalyzer(NodeVisitor[None],
                           SemanticAnalyzerInterface,
                           SemanticAnalyzerPluginInterface):
@@ -283,7 +280,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
-        self.wait_list = {}  # type: Dict[str, Dict[str,int]]
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -1929,28 +1925,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def should_wait(self, rv: Expression) -> bool:
-        wait_list = self.wait_list.setdefault(self.cur_mod_id, {})
+        if self.final_iteration:
+            # No chance, nothing has changed.
+            return False
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
             if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
-                if rv.name in wait_list:
-                    if wait_list[rv.name] == MAX_WAIT:
-                        return False
-                    wait_list[rv.name] += 1
-                else:
-                    wait_list[rv.name] = 0
                 return True
         elif isinstance(rv, MemberExpr):
             fname = get_member_expr_fullname(rv)
             if fname:
                 n = self.lookup_qualified(fname, rv, suppress_errors=True)
                 if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
-                    if fname in wait_list:
-                        if wait_list[fname] == MAX_WAIT:
-                            return False
-                        wait_list[fname] += 1
-                    else:
-                        wait_list[fname] = 0
                     return True
         elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
             return self.should_wait(rv.base)
@@ -2301,8 +2287,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if s.unanalyzed_type is not None:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
             return False
+
+        existing = self.current_symbol_table().get(lvalue.name)
+        # Type aliases can't be re-defined.
+        if existing and (isinstance(existing.node, Var) or
+                         isinstance(existing.node, TypeAlias) and not s.is_alias_def):
+            if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
+                self.fail('Cannot assign multiple types to name "{}"'
+                          ' without an explicit "Type[...]" annotation'
+                          .format(lvalue.name), lvalue)
+            return False
+
         non_global_scope = self.type or self.is_func_scope()
-        if isinstance(s.rvalue, RefExpr) and non_global_scope and lvalue.is_inferred_def:
+        if isinstance(s.rvalue, RefExpr) and non_global_scope:
             # Third rule: Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -2335,15 +2332,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
         # (because the type is stored)
-        existing = self.current_symbol_table().get(lvalue.name)
-        # Type aliases can't be re-defined.
-        if existing and (isinstance(existing.node, Var) or
-                         isinstance(existing.node, TypeAlias) and not s.is_alias_def):
-            if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
-                self.fail('Cannot assign multiple types to name "{}"'
-                          ' without an explicit "Type[...]" annotation'
-                          .format(lvalue.name), lvalue)
-            return False
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
                                context=s)
         # when this type alias gets "inlined", the Any is not explicit anymore,
@@ -2361,11 +2349,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
                                alias_tvars=alias_tvars, no_args=no_args)
         if existing:
+            # Alias got updated.
+            self.progress = True
             existing.node = alias_node
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             alias_node.normalized = rvalue.node.normalized
+
+        # TODO: This is needed for one-to-one compatibility with old analyzer.
+        # See also the TODOs for named tuples and typed dicts: #6458.
+        lvalue.fullname = self.qualified_name(lvalue.name)
+        lvalue.is_inferred_def = True
+        lvalue.kind = kind = self.current_symbol_kind()
+        lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
+
         return True
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
@@ -3232,7 +3230,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             elif isinstance(n.node, PlaceholderNode):
-                self.defer()
+                if self.final_iteration:
+                    self.fail('Cannot resolve name "{}",'
+                              ' possible cyclic definition'.format(expr.name),
+                              expr)
+                else:
+                    self.defer()
             else:
                 expr.kind = n.kind
                 expr.node = n.node
@@ -3445,7 +3448,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 n = self.rebind_symbol_table_node(n)
                 if n:
                     if isinstance(n.node, PlaceholderNode):
-                        self.defer()
+                        if self.final_iteration:
+                            self.fail('Cannot resolve attribute "{}",'
+                                      ' possible cyclic definition'.format(expr.name),
+                                      expr)
+                        else:
+                            self.defer()
                         return
                     # TODO: What if None?
                     expr.kind = n.kind

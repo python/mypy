@@ -339,12 +339,12 @@ def main() -> None:
             x  # E: Name 'x' is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
-gx = gy  # E: Cannot determine type of 'gy'
+gx = gy  # E: Cannot resolve name "gy", possible cyclic definition
 gy = gx
 def main() -> None:
     class C:
         def meth(self) -> None:
-            lx = ly  # E: Cannot determine type of 'ly'
+            lx = ly  # E: Cannot resolve name "ly", possible cyclic definition
             ly = lx
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
