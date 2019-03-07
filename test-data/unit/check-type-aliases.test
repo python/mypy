@@ -336,7 +336,6 @@ reveal_type(w)  # E: Revealed type is '__main__.C[builtins.int]'
 [out]
 
 [case testTypeAliasesToNamedTuple]
-# flags: --new-semantic-analyzer
 from nt import C, D, E
 
 A1 = C

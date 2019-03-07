@@ -1882,6 +1882,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def is_none_alias(self, node: Expression) -> bool:
+        """Is this a r.h.s. for a None alias?
+
+        We special case the assignments like Void = type(None), to allow using
+        Void in type annotations.
+        """
         if isinstance(node, CallExpr):
             if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
                     isinstance(node.args[0], NameExpr)):
@@ -1893,7 +1898,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
-        """Does this expression refers to a type?"""
+        """Does this expression refers to a type?
+
+        Thus includes:
+          * Special forms, like Any or Union
+          * Classes (except subscripted enums)
+          * Other type aliases
+          * PlaceholderNodes with becomes_typeinfo=True (these can be not ready class
+            definitions, and not ready aliases).
+        """
         if not isinstance(rv, RefExpr):
             return False
         if isinstance(rv.node, TypeVarExpr):
@@ -1901,11 +1914,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 rv.fullname), rv)
             return False
 
-        valid_refs = {'typing.Any', 'typing.Tuple', 'typing.Callable'} if bare else type_constructors
+        if bare:
+            valid_refs = {'typing.Any', 'typing.Tuple', 'typing.Callable'}
+        else:
+            valid_refs = type_constructors
 
         if isinstance(rv.node, TypeAlias) or rv.fullname in valid_refs:
             return True
-
         if isinstance(rv.node, TypeInfo):
             if bare:
                 return True
@@ -1926,6 +1941,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def should_wait(self, rv: Expression) -> bool:
+        """Can we already classify this r.h.s. of an assignment or should wait?
+
+        This returns True if we don't have enough information to decide whether
+        an assignment is just a normal variable definition or a special form.
+        Always return False if this is a final iteration, this will typically cause
+        the assignment to be classified as variable plus emmit an error.
+        """
         if self.final_iteration:
             # No chance, nothing has changed.
             return False
@@ -1942,11 +1964,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
             return self.should_wait(rv.base)
         elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
-            # Only relevant for builtin SCC where things like 'TypeVar' may be not ready.
+            # This is only relevant for builtin SCC where things like 'TypeVar'
+            # may be not ready.
             return self.should_wait(rv.callee)
         return False
 
     def can_be_type_alias(self, rv: Expression) -> bool:
+        """Is this a valid r.h.s. for an alias definition?
+
+        Note: this function should be only called for expressions where self.should_wait()
+        returns False.
+        """
         if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
             return True
         if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
@@ -1954,6 +1982,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.is_none_alias(rv):
             return True
         return False
+
+    def record_special_form_lvalue(self, s: AssignmentStmt) -> None:
+        """Record minimal necessary information about l.h.s. of a special form.
+
+        This exists mostly for compatibility with the old semantic analyzer.
+        """
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        lvalue.is_special_form = True
+        if self.current_symbol_kind() == GDEF:
+            lvalue.fullname = self.qualified_name(lvalue.name)
+        lvalue.kind = self.current_symbol_kind()
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         tag = self.track_incomplete_refs()
@@ -1972,11 +2012,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.check_and_set_up_type_alias(s):
             s.is_alias_def = True
             special_form = True
-
         # * type variable definition
         elif self.process_typevar_declaration(s):
             special_form = True
-
         # * type constructors
         elif self.analyze_namedtuple_assign(s):
             special_form = True
@@ -1986,15 +2024,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             special_form = True
         elif self.enum_call_analyzer.process_enum_call(s, self.is_func_scope()):
             special_form = True
-
         if special_form:
-            lvalue = s.lvalues[0]
-            assert isinstance(lvalue, NameExpr)
-            lvalue.is_special_form = True
-            # Add basic compatibility info.
-            if self.current_symbol_kind() == GDEF:
-                lvalue.fullname = self.qualified_name(lvalue.name)
-            lvalue.kind = self.current_symbol_kind()
+            self.record_special_form_lvalue(s)
             return
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
@@ -2328,11 +2359,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             alias_tvars, depends_on, qualified_tvars = [], set(), []
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue, allow_placeholder=True)
+            res, alias_tvars, depends_on, qualified_tvars = \
+                self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
             if self.found_incomplete_ref(tag):
-                self.add_symbol(lvalue.name, PlaceholderNode(self.qualified_name(lvalue.name), rvalue, True), None)
+                # Since we have got here, we know this must be a type alias (incomplete refs
+                # may appear in nested positions), therefore use becomes_typeinfo=True.
+                self.add_symbol(lvalue.name, PlaceholderNode(self.qualified_name(lvalue.name),
+                                                             rvalue, becomes_typeinfo=True), s)
                 return True
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
@@ -2358,8 +2393,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
                                alias_tvars=alias_tvars, no_args=no_args)
         if existing:
-            # Alias got updated.
-            self.progress = True
+            # Did alias get updated?
+            if (isinstance(existing.node, PlaceholderNode) or
+                    isinstance(existing.node, TypeAlias) and existing.node.target != res):
+                self.progress = True
             existing.node = alias_node
         else:
             self.add_symbol(lvalue.name, alias_node, s)

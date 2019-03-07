@@ -1716,6 +1716,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if s.is_alias_def:
+            # We do this mostly for compatibility with old semantic analyzer.
+            # TODO: should we get rid of this?
             self.store_type(s.lvalues[-1], self.expr_checker.accept(s.rvalue))
 
         if (s.type is not None and
