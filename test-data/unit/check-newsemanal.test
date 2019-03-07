@@ -347,6 +347,17 @@ def main() -> None:
             lx = ly  # E: Cannot resolve name "ly", possible cyclic definition
             ly = lx
 
+[case testNewAnalyzerCyclicDefinitionCrossModule]
+import b
+[file a.py]
+import b
+x = b.x  # E: Cannot determine type of 'x'
+[file b.py]
+import a
+x = a.x  # E: Cannot resolve attribute "x", possible cyclic definition \
+         # E: Module has no attribute "x"
+[builtins fixtures/module.pyi]
+
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
 from typing import overload, Union
 
