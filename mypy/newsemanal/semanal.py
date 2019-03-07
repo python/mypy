@@ -1967,23 +1967,34 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
 
         # The r.h.s. is now ready to be classified, first check if it is a special form:
+        special_form = False
         # * type alias
         if self.check_and_set_up_type_alias(s):
             s.is_alias_def = True
-            return
+            special_form = True
 
         # * type variable definition
-        if self.process_typevar_declaration(s):
-            return
+        elif self.process_typevar_declaration(s):
+            special_form = True
 
         # * type constructors
-        if self.analyze_namedtuple_assign(s):
-            return
-        if self.analyze_typeddict_assign(s):
-            return
-        if self.newtype_analyzer.process_newtype_declaration(s):
-            return
-        if self.analyze_enum_assign(s):
+        elif self.analyze_namedtuple_assign(s):
+            special_form = True
+        elif self.analyze_typeddict_assign(s):
+            special_form = True
+        elif self.newtype_analyzer.process_newtype_declaration(s):
+            special_form = True
+        elif self.enum_call_analyzer.process_enum_call(s, self.is_func_scope()):
+            special_form = True
+
+        if special_form:
+            lvalue = s.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            lvalue.is_special_form = True
+            # Add basic compatibility info.
+            if self.current_symbol_kind() == GDEF:
+                lvalue.fullname = self.qualified_name(lvalue.name)
+            lvalue.kind = self.current_symbol_kind()
             return
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
@@ -1997,19 +2008,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
-
-    def analyze_enum_assign(self, s: AssignmentStmt) -> bool:
-        if not self.enum_call_analyzer.process_enum_call(s, self.is_func_scope()):
-            return False
-        # TODO: This is needed for one-to-one compatibility with old analyzer.
-        # See also the TODOs for named tuples and typed dicts: #6458.
-        lvalue = s.lvalues[0]
-        assert isinstance(lvalue, NameExpr)
-        lvalue.fullname = self.qualified_name(lvalue.name)
-        lvalue.is_inferred_def = True
-        lvalue.kind = kind = self.current_symbol_kind()
-        lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
-        return True
 
     def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a namedtuple."""
@@ -2026,16 +2024,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
-            # type checker will try to infer Any for the l.h.s. causing named tuple class
-            # object to have type Any when it appears in runtime context.
-            # Remove this and update the checker after new analyzer is the default one!
-            # See also #6458.
-            lvalue.fullname = self.qualified_name(name)
-            lvalue.is_inferred_def = True
-            lvalue.kind = kind = self.current_symbol_kind()
-            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
@@ -2053,14 +2041,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
-        else:
-            # TODO: This is needed for one-to-one compatibility with old analyzer, otherwise
-            # type checker will try to infer Any for the l.h.s.
-            # Remove this after new analyzer is the default one!
-            lvalue.fullname = self.qualified_name(name)
-            lvalue.is_inferred_def = True
-            lvalue.kind = kind = self.current_symbol_kind()
-            lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
@@ -2385,14 +2365,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             alias_node.normalized = rvalue.node.normalized
-
-        # TODO: This is needed for one-to-one compatibility with old analyzer.
-        # See also the TODOs for named tuples and typed dicts: #6458.
-        lvalue.fullname = self.qualified_name(lvalue.name)
-        lvalue.is_inferred_def = True
-        lvalue.kind = kind = self.current_symbol_kind()
-        lvalue.node = self.make_name_lvalue_var(lvalue, kind, inferred=True)
-
         return True
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,

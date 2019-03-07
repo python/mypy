@@ -329,6 +329,7 @@ class TransformVisitor(NodeVisitor[Node]):
         # visit_name_expr() is used when there is no such restriction.
         new = NameExpr(node.name)
         self.copy_ref(new, node)
+        new.is_special_form = node.is_special_form
         return new
 
     def visit_member_expr(self, node: MemberExpr) -> MemberExpr:

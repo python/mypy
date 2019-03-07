@@ -1715,6 +1715,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         with self.enter_final_context(s.is_final_def):
             self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
+        if s.is_alias_def:
+            self.store_type(s.lvalues[-1], self.expr_checker.accept(s.rvalue))
+
         if (s.type is not None and
                 self.options.disallow_any_unimported and
                 has_any_from_unimported_type(s.type)):
@@ -1824,7 +1827,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
-                    self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+                    if not (isinstance(lvalue, NameExpr) and lvalue.is_special_form):
+                        self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
 
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)

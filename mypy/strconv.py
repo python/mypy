@@ -345,7 +345,9 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> str:
-        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname,
+                                  o.is_inferred_def or o.is_special_form,
+                                  o.node)
         if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
             pretty += ' = {}'.format(o.node.final_value)
         return short_type(o) + '(' + pretty + ')'

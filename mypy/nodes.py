@@ -1418,11 +1418,12 @@ class NameExpr(RefExpr):
     This refers to a local name, global name or a module.
     """
 
-    __slots__ = ('name',)
+    __slots__ = ('name', 'is_special_form')
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name  # Name referred to (may be qualified)
+        self.is_special_form = False
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)

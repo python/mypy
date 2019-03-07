@@ -272,7 +272,7 @@ from typing import TypeVar
 def f() -> None:
     x = TypeVar('x')
     x = 1  # E: Invalid assignment target
-    reveal_type(x) # E: Revealed type is 'Any'
+    reveal_type(x) # E: Revealed type is 'builtins.int'
     y = 1
     # NOTE: '"int" not callable' is due to test stubs
     y = TypeVar('y')  # E: Cannot redefine 'y' as a type variable \
