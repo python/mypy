@@ -3818,6 +3818,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             self.globals[name] = stnode
 
+    def defer(self) -> None:
+        assert not self.options.new_semantic_analyzer
+        raise NotImplementedError('This is only available with --new-semantic-analyzer')
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):

@@ -9,8 +9,6 @@ if MYPY:
 new_semanal_blacklist = [
     'check-async-await.test',
     'check-classes.test',
-    'check-custom-plugin.test',
-    'check-dataclasses.test',
     'check-expressions.test',
     'check-flags.test',
     'check-functions.test',

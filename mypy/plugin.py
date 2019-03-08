@@ -253,6 +253,15 @@ class SemanticAnalyzerPluginInterface:
         """Make qualified name using current module and enclosing class (if any)."""
         raise NotImplementedError
 
+    @abstractmethod
+    def defer(self) -> None:
+        """Call this to defer the processing of the current node.
+
+        This will request an additional iteration of semantic analysis.
+        Only available with new semantic analyzer.
+        """
+        raise NotImplementedError
+
 
 # A context for a function hook that infers the return type of a function with
 # a special signature.
