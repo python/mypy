@@ -1829,6 +1829,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
+                    # Don't use type binder for definitions of special forms, like named tuples.
                     if not (isinstance(lvalue, NameExpr) and lvalue.is_special_form):
                         self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
 

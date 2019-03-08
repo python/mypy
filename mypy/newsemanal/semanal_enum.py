@@ -20,7 +20,11 @@ class EnumCallAnalyzer:
         self.api = api
 
     def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> bool:
-        """Check if s defines an Enum; if yes, store the definition in symbol table."""
+        """Check if s defines an Enum; if yes, store the definition in symbol table.
+
+        Return True if this looks like a type variable declaration (but maybe
+        with errors), otherwise return False.
+        """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return False
         lvalue = s.lvalues[0]
@@ -31,7 +35,9 @@ class EnumCallAnalyzer:
         # Yes, it's a valid Enum definition. Add it to the symbol table.
         names = self.api.current_symbol_table()
         existing = names.get(name)
-        if existing:
+        if existing and isinstance(existing.node, TypeInfo) and existing.info.is_enum:
+            # Existing definition from previous semanal iteration, use it.
+            # Some types might get updated.
             existing.node = enum_call
         else:
             self.api.add_symbol(name, enum_call, s)

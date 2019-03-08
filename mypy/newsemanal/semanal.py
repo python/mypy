@@ -560,11 +560,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 analyzer = self.type_analyzer()
                 tag = self.track_incomplete_refs()
                 result = analyzer.visit_callable_type(defn.type, nested=False)
-                if self.found_incomplete_ref(tag):
+                # Don't store not ready types (including placeholders).
+                if self.found_incomplete_ref(tag) or has_placeholder(result):
+                    self.defer()
                     return
                 defn.type = result
-                if has_placeholder(defn.type):
-                    self.defer()
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
                 if isinstance(defn, FuncDef):
@@ -1898,7 +1898,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
-        """Does this expression refers to a type?
+        """Does this expression refer to a type?
 
         Thus includes:
           * Special forms, like Any or Union
@@ -1906,6 +1906,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
           * Other type aliases
           * PlaceholderNodes with becomes_typeinfo=True (these can be not ready class
             definitions, and not ready aliases).
+
+        If bare is True, this is not a base of an index expression, so some special
+        forms are not valid (like a bare Union).
         """
         if not isinstance(rv, RefExpr):
             return False
@@ -1924,6 +1927,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if isinstance(rv.node, TypeInfo):
             if bare:
                 return True
+            # Assignment color = Color['RED'] defines a variable, not an alias.
             return not rv.node.is_enum
 
         if isinstance(rv, NameExpr):
@@ -2213,9 +2217,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
-            if analyzed is None:
-                return
-            if has_placeholder(analyzed):
+            # Don't store not ready types (including placeholders).
+            if analyzed is None or has_placeholder(analyzed):
                 self.defer()
                 return
             s.type = analyzed
@@ -2329,9 +2332,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
 
         existing = self.current_symbol_table().get(lvalue.name)
-        # Type aliases can't be re-defined.
+        # Third rule: type aliases can't be re-defined. For example:
+        #     A: Type[float] = int
+        #     A = float  # OK, but this doesn't define an alias
+        #     B = int
+        #     B = float  # Error!
         if existing and (isinstance(existing.node, Var) or
                          isinstance(existing.node, TypeAlias) and not s.is_alias_def):
+            # Note: if is_alias_def=True, this is just a node from previous iteration.
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail('Cannot assign multiple types to name "{}"'
                           ' without an explicit "Type[...]" annotation'
@@ -2340,7 +2348,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         non_global_scope = self.type or self.is_func_scope()
         if isinstance(s.rvalue, RefExpr) and non_global_scope:
-            # Third rule: Non-subscripted right hand side creates a variable
+            # Fourth rule (special case): Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
             #   class Model:
@@ -2375,11 +2383,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.add_type_alias_deps(qualified_tvars)
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
-        # (because the type is stored)
+        # (because the type is stored).
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg,
                                context=s)
-        # when this type alias gets "inlined", the Any is not explicit anymore,
-        # so we need to replace it with non-explicit Anys
+        # When this type alias gets "inlined", the Any is not explicit anymore,
+        # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
         fix_instance_types(res, self.fail)
@@ -2674,7 +2682,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             pass
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> bool:
-        """Check if s declares a TypeVar; it yes, store it in symbol table."""
+        """Check if s declares a TypeVar; it yes, store it in symbol table.
+
+        Return True if this looks like a type variable declaration (but maybe
+        with errors), otherwise return False.
+        """
         call = self.get_typevar_declaration(s)
         if not call:
             return False
