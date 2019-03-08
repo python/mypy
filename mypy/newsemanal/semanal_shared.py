@@ -124,7 +124,11 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def current_symol_table(self) -> SymbolTable:
+    def current_symbol_table(self) -> SymbolTable:
+        """Get currently active symbol table.
+
+        May be module, class, or local namespace.
+        """
         raise NotImplementedError
 
     @abstractmethod

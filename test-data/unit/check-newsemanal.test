@@ -1119,7 +1119,7 @@ class Test:
     def __init__(self) -> None:
         some_module = self.a
 
-[case testNewAnalyzerAliasToNotReadyClass1]
+[case testNewAnalyzerAliasToNotReadyClass]
 import a
 [file a.py]
 from b import B

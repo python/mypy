@@ -2370,9 +2370,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         rvalue = s.rvalue
         if not self.can_be_type_alias(rvalue):
             return False
+
+        res = None  # type: Optional[Type]
         if self.is_none_alias(rvalue):
             res = NoneTyp()
-            alias_tvars, depends_on, qualified_tvars = [], set(), []
+            alias_tvars, depends_on, qualified_tvars = \
+                [], set(), []  # type: List[str], Set[str], List[str]
         else:
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars = \
@@ -2750,6 +2753,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         if existing and isinstance(existing.node, TypeVarExpr):
             # Existing definition from previous semanal iteration, use it.
+            # TODO: this may be confused with a duplicate TypeVar definition.
+            # Fix this and add corresponding tests.
             type_var = existing.node
             type_var.values = values
             type_var.upper_bound = upper_bound
@@ -4430,7 +4435,8 @@ class HasPlaceholders(TypeQuery[bool]):
         return True
 
 
-def has_placeholder(typ) -> bool:
+def has_placeholder(typ: Type) -> bool:
+    """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
 
 
