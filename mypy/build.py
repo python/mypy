@@ -317,7 +317,7 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options, errors: Errors) -> Tuple[ChainedPlugin, Dict[str, str]]:
+def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
@@ -330,7 +330,7 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[ChainedPlugin, Dict[
 
     default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
-        return ChainedPlugin(options, [default_plugin]), snapshot
+        return default_plugin, snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
@@ -489,7 +489,7 @@ class BuildManager(BuildManagerBase):
                  reports: Optional['Reports'],
                  options: Options,
                  version_id: str,
-                 plugin: ChainedPlugin,
+                 plugin: Plugin,
                  plugins_snapshot: Dict[str, str],
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
@@ -508,6 +508,9 @@ class BuildManager(BuildManagerBase):
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
+        # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
+        if not isinstance(plugin, ChainedPlugin):
+            plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
         if options.new_semantic_analyzer:
             # Set of namespaces (module or class) that are being populated during semantic
