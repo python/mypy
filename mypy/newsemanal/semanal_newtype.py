@@ -5,7 +5,9 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from typing import Tuple, Optional
 
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType
+from mypy.types import (
+    Type, Instance, CallableType, NoneTyp, TupleType, AnyType, PlaceholderType
+)
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
     UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, MDEF, ARG_POS,
@@ -28,15 +30,34 @@ class NewTypeAnalyzer:
         self.msg = msg
 
     def process_newtype_declaration(self, s: AssignmentStmt) -> bool:
-        """Check if s declares a NewType; if yes, store it in symbol table."""
-        # Extract and check all information from newtype declaration
+        """Check if s declares a NewType; if yes, store it in symbol table.
+
+        Return True if it is a valid declaration, but maybe defer until base type
+        is known.
+
+        The logic in this function mostly copies the logic for visit_class_def()
+        with a single (non-Generic) base.
+        """
         name, call = self.analyze_newtype_declaration(s)
         if name is None or call is None:
             return False
+        # OK, now we now this is a NewType, but the base type may be not ready yet,
+        # add placeholder as we do for ClassDef.
 
-        old_type = self.check_newtype_args(name, call, s)
-        call.analyzed = NewTypeExpr(name, old_type, line=call.line)
+        fullname = self.api.qualified_name(name)
+        if (not call.analyzed or
+                isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info):
+            # Start from labeling this as future class with becomes_typeinfo=True,
+            # as we do for normal ClassDefs.
+            self.api.add_symbol(name, PlaceholderNode(fullname, s, True), s)
+
+        old_type, should_defer = self.check_newtype_args(name, call, s)
+        if not call.analyzed:
+            call.analyzed = NewTypeExpr(name, old_type, line=call.line)
         if old_type is None:
+            if should_defer:
+                # Base type is not ready.
+                self.api.defer()
             return True
 
         # Create the corresponding class definition if the aliased type is subtypeable
@@ -60,8 +81,15 @@ class NewTypeAnalyzer:
             self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
 
         # If so, add it to the symbol table.
-        self.api.add_symbol(name, newtype_class_info, s)
-        call.analyzed.info = newtype_class_info
+        assert isinstance(call.analyzed, NewTypeExpr)
+        # As we do for normal classes, create the TypeInfo only once, then just
+        # update base classes on next iterations (to get rid of placeholders there).
+        if not call.analyzed.info:
+            call.analyzed.info = newtype_class_info
+        else:
+            call.analyzed.info.bases = newtype_class_info.bases
+        self.api.add_symbol(name, call.analyzed.info, s)
+        newtype_class_info.line = s.line
         return True
 
     def analyze_newtype_declaration(self,
@@ -73,7 +101,6 @@ class NewTypeAnalyzer:
                 and isinstance(s.rvalue, CallExpr)
                 and isinstance(s.rvalue.callee, RefExpr)
                 and s.rvalue.callee.fullname == 'typing.NewType'):
-            lvalue = s.lvalues[0]
             name = s.lvalues[0].name
 
             if s.type:
@@ -81,7 +108,10 @@ class NewTypeAnalyzer:
 
             names = self.api.current_symbol_table()
             existing = names.get(name)
-            if existing and not isinstance(existing.node, (NewTypeExpr, PlaceholderNode)):
+            # Give a better error message that generic "Name already defined",
+            # like the old semantic analyzer does.
+            if (existing and
+                    not isinstance(existing.node, PlaceholderNode) and not s.rvalue.analyzed):
                 self.fail("Cannot redefine '%s' as a NewType" % name, s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
@@ -91,12 +121,17 @@ class NewTypeAnalyzer:
 
         return name, call
 
-    def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
+    def check_newtype_args(self, name: str, call: CallExpr,
+                           context: Context) -> Tuple[Optional[Type], bool]:
+        """Ananlyze base type in NewType call.
+
+        Return a tuple (type, should defer).
+        """
         has_failed = False
         args, arg_kinds = call.args, call.arg_kinds
         if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
             self.fail("NewType(...) expects exactly two positional arguments", context)
-            return None
+            return None, False
 
         # Check first argument
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
@@ -113,19 +148,22 @@ class NewTypeAnalyzer:
             unanalyzed_type = expr_to_unanalyzed_type(args[1])
         except TypeTranslationError:
             self.fail(msg, context)
-            return None
+            return None, False
 
         # We want to use our custom error message (see above), so we suppress
         # the default error message for invalid types here.
         old_type = self.api.anal_type(unanalyzed_type, report_invalid_types=False)
+        should_defer = False
+        if old_type is None or isinstance(old_type, PlaceholderType):
+            should_defer = True
 
         # The caller of this function assumes that if we return a Type, it's always
         # a valid one. So, we translate AnyTypes created from errors into None.
         if isinstance(old_type, AnyType) and old_type.is_from_error:
             self.fail(msg, context)
-            return None
+            return None, False
 
-        return None if has_failed else old_type
+        return None if has_failed else old_type, should_defer
 
     def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
         info = self.api.basic_new_typeinfo(name, base_type)

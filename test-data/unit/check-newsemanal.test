@@ -1766,3 +1766,61 @@ from enum import Enum
 
 A = Enum('A', ['x', 'y'])
 A = Enum('A', ['z', 't'])  # E: Name 'A' already defined on line 3
+
+[case testNewAnalyzerNewTypeRedefinition]
+from typing import NewType
+
+A = NewType('A', int)
+A = NewType('A', str)  # E: Cannot redefine 'A' as a NewType \
+                       # E: Name 'A' already defined on line 3
+
+[case testNewAnalyzerNewTypeForwardClass]
+from typing import NewType, List
+
+x: C
+reveal_type(x[0])  # E: Revealed type is '__main__.C*'
+
+C = NewType('C', B)
+
+class B(List[C]):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerNewTypeForwardClassAlias]
+from typing import NewType, List
+
+x: D
+reveal_type(x[0])  # E: Revealed type is '__main__.C*'
+
+D = C
+C = NewType('C', B)
+
+class B(List[D]):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerNewTypeForwardClassAliasReversed]
+from typing import NewType, List
+
+x: D
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+
+D = C
+C = NewType('C', List[B])
+
+class B(List[C]):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerNewTypeForwardClassAliasDirect]
+from typing import NewType, List
+
+x: D
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+
+D = List[C]
+C = NewType('C', B)
+
+class B(D):
+    pass
+[builtins fixtures/list.pyi]

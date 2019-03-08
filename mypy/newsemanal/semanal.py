@@ -942,7 +942,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         if self.analyze_namedtuple_classdef(defn):
             return
-
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
 
@@ -4198,7 +4197,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if (existing is not None
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
-                     or isinstance(symbol.node, PlaceholderNode))):
+                     or isinstance(symbol.node, PlaceholderNode) and
+                     # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True,
+                     # this can happend for type aliases and NewTypes.
+                     not symbol.node.becomes_typeinfo)):
             # There is an existing node, so this may be a redefinition.
             # If the new node points to the same node as the old one,
             # or if both old and new nodes are placeholders, we don't
