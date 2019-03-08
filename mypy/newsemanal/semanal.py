@@ -2028,7 +2028,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             special_form = True
         elif self.newtype_analyzer.process_newtype_declaration(s):
             special_form = True
-        elif self.enum_call_analyzer.process_enum_call(s, self.is_func_scope()):
+        elif self.analyze_enum_assign(s):
             special_form = True
         if special_form:
             self.record_special_form_lvalue(s)
@@ -2045,6 +2045,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_enum_assign(self, s: AssignmentStmt) -> bool:
+        """Check if s defines an Enum."""
+        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, EnumCallExpr):
+            # Already analyzed enum -- nothing to do here.
+            return True
+        return self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
 
     def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a namedtuple."""

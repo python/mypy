@@ -1760,3 +1760,9 @@ class C(metaclass=Meta):
 [case testNewAnalyzerFunctionError]
 def f(x: asdf) -> None:  # E: Name 'asdf' is not defined
     pass
+
+[case testNewAnalyzerEnumRedefinition]
+from enum import Enum
+
+A = Enum('A', ['x', 'y'])
+A = Enum('A', ['z', 't'])  # E: Name 'A' already defined on line 3
