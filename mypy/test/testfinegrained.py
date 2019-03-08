@@ -91,7 +91,6 @@ class FineGrainedSuite(DataSuite):
             messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)
-        print(messages)
 
         a = []
         if messages:
