@@ -1918,6 +1918,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
 
         if bare:
+            # These three are valid even if bare, for example
+            # A = Tuple is just equivalent to A = Tuple[Any, ...].
             valid_refs = {'typing.Any', 'typing.Tuple', 'typing.Callable'}
         else:
             valid_refs = type_constructors

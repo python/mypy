@@ -35,7 +35,7 @@ class EnumCallAnalyzer:
         # Yes, it's a valid Enum definition. Add it to the symbol table.
         names = self.api.current_symbol_table()
         existing = names.get(name)
-        if existing and isinstance(existing.node, TypeInfo) and existing.info.is_enum:
+        if existing and isinstance(existing.node, TypeInfo) and existing.node.is_enum:
             # Existing definition from previous semanal iteration, use it.
             # Some types might get updated.
             existing.node = enum_call
