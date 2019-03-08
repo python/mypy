@@ -2328,9 +2328,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> bool:
         """Check if assignment creates a type alias and set it up as needed.
 
-        For simple aliases like L = List we use a simpler mechanism, just copying TypeInfo.
-        For subscripted (including generic) aliases the resulting types are stored
-        in rvalue.analyzed.
+        Return True if it is a type alias (even if the target is not ready),
+        or False otherwise.
+        Note: the resulting types for subscripted (including generic) aliases
+        are also stored in rvalue.analyzed.
         """
         lvalue = s.lvalues[0]
         if len(s.lvalues) > 1 or not isinstance(lvalue, NameExpr):
