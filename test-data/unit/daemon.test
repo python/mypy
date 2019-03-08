@@ -183,7 +183,7 @@ Unknown function foo.bar
 $ dmypy suggest foo.var
 Object foo.var is not a function
 == Return code: 2
-$ dmypy suggest !foo.foo
+$ dmypy suggest ?foo.foo
 bar.py:3: (builtins.str)
 bar.py:4: (arg=builtins.str)
 bar.py:6: (*builtins.list[builtins.str])

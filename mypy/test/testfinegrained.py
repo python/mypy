@@ -275,7 +275,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[str]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: ([a-zA-Z0-9_./! ]+)$'.format(step_bit)
+        regex = '# suggest{}: ([a-zA-Z0-9_./? ]+)$'.format(step_bit)
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 

@@ -1,5 +1,5 @@
 [case testSuggestCallsites]
-# suggest: !foo.foo
+# suggest: ?foo.foo
 [file foo.py]
 def foo(arg):
     return 12
@@ -21,8 +21,8 @@ bar.py:6: (*builtins.list[builtins.str])
 bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 ==
 
-[case testStep2SuggestCallsites]
-# suggest2: !foo.foo
+[case testSuggestCallsitesStep2]
+# suggest2: ?foo.foo
 [file foo.py]
 def foo(arg):
     return 12
@@ -44,7 +44,7 @@ bar.py:4: (arg=builtins.str)
 bar.py:6: (*builtins.list[builtins.str])
 bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 
-[case testInferSuggest]
+[case testSuggestInferFunc]
 # flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
@@ -69,7 +69,7 @@ def untyped(x) -> None:
 def (arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =)
 ==
 
-[case testInferMethodSuggest1]
+[case testSuggestInferMethod1]
 # flags: --strict-optional
 # suggest: foo.Foo.foo
 [file foo.py]
@@ -96,7 +96,7 @@ def bar() -> None:
 def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> builtins.object
 ==
 
-[case testInferMethodSuggest2]
+[case testSuggestInferMethod2]
 # flags: --strict-optional
 # suggest: foo.Foo.foo
 [file foo.py]
@@ -122,3 +122,30 @@ def bar() -> None:
 [out]
 def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> Union[builtins.int, builtins.str]
 ==
+
+[case testSuggestInferMethodStep2]
+# flags: --strict-optional
+# suggest2: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def i(self, x: int) -> int: return x
+    def s(self, x: str) -> str: return x
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return self.i(arg)
+        else:
+            assert arg
+            return self.s(arg)
+[file bar.py]
+from typing import Any, Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    a: Union[str, int] = x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+==
+def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> Union[builtins.int, builtins.str]

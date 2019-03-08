@@ -525,8 +525,8 @@ class Server:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}
         engine = SuggestionEngine(self.fine_grained_manager)
         try:
-            # A (bad!) test hook for testing callsite finding directly
-            if function[0] == '!':
+            # A (hacky!) test hook for testing callsite finding directly
+            if function[0] == '?':
                 out = engine.suggest_callsites(function[1:])
             else:
                 out = engine.suggest(function)
