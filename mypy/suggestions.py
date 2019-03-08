@@ -283,19 +283,6 @@ class SuggestionEngine:
         finally:
             del overrides[function]
 
-    def try_type2(self, name: str, func: FuncDef, typ: Type) -> List[str]:
-        old_un = func.unanalyzed_type
-        old = func.type
-        func.unanalyzed_type = func.type = typ
-        try:
-            res = self.fgmanager.trigger(func.fullname())
-            if res:
-                print('\n'.join(res))
-            return res
-        finally:
-            func.unanalyzed_type = old_un
-            func.type = old
-
     def reload(self, state: State, check_errors: bool = False) -> List[str]:
         assert state.path is not None
         res = self.fgmanager.update([(state.id, state.path)], [])
