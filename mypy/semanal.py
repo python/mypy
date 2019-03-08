@@ -218,8 +218,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
 
-    func_type_overrides = None  # type: Dict[str, Type]
-
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
@@ -252,7 +250,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
-        self.func_type_overrides = {}
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make it a property
@@ -387,10 +384,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # First phase of analysis for function.
             if not defn._fullname:
                 defn._fullname = self.qualified_name(defn.name())
-            # Methods don't get handled in pass 1 so we handle overriding their
-            # type here.
-            if self.is_class_scope() and defn._fullname in self.func_type_overrides:
-                defn.unanalyzed_type = defn.type = self.func_type_overrides[defn._fullname]
             if defn.type:
                 assert isinstance(defn.type, CallableType)
                 self.update_function_type_variables(defn.type, defn)

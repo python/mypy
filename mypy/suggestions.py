@@ -8,13 +8,10 @@ all, and picking the one with the fewest errors that we think is the
 There are a bunch of TODOs here:
  * No way to actually use the suggestions reasonably yet.
  * Maybe want a way to surface the choices not selected??
- * We force a lot of full reloads of the module the inferred function
-   is in, when it would be better to only recheck the target itself.
  * We can generate an exponential number of type suggestions, and probably want
    a way to not always need to check them all.
  * Our heuristics for what types to try are primitive and not yet
    supported by real practice.
- * Doesn't support the new semantic analyzer
  * More!
 
 Other things:
@@ -22,7 +19,6 @@ Other things:
    more to understand more about what is going on?
  * Like something with tracking constraints/unification variables?
  * No understanding of type variables at *all*
-
 """
 
 from typing import (
@@ -136,7 +132,6 @@ class SuggestionEngine:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
-        self.overrides = self.manager.semantic_analyzer.func_type_overrides
         self.graph = fgmanager.graph
 
     def suggest(self, function: str) -> str:
@@ -148,8 +143,8 @@ class SuggestionEngine:
     def suggest_callsites(self, function: str) -> str:
         """Find a list of call sites of function."""
         with self.restore_after(function):
-            mod, _, _, node = self.find_node(function)
-            callsites, _ = self.get_callsites(mod, node)
+            _, _, _, node = self.find_node(function)
+            callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
             ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
@@ -220,7 +215,7 @@ class SuggestionEngine:
         options = self.get_args(is_method, base, defaults, callsites)
         return [base.copy_modified(arg_types=list(x)) for x in itertools.product(*options)]
 
-    def get_callsites(self, mod: str, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
+    def get_callsites(self, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
         """Find all call sites of a function."""
         new_type = self.get_trivial_type(func)
 
@@ -228,18 +223,18 @@ class SuggestionEngine:
 
         self.plugin._plugins.insert(0, collector_plugin)
         try:
-            errors = self.try_type(self.graph[mod], func.fullname(), new_type)
+            errors = self.try_type(func, new_type)
         finally:
             self.plugin._plugins.pop(0)
 
         return collector_plugin.mystery_hits, errors
 
-    def find_best(self, mod: str, function: str, guesses: List[CallableType]) -> CallableType:
+    def find_best(self, func: FuncDef, guesses: List[CallableType]) -> CallableType:
         """From a list of possible function types, find the best one.
 
         For best, we want the fewest errors, then the best "score" from score_callable.
         """
-        errors = {guess: self.try_type(self.graph[mod], function, guess) for guess in guesses}
+        errors = {guess: self.try_type(func, guess) for guess in guesses}
         best = min(guesses,
                    key=lambda s: (count_errors(errors[s]), score_callable(s)))
         return best
@@ -248,7 +243,7 @@ class SuggestionEngine:
         """Compute the list of suggestions for a function"""
         graph = self.graph
         mod, _, _, node = self.find_node(function)
-        callsites, orig_errors = self.get_callsites(mod, node)
+        callsites, orig_errors = self.get_callsites(node)
 
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
@@ -256,10 +251,10 @@ class SuggestionEngine:
                 self.get_trivial_type(node),
                 self.get_default_arg_types(graph[mod], node),
                 callsites)
-        best = self.find_best(mod, function, guesses)
+        best = self.find_best(node, guesses)
 
         # Now try to find the return type!
-        self.try_type(graph[mod], function, best)
+        self.try_type(node, best)
         returns = get_return_types(graph[mod].type_checker().type_map, node)
         with strict_optional_set(graph[mod].options.strict_optional):
             if returns:
@@ -268,7 +263,7 @@ class SuggestionEngine:
                 ret_types = [NoneTyp()]
 
         guesses = [best.copy_modified(ret_type=t) for t in ret_types]
-        best = self.find_best(mod, function, guesses)
+        best = self.find_best(node, guesses)
 
         return [str(best)]
 
@@ -309,17 +304,23 @@ class SuggestionEngine:
             return (modname, None, funcname,
                     self.find_function_node(graph[modname], funcname))
 
-    def try_type(self, state: State, function: str, typ: Type) -> List[str]:
-        """Recheck the codebase while assuming that function has type typ.
+    def try_type(self, func: FuncDef, typ: Type) -> List[str]:
+        """Recheck a function while assuming it has type typ.
 
         Return all error messages.
         """
-        overrides = self.manager.semantic_analyzer.func_type_overrides
-        overrides[function] = typ
+        old = func.unanalyzed_type
+        # During reprocessing, unanalyzed_type gets copied to type (by aststrip).
+        # We don't modify type because it isn't necessary and it
+        # would mess up the snapshotting.
+        func.unanalyzed_type = typ
         try:
-            return self.reload(state)
+            res = self.fgmanager.trigger(func.fullname())
+            # if res:
+            #     print('\n'.join(res))
+            return res
         finally:
-            del overrides[function]
+            func.unanalyzed_type = old
 
     def reload(self, state: State, check_errors: bool = False) -> List[str]:
         """Recheck the module given by state.
@@ -374,7 +375,10 @@ class SuggestionEngine:
         return node
 
     def builtin_type(self, s: str) -> Instance:
-        return self.manager.semantic_analyzer.builtin_type(s)
+        if self.manager.options.new_semantic_analyzer:
+            return self.manager.new_semantic_analyzer.builtin_type(s)
+        else:
+            return self.manager.semantic_analyzer.builtin_type(s)
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:

@@ -1,4 +1,4 @@
-[case testSuggestCallsites]
+[case testSuggestCallsites1]
 # suggest: ?foo.foo
 [file foo.py]
 def foo(arg):
@@ -48,7 +48,6 @@ bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 # flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
-def lol() -> int: ...
 def foo(arg, lol=None):
     if isinstance(arg, int):
         arg+1
@@ -149,3 +148,42 @@ def bar() -> None:
 [out]
 ==
 def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> Union[builtins.int, builtins.str]
+
+[case testSuggestNewSemanal]
+# flags: --strict-optional --new-semantic-analyzer
+# suggest: foo.Foo.foo
+# suggest: foo.foo
+[file foo.py]
+class Foo:
+    def __init__(self) -> None:
+        self.y = '10'
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return arg+1
+        else:
+            assert arg
+            return arg+self.y
+def foo(arg, lol=None):
+    if isinstance(arg, int):
+        arg+1
+    else:
+        assert arg
+        arg+'1'
+[file bar.py]
+from typing import Any
+from foo import Foo, foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    x.foo(None)
+def baz() -> None:
+    foo('abc')
+    foo(lol=10, arg=10)
+    foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> builtins.object
+def (arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =)
+==

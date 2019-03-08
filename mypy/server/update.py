@@ -270,6 +270,20 @@ class FineGrainedBuildManager:
         self.previous_messages = messages[:]
         return messages
 
+    def trigger(self, target: str) -> List[str]:
+        """Trigger a specific target explicitly.
+
+        This is intended for use by the suggestions engine.
+        """
+        self.manager.errors.reset()
+        changed_modules = propagate_changes_using_dependencies(
+            self.manager, self.graph, self.deps, set(), set(),
+            self.previous_targets_with_errors | {target}, [])
+        # Preserve state needed for the next update.
+        self.previous_targets_with_errors = self.manager.errors.targets()
+        self.previous_messages = self.manager.errors.new_messages()[:]
+        return self.update(changed_modules, [])
+
     def update_one(self,
                    changed_modules: List[Tuple[str, str]],
                    initial_set: Set[str],
