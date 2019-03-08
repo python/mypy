@@ -942,6 +942,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         if self.analyze_namedtuple_classdef(defn):
             return
+
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
 
