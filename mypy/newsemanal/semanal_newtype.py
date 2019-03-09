@@ -59,7 +59,7 @@ class NewTypeAnalyzer:
             if should_defer:
                 # Base type is not ready.
                 self.api.defer()
-            return True
+                return True
 
         # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
@@ -71,8 +71,10 @@ class NewTypeAnalyzer:
                 self.fail("NewType cannot be used with protocol classes", s)
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
-            message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(self.msg.format(old_type)), s)
+            if old_type is not None:
+                message = "Argument 2 to NewType(...) must be subclassable (got {})"
+                self.fail(message.format(self.msg.format(old_type)), s)
+            # Otherwise the error was already reported.
             any_typ = AnyType(TypeOfAny.from_error)
             object_typ = self.api.named_type('__builtins__.object')
             newtype_class_info = self.build_newtype_typeinfo(name, any_typ, object_typ)

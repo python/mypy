@@ -1824,3 +1824,17 @@ C = NewType('C', B)
 class B(D):
     pass
 [builtins fixtures/list.pyi]
+
+-- Copied from check-classes.test (tricky corner case).
+[case testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass]
+from typing import Any, Dict, List, NewType
+
+Foo = NewType('NotFoo', int)  # type: ignore
+Foos = NewType('Foos', List[Foo])
+
+x: C
+class C:
+    def frob(self, foos: Dict[Any, Foos]) -> None:
+        foo = foos.get(1)
+        dict(foo)
+[builtins fixtures/dict.pyi]
