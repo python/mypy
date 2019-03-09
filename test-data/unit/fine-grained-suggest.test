@@ -1,5 +1,5 @@
 [case testSuggestCallsites1]
-# suggest: ?foo.foo
+# suggest: --callsites foo.foo
 [file foo.py]
 def foo(arg):
     return 12
@@ -22,7 +22,7 @@ bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 ==
 
 [case testSuggestCallsitesStep2]
-# suggest2: ?foo.foo
+# suggest2: --callsites foo.foo
 [file foo.py]
 def foo(arg):
     return 12
@@ -65,7 +65,7 @@ def untyped(x) -> None:
     foo(x)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-def (arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =)
+(Union[str, int, None], Union[int, None]) -> None
 ==
 
 [case testSuggestInferMethod1]
@@ -92,12 +92,13 @@ def bar() -> None:
     x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> builtins.object
+(Union[str, int, None], Union[int, None]) -> object
 ==
 
 [case testSuggestInferMethod2]
 # flags: --strict-optional
 # suggest: foo.Foo.foo
+# suggest: --json foo.Foo.foo
 [file foo.py]
 class Foo:
     def i(self, x: int) -> int: return x
@@ -119,8 +120,10 @@ def bar() -> None:
     a: Union[str, int] = x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> Union[builtins.int, builtins.str]
+(Union[str, int, None], Union[int, None]) -> Union[int, str]
+[[{"func_name": "Foo.foo", "line": 5, "path": "tmp/foo.py", "samples": 0, "type_comments": ["(Union[str, int, None], Union[int, None]) -> Union[int, str]"]}]
 ==
+-- ]
 
 [case testSuggestInferMethodStep2]
 # flags: --strict-optional
@@ -147,7 +150,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> Union[builtins.int, builtins.str]
+(Union[str, int, None], Union[int, None]) -> Union[int, str]
 
 [case testSuggestNewSemanal]
 # flags: --strict-optional --new-semantic-analyzer
@@ -184,6 +187,6 @@ def baz() -> None:
     foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-def (self: Any, arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =) -> builtins.object
-def (arg: Union[builtins.str, builtins.int, None], lol: Union[builtins.int, None] =)
+(Union[str, int, None], Union[int, None]) -> object
+(Union[str, int, None], Union[int, None]) -> None
 ==

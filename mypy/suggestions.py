@@ -5,8 +5,9 @@ synthesizing a list of possible function types from that, trying them
 all, and picking the one with the fewest errors that we think is the
 "best".
 
+Can return JSON that pyannotate can use to apply the annotations to code.
+
 There are a bunch of TODOs here:
- * No way to actually use the suggestions reasonably yet.
  * Maybe want a way to surface the choices not selected??
  * We can generate an exponential number of type suggestions, and probably want
    a way to not always need to check them all.
@@ -47,6 +48,7 @@ from mypy.sametypes import is_same_type
 from contextlib import contextmanager
 
 import itertools
+import json
 
 Callsite = NamedTuple(
     'Callsite',
@@ -134,11 +136,15 @@ class SuggestionEngine:
         self.plugin = self.manager.plugin
         self.graph = fgmanager.graph
 
-    def suggest(self, function: str) -> str:
+    def suggest(self, function: str, give_json: bool) -> str:
         """Suggest an inferred type for function."""
         with self.restore_after(function):
-            suggestions = self.get_suggestions(function)
-        return "\n".join(suggestions)
+            suggestion = self.get_suggestion(function)
+
+        if give_json:
+            return self.json_suggestion(function, suggestion)
+        else:
+            return suggestion
 
     def suggest_callsites(self, function: str) -> str:
         """Find a list of call sites of function."""
@@ -239,15 +245,21 @@ class SuggestionEngine:
                    key=lambda s: (count_errors(errors[s]), score_callable(s)))
         return best
 
-    def get_suggestions(self, function: str) -> List[str]:
-        """Compute the list of suggestions for a function"""
+    def get_suggestion(self, function: str) -> str:
+        """Compute a suggestion for a function.
+
+        Return the type and whether the first argument should be ignored.
+        """
         graph = self.graph
         mod, _, _, node = self.find_node(function)
         callsites, orig_errors = self.get_callsites(node)
 
+        # FIXME: what about static and class methods?
+        is_method = bool(node.info)
+
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
-                bool(node.info),
+                is_method,
                 self.get_trivial_type(node),
                 self.get_default_arg_types(graph[mod], node),
                 callsites)
@@ -265,7 +277,7 @@ class SuggestionEngine:
         guesses = [best.copy_modified(ret_type=t) for t in ret_types]
         best = self.find_best(node, guesses)
 
-        return [str(best)]
+        return format_callable(is_method, best)
 
     def format_args(self,
                     arg_kinds: List[List[int]],
@@ -379,6 +391,28 @@ class SuggestionEngine:
             return self.manager.new_semantic_analyzer.builtin_type(s)
         else:
             return self.manager.semantic_analyzer.builtin_type(s)
+
+    def json_suggestion(self, function: str, suggestion: str) -> str:
+        """Produce a json blob for a suggestion suitable for application by pyannotate."""
+        mod, class_name, func_name, node = self.find_node(function)
+        if class_name:
+            func_name = class_name + '.' + func_name
+        obj = {
+            'type_comments': [suggestion],
+            'line': node.line,
+            'path': self.graph[mod].xpath,
+            'func_name': func_name,
+            'samples': 0
+        }
+        return json.dumps([obj], sort_keys=True)
+
+
+def format_callable(is_method: bool, typ: CallableType) -> str:
+    """Format a callable type in a way suitable as an annotation... kind of"""
+    # FIXME: callable types as arg/return are super busted, maybe other things too
+    start = int(is_method)
+    s = "({}) -> {}".format(", ".join([str(t) for t in typ.arg_types[start:]]), str(typ.ret_type))
+    return s.replace("builtins.", "")
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:

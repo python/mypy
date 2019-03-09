@@ -100,6 +100,10 @@ suggest_parser = p = subparsers.add_parser('suggest',
     help="Suggest a signature or show call sites for a specific function")
 p.add_argument('function', metavar='FUNCTION', type=str,
                help="Function specified as '[package.]module.[class.]function'")
+p.add_argument('--json', action='store_true',
+               help="Produce json that pyannotate can use to apply a suggestion")
+p.add_argument('--callsites', action='store_true',
+               help="Find callsites instead of suggesting a type")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -350,7 +354,8 @@ def do_suggest(args: argparse.Namespace) -> None:
     This just prints whatever the daemon reports as output.
     For now it may be closer to a list of call sites.
     """
-    response = request(args.status_file, 'suggest', function=args.function)
+    response = request(args.status_file, 'suggest', function=args.function,
+                       json=args.json, callsites=args.callsites)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

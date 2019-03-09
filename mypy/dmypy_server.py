@@ -514,7 +514,7 @@ class Server:
 
         return changed, removed
 
-    def cmd_suggest(self, function: str) -> Dict[str, object]:
+    def cmd_suggest(self, function: str, json: bool, callsites: bool) -> Dict[str, object]:
         """Suggest a signature for a function.
 
         (Currently suggesting signatures is beyond us; we just report
@@ -525,11 +525,10 @@ class Server:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}
         engine = SuggestionEngine(self.fine_grained_manager)
         try:
-            # A (hacky!) test hook for testing callsite finding directly
-            if function[0] == '?':
-                out = engine.suggest_callsites(function[1:])
+            if callsites:
+                out = engine.suggest_callsites(function)
             else:
-                out = engine.suggest(function)
+                out = engine.suggest(function, json)
         except SuggestionFailure as err:
             return {'error': str(err)}
         else:

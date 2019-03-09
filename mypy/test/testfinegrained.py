@@ -15,7 +15,7 @@ on specified sources.
 import os
 import re
 
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any, Tuple, cast
 
 from mypy import build
 from mypy.modulefinder import BuildSource
@@ -265,16 +265,18 @@ class FineGrainedSuite(DataSuite):
     def maybe_suggest(self, step: int, server: Server, src: str) -> List[str]:
         output = []  # type: List[str]
         targets = self.get_suggest(src, step)
-        for target in targets:
-            res = cast(Dict[str, Any], server.cmd_suggest(target.strip()))
+        for flag, target in targets:
+            json = flag.strip() == '--json'
+            callsites = flag.strip() == '--callsites'
+            res = cast(Dict[str, Any], server.cmd_suggest(target.strip(), json, callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
 
     def get_suggest(self, program_text: str,
-                    incremental_step: int) -> List[str]:
+                    incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: ([a-zA-Z0-9_./? ]+)$'.format(step_bit)
+        regex = '# suggest{}: (--[a-zA-Z0-9_./?^ ]+ )?([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
