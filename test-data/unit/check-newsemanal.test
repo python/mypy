@@ -1825,7 +1825,7 @@ class B(D):
     pass
 [builtins fixtures/list.pyi]
 
--- Copied from check-classes.test (tricky corner case).
+-- Copied from check-classes.test (tricky corner cases).
 [case testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass]
 from typing import Any, Dict, List, NewType
 
@@ -1838,3 +1838,21 @@ class C:
         foo = foos.get(1)
         dict(foo)
 [builtins fixtures/dict.pyi]
+
+[case testNewAnalyzerForwardTypeAliasInBase]
+from typing import List, Generic, TypeVar, NamedTuple
+T = TypeVar('T')
+
+class C(A, B):
+    pass
+class G(Generic[T]): pass
+A = G[C]
+class B(NamedTuple):
+    x: int
+
+y: C
+reveal_type(y.x)  # E: Revealed type is 'builtins.int'
+reveal_type(y[0])  # E: Revealed type is 'builtins.int'
+x: A
+reveal_type(x)  # E: Revealed type is '__main__.G[Tuple[builtins.int, fallback=__main__.C]]'
+[builtins fixtures/list.pyi]

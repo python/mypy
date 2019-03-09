@@ -2418,6 +2418,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if (isinstance(existing.node, PlaceholderNode) or
                     isinstance(existing.node, TypeAlias) and existing.node.target != res):
                 self.progress = True
+                # We need to defer so that this change can get propagated to base classes.
+                self.defer()
             existing.node = alias_node
         else:
             self.add_symbol(lvalue.name, alias_node, s)
