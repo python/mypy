@@ -39,24 +39,61 @@ from mypy.errors import Errors
 from mypy.options import Options
 
 try:
-    from typed_ast import ast3
-    from typed_ast.ast3 import (
-        AST,
-        Call,
-        FunctionType,
-        Name,
-        Attribute,
-        Ellipsis as ast3_Ellipsis,
-        Starred,
-        NameConstant,
-        Expression as ast3_Expression,
-        Str,
-        Bytes,
-        Index,
-        Num,
-        UnaryOp,
-        USub,
-    )
+    # Check if we can use the stdlib ast module instead of typed_ast.
+    if sys.version_info >= (3, 8):
+        assert (sys.version_info > (3, 8, 0, 'alpha', 2)
+                or sys.version.startswith('3.8.0a2+')
+                ), "Python 3.8.0a1/a2 are not supported"
+        import ast as ast3
+        from ast import (
+            AST,
+            Call,
+            FunctionType,
+            Name,
+            Attribute,
+            Ellipsis as ast3_Ellipsis,
+            Starred,
+            NameConstant,
+            Expression as ast3_Expression,
+            Str,
+            Bytes,
+            Index,
+            Num,
+            UnaryOp,
+            USub,
+        )
+        def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
+                       feature_version: int = sys.version_info[1]) -> ast3.Module:
+            return ast3.parse(source, filename, mode,
+                              type_comments=True,  # This works the magic
+                              feature_version=feature_version)
+        NamedExpr = ast3.NamedExpr
+        Constant = ast3.Constant
+    else:
+        from typed_ast import ast3
+        from typed_ast.ast3 import (
+            AST,
+            Call,
+            FunctionType,
+            Name,
+            Attribute,
+            Ellipsis as ast3_Ellipsis,
+            Starred,
+            NameConstant,
+            Expression as ast3_Expression,
+            Str,
+            Bytes,
+            Index,
+            Num,
+            UnaryOp,
+            USub,
+        )
+        def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
+                       feature_version: int = sys.version_info[1]) -> ast3.AST:
+            return ast3.parse(source, filename, mode, feature_version=feature_version)
+        # These doesn't exist before 3.8
+        NamedExpr = Any
+        Constant = Any
 except ImportError:
     if sys.version_info.minor > 2:
         try:
@@ -122,7 +159,7 @@ def parse(source: Union[str, bytes],
         else:
             assert options.python_version[0] >= 3
             feature_version = options.python_version[1]
-        ast = ast3.parse(source, fnam, 'exec', feature_version=feature_version)
+        ast = ast3_parse(source, fnam, 'exec', feature_version=feature_version)
 
         tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
@@ -146,7 +183,7 @@ def parse_type_comment(type_comment: str,
                        assume_str_is_unicode: bool = True,
                        ) -> Optional[Type]:
     try:
-        typ = ast3.parse(type_comment, '<type_comment>', 'eval')
+        typ = ast3_parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
             errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
@@ -397,7 +434,7 @@ class ASTConverter:
             return_type = None
         elif n.type_comment is not None:
             try:
-                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                func_type_ast = ast3_parse(n.type_comment, '<func_type>', 'func_type')
                 assert isinstance(func_type_ast, FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
@@ -616,6 +653,10 @@ class ASTConverter:
                                    self.visit(n.target),
                                    self.visit(n.value))
         return self.set_line(s, n)
+
+    def visit_NamedExpr(self, n: NamedExpr) -> None:
+        self.fail("assignment expressions are not yet supported", n.lineno, n.col_offset)
+        return None
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
@@ -926,6 +967,30 @@ class ASTConverter:
                      cast('List[Optional[str]]', [None] * len(args)) + keyword_names)
         return self.set_line(e, n)
 
+    # Constant(object value) -- a constant, in Python 3.8.
+    def visit_Constant(self, n: Constant) -> Any:
+        val = n.value
+        e = None  # type: Any
+        if val is None:
+            e = NameExpr(str(val))
+        elif isinstance(val, str):
+            e = StrExpr(n.s)
+        elif isinstance(val, bytes):
+            e = BytesExpr(bytes_to_human_readable_repr(n.s))
+        elif isinstance(val, bool):  # Must check before int!
+            e = NameExpr(str(val))
+        elif isinstance(val, int):
+            e = IntExpr(val)
+        elif isinstance(val, float):
+            e = FloatExpr(val)
+        elif isinstance(val, complex):
+            e = ComplexExpr(val)
+        elif val is Ellipsis:
+            e = EllipsisExpr()
+        else:
+            raise RuntimeError('num not implemented for ' + str(type(val)))
+        return self.set_line(e, n)
+
     # Num(object n) -- a number as a PyObject.
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         # The n field has the type complex, but complex isn't *really*
@@ -1204,6 +1269,25 @@ class TypeConverter:
             return RawExpressionType(n.value, 'builtins.bool', line=self.line)
         else:
             return UnboundType(str(n.value), line=self.line)
+
+    def visit_Constant(self, n: Constant) -> Type:
+        val = n.value
+        if val is None:
+            # None is a type.
+            return UnboundType(str(val), line=self.line)
+        if isinstance(val, str):
+            # Parse forward reference.
+            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
+        if val is Ellipsis:
+            # '...' is valid in some types.
+            return EllipsisType(line=self.line)
+        if isinstance(val, bool):
+            # Special case for True/False.
+            return RawExpressionType(val, 'builtins.bool', line=self.line)
+        # Everything else is invalid.
+        return self.invalid_type(n)
+
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
