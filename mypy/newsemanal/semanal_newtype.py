@@ -6,7 +6,8 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 from typing import Tuple, Optional
 
 from mypy.types import (
-    Type, Instance, CallableType, NoneTyp, TupleType, AnyType, PlaceholderType
+    Type, Instance, CallableType, NoneTyp, TupleType, AnyType, PlaceholderType,
+    TypeOfAny
 )
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
@@ -72,7 +73,10 @@ class NewTypeAnalyzer:
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
             self.fail(message.format(self.msg.format(old_type)), s)
-            return True
+            any_typ = AnyType(TypeOfAny.from_error)
+            object_typ = self.api.named_type('__builtins__.object')
+            newtype_class_info = self.build_newtype_typeinfo(name, any_typ, object_typ)
+            newtype_class_info.fallback_to_any = True
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
                                context=s)

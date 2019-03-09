@@ -15,7 +15,6 @@ new_semanal_blacklist = [
     'check-incremental.test',
     'check-literal.test',
     'check-modules.test',
-    'check-newtype.test',
     'check-overloading.test',
     'check-protocols.test',
     'check-python2.test',
