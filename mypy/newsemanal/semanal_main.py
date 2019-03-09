@@ -34,7 +34,9 @@ from mypy.state import strict_optional_set
 from mypy.newsemanal.semanal import (
     NewSemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
 )
-from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
+from mypy.newsemanal.semanal_classprop import (
+    calculate_class_abstract_status, calculate_class_vars, check_protocol_status
+)
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
@@ -310,10 +312,12 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
     for module in scc:
         tree = graph[module].tree
         assert tree
+        errors.scope.enter_file(module)
         # TODO: calculate properties also for classes nested in functions.
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 calculate_class_abstract_status(node.node, tree.is_stub, errors)
+                check_protocol_status(node.node, errors)
                 calculate_class_vars(node.node)
 
 
