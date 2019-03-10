@@ -403,16 +403,12 @@ class ASTConverter:
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
-        f = self.do_func_def(n)
-        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-        return f
+        return self.do_func_def(n)
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
-        f = self.do_func_def(n, is_coroutine=True)
-        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-        return f
+        return self.do_func_def(n, is_coroutine=True)
 
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
@@ -507,15 +503,25 @@ class ASTConverter:
             func_type.line = lineno
 
         if n.decorator_list:
+            if sys.version_info < (3, 8):
+                # Before 3.8, [typed_]ast the line number points to the first decorator.
+                # In 3.8, it points to the 'def' line, where we want it.
+                lineno += len(n.decorator_list)
+
             var = Var(func_def.name())
             var.is_ready = False
-            var.set_line(n.decorator_list[0].lineno)
+            var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno + len(n.decorator_list))
-            func_def.body.set_line(func_def.get_line())
-            return Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            func_def.set_line(lineno, n.col_offset)
+            func_def.body.set_line(lineno)  # TODO: Why?
+
+            deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            deco.set_line(n.decorator_list[0].lineno)
+            return deco
         else:
+            # FuncDef overrides set_line -- can't use self.set_line
+            func_def.set_line(lineno, n.col_offset)
             return func_def
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
