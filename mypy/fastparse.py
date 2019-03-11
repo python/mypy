@@ -1300,6 +1300,8 @@ class TypeConverter:
         if isinstance(val, bool):
             # Special case for True/False.
             return RawExpressionType(val, 'builtins.bool', line=self.line)
+        if isinstance(val, (int, float, complex)):
+            return self.numeric_type(val, n)
         # Everything else is invalid.
         return self.invalid_type(n)
 
@@ -1317,11 +1319,13 @@ class TypeConverter:
 
     # Num(number n)
     def visit_Num(self, n: Num) -> Type:
-        # The n field has the type complex, but complex isn't *really*
+        return self.numeric_type(n.n, n)
+
+    def numeric_type(self, value: object, n: Node) -> Type:
+        # The node's field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
-        value = n.n  # type: object
         if isinstance(value, int):
             numeric_value = value  # type: Optional[int]
             type_name = 'builtins.int'
