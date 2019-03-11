@@ -1292,8 +1292,12 @@ class TypeConverter:
             return UnboundType(str(val), line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
-                                     assume_str_is_unicode=self.assume_str_is_unicode)
+            if (hasattr(n, 'kind') and 'u' in n.kind) or self.assume_str_is_unicode:
+                return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+            else:
+                return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
