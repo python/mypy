@@ -1073,7 +1073,8 @@ class ASTConverter:
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: NameConstant) -> NameExpr:
-        return NameExpr(str(n.value))
+        e = NameExpr(str(n.value))
+        return self.set_line(e, n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> EllipsisExpr:
