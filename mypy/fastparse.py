@@ -611,7 +611,15 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        self.set_line(cdef, n)
+        if n.decorator_list and sys.version_info >= (3, 8):
+            # Before 3.8, n.lineno points to the first decorator; in
+            # 3.8, it points to the 'class' statement.  We always make
+            # it point to the first decorator.  (The node structure
+            # here is different than for decorated functions.)
+            cdef.line = n.decorator_list[0].lineno
+            cdef.column = n.col_offset
+        else:
+            self.set_line(cdef, n)
         self.class_nesting -= 1
         return cdef
 
