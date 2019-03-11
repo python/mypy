@@ -38,6 +38,11 @@ jobs:
     env:
     - TOXENV=type
     - EXTRA_ARGS=
+  - name: "type check our own code with python 3.8-dev"
+    python: 3.8-dev
+    env:
+    - TOXENV=type
+    - EXTRA_ARGS=
   - name: "check code style with flake8"
     python: 3.7
     env:
