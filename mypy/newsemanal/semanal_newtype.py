@@ -75,9 +75,9 @@ class NewTypeAnalyzer:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
                 self.fail(message.format(self.msg.format(old_type)), s)
             # Otherwise the error was already reported.
-            any_typ = AnyType(TypeOfAny.from_error)
-            object_typ = self.api.named_type('__builtins__.object')
-            newtype_class_info = self.build_newtype_typeinfo(name, any_typ, object_typ)
+            old_type = AnyType(TypeOfAny.from_error)
+            object_type = self.api.named_type('__builtins__.object')
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type)
             newtype_class_info.fallback_to_any = True
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
