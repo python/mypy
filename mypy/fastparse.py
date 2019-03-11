@@ -63,7 +63,7 @@ try:
             USub,
         )
         def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
-                       feature_version: int = sys.version_info[1]) -> ast3.Module:
+                       feature_version: int = sys.version_info[1]) -> AST:
             return ast3.parse(source, filename, mode,
                               type_comments=True,  # This works the magic
                               feature_version=feature_version)
@@ -89,7 +89,7 @@ try:
             USub,
         )
         def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
-                       feature_version: int = sys.version_info[1]) -> ast3.AST:
+                       feature_version: int = sys.version_info[1]) -> AST:
             return ast3.parse(source, filename, mode, feature_version=feature_version)
         # These doesn't exist before 3.8
         NamedExpr = Any
@@ -1328,7 +1328,7 @@ class TypeConverter:
     def visit_Num(self, n: Num) -> Type:
         return self.numeric_type(n.n, n)
 
-    def numeric_type(self, value: object, n: Node) -> Type:
+    def numeric_type(self, value: object, n: AST) -> Type:
         # The node's field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
