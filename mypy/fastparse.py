@@ -1302,6 +1302,9 @@ class TypeConverter:
             return RawExpressionType(val, 'builtins.bool', line=self.line)
         if isinstance(val, (int, float, complex)):
             return self.numeric_type(val, n)
+        if isinstance(val, bytes):
+            contents = bytes_to_human_readable_repr(val)
+            return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
         # Everything else is invalid.
         return self.invalid_type(n)
 
