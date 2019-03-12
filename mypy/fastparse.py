@@ -1285,6 +1285,7 @@ class TypeConverter:
         else:
             return UnboundType(str(n.value), line=self.line)
 
+    # Only for 3.8 and newer
     def visit_Constant(self, n: Constant) -> Type:
         val = n.value
         if val is None:
@@ -1292,7 +1293,7 @@ class TypeConverter:
             return UnboundType(str(val), line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            if (hasattr(n, 'kind') and 'u' in n.kind) or self.assume_str_is_unicode:
+            if (n.kind and 'u' in n.kind) or self.assume_str_is_unicode:
                 return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
                                          assume_str_is_unicode=self.assume_str_is_unicode)
             else:
@@ -1324,10 +1325,6 @@ class TypeConverter:
                 return typ
         return self.invalid_type(n)
 
-    # Num(number n)
-    def visit_Num(self, n: Num) -> Type:
-        return self.numeric_type(n.n, n)
-
     def numeric_type(self, value: object, n: AST) -> Type:
         # The node's field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
@@ -1349,24 +1346,31 @@ class TypeConverter:
             column=getattr(n, 'col_offset', -1),
         )
 
-    # Str(string s)
-    def visit_Str(self, n: Str) -> Type:
-        # Note: we transform these fallback types into the correct types in
-        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
-        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
-        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
-        # translate 'builtins.bytes' in the method below into 'builtins.str'.
-        if 'u' in n.kind or self.assume_str_is_unicode:
-            return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
-                                     assume_str_is_unicode=self.assume_str_is_unicode)
-        else:
-            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
-                                     assume_str_is_unicode=self.assume_str_is_unicode)
+    if sys.version_info < (3, 8):
+        # Using typed_ast
 
-    # Bytes(bytes s)
-    def visit_Bytes(self, n: Bytes) -> Type:
-        contents = bytes_to_human_readable_repr(n.s)
-        return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+        # Num(number n)
+        def visit_Num(self, n: Num) -> Type:
+            return self.numeric_type(n.n, n)
+
+        # Str(string s)
+        def visit_Str(self, n: Str) -> Type:
+            # Note: we transform these fallback types into the correct types in
+            # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
+            # If we're analyzing Python 3, that function will translate 'builtins.unicode'
+            # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
+            # translate 'builtins.bytes' in the method below into 'builtins.str'.
+            if 'u' in n.kind or self.assume_str_is_unicode:
+                return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+            else:
+                return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+
+        # Bytes(bytes s)
+        def visit_Bytes(self, n: Bytes) -> Type:
+            contents = bytes_to_human_readable_repr(n.s)
+            return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
