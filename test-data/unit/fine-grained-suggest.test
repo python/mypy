@@ -98,7 +98,6 @@ def bar() -> None:
 [case testSuggestInferMethod2]
 # flags: --strict-optional
 # suggest: foo.Foo.foo
-# suggest: --json foo.Foo.foo
 [file foo.py]
 class Foo:
     def i(self, x: int) -> int: return x
@@ -121,9 +120,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (Union[str, int, None], Union[int, None]) -> Union[int, str]
-[[{"func_name": "Foo.foo", "line": 5, "path": "tmp/foo.py", "samples": 0, "type_comments": ["(Union[str, int, None], Union[int, None]) -> Union[int, str]"]}]
 ==
--- ]
 
 [case testSuggestInferMethodStep2]
 # flags: --strict-optional
