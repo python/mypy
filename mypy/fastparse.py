@@ -42,7 +42,8 @@ try:
     # Check if we can use the stdlib ast module instead of typed_ast.
     if sys.version_info >= (3, 8):
         import ast as ast3
-        assert 'kind' in ast3.Constant._fields, "This 3.8.0 alpha is too old"
+        assert 'kind' in ast3.Constant._fields, \
+               "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
         from ast import (
             AST,
             Call,
