@@ -41,10 +41,8 @@ from mypy.options import Options
 try:
     # Check if we can use the stdlib ast module instead of typed_ast.
     if sys.version_info >= (3, 8):
-        assert (sys.version_info > (3, 8, 0, 'alpha', 2)
-                or sys.version.startswith('3.8.0a2+')
-                ), "Python 3.8.0a1/a2 are not supported"
         import ast as ast3
+        assert 'kind' in ast3.Constant._fields, "This 3.8.0 alpha is too old"
         from ast import (
             AST,
             Call,
