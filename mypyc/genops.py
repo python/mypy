@@ -330,7 +330,7 @@ class Mapper:
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
             # being boxed for NamedTuple.
-            if typ.fallback.type.fullname() == 'builtins.tuple':
+            if typ.partial_fallback.type.fullname() == 'builtins.tuple':
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
                 return tuple_rprimitive
