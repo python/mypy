@@ -183,6 +183,15 @@ Unknown function foo.bar
 $ dmypy suggest foo.var
 Object foo.var is not a function
 == Return code: 2
+$ dmypy suggest foo.Foo.var
+Unknown class foo.Foo
+== Return code: 2
+$ dmypy suggest foo.Bar.baz
+Unknown method foo.Bar.baz
+== Return code: 2
+$ dmypy suggest foo.foo.baz
+Object foo.foo is not a class
+== Return code: 2
 $ dmypy suggest --callsites foo.foo
 bar.py:3: (builtins.str)
 bar.py:4: (arg=builtins.str)
@@ -191,6 +200,8 @@ bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 [file foo.py]
 def foo(arg):
     return 12
+class Bar:
+    def bar(self): pass
 var = 0
 [file bar.py]
 from foo import foo

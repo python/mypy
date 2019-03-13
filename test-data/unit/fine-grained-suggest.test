@@ -189,6 +189,24 @@ def bar() -> None:
 ==
 (Union[str, int, None], Union[int, None]) -> Union[int, str]
 
+[case testSuggestInferNestedMethod]
+# flags: --strict-optional
+# suggest: foo.Foo.Bar.baz
+[file foo.py]
+class Foo:
+    class Bar:
+        def baz(self, lol):
+            return lol
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo.Bar()
+    x.baz('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
 [case testSuggestNewSemanal]
 # flags: --strict-optional --new-semantic-analyzer
 # suggest: foo.Foo.foo

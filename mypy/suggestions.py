@@ -150,7 +150,7 @@ class SuggestionEngine:
     def suggest_callsites(self, function: str) -> str:
         """Find a list of call sites of function."""
         with self.restore_after(function):
-            _, _, _, node = self.find_node(function)
+            _, _, node = self.find_node(function)
             callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
@@ -265,7 +265,7 @@ class SuggestionEngine:
         Return the type and whether the first argument should be ignored.
         """
         graph = self.graph
-        mod, _, _, node = self.find_node(function)
+        mod, _, node = self.find_node(function)
         callsites, orig_errors = self.get_callsites(node)
 
         # FIXME: what about static and class methods?
@@ -312,23 +312,44 @@ class SuggestionEngine:
             args.append(arg)
         return "(%s)" % (", ".join(args))
 
-    def find_node(self, key: str) -> Tuple[str, Optional[str], str, FuncDef]:
-        """From a target name, return module/class/function names and the func def."""
+    def find_node(self, key: str) -> Tuple[str, str, FuncDef]:
+        """From a target name, return module/target names and the func def."""
         # TODO: Also return OverloadedFuncDef -- currently these are ignored.
         graph = self.fgmanager.graph
         target = split_target(graph, key)
         if not target:
-            raise SuggestionFailure("Cannot find %s" % (key,))
+            raise SuggestionFailure("Cannot find module for %s" % (key,))
         modname, tail = target
 
-        if '.' in tail:
-            classname, funcname = tail.split('.')
-            return (modname, classname, funcname,
-                    self.find_method_node(graph[modname], classname, funcname))
-        else:
-            funcname = tail
-            return (modname, None, funcname,
-                    self.find_function_node(graph[modname], funcname))
+        tree = self.ensure_loaded(graph[modname])
+
+        # N.B. This is reimplemented from update's lookup_target
+        # basically just to produce better error messages.
+
+        names = tree.names  # type: SymbolTable
+
+        # Look through any classes
+        components = tail.split('.')
+        for i, component in enumerate(components[:-1]):
+            if component not in names:
+                raise SuggestionFailure("Unknown class %s.%s" %
+                                        (modname, '.'.join(components[:i + 1])))
+            node = names[component].node  # type: Optional[SymbolNode]
+            if not isinstance(node, TypeInfo):
+                raise SuggestionFailure("Object %s.%s is not a class" %
+                                        (modname, '.'.join(components[:i + 1])))
+            names = node.names
+
+        # Look for the actual function/method
+        funcname = components[-1]
+        if funcname not in names:
+            raise SuggestionFailure("Unknown %s %s" %
+                                    ("method" if len(components) > 1 else "function", key))
+        node = names[funcname].node
+        if not isinstance(node, FuncDef):
+            raise SuggestionFailure("Object %s is not a function" % key)
+
+        return (modname, tail, node)
 
     def try_type(self, func: FuncDef, typ: Type) -> List[str]:
         """Recheck a function while assuming it has type typ.
@@ -368,38 +389,6 @@ class SuggestionEngine:
         assert state.tree is not None
         return state.tree
 
-    def find_method_node(self, state: State,
-                         classname: str, funcname: str) -> FuncDef:
-        """Look up a method node by class and function name."""
-        modname = state.id
-        tree = self.ensure_loaded(state)
-        moduledict = tree.names  # type: SymbolTable
-        if classname not in moduledict:
-            raise SuggestionFailure("Unknown class %s.%s" % (modname, classname))
-        node = moduledict[classname].node  # type: Optional[SymbolNode]
-        if not isinstance(node, TypeInfo):
-            raise SuggestionFailure("Object %s.%s is not a class" % (modname, classname))
-        classdict = node.names  # type: SymbolTable
-        if funcname not in classdict:
-            raise SuggestionFailure("Unknown method %s.%s.%s" % (modname, classname, funcname))
-        node = classdict[funcname].node
-        if not isinstance(node, FuncDef):
-            raise SuggestionFailure("Object %s.%s.%s is not a function" %
-                                    (modname, classname, funcname))
-        return node
-
-    def find_function_node(self, state: State, funcname: str) -> FuncDef:
-        """Look up a function node by function name."""
-        modname = state.id
-        tree = self.ensure_loaded(state)
-        moduledict = tree.names  # type: SymbolTable
-        if funcname not in moduledict:
-            raise SuggestionFailure("Unknown function %s.%s" % (modname, funcname))
-        node = moduledict[funcname].node
-        if not isinstance(node, FuncDef):
-            raise SuggestionFailure("Object %s.%s is not a function" % (modname, funcname))
-        return node
-
     def builtin_type(self, s: str) -> Instance:
         if self.manager.options.new_semantic_analyzer:
             return self.manager.new_semantic_analyzer.builtin_type(s)
@@ -408,9 +397,7 @@ class SuggestionEngine:
 
     def json_suggestion(self, function: str, suggestion: str) -> str:
         """Produce a json blob for a suggestion suitable for application by pyannotate."""
-        mod, class_name, func_name, node = self.find_node(function)
-        if class_name:
-            func_name = class_name + '.' + func_name
+        mod, func_name, node = self.find_node(function)
         obj = {
             'type_comments': [suggestion],
             'line': node.line,
