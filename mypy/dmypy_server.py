@@ -515,12 +515,7 @@ class Server:
         return changed, removed
 
     def cmd_suggest(self, function: str, json: bool, callsites: bool) -> Dict[str, object]:
-        """Suggest a signature for a function.
-
-        (Currently suggesting signatures is beyond us; we just report
-        call sites and the arguments used for each.  The dmypy client
-        just prints whatever we give it as output.)
-        """
+        """Suggest a signature for a function."""
         if not self.fine_grained_manager:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}
         engine = SuggestionEngine(self.fine_grained_manager)

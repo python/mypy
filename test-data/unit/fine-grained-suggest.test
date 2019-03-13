@@ -122,6 +122,46 @@ def bar() -> None:
 (Union[str, int, None], Union[int, None]) -> Union[int, str]
 ==
 
+[case testSuggestInferMethod3]
+# flags: --strict-optional
+# suggest2: foo.Foo.foo
+[file foo.py]
+from typing import Optional
+class Foo:
+    def foo(self, lol = None):
+        pass
+
+    def lol(self) -> None:
+        self.foo('lol')
+[file bar.py]
+from typing import Any, Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+==
+(Union[str, None]) -> None
+
+[case testSuggestInferFunctionUnreachable]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+import sys
+def foo(lol):
+    if sys.platform == 'nothing':
+        return lol
+    else:
+        return lol + lol
+[file bar.py]
+from foo import foo
+foo('test')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
 [case testSuggestInferMethodStep2]
 # flags: --strict-optional
 # suggest2: foo.Foo.foo

@@ -975,6 +975,9 @@ def reprocess_nodes(manager: BuildManager,
         if graph[module_id].type_checker().check_second_pass():
             more = True
 
+    if manager.options.export_types:
+        manager.all_types.update(graph[module_id].type_map())
+
     new_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
     # Check if any attribute types were changed and need to be propagated further.
     changed = compare_symbol_table_snapshots(file_node.fullname(),

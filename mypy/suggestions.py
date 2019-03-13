@@ -102,7 +102,7 @@ class ReturnFinder(TraverserVisitor):
         self.return_types = []  # type: List[Type]
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if o.expr is not None:
+        if o.expr is not None and o.expr in self.typemap:
             self.return_types.append(self.typemap[o.expr])
 
 
@@ -139,7 +139,8 @@ class SuggestionEngine:
     def suggest(self, function: str, give_json: bool) -> str:
         """Suggest an inferred type for function."""
         with self.restore_after(function):
-            suggestion = self.get_suggestion(function)
+            with self.with_export_types():
+                suggestion = self.get_suggestion(function)
 
         if give_json:
             return self.json_suggestion(function, suggestion)
@@ -169,6 +170,19 @@ class SuggestionEngine:
             module = module_prefix(self.graph, target)
             if module:
                 self.reload(self.graph[module])
+
+    @contextmanager
+    def with_export_types(self) -> Iterator[None]:
+        """Context manager that enables the export_types flag in the body.
+
+        This causes type information to be exported into the manager's all_types variable.
+        """
+        old = self.manager.options.export_types
+        self.manager.options.export_types = True
+        try:
+            yield
+        finally:
+            self.manager.options.export_types = old
 
     def get_trivial_type(self, fdef: FuncDef) -> CallableType:
         """Generate a trivial callable type from a func def, with all Anys"""
@@ -209,7 +223,7 @@ class SuggestionEngine:
         return types
 
     def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
-        return [state.type_checker().type_map[arg.initializer] if arg.initializer else None
+        return [self.manager.all_types[arg.initializer] if arg.initializer else None
                 for arg in fdef.arguments]
 
     def get_guesses(self, is_method: bool, base: CallableType, defaults: List[Optional[Type]],
@@ -267,7 +281,7 @@ class SuggestionEngine:
 
         # Now try to find the return type!
         self.try_type(node, best)
-        returns = get_return_types(graph[mod].type_checker().type_map, node)
+        returns = get_return_types(self.manager.all_types, node)
         with strict_optional_set(graph[mod].options.strict_optional):
             if returns:
                 ret_types = generate_type_combinations(returns)
