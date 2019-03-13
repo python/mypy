@@ -1794,8 +1794,8 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        # We need to set quick_and_dirty when doing a fine grained
-        # cache load because we need to gracefully handle missing modules.
+        # We need to set allow_missing when doing a fine grained cache
+        # load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
