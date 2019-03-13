@@ -14,12 +14,6 @@ def f()
 [out]
 file:1: error: invalid syntax
 
-[case testMissingIndent]
-if x:
-1
-[out]
-file:2: error: invalid syntax
-
 [case testUnexpectedIndent]
 1
  2
@@ -49,12 +43,6 @@ file:1: error: invalid syntax
 
 [case testDoubleStar]
 **a
-[out]
-file:1: error: invalid syntax
-
-[case testInvalidSuperClass]
-class A(C[):
-  pass
 [out]
 file:1: error: invalid syntax
 
@@ -348,11 +336,6 @@ x[:,:
 [out]
 file:1: error: unexpected EOF while parsing
 
-[case testPython2OctalIntLiteralInPython3]
-0377
-[out]
-file:1: error: invalid token
-
 [case testInvalidEncoding]
 # foo
 # coding: uft-8
@@ -422,9 +405,3 @@ except KeyError, IndexError:
     pass
 [out]
 file:3: error: invalid syntax
-
-[case testLocalVarWithTypeOnNextLine]
-x = 0
-  # type: int
-[out]
-file:2: error: misplaced type annotation

@@ -86,44 +86,6 @@ MypyFile:1(
   ExpressionStmt:3(
     StrExpr(foobar)))
 
-[case testTripleQuotedStr]
-''''''
-'''foo'''
-'''foo\
-bar'''
-'''\nfoo
-bar'''
-'''fo''bar'''
-""""""
-"""foo"""
-"""foo\
-bar"""
-"""\nfoo
-bar"""
-"""fo""bar"""
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    StrExpr())
-  ExpressionStmt:2(
-    StrExpr(foo))
-  ExpressionStmt:3(
-    StrExpr(foobar))
-  ExpressionStmt:5(
-    StrExpr(\u000afoo\u000abar))
-  ExpressionStmt:6(
-    StrExpr(fo''bar))
-  ExpressionStmt:7(
-    StrExpr())
-  ExpressionStmt:8(
-    StrExpr(foo))
-  ExpressionStmt:9(
-    StrExpr(foobar))
-  ExpressionStmt:11(
-    StrExpr(\u000afoo\u000abar))
-  ExpressionStmt:12(
-    StrExpr(fo""bar)))
-
 [case testRawStr]
 r'x\n\''
 r"x\n\""
@@ -3267,19 +3229,6 @@ y ## type: ignore
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    NameExpr(y)))
-
-[case testInvalidIgnoreAnnotations]
-y # type: ignored
-y # type: IGNORE
-y # type : ignore
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    NameExpr(y))
-  ExpressionStmt:2(
-    NameExpr(y))
-  ExpressionStmt:3(
     NameExpr(y)))
 
 [case testSpaceInIgnoreAnnotations]
