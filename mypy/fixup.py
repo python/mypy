@@ -16,12 +16,12 @@ from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
 
 
-# N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
-# when fixing up a fine-grained incremental cache load (since there may
-# be cross-refs into deleted modules)
+# N.B: we do a allow_missing fixup when fixing up a fine-grained
+# incremental cache load (since there may be cross-refs into deleted
+# modules)
 def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
-                 quick_and_dirty: bool) -> None:
-    node_fixer = NodeFixer(modules, quick_and_dirty)
+                 allow_missing: bool) -> None:
+    node_fixer = NodeFixer(modules, allow_missing)
     node_fixer.visit_symbol_table(tree.names)
 
 
@@ -29,10 +29,10 @@ def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
 class NodeFixer(NodeVisitor[None]):
     current_info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, modules: Dict[str, MypyFile], quick_and_dirty: bool) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
-        self.quick_and_dirty = quick_and_dirty
-        self.type_fixer = TypeFixer(self.modules, quick_and_dirty)
+        self.allow_missing = allow_missing
+        self.type_fixer = TypeFixer(self.modules, allow_missing)
 
     # NOTE: This method isn't (yet) part of the NodeVisitor API.
     def visit_type_info(self, info: TypeInfo) -> None:
@@ -57,7 +57,7 @@ class NodeFixer(NodeVisitor[None]):
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
             if info._mro_refs:
-                info.mro = [lookup_qualified_typeinfo(self.modules, name, self.quick_and_dirty)
+                info.mro = [lookup_qualified_typeinfo(self.modules, name, self.allow_missing)
                             for name in info._mro_refs]
                 info._mro_refs = None
         finally:
@@ -74,14 +74,14 @@ class NodeFixer(NodeVisitor[None]):
                     value.node = self.modules[cross_ref]
                 else:
                     stnode = lookup_qualified_stnode(self.modules, cross_ref,
-                                                     self.quick_and_dirty)
+                                                     self.allow_missing)
                     if stnode is not None:
                         value.node = stnode.node
-                    elif not self.quick_and_dirty:
+                    elif not self.allow_missing:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
                     else:
-                        # We have a missing crossref in quick mode, need to put something
-                        value.node = stale_info(self.modules)
+                        # We have a missing crossref in allow missing mode, need to put something
+                        value.node = missing_info(self.modules)
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -137,9 +137,9 @@ class NodeFixer(NodeVisitor[None]):
 
 
 class TypeFixer(TypeVisitor[None]):
-    def __init__(self, modules: Dict[str, MypyFile], quick_and_dirty: bool) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
-        self.quick_and_dirty = quick_and_dirty
+        self.allow_missing = allow_missing
 
     def visit_instance(self, inst: Instance) -> None:
         # TODO: Combine Instances that are exactly the same?
@@ -147,7 +147,7 @@ class TypeFixer(TypeVisitor[None]):
         if type_ref is None:
             return  # We've already been here.
         inst.type_ref = None
-        inst.type = lookup_qualified_typeinfo(self.modules, type_ref, self.quick_and_dirty)
+        inst.type = lookup_qualified_typeinfo(self.modules, type_ref, self.allow_missing)
         # TODO: Is this needed or redundant?
         # Also fix up the bases, just in case.
         for base in inst.type.bases:
@@ -236,22 +236,22 @@ class TypeFixer(TypeVisitor[None]):
 
 
 def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
-                              quick_and_dirty: bool) -> TypeInfo:
-    node = lookup_qualified(modules, name, quick_and_dirty)
+                              allow_missing: bool) -> TypeInfo:
+    node = lookup_qualified(modules, name, allow_missing)
     if isinstance(node, TypeInfo):
         return node
     else:
-        # Looks like a missing TypeInfo in quick mode, put something there
-        assert quick_and_dirty, "Should never get here in normal mode," \
-                                " got {}:{} instead of TypeInfo".format(type(node).__name__,
-                                                                        node.fullname() if node
-                                                                        else '')
-        return stale_info(modules)
+        # Looks like a missing TypeInfo during an initial daemon load, put something there
+        assert allow_missing, "Should never get here in normal mode," \
+                              " got {}:{} instead of TypeInfo".format(type(node).__name__,
+                                                                      node.fullname() if node
+                                                                      else '')
+        return missing_info(modules)
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str,
-                     quick_and_dirty: bool) -> Optional[SymbolNode]:
-    stnode = lookup_qualified_stnode(modules, name, quick_and_dirty)
+                     allow_missing: bool) -> Optional[SymbolNode]:
+    stnode = lookup_qualified_stnode(modules, name, allow_missing)
     if stnode is None:
         return None
     else:
@@ -259,16 +259,16 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str,
 
 
 def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
-                            quick_and_dirty: bool) -> Optional[SymbolTableNode]:
-    return lookup_fully_qualified(name, modules, raise_on_missing=not quick_and_dirty)
+                            allow_missing: bool) -> Optional[SymbolTableNode]:
+    return lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
 
 
-def stale_info(modules: Dict[str, MypyFile]) -> TypeInfo:
-    suggestion = "<stale cache: consider running mypy without --quick>"
+def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
+    suggestion = "<missing info: *should* have gone away during fine-grained update>"
     dummy_def = ClassDef(suggestion, Block([]))
     dummy_def.fullname = suggestion
 
-    info = TypeInfo(SymbolTable(), dummy_def, "<stale>")
+    info = TypeInfo(SymbolTable(), dummy_def, "<missing>")
     obj_type = lookup_qualified(modules, 'builtins.object', False)
     assert isinstance(obj_type, TypeInfo)
     info.bases = [Instance(obj_type, [])]
