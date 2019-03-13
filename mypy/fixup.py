@@ -80,7 +80,7 @@ class NodeFixer(NodeVisitor[None]):
                     elif not self.allow_missing:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
                     else:
-                        # We have a missing crossref in quick mode, need to put something
+                        # We have a missing crossref in allow missing mode, need to put something
                         value.node = missing_info(self.modules)
             else:
                 if isinstance(value.node, TypeInfo):
