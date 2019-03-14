@@ -989,7 +989,7 @@ class ASTConverter:
         val = n.value
         e = None  # type: Any
         if val is None:
-            e = NameExpr(str(val))
+            e = NameExpr('None')
         elif isinstance(val, str):
             e = StrExpr(n.s)
         elif isinstance(val, bytes):
@@ -1005,7 +1005,7 @@ class ASTConverter:
         elif val is Ellipsis:
             e = EllipsisExpr()
         else:
-            raise RuntimeError('num not implemented for ' + str(type(val)))
+            raise RuntimeError('Constant not implemented for ' + str(type(val)))
         return self.set_line(e, n)
 
     # Num(object n) -- a number as a PyObject.
@@ -1293,7 +1293,7 @@ class TypeConverter:
         val = n.value
         if val is None:
             # None is a type.
-            return UnboundType(str(val), line=self.line)
+            return UnboundType('None', line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
             if (n.kind and 'u' in n.kind) or self.assume_str_is_unicode:
