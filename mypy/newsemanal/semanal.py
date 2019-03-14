@@ -328,56 +328,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
                 self.defer()
 
-    def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   patches: List[Tuple[int, Callable[[], None]]]) -> None:
-        """Run semantic analysis phase 2 over a file.
-
-        Add (priority, callback) pairs by mutating the 'patches' list argument. They
-        will be called after all semantic analysis phases but before type checking,
-        lowest priority values first.
-        """
-        self.recurse_into_functions = True
-        self.options = options
-        self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
-        self.cur_mod_node = file_node
-        self.cur_mod_id = file_node.fullname()
-        self.is_stub_file = fnam.lower().endswith('.pyi')
-        self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
-        self.globals = file_node.names
-        self.patches = patches
-        self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
-        self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
-        self.enum_call_analyzer = EnumCallAnalyzer(options, self)
-        self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
-
-        with state.strict_optional_set(options.strict_optional):
-            if 'builtins' in self.modules:
-                self.globals['__builtins__'] = SymbolTableNode(GDEF,
-                                                               self.modules['builtins'])
-
-            defs = file_node.defs
-            self.scope.enter_file(file_node.fullname())
-            for d in defs:
-                self.accept(d)
-            self.scope.leave()
-
-            if self.cur_mod_id == 'builtins':
-                remove_imported_names_from_symtable(self.globals, 'builtins')
-                for alias_name in type_aliases:
-                    self.globals.pop(alias_name.split('.')[-1], None)
-
-            if '__all__' in self.globals:
-                for name, g in self.globals.items():
-                    if name not in self.all_exports:
-                        g.module_public = False
-
-            self.export_map[self.cur_mod_id] = self.all_exports
-            self.all_exports = []
-            del self.options
-            del self.patches
-            del self.cur_mod_node
-            del self.globals
-
     def prepare_file(self, file_node: MypyFile) -> None:
         """Prepare a freshly parsed file for semantic analysis."""
         if 'builtins' in self.modules:
