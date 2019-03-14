@@ -66,8 +66,8 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
 
 def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
     """Check that all classes in MRO of a protocol are protocols"""
-    for type in info.bases:
-        if info.is_protocol:
+    if info.is_protocol:
+        for type in info.bases:
             if not isinstance(type, Instance) or not type.type.is_protocol:
                 if type.type.fullname() != 'builtins.object':
                     def report(message: str, severity: str) -> None:
