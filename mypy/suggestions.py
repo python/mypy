@@ -410,10 +410,17 @@ class SuggestionEngine:
 
 def format_callable(is_method: bool, typ: CallableType) -> str:
     """Format a callable type in a way suitable as an annotation... kind of"""
-    # FIXME: callable types as arg/return are super busted, maybe other things too
     start = int(is_method)
-    s = "({}) -> {}".format(", ".join([str(t) for t in typ.arg_types[start:]]), str(typ.ret_type))
+    s = "({}) -> {}".format(
+        ", ".join([format_type(t) for t in typ.arg_types[start:]]),
+        format_type(typ.ret_type))
     return s.replace("builtins.", "")
+
+
+def format_type(typ: Type) -> str:
+    # FIXME: callable types are super busted, maybe other things too
+    s = str(typ)
+    return s.replace("*", "")  # Get rid of "inferred" indicators.
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:

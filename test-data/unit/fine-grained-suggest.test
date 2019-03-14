@@ -44,7 +44,7 @@ bar.py:4: (arg=builtins.str)
 bar.py:6: (*builtins.list[builtins.str])
 bar.py:8: (**builtins.dict[builtins.str, builtins.str])
 
-[case testSuggestInferFunc]
+[case testSuggestInferFunc1]
 # flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
@@ -55,7 +55,6 @@ def foo(arg, lol=None):
         assert arg
         arg+'1'
 [file bar.py]
-from typing import Any
 from foo import foo
 def bar() -> None:
     foo('abc')
@@ -66,6 +65,26 @@ def untyped(x) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (Union[str, int, None], Union[int, None]) -> None
+==
+
+[case testSuggestInferFunc2]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def thing() -> str:
+    return ''
+def bar() -> None:
+    # We stick it in a list so that the argument type is marked as "inferred",
+    # which we want to make sure doesn't show up.
+    x = ['hello']
+    foo(x[0])
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
 ==
 
 [case testSuggestInferMethod1]
@@ -83,7 +102,6 @@ class Foo:
             assert arg
             return arg+self.y
 [file bar.py]
-from typing import Any
 from foo import Foo
 def bar() -> None:
     x = Foo()
@@ -110,7 +128,7 @@ class Foo:
             assert arg
             return self.s(arg)
 [file bar.py]
-from typing import Any, Union
+from typing import Union
 from foo import Foo
 def bar() -> None:
     x = Foo()
@@ -126,7 +144,6 @@ def bar() -> None:
 # flags: --strict-optional
 # suggest2: foo.Foo.foo
 [file foo.py]
-from typing import Optional
 class Foo:
     def foo(self, lol = None):
         pass
@@ -134,7 +151,6 @@ class Foo:
     def lol(self) -> None:
         self.foo('lol')
 [file bar.py]
-from typing import Any, Union
 from foo import Foo
 def bar() -> None:
     x = Foo()
@@ -177,7 +193,7 @@ class Foo:
             assert arg
             return self.s(arg)
 [file bar.py]
-from typing import Any, Union
+from typing import Union
 from foo import Foo
 def bar() -> None:
     x = Foo()
@@ -229,7 +245,6 @@ def foo(arg, lol=None):
         assert arg
         arg+'1'
 [file bar.py]
-from typing import Any
 from foo import Foo, foo
 def bar() -> None:
     x = Foo()
