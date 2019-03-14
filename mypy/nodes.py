@@ -828,7 +828,7 @@ class Var(SymbolNode):
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
-    def accept(self, visitor: StatementVisitor[T]) -> T:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
