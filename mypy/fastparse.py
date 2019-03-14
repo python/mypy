@@ -61,11 +61,13 @@ try:
             UnaryOp,
             USub,
         )
+
         def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
                        feature_version: int = sys.version_info[1]) -> AST:
             return ast3.parse(source, filename, mode,
                               type_comments=True,  # This works the magic
                               feature_version=feature_version)
+
         NamedExpr = ast3.NamedExpr
         Constant = ast3.Constant
     else:
@@ -87,10 +89,12 @@ try:
             UnaryOp,
             USub,
         )
+
         def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
                        feature_version: int = sys.version_info[1]) -> AST:
             return ast3.parse(source, filename, mode, feature_version=feature_version)
-        # These doesn't exist before 3.8
+
+        # These don't exist before 3.8
         NamedExpr = Any
         Constant = Any
 except ImportError:
@@ -1173,7 +1177,7 @@ class TypeConverter:
     def visit(self, node: ast3.expr) -> Type: ...
 
     @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[Type]: ...
+    def visit(self, node: Optional[AST]) -> Optional[Type]: ...  # noqa
 
     def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
@@ -1311,7 +1315,6 @@ class TypeConverter:
             return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
         # Everything else is invalid.
         return self.invalid_type(n)
-
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
