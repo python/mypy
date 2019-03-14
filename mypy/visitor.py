@@ -227,10 +227,6 @@ class StatementVisitor(Generic[T]):
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
         pass
 
-    @abstractmethod
-    def visit_var(self, o: 'mypy.nodes.Var') -> T:
-        pass
-
     # Module structure
 
     @abstractmethod
@@ -320,6 +316,12 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
         pass
 
+    # TODO: We have a visit_var method, but no visit_typeinfo or any
+    # other non-Statement SymbolNode (accepting those will raise a
+    # runtime error). Maybe this should be resolved in some direction.
+    def visit_var(self, o: 'mypy.nodes.Var') -> T:
+        pass
+
     # Module structure
 
     def visit_import(self, o: 'mypy.nodes.Import') -> T:
@@ -350,9 +352,6 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
-        pass
-
-    def visit_var(self, o: 'mypy.nodes.Var') -> T:
         pass
 
     def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
