@@ -140,12 +140,18 @@ T = TypeVar('T')
 [case testUnreachableCodeMarkedAsAny]
 # cmd: mypy --html-report report n.py
 
+[file any.py]
+from typing import Any
+def any_f(x: Any) -> None:
+    pass
+
 [file n.py]
+from any import any_f
 def bar(x):
     # type: (str) -> None
-    print(x)
+    any_f(x)
     assert False
-    print(x)
+    any_f(x)
 
 [file report/mypy-html.css]
 [file report/index.html]
@@ -165,13 +171,15 @@ def bar(x):
 <span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
 <span id="L4" class="lineno"><a class="lineno" href="#L4">4</a></span>
 <span id="L5" class="lineno"><a class="lineno" href="#L5">5</a></span>
+<span id="L6" class="lineno"><a class="lineno" href="#L6">6</a></span>
 </pre></td>
-<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">def bar(x):</span>
+<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">from any import any_f</span>
+<span class="line-precise" title="No Anys on this line!">def bar(x):</span>
 <span class="line-empty" title="No Anys on this line!">    # type: (str) -&gt; None</span>
 <span class="line-precise" title="Any Types on this line:
-Explicit (x1)">    print(x)</span>
+Explicit (x1)">    any_f(x)</span>
 <span class="line-empty" title="No Anys on this line!">    assert False</span>
-<span class="line-unanalyzed" title="No Anys on this line!">    print(x)</span>
+<span class="line-unanalyzed" title="No Anys on this line!">    any_f(x)</span>
 </pre></td>
 </tr></tbody>
 </table>
@@ -287,8 +295,11 @@ Total      0      16    100.00%
 from typing import Any, List
 from nonexistent import C  # type: ignore
 
+def any_f(x: Any) -> None:  # Explicit
+    pass
+
 def a(x) -> None:  # Unannotated
-    print(x)
+    any_f(x)
 
 x: Any = 2  # Explicit
 y: C = None  # Unimported
@@ -304,9 +315,9 @@ z = g.does_not_exist()  # type: ignore  # Error
 [outfile report/types-of-anys.txt]
  Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
 -----------------------------------------------------------------------------------------------------------------
-    n             2          3            2                  1       3              0                         0
+    n             2          4            2                  1       3              0                         0
 -----------------------------------------------------------------------------------------------------------------
-Total             2          3            2                  1       3              0                         0
+Total             2          4            2                  1       3              0                         0
 
 [case testAnyExpressionsReportUnqualifiedError]
 # cmd: mypy --any-exprs-report report n.py
