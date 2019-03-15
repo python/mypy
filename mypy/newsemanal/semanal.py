@@ -855,12 +855,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         tag = self.track_incomplete_refs()
 
-        bases = defn.base_type_exprs
-
-        self.update_metaclass(defn)
         # Restore base classes after previous iteration (things like Generic[T] might be removed).
         defn.base_type_exprs.extend(defn.removed_base_type_exprs)
         defn.removed_base_type_exprs.clear()
+
+        self.update_metaclass(defn)
+
+        bases = defn.base_type_exprs
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
         self.analyze_class_keywords(defn)
@@ -1370,6 +1371,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         and len(base_expr.args) >= 1
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
                     with_meta_expr = base_expr.args[0]
+                    defn.removed_base_type_exprs.append(defn.base_type_exprs[0])
                     defn.base_type_exprs = base_expr.args[1:]
 
         # Look for @six.add_metaclass(M)
