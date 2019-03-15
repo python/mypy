@@ -43,10 +43,15 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
                                msg: str) -> None:
     """Assert that two string arrays are equal.
 
+    We consider "can't" and "cannot" equivalent, by replacing the
+    former with the latter before comparing.
+
     Display any differences in a human-readable form.
     """
 
     actual = clean_up(actual)
+    actual = [line.replace("can't", "cannot") for line in actual]
+    expected = [line.replace("can't", "cannot") for line in expected]
 
     if actual != expected:
         num_skip_start = num_skipped_prefix_lines(expected, actual)

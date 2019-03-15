@@ -178,7 +178,7 @@ def bar(x):
 <span class="line-empty" title="No Anys on this line!">    # type: (str) -&gt; None</span>
 <span class="line-precise" title="Any Types on this line:
 Explicit (x1)">    any_f(x)</span>
-<span class="line-empty" title="No Anys on this line!">    assert False</span>
+<span class="line-precise" title="No Anys on this line!">    assert False</span>
 <span class="line-unanalyzed" title="No Anys on this line!">    any_f(x)</span>
 </pre></td>
 </tr></tbody>

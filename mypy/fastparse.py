@@ -39,24 +39,64 @@ from mypy.errors import Errors
 from mypy.options import Options
 
 try:
-    from typed_ast import ast3
-    from typed_ast.ast3 import (
-        AST,
-        Call,
-        FunctionType,
-        Name,
-        Attribute,
-        Ellipsis as ast3_Ellipsis,
-        Starred,
-        NameConstant,
-        Expression as ast3_Expression,
-        Str,
-        Bytes,
-        Index,
-        Num,
-        UnaryOp,
-        USub,
-    )
+    # Check if we can use the stdlib ast module instead of typed_ast.
+    if sys.version_info >= (3, 8):
+        import ast as ast3
+        assert 'kind' in ast3.Constant._fields, \
+               "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+        from ast import (
+            AST,
+            Call,
+            FunctionType,
+            Name,
+            Attribute,
+            Ellipsis as ast3_Ellipsis,
+            Starred,
+            NameConstant,
+            Expression as ast3_Expression,
+            Str,
+            Bytes,
+            Index,
+            Num,
+            UnaryOp,
+            USub,
+        )
+
+        def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
+                       feature_version: int = sys.version_info[1]) -> AST:
+            return ast3.parse(source, filename, mode,
+                              type_comments=True,  # This works the magic
+                              feature_version=feature_version)
+
+        NamedExpr = ast3.NamedExpr
+        Constant = ast3.Constant
+    else:
+        from typed_ast import ast3
+        from typed_ast.ast3 import (
+            AST,
+            Call,
+            FunctionType,
+            Name,
+            Attribute,
+            Ellipsis as ast3_Ellipsis,
+            Starred,
+            NameConstant,
+            Expression as ast3_Expression,
+            Str,
+            Bytes,
+            Index,
+            Num,
+            UnaryOp,
+            USub,
+        )
+
+        def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
+                       feature_version: int = sys.version_info[1]) -> AST:
+            return ast3.parse(source, filename, mode, feature_version=feature_version)
+
+        # These don't exist before 3.8
+        NamedExpr = Any
+        Constant = Any
 except ImportError:
     if sys.version_info.minor > 2:
         try:
@@ -122,7 +162,7 @@ def parse(source: Union[str, bytes],
         else:
             assert options.python_version[0] >= 3
             feature_version = options.python_version[1]
-        ast = ast3.parse(source, fnam, 'exec', feature_version=feature_version)
+        ast = ast3_parse(source, fnam, 'exec', feature_version=feature_version)
 
         tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
@@ -146,7 +186,7 @@ def parse_type_comment(type_comment: str,
                        assume_str_is_unicode: bool = True,
                        ) -> Optional[Type]:
     try:
-        typ = ast3.parse(type_comment, '<type_comment>', 'eval')
+        typ = ast3_parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
             errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
@@ -366,16 +406,12 @@ class ASTConverter:
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
-        f = self.do_func_def(n)
-        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-        return f
+        return self.do_func_def(n)
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
-        f = self.do_func_def(n, is_coroutine=True)
-        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-        return f
+        return self.do_func_def(n, is_coroutine=True)
 
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
@@ -397,7 +433,7 @@ class ASTConverter:
             return_type = None
         elif n.type_comment is not None:
             try:
-                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                func_type_ast = ast3_parse(n.type_comment, '<func_type>', 'func_type')
                 assert isinstance(func_type_ast, FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
@@ -470,15 +506,25 @@ class ASTConverter:
             func_type.line = lineno
 
         if n.decorator_list:
+            if sys.version_info < (3, 8):
+                # Before 3.8, [typed_]ast the line number points to the first decorator.
+                # In 3.8, it points to the 'def' line, where we want it.
+                lineno += len(n.decorator_list)
+
             var = Var(func_def.name())
             var.is_ready = False
-            var.set_line(n.decorator_list[0].lineno)
+            var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno + len(n.decorator_list))
-            func_def.body.set_line(func_def.get_line())
-            return Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            func_def.set_line(lineno, n.col_offset)
+            func_def.body.set_line(lineno)  # TODO: Why?
+
+            deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            deco.set_line(n.decorator_list[0].lineno)
+            return deco
         else:
+            # FuncDef overrides set_line -- can't use self.set_line
+            func_def.set_line(lineno, n.col_offset)
             return func_def
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
@@ -568,7 +614,15 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        self.set_line(cdef, n)
+        if n.decorator_list and sys.version_info >= (3, 8):
+            # Before 3.8, n.lineno points to the first decorator; in
+            # 3.8, it points to the 'class' statement.  We always make
+            # it point to the first decorator.  (The node structure
+            # here is different than for decorated functions.)
+            cdef.line = n.decorator_list[0].lineno
+            cdef.column = n.col_offset
+        else:
+            self.set_line(cdef, n)
         self.class_nesting -= 1
         return cdef
 
@@ -616,6 +670,10 @@ class ASTConverter:
                                    self.visit(n.target),
                                    self.visit(n.value))
         return self.set_line(s, n)
+
+    def visit_NamedExpr(self, n: NamedExpr) -> None:
+        self.fail("assignment expressions are not yet supported", n.lineno, n.col_offset)
+        return None
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
@@ -926,6 +984,30 @@ class ASTConverter:
                      cast('List[Optional[str]]', [None] * len(args)) + keyword_names)
         return self.set_line(e, n)
 
+    # Constant(object value) -- a constant, in Python 3.8.
+    def visit_Constant(self, n: Constant) -> Any:
+        val = n.value
+        e = None  # type: Any
+        if val is None:
+            e = NameExpr('None')
+        elif isinstance(val, str):
+            e = StrExpr(n.s)
+        elif isinstance(val, bytes):
+            e = BytesExpr(bytes_to_human_readable_repr(n.s))
+        elif isinstance(val, bool):  # Must check before int!
+            e = NameExpr(str(val))
+        elif isinstance(val, int):
+            e = IntExpr(val)
+        elif isinstance(val, float):
+            e = FloatExpr(val)
+        elif isinstance(val, complex):
+            e = ComplexExpr(val)
+        elif val is Ellipsis:
+            e = EllipsisExpr()
+        else:
+            raise RuntimeError('Constant not implemented for ' + str(type(val)))
+        return self.set_line(e, n)
+
     # Num(object n) -- a number as a PyObject.
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         # The n field has the type complex, but complex isn't *really*
@@ -994,7 +1076,8 @@ class ASTConverter:
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: NameConstant) -> NameExpr:
-        return NameExpr(str(n.value))
+        e = NameExpr(str(n.value))
+        return self.set_line(e, n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> EllipsisExpr:
@@ -1094,7 +1177,7 @@ class TypeConverter:
     def visit(self, node: ast3.expr) -> Type: ...
 
     @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[Type]: ...
+    def visit(self, node: Optional[AST]) -> Optional[Type]: ...  # noqa
 
     def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
@@ -1205,6 +1288,34 @@ class TypeConverter:
         else:
             return UnboundType(str(n.value), line=self.line)
 
+    # Only for 3.8 and newer
+    def visit_Constant(self, n: Constant) -> Type:
+        val = n.value
+        if val is None:
+            # None is a type.
+            return UnboundType('None', line=self.line)
+        if isinstance(val, str):
+            # Parse forward reference.
+            if (n.kind and 'u' in n.kind) or self.assume_str_is_unicode:
+                return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+            else:
+                return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+        if val is Ellipsis:
+            # '...' is valid in some types.
+            return EllipsisType(line=self.line)
+        if isinstance(val, bool):
+            # Special case for True/False.
+            return RawExpressionType(val, 'builtins.bool', line=self.line)
+        if isinstance(val, (int, float, complex)):
+            return self.numeric_type(val, n)
+        if isinstance(val, bytes):
+            contents = bytes_to_human_readable_repr(val)
+            return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+        # Everything else is invalid.
+        return self.invalid_type(n)
+
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
         # We support specifically Literal[-4] and nothing else.
@@ -1216,13 +1327,11 @@ class TypeConverter:
                 return typ
         return self.invalid_type(n)
 
-    # Num(number n)
-    def visit_Num(self, n: Num) -> Type:
-        # The n field has the type complex, but complex isn't *really*
+    def numeric_type(self, value: object, n: AST) -> Type:
+        # The node's field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
-        value = n.n  # type: object
         if isinstance(value, int):
             numeric_value = value  # type: Optional[int]
             type_name = 'builtins.int'
@@ -1239,24 +1348,31 @@ class TypeConverter:
             column=getattr(n, 'col_offset', -1),
         )
 
-    # Str(string s)
-    def visit_Str(self, n: Str) -> Type:
-        # Note: we transform these fallback types into the correct types in
-        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
-        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
-        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
-        # translate 'builtins.bytes' in the method below into 'builtins.str'.
-        if 'u' in n.kind or self.assume_str_is_unicode:
-            return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
-                                     assume_str_is_unicode=self.assume_str_is_unicode)
-        else:
-            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
-                                     assume_str_is_unicode=self.assume_str_is_unicode)
+    if sys.version_info < (3, 8):
+        # Using typed_ast
 
-    # Bytes(bytes s)
-    def visit_Bytes(self, n: Bytes) -> Type:
-        contents = bytes_to_human_readable_repr(n.s)
-        return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+        # Num(number n)
+        def visit_Num(self, n: Num) -> Type:
+            return self.numeric_type(n.n, n)
+
+        # Str(string s)
+        def visit_Str(self, n: Str) -> Type:
+            # Note: we transform these fallback types into the correct types in
+            # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
+            # If we're analyzing Python 3, that function will translate 'builtins.unicode'
+            # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
+            # translate 'builtins.bytes' in the method below into 'builtins.str'.
+            if 'u' in n.kind or self.assume_str_is_unicode:
+                return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+            else:
+                return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+
+        # Bytes(bytes s)
+        def visit_Bytes(self, n: Bytes) -> Type:
+            contents = bytes_to_human_readable_repr(n.s)
+            return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
