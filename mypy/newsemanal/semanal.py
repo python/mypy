@@ -2384,7 +2384,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
-            if self.found_incomplete_ref(tag):
+            if self.found_incomplete_ref(tag) or isinstance(res, PlaceholderType):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.add_symbol(lvalue.name, PlaceholderNode(self.qualified_name(lvalue.name),
