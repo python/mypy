@@ -22,8 +22,8 @@ class EnumCallAnalyzer:
     def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> bool:
         """Check if s defines an Enum; if yes, store the definition in symbol table.
 
-        Return True if this looks like a type variable declaration (but maybe
-        with errors), otherwise return False.
+        Return True if this looks like an Enum definition (but maybe with errors),
+        otherwise return False.
         """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return False

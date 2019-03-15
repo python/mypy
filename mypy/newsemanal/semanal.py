@@ -1900,7 +1900,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
         """Does this expression refer to a type?
 
-        Thus includes:
+        This includes:
           * Special forms, like Any or Union
           * Classes (except subscripted enums)
           * Other type aliases
@@ -1946,13 +1946,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     return True
         return False
 
-    def should_wait(self, rv: Expression) -> bool:
-        """Can we already classify this r.h.s. of an assignment or should wait?
+    def should_wait_rhs(self, rv: Expression) -> bool:
+        """Can we already classify this r.h.s. of an assignment or should we wait?
 
         This returns True if we don't have enough information to decide whether
         an assignment is just a normal variable definition or a special form.
-        Always return False if this is a final iteration, this will typically cause
-        the assignment to be classified as variable plus emmit an error.
+        Always return False if this is a final iteration. This will typically cause
+        the lvalue to be classified as a variable plus emit an error.
         """
         if self.final_iteration:
             # No chance, nothing has changed.
@@ -1968,17 +1968,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
                     return True
         elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-            return self.should_wait(rv.base)
+            return self.should_wait_rhs(rv.base)
         elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
             # This is only relevant for builtin SCC where things like 'TypeVar'
             # may be not ready.
-            return self.should_wait(rv.callee)
+            return self.should_wait_rhs(rv.callee)
         return False
 
     def can_be_type_alias(self, rv: Expression) -> bool:
         """Is this a valid r.h.s. for an alias definition?
 
-        Note: this function should be only called for expressions where self.should_wait()
+        Note: this function should be only called for expressions where self.should_wait_rhs()
         returns False.
         """
         if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
@@ -2004,7 +2004,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
-        if self.found_incomplete_ref(tag) or self.should_wait(s.rvalue):
+        if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
@@ -2757,8 +2757,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         if existing and isinstance(existing.node, TypeVarExpr):
             # Existing definition from previous semanal iteration, use it.
-            # TODO: this may be confused with a duplicate TypeVar definition.
-            # Fix this and add corresponding tests.
+            # TODO: This may be confused with a duplicate TypeVar definition.
+            #       Fix this and add corresponding tests.
             type_var = existing.node
             type_var.values = values
             type_var.upper_bound = upper_bound
@@ -4207,8 +4207,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
                      or isinstance(symbol.node, PlaceholderNode) and
-                     # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True,
-                     # this can happend for type aliases and NewTypes.
+                     # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
+                     # This can happen for type aliases and NewTypes.
                      not symbol.node.becomes_typeinfo)):
             # There is an existing node, so this may be a redefinition.
             # If the new node points to the same node as the old one,

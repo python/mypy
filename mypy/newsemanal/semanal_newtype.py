@@ -33,8 +33,9 @@ class NewTypeAnalyzer:
     def process_newtype_declaration(self, s: AssignmentStmt) -> bool:
         """Check if s declares a NewType; if yes, store it in symbol table.
 
-        Return True if it is a valid declaration, but maybe defer until base type
-        is known.
+        Return True if it's a NewType declaration. The current target may be
+        deferred as a side effect if the base type is not ready, even if
+        the return value is True.
 
         The logic in this function mostly copies the logic for visit_class_def()
         with a single (non-Generic) base.
@@ -42,15 +43,14 @@ class NewTypeAnalyzer:
         name, call = self.analyze_newtype_declaration(s)
         if name is None or call is None:
             return False
-        # OK, now we now this is a NewType, but the base type may be not ready yet,
+        # OK, now we know this is a NewType. But the base type may be not ready yet,
         # add placeholder as we do for ClassDef.
 
         fullname = self.api.qualified_name(name)
         if (not call.analyzed or
                 isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info):
-            # Start from labeling this as future class with becomes_typeinfo=True,
-            # as we do for normal ClassDefs.
-            self.api.add_symbol(name, PlaceholderNode(fullname, s, True), s)
+            # Start from labeling this as a future class, as we do for normal ClassDefs.
+            self.api.add_symbol(name, PlaceholderNode(fullname, s, becomes_typeinfo=True), s)
 
         old_type, should_defer = self.check_newtype_args(name, call, s)
         if not call.analyzed:
@@ -114,7 +114,7 @@ class NewTypeAnalyzer:
 
             names = self.api.current_symbol_table()
             existing = names.get(name)
-            # Give a better error message that generic "Name already defined",
+            # Give a better error message than generic "Name already defined",
             # like the old semantic analyzer does.
             if (existing and
                     not isinstance(existing.node, PlaceholderNode) and not s.rvalue.analyzed):
