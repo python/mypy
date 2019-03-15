@@ -339,13 +339,24 @@ def main() -> None:
             x  # E: Name 'x' is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
-gx = gy  # E: Cannot determine type of 'gy'
+gx = gy  # E: Cannot resolve name "gy" (possible cyclic definition)
 gy = gx
 def main() -> None:
     class C:
         def meth(self) -> None:
-            lx = ly  # E: Cannot determine type of 'ly'
+            lx = ly  # E: Cannot resolve name "ly" (possible cyclic definition)
             ly = lx
+
+[case testNewAnalyzerCyclicDefinitionCrossModule]
+import b
+[file a.py]
+import b
+x = b.x  # E: Cannot determine type of 'x'
+[file b.py]
+import a
+x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
+         # E: Module has no attribute "x"
+[builtins fixtures/module.pyi]
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
 from typing import overload, Union
@@ -1241,7 +1252,7 @@ class C:
     y: int
 [builtins fixtures/list.pyi]
 
-[case testNewAnalyzerAliasToNotReadyTwoDeferrals-skip]
+[case testNewAnalyzerAliasToNotReadyTwoDeferrals]
 from typing import List
 
 x: B
@@ -1249,10 +1260,11 @@ B = List[C]
 A = C
 class C(List[A]): pass
 
-reveal_type(x)
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C]'
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
 [builtins fixtures/list.pyi]
 
-[case testNewAnalyzerAliasToNotReadyDirectBase-skip]
+[case testNewAnalyzerAliasToNotReadyDirectBase]
 from typing import List
 
 x: B
@@ -1260,7 +1272,39 @@ B = List[C]
 class C(B): pass
 
 reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.C]'
-reveal_type(x[0][0])  # E: Revealed type is '__main__.C'
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyTwoDeferralsFunction]
+import a
+[file a.py]
+from typing import List
+from b import D
+
+def f(x: B) -> List[B]: ...
+B = List[C]
+A = C
+class C(List[A]): pass
+[file b.py]
+from a import f
+class D: ...
+reveal_type(f)  # E: Revealed type is 'def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerAliasToNotReadyDirectBaseFunction]
+import a
+[file a.py]
+from typing import List
+from b import D
+
+def f(x: B) -> List[B]: ...
+B = List[C]
+class C(B): pass
+
+[file b.py]
+from a import f
+class D: ...
+reveal_type(f)  # E: Revealed type is 'def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]'
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyMixed]
@@ -1716,3 +1760,99 @@ class C(metaclass=Meta):
 [case testNewAnalyzerFunctionError]
 def f(x: asdf) -> None:  # E: Name 'asdf' is not defined
     pass
+
+[case testNewAnalyzerEnumRedefinition]
+from enum import Enum
+
+A = Enum('A', ['x', 'y'])
+A = Enum('A', ['z', 't'])  # E: Name 'A' already defined on line 3
+
+[case testNewAnalyzerNewTypeRedefinition]
+from typing import NewType
+
+A = NewType('A', int)
+A = NewType('A', str)  # E: Cannot redefine 'A' as a NewType \
+                       # E: Name 'A' already defined on line 3
+
+[case testNewAnalyzerNewTypeForwardClass]
+from typing import NewType, List
+
+x: C
+reveal_type(x[0])  # E: Revealed type is '__main__.C*'
+
+C = NewType('C', B)
+
+class B(List[C]):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerNewTypeForwardClassAlias]
+from typing import NewType, List
+
+x: D
+reveal_type(x[0])  # E: Revealed type is '__main__.C*'
+
+D = C
+C = NewType('C', B)
+
+class B(List[D]):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerNewTypeForwardClassAliasReversed]
+from typing import NewType, List
+
+x: D
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+
+D = C
+C = NewType('C', List[B])
+
+class B(List[C]):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerNewTypeForwardClassAliasDirect]
+from typing import NewType, List
+
+x: D
+reveal_type(x[0][0])  # E: Revealed type is '__main__.C*'
+
+D = List[C]
+C = NewType('C', B)
+
+class B(D):
+    pass
+[builtins fixtures/list.pyi]
+
+-- Copied from check-classes.test (tricky corner cases).
+[case testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass]
+from typing import Any, Dict, List, NewType
+
+Foo = NewType('NotFoo', int)  # type: ignore
+Foos = NewType('Foos', List[Foo])
+
+x: C
+class C:
+    def frob(self, foos: Dict[Any, Foos]) -> None:
+        foo = foos.get(1)
+        dict(foo)
+[builtins fixtures/dict.pyi]
+
+[case testNewAnalyzerForwardTypeAliasInBase]
+from typing import List, Generic, TypeVar, NamedTuple
+T = TypeVar('T')
+
+class C(A, B):
+    pass
+class G(Generic[T]): pass
+A = G[C]
+class B(NamedTuple):
+    x: int
+
+y: C
+reveal_type(y.x)  # E: Revealed type is 'builtins.int'
+reveal_type(y[0])  # E: Revealed type is 'builtins.int'
+x: A
+reveal_type(x)  # E: Revealed type is '__main__.G[Tuple[builtins.int, fallback=__main__.C]]'
+[builtins fixtures/list.pyi]

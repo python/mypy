@@ -5334,8 +5334,8 @@ main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: Invalid type "a.T"
 main:6: error: Free type variable expected in Generic[...]
 main:7: error: Invalid type "a.T"
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 main:10: error: Invalid type "a.T"
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
 # flags: --new-semantic-analyzer
@@ -5363,8 +5363,8 @@ main:4: error: "C" expects no type arguments, but 1 given
 main:4: error: Invalid type "T"
 main:6: error: Free type variable expected in Generic[...]
 main:7: error: Invalid type "T"
-main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 main:10: error: Invalid type "T"
+main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
 import a

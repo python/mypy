@@ -497,12 +497,12 @@ from mod import declarative_base, Column, Instr, non_declarative_base
 Bad1 = non_declarative_base()
 Bad2 = Bad3 = declarative_base()
 
-class C1(Bad1): ...  # E: Invalid base class \
-                     # E: Invalid type "__main__.Bad1"
-class C2(Bad2): ...  # E: Invalid base class \
-                     # E: Invalid type "__main__.Bad2"
-class C3(Bad3): ...  # E: Invalid base class \
-                     # E: Invalid type "__main__.Bad3"
+class C1(Bad1): ...  # E: Invalid type "__main__.Bad1" \
+                     # E: Invalid base class
+class C2(Bad2): ...  # E: Invalid type "__main__.Bad2" \
+                     # E: Invalid base class
+class C3(Bad3): ...  # E: Invalid type "__main__.Bad3" \
+                     # E: Invalid base class
 [file mod.py]
 from typing import Generic, TypeVar
 def declarative_base(): ...
