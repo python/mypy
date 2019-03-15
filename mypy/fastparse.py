@@ -1348,31 +1348,32 @@ class TypeConverter:
             column=getattr(n, 'col_offset', -1),
         )
 
-    if sys.version_info < (3, 8):
-        # Using typed_ast
+    # These next three methods are only used if we are on python <
+    # 3.8, using typed_ast.  They are defined unconditionally because
+    # mypyc can't handle conditional method definitions.
 
-        # Num(number n)
-        def visit_Num(self, n: Num) -> Type:
-            return self.numeric_type(n.n, n)
+    # Num(number n)
+    def visit_Num(self, n: Num) -> Type:
+        return self.numeric_type(n.n, n)
 
-        # Str(string s)
-        def visit_Str(self, n: Str) -> Type:
-            # Note: we transform these fallback types into the correct types in
-            # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
-            # If we're analyzing Python 3, that function will translate 'builtins.unicode'
-            # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
-            # translate 'builtins.bytes' in the method below into 'builtins.str'.
-            if 'u' in n.kind or self.assume_str_is_unicode:
-                return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
-                                         assume_str_is_unicode=self.assume_str_is_unicode)
-            else:
-                return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
-                                         assume_str_is_unicode=self.assume_str_is_unicode)
+    # Str(string s)
+    def visit_Str(self, n: Str) -> Type:
+        # Note: we transform these fallback types into the correct types in
+        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
+        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
+        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
+        # translate 'builtins.bytes' in the method below into 'builtins.str'.
+        if 'u' in n.kind or self.assume_str_is_unicode:
+            return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
+        else:
+            return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                     assume_str_is_unicode=self.assume_str_is_unicode)
 
-        # Bytes(bytes s)
-        def visit_Bytes(self, n: Bytes) -> Type:
-            contents = bytes_to_human_readable_repr(n.s)
-            return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+    # Bytes(bytes s)
+    def visit_Bytes(self, n: Bytes) -> Type:
+        contents = bytes_to_human_readable_repr(n.s)
+        return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
