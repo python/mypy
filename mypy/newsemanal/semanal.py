@@ -1909,6 +1909,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         If bare is True, this is not a base of an index expression, so some special
         forms are not valid (like a bare Union).
+
+        Note: This method should be only used in context of a type alias definition.
+        This method can only return True for RefExprs, to check if C[int] is a valid
+        target for type alias call this method on expr.base (i.e. on C in C[int]).
+        See also can_be_type_alias().
         """
         if not isinstance(rv, RefExpr):
             return False
@@ -3297,12 +3302,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             elif isinstance(n.node, PlaceholderNode):
-                if self.final_iteration:
-                    self.fail('Cannot resolve name "{}",'
-                              ' possible cyclic definition'.format(expr.name),
-                              expr)
-                else:
-                    self.defer()
+                self.process_placeholder(expr.name, 'name', expr)
             else:
                 expr.kind = n.kind
                 expr.node = n.node
@@ -3515,12 +3515,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 n = self.rebind_symbol_table_node(n)
                 if n:
                     if isinstance(n.node, PlaceholderNode):
-                        if self.final_iteration:
-                            self.fail('Cannot resolve attribute "{}",'
-                                      ' possible cyclic definition'.format(expr.name),
-                                      expr)
-                        else:
-                            self.defer()
+                        self.process_placeholder(expr.name, 'attribute', expr)
                         return
                     # TODO: What if None?
                     expr.kind = n.kind
@@ -3590,6 +3585,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
+
+    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
+        """Process a reference targeting placeholder node.
+
+        If this is not a final iteration, defer current node,
+        otherwise report an error.
+
+        The 'kind' argument indicates if this a name or attribute expression
+        (used for better error message).
+        """
+        if self.final_iteration:
+            self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name),
+                      ctx)
+        else:
+            self.defer()
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)

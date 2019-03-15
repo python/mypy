@@ -339,12 +339,12 @@ def main() -> None:
             x  # E: Name 'x' is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
-gx = gy  # E: Cannot resolve name "gy", possible cyclic definition
+gx = gy  # E: Cannot resolve name "gy" (possible cyclic definition)
 gy = gx
 def main() -> None:
     class C:
         def meth(self) -> None:
-            lx = ly  # E: Cannot resolve name "ly", possible cyclic definition
+            lx = ly  # E: Cannot resolve name "ly" (possible cyclic definition)
             ly = lx
 
 [case testNewAnalyzerCyclicDefinitionCrossModule]
@@ -354,7 +354,7 @@ import b
 x = b.x  # E: Cannot determine type of 'x'
 [file b.py]
 import a
-x = a.x  # E: Cannot resolve attribute "x", possible cyclic definition \
+x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
          # E: Module has no attribute "x"
 [builtins fixtures/module.pyi]
 
