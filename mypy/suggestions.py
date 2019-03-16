@@ -128,6 +128,10 @@ def is_explicit_any(typ: AnyType) -> bool:
     return typ.type_of_any == TypeOfAny.explicit
 
 
+def is_implicit_any(typ: Type) -> bool:
+    return isinstance(typ, AnyType) and is_explicit_any(typ)
+
+
 class SuggestionEngine:
     """Engine for finding call sites and suggesting signatures."""
 
@@ -208,8 +212,8 @@ class SuggestionEngine:
             all_arg_types = []
             for call in callsites:
                 for typ in call.arg_types[i - is_method]:
-                    # Collect all the types except for explicit anys
-                    if not isinstance(typ, AnyType) or is_explicit_any(typ):
+                    # Collect all the types except for implicit anys
+                    if not is_implicit_any(typ):
                         all_arg_types.append(typ)
             # Add in any default argument types
             default = defaults[i]
