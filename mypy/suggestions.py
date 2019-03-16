@@ -62,6 +62,7 @@ Callsite = NamedTuple(
 
 class SuggestionPlugin(Plugin):
     """Plugin that records all calls to a given target."""
+
     def __init__(self, target: str) -> None:
         self.target = target
         # List of call sites found by dmypy suggest:
@@ -300,8 +301,7 @@ class SuggestionEngine:
         args = []  # type: List[str]
         for i in range(len(arg_types)):
             for kind, name, typ in zip(arg_kinds[i], arg_names[i], arg_types[i]):
-                arg = str(typ)
-                arg = arg.replace("*", "")  # Get rid of "inferred" indicators.
+                arg = format_type(typ)
                 if kind == ARG_STAR:
                     arg = '*' + arg
                 elif kind == ARG_STAR2:
