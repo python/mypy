@@ -1020,7 +1020,6 @@ class B(type):
 
 reveal_type(A.f()) # E: Revealed type is 'builtins.int'
 
-
 [case testNewAnalyzerMetaclass1_python2]
 class A:
     __metaclass__ = B
