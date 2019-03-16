@@ -249,6 +249,7 @@ class RUnion(RType):
     def __init__(self, items: List[RType]) -> None:
         self.name = 'union'
         self.items = items
+        self.items_set = frozenset(items)
         self._ctype = 'PyObject *'
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -260,11 +261,12 @@ class RUnion(RType):
     def __str__(self) -> str:
         return 'union[%s]' % ', '.join(str(item) for item in self.items)
 
+    # We compare based on the set because order in a union doesn't matter
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, RUnion) and other.items == self.items
+        return isinstance(other, RUnion) and self.items_set == other.items_set
 
     def __hash__(self) -> int:
-        return hash(('union', tuple(hash(item) for item in self.items)))
+        return hash(('union', self.items_set))
 
 
 def optional_value_type(rtype: RType) -> Optional[RType]:

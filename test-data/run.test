@@ -3775,3 +3775,22 @@ class E:
 
 [file driver.py]
 # really I only care it builds
+
+[case testTupleUnionFail]
+# Test that order is irrelevant to unions
+
+from typing import Optional, Tuple
+
+class A:
+    pass
+
+def lol() -> A:
+    return A()
+
+def foo(x: bool, y: bool) -> Tuple[Optional[A], bool]:
+    z = lol()
+
+    return None if y else z, x
+
+[file driver.py]
+# really I only care it builds
