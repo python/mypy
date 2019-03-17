@@ -6,11 +6,12 @@ from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext
 )
-from mypy.plugins.common import try_getting_str_literal
+from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
     TypeVarType, TPDICT_FB_NAMES
 )
+from mypy.subtypes import is_subtype
 
 
 class DefaultPlugin(Plugin):
@@ -176,26 +177,34 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) >= 1
             and len(ctx.arg_types[0]) == 1):
-        key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
-        if key is None:
+        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        if keys is None:
             return ctx.default_return_type
 
-        value_type = ctx.type.items.get(key)
-        if value_type:
+        output_types = []
+        for key in keys:
+            value_type = ctx.type.items.get(key)
+            if value_type is None:
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                return AnyType(TypeOfAny.from_error)
+
             if len(ctx.arg_types) == 1:
-                return UnionType.make_simplified_union([value_type, NoneType()])
+                output_types.append(value_type)
             elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
                   and len(ctx.args[1]) == 1):
                 default_arg = ctx.args[1][0]
                 if (isinstance(default_arg, DictExpr) and len(default_arg.items) == 0
                         and isinstance(value_type, TypedDictType)):
                     # Special case '{}' as the default for a typed dict type.
-                    return value_type.copy_modified(required_keys=set())
+                    output_types.append(value_type.copy_modified(required_keys=set()))
                 else:
-                    return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
-        else:
-            ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-            return AnyType(TypeOfAny.from_error)
+                    output_types.append(value_type)
+                    output_types.append(ctx.arg_types[1][0])
+
+        if len(ctx.arg_types) == 1:
+            output_types.append(NoneType())
+
+        return UnionType.make_simplified_union(output_types)
     return ctx.default_return_type
 
 
@@ -233,23 +242,28 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) >= 1
             and len(ctx.arg_types[0]) == 1):
-        key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
-        if key is None:
+        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        if keys is None:
             ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
-        if key in ctx.type.required_keys:
-            ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
-        value_type = ctx.type.items.get(key)
-        if value_type:
-            if len(ctx.args[1]) == 0:
-                return value_type
-            elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
-                  and len(ctx.args[1]) == 1):
-                return UnionType.make_simplified_union([value_type, ctx.arg_types[1][0]])
-        else:
-            ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-            return AnyType(TypeOfAny.from_error)
+        value_types = []
+        for key in keys:
+            if key in ctx.type.required_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+
+            value_type = ctx.type.items.get(key)
+            if value_type:
+                value_types.append(value_type)
+            else:
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                return AnyType(TypeOfAny.from_error)
+
+        if len(ctx.args[1]) == 0:
+            return UnionType.make_simplified_union(value_types)
+        elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
+              and len(ctx.args[1]) == 1):
+            return UnionType.make_simplified_union([*value_types, ctx.arg_types[1][0]])
     return ctx.default_return_type
 
 
@@ -278,18 +292,35 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     """Type check TypedDict.setdefault and infer a precise return type."""
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) == 2
-            and len(ctx.arg_types[0]) == 1):
-        key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
-        if key is None:
+            and len(ctx.arg_types[0]) == 1
+            and len(ctx.arg_types[1]) == 1):
+        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        if keys is None:
             ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
-        value_type = ctx.type.items.get(key)
-        if value_type:
-            return value_type
-        else:
-            ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-            return AnyType(TypeOfAny.from_error)
+        default_type = ctx.arg_types[1][0]
+
+        value_types = []
+        for key in keys:
+            value_type = ctx.type.items.get(key)
+
+            if value_type is None:
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                return AnyType(TypeOfAny.from_error)
+
+            # The signature_callback above can't always infer the right signature
+            # (e.g. when the expression is a variable that happens to be a Literal str)
+            # so we need to handle the check ourselves here and make sure the provided
+            # default can be assigned to all key-value pairs we're updating.
+            if not is_subtype(default_type, value_type):
+                ctx.api.msg.typeddict_setdefault_arguments_inconsistent(
+                    default_type, value_type, ctx.context)
+                return AnyType(TypeOfAny.from_error)
+
+            value_types.append(value_type)
+
+        return UnionType.make_simplified_union(value_types)
     return ctx.default_return_type
 
 
@@ -304,15 +335,16 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     if (isinstance(ctx.type, TypedDictType)
             and len(ctx.arg_types) == 1
             and len(ctx.arg_types[0]) == 1):
-        key = try_getting_str_literal(ctx.args[0][0], ctx.arg_types[0][0])
-        if key is None:
+        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        if keys is None:
             ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
-        if key in ctx.type.required_keys:
-            ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
-        elif key not in ctx.type.items:
-            ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+        for key in keys:
+            if key in ctx.type.required_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+            elif key not in ctx.type.items:
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
     return ctx.default_return_type
 
 
