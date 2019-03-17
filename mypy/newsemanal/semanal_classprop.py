@@ -5,7 +5,8 @@ These happen after semantic analysis and before type checking.
 
 from typing import List, Set, Optional
 
-from mypy.nodes import Node, MypyFile, SymbolTable, TypeInfo, Var, Decorator, OverloadedFuncDef
+from mypy.nodes import Node, TypeInfo, Var, Decorator, OverloadedFuncDef
+from mypy.types import Instance
 from mypy.errors import Errors
 
 
@@ -61,6 +62,17 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             report("Class {} has abstract attributes {}".format(typ.fullname(), attrs), 'error')
             report("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
                    'note')
+
+
+def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
+    """Check that all classes in MRO of a protocol are protocols"""
+    if info.is_protocol:
+        for type in info.bases:
+            if not isinstance(type, Instance) or not type.type.is_protocol:
+                if type.type.fullname() != 'builtins.object':
+                    def report(message: str, severity: str) -> None:
+                        errors.report(info.line, info.column, message, severity=severity)
+                    report('All bases of a protocol must be protocols', 'error')
 
 
 def calculate_class_vars(info: TypeInfo) -> None:

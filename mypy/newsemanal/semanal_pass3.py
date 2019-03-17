@@ -75,11 +75,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             if tdef.info.tuple_type:
                 types.append(tdef.info.tuple_type)
             self.analyze_types(types, tdef.info)
-            for type in tdef.info.bases:
-                if tdef.info.is_protocol:
-                    if not isinstance(type, Instance) or not type.type.is_protocol:
-                        if type.type.fullname() != 'builtins.object':
-                            self.fail('All bases of a protocol must be protocols', tdef)
         # Recompute MRO now that we have analyzed all modules, to pick
         # up superclasses of bases imported from other modules in an
         # import loop. (Only do so if we succeeded the first time.)

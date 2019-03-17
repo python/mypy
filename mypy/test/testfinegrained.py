@@ -27,6 +27,7 @@ from mypy.test.data import (
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
+    assert_target_equivalence
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_util import DEFAULT_STATUS_FILE
@@ -119,6 +120,7 @@ class FineGrainedSuite(DataSuite):
 
             updated = []  # type: List[str]
             changed = []  # type: List[str]
+            targets = []  # type: List[str]
             if server.fine_grained_manager:
                 if CHECK_CONSISTENCY:
                     check_consistency(server.fine_grained_manager)
@@ -126,6 +128,7 @@ class FineGrainedSuite(DataSuite):
 
                 updated = server.fine_grained_manager.updated_modules
                 changed = [mod for mod, file in server.fine_grained_manager.changed_modules]
+                targets = server.fine_grained_manager.processed_targets
 
             assert_module_equivalence(
                 'stale' + str(step - 1),
@@ -135,6 +138,10 @@ class FineGrainedSuite(DataSuite):
                 'rechecked' + str(step - 1),
                 testcase.expected_rechecked_modules.get(step - 1),
                 updated)
+            assert_target_equivalence(
+                'targets' + str(step),
+                testcase.expected_fine_grained_targets.get(step),
+                targets)
 
             new_messages = normalize_messages(new_messages)
 

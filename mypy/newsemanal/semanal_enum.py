@@ -19,20 +19,22 @@ class EnumCallAnalyzer:
         self.options = options
         self.api = api
 
-    def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> None:
-        """Check if s defines an Enum; if yes, store the definition in symbol table."""
+    def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> bool:
+        """Check if s defines an Enum; if yes, store the definition in symbol table.
+
+        Return True if this looks like an Enum definition (but maybe with errors),
+        otherwise return False.
+        """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
+            return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         enum_call = self.check_enum_call(s.rvalue, name, is_func_scope)
         if enum_call is None:
-            return
+            return False
         # Yes, it's a valid Enum definition. Add it to the symbol table.
-        node = self.api.lookup(name, s)
-        if node:
-            node.kind = GDEF   # TODO locally defined Enum
-            node.node = enum_call
+        self.api.add_symbol(name, enum_call, s)
+        return True
 
     def check_enum_call(self,
                         node: Expression,
@@ -62,18 +64,19 @@ class EnumCallAnalyzer:
         items, values, ok = self.parse_enum_call_args(call, fullname.split('.')[-1])
         if not ok:
             # Error. Construct dummy return value.
-            return self.build_enum_call_typeinfo(var_name, [], fullname)
-        name = cast(Union[StrExpr, UnicodeExpr], call.args[0]).value
-        if name != var_name or is_func_scope:
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
-        info = self.build_enum_call_typeinfo(name, items, fullname)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info)
-        self.api.add_symbol_table_node(name, stnode)
+            info = self.build_enum_call_typeinfo(var_name, [], fullname)
+        else:
+            name = cast(Union[StrExpr, UnicodeExpr], call.args[0]).value
+            if name != var_name or is_func_scope:
+                # Give it a unique name derived from the line number.
+                name += '@' + str(call.line)
+            info = self.build_enum_call_typeinfo(name, items, fullname)
+            # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
+            if name != var_name or is_func_scope:
+                self.api.add_symbol_skip_local(name, info)
         call.analyzed = EnumCallExpr(info, items, values)
         call.analyzed.set_line(call.line, call.column)
+        info.line = node.line
         return info
 
     def build_enum_call_typeinfo(self, name: str, items: List[str], fullname: str) -> TypeInfo:
@@ -93,6 +96,10 @@ class EnumCallAnalyzer:
     def parse_enum_call_args(self, call: CallExpr,
                              class_name: str) -> Tuple[List[str],
                                                        List[Optional[Expression]], bool]:
+        """Parse arguments of an Enum call.
+
+        Return a tuple of fields, values, was there an error.
+        """
         args = call.args
         if len(args) < 2:
             return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)

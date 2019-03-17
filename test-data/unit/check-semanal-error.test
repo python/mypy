@@ -49,16 +49,15 @@ A().foo(1)
 A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testInvalidBaseClass2]
-# flags: --new-semantic-analyzer
 X = 1
 class A(X): # E
     x = 1
 A().foo(1)
 A().x = '' # E
 [out]
-main:3: error: Invalid base class
-main:3: error: Invalid type "__main__.X"
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:2: error: Invalid type "__main__.X"
+main:2: error: Invalid base class
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 [case testInvalidNumberOfTypeArgs]
@@ -90,9 +89,10 @@ def m() -> None: ...  # E: Name 'm' already defined (by an import)
 [out]
 
 [case testIgnoredImportDup]
+# flags: --new-semantic-analyzer
 import m # type: ignore
 from m import f # type: ignore
-def m() -> None: ...  # ok
-def f() -> None: ...  # ok
+def m() -> None: ...  # E: Name 'm' already defined (possibly by an import)
+def f() -> None: ...  # E: Name 'f' already defined (possibly by an import)
 
 [out]

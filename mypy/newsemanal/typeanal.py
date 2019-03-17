@@ -75,48 +75,6 @@ def analyze_type_alias(node: Expression,
     full names of type aliases it depends on (directly or indirectly).
     Return None otherwise. 'node' must have been semantically analyzed.
     """
-    # Quickly return None if the expression doesn't look like a type. Note
-    # that we don't support straight string literals as type aliases
-    # (only string literals within index expressions).
-    if isinstance(node, RefExpr):
-        # Note that this misses the case where someone tried to use a
-        # class-referenced type variable as a type alias.  It's easier to catch
-        # that one in checkmember.py
-        if isinstance(node.node, TypeVarExpr):
-            api.fail('Type variable "{}" is invalid as target for type alias'.format(
-                node.fullname), node)
-            return None
-        if not (isinstance(node.node, TypeInfo) or
-                node.fullname in ('typing.Any', 'typing.Tuple', 'typing.Callable') or
-                isinstance(node.node, TypeAlias)):
-            return None
-    elif isinstance(node, IndexExpr):
-        base = node.base
-        if isinstance(base, RefExpr):
-            if not (isinstance(base.node, TypeInfo) or
-                    base.fullname in type_constructors or
-                    isinstance(base.node, TypeAlias)):
-                return None
-            # Enums can't be generic, and without this check we may incorrectly interpret indexing
-            # an Enum class as creating a type alias.
-            if isinstance(base.node, TypeInfo) and base.node.is_enum:
-                return None
-        else:
-            return None
-    elif isinstance(node, CallExpr):
-        if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
-                isinstance(node.args[0], NameExpr)):
-            call = api.lookup_qualified(node.callee.name, node.callee)
-            arg = api.lookup_qualified(node.args[0].name, node.args[0])
-            if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
-                    arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
-                return NoneTyp(), set()
-            return None
-        return None
-    else:
-        return None
-
-    # It's a type alias (though it may be an invalid one).
     try:
         type = expr_to_unanalyzed_type(node)
     except TypeTranslationError:
@@ -414,14 +372,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
+
         # None of the above options worked, we give up.
-        # NOTE: 'final_iteration' is iteration when we hit the maximum number of iterations limit.
-        if unbound_tvar or self.api.final_iteration:
-            # TODO: This is problematic, since we will have to wait until the maximum number
-            #       of iterations to report an invalid type.
-            self.fail('Invalid type "{}"'.format(name), t)
-        else:
-            self.api.defer()
+        self.fail('Invalid type "{}"'.format(name), t)
+
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
             self.note_func("Forward references to type variables are prohibited", t)
             return AnyType(TypeOfAny.from_error)

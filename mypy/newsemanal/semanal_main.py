@@ -24,7 +24,8 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-from typing import List, Tuple, Optional, Union, Callable
+import contextlib
+from typing import List, Tuple, Optional, Union, Callable, Iterator
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
@@ -34,7 +35,9 @@ from mypy.state import strict_optional_set
 from mypy.newsemanal.semanal import (
     NewSemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
 )
-from mypy.newsemanal.semanal_classprop import calculate_class_abstract_status, calculate_class_vars
+from mypy.newsemanal.semanal_classprop import (
+    calculate_class_abstract_status, calculate_class_vars, check_protocol_status
+)
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
@@ -92,12 +95,15 @@ def cleanup_builtin_scc(state: 'State') -> None:
 
 
 def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
-                             graph: 'Graph') -> None:
+                             graph: 'Graph', strip_patches: List[Callable[[], None]]) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
     except that we process only some targets. This is used in fine grained
     incremental mode, when propagating an update.
+
+    The strip_patches are additional patches that may be produced by aststrip.py to
+    re-introduce implicitly declared instance variables (attributes defined on self).
     """
     patches = []  # type: Patches
     if any(isinstance(n.node, MypyFile) for n in nodes):
@@ -111,6 +117,8 @@ def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode
         process_top_level_function(analyzer, state, state.id,
                                    n.node.fullname(), n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
+    for patch in strip_patches:
+        patch()
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
@@ -308,10 +316,18 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
         # TODO: calculate properties also for classes nested in functions.
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
-                calculate_class_abstract_status(node.node, tree.is_stub, errors)
-                calculate_class_vars(node.node)
+                saved = (module, node.node, None)  # module, class, function
+                with errors.scope.saved_scope(saved) if errors.scope else nothing():
+                    calculate_class_abstract_status(node.node, tree.is_stub, errors)
+                    check_protocol_status(node.node, errors)
+                    calculate_class_vars(node.node)
 
 
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:
     for module in scc:
         graph[module].check_blockers()
+
+
+@contextlib.contextmanager
+def nothing() -> Iterator[None]:
+    yield

@@ -748,7 +748,8 @@ class Decorator(SymbolNode, Statement):
 VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-    'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init'
+    'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
+    'explicit_self_type',
 ]  # type: Final
 
 
@@ -777,6 +778,7 @@ class Var(SymbolNode):
                  'final_unset_in_class',
                  'final_set_in_init',
                  'is_suppressed_import',
+                 'explicit_self_type'
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -811,6 +813,14 @@ class Var(SymbolNode):
         # Where the value was set (only for class attributes)
         self.final_unset_in_class = False
         self.final_set_in_init = False
+        # This is True for a variable that was declared on self with an explicit type:
+        #     class C:
+        #         def __init__(self) -> None:
+        #             self.x: int
+        # This case is important because this defines a new Var, even if there is one
+        # present in a superclass (without explict type this doesn't create a new Var).
+        # See SemanticAnalyzer.analyze_member_lvalue() for details.
+        self.explicit_self_type = False
 
     def name(self) -> str:
         return self._name
@@ -818,7 +828,7 @@ class Var(SymbolNode):
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
-    def accept(self, visitor: StatementVisitor[T]) -> T:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
@@ -1408,11 +1418,13 @@ class NameExpr(RefExpr):
     This refers to a local name, global name or a module.
     """
 
-    __slots__ = ('name',)
+    __slots__ = ('name', 'is_special_form')
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name  # Name referred to (may be qualified)
+        # Is this a l.h.s. of a special form assignment like typed dict or type variable?
+        self.is_special_form = False
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
