@@ -581,6 +581,13 @@ a.f(1.0) # E: No overload variant of "f" of "A" matches argument type "float" \
          # N:     def f(self, x: int) -> int \
          # N:     def f(self, x: str) -> str
 
+[case testNewAnalyzerPromotion]
+y: int
+f(y)
+f(1)
+def f(x: float) -> None: pass
+[builtins fixtures/primitives.pyi]
+
 [case testNewAnalyzerFunctionDecorator]
 from typing import Callable
 
