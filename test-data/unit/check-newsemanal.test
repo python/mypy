@@ -1859,7 +1859,7 @@ x: A
 reveal_type(x)  # E: Revealed type is '__main__.G[Tuple[builtins.int, fallback=__main__.C]]'
 [builtins fixtures/list.pyi]
 
-[case testNewAnalyzerCastForward]
+[case testNewAnalyzerCastForward1]
 from typing import cast
 
 x = cast('C', None)
@@ -1871,6 +1871,25 @@ reveal_type(x)  # E: Revealed type is '__main__.C'
 reveal_type(A().x)  # E: Revealed type is '__main__.C'
 
 class C(A): ...
+
+[case testNewAnalyzerCastForward2]
+from typing import cast
+
+x = cast('C', None)
+
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+C = int
+
+[case testNewAnalyzerCastForward2]
+from typing import cast, NamedTuple
+
+x = cast('C', None)
+
+reveal_type(x)  # E: Revealed type is '__main__.C'
+reveal_type(x.x)  # E: Revealed type is 'builtins.int'
+
+C = NamedTuple('C', [('x', int)])
 
 [case testNewAnalyzerApplicationForward1]
 from typing import Generic, TypeVar
@@ -1902,3 +1921,15 @@ T = TypeVar('T')
 class C(Generic[T]): ...
 
 class A: ...
+
+[case testNewAnalyzerApplicationForward4]
+from typing import Generic, TypeVar
+
+x = C[A]()  # E: Value of type variable "T" of "C" cannot be "A"
+reveal_type(x)  # E: Revealed type is '__main__.C[__main__.A*]'
+
+T = TypeVar('T', bound='D')
+class C(Generic[T]): ...
+
+class A: ...
+class D: ...
