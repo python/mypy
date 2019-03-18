@@ -1591,5 +1591,32 @@ reveal_type(td.get('a'))  # E: Revealed type is 'builtins.int'
 reveal_type(td.get('b'))  # E: Revealed type is 'Union[builtins.str, builtins.int]'
 reveal_type(td.get('c'))  # E: Revealed type is 'Union[Any, builtins.int]' \
                           # E: TypedDict "TDA" has no key 'c'
+
+reveal_type(td['a'])  # E: Revealed type is 'builtins.int'
+reveal_type(td['b'])  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+reveal_type(td['c'])  # E: Revealed type is 'Union[Any, builtins.int]' \
+                      # E: TypedDict "TDA" has no key 'c'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPluginUnionsOfTypedDictsNonTotal]
+from typing import Union
+from mypy_extensions import TypedDict
+
+class TDA(TypedDict, total=False):
+    a: int
+    b: str
+
+class TDB(TypedDict, total=False):
+    a: int
+    b: int
+    c: int
+
+td: Union[TDA, TDB]
+
+reveal_type(td.pop('a'))  # E: Revealed type is 'builtins.int'
+reveal_type(td.pop('b'))  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+reveal_type(td.pop('c'))  # E: Revealed type is 'Union[Any, builtins.int]' \
+                          # E: TypedDict "TDA" has no key 'c'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]

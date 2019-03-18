@@ -629,3 +629,20 @@ else:
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
+
+[case testGetMethodHooksOnUnionsSpecial]
+# flags: --config-file tmp/mypy.ini
+from typing import Union
+
+class Foo:
+    def __getitem__(self, x: str) -> str: ...
+class Bar:
+    def __getitem__(self, x: int) -> str: ...
+
+x: Union[Foo, Bar]
+reveal_type(x[int()])  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/union_method.py
