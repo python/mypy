@@ -662,6 +662,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for example 'typing.Mapping.get'.
         """
         if callable_name is None and member is not None:
+            assert object_type is not None
             callable_name = self.method_fullname(object_type, member)
         if callable_name:
             # Try to refine the call signature using plugin hooks before checking the call.
