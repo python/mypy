@@ -1371,7 +1371,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         and len(base_expr.args) >= 1
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
                     with_meta_expr = base_expr.args[0]
-                    defn.removed_base_type_exprs.append(defn.base_type_exprs[0])
                     defn.base_type_exprs = base_expr.args[1:]
 
         # Look for @six.add_metaclass(M)
