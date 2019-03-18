@@ -230,6 +230,7 @@ class D(object):
 [out]
 
 [case testClassNamesDefinedOnSelUsedInClassBodyReveal]
+# flags: --no-new-semantic-analyzer
 class A(object):
     def f(self) -> None:
         self.attr = 1
@@ -4329,6 +4330,8 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
+# FIXME: #6445
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)]) # E: Recursive types not fully supported yet, nested types replaced with "Any"
@@ -4336,6 +4339,8 @@ n: N
 [out]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
+# FIXME: #6445
+# flags: --no-new-semantic-analyzer
 from mypy_extensions import TypedDict
 
 A = TypedDict('A', {'a': 'A'})  # type: ignore
@@ -4344,6 +4349,8 @@ a: A
 [out]
 
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
+# FIXME: #6445
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 class N(NamedTuple): # type: ignore
@@ -4357,11 +4364,13 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
+# FIXME: #6445
+# flags: --no-new-semantic-analyzer
 from mypy_extensions import TypedDict
 
-class N(TypedDict):
+class N(TypedDict):  # E: Recursive types not fully supported yet, nested types replaced with "Any"
     x: N
-class M(TypedDict):
+class M(TypedDict):  # E: Recursive types not fully supported yet, nested types replaced with "Any"
     x: M
 
 n: N
@@ -4369,9 +4378,6 @@ m: M
 lst = [n, m]
 reveal_type(lst[0]['x'])  # E: Revealed type is 'TypedDict('__main__.N', {'x': Any})'
 [builtins fixtures/isinstancelist.pyi]
-[out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
 from typing import Dict, NamedTuple
@@ -4461,6 +4467,7 @@ x = NT(N(1))
 [out]
 
 [case testNewTypeFromForwardTypedDict]
+# flags: --no-new-semantic-analyzer
 from typing import NewType, Tuple
 from mypy_extensions import TypedDict
 
