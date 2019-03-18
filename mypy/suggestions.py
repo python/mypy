@@ -129,7 +129,7 @@ def is_explicit_any(typ: AnyType) -> bool:
 
 
 def is_implicit_any(typ: Type) -> bool:
-    return isinstance(typ, AnyType) and is_explicit_any(typ)
+    return isinstance(typ, AnyType) and not is_explicit_any(typ)
 
 
 class SuggestionEngine:
