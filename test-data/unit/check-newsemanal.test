@@ -1856,3 +1856,20 @@ reveal_type(y[0])  # E: Revealed type is 'builtins.int'
 x: A
 reveal_type(x)  # E: Revealed type is '__main__.G[Tuple[builtins.int, fallback=__main__.C]]'
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerDuplicateTypeVar]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar('T', bound=B[Any])
+# The "int" error is because of typing fixture.
+T = TypeVar('T', bound=C)  # E: Cannot redefine 'T' as a type variable \
+                           # E: Invalid assignment target \
+                           # E: "int" not callable
+
+class B(Generic[T]):
+    x: T
+class C: ...
+
+x: B[int]  # E: Type argument "builtins.int" of "B" must be a subtype of "__main__.B[Any]"
+y: B[B[Any]]
+reveal_type(y.x)  # E: Revealed type is '__main__.B*[Any]'

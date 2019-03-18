@@ -2666,10 +2666,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if s.type:
             self.fail("Cannot declare the type of a type variable", s)
             return False
+
+        assert isinstance(s.rvalue, CallExpr)
         name = lvalue.name
         names = self.current_symbol_table()
         existing = names.get(name)
-        if existing and not isinstance(existing.node, (TypeVarExpr, PlaceholderNode)):
+        if existing and not (isinstance(existing.node, PlaceholderNode) or
+                             # Also give error for another type variable with the same name.
+                             isinstance(existing.node, TypeVarExpr) and
+                             existing.node is s.rvalue.analyzed):
             self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return False
 
@@ -2712,8 +2717,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         if existing and isinstance(existing.node, TypeVarExpr):
             # Existing definition from previous semanal iteration, use it.
-            # TODO: This may be confused with a duplicate TypeVar definition.
-            #       Fix this and add corresponding tests.
+            # Note that unlike in most other cases, we patch an existing symbol, instead of
+            # adding the type variable symbol only when the types it depends on are ready.
+            # This is necessary to avoid a "deadlock" in this typical situation:
+            #     T = TypeVar('T', bound=C[Any])
+            #     class C(Generic[T]):
+            #         ...
+            # We can use allow_placeholder=True for upper bound and values to avoid this,
+            # but placeholder types will get deeply into class definition and it will be
+            # hard to get rid of them.
             type_var = existing.node
             type_var.values = values
             type_var.upper_bound = upper_bound
