@@ -1453,7 +1453,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
             else:
                 # Modules imported in a stub file without using 'as x' won't get exported
-                module_public = not self.is_stub_file
+                module_public = (
+                    not self.is_stub_file
+                    and not self.options.no_implicit_reexport
+                )
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
@@ -1563,7 +1566,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             imported_id, existing_symbol, node, imp):
                         continue
                 # 'from m import x as x' exports x in a stub file.
-                module_public = not self.is_stub_file or as_id is not None
+                module_public = (
+                    not self.is_stub_file
+                    and not self.options.no_implicit_reexport
+                    or as_id is not None
+                )
                 module_hidden = not module_public and possible_module_id not in self.modules
                 # NOTE: we take the original node even for final `Var`s. This is to support
                 # a common pattern when constants are re-exported (same applies to import *).

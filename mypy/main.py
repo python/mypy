@@ -490,6 +490,10 @@ def process_options(args: List[str],
                              " non-overlapping types",
                         group=strictness_group)
 
+    add_invertible_flag('--no-implicit-reexport', default=False, strict_flag=True,
+                        help="Treat imports as private unless aliased",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
