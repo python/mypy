@@ -60,6 +60,7 @@ from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
 from mypy.typeops import tuple_fallback
+from mypy import state
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -298,13 +299,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
         member = None
-        if not isinstance(e.callee, RefExpr):
-            fullname = None
-        else:
+        fullname = None
+        if isinstance(e.callee, RefExpr):
+            # There are two special cases where plugins might act:
+            # * A "static" reference/alias to a class or function;
+            #   get_function_hook() will be invoked for these.
             fullname = e.callee.fullname
             if (isinstance(e.callee.node, TypeAlias) and
                     isinstance(e.callee.node.target, Instance)):
                 fullname = e.callee.node.target.type.fullname()
+            # * Call to a method on object that has a full name (see
+            #   method_fullname() for details on supported objects);
+            #   get_method_hook() and get_method_signature_hook() will
+            #   be invoked for these.
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
                     and e.callee.expr in self.chk.type_map):
@@ -648,6 +655,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         The given callee type overrides the type of the callee
         expression.
+
+        The 'callable_name' and 'object_type' are used to call plugin hooks.
+        If 'callable_name' is None but 'member' is not None (member call), try constructing
+        'callable_name' using 'object_type' (the base type on which the method is called),
+        for example 'typing.Mapping.get'.
         """
         if callable_name is None and member is not None:
             callable_name = self.method_fullname(object_type, member)
@@ -655,16 +667,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Try to refine the call signature using plugin hooks before checking the call.
             callee_type = self.transform_callee_type(
                 callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+        # Unions are special-cased to allow plugins to act on each item in the union.
         elif member is not None and isinstance(object_type, UnionType):
             res = []  # type: List[Type]
             for typ in object_type.items:
+                # Member access errors are already reported when visiting the member expression.
                 self.msg.disable_errors()
                 item = analyze_member_access(member, typ, e, False, False, False,
                                              self.msg, original_type=object_type, chk=self.chk,
                                              in_literal_context=self.is_literal_context())
                 self.msg.enable_errors()
                 item = self.narrow_type_from_binder(e.callee, item)
-                if isinstance(item, (NoneTyp, UninhabitedType)):
+                # TODO: This check is not one-to-one with non-special-cased behavior.
+                #       Ideas for more precise checks:
+                #       * reverse-engineering of mypy.meet.narrow_declared_type()
+                #       * apply special-casing only if we know some hooks will be applied
+                if (isinstance(item, NoneTyp) and not state.strict_optional or
+                        isinstance(item, UninhabitedType) and state.strict_optional):
                     continue
                 callable_name = self.method_fullname(typ, member)
                 item_object_type = typ if callable_name else None
@@ -2038,10 +2057,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         local_errors = local_errors or self.msg
         original_type = original_type or base_type
+        # Unions are special-cased to allow plugins to act on each element of the union.
         if isinstance(base_type, UnionType):
             res = []  # type: List[Type]
             meth_res = []  # type: List[Type]
             for typ in base_type.relevant_items():
+                # Format error messages consistently with
+                # mypy.checkmember.analyze_union_member_access().
                 local_errors.disable_type_names += 1
                 item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
                                                                  context, local_errors,
