@@ -508,6 +508,9 @@ class BuildManager(BuildManagerBase):
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
+        # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
+        if not isinstance(plugin, ChainedPlugin):
+            plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
         if options.new_semantic_analyzer:
             # Set of namespaces (module or class) that are being populated during semantic

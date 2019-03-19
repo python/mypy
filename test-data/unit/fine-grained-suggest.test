@@ -1,0 +1,262 @@
+[case testSuggestCallsites1]
+# suggest: --callsites foo.foo
+[file foo.py]
+def foo(arg):
+    return 12
+var = 0
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(arg='xyz')
+    args = ['']
+    foo(*args)
+    kwds = {'arg': ''}
+    foo(**kwds)
+[builtins fixtures/dict.pyi]
+[out]
+bar.py:3: (builtins.str)
+bar.py:4: (arg=builtins.str)
+bar.py:6: (*builtins.list[builtins.str])
+bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+==
+
+[case testSuggestCallsitesStep2]
+# suggest2: --callsites foo.foo
+[file foo.py]
+def foo(arg):
+    return 12
+var = 0
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(arg='xyz')
+    args = ['']
+    foo(*args)
+    kwds = {'arg': ''}
+    foo(**kwds)
+[builtins fixtures/dict.pyi]
+[out]
+==
+bar.py:3: (builtins.str)
+bar.py:4: (arg=builtins.str)
+bar.py:6: (*builtins.list[builtins.str])
+bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+
+[case testSuggestInferFunc1]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def foo(arg, lol=None):
+    if isinstance(arg, int):
+        arg+1
+    else:
+        assert arg
+        arg+'1'
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(lol=10, arg=10)
+    foo(None)
+def untyped(x) -> None:
+    foo(x)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Union[int, None]) -> None
+==
+
+[case testSuggestInferFunc2]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def thing() -> str:
+    return ''
+def bar() -> None:
+    # We stick it in a list so that the argument type is marked as "inferred",
+    # which we want to make sure doesn't show up.
+    x = ['hello']
+    foo(x[0])
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferMethod1]
+# flags: --strict-optional
+# suggest: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def __init__(self) -> None:
+        self.y = '10'
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return arg+1
+        else:
+            assert arg
+            return arg+self.y
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Union[int, None]) -> object
+==
+
+[case testSuggestInferMethod2]
+# flags: --strict-optional
+# suggest: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def i(self, x: int) -> int: return x
+    def s(self, x: str) -> str: return x
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return self.i(arg)
+        else:
+            assert arg
+            return self.s(arg)
+[file bar.py]
+from typing import Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    a: Union[str, int] = x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Union[int, None]) -> Union[int, str]
+==
+
+[case testSuggestInferMethod3]
+# flags: --strict-optional
+# suggest2: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def foo(self, lol = None):
+        pass
+
+    def lol(self) -> None:
+        self.foo('lol')
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+==
+(Union[str, None]) -> None
+
+[case testSuggestInferFunctionUnreachable]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+import sys
+def foo(lol):
+    if sys.platform == 'nothing':
+        return lol
+    else:
+        return lol + lol
+[file bar.py]
+from foo import foo
+foo('test')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferMethodStep2]
+# flags: --strict-optional
+# suggest2: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def i(self, x: int) -> int: return x
+    def s(self, x: str) -> str: return x
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return self.i(arg)
+        else:
+            assert arg
+            return self.s(arg)
+[file bar.py]
+from typing import Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    a: Union[str, int] = x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+==
+(Union[str, int, None], Union[int, None]) -> Union[int, str]
+
+[case testSuggestInferNestedMethod]
+# flags: --strict-optional
+# suggest: foo.Foo.Bar.baz
+[file foo.py]
+class Foo:
+    class Bar:
+        def baz(self, lol):
+            return lol
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo.Bar()
+    x.baz('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestNewSemanal]
+# flags: --strict-optional --new-semantic-analyzer
+# suggest: foo.Foo.foo
+# suggest: foo.foo
+[file foo.py]
+class Foo:
+    def __init__(self) -> None:
+        self.y = '10'
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return arg+1
+        else:
+            assert arg
+            return arg+self.y
+def foo(arg, lol=None):
+    if isinstance(arg, int):
+        arg+1
+    else:
+        assert arg
+        arg+'1'
+[file bar.py]
+from foo import Foo, foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    x.foo(None)
+def baz() -> None:
+    foo('abc')
+    foo(lol=10, arg=10)
+    foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Union[int, None]) -> object
+(Union[str, int, None], Union[int, None]) -> None
+==
