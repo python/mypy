@@ -12,9 +12,10 @@ from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
-    generate_stubs, parse_options, walk_packages, Options, collect_build_targets,
+    generate_stubs, parse_options, Options, collect_build_targets,
     mypy_options
 )
+from mypy.stubutil import walk_packages
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,

@@ -22,7 +22,8 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr
+    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr,
+    is_final_node,
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash
@@ -39,7 +40,7 @@ from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
-    analyze_descriptor_access, is_final_node
+    analyze_descriptor_access,
 )
 from mypy import message_registry
 from mypy.subtypes import (
