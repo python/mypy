@@ -79,6 +79,29 @@ from b import bad
 [file b.py]
 from a import bad # E: Module 'a' has no attribute 'bad'
 
+[case testNewAnalyzerExportedValuesInImportAll]
+from m import *
+_ = a
+_ = b
+_ = c
+_ = d
+_e = e
+_f = f # E: Name 'f' is not defined
+_ = _g # E: Name '_g' is not defined
+reveal_type(_e)  # E: Revealed type is 'm.A'
+[file m.py]
+__all__ = ['a']
+__all__ += ('b',)
+__all__.append('c')
+__all__.extend(('d', 'e'))
+
+a = b = c = d = _g = 1
+e: 'A'
+f: 'A'
+
+class A: ...
+[builtins fixtures/module_all.pyi]
+
 [case testNewAnalyzerSimpleFunction]
 def f(x: int) -> str:
     return 'x'
