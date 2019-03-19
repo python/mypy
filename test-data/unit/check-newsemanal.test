@@ -1886,7 +1886,7 @@ from typing import cast, NamedTuple
 
 x = cast('C', None)
 
-reveal_type(x)  # E: Revealed type is '__main__.C'
+reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.C]'
 reveal_type(x.x)  # E: Revealed type is 'builtins.int'
 
 C = NamedTuple('C', [('x', int)])
