@@ -325,11 +325,8 @@ main:2: error: Name 'y' is not defined
 [case testUnknownModuleRedefinition]
 # Error messages differ with the new analyzer
 # flags: --no-new-semantic-analyzer
-import xab
+import xab  # E: Cannot find module named 'xab'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 def xab(): pass
-[out]
-main:1: error: Cannot find module named 'xab'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
