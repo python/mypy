@@ -198,3 +198,28 @@ def lol(x: S1) -> None:
 [file driver.py]
 import native
 native.lol(native.D())
+
+[case testTraitOrdering]
+import other_b
+# Regression test for a bug where inheriting from a class that
+# inherited from a trait that got processed later on the command line
+# filed to compile.
+[file other_b.py]
+from other_c import Plugin
+
+class Whatever(Plugin):
+    pass
+
+[file other_c.py]
+from mypy_extensions import trait
+
+@trait
+class Base:
+    x = None  # type: int
+
+class Plugin(Base):
+    def __init__(self) -> None:
+        self.x = 10
+
+[file driver.py]
+from native import *

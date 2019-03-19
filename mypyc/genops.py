@@ -239,8 +239,10 @@ def compute_vtable(cls: ClassIR) -> None:
     """Compute the vtable structure for a class."""
     if cls.vtable is not None: return
 
-    # Merge attributes from traits into the class
     for t in cls.mro[1:]:
+        # Make sure all ancestors are processed first
+        compute_vtable(t)
+        # Merge attributes from traits into the class
         if not t.is_trait:
             continue
         for name, typ in t.attributes.items():
@@ -249,7 +251,6 @@ def compute_vtable(cls: ClassIR) -> None:
 
     cls.vtable = {}
     if cls.base:
-        compute_vtable(cls.base)
         assert cls.base.vtable is not None
         cls.vtable.update(cls.base.vtable)
         cls.vtable_entries = specialize_parent_vtable(cls, cls.base)
