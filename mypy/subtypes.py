@@ -622,7 +622,7 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     if isinstance(node, FuncBase) or isinstance(typ, FunctionLike) and not node.is_staticmethod:
         assert isinstance(typ, FunctionLike)
         signature = bind_self(typ, subtype)
-        if node.is_property:
+        if node.is_property and not node.info.is_named_tuple:
             assert isinstance(signature, CallableType)
             typ = signature.ret_type
         else:
