@@ -61,8 +61,13 @@ LiteralValue = Union[int, str, bool]
 # breaks, and if we do it at the top, it breaks at runtime because of
 # import cycle issues, so we do it at the top while typechecking and
 # then again in the middle at runtime.
+# We should be able to remove this once we are switched to the new
+# semantic analyzer!
 if MYPY:
-    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor
+    from mypy.type_visitor import (
+        TypeVisitor as TypeVisitor,
+        SyntheticTypeVisitor as SyntheticTypeVisitor,
+    )
 
 
 class TypeOfAny:
@@ -1832,7 +1837,10 @@ class PlaceholderType(Type):
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
 from mypy.type_visitor import (  # noqa
-    TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+    TypeVisitor as TypeVisitor,
+    SyntheticTypeVisitor as SyntheticTypeVisitor,
+    TypeTranslator as TypeTranslator,
+    TypeQuery as TypeQuery,
 )
 
 

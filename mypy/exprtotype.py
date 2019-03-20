@@ -1,5 +1,7 @@
 """Translate an Expression to a Type value."""
 
+from typing import Optional
+
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr, IntExpr, FloatExpr, UnaryExpr,
     ComplexExpr, ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
@@ -7,7 +9,7 @@ from mypy.nodes import (
 )
 from mypy.fastparse import parse_type_string
 from mypy.types import (
-    Type, UnboundType, TypeList, EllipsisType, AnyType, Optional, CallableArgument, TypeOfAny,
+    Type, UnboundType, TypeList, EllipsisType, AnyType, CallableArgument, TypeOfAny,
     RawExpressionType,
 )
 
