@@ -951,7 +951,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # entirely pass/Ellipsis.
                     if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
-                        self.msg.note(message_registry.INVALID_IMPLICIT_RETURN, defn)
+                        self.msg.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
                     else:
                         self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
 
@@ -2793,7 +2793,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.expr_checker.accept(s.msg)
 
         if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
-            self.warn(message_registry.MALFORMED_ASSERT, s)
+            self.fail(message_registry.MALFORMED_ASSERT, s)
 
         # If this is asserting some isinstance check, bind that type in the following code
         true_map, _ = self.find_isinstance_check(s.expr)
@@ -3746,10 +3746,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def fail(self, msg: str, context: Context) -> None:
         """Produce an error message."""
         self.msg.fail(msg, context)
-
-    def warn(self, msg: str, context: Context) -> None:
-        """Produce a warning message."""
-        self.msg.warn(msg, context)
 
     def note(self, msg: str, context: Context, offset: int = 0) -> None:
         """Produce a note."""

@@ -328,7 +328,6 @@ def analyze_member_var_access(name: str,
         # independently of types.
         if mx.is_lvalue and not mx.chk.get_final_context():
             check_final_member(name, info, mx.msg, mx.context)
-
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"

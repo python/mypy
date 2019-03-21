@@ -299,13 +299,13 @@ class Errors:
                     self.only_once_messages.remove(info.message)
             self.error_info_map[path] = new_errors
 
-    def generate_unused_ignore_notes(self, file: str) -> None:
+    def generate_unused_ignore_errors(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
         if not self.is_typeshed_file(file) and file not in self.ignored_files:
             for line in ignored_lines - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                 None, line, -1, 'note', "unused 'type: ignore' comment",
+                                 None, line, -1, 'error', "unused 'type: ignore' comment",
                                  False, False)
                 self._add_error_info(file, info)
 
