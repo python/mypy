@@ -2444,3 +2444,29 @@ class P(Protocol[T]):
     @alias
     def meth(self, arg: T) -> T: ...
 [out]
+
+[case testNamedTupleWithNoArgsCallableField]
+from typing import Callable, NamedTuple, Protocol
+
+class N(NamedTuple):
+    func: Callable[[], str]
+
+class P(Protocol):
+    @property
+    def func(self) -> Callable[[], str]: ...
+
+p: P = N(lambda: 'foo')
+[builtins fixtures/property.pyi]
+
+[case testNamedTupleWithManyArgsCallableField]
+from typing import Callable, NamedTuple, Protocol
+
+class N(NamedTuple):
+    func: Callable[[str, str, str], str]
+
+class P(Protocol):
+    @property
+    def func(self) -> Callable[[str, str, str], str]: ...
+
+p: P = N(lambda a, b, c: 'foo')
+[builtins fixtures/property.pyi]
