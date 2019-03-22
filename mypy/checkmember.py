@@ -162,6 +162,9 @@ def analyze_instance_member_access(name: str,
     if override_info:
         info = override_info
 
+    if info.is_no_type_check:
+        return AnyType(TypeOfAny.special_form)
+
     if (state.find_occurrences and
             info.name() == state.find_occurrences[0] and
             name == state.find_occurrences[1]):

@@ -487,6 +487,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
         functype = func.type
+        if info.is_no_type_check:
+            func.type = AnyType(TypeOfAny.special_form)
+            return
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
@@ -807,6 +810,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.analyze_class(defn)
 
     def analyze_class(self, defn: ClassDef) -> None:
+        if defn.decorators:
+            for decorator in reversed(defn.decorators):
+                if isinstance(decorator, NameExpr) and \
+                        decorator.name in ('no_type_check', 'typing.no_type_check'):
+                    defn.info.is_no_type_check = True
+                    defn.info.fallback_to_any = True
+                    return
+
         is_protocol = self.detect_protocol_base(defn)
         self.update_metaclass(defn)
         self.clean_up_bases_and_infer_type_variables(defn)

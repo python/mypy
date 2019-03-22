@@ -2219,6 +2219,7 @@ class TypeInfo(SymbolNode):
     metaclass_type = None  # type: Optional[mypy.types.Instance]
 
     names = None  # type: SymbolTable      # Names defined directly in this type
+    is_no_type_check = False               # Was the class annotated with @no_type_check?
     is_abstract = False                    # Does the class have any abstract attributes?
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?

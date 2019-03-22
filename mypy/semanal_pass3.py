@@ -161,6 +161,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             super().visit_overloaded_func_def(fdef)
 
     def visit_class_def(self, tdef: ClassDef) -> None:
+        if tdef.info.is_no_type_check:
+            return
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
         self.scope.enter_class(tdef.info)
