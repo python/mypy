@@ -166,6 +166,8 @@ class ASTConverter:
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
+        self.extra_type_ignores = []  # type: List[int]
+
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
@@ -305,11 +307,11 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-
+        ignores = [ti.lineno for ti in mod.type_ignores] + self.extra_type_ignores
         return MypyFile(body,
                         self.imports,
                         False,
-                        {ti.lineno for ti in mod.type_ignores},
+                        {*ignores},
                         )
 
     # --- stmt ---
@@ -547,8 +549,10 @@ class ASTConverter:
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
         typ = None
         if n.type_comment:
-            typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
                                      assume_str_is_unicode=self.unicode_literals)
+            if extra_ignore:
+                self.extra_type_ignores.append(n.lineno)
 
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
@@ -565,8 +569,10 @@ class ASTConverter:
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast27.For) -> ForStmt:
         if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
                                              assume_str_is_unicode=self.unicode_literals)
+            if extra_ignore:
+                self.extra_type_ignores.append(n.lineno)
         else:
             target_type = None
         stmt = ForStmt(self.visit(n.target),
@@ -593,8 +599,10 @@ class ASTConverter:
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast27.With) -> WithStmt:
         if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors,
                                              assume_str_is_unicode=self.unicode_literals)
+            if extra_ignore:
+                self.extra_type_ignores.append(n.lineno)
         else:
             target_type = None
         stmt = WithStmt([self.visit(n.context_expr)],
