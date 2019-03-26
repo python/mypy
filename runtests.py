@@ -6,7 +6,7 @@ prog, *args = argv
 
 
 # Use the Python provided to execute the script, or fall back to a sane default
-if version_info >= (3, 4, 0):
+if version_info >= (3, 5, 0):
     python_name = executable
 else:
     if platform == 'win32':
