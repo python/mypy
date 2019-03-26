@@ -2961,9 +2961,7 @@ def strongly_connected_components(vertices: AbstractSet[str],
 
         for w in edges[v]:
             if w not in index:
-                # For Python >= 3.3, replace with "yield from dfs(w)"
-                for scc in dfs(w):
-                    yield scc
+                yield from dfs(w)
             elif w not in identified:
                 while index[w] < boundaries[-1]:
                     boundaries.pop()
@@ -2977,9 +2975,7 @@ def strongly_connected_components(vertices: AbstractSet[str],
 
     for v in vertices:
         if v not in index:
-            # For Python >= 3.3, replace with "yield from dfs(v)"
-            for scc in dfs(v):
-                yield scc
+            yield from dfs(v)
 
 
 def topsort(data: Dict[AbstractSet[str],

@@ -60,7 +60,7 @@ try:
     # Import ast3 from fastparse, which has special case for Python 3.8
     from mypy.fastparse import ast3, ast3_parse
 except ImportError:
-    if sys.version_info.minor > 2:
+    if sys.version_info.minor > 4:
         try:
             from typed_ast import ast35  # type: ignore
         except ImportError:
@@ -74,7 +74,7 @@ except ImportError:
                   file=sys.stderr)
     else:
         print('Mypy requires the typed_ast package, which is only compatible with\n'
-              'Python 3.3 and greater.', file=sys.stderr)
+              'Python 3.5 and greater.', file=sys.stderr)
     sys.exit(1)
 
 N = TypeVar('N', bound=Node)
