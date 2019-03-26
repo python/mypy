@@ -257,3 +257,15 @@ def hard_exit(status: int = 0) -> None:
 def unmangle(name: str) -> str:
     """Remove internal suffixes from a short name."""
     return name.rstrip("'")
+
+
+def check_python_version(program: str) -> None:
+    """Report issues with the Python used to run mypy, dmypy, or stubgen"""
+    # Check for known bad Python versions.
+    if sys.version_info[:2] < (3, 5):
+        sys.exit("Running {name} with Python 3.4 or lower is not supported; "
+                 "please upgrade to 3.5 or newer".format(name=program))
+    # this can be deleted once we drop support for 3.5
+    if sys.version_info[:3] == (3, 5, 0):
+        sys.exit("Running stubgen with Python 3.5.0 is not supported; "
+                 "please upgrade to 3.5.1 or newer")

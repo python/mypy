@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
 from mypy.dmypy_os import alive, kill
+from mypy.util import check_python_version
 
 from mypy.version import __version__
 
@@ -131,6 +132,7 @@ class BadStatus(Exception):
 
 def main(argv: List[str]) -> None:
     """The code is top-down."""
+    check_python_version('dmypy')
     args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
