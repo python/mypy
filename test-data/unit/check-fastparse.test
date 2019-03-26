@@ -114,6 +114,9 @@ with open('test', 'r') as f:  # type: int  # type: ignore
 for i in (1, 2, 3, 100):  # type: str # type: ignore
     pass
 
+[case testFastParseVariableCommentThenIgnore]
+a="test" # type: int #comment # type: ignore  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testFastParseProperty]
 
 class C:

@@ -125,7 +125,7 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
-TYPE_IGNORE_PATTERN = re.compile(r'#\s*type:\s*ignore')
+TYPE_IGNORE_PATTERN = re.compile(r'\s*type:\s*ignore')
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -197,7 +197,16 @@ def parse_type_comment(type_comment: str,
         else:
             raise
     else:
-        extra_ignore = TYPE_IGNORE_PATTERN.search(type_comment) is not None
+        # We need to handle the case where an
+        # extra # type: ignore is in a comment, like this line.
+        # Therefore we split on comment delineations and check
+        # only the first possibility for a type ignore.
+        parts = type_comment.split('#')
+        if len(parts) > 1:
+            _, possible_ignore, *rest = parts
+        else:
+            possible_ignore = type_comment
+        extra_ignore = TYPE_IGNORE_PATTERN.search(possible_ignore) is not None
         assert isinstance(typ, ast3_Expression)
         return extra_ignore, TypeConverter(errors, line=line,
                              assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
