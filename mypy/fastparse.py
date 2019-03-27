@@ -400,7 +400,7 @@ class ASTConverter:
         return MypyFile(body,
                         self.imports,
                         False,
-                        {*ignores},
+                        set(ignores),
                         )
 
     # --- stmt ---
