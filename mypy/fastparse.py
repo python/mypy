@@ -98,21 +98,17 @@ try:
         NamedExpr = Any
         Constant = Any
 except ImportError:
-    if sys.version_info.minor > 2:
-        try:
-            from typed_ast import ast35  # type: ignore
-        except ImportError:
-            print('The typed_ast package is not installed.\n'
-                  'You can install it with `python3 -m pip install typed-ast`.',
-                  file=sys.stderr)
-        else:
-            print('You need a more recent version of the typed_ast package.\n'
-                  'You can update to the latest version with '
-                  '`python3 -m pip install -U typed-ast`.',
-                  file=sys.stderr)
+    try:
+        from typed_ast import ast35  # type: ignore
+    except ImportError:
+        print('The typed_ast package is not installed.\n'
+              'You can install it with `python3 -m pip install typed-ast`.',
+              file=sys.stderr)
     else:
-        print('Mypy requires the typed_ast package, which is only compatible with\n'
-              'Python 3.3 and greater.', file=sys.stderr)
+        print('You need a more recent version of the typed_ast package.\n'
+              'You can update to the latest version with '
+              '`python3 -m pip install -U typed-ast`.',
+              file=sys.stderr)
     sys.exit(1)
 
 N = TypeVar('N', bound=Node)

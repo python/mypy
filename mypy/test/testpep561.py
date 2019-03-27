@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 from enum import Enum
 import os
+import subprocess
+from subprocess import PIPE
 import sys
 import tempfile
 from typing import Tuple, List, Generator, Optional
@@ -9,7 +11,6 @@ from unittest import TestCase, main
 import mypy.api
 from mypy.modulefinder import get_site_packages_dirs
 from mypy.test.config import package_path
-from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
 
 # NOTE: options.use_builtins_fixtures should not be set in these
@@ -135,13 +136,13 @@ class TestPEP561(TestCase):
         # Sadly, we need virtualenv, as the Python 3 venv module does not support creating a venv
         # for Python 2, and Python 2 does not have its own venv.
         with tempfile.TemporaryDirectory() as venv_dir:
-            returncode, lines = run_command([sys.executable,
-                                             '-m',
-                                             'virtualenv',
-                                             '-p{}'.format(python_executable),
-                                            venv_dir], cwd=os.getcwd())
-            if returncode != 0:
-                err = '\n'.join(lines)
+            proc = subprocess.run([sys.executable,
+                                   '-m',
+                                   'virtualenv',
+                                   '-p{}'.format(python_executable),
+                                   venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE)
+            if proc.returncode != 0:
+                err = proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8')
                 self.fail("Failed to create venv. Do you have virtualenv installed?\n" + err)
             if sys.platform == 'win32':
                 yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
@@ -165,9 +166,9 @@ class TestPEP561(TestCase):
                 install_cmd.append('develop')
             else:
                 install_cmd.append('install')
-        returncode, lines = run_command(install_cmd, cwd=working_dir)
-        if returncode != 0:
-            self.fail('\n'.join(lines))
+        proc = subprocess.run(install_cmd, cwd=working_dir, stdout=PIPE, stderr=PIPE)
+        if proc.returncode != 0:
+            self.fail(proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8'))
 
     def setUp(self) -> None:
         self.simple_prog = ExampleProg(SIMPLE_PROGRAM)
