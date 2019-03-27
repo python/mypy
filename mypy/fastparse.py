@@ -121,7 +121,7 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
-TYPE_IGNORE_PATTERN = re.compile(r'\s*type:\s*ignore')
+TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*($|#)')
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -193,16 +193,7 @@ def parse_type_comment(type_comment: str,
         else:
             raise
     else:
-        # We need to handle the case where an
-        # extra # type: ignore is in a comment, like this line.
-        # Therefore we split on comment delineations and check
-        # only the first possibility for a type ignore.
-        parts = type_comment.split('#')
-        if len(parts) > 1:
-            _, possible_ignore, *rest = parts
-        else:
-            possible_ignore = type_comment
-        extra_ignore = TYPE_IGNORE_PATTERN.search(possible_ignore) is not None
+        extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment) is not None
         assert isinstance(typ, ast3_Expression)
         return extra_ignore, TypeConverter(errors, line=line,
                              assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
@@ -226,7 +217,7 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
     """
     try:
         _, node = parse_type_comment(expr_string.strip(), line=line, errors=None,
-                                  assume_str_is_unicode=assume_str_is_unicode)
+                                     assume_str_is_unicode=assume_str_is_unicode)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -404,7 +395,8 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-        ignores = [ti.lineno for ti in mod.type_ignores] + self.extra_type_ignores
+        ignores = [ti.lineno for ti in mod.type_ignores]
+        ignores.extend(self.extra_type_ignores)
         return MypyFile(body,
                         self.imports,
                         False,
@@ -1240,9 +1232,9 @@ class TypeConverter:
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `Str` object.
         _, typ = parse_type_comment(s.strip(),
-                                   self.line,
-                                   self.errors,
-                                   self.assume_str_is_unicode)
+                                    self.line,
+                                    self.errors,
+                                    self.assume_str_is_unicode)
         return typ or AnyType(TypeOfAny.from_error)
 
     def visit_Call(self, e: Call) -> Type:
