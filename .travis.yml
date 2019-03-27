@@ -14,9 +14,6 @@ env:
 
 jobs:
   include:
-  - name: "run test suite with python 3.4"
-    python: 3.4
-    dist: trusty
   # Specifically request 3.5.1 because we need to be compatible with that.
   - name: "run test suite with python 3.5.1"
     python: 3.5.1
