@@ -374,10 +374,14 @@ class Plugin(CommonPluginApi):
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         """Customize dependencies for a module.
 
-        This hook allows adding in new dependencies for a module. It is called
-        after parsing a file but before analysis.
+        This hook allows adding in new dependencies for a module. It
+        is called after parsing a file but before analysis. This can
+        be useful if a library has dependencies that are dynamic based
+        on configuration information, for example.
 
         Returns a list of (priority, module name, line number) tuples.
+
+        The line number can be -1 when there is not a known real line number.
 
         Priorities are defined in mypy.build (but maybe shouldn't be).
         10 is a good choice for priority.

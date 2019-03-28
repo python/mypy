@@ -585,7 +585,6 @@ reveal_type(instance(2))  # E: Revealed type is 'builtins.float*'
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/callable_instance.py
 
-
 [case testPluginDependencies]
 # flags: --config-file tmp/mypy.ini
 
