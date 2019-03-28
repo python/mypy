@@ -156,7 +156,7 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
+setup(name='mypy',
       version=version,
       description=description,
       long_description=long_description,
