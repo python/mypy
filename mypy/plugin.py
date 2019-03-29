@@ -371,6 +371,23 @@ class Plugin(CommonPluginApi):
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
 
+    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+        """Customize dependencies for a module.
+
+        This hook allows adding in new dependencies for a module. It
+        is called after parsing a file but before analysis. This can
+        be useful if a library has dependencies that are dynamic based
+        on configuration information, for example.
+
+        Returns a list of (priority, module name, line number) tuples.
+
+        The line number can be -1 when there is not a known real line number.
+
+        Priorities are defined in mypy.build (but maybe shouldn't be).
+        10 is a good choice for priority.
+        """
+        return []
+
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
         """Customize behaviour of the type analyzer for given full names.
@@ -395,7 +412,7 @@ class Plugin(CommonPluginApi):
         """Adjust the return type of a function call.
 
         This method is called after type checking a call. Plugin may adjust the return
-        type inferred by mypy, and/or emmit some error messages. Note, this hook is also
+        type inferred by mypy, and/or emit some error messages. Note, this hook is also
         called for class instantiation calls, so that in this example:
 
             from lib import Class, do_stuff
@@ -561,6 +578,9 @@ class WrapperPlugin(Plugin):
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         return self.plugin.lookup_fully_qualified(fullname)
 
+    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+        return self.plugin.get_additional_deps(file)
+
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
         return self.plugin.get_type_analyze_hook(fullname)
@@ -625,6 +645,12 @@ class ChainedPlugin(Plugin):
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         for plugin in self._plugins:
             plugin.set_modules(modules)
+
+    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+        deps = []
+        for plugin in self._plugins:
+            deps.extend(plugin.get_additional_deps(file))
+        return deps
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:

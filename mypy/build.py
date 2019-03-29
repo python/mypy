@@ -1967,7 +1967,9 @@ class State:
         dependencies = []
         priorities = {}  # type: Dict[str, int]  # id -> priority
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
-        for pri, id, line in manager.all_imported_modules_in_file(self.tree):
+        dep_entries = (manager.all_imported_modules_in_file(self.tree) +
+                       self.manager.plugin.get_additional_deps(self.tree))
+        for pri, id, line in dep_entries:
             priorities[id] = min(pri, priorities.get(id, PRI_ALL))
             if id == self.id:
                 continue
