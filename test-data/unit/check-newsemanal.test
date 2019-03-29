@@ -79,6 +79,29 @@ from b import bad
 [file b.py]
 from a import bad # E: Module 'a' has no attribute 'bad'
 
+[case testNewAnalyzerExportedValuesInImportAll]
+from m import *
+_ = a
+_ = b
+_ = c
+_ = d
+_e = e
+_f = f # E: Name 'f' is not defined
+_ = _g # E: Name '_g' is not defined
+reveal_type(_e)  # E: Revealed type is 'm.A'
+[file m.py]
+__all__ = ['a']
+__all__ += ('b',)
+__all__.append('c')
+__all__.extend(('d', 'e'))
+
+a = b = c = d = _g = 1
+e: 'A'
+f: 'A'
+
+class A: ...
+[builtins fixtures/module_all.pyi]
+
 [case testNewAnalyzerSimpleFunction]
 def f(x: int) -> str:
     return 'x'
@@ -581,6 +604,13 @@ a.f(1.0) # E: No overload variant of "f" of "A" matches argument type "float" \
          # N:     def f(self, x: int) -> int \
          # N:     def f(self, x: str) -> str
 
+[case testNewAnalyzerPromotion]
+y: int
+f(y)
+f(1)
+def f(x: float) -> None: pass
+[builtins fixtures/primitives.pyi]
+
 [case testNewAnalyzerFunctionDecorator]
 from typing import Callable
 
@@ -1005,6 +1035,63 @@ class C(type):
         return 0
 
 reveal_type(A.f()) # E: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerMetaclassSix1]
+import six
+
+class A(six.with_metaclass(B)):
+    pass
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+reveal_type(A.f()) # E: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerMetaclassSix2]
+import six
+
+@six.add_metaclass(B)
+class A:
+    pass
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+reveal_type(A.f()) # E: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerMetaclassSix3]
+import six
+
+class A(six.with_metaclass(B, Defer)):
+    pass
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+class Defer:
+    x: str
+
+reveal_type(A.f()) # E: Revealed type is 'builtins.int'
+reveal_type(A.x) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerMetaclassSix4]
+import six
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+reveal_type(A.f()) # E: Revealed type is 'builtins.int'
+reveal_type(A.x) # E: Revealed type is 'builtins.str'
+
+class A(six.with_metaclass(B, Defer)):
+    pass
+
+class Defer:
+    x: str
 
 [case testNewAnalyzerMetaclass1_python2]
 class A:
@@ -1476,6 +1563,8 @@ strict_optional = True
 [[mypy-b]
 strict_optional = False
 
+-- ]]
+
 [case testNewAnalyzerProperty]
 class A:
     @property
@@ -1856,3 +1945,78 @@ reveal_type(y[0])  # E: Revealed type is 'builtins.int'
 x: A
 reveal_type(x)  # E: Revealed type is '__main__.G[Tuple[builtins.int, fallback=__main__.C]]'
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerCastForward1]
+from typing import cast
+
+x = cast('C', None)
+class A:
+    def foo(self) -> None:
+        self.x = cast('C', None)
+
+reveal_type(x)  # E: Revealed type is '__main__.C'
+reveal_type(A().x)  # E: Revealed type is '__main__.C'
+
+class C(A): ...
+
+[case testNewAnalyzerCastForward2]
+from typing import cast
+
+x = cast('C', None)
+
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+C = int
+
+[case testNewAnalyzerCastForward2]
+from typing import cast, NamedTuple
+
+x = cast('C', None)
+
+reveal_type(x)  # E: Revealed type is 'Tuple[builtins.int, fallback=__main__.C]'
+reveal_type(x.x)  # E: Revealed type is 'builtins.int'
+
+C = NamedTuple('C', [('x', int)])
+
+[case testNewAnalyzerApplicationForward1]
+from typing import Generic, TypeVar
+
+x = C[int]()
+reveal_type(x)  # E: Revealed type is '__main__.C[builtins.int*]'
+
+T = TypeVar('T')
+class C(Generic[T]): ...
+
+[case testNewAnalyzerApplicationForward2]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+class C(Generic[T]): ...
+
+x = C['A']()
+reveal_type(x)  # E: Revealed type is '__main__.C[__main__.A*]'
+
+class A: ...
+
+[case testNewAnalyzerApplicationForward3]
+from typing import Generic, TypeVar
+
+x = C[A]()
+reveal_type(x)  # E: Revealed type is '__main__.C[__main__.A*]'
+
+T = TypeVar('T')
+class C(Generic[T]): ...
+
+class A: ...
+
+[case testNewAnalyzerApplicationForward4]
+from typing import Generic, TypeVar
+
+x = C[A]()  # E: Value of type variable "T" of "C" cannot be "A"
+reveal_type(x)  # E: Revealed type is '__main__.C[__main__.A*]'
+
+T = TypeVar('T', bound='D')
+class C(Generic[T]): ...
+
+class A: ...
+class D: ...

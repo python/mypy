@@ -413,6 +413,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.accept(d)
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
+        self.adjust_public_exports()
+
+    def adjust_public_exports(self) -> None:
+        """Make variables not in __all__ not be public"""
+        if '__all__' in self.globals:
+            for name, g in self.globals.items():
+                if name not in self.all_exports:
+                    g.module_public = False
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
@@ -859,12 +867,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         tag = self.track_incomplete_refs()
 
-        bases = defn.base_type_exprs
-
-        self.update_metaclass(defn)
         # Restore base classes after previous iteration (things like Generic[T] might be removed).
         defn.base_type_exprs.extend(defn.removed_base_type_exprs)
         defn.removed_base_type_exprs.clear()
+
+        self.update_metaclass(defn)
+
+        bases = defn.base_type_exprs
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
         self.analyze_class_keywords(defn)

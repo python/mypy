@@ -88,6 +88,35 @@ def f4(x: Iterable[x][x]) -> None: pass # E: Invalid type comment or annotation
 def f5(x: Callable[..., int][x]) -> None: pass # E: Invalid type comment or annotation
 def f6(x: Callable[..., int].x) -> None: pass # E: Invalid type comment or annotation
 
+[case testFastParseTypeWithIgnore]
+def f(x,  # type: x  # type: ignore
+      ):
+    # type: (...) -> None
+    pass
+
+[case testFastParseVariableTypeWithIgnore]
+
+x = 1 # type: str # type: ignore
+
+[case testFastParseVariableTypeWithIgnoreNoSpace]
+
+x = 1 # type: str #type:ignore
+
+[case testFastParseVariableTypeWithIgnoreAndComment]
+
+x = 1 # type: str # type: ignore # comment
+
+[case testFastParseTypeWithIgnoreWithStmt]
+with open('test', 'r') as f:  # type: int  # type: ignore
+    pass
+
+[case testFastParseTypeWithIgnoreForStmt]
+for i in (1, 2, 3, 100):  # type: str # type: ignore
+    pass
+
+[case testFastParseVariableCommentThenIgnore]
+a="test" # type: int #comment # type: ignore  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testFastParseProperty]
 
 class C:

@@ -15,7 +15,7 @@ on specified sources.
 import os
 import re
 
-from typing import List, cast
+from typing import List, Dict, Any, Tuple, cast
 
 from mypy import build
 from mypy.modulefinder import BuildSource
@@ -47,6 +47,7 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-cycles.test',
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
+        'fine-grained-suggest.test',
     ]
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
@@ -94,6 +95,8 @@ class FineGrainedSuite(DataSuite):
         a = []
         if messages:
             a.extend(normalize_messages(messages))
+
+        a.extend(self.maybe_suggest(step, server, main_src))
 
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -147,6 +150,7 @@ class FineGrainedSuite(DataSuite):
 
             a.append('==')
             a.extend(new_messages)
+            a.extend(self.maybe_suggest(step, server, main_src))
 
         # Normalize paths in test output (for Windows).
         a = [line.replace('\\', '/') for line in a]
@@ -257,6 +261,24 @@ class FineGrainedSuite(DataSuite):
             # when there aren't any .py files in an increment
             return [base] + create_source_list([test_temp_dir], options,
                                                allow_empty_dir=True)
+
+    def maybe_suggest(self, step: int, server: Server, src: str) -> List[str]:
+        output = []  # type: List[str]
+        targets = self.get_suggest(src, step)
+        for flag, target in targets:
+            json = flag.strip() == '--json'
+            callsites = flag.strip() == '--callsites'
+            res = cast(Dict[str, Any], server.cmd_suggest(target.strip(), json, callsites))
+            val = res['error'] if 'error' in res else res['out'] + res['err']
+            output.extend(val.strip().split('\n'))
+        return normalize_messages(output)
+
+    def get_suggest(self, program_text: str,
+                    incremental_step: int) -> List[Tuple[str, str]]:
+        step_bit = '1?' if incremental_step == 1 else str(incremental_step)
+        regex = '# suggest{}: (--[a-zA-Z0-9_./?^ ]+ )?([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
+        m = re.findall(regex, program_text, flags=re.MULTILINE)
+        return m
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

@@ -323,11 +323,10 @@ main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missin
 main:2: error: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
-import xab
-def xab(): pass
-[out]
-main:1: error: Cannot find module named 'xab'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+# Error messages differ with the new analyzer
+# flags: --new-semantic-analyzer
+import xab  # E: Cannot find module named 'xab'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+def xab(): pass  # E: Name 'xab' already defined (possibly by an import)
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -520,9 +519,13 @@ x = 1
 x = 1
 
 [case testAssignToFuncDefViaImport]
-from m import *  # E: Incompatible import of "x" (imported name has type "int", local name has type "str")
-f = None
-x = ''
+# Errors differ with the new analyzer. (Old analyzer gave error on the
+# input, which is maybe better, but no error about f, which seems
+# wrong)
+# flags: --new-semantic-analyzer
+from m import *
+f = None  # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[], Any]")
+x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [file m.py]
 def f(): pass
 x = 1+0
@@ -2027,18 +2030,15 @@ def __getattr__(name: str) -> Any: ...
 [builtins fixtures/module.pyi]
 
 [case testModuleLevelGetattrImportFromAs]
+# FIXME: #6314
+# flags: --no-new-semantic-analyzer
 from has_attr import name as n
-reveal_type(name)
-reveal_type(n)
+reveal_type(name)  # E: Revealed type is 'Any'  # E: Name 'name' is not defined
+reveal_type(n)  # E: Revealed type is 'Any'
 
 [file has_attr.pyi]
 from typing import Any
 def __getattr__(name: str) -> Any: ...
-
-[out]
-main:2: error: Revealed type is 'Any'
-main:2: error: Name 'name' is not defined
-main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
 
@@ -2221,6 +2221,8 @@ def __getattr__(attr: str) -> Any: ...
 [out]
 
 [case testModuleGetattrInit2]
+# FIXME: #6314
+# flags: --no-new-semantic-analyzer
 import a.b
 
 x = a.b.f()
@@ -2243,6 +2245,8 @@ main:1: error: Cannot find module named 'a.b'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit4]
+# FIXME: #6314
+# flags: --no-new-semantic-analyzer
 import a.b.c
 
 x = a.b.c.f()
@@ -2253,6 +2257,8 @@ def __getattr__(attr: str) -> Any: ...
 [out]
 
 [case testModuleGetattrInit5]
+# FIXME: #6314
+# flags: --no-new-semantic-analyzer
 from a.b import f
 
 x = f()
@@ -2263,6 +2269,8 @@ def __getattr__(attr: str) -> Any: ...
 [out]
 
 [case testModuleGetattrInit5a]
+# FIXME: #6314
+# flags: --no-new-semantic-analyzer
 from a.b import f
 
 x = f()
@@ -2300,7 +2308,9 @@ main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missin
 main:1: error: Cannot find module named 'a.b.c'
 
 [case testModuleGetattrInit8a]
-import a.b.c  # Error
+# FIXME: #6314
+# flags: --no-new-semantic-analyzer
+import a.b.c  # E: Cannot find module named 'a.b.c'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 import a.d  # OK
 [file a/__init__.pyi]
 from typing import Any
@@ -2308,9 +2318,6 @@ def __getattr__(attr: str) -> Any: ...
 [file a/b/__init__.pyi]
 # empty (i.e. complete subpackage)
 [builtins fixtures/module.pyi]
-[out]
-main:1: error: Cannot find module named 'a.b.c'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit10]
 # flags: --config-file tmp/mypy.ini
