@@ -619,7 +619,10 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     if typ is None:
         return AnyType(TypeOfAny.from_error)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
-    if isinstance(node, FuncBase) or isinstance(typ, FunctionLike) and not node.is_staticmethod:
+    if (isinstance(node, FuncBase)
+            or (isinstance(typ, FunctionLike)
+                and node.is_initialized_in_class
+                and not node.is_staticmethod)):
         assert isinstance(typ, FunctionLike)
         signature = bind_self(typ, subtype)
         if node.is_property:

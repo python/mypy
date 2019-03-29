@@ -169,3 +169,46 @@ $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 -- make sure the meta file didn't get updated. we use this as an imperfect proxy for
 -- whether the source file got rehashed, which we don't want it to have been.
 $ {python} -c "x = open('.mypy_cache/3.6/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
+
+[case testDaemonSuggest]
+$ dmypy start --log-file log.txt -- --follow-imports=error
+Daemon started
+$ dmypy suggest foo:foo
+Command 'suggest' is only valid after a 'check' command
+== Return code: 2
+$ dmypy check foo.py bar.py
+$ dmypy suggest foo.bar
+Unknown function foo.bar
+== Return code: 2
+$ dmypy suggest foo.var
+Object foo.var is not a function
+== Return code: 2
+$ dmypy suggest foo.Foo.var
+Unknown class foo.Foo
+== Return code: 2
+$ dmypy suggest foo.Bar.baz
+Unknown method foo.Bar.baz
+== Return code: 2
+$ dmypy suggest foo.foo.baz
+Object foo.foo is not a class
+== Return code: 2
+$ dmypy suggest --callsites foo.foo
+bar.py:3: (builtins.str)
+bar.py:4: (arg=builtins.str)
+bar.py:6: (*builtins.list[builtins.str])
+bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+[file foo.py]
+def foo(arg):
+    return 12
+class Bar:
+    def bar(self): pass
+var = 0
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(arg='xyz')
+    args = ['']
+    foo(*args)
+    kwds = {'arg': ''}
+    foo(**kwds)

@@ -84,7 +84,10 @@ from mypy.plugin import (
     DynamicClassDefContext
 )
 from mypy.util import get_prefix, correct_relative_import, unmangle
-from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
+from mypy.semanal_shared import (
+    SemanticAnalyzerInterface,
+    set_callable_name as set_callable_name,
+)
 from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 from mypy.semanal_typeddict import TypedDictAnalyzer

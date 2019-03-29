@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Script for downloading mypy_mypyc wheels in preparation for a release
+# Script for downloading mypyc-compiled mypy wheels in preparation for a release
 
 import os
 import os.path
@@ -16,7 +16,7 @@ PLATFORMS = [
 MIN_VER = 5
 MAX_VER = 7
 BASE_URL = "https://github.com/mypyc/mypy_mypyc-wheels/releases/download"
-URL = "{base}/v{version}/mypy_mypyc-{version}-cp3{pyver}-cp3{pyver}m-{platform}.whl"
+URL = "{base}/v{version}/mypy-{version}-cp3{pyver}-cp3{pyver}m-{platform}.whl"
 
 def download(url):
     print('Downloading', url)

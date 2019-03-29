@@ -71,7 +71,6 @@ tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
 plugins=missing
 [out]
 tmp/mypy.ini:2: error: Error importing plugin 'missing'
---' (work around syntax highlighting)
 
 [case testMultipleSectionsDefinePlugin]
 # flags: --config-file tmp/mypy.ini
@@ -585,3 +584,16 @@ reveal_type(instance(2))  # E: Revealed type is 'builtins.float*'
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/callable_instance.py
+
+[case testPluginDependencies]
+# flags: --config-file tmp/mypy.ini
+
+# The top level file here doesn't do anything, but the plugin should add
+# a dependency on err that will cause err to be processed and an error reported.
+
+[file err.py]
+1 + 'lol'  # E: Unsupported operand types for + ("int" and "str")
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/depshook.py

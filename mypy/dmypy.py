@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
 from mypy.dmypy_os import alive, kill
+from mypy.util import check_python_version
 
 from mypy.version import __version__
 
@@ -96,6 +97,15 @@ p.add_argument('--update', metavar='FILE', nargs='*',
 p.add_argument('--remove', metavar='FILE', nargs='*',
                help="Files to remove from the run")
 
+suggest_parser = p = subparsers.add_parser('suggest',
+    help="Suggest a signature or show call sites for a specific function")
+p.add_argument('function', metavar='FUNCTION', type=str,
+               help="Function specified as '[package.]module.[class.]function'")
+p.add_argument('--json', action='store_true',
+               help="Produce json that pyannotate can use to apply a suggestion")
+p.add_argument('--callsites', action='store_true',
+               help="Find callsites instead of suggesting a type")
+
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
 daemon_parser = p = subparsers.add_parser('daemon', help="Run daemon in foreground")
@@ -122,6 +132,7 @@ class BadStatus(Exception):
 
 def main(argv: List[str]) -> None:
     """The code is top-down."""
+    check_python_version('dmypy')
     args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
@@ -336,6 +347,18 @@ def do_recheck(args: argparse.Namespace) -> None:
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
+
+
+@action(suggest_parser)
+def do_suggest(args: argparse.Namespace) -> None:
+    """Ask the daemon for a suggested signature.
+
+    This just prints whatever the daemon reports as output.
+    For now it may be closer to a list of call sites.
+    """
+    response = request(args.status_file, 'suggest', function=args.function,
+                       json=args.json, callsites=args.callsites)
+    check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
 def check_output(response: Dict[str, Any], verbose: bool,
