@@ -41,6 +41,7 @@ from mypy.newsemanal.semanal_classprop import (
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
+import mypy.build
 
 MYPY = False
 if MYPY:
@@ -278,6 +279,11 @@ def semantic_analyze_target(target: str,
             analyzer.refresh_partial(refresh_node, patches, final_iteration)
             if isinstance(node, Decorator):
                 infer_decorator_signature_if_simple(node, analyzer)
+    for dep in analyzer.imports:
+        state.dependencies.append(dep)
+        priority = mypy.build.PRI_LOW
+        if priority <= state.priorities.get(dep, priority):
+            state.priorities[dep] = priority
     if analyzer.deferred:
         return [target], analyzer.incomplete, analyzer.progress
     else:
