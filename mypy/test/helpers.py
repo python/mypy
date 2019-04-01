@@ -397,24 +397,6 @@ def split_lines(*streams: bytes) -> List[str]:
     ]
 
 
-def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
-                timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
-    """A poor man's subprocess.run() for 3.4 compatibility."""
-    process = subprocess.Popen(
-        cmdline,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=cwd,
-    )
-    try:
-        out, err = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        out = err = b''
-        process.kill()
-    return process.returncode, split_lines(out, err)
-
-
 def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
     # In some systems, mtime has a resolution of 1 second which can
     # cause annoying-to-debug issues when a file has the same size

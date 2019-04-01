@@ -1967,7 +1967,9 @@ class State:
         dependencies = []
         priorities = {}  # type: Dict[str, int]  # id -> priority
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
-        for pri, id, line in manager.all_imported_modules_in_file(self.tree):
+        dep_entries = (manager.all_imported_modules_in_file(self.tree) +
+                       self.manager.plugin.get_additional_deps(self.tree))
+        for pri, id, line in dep_entries:
             priorities[id] = min(pri, priorities.get(id, PRI_ALL))
             if id == self.id:
                 continue
@@ -2961,9 +2963,7 @@ def strongly_connected_components(vertices: AbstractSet[str],
 
         for w in edges[v]:
             if w not in index:
-                # For Python >= 3.3, replace with "yield from dfs(w)"
-                for scc in dfs(w):
-                    yield scc
+                yield from dfs(w)
             elif w not in identified:
                 while index[w] < boundaries[-1]:
                     boundaries.pop()
@@ -2977,9 +2977,7 @@ def strongly_connected_components(vertices: AbstractSet[str],
 
     for v in vertices:
         if v not in index:
-            # For Python >= 3.3, replace with "yield from dfs(v)"
-            for scc in dfs(v):
-                yield scc
+            yield from dfs(v)
 
 
 def topsort(data: Dict[AbstractSet[str],

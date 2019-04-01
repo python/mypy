@@ -1181,6 +1181,7 @@ def parse_options(args: List[str]) -> Options:
 
 
 def main() -> None:
+    mypy.util.check_python_version('stubgen')
     # Make sure that the current directory is in sys.path so that
     # stubgen can be run on packages in the current directory.
     if not ('' in sys.path or '.' in sys.path):

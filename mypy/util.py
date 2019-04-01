@@ -259,48 +259,13 @@ def unmangle(name: str) -> str:
     return name.rstrip("'")
 
 
-# The following is a backport of stream redirect utilities from Lib/contextlib.py
-# We need this for 3.4 support. They can be removed in March 2019!
-
-
-class _RedirectStream:
-
-    _stream = None  # type: ClassVar[str]
-
-    def __init__(self, new_target: TextIO) -> None:
-        self._new_target = new_target
-        # We use a list of old targets to make this CM re-entrant
-        self._old_targets = []  # type: List[TextIO]
-
-    def __enter__(self) -> TextIO:
-        self._old_targets.append(getattr(sys, self._stream))
-        setattr(sys, self._stream, self._new_target)
-        return self._new_target
-
-    def __exit__(self,
-                 exc_ty: 'Optional[Type[BaseException]]' = None,
-                 exc_val: Optional[BaseException] = None,
-                 exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
-        setattr(sys, self._stream, self._old_targets.pop())
-        return False
-
-
-class redirect_stdout(_RedirectStream):
-    """Context manager for temporarily redirecting stdout to another file.
-        # How to send help() to stderr
-        with redirect_stdout(sys.stderr):
-            help(dir)
-        # How to write help() to a file
-        with open('help.txt', 'w') as f:
-            with redirect_stdout(f):
-                help(pow)
-    """
-
-    _stream = "stdout"
-
-
-class redirect_stderr(_RedirectStream):
-    """Context manager for temporarily redirecting stderr to another file."""
-
-    _stream = "stderr"
+def check_python_version(program: str) -> None:
+    """Report issues with the Python used to run mypy, dmypy, or stubgen"""
+    # Check for known bad Python versions.
+    if sys.version_info[:2] < (3, 5):
+        sys.exit("Running {name} with Python 3.4 or lower is not supported; "
+                 "please upgrade to 3.5 or newer".format(name=program))
+    # this can be deleted once we drop support for 3.5
+    if sys.version_info[:3] == (3, 5, 0):
+        sys.exit("Running {name} with Python 3.5.0 is not supported; "
+                 "please upgrade to 3.5.1 or newer".format(name=program))

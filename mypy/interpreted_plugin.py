@@ -1,6 +1,6 @@
 """Hack for handling non-mypyc compiled plugins with a mypyc-compiled mypy"""
 
-from typing import Optional, Callable, Any, Dict
+from typing import Optional, Callable, Any, Dict, List, Tuple
 from mypy.options import Options
 from mypy.types import Type, CallableType
 from mypy.nodes import SymbolTableNode, MypyFile
@@ -38,6 +38,9 @@ class InterpretedPlugin:
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
+
+    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+        return []
 
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[['mypy.plugin.AnalyzeTypeContext'], Type]]:

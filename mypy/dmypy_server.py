@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import traceback
+from contextlib import redirect_stderr, redirect_stdout
 
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -30,7 +31,6 @@ from mypy.modulefinder import BuildSource, compute_search_paths
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
-from mypy.util import redirect_stderr, redirect_stdout
 from mypy.version import __version__
 
 
