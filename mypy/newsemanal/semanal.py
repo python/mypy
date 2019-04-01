@@ -4187,7 +4187,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     and not is_same_var_from_getattr(old_node, new_node)):
                 if isinstance(new_node, (FuncDef, Decorator)):
                     self.add_func_redefinition(names, name, symbol)
-                if not (isinstance(symbol.node, (FuncDef, Decorator))
+                if not (isinstance(new_node, (FuncDef, Decorator))
                         and self.set_original_def(old_node, new_node)):
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
@@ -4509,7 +4509,7 @@ def names_modified_in_lvalue(lvalue: Lvalue) -> List[NameExpr]:
     return []
 
 
-def is_same_var_from_getattr(n1: SymbolNode, n2: SymbolNode) -> bool:
+def is_same_var_from_getattr(n1: Optional[SymbolNode], n2: Optional[SymbolNode]) -> bool:
     """Do n1 and n2 refer to the same Var derived from module-level __getattr__?"""
     return (isinstance(n1, Var)
             and n1.from_module_getattr
