@@ -2040,6 +2040,19 @@ def __getattr__(name: str) -> Any: ...
 
 [builtins fixtures/module.pyi]
 
+[case testModuleLevelGetattrImportFromAsTwice]
+# flags: --new-semantic-analyzer
+from has_attr import name
+from has_attr import name
+from has_attr import x
+from has_attr import y as x  # E: Name 'x' already defined (possibly by an import)
+reveal_type(name)  # E: Revealed type is 'builtins.int'
+
+[file has_attr.pyi]
+from typing import Any
+def __getattr__(name: str) -> int: ...
+
+
 [case testModuleLevelGetattrAssignedGood]
 # flags: --python-version 3.7
 import non_stub

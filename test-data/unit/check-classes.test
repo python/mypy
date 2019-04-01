@@ -5069,6 +5069,9 @@ class C(B):
 [case testGetAttrImportAnnotation]
 import a
 x: a.A
+y: a.A.B.C
+reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(y)  # E: Revealed type is 'Any'
 [file a.pyi]
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
