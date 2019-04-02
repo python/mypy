@@ -4968,3 +4968,20 @@ class C:
 [out]
 [out2]
 tmp/a.py:3: error: Revealed type is 'Tuple[builtins.int, fallback=b.C.Hidden@5]'
+
+[case testIncrementalNodeCreatedFromGetattr]
+import a
+[file a.py]
+from b import C
+c: C
+[file b.py]
+from c import C
+[file c.pyi]
+def __getattr__(s): ...
+[file a.py.2]
+from b import C
+c: C
+reveal_type(c)
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Any'

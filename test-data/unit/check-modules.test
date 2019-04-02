@@ -2030,8 +2030,6 @@ def __getattr__(name: str) -> Any: ...
 [builtins fixtures/module.pyi]
 
 [case testModuleLevelGetattrImportFromAs]
-# FIXME: #6314
-# flags: --no-new-semantic-analyzer
 from has_attr import name as n
 reveal_type(name)  # E: Revealed type is 'Any'  # E: Name 'name' is not defined
 reveal_type(n)  # E: Revealed type is 'Any'
@@ -2041,6 +2039,19 @@ from typing import Any
 def __getattr__(name: str) -> Any: ...
 
 [builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromAsTwice]
+# flags: --new-semantic-analyzer
+from has_attr import name
+from has_attr import name
+from has_attr import x
+from has_attr import y as x  # E: Name 'x' already defined (possibly by an import)
+reveal_type(name)  # E: Revealed type is 'builtins.int'
+
+[file has_attr.pyi]
+from typing import Any
+def __getattr__(name: str) -> int: ...
+
 
 [case testModuleLevelGetattrAssignedGood]
 # flags: --python-version 3.7
@@ -2221,8 +2232,6 @@ def __getattr__(attr: str) -> Any: ...
 [out]
 
 [case testModuleGetattrInit2]
-# FIXME: #6314
-# flags: --no-new-semantic-analyzer
 import a.b
 
 x = a.b.f()
@@ -2245,8 +2254,6 @@ main:1: error: Cannot find module named 'a.b'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit4]
-# FIXME: #6314
-# flags: --no-new-semantic-analyzer
 import a.b.c
 
 x = a.b.c.f()
@@ -2257,8 +2264,6 @@ def __getattr__(attr: str) -> Any: ...
 [out]
 
 [case testModuleGetattrInit5]
-# FIXME: #6314
-# flags: --no-new-semantic-analyzer
 from a.b import f
 
 x = f()
@@ -2269,8 +2274,6 @@ def __getattr__(attr: str) -> Any: ...
 [out]
 
 [case testModuleGetattrInit5a]
-# FIXME: #6314
-# flags: --no-new-semantic-analyzer
 from a.b import f
 
 x = f()
@@ -2282,6 +2285,8 @@ def __getattr__(attr: str) -> ModuleType: ...
 
 
 [case testModuleGetattrInit5b]
+# This likely won't be supported by the new semantic analyzer.
+# flags: --no-new-semantic-analyzer
 from a.b import f
 
 x = f()
@@ -2289,8 +2294,8 @@ x = f()
 def __getattr__(attr: str) -> int: ...
 [builtins fixtures/module.pyi]
 [out]
-main:1: error: Cannot find module named 'a.b'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:3: error: Cannot find module named 'a.b'
+main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit8]
 import a.b.c.d
@@ -2308,8 +2313,6 @@ main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missin
 main:1: error: Cannot find module named 'a.b.c'
 
 [case testModuleGetattrInit8a]
-# FIXME: #6314
-# flags: --no-new-semantic-analyzer
 import a.b.c  # E: Cannot find module named 'a.b.c'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 import a.d  # OK
 [file a/__init__.pyi]

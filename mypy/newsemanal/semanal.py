@@ -1628,10 +1628,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                if self.type:
-                    fullname = self.type.fullname() + "." + imported_id
-                else:
-                    fullname = self.qualified_name(imported_id)
+                # We use the fullname of the orignal definition so that we can
+                # detect whether two imported names refer to the same thing.
+                fullname = import_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
@@ -3874,13 +3873,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         if (not n
                                 and '__getattr__' in names
                                 and not self.is_incomplete_namespace(namespace)):
+                            fullname = namespace + '.' + '.'.join(parts[i:])
                             gvar = self.create_getattr_var(names['__getattr__'],
-                                                           parts[i], parts[i])
+                                                           parts[i], fullname)
                             if gvar:
                                 n = SymbolTableNode(GDEF, gvar)
-                                # TODO: Enable this (the purpose is likely to preserve the
-                                #       identity of the Var node if there are multiple imports)
-                                # names[name] = n
                     # TODO: What if node is Var or FuncDef?
                     # Currently, missing these cases results in controversial behavior, when
                     # lookup_qualified(x.y.z) returns Var(x).
@@ -3942,9 +3939,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[Var]:
-        """Create a dummy variable using __getattr__ return type.
+        """Create a dummy variable using module-level __getattr__ return type.
 
         If not possible, return None.
+
+        Note that multiple Var nodes can be created for a single name. We
+        can use the from_module_getattr and the fullname attributes to
+        check if two dummy Var nodes refer to the same thing. Reusing Var
+        nodes would require non-local mutable state, which we prefer to
+        avoid.
         """
         if isinstance(getattr_defn.node, (FuncDef, Var)):
             if isinstance(getattr_defn.node.type, CallableType):
@@ -3953,6 +3956,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 typ = AnyType(TypeOfAny.from_error)
             v = Var(name, type=typ)
             v._fullname = fullname
+            v.from_module_getattr = True
             return v
         return None
 
@@ -4183,13 +4187,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If the new node points to the same node as the old one,
             # or if both old and new nodes are placeholders, we don't
             # need to do anything.
-            if (existing.node != symbol.node
-                    and not (isinstance(existing.node, PlaceholderNode)
-                             and isinstance(symbol.node, PlaceholderNode))):
-                if isinstance(symbol.node, (FuncDef, Decorator)):
+            old_node = existing.node
+            new_node = symbol.node
+            if (old_node != new_node
+                    and not (isinstance(old_node, PlaceholderNode)
+                             and isinstance(new_node, PlaceholderNode))
+                    and not is_same_var_from_getattr(old_node, new_node)):
+                if isinstance(new_node, (FuncDef, Decorator)):
                     self.add_func_redefinition(names, name, symbol)
-                if not (isinstance(symbol.node, (FuncDef, Decorator))
-                        and self.set_original_def(existing.node, symbol.node)):
+                if not (isinstance(new_node, (FuncDef, Decorator))
+                        and self.set_original_def(old_node, new_node)):
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
@@ -4508,3 +4515,12 @@ def names_modified_in_lvalue(lvalue: Lvalue) -> List[NameExpr]:
             result += names_modified_in_lvalue(item)
         return result
     return []
+
+
+def is_same_var_from_getattr(n1: Optional[SymbolNode], n2: Optional[SymbolNode]) -> bool:
+    """Do n1 and n2 refer to the same Var derived from module-level __getattr__?"""
+    return (isinstance(n1, Var)
+            and n1.from_module_getattr
+            and isinstance(n2, Var)
+            and n2.from_module_getattr
+            and n1.fullname() == n2.fullname())

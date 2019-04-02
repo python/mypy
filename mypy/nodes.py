@@ -778,7 +778,8 @@ class Var(SymbolNode):
                  'final_unset_in_class',
                  'final_set_in_init',
                  'is_suppressed_import',
-                 'explicit_self_type'
+                 'explicit_self_type',
+                 'from_module_getattr',
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -821,6 +822,8 @@ class Var(SymbolNode):
         # present in a superclass (without explict type this doesn't create a new Var).
         # See SemanticAnalyzer.analyze_member_lvalue() for details.
         self.explicit_self_type = False
+        # If True, this is an implicit Var created due to module-level __getattr__.
+        self.from_module_getattr = False
 
     def name(self) -> str:
         return self._name

@@ -34,7 +34,7 @@ from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
-from mypy.newsemanal.semanal_pass1 import ReachabilityAnalyzer
+from mypy.newsemanal.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.newsemanal.semanal import NewSemanticAnalyzer
@@ -1934,7 +1934,7 @@ class State:
             # TODO: Once we remove the old semantic analyzer, this no longer should
             #     be considered as a semantic analysis pass -- it's an independent
             #     pass.
-            analyzer = ReachabilityAnalyzer()
+            analyzer = SemanticAnalyzerPreAnalysis()
             with self.wrap_context():
                 analyzer.visit_file(self.tree, self.xpath, self.id, options)
             # TODO: Do this while contructing the AST?
