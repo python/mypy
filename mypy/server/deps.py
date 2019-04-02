@@ -551,6 +551,8 @@ class DependencyVisitor(TraverserVisitor):
             else:
                 self.add_attribute_dependency_for_expr(e, '__aenter__')
                 self.add_attribute_dependency_for_expr(e, '__aexit__')
+        for typ in o.analyzed_types:
+            self.add_type_dependencies(typ)
 
     def visit_print_stmt(self, o: PrintStmt) -> None:
         super().visit_print_stmt(o)

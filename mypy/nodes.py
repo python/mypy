@@ -1199,6 +1199,7 @@ class WithStmt(Statement):
     target = None  # type: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
+    analyzed_types = None  # type: List[mypy.types.Type]
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
@@ -1208,6 +1209,7 @@ class WithStmt(Statement):
         self.expr = expr
         self.target = target
         self.unanalyzed_type = target_type
+        self.analyzed_types = []
         self.body = body
 
     def accept(self, visitor: StatementVisitor[T]) -> T:

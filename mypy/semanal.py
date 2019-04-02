@@ -2852,6 +2852,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     new_types.append(t)
                     self.store_declared_types(n, t)
 
+        s.analyzed_types = new_types
+
         self.visit_block(s.body)
 
     def visit_del_stmt(self, s: DelStmt) -> None:
