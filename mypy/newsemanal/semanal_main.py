@@ -36,7 +36,8 @@ from mypy.newsemanal.semanal import (
     NewSemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
 )
 from mypy.newsemanal.semanal_classprop import (
-    calculate_class_abstract_status, calculate_class_vars, check_protocol_status
+    calculate_class_abstract_status, calculate_class_vars, check_protocol_status,
+    add_type_promotion
 )
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
@@ -327,6 +328,7 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
+                    add_type_promotion(node.node, tree.names, graph[module].options)
 
 
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:

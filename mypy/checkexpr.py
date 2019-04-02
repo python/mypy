@@ -2260,7 +2260,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Step 1: We first try leaving the right arguments alone and destructure
             # just the left ones. (Mypy can sometimes perform some more precise inference
-            # if we leave the right operands a union -- see testOperatorWithEmptyListAndSum.
+            # if we leave the right operands a union -- see testOperatorWithEmptyListAndSum.)
             msg = self.msg.clean_copy()
             msg.disable_count = 0
             all_results = []

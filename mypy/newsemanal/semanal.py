@@ -127,36 +127,6 @@ obsolete_name_mapping = {
     'typing.typevar': 'typing.TypeVar',
 }  # type: Final
 
-# Hard coded type promotions (shared between all Python versions).
-# These add extra ad-hoc edges to the subtyping relation. For example,
-# int is considered a subtype of float, even though there is no
-# subclass relationship.
-TYPE_PROMOTIONS = {
-    'builtins.int': 'builtins.float',
-    'builtins.float': 'builtins.complex',
-}  # type: Final
-
-# Hard coded type promotions for Python 3.
-#
-# Note that the bytearray -> bytes promotion is a little unsafe
-# as some functions only accept bytes objects. Here convenience
-# trumps safety.
-TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()  # type: Final
-TYPE_PROMOTIONS_PYTHON3.update({
-    'builtins.bytearray': 'builtins.bytes',
-})
-
-# Hard coded type promotions for Python 2.
-#
-# These promotions are unsafe, but we are doing them anyway
-# for convenience and also for Python 3 compatibility
-# (bytearray -> str).
-TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()  # type: Final
-TYPE_PROMOTIONS_PYTHON2.update({
-    'builtins.str': 'builtins.unicode',
-    'builtins.bytearray': 'builtins.str',
-})
-
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
@@ -918,7 +888,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
             self.analyze_class_body_common(defn)
-            self.setup_type_promotion(defn)
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == 'builtins' and defn.name in CORE_BUILTIN_CLASSES
@@ -1016,25 +985,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             elif decorator.fullname in ('typing.final',
                                         'typing_extensions.final'):
                 defn.info.is_final = True
-
-    def setup_type_promotion(self, defn: ClassDef) -> None:
-        """Setup extra, ad-hoc subtyping relationships between classes (promotion).
-
-        This includes things like 'int' being compatible with 'float'.
-        """
-        promote_target = None  # type: Optional[Type]
-        for decorator in defn.decorators:
-            if isinstance(decorator, CallExpr):
-                analyzed = decorator.analyzed
-                if isinstance(analyzed, PromoteExpr):
-                    # _promote class decorator (undocumented feature).
-                    promote_target = analyzed.type
-        if not promote_target:
-            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.options.python_version[0] >= 3
-                          else TYPE_PROMOTIONS_PYTHON2)
-            if defn.fullname in promotions:
-                promote_target = self.named_type_or_none(promotions[defn.fullname])
-        defn.info._promote = promote_target
 
     def clean_up_bases_and_infer_type_variables(
             self,
