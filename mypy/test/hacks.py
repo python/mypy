@@ -8,7 +8,6 @@ if MYPY:
 # Files to not run with new semantic analyzer.
 new_semanal_blacklist = [
     'check-async-await.test',
-    'check-expressions.test',
     'check-flags.test',
     'check-incremental.test',
     'check-literal.test',
