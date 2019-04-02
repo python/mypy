@@ -296,8 +296,8 @@ class StrConv(NodeVisitor[str]):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:
                 a.append(('Target', [o.target[i]]))
-        if o.target_type:
-            a.append(o.target_type)
+        if o.unanalyzed_type:
+            a.append(o.unanalyzed_type)
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> str:

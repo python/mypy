@@ -3113,9 +3113,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_with_stmt(self, s: WithStmt) -> None:
         for expr, target in zip(s.expr, s.target):
             if s.is_async:
-                self.check_async_with_item(expr, target, s.target_type is None)
+                self.check_async_with_item(expr, target, s.unanalyzed_type is None)
             else:
-                self.check_with_item(expr, target, s.target_type is None)
+                self.check_with_item(expr, target, s.unanalyzed_type is None)
         self.accept(s.body)
 
     def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:

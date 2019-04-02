@@ -285,7 +285,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return WithStmt(self.expressions(node.expr),
                         self.optional_expressions(node.target),
                         self.block(node.body),
-                        self.optional_type(node.target_type))
+                        self.optional_type(node.unanalyzed_type))
 
     def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
         return PrintStmt(self.expressions(node.args),

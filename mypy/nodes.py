@@ -1198,7 +1198,7 @@ class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
-    target_type = None  # type: Optional[mypy.types.Type]
+    unanalyzed_type = None  # type: Optional[mypy.types.Type]
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
@@ -1207,7 +1207,7 @@ class WithStmt(Statement):
         super().__init__()
         self.expr = expr
         self.target = target
-        self.target_type = target_type
+        self.unanalyzed_type = target_type
         self.body = body
 
     def accept(self, visitor: StatementVisitor[T]) -> T:

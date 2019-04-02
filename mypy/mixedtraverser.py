@@ -1,7 +1,7 @@
 from typing import Optional
 
 from mypy.nodes import (
-    MypyFile, Var, FuncItem, ClassDef, AssignmentStmt, OperatorAssignmentStmt, ForStmt, WithStmt,
+    MypyFile, Var, FuncItem, ClassDef, AssignmentStmt, OperatorAssignmentStmt, ForStmt,
     CastExpr, TypeApplication, TypeAliasExpr, TypeVarExpr, TypedDictExpr, NamedTupleExpr,
     EnumCallExpr, PromoteExpr, NewTypeExpr
 )
@@ -67,10 +67,6 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
     def visit_for_stmt(self, o: ForStmt) -> None:
         super().visit_for_stmt(o)
         self.visit_optional_type(o.index_type)
-
-    def visit_with_stmt(self, o: WithStmt) -> None:
-        super().visit_with_stmt(o)
-        self.visit_optional_type(o.target_type)
 
     # Expressions
 

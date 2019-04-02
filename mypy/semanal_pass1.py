@@ -320,7 +320,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if self.sem.is_module_scope():
             for n in s.target:
                 if n:
-                    self.analyze_lvalue(n, explicit_type=s.target_type is not None)
+                    self.analyze_lvalue(n, explicit_type=s.unanalyzed_type is not None)
             s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
