@@ -1394,6 +1394,7 @@ else:
     def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type "Callable[[str], None]", original type "Callable[[int], None]")
 
 [case testConditionalFunctionDefinitionUsingDecorator3]
+# flags: --new-semantic-analyzer
 from typing import Callable
 
 def dec(f) -> Callable[[int], None]: pass
@@ -1402,11 +1403,11 @@ x = int()
 if x:
     def f(x: int) -> None: pass
 else:
-    # TODO: This should be okay.
-    @dec # E: Name 'f' already defined on line 7
+    @dec
     def f(): pass
 
 [case testConditionalFunctionDefinitionUsingDecorator4]
+# flags: --new-semantic-analyzer
 from typing import Callable
 
 def dec(f) -> Callable[[int], None]: pass
@@ -1415,8 +1416,8 @@ x = int()
 if x:
     def f(x: str) -> None: pass
 else:
-    # TODO: We should report an incompatible redefinition.
-    @dec # E: Name 'f' already defined on line 7
+    # TODO: Complain about incompatible redefinition
+    @dec
     def f(): pass
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
