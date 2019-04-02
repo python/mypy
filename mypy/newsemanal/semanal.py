@@ -1628,6 +1628,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
+                # We use the fullname of the orignal definition so that we can
+                # detect whether two imported names refer to the same thing.
                 fullname = import_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
@@ -3940,6 +3942,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Create a dummy variable using module-level __getattr__ return type.
 
         If not possible, return None.
+
+        Note that multiple Var nodes can be created for a single name. We
+        can use the from_module_getattr and the fullname attributes to
+        check if two dummy Var nodes refer to the same thing. Reusing Var
+        nodes would require non-local mutable state, which we prefer to
+        avoid.
         """
         if isinstance(getattr_defn.node, (FuncDef, Var)):
             if isinstance(getattr_defn.node.type, CallableType):
