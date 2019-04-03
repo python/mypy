@@ -44,7 +44,7 @@ def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
         key = rest.pop()
         if key not in names:
             if raise_on_missing:
-                assert key in names, "Cannot find %s for %s" % (key, name)
+                assert key in names, "Cannot find component %r for %r" % (key, name)
             return None
         stnode = names[key]
         if not rest:

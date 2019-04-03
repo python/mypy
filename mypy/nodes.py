@@ -2938,7 +2938,9 @@ class SymbolTableNode:
                 if prefix is not None:
                     fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
-                            fullname != prefix + '.' + name):
+                            fullname != prefix + '.' + name
+                            and not (isinstance(self.node, Var)
+                                     and self.node.from_module_getattr)):
                         data['cross_ref'] = fullname
                         return data
                 data['node'] = self.node.serialize()

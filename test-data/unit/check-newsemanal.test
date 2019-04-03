@@ -2035,3 +2035,17 @@ import pack.mod
 import a
 [out]
 [out2]
+
+[case testNewAnalyzerModuleGetattrSerialize_incremental]
+import a
+[file a.py]
+import p
+[file a.py.2]
+import p
+reveal_type(p.y)
+[file p.pyi]
+from pp import x as y
+[file pp.pyi]
+def __getattr__(attr): ...
+[out2]
+tmp/a.py:2: error: Revealed type is 'Any'
