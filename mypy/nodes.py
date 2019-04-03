@@ -1199,6 +1199,7 @@ class WithStmt(Statement):
     target = None  # type: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
+    # Semantically analyzed types from type comment (TypeList type expanded)
     analyzed_types = None  # type: List[mypy.types.Type]
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
