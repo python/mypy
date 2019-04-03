@@ -128,7 +128,7 @@ class Builder:
 
     def upload_wheels(self) -> None:
         self.heading('Uploading wheels')
-        for name in os.listdir(os.path.join(self.target_dir, 'dist')):
+        for name in os.listdir(os.path.join(self.target_dir, 'mypy', 'dist')):
             if name.startswith('mypy-{}-'.format(self.version)) and name.endswith('.whl'):
                 self.run_in_virtualenv(
                     'twine upload dist/{}'.format(name))
