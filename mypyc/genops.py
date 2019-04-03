@@ -676,6 +676,40 @@ class GeneratorClass(ImplicitClass):
         self._next_label_target = target
 
 
+# Infrastructure for special casing calls to builtin functions in a
+# programmatic way.  Most special cases should be handled using the
+# data driven "primitive ops" system, but certain operations require
+# special handling that has access to the AST/IR directly and can make
+# decisions/optimizations based on it.
+#
+# For example, we use specializers to statically emit the length of a
+# fixed length tuple and to emit optimized code for any/all calls with
+# generator comprehensions as the argument.
+#
+# Specalizers are attempted before compiling the arguments to the
+# function.  Specializers can return None to indicate that they failed
+# and the call should be compiled normally. Otherwise they should emit
+# code for the call and return a value containing the result.
+#
+# Specializers take three arguments: the IRBuilder, the CallExpr being
+# compiled, and the RefExpr that is the left hand side of the call.
+#
+# Specializers can operate on methods as well, and are keyed on the
+# name and RType in that case.
+Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
+
+specializers = {}  # type: Dict[Tuple[str, Optional[RType]], Specializer]
+
+
+def specialize_function(
+        name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
+    """Decorator to register a function as being a specializer."""
+    def wrapper(f: Specializer) -> Specializer:
+        specializers[name, typ] = f
+        return f
+    return wrapper
+
+
 class NonlocalControl:
     """Represents a stack frame of constructs that modify nonlocal control flow.
 
@@ -2388,79 +2422,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.py_call(function, args, expr.line,
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
-    def any_all_helper(self,
-                       gen: GeneratorExpr,
-                       initial_value_op: OpDescription,
-                       modify: Callable[[Value], Value],
-                       new_value_op: OpDescription) -> Value:
-        retval = self.alloc_temp(bool_rprimitive)
-        self.assign(retval, self.primitive_op(initial_value_op, [], -1), -1)
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-        true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
-
-        def gen_inner_stmts() -> None:
-            comparison = modify(self.accept(gen.left_expr))
-            self.add_bool_branch(comparison, true_block, false_block)
-            self.activate_block(true_block)
-            self.assign(retval, self.primitive_op(new_value_op, [], -1), -1)
-            self.goto(exit_block)
-            self.activate_block(false_block)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
-        self.goto_and_activate(exit_block)
-
-        return retval
-
     def translate_refexpr_call(self, expr: CallExpr, callee: RefExpr) -> Value:
         """Translate a non-method call."""
 
         # TODO: Allow special cases to have default args or named args. Currently they don't since
         # they check that everything in arg_kinds is ARG_POS.
 
-        # TODO: Generalize special cases
-
-        # Special case builtins.any
-        if (callee.fullname == 'builtins.any'
-                and len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]
-                and isinstance(expr.args[0], GeneratorExpr)):
-            return self.any_all_helper(expr.args[0], false_op, lambda x: x, true_op)
-
-        # Special case builtins.all
-        if (callee.fullname == 'builtins.all'
-                and len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]
-                and isinstance(expr.args[0], GeneratorExpr)):
-            return self.any_all_helper(expr.args[0],
-                                       true_op,
-                                       lambda x: self.unary_op(x, 'not', expr.line),
-                                       false_op)
-
-        # Special case builtins.isinstance
-        if (callee.fullname == 'builtins.isinstance'
-                and len(expr.args) == 2
-                and expr.arg_kinds == [ARG_POS, ARG_POS]
-                and isinstance(expr.args[1], (RefExpr, TupleExpr))):
-            irs = self.flatten_classes(expr.args[1])
-            if irs is not None:
-                return self.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)
+        # If there is a specializer for this function, try calling it.
+        if callee.fullname and (callee.fullname, None) in specializers:
+            val = specializers[callee.fullname, None](self, expr, callee)
+            if val is not None:
+                return val
 
         # Gen the argument values
         arg_values = [self.accept(arg) for arg in expr.args]
-
-        # Special case builtins.len
-        if (callee.fullname == 'builtins.len'
-                and len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]):
-            expr_rtype = arg_values[0].type
-            if isinstance(expr_rtype, RTuple):
-                # len() of fixed-length tuple can be trivially determined statically.
-                return self.add(LoadInt(len(expr_rtype.types)))
-
-        # Special case builtins.globals
-        if (callee.fullname == 'builtins.globals'
-                and len(expr.args) == 0):
-            return self.load_globals_dict()
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
@@ -2483,29 +2458,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function = self.accept(callee)
         return self.py_call(function, arg_values, expr.line,
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
-
-    def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
-        """Flatten classes in isinstance(obj, (A, (B, C))).
-
-        If at least one item is not a reference to a native class, return None.
-        """
-        if isinstance(arg, RefExpr):
-            if isinstance(arg.node, TypeInfo) and self.is_native_module_ref_expr(arg):
-                ir = self.mapper.type_to_ir.get(arg.node)
-                if ir:
-                    return [ir]
-            return None
-        else:
-            res = []  # type: List[ClassIR]
-            for item in arg.items:
-                if isinstance(item, (RefExpr, TupleExpr)):
-                    item_part = self.flatten_classes(item)
-                    if item_part is None:
-                        return None
-                    res.extend(item_part)
-                else:
-                    return None
-            return res
 
     def missing_args_to_error_values(self,
                                      args: List[Optional[Value]],
@@ -2552,6 +2504,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.py_call(function, args, expr.line,
                                 arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
         else:
+            receiver_typ = self.node_type(callee.expr)
+
+            # If there is a specializer for this method name/type, try calling it.
+            if (callee.name, receiver_typ) in specializers:
+                val = specializers[callee.name, receiver_typ](self, expr, callee)
+                if val is not None:
+                    return val
+
             args = [self.accept(arg) for arg in expr.args]
             obj = self.accept(callee.expr)
             return self.gen_method_call(obj,
@@ -3564,6 +3524,105 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_ellipsis(self, o: EllipsisExpr) -> Value:
         return self.primitive_op(ellipsis_op, [], o.line)
+
+    # Builtin function special cases
+
+    @specialize_function('builtins.globals')
+    def translate_globals(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        # Special case builtins.globals
+        if len(expr.args) == 0:
+            return self.load_globals_dict()
+        return None
+
+    @specialize_function('builtins.len')
+    def translate_len(
+            self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        # Special case builtins.len
+        if (len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]):
+            expr_rtype = self.node_type(expr.args[0])
+            if isinstance(expr_rtype, RTuple):
+                # len() of fixed-length tuple can be trivially determined statically,
+                # though we still need to evaluate it.
+                self.accept(expr.args[0])
+                return self.add(LoadInt(len(expr_rtype.types)))
+        return None
+
+    @specialize_function('builtins.any')
+    def translate_any_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        if (len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]
+                and isinstance(expr.args[0], GeneratorExpr)):
+            return self.any_all_helper(expr.args[0], false_op, lambda x: x, true_op)
+        return None
+
+    @specialize_function('builtins.all')
+    def translate_all_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        if (len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]
+                and isinstance(expr.args[0], GeneratorExpr)):
+            return self.any_all_helper(expr.args[0],
+                                       true_op,
+                                       lambda x: self.unary_op(x, 'not', expr.line),
+                                       false_op)
+        return None
+
+    def any_all_helper(self,
+                       gen: GeneratorExpr,
+                       initial_value_op: OpDescription,
+                       modify: Callable[[Value], Value],
+                       new_value_op: OpDescription) -> Value:
+        retval = self.alloc_temp(bool_rprimitive)
+        self.assign(retval, self.primitive_op(initial_value_op, [], -1), -1)
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+        true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
+
+        def gen_inner_stmts() -> None:
+            comparison = modify(self.accept(gen.left_expr))
+            self.add_bool_branch(comparison, true_block, false_block)
+            self.activate_block(true_block)
+            self.assign(retval, self.primitive_op(new_value_op, [], -1), -1)
+            self.goto(exit_block)
+            self.activate_block(false_block)
+
+        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
+        self.goto_and_activate(exit_block)
+
+        return retval
+
+    @specialize_function('builtins.isinstance')
+    def translate_isinstance(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        # Special case builtins.isinstance
+        if (len(expr.args) == 2
+                and expr.arg_kinds == [ARG_POS, ARG_POS]
+                and isinstance(expr.args[1], (RefExpr, TupleExpr))):
+            irs = self.flatten_classes(expr.args[1])
+            if irs is not None:
+                return self.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)
+        return None
+
+    def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
+        """Flatten classes in isinstance(obj, (A, (B, C))).
+
+        If at least one item is not a reference to a native class, return None.
+        """
+        if isinstance(arg, RefExpr):
+            if isinstance(arg.node, TypeInfo) and self.is_native_module_ref_expr(arg):
+                ir = self.mapper.type_to_ir.get(arg.node)
+                if ir:
+                    return [ir]
+            return None
+        else:
+            res = []  # type: List[ClassIR]
+            for item in arg.items:
+                if isinstance(item, (RefExpr, TupleExpr)):
+                    item_part = self.flatten_classes(item)
+                    if item_part is None:
+                        return None
+                    res.extend(item_part)
+                else:
+                    return None
+            return res
 
     # Unimplemented constructs
     def visit_await_expr(self, o: AwaitExpr) -> Value:
