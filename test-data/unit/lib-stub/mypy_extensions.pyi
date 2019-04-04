@@ -1,5 +1,7 @@
 # NOTE: Requires fixtures/dict.pyi
-from typing import Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn, Iterator
+from typing import (
+    Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator
+)
 import sys
 
 _T = TypeVar('_T')
@@ -39,7 +41,5 @@ def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -
 # This is intended as a class decorator, but mypy rejects abstract classes
 # when a Type[_T] is expected, so we can't give it the type we want.
 def trait(cls: Any) -> Any: ...
-
-class NoReturn: pass
 
 class FlexibleAlias(Generic[_T, _U]): ...

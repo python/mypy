@@ -137,11 +137,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         if type:
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
-            if not (isinstance(node, TypeAlias) and node.no_args):
-                # We skip bare type aliases like `A = List`, these
-                # are still valid. In contrast, use/expansion points
-                # like `x: A` will be flagged.
-                self.check_for_omitted_generics(type)
             if analyzer.aliases_used:
                 target = self.scope.current_target()
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
@@ -152,7 +147,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         for type in types:
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
-            self.check_for_omitted_generics(type)
             if analyzer.aliases_used:
                 target = self.scope.current_target()
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
@@ -170,14 +164,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                                  self.is_typeshed_file,
                                  indicator,
                                  self.patches)
-
-    def check_for_omitted_generics(self, typ: Type) -> None:
-        if not self.options.disallow_any_generics or self.is_typeshed_file:
-            return
-
-        for t in collect_any_types(typ):
-            if t.type_of_any == TypeOfAny.from_omitted_generics:
-                self.fail(message_registry.BARE_GENERIC, t)
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:

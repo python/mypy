@@ -1038,7 +1038,8 @@ always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
 [case testCheckDisallowAnyGenericsNamedTuple]
-# flags: --disallow-any-generics
+# Crashes on new semantic analyzer: https://github.com/python/mypy/issues/6445
+# flags: --disallow-any-generics --no-new-semantic-analyzer
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)])  # type: ignore
@@ -1046,7 +1047,8 @@ n: N
 [out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
-# flags: --disallow-any-generics
+# Crashes on new semantic analyzer: https://github.com/python/mypy/issues/6445
+# flags: --disallow-any-generics --no-new-semantic-analyzer
 from typing import Dict, Any, Optional
 from mypy_extensions import TypedDict
 

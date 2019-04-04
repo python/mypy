@@ -1,4 +1,4 @@
-"""Verify that type arguments like 'int' C[int] are valid.
+"""Verify properties of type arguments, like 'int' in C[int] being valid.
 
 This must happen after semantic analysis since there can be placeholder
 types until the end of semantic analysis, and these break various type
@@ -8,18 +8,21 @@ operations, including subtype checks.
 from typing import List
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, OverloadedFuncDef
-from mypy.types import Type, Instance, TypeVarType, AnyType
+from mypy.types import Type, Instance, TypeVarType, AnyType, TypeOfAny
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.errors import Errors
 from mypy.scope import Scope
+from mypy.options import Options
 from mypy import message_registry
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
-    def __init__(self, errors: Errors) -> None:
+    def __init__(self, errors: Errors, options: Options, is_typeshed_file: bool) -> None:
         self.errors = errors
+        self.options = options
+        self.is_typeshed_file = is_typeshed_file
         self.scope = Scope()
         # Should we also analyze function definitions, or only module top-levels?
         self.recurse_into_functions = True
@@ -65,6 +68,13 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                           'a subtype of "{}"'.format(
                               arg, info.name(), tvar.upper_bound), t)
         super().visit_instance(t)
+
+    def visit_any(self, t: AnyType) -> None:
+        if not self.options.disallow_any_generics or self.is_typeshed_file:
+            return
+
+        if t.type_of_any == TypeOfAny.from_omitted_generics:
+            self.fail(message_registry.BARE_GENERIC, t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
