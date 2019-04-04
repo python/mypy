@@ -295,7 +295,9 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
     for module in scc:
         state = graph[module]
         assert state.tree
-        analyzer = TypeArgumentAnalyzer(errors)
+        analyzer = TypeArgumentAnalyzer(errors,
+                                        state.options,
+                                        errors.is_typeshed_file(state.path or ''))
         with state.wrap_context():
             with strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
@@ -308,7 +310,9 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
-    analyzer = TypeArgumentAnalyzer(errors)
+    analyzer = TypeArgumentAnalyzer(errors,
+                                    state.options,
+                                    errors.is_typeshed_file(state.path or ''))
     with state.wrap_context():
         with strict_optional_set(state.options.strict_optional):
             for target in targets:
