@@ -2897,7 +2897,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
-            # No useful type context.
+            e.body.accept(self.chk)
+            # No useful type context. Note that type check the return type for
+            # the second time here, since we can't easily extract it from the
+            # body.
             ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
             self.chk.return_types.pop()

@@ -201,6 +201,26 @@ main:1: error: Ellipses cannot accompany other argument types in function type s
 [case testLambdaTupleArgInPython2]
 f = lambda (x, y): x + y
 f((0, 0))
+
+def g(): # type: () -> None
+    pass
+reveal_type(lambda (x,): g()) # E: Revealed type is 'def (Any)'
+[out]
+
+[case testLambdaTupleArgInferenceInPython2]
+from typing import Callable, Tuple
+
+def f(c):
+    # type: (Callable[[Tuple[int, int]], int]) -> None
+    pass
+def g(c):
+    # type: (Callable[[Tuple[int, int]], str]) -> None
+    pass
+
+f(lambda (x, y): y)
+f(lambda (x, y): x()) # E: "int" not callable
+g(lambda (x, y): y) # E: Argument 1 to "g" has incompatible type "Callable[[Tuple[int, int]], int]"; expected "Callable[[Tuple[int, int]], str]" \
+    # E: Incompatible return value type (got "int", expected "str")
 [out]
 
 [case testLambdaSingletonTupleArgInPython2]
