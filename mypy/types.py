@@ -453,7 +453,7 @@ class UninhabitedType(Type):
     This type is the bottom type.
     With strict Optional checking, it is the only common subtype between all
     other types, which allows `meet` to be well defined.  Without strict
-    Optional checking, NoneTyp fills this role.
+    Optional checking, NoneType fills this role.
 
     In general, for any type T:
         join(UninhabitedType, T) = T
