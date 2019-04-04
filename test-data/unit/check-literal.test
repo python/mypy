@@ -2175,7 +2175,7 @@ str_key_bad: Final = "missing"
 class Unrelated: pass
 
 MyTuple = NamedTuple('MyTuple', [
-    ('foo', int), 
+    ('foo', int),
     ('bar', str),
 ])
 
