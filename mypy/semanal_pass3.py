@@ -310,7 +310,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         super().visit_for_stmt(s)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
-        self.analyze(s.target_type, s)
+        for typ in s.analyzed_types:
+            self.analyze(typ, s)
         super().visit_with_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
@@ -334,8 +335,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 node.index_type = transform(node.index_type)
             self.transform_types_in_lvalue(node.index, transform)
         if isinstance(node, WithStmt):
-            if node.target_type:
-                node.target_type = transform(node.target_type)
+            node.analyzed_types = [transform(typ) for typ in node.analyzed_types]
             for n in node.target:
                 if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
                     n.node.type = transform(n.node.type)

@@ -3102,18 +3102,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_with_stmt(self, s: WithStmt) -> None:
         types = []  # type: List[Type]
 
-        if s.target_type:
+        if s.unanalyzed_type:
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
                 self.fail('Invalid type comment', s)
             elif len(actual_targets) == 1:
                 # We have one target and one type
-                types = [s.target_type]
-            elif isinstance(s.target_type, TupleType):
+                types = [s.unanalyzed_type]
+            elif isinstance(s.unanalyzed_type, TupleType):
                 # We have multiple targets and multiple types
-                if len(actual_targets) == len(s.target_type.items):
-                    types = s.target_type.items
+                if len(actual_targets) == len(s.unanalyzed_type.items):
+                    types = s.unanalyzed_type.items
                 else:
                     # But it's the wrong number of items
                     self.fail('Incompatible number of types for `with` targets', s)
@@ -3125,7 +3125,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         for e, n in zip(s.expr, s.target):
             e.accept(self)
             if n:
-                self.analyze_lvalue(n, explicit_type=s.target_type is not None)
+                self.analyze_lvalue(n, explicit_type=s.unanalyzed_type is not None)
 
                 # Since we have a target, pop the next type from types
                 if types:
@@ -3139,12 +3139,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         new_types.append(analyzed)
                         self.store_declared_types(n, analyzed)
 
-        # Reverse the logic above to correctly reassign target_type
-        if new_types:
-            if len(s.target) == 1:
-                s.target_type = new_types[0]
-            elif isinstance(s.target_type, TupleType):
-                s.target_type = s.target_type.copy_modified(items=new_types)
+        s.analyzed_types = new_types
 
         self.visit_block(s.body)
 

@@ -70,7 +70,8 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_with_stmt(self, o: WithStmt) -> None:
         super().visit_with_stmt(o)
-        self.visit_optional_type(o.target_type)
+        for typ in o.analyzed_types:
+            typ.accept(self)
 
     # Expressions
 

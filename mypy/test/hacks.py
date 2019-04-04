@@ -13,7 +13,6 @@ new_semanal_blacklist = [
     'check-literal.test',
     'check-overloading.test',
     'check-python2.test',
-    'check-statements.test',
     'check-unions.test',
     'check-unreachable-code.test',
 ]  # type: Final
