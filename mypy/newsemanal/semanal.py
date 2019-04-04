@@ -2803,6 +2803,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
+        if self.is_func_scope() and not self.type:
+            # Full names of generated classes should always be prefixed with the module names
+            # even if they are nested in a function, since these classes will be (de-)serialized.
+            class_def.fullname = self.cur_mod_id + '.' + class_def.fullname
 
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
         class_def.info = info
