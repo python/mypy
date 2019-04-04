@@ -2049,3 +2049,65 @@ from pp import x as y
 def __getattr__(attr): ...
 [out2]
 tmp/a.py:2: error: Revealed type is 'Any'
+
+[case testNewAnanlyzerTrickyImportPackage]
+from lib import config
+import lib
+
+reveal_type(lib.config.x)  # E: Revealed type is 'builtins.int'
+reveal_type(config.x)  # E: Revealed type is 'builtins.int'
+
+[file lib/__init__.py]
+from lib.config import config
+
+[file lib/config.py]
+class Config:
+    x: int
+
+config = Config()
+[builtins fixtures/module.pyi]
+
+[case testNewAnanlyzerTrickyImportPackageAlt]
+import lib.config
+import lib.config as tmp
+
+reveal_type(lib.config.x)  # E: Revealed type is 'builtins.int'
+# TODO: this actually doesn't match runtime behavior, variable wins.
+tmp.x  # E: Module has no attribute "x"
+
+[file lib/__init__.py]
+from lib.config import config
+
+[file lib/config.py]
+class Config:
+    x: int
+
+config = Config()
+[builtins fixtures/module.pyi]
+
+[case testNewAnanlyzerTrickyImportPackage_incremental]
+import a
+
+[file a.py]
+from lib import config
+import lib
+
+[file a.py.2]
+from lib import config
+import lib
+
+reveal_type(lib.config.x)
+reveal_type(config.x)
+
+[file lib/__init__.py]
+from lib.config import config
+
+[file lib/config.py]
+class Config:
+    x: int
+
+config = Config()
+[builtins fixtures/module.pyi]
+[out2]
+tmp/a.py:4: error: Revealed type is 'builtins.int'
+tmp/a.py:5: error: Revealed type is 'builtins.int'
