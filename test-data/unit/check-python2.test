@@ -201,7 +201,10 @@ main:1: error: Ellipses cannot accompany other argument types in function type s
 [case testLambdaTupleArgInPython2]
 f = lambda (x, y): x + y
 f((0, 0))
-reveal_type(lambda (x,): None) # E: Revealed type is 'def (Any)'
+
+def g(): # type: () -> None
+    pass
+reveal_type(lambda (x,): g()) # E: Revealed type is 'def (Any)'
 [out]
 
 [case testLambdaTupleArgInferenceInPython2]
