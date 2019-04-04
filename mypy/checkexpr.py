@@ -2898,6 +2898,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not inferred_type:
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
             # No useful type context.
+            e.body.accept(self.chk)
             ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
             self.chk.return_types.pop()
