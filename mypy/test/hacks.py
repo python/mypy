@@ -10,7 +10,6 @@ new_semanal_blacklist = [
     'check-async-await.test',
     'check-flags.test',
     'check-incremental.test',
-    'check-literal.test',
     'check-overloading.test',
     'check-python2.test',
     'check-unions.test',
