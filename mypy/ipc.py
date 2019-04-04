@@ -205,7 +205,7 @@ class IPCServer(IPCBase):
                                                       )
             if self.connection == -1:  # INVALID_HANDLE_VALUE
                 err = _winapi.GetLastError()
-                raise IPCException('Invalid handle to pipe: {err}'.format(err))
+                raise IPCException('Invalid handle to pipe: {}'.format(err))
         else:
             self.sock_directory = tempfile.mkdtemp()
             sockfile = os.path.join(self.sock_directory, self.name)
