@@ -52,8 +52,9 @@ class Builder:
         self.install_dependencies()
         self.make_wheel()
         self.make_sdist()
+        self.download_compiled_wheels()
         if not self.no_upload:
-            self.upload_wheel()
+            self.upload_wheels()
             self.upload_sdist()
             self.heading('Successfully uploaded wheel and sdist for mypy {}'.format(self.version))
             print("<< All done! >>")
@@ -121,9 +122,16 @@ class Builder:
         self.heading('Building sdist')
         self.run_in_virtualenv('python3 setup.py sdist')
 
-    def upload_wheel(self) -> None:
-        self.heading('Uploading wheel')
-        self.run_in_virtualenv('twine upload dist/mypy-{}-py3-none-any.whl'.format(self.version))
+    def download_compiled_wheels(self) -> None:
+        self.heading('Downloading wheels compiled with mypyc')
+        self.run_in_virtualenv('misc/download-mypyc-wheels.py %s' % self.version)
+
+    def upload_wheels(self) -> None:
+        self.heading('Uploading wheels')
+        for name in os.listdir(os.path.join(self.target_dir, 'mypy', 'dist')):
+            if name.startswith('mypy-{}-'.format(self.version)) and name.endswith('.whl'):
+                self.run_in_virtualenv(
+                    'twine upload dist/{}'.format(name))
 
     def upload_sdist(self) -> None:
         self.heading('Uploading sdist')
