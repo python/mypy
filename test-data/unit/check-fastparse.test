@@ -431,8 +431,8 @@ from . import command
 from . import backends
 
 [file blamodule/backends/__init__.py]
-from .Bla import Bla # E: Name 'Bla' already defined (by an import)
-Bla().method()  # E: Module not callable
+from .Bla import Bla
+Bla().method()
 
 [file blamodule/backends/Bla.py]
 from .. import *

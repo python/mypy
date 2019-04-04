@@ -1597,6 +1597,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue
+                if (existing_symbol and isinstance(existing_symbol.node, MypyFile) and
+                        existing_symbol.no_serialize):  # submodule added to parent module
+                    # Special case: allow replacing submodules with variables. This pattern
+                    # is used by some libraries.
+                    del self.globals[imported_id]
                 # 'from m import x as x' exports x in a stub file.
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules

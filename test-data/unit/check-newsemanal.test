@@ -2049,3 +2049,20 @@ from pp import x as y
 def __getattr__(attr): ...
 [out2]
 tmp/a.py:2: error: Revealed type is 'Any'
+
+[case testNewAnanlyzerTrickyImportPackage]
+from lib import config
+import lib
+
+reveal_type(lib.config.x)  # E: Revealed type is 'builtins.int'
+reveal_type(config.x)  # E: Revealed type is 'builtins.int'
+
+[file lib/__init__.py]
+from lib.config import config
+
+[file lib/config.py]
+class Config:
+    x: int
+
+config = Config()
+[builtins fixtures/module.pyi]
