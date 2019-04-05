@@ -597,6 +597,23 @@ a = A()
 assert a.f(2) == (5, "test")
 assert a.f(s = "123", x = -2) == (1, "123")
 
+[case testMethodCallOrdering]
+class A:
+    def __init__(self, s: str) -> None:
+        print(s)
+    def f(self, x: 'A', y: 'A') -> None:
+        pass
+
+def g() -> None:
+    A('A!').f(A('hello'), A('world'))
+[file driver.py]
+from native import g
+g()
+[out]
+A!
+hello
+world
+
 [case testImports]
 import testmodule
 

@@ -2512,8 +2512,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 if val is not None:
                     return val
 
-            args = [self.accept(arg) for arg in expr.args]
             obj = self.accept(callee.expr)
+            args = [self.accept(arg) for arg in expr.args]
             return self.gen_method_call(obj,
                                         callee.name,
                                         args,
