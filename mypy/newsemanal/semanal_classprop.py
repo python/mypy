@@ -58,6 +58,12 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     concrete = set()  # type: Set[str]
     abstract = []  # type: List[str]
     abstract_in_this_class = []  # type: List[str]
+    if typ.is_newtype:
+        # Special case: NewTypes are considered as always non-abstract, so they can be used as:
+        #     Config = NewType('Config', Mapping[str, str])
+        #     default = Config({'cannot': 'modify'})  # OK
+        typ.abstract_attributes = []
+        return
     for base in typ.mro:
         for name, symnode in base.names.items():
             node = symnode.node
