@@ -1325,6 +1325,15 @@ fun(lambda: (yield from [1]))  # E: Incompatible types in "yield from" (actual t
 [builtins fixtures/list.pyi]
 [out]
 
+[case testLambdaAndReachability]
+def f() -> None:
+    aa = []
+    y = lambda x: 1
+    aa.append(1)
+    1()  # E: "int" not callable
+[builtins fixtures/list.pyi]
+
+
 -- List comprehensions
 -- -------------------
 
