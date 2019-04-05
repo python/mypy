@@ -8,7 +8,4 @@ if MYPY:
 # Files to not run with new semantic analyzer.
 new_semanal_blacklist = [
     'check-incremental.test',
-    'check-overloading.test',
-    'check-unions.test',
-    'check-unreachable-code.test',
 ]  # type: Final

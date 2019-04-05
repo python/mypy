@@ -1521,6 +1521,8 @@ f(0)  # E: No overload variant of "f" matches argument type "int" \
       # N:     def f(a: str) -> None
 
 [case testCustomRedefinitionDecorator]
+# https://github.com/python/mypy/issues/6432
+# flags: --no-new-semantic-analyzer
 from typing import Any, Callable, Type
 
 class Chain(object):
@@ -1534,7 +1536,7 @@ class Test(object):
     def do_chain(self) -> int:
         return 2
 
-    @do_chain.chain  # E: Name 'do_chain' already defined on line 10
+    @do_chain.chain  # E: Name 'do_chain' already defined on line 12
     def do_chain(self) -> int:
         return 3
 
