@@ -61,7 +61,7 @@ class Builder:
         else:
             self.heading('Successfully built wheel and sdist for mypy {}'.format(self.version))
             dist_dir = os.path.join(self.repo_dir, 'dist')
-            print('Generated packages:'.format(dist_dir))
+            print('Generated packages:')
             for fnam in sorted(os.listdir(dist_dir)):
                 print('  {}'.format(os.path.join(dist_dir, fnam)))
 
@@ -70,7 +70,7 @@ class Builder:
             return
         extra = '' if self.no_upload else ' and upload'
         print('This will build{} PyPI packages for mypy {}.'.format(extra, self.version))
-        response = input('Proceed? [yN] '.format(self.version))
+        response = input('Proceed? [yN] ')
         if response.lower() != 'y':
             sys.exit('Exiting')
 
@@ -104,7 +104,7 @@ class Builder:
         tag = 'v{}'.format(self.version)
         self.heading('Check out {}'.format(tag))
         self.run('cd mypy && git checkout {}'.format(tag))
-        self.run('cd mypy && git submodule update --init'.format(tag))
+        self.run('cd mypy && git submodule update --init')
 
     def make_virtualenv(self) -> None:
         self.heading('Creating a fresh virtualenv')
