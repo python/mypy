@@ -169,6 +169,11 @@ class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent
 
 iterator_warning = (i+1 for i in range(10))  # W: Treating generator comprehension as list
 
+# But we don't want warnings for these cases:
+tup = tuple(i+1 for i in range(10))
+a_str = " ".join(str(i) for i in range(10))
+wtvr = next(i for i in range(10) if i == 5)
+
 d1 = {1: 2}
 d2 = {2: 3, **d1}  # E: **args in dict expressions is unimplemented
 

@@ -178,7 +178,10 @@ def len(o: object) -> int: pass
 def print(*object) -> None: pass
 def range(x: int, y: int = ..., z: int = ...) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
+@overload
 def next(i: Iterator[T]) -> T: pass
+@overload
+def next(i: Iterator[T], default: T) -> T: pass
 def hash(o: object) -> int: ...
 def globals() -> Dict[str, Any]: ...
 def setattr(object: Any, name: str, value: Any) -> None: ...

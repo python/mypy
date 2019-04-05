@@ -3629,6 +3629,58 @@ assert call_all(mixed_110) == 1
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
+[case testNextGenerator]
+from typing import Iterable
+
+def f(x: int) -> int:
+    print(x)
+    return x
+
+def call_next_loud(l: Iterable[int], val: int) -> int:
+    return next(i for i in l if f(i) == val)
+
+def call_next_default(l: Iterable[int], val: int) -> int:
+    return next((i*2 for i in l if i == val), -1)
+
+def call_next_default_list(l: Iterable[int], val: int) -> int:
+    return next((i*2 for i in l if i == val), -1)
+[file driver.py]
+from native import call_next_loud, call_next_default, call_next_default_list
+
+assert call_next_default([0, 1, 2], 0) == 0
+assert call_next_default([0, 1, 2], 1) == 2
+assert call_next_default([0, 1, 2], 2) == 4
+assert call_next_default([0, 1, 2], 3) == -1
+assert call_next_default([], 0) == -1
+assert call_next_default_list([0, 1, 2], 0) == 0
+assert call_next_default_list([0, 1, 2], 1) == 2
+assert call_next_default_list([0, 1, 2], 2) == 4
+assert call_next_default_list([0, 1, 2], 3) == -1
+assert call_next_default_list([], 0) == -1
+
+assert call_next_loud([0, 1, 2], 0) == 0
+assert call_next_loud([0, 1, 2], 1) == 1
+assert call_next_loud([0, 1, 2], 2) == 2
+try:
+    call_next_loud([42], 3)
+except StopIteration:
+    print("got here")
+try:
+    call_next_loud([], 3)
+except StopIteration:
+    print("got here")
+
+[out]
+0
+0
+1
+0
+1
+2
+42
+got here
+got here
+
 [case testAssignModule]
 import a
 assert a.x == 20

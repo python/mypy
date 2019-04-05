@@ -2437,6 +2437,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Gen the argument values
         arg_values = [self.accept(arg) for arg in expr.args]
 
+        return self.call_refexpr_with_args(expr, callee, arg_values)
+
+    def call_refexpr_with_args(
+            self, expr: CallExpr, callee: RefExpr, arg_values: List[Value]) -> Value:
+
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
             ops = func_ops.get(callee.fullname, [])
@@ -3252,17 +3257,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Unreachable())
         self.activate_block(ok_block)
 
-    def visit_list_comprehension(self, o: ListComprehension) -> Value:
-        gen = o.generator
-        list_ops = self.primitive_op(new_list_op, [], o.line)
+    def translate_list_comprehension(self, gen: GeneratorExpr) -> Value:
+        list_ops = self.primitive_op(new_list_op, [], gen.line)
         loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
         def gen_inner_stmts() -> None:
             e = self.accept(gen.left_expr)
-            self.primitive_op(list_append_op, [list_ops, e], o.line)
+            self.primitive_op(list_append_op, [list_ops, e], gen.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
         return list_ops
+
+    def visit_list_comprehension(self, o: ListComprehension) -> Value:
+        return self.translate_list_comprehension(o.generator)
 
     def visit_set_comprehension(self, o: SetComprehension) -> Value:
         gen = o.generator
@@ -3290,17 +3297,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:
         self.warning('Treating generator comprehension as list', o.line)
-
-        gen = o
-        list_ops = self.primitive_op(new_list_op, [], o.line)
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-
-        def gen_inner_stmts() -> None:
-            e = self.accept(gen.left_expr)
-            self.primitive_op(list_append_op, [list_ops, e], o.line)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
-        return self.primitive_op(iter_op, [list_ops], o.line)
+        return self.primitive_op(iter_op, [self.translate_list_comprehension(o)], o.line)
 
     def comprehension_helper(self,
                              loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
@@ -3548,6 +3545,37 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 return self.add(LoadInt(len(expr_rtype.types)))
         return None
 
+    # Special cases for things that consume iterators where we know we
+    # can safely compile a generator into a list.
+    @specialize_function('builtins.tuple')
+    @specialize_function('builtins.set')
+    @specialize_function('builtins.dict')
+    @specialize_function('builtins.sum')
+    @specialize_function('builtins.min')
+    @specialize_function('builtins.max')
+    @specialize_function('builtins.sorted')
+    @specialize_function('collections.OrderedDict')
+    @specialize_function('join', str_rprimitive)
+    @specialize_function('extend', list_rprimitive)
+    @specialize_function('update', dict_rprimitive)
+    @specialize_function('update', set_rprimitive)
+    def translate_safe_generator_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        if (len(expr.args) > 0
+                and expr.arg_kinds[0] == ARG_POS
+                and isinstance(expr.args[0], GeneratorExpr)):
+            if isinstance(callee, MemberExpr):
+                return self.gen_method_call(
+                    self.accept(callee.expr), callee.name,
+                    ([self.translate_list_comprehension(expr.args[0])]
+                        + [self.accept(arg) for arg in expr.args[1:]]),
+                    self.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
+            else:
+                return self.call_refexpr_with_args(
+                    expr, callee,
+                    ([self.translate_list_comprehension(expr.args[0])]
+                        + [self.accept(arg) for arg in expr.args[1:]]))
+        return None
+
     @specialize_function('builtins.any')
     def translate_any_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
         if (len(expr.args) == 1
@@ -3588,6 +3616,50 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
         self.goto_and_activate(exit_block)
 
+        return retval
+
+    # Special case for calling next() on a generator expression, an
+    # idiom that shows up some in mypy.
+    #
+    # For example, next(x for x in l if x.id == 12, None) will
+    # generate code that searches l for an element where x.id == 12
+    # and produce the first such object, or None if no such element
+    # exists.
+    @specialize_function('builtins.next')
+    def translate_next_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+        if not (expr.arg_kinds in ([ARG_POS], [ARG_POS, ARG_POS])
+                and isinstance(expr.args[0], GeneratorExpr)):
+            return None
+
+        gen = expr.args[0]
+
+        retval = self.alloc_temp(self.node_type(expr))
+        default_val = None
+        if len(expr.args) > 1:
+            default_val = self.accept(expr.args[1])
+
+        exit_block = BasicBlock()
+
+        def gen_inner_stmts() -> None:
+            # next takes the first element of the generator, so if
+            # something gets produced, we are done.
+            self.assign(retval, self.accept(gen.left_expr), gen.left_expr.line)
+            self.goto(exit_block)
+
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
+
+        # Now we need the case for when nothing got hit. If there was
+        # a default value, we produce it, and otherwise we raise
+        # StopIteration.
+        if default_val:
+            self.assign(retval, default_val, gen.left_expr.line)
+            self.goto(exit_block)
+        else:
+            self.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, None, expr.line))
+            self.add(Unreachable())
+
+        self.activate_block(exit_block)
         return retval
 
     @specialize_function('builtins.isinstance')
