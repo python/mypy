@@ -1243,7 +1243,7 @@ class CollectAllInnerTypesQuery(TypeQuery[List[Type]]):
         super().__init__(self.combine_lists_strategy)
 
     def query_types(self, types: Iterable[Type]) -> List[Type]:
-        return self.strategy(t.accept(self) for t in types) + list(types)
+        return self.strategy([t.accept(self) for t in types]) + list(types)
 
     @classmethod
     def combine_lists_strategy(cls, it: Iterable[List[Type]]) -> List[Type]:
