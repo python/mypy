@@ -45,7 +45,7 @@ def find_package_data(base, globs):
 
 class CustomPythonBuild(build_py):
     def pin_version(self):
-        path = os.path.join(self.build_lib, 'mypy')
+        path = os.path.join(self.build_lib, 'mypyc')
         self.mkpath(path)
         with open(os.path.join(path, 'version.py'), 'w') as stream:
             stream.write('__version__ = "{}"\n'.format(version))
