@@ -62,7 +62,7 @@ new first class kinds of types.
    no guarantees about backwards compatibility.
 
    Backwards incompatible changes may be made without a deprecation period,
-   but we will attempt to announce them in
+   but we will announce them in
    `the plugin API changes announcement issue <https://github.com/python/mypy/issues/6617>`_.
 
 Configuring mypy to use plugins
