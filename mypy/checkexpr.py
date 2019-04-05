@@ -2897,10 +2897,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
-            e.body.accept(self.chk)
-            # No useful type context. Note that type check the return type for
-            # the second time here, since we can't easily extract it from the
-            # body.
+            # Type check everything in the body except for the final return
+            # statement (it can contain tuple unpacking before return).
+            for stmt in e.body.body[:-1]:
+                stmt.accept(self.chk)
+            # Only type check the return expression, not the return statement.
+            # This is important as otherwise the following statements would be
+            # considered unreachable. There's no useful type context.
             ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
             self.chk.return_types.pop()
