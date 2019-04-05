@@ -42,7 +42,7 @@ from mypy.options import Options
 try:
     # pull this into a final variable to make mypyc be quiet about the
     # the default argument warning
-    PY_MINOR_VERSION: Final = sys.version_info[1]
+    PY_MINOR_VERSION = sys.version_info[1]  # type: Final
 
     # Check if we can use the stdlib ast module instead of typed_ast.
     if sys.version_info >= (3, 8):
