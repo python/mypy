@@ -129,7 +129,10 @@ def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[Li
         raise CantImport(module)
     if is_c_module(mod):
         return None
-    return mod.__file__, getattr(mod, '__all__', None)
+    module_all = getattr(mod, '__all__', None)
+    if module_all is not None:
+        module_all = list(module_all)
+    return mod.__file__, module_all
 
 
 @contextmanager
