@@ -182,7 +182,11 @@ def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
         tree = graph[module].tree
         assert tree is not None
         analyzer = graph[module].manager.new_semantic_analyzer
-        targets = get_all_leaf_targets(tree)
+        # In principle, functions can be processed in arbitrary order,
+        # but _methods_ must be processed in the order they are defined,
+        # because some features (most notably partial types) depend on
+        # order of definitions on self.
+        targets = sorted(get_all_leaf_targets(tree), key=lambda x: x[1].line)
         for target, node, active_type in targets:
             assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
             process_top_level_function(analyzer,

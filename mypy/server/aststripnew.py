@@ -10,7 +10,7 @@ from mypy.nodes import (
     FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
     ImportFrom, CallExpr, Decorator, OverloadedFuncDef, Node, TupleExpr, ListExpr,
     SuperExpr, IndexExpr, ImportAll, ForStmt, Block, CLASSDEF_NO_INFO, TypeInfo,
-    StarExpr, Var
+    StarExpr, Var, SymbolTableNode
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
@@ -87,7 +87,9 @@ class NodeStripVisitor(TraverserVisitor):
             if isinstance(sym.node, Var) and sym.implicit:
                 explicit_self_type = sym.node.explicit_self_type
 
-                def patch() -> None:
+                # These arguments should not be passed, we just want to capture
+                # the names in closure at current iteration in the for-loop.
+                def patch(name: str = name, sym: SymbolTableNode = sym) -> None:
                     existing = node.info.get(name)
                     defined_in_this_class = name in node.info.names
                     # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
