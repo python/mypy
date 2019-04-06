@@ -514,16 +514,19 @@ class Server:
 
         return changed, removed
 
-    def cmd_suggest(self, function: str, json: bool, callsites: bool) -> Dict[str, object]:
+    def cmd_suggest(self,
+                    function: str,
+                    callsites: bool,
+                    **kwargs: bool) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}
-        engine = SuggestionEngine(self.fine_grained_manager)
+        engine = SuggestionEngine(self.fine_grained_manager, **kwargs)
         try:
             if callsites:
                 out = engine.suggest_callsites(function)
             else:
-                out = engine.suggest(function, json)
+                out = engine.suggest(function)
         except SuggestionFailure as err:
             return {'error': str(err)}
         else:
@@ -532,6 +535,8 @@ class Server:
             elif not out.endswith("\n"):
                 out += "\n"
             return {'out': out, 'err': "", 'status': 0}
+        finally:
+            self.fscache.flush()
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
