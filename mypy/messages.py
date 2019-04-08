@@ -1507,8 +1507,7 @@ def plural_s(s: Union[int, Sequence[Any]]) -> str:
         return ''
 
 
-def format_string_list(s: Iterable[str]) -> str:
-    lst = list(s)
+def format_string_list(lst: List[str]) -> str:
     assert len(lst) > 0
     if len(lst) == 1:
         return lst[0]

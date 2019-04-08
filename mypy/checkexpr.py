@@ -3735,8 +3735,7 @@ def any_causes_overload_ambiguity(items: List[CallableType],
     return False
 
 
-def all_same_types(types: Iterable[Type]) -> bool:
-    types = list(types)
+def all_same_types(types: List[Type]) -> bool:
     if len(types) == 0:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])
