@@ -817,6 +817,11 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 
 
 def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
+    """Does this node represents a valid constructor method?
+
+    This includes nomral functions, overloaded functions, and decorators
+    that return a callable type.
+    """
     if isinstance(n, FuncBase):
         return True
     if isinstance(n, Decorator):
