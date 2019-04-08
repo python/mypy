@@ -5849,3 +5849,16 @@ class B:
 
 reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
 reveal_type(B)  # E: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testDecoratedConstructorsBad]
+from typing import Callable, Any
+
+def dec(f: Callable[[Any, int], Any]) -> int: ...
+
+class A:
+    @dec  # E: Unsupported decorated constructor type
+    def __init__(self, x: int) -> None: ...
+
+class B:
+    @dec  # E: Unsupported decorated constructor type
+    def __new__(cls, x: int) -> B: ...
