@@ -3,7 +3,7 @@ from typing import Dict, List, Set, Tuple
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
-    Context, Expression, FuncDef, JsonDict, NameExpr,
+    Context, Expression, FuncDef, JsonDict, NameExpr, OverloadedFuncDef,
     SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr
 )
 from mypy.plugin import ClassDefContext
@@ -204,7 +204,10 @@ class DataclassTransformer:
                 continue
 
             node = cls.info.names[lhs.name].node
-            assert isinstance(node, Var)
+            assert isinstance(node, (Var, OverloadedFuncDef))
+
+            if isinstance(node, OverloadedFuncDef):
+                continue
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
