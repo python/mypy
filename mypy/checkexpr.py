@@ -1495,7 +1495,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
                 return return_types[0], inferred_types[0]
-            elif all_same_types(erase_type(typ) for typ in return_types):
+            elif all_same_types([erase_type(typ) for typ in return_types]):
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
                 return self.check_call(callee=AnyType(TypeOfAny.special_form),
@@ -3113,8 +3113,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_generator_or_comprehension(self, gen: GeneratorExpr,
                                          type_name: str,
                                          id_for_messages: str,
-                                         additional_args: List[Type] = []) -> Type:
+                                         additional_args: Optional[List[Type]] = None) -> Type:
         """Type check a generator expression or a list comprehension."""
+        additional_args = additional_args or []
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(gen)
 
@@ -3734,8 +3735,7 @@ def any_causes_overload_ambiguity(items: List[CallableType],
     return False
 
 
-def all_same_types(types: Iterable[Type]) -> bool:
-    types = list(types)
+def all_same_types(types: List[Type]) -> bool:
     if len(types) == 0:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])

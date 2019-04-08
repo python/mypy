@@ -24,7 +24,7 @@ Sig = Tuple[str, str]
 class ArgSig:
     """Signature info for a single argument."""
 
-    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')
+    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
 
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name

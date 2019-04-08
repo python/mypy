@@ -40,6 +40,10 @@ from mypy.errors import Errors
 from mypy.options import Options
 
 try:
+    # pull this into a final variable to make mypyc be quiet about the
+    # the default argument warning
+    PY_MINOR_VERSION = sys.version_info[1]  # type: Final
+
     # Check if we can use the stdlib ast module instead of typed_ast.
     if sys.version_info >= (3, 8):
         import ast as ast3
@@ -64,7 +68,7 @@ try:
         )
 
         def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
-                       feature_version: int = sys.version_info[1]) -> AST:
+                       feature_version: int = PY_MINOR_VERSION) -> AST:
             return ast3.parse(source, filename, mode,
                               type_comments=True,  # This works the magic
                               feature_version=feature_version)
@@ -92,7 +96,7 @@ try:
         )
 
         def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
-                       feature_version: int = sys.version_info[1]) -> AST:
+                       feature_version: int = PY_MINOR_VERSION) -> AST:
             return ast3.parse(source, filename, mode, feature_version=feature_version)
 
         # These don't exist before 3.8

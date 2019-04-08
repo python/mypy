@@ -15,6 +15,7 @@ from typing import Optional, Callable
 MYPY = False
 if MYPY:
     from typing import Type
+    from typing_extensions import Final
 
 from types import TracebackType
 
@@ -179,7 +180,7 @@ class IPCClient(IPCBase):
 
 class IPCServer(IPCBase):
 
-    BUFFER_SIZE = 2**16
+    BUFFER_SIZE = 2**16  # type: Final
 
     def __init__(self, name: str, timeout: Optional[float] = None) -> None:
         if sys.platform == 'win32':

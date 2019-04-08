@@ -2996,8 +2996,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return '\n'.join(a)
 
     def copy(self) -> 'SymbolTable':
-        return SymbolTable((key, node.copy())
-                           for key, node in self.items())
+        return SymbolTable([(key, node.copy())
+                            for key, node in self.items()])
 
     def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict
