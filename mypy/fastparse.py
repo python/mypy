@@ -171,7 +171,7 @@ def parse(source: Union[str, bytes],
         tree.is_stub = is_stub_file
     except SyntaxError as e:
         errors.report(e.lineno, e.offset, e.msg, blocker=True)
-        tree = MypyFile([], [], False, set())
+        tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
         errors.raise_error()
@@ -251,7 +251,7 @@ class ASTConverter:
         self.is_stub = is_stub
         self.errors = errors
 
-        self.extra_type_ignores = []  # type: List[int]
+        self.type_ignores = {}  # type: Dict[int, int]
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
@@ -271,7 +271,19 @@ class ASTConverter:
             method = 'visit_' + node.__class__.__name__
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
+        if (3, 8) < sys.version_info and isinstance(node, ast3.expr):
+            self.scope_ignores(node)
         return visitor(node)
+
+    def scope_ignores(self, node: ast3.expr) -> None:
+        end_lineno = getattr(node, "end_lineno", None)
+        if end_lineno is None:
+            return
+        node_lines = range(node.lineno, end_lineno + 1)
+        for line in node_lines:
+            if line in self.type_ignores.values():
+                self.type_ignores.update(dict.fromkeys(node_lines, line))
+                return
 
     def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
         node.line = n.lineno
@@ -394,13 +406,13 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
+        self.type_ignores = {ti.lineno: ti.lineno for ti in mod.type_ignores}
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-        ignores = [ti.lineno for ti in mod.type_ignores]
-        ignores.extend(self.extra_type_ignores)
+        self.type_ignores.update({ti.lineno: ti.lineno for ti in mod.type_ignores})
         return MypyFile(body,
                         self.imports,
                         False,
-                        set(ignores),
+                        self.type_ignores,
                         )
 
     # --- stmt ---
@@ -596,7 +608,7 @@ class ASTConverter:
             elif type_comment is not None:
                 extra_ignore, arg_type = parse_type_comment(type_comment, arg.lineno, self.errors)
                 if extra_ignore:
-                    self.extra_type_ignores.append(arg.lineno)
+                    self.type_ignores[arg.lineno] = arg.lineno
 
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
@@ -654,7 +666,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores[n.lineno] = n.lineno
         else:
             typ = None
         s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
@@ -688,7 +700,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores[n.lineno] = n.lineno
         else:
             target_type = None
         node = ForStmt(self.visit(n.target),
@@ -703,7 +715,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores[n.lineno] = n.lineno
         else:
             target_type = None
         node = ForStmt(self.visit(n.target),
@@ -734,7 +746,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores[n.lineno] = n.lineno
         else:
             target_type = None
         node = WithStmt([self.visit(i.context_expr) for i in n.items],
@@ -748,7 +760,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores[n.lineno] = n.lineno
         else:
             target_type = None
         s = WithStmt([self.visit(i.context_expr) for i in n.items],
