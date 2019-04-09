@@ -274,6 +274,7 @@ class ASTConverter:
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
         result = visitor(node)
+        # In Python 3.8, we can expand the scope of ignores to a whole expression:
         if sys.version_info >= (3, 8) and isinstance(node, ast3.expr):
             self.scope_ignores(node)
         return result

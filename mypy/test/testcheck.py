@@ -85,6 +85,7 @@ typecheck_files = [
     'check-newsemanal.test',
 ]
 
+# Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info >= (3, 8):
     typecheck_files.append('check-38.test')
 
