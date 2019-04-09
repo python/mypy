@@ -1553,3 +1553,23 @@ class B(A): ...
 class C(B): ...
 class D(A, B): ...
 class E(C, D): ...
+
+[case testUnreachableCode_semanal]
+MYPY = False
+class A: pass
+if MYPY:
+    class C(A):
+        def f(self) -> None: pass
+else:
+    def f(i):
+        return i
+
+    class C(A):
+        def g(self) -> None: pass
+[out]
+MYPY: bool
+
+class A: ...
+
+class C(A):
+    def f(self) -> None: ...

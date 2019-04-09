@@ -69,7 +69,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
+    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
@@ -575,6 +575,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 p = AliasPrinter(self)
                 base_types.append(base.accept(p))
         return base_types
+
+    def visit_block(self, o: Block) -> None:
+        # Unreachable statements may be partially uninitialized and that may
+        # cause trouble.
+        if not o.is_unreachable:
+            super().visit_block(o)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         foundl = []
