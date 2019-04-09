@@ -85,6 +85,9 @@ typecheck_files = [
     'check-newsemanal.test',
 ]
 
+if (3, 8) < sys.version_info:
+    typecheck_files.append('check-38.test')
+
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files

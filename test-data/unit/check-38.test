@@ -1,0 +1,21 @@
+[case testScopedIgnore]
+def f(a: int): ...
+f(
+    'BAD'
+)  # type: ignore
+
+[case testMultipleScopedIgnores]
+# flags: --warn-unused-ignores
+def f(a: int): ...
+f(
+    'BAD'  # type: ignore
+)  # type: ignore  # N: unused 'type: ignore' comment
+
+[case testNestedScopedIgnores]
+# flags: --warn-unused-ignores
+def f(a: int) -> int: ...
+f(  # type: ignore  # N: unused 'type: ignore' comment
+    f(
+        'BAD'  # type: ignore
+    )  # type: ignore  # N: unused 'type: ignore' comment
+)  # type: ignore  # N: unused 'type: ignore' comment

@@ -271,9 +271,10 @@ class ASTConverter:
             method = 'visit_' + node.__class__.__name__
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
+        result = visitor(node)
         if (3, 8) < sys.version_info and isinstance(node, ast3.expr):
             self.scope_ignores(node)
-        return visitor(node)
+        return result
 
     def scope_ignores(self, node: ast3.expr) -> None:
         end_lineno = getattr(node, "end_lineno", None)
@@ -282,7 +283,7 @@ class ASTConverter:
         node_lines = range(node.lineno, end_lineno + 1)
         for line in node_lines:
             if line in self.type_ignores.values():
-                self.type_ignores.update(dict.fromkeys(node_lines, line))
+                self.type_ignores = {**dict.fromkeys(node_lines, line), **self.type_ignores}
                 return
 
     def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
@@ -408,7 +409,6 @@ class ASTConverter:
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {ti.lineno: ti.lineno for ti in mod.type_ignores}
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-        self.type_ignores.update({ti.lineno: ti.lineno for ti in mod.type_ignores})
         return MypyFile(body,
                         self.imports,
                         False,
