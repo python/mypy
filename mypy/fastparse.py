@@ -251,6 +251,8 @@ class ASTConverter:
         self.is_stub = is_stub
         self.errors = errors
 
+        # Lines to ignore when checking. This is a mapping from:
+        # ignored line -> line of "type: ignore" comment it is scoped to.
         self.type_ignores = {}  # type: Dict[int, int]
 
         # Cache of visit_X methods keyed by type of visited object
@@ -272,7 +274,7 @@ class ASTConverter:
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
         result = visitor(node)
-        if (3, 8) < sys.version_info and isinstance(node, ast3.expr):
+        if sys.version_info >= (3, 8) and isinstance(node, ast3.expr):
             self.scope_ignores(node)
         return result
 

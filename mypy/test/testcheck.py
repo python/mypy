@@ -85,7 +85,7 @@ typecheck_files = [
     'check-newsemanal.test',
 ]
 
-if (3, 8) < sys.version_info:
+if sys.version_info >= (3, 8):
     typecheck_files.append('check-38.test')
 
 

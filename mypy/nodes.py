@@ -226,7 +226,8 @@ class MypyFile(SymbolNode):
     names = None  # type: SymbolTable
     # All import nodes within the file (also ones within functions etc.)
     imports = None  # type: List[ImportBase]
-    # Lines to ignore when checking
+    # Lines to ignore when checking. This is a mapping from:
+    # ignored line -> line of "type: ignore" comment it is scoped to.
     ignored_lines = None  # type: Dict[int, int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
