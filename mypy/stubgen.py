@@ -358,7 +358,33 @@ class ImportTracker:
         return result
 
 
+def find_defined_names(file: MypyFile) -> Set[str]:
+    finder = DefinitionFinder()
+    file.accept(finder)
+    return finder.names
+
+
+class DefinitionFinder(mypy.traverser.TraverserVisitor):
+    """Find names of things defined at the top level of a module."""
+
+    # TODO: Assignment statements etc.
+
+    def __init__(self) -> None:
+        # Short names of things defined at the top level.
+        self.names = set()  # type: Set[str]
+
+    def visit_class_def(self, o: ClassDef) -> None:
+        # Don't recurse into classes, as we only keep track of top-level definitions.
+        self.names.add(o.name)
+
+    def visit_func_def(self, o: FuncDef) -> None:
+        # Don't recurse, as we only keep track of top-level definitions.
+        self.names.add(o.name())
+
+
 class StubGenerator(mypy.traverser.TraverserVisitor):
+    """Generate stub text from a mypy AST."""
+
     def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
                  include_private: bool = False, analyzed: bool = False) -> None:
         # Best known value of __all__.
@@ -380,13 +406,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.analyzed = analyzed
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
-        typing_imports = "Any Optional TypeVar".split()
-        self.import_tracker.add_import_from("typing", [(t, None) for t in typing_imports])
         # Names in __all__ are required
         for name in _all_ or ():
             self.import_tracker.reexport(name)
+        self.defined_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
+        self.defined_names = find_defined_names(o)
+        typing_imports = ["Any", "Optional", "TypeVar"]
+        for t in typing_imports:
+            if t not in self.defined_names:
+                alias = None
+            else:
+                alias = '_' + t
+            self.import_tracker.add_import_from("typing", [(t, alias)])
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or []
                            if name not in self._toplevel_names]
@@ -434,7 +467,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     and not is_self_arg
                     and not is_cls_arg):
                 self.add_typing_import("Any")
-                annotation = ": Any"
+                annotation = ": {}".format(self.typing_name("Any"))
             elif annotated_type and not is_self_arg:
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
@@ -462,7 +495,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and o.is_abstract:
             # Always assume abstract methods return Any unless explicitly annotated.
-            retname = 'Any'
+            retname = self.typing_name('Any')
             self.add_typing_import("Any")
         elif o.name() == '__init__' or not has_return_statement(o) and not is_abstract:
             retname = 'None'
@@ -795,11 +828,19 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def clear_decorators(self) -> None:
         self._decorators.clear()
 
+    def typing_name(self, name: str) -> str:
+        if name in self.defined_names:
+            # Avoid name clash between name from typing and a name defined in stub.
+            return '_' + name
+        else:
+            return name
+
     def add_typing_import(self, name: str) -> None:
         """Add a name to be imported from typing, unless it's imported already.
 
         The import will be internal to the stub.
         """
+        name = self.typing_name(name)
         self.import_tracker.require_name(name)
 
     def add_import_line(self, line: str) -> None:
@@ -867,9 +908,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 isinstance(rvalue, NameExpr) and rvalue.name == 'None':
             self.add_typing_import('Optional')
             self.add_typing_import('Any')
-            return 'Optional[Any]'
+            return '{}[{}]'.format(self.typing_name('Optional'),
+                                   self.typing_name('Any'))
         self.add_typing_import('Any')
-        return 'Any'
+        return self.typing_name('Any')
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)

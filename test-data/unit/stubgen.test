@@ -1606,3 +1606,29 @@ from typing import Any
 class A(metaclass=abc.ABCMeta):
     @abstractproperty
     def x(self) -> Any: ...
+
+[case testClassWithNameAnyOrOptional]
+def f(x=object()):
+    return 1
+
+def g(x=None): pass
+
+x = g()
+
+class Any:
+    pass
+
+def Optional():
+    return 0
+
+[out]
+from typing import Any as _Any, Optional as _Optional
+
+def f(x: _Any = ...): ...
+def g(x: _Optional[_Any] = ...) -> None: ...
+
+x: _Any
+
+class Any: ...
+
+def Optional(): ...
