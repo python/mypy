@@ -113,7 +113,7 @@ def parse(source: Union[str, bytes],
         tree.is_stub = is_stub_file
     except SyntaxError as e:
         errors.report(e.lineno, e.offset, e.msg, blocker=True)
-        tree = MypyFile([], [], False, {})
+        tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
         errors.raise_error()
@@ -308,7 +308,7 @@ class ASTConverter:
         return MypyFile(body,
                         self.imports,
                         False,
-                        {line: line for line in ignores},
+                        set(ignores),
                         )
 
     # --- stmt ---

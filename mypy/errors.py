@@ -113,9 +113,8 @@ class Errors:
     # Path to current file.
     file = ''  # type: str
 
-    # Ignore errors on these lines of each file. Keys are modules, values are mappings from:
-    # ignored line -> line of "type: ignore" comment it is scoped to within that module.
-    ignored_lines = None  # type: Dict[str, Dict[int, int]]
+    # Ignore errors on these lines of each file.
+    ignored_lines = None  # type: Dict[str, Set[int]]
 
     # Lines on which an error was actually ignored.
     used_ignored_lines = None  # type: Dict[str, Set[int]]
@@ -200,7 +199,7 @@ class Errors:
         self.scope = scope
 
     def set_file_ignored_lines(self, file: str,
-                               ignored_lines: Dict[int, int],
+                               ignored_lines: Set[int],
                                ignore_all: bool = False) -> None:
         self.ignored_lines[file] = ignored_lines
         if ignore_all:
@@ -279,7 +278,7 @@ class Errors:
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines and line in self.ignored_lines[file]:
                 # Annotation requests us to ignore all errors on this line.
-                self.used_ignored_lines[file].add(self.ignored_lines[file][line])
+                self.used_ignored_lines[file].add(line)
                 return
             if file in self.ignored_files:
                 return
@@ -301,8 +300,7 @@ class Errors:
             self.error_info_map[path] = new_errors
 
     def generate_unused_ignore_notes(self, file: str) -> None:
-        # The values() here are the line numbers of *actual* "type: ignore" comments.
-        ignored_lines = set(self.ignored_lines[file].values())
+        ignored_lines = self.ignored_lines[file]
         if not self.is_typeshed_file(file) and file not in self.ignored_files:
             for line in ignored_lines - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!

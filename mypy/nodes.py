@@ -226,9 +226,8 @@ class MypyFile(SymbolNode):
     names = None  # type: SymbolTable
     # All import nodes within the file (also ones within functions etc.)
     imports = None  # type: List[ImportBase]
-    # Lines to ignore when checking. This is a mapping from:
-    # ignored line -> line of "type: ignore" comment it is scoped to.
-    ignored_lines = None  # type: Dict[int, int]
+    # Lines to ignore when checking
+    ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -244,7 +243,7 @@ class MypyFile(SymbolNode):
                  defs: List[Statement],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
-                 ignored_lines: Optional[Dict[int, int]] = None) -> None:
+                 ignored_lines: Optional[Set[int]] = None) -> None:
         super().__init__()
         self.defs = defs
         self.line = 1  # Dummy line number
@@ -255,7 +254,7 @@ class MypyFile(SymbolNode):
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
-            self.ignored_lines = {}
+            self.ignored_lines = set()
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
