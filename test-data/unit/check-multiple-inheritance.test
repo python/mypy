@@ -462,7 +462,6 @@ class Combo(Base2, Base1): ...
 main:10: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
 
 [case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
-
 from typing import TypeVar, Generic
 T = TypeVar('T', covariant=True)
 class GenericBase(Generic[T]):
@@ -476,7 +475,6 @@ class A(Base1, Base2):
 [out]
 
 [case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1]
-
 from typing import TypeVar, Generic
 T = TypeVar('T', covariant=True)
 class GenericBase(Generic[T]):
@@ -488,10 +486,9 @@ class Base2:
 class A(Base1, Base2):
     Nested: GenericBase['Base1']
 [out]
-main:11: error: Incompatible types in assignment (expression has type "GenericBase[Base1]", base class "Base2" defined the type as "GenericBase[Base2]")
+main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base1]", base class "Base2" defined the type as "GenericBase[Base2]")
 
 [case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2]
-
 from typing import TypeVar, Generic
 T = TypeVar('T', covariant=True)
 class GenericBase(Generic[T]):
@@ -503,11 +500,9 @@ class Base2:
 class A(Base1, Base2):
     Nested: GenericBase['Base2']
 [out]
-main:11: error: Incompatible types in assignment (expression has type "GenericBase[Base2]", base class "Base1" defined the type as "GenericBase[Base1]")
-
+main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base2]", base class "Base1" defined the type as "GenericBase[Base1]")
 
 [case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
-
 from typing import TypeVar, Generic
 T = TypeVar('T', covariant=True)
 class GenericBase(Generic[T]):
@@ -519,8 +514,6 @@ class Base2:
 class A(Base1, Base2):
     Nested: GenericBase['Base1']
 [out]
-
-
 
 [case testMultipleInheritance_MethodDefinitionsCompatibleWithOverride]
 from typing import TypeVar, Union

@@ -4020,7 +4020,6 @@ class C(B):
 [out]
 main:6: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
-
 [case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
 class A:
     x = 0
