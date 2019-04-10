@@ -1660,3 +1660,20 @@ class D(C): ...
 from b import C as C
 # b.pyi
 class C: ...
+
+[case testVendoredSix]
+from p1.vendored import six
+from p1.vendor.six import foobar
+from p1.packages.six.moves import http_client
+from .packages.six.moves import queue
+
+class C(http_client.HTTPMessage): pass
+class D(six.Iterator): pass
+
+[out]
+import six
+from six import foobar as foobar
+from six.moves import http_client, queue as queue
+
+class C(http_client.HTTPMessage): ...
+class D(six.Iterator): ...
