@@ -4,7 +4,7 @@ f(
     "IGNORE"
 )  # type: ignore
 
-case testIgnoreScopeNested1]
+[case testIgnoreScopeNested1]
 def f(a: int) -> int: ...
 f(
     f(
@@ -30,8 +30,8 @@ f(
 
 [case testIgnoreScopeNested4]
 {
-    "IGNORE"
-    :
+    None: "IGNORE"
+    ^
     "IGNORE",  # type: ignore
 }
 [builtins fixtures/dict.pyi]
