@@ -435,9 +435,13 @@ class StubgenPythonSuite(DataSuite):
         Import module and perform runtime introspection (in the current
         process!)
 
-    You can use this magic comment:
+    You can use these magic comments:
 
-        # flags: --some-stubgen-option ...
+    # flags: --some-stubgen-option ...
+        Specify custom stubgen options
+
+    # modules: module1 module2 ...
+        Specify which modules to output (by default only 'main')
     """
 
     required_out_section = True
@@ -460,6 +464,7 @@ class StubgenPythonSuite(DataSuite):
                 f.write(content)
 
         options = self.parse_flags(source, extra)
+        modules = self.parse_modules(source)
         out_dir = 'out'
         try:
             try:
@@ -469,7 +474,9 @@ class StubgenPythonSuite(DataSuite):
                     options.parse_only = True
                 generate_stubs(options, add_header=False)
                 a = []  # type: List[str]
-                self.add_file(os.path.join(out_dir, 'main.pyi'), a)
+                for module in modules:
+                    fnam = os.path.join(out_dir, '{}.pyi'.format(module))
+                    self.add_file(fnam, a, header=len(modules) > 1)
             except CompileError as e:
                 a = e.messages
             assert_string_arrays_equal(testcase.output, a,
@@ -492,7 +499,16 @@ class StubgenPythonSuite(DataSuite):
             options.quiet = True
         return options
 
-    def add_file(self, path: str, result: List[str]) -> None:
+    def parse_modules(self, program_text: str) -> List[str]:
+        modules = re.search('# modules: (.*)$', program_text, flags=re.MULTILINE)
+        if modules:
+            return modules.group(1).split()
+        else:
+            return ['main']
+
+    def add_file(self, path: str, result: List[str], header: bool) -> None:
+        if header:
+            result.append('# {}'.format(os.path.basename(path)))
         with open(path, encoding='utf8') as file:
             result.extend(file.read().splitlines())
 

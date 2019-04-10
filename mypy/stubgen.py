@@ -62,6 +62,7 @@ import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
+import mypy.mixedtraverser
 import mypy.util
 from mypy import defaults
 from mypy.modulefinder import FindModuleCache, SearchPaths, BuildSource, default_lib_path
@@ -81,8 +82,7 @@ from mypy.stubutil import (
 from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, CallableType, AnyType,
-    UnboundType, NoneType, TupleType, TypeList,
+    Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance, AnyType
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -389,6 +389,51 @@ class DefinitionFinder(mypy.traverser.TraverserVisitor):
         self.names.add(o.name())
 
 
+def find_referenced_names(file: MypyFile) -> Set[str]:
+    finder = ReferenceFinder()
+    file.accept(finder)
+    return finder.refs
+
+
+class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
+    """Find all name references (both local and global)."""
+
+    # TODO: Filter out local variable and class attribute references
+
+    def __init__(self) -> None:
+        # Short names of things defined at the top level.
+        self.refs = set()  # type: Set[str]
+
+    def visit_block(self, block: Block) -> None:
+        if not block.is_unreachable:
+            super().visit_block(block)
+
+    def visit_name_expr(self, e: NameExpr) -> None:
+        self.refs.add(e.name)
+
+    def visit_instance(self, t: Instance) -> None:
+        self.add_ref(t.type.fullname())
+        super().visit_instance(t)
+
+    def visit_unbound_type(self, t: UnboundType) -> None:
+        if t.name:
+            self.add_ref(t.name)
+
+    def visit_tuple_type(self, t: TupleType) -> None:
+        # Ignore fallback
+        for item in t.items:
+            item.accept(self)
+
+    def visit_callable_type(self, t: CallableType) -> None:
+        # Ignore fallback
+        for arg in t.arg_types:
+            arg.accept(self)
+        t.ret_type.accept(self)
+
+    def add_ref(self, fullname: str) -> None:
+        self.refs.add(fullname.split('.')[-1])
+
+
 class StubGenerator(mypy.traverser.TraverserVisitor):
     """Generate stub text from a mypy AST."""
 
@@ -421,6 +466,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.module = o.fullname()
         self.defined_names = find_defined_names(o)
+        self.referenced_names = find_referenced_names(o)
         typing_imports = ["Any", "Optional", "TypeVar"]
         for t in typing_imports:
             if t not in self.defined_names:
@@ -768,7 +814,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         exported_names = set()  # type: Set[str]
         import_names = []
         for name, as_name in o.names:
+            exported = False
             if as_name is None and self.module and (self.module + '.' + name) in EXTRA_EXPORTED:
+                exported = True
+            if (as_name is None and name not in self.referenced_names and not self._all_
+                    and o.id not in ('abc', 'typing', 'asyncio')):
+                # An imported name that is never referenced in the module is assumed to be
+                # exported, unless there is an explicit __all__. Note that we need to special
+                # case 'abc' since some references are deleted during semantic analysis.
+                exported = True
+            if exported:
+                self.import_tracker.reexport(name)
                 as_name = name
             import_names.append((name, as_name))
         self.import_tracker.add_import_from('.' * o.relative + o.id, import_names)
