@@ -27,6 +27,8 @@ from mypy.stubdoc import (
 
 
 class StubgenCmdLineSuite(Suite):
+    """Test cases for processing command-line options and finding files."""
+
     def test_files_found(self) -> None:
         current = os.getcwd()
         with tempfile.TemporaryDirectory() as tmp:
@@ -112,6 +114,8 @@ class StubgenCliParseSuite(Suite):
 
 
 class StubgenUtilSuite(Suite):
+    """Unit tests for stubgen utility functions."""
+
     def test_parse_signature(self) -> None:
         self.assert_parse_signature('func()', ('func', [], []))
 
@@ -420,6 +424,22 @@ class StubgenUtilSuite(Suite):
 
 
 class StubgenPythonSuite(DataSuite):
+    """Data-driven end-to-end test cases that generate stub files.
+
+    You can use these magic test case name suffixes:
+
+    *_semanal
+        Run semantic analysis (slow as this uses real stubs -- only use
+        when necessary)
+    *_import
+        Import module and perform runtime introspection (in the current
+        process!)
+
+    You can use this magic comment:
+
+        # flags: --some-stubgen-option ...
+    """
+
     required_out_section = True
     base_path = '.'
     files = ['stubgen.test']
@@ -429,8 +449,8 @@ class StubgenPythonSuite(DataSuite):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        extra = []
-        mods = []
+        extra = []  # Extra command-line args
+        mods = []  # Module names to process
         source = '\n'.join(testcase.input)
         for file, content in testcase.files + [('./main.py', source)]:
             mod = os.path.basename(file)[:-3]
@@ -481,6 +501,11 @@ self_arg = ArgSig(name='self')
 
 
 class StubgencSuite(Suite):
+    """Unit tests for stub generation from C modules using introspection.
+
+    Note that these don't cover a lot!
+    """
+
     def test_infer_hash_sig(self) -> None:
         assert_equal(infer_method_sig('__hash__'), [self_arg])
 
