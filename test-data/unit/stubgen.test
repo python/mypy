@@ -582,8 +582,9 @@ from collections import namedtuple
 X = namedtuple('X', ['a', 'b'])
 
 [case testNamedtupleAltSyntax]
-from collections import namedtuple, x
+from collections import namedtuple, xx
 X = namedtuple('X', 'a b')
+xx
 [out]
 from collections import namedtuple
 
@@ -615,10 +616,11 @@ _X = namedtuple('_X', ['a', 'b'])
 class Y(_X): ...
 
 [case testNamedtupleAltSyntaxFieldsTuples]
-from collections import namedtuple, x
+from collections import namedtuple, xx
 X = namedtuple('X', ())
 Y = namedtuple('Y', ('a',))
 Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
+xx
 [out]
 from collections import namedtuple
 
@@ -703,15 +705,16 @@ class A:
 [case testExportViaRelativeImport]
 from .api import get
 [out]
-from .api import get
+from .api import get as get
 
 [case testExportViaRelativePackageImport]
 from .packages.urllib3.contrib import parse
 [out]
-from .packages.urllib3.contrib import parse
+from .packages.urllib3.contrib import parse as parse
 
 [case testNoExportViaRelativeImport]
 from . import get
+get()
 [out]
 
 [case testRelativeImportAndBase]
@@ -756,35 +759,35 @@ class A:
 
 [case testAnnotationImportsFrom]
 import foo
-from collection import defaultdict
+from collections import defaultdict
 x: defaultdict
 
 [out]
-from collection import defaultdict
+from collections import defaultdict
 
 x: defaultdict
 
 [case testAnnotationImports]
 import foo
-import collection
-x: collection.defaultdict
+import collections
+x: collections.defaultdict
 
 [out]
-import collection
+import collections
 
-x: collection.defaultdict
+x: collections.defaultdict
 
 
 [case testAnnotationImports]
 from typing import List
-import collection
-x: List[collection.defaultdict]
+import collections
+x: List[collections.defaultdict]
 
 [out]
-import collection
+import collections
 from typing import List
 
-x: List[collection.defaultdict]
+x: List[collections.defaultdict]
 
 
 [case testAnnotationFwRefs]
@@ -1429,7 +1432,7 @@ class A(metaclass=abc.ABCMeta):
     def meth(self): ...
 
 [case testABCMeta_semanal]
-from base import base
+from base import Base
 from abc import abstractmethod
 
 class C(Base):
@@ -1447,6 +1450,7 @@ class Base(metaclass=ABCMeta):
 [out]
 import abc
 from abc import abstractmethod
+from base import Base
 from typing import Any
 
 class C(Base, metaclass=abc.ABCMeta):
@@ -1634,3 +1638,25 @@ x: _Any
 class Any: ...
 
 def Optional(): ...
+
+[case testExportedNameImported]
+# modules: main a b
+from a import C
+
+class D(C): pass
+
+[file a.py]
+from b import C
+
+[file b.py]
+class C: pass
+
+[out]
+# main.pyi
+from a import C
+
+class D(C): ...
+# a.pyi
+from b import C as C
+# b.pyi
+class C: ...
