@@ -1,3 +1,5 @@
+-- Test cases for stubgen that generate stubs from Python code
+
 [case testEmptyFile]
 [out]
 
