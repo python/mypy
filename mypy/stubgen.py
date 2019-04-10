@@ -91,6 +91,13 @@ from mypy.errors import CompileError, Errors
 from mypy.traverser import has_return_statement
 
 
+# Common ways of naming package containing vendored modules.
+VENDOR_PACKAGES = [
+    'packages',
+    'vendor',
+    'vendored',
+]
+
 # Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
 BLACKLIST = [
     '/six.py\n',  # Likely vendored six; too dynamic for us to handle
@@ -814,12 +821,19 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_import_from(self, o: ImportFrom) -> None:
         exported_names = set()  # type: Set[str]
         import_names = []
+        module, relative = self.translate_module_name(o.id, o.relative)
+        if module == '__future__':
+            return  # Not preserved
         for name, as_name in o.names:
+            if name == 'six':
+                # Vendored six -- translate into plain 'import six'.
+                self.visit_import(Import([('six', None)]))
+                continue
             exported = False
             if as_name is None and self.module and (self.module + '.' + name) in EXTRA_EXPORTED:
                 exported = True
             if (as_name is None and name not in self.referenced_names and not self._all_
-                    and o.id not in ('abc', 'typing', 'asyncio')):
+                    and module not in ('abc', 'typing', 'asyncio')):
                 # An imported name that is never referenced in the module is assumed to be
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.
@@ -828,7 +842,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.import_tracker.reexport(name)
                 as_name = name
             import_names.append((name, as_name))
-        self.import_tracker.add_import_from('.' * o.relative + o.id, import_names)
+        self.import_tracker.add_import_from('.' * relative + module, import_names)
         self._vars[-1].extend(alias or name for name, alias in import_names)
         for name, alias in import_names:
             self.record_name(alias or name)
@@ -840,13 +854,21 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             exported_names.update(names)
         else:
             # Include import from targets that import from a submodule of a package.
-            if o.relative:
+            if relative:
                 sub_names = [name for name, alias in o.names
                              if alias is None]
                 exported_names.update(sub_names)
-                if o.id:
+                if module:
                     for name in sub_names:
                         self.import_tracker.require_name(name)
+
+    def translate_module_name(self, module: str, relative: int) -> Tuple[str, int]:
+        for pkg in VENDOR_PACKAGES:
+            for alt in 'six', 'six.moves':
+                if (module.endswith('.{}.{}'.format(pkg, alt))
+                        or (module == '{}.{}'.format(pkg, alt) and relative)):
+                    return alt, 0
+        return module, relative
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
