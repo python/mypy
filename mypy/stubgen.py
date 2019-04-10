@@ -98,6 +98,13 @@ BLACKLIST = [
     '/vendor/',  # Vendored packages
 ]
 
+# Special-cased names that are implicitly exported from the stub (from m import y as y).
+EXTRA_EXPORTED = {
+    'pyasn1_modules.rfc2437.univ',
+    'pyasn1_modules.rfc2459.char',
+    'pyasn1_modules.rfc2459.univ',
+}
+
 
 class Options:
     """Represents stubgen options.
@@ -412,6 +419,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.defined_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
+        self.module = o.fullname()
         self.defined_names = find_defined_names(o)
         typing_imports = ["Any", "Optional", "TypeVar"]
         for t in typing_imports:
@@ -758,9 +766,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_import_from(self, o: ImportFrom) -> None:
         exported_names = set()  # type: Set[str]
-        self.import_tracker.add_import_from('.' * o.relative + o.id, o.names)
-        self._vars[-1].extend(alias or name for name, alias in o.names)
-        for name, alias in o.names:
+        import_names = []
+        for name, as_name in o.names:
+            if as_name is None and (self.module + '.' + name) in EXTRA_EXPORTED:
+                as_name = name
+            import_names.append((name, as_name))
+        self.import_tracker.add_import_from('.' * o.relative + o.id, import_names)
+        self._vars[-1].extend(alias or name for name, alias in import_names)
+        for name, alias in import_names:
             self.record_name(alias or name)
 
         if self._all_:
