@@ -332,7 +332,8 @@ def analyze_member_var_access(name: str,
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
-    elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
+    elif (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
+          not mx.is_operator):
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)

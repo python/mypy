@@ -2494,6 +2494,22 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testGetattrWithGetitem]
+class A:
+    def __getattr__(self, x: str) -> 'A':
+        return A()
+
+a = A()
+a[0]  # E: Value of type "A" is not indexable
+
+[case testGetattrWithCall]
+class A:
+    def __getattr__(self, x: str) -> 'A':
+        return A()
+
+a = A()
+a.y()  # E: "A" not callable
+
 [case testNestedGetattr]
 def foo() -> object:
     def __getattr__() -> None:  # no error because not in a class

@@ -705,7 +705,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_union_call(callee, args, arg_kinds, arg_names, context, arg_messages)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                                  False, False, False, self.msg,
+                                                  False, False, True, self.msg,
                                                   original_type=callee, chk=self.chk,
                                                   in_literal_context=self.is_literal_context())
             callable_name = callee.type.fullname() + ".__call__"
