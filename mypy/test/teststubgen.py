@@ -472,7 +472,7 @@ class StubgenPythonSuite(DataSuite):
                     options.no_import = True
                 if not testcase.name.endswith('_semanal'):
                     options.parse_only = True
-                generate_stubs(options, add_header=False)
+                generate_stubs(options)
                 a = []  # type: List[str]
                 for module in modules:
                     fnam = os.path.join(out_dir, '{}.pyi'.format(module))

@@ -75,7 +75,7 @@ from mypy.nodes import (
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
-    write_header, default_py2_interpreter, CantImport, generate_guarded,
+    default_py2_interpreter, CantImport, generate_guarded,
     walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3,
     report_missing, fail_missing, remove_misplaced_type_comments, common_dir_prefix
 )
@@ -1231,8 +1231,7 @@ def generate_stub_from_ast(mod: StubSource,
                            target: str,
                            parse_only: bool = False,
                            pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                           include_private: bool = False,
-                           add_header: bool = True) -> None:
+                           include_private: bool = False) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
     If directory for target doesn't exist it will created. Existing stub
@@ -1250,8 +1249,6 @@ def generate_stub_from_ast(mod: StubSource,
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
     with open(target, 'w') as file:
-        if add_header:
-            write_header(file, mod.module, pyversion=pyversion)
         file.write(''.join(gen.output()))
 
 
@@ -1273,8 +1270,7 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     return sigs, class_sigs
 
 
-def generate_stubs(options: Options,
-                   add_header: bool) -> None:
+def generate_stubs(options: Options) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
@@ -1299,7 +1295,7 @@ def generate_stubs(options: Options,
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(mod, target,
                                    options.parse_only, options.pyversion,
-                                   options.include_private, add_header)
+                                   options.include_private)
 
     # Separately analyse C modules using different logic.
     for mod in c_modules:
@@ -1311,7 +1307,7 @@ def generate_stubs(options: Options,
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs, add_header=add_header)
+            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print('Processed %d modules' % num_modules)
@@ -1414,7 +1410,7 @@ def main() -> None:
         sys.path.insert(0, '')
 
     options = parse_options(sys.argv[1:])
-    generate_stubs(options, add_header=False)
+    generate_stubs(options)
 
 
 if __name__ == '__main__':
