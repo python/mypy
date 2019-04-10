@@ -10,7 +10,7 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import write_header, is_c_module
+from mypy.stubutil import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
     infer_arg_sig_from_docstring, FunctionSig
@@ -19,7 +19,6 @@ from mypy.stubdoc import (
 
 def generate_stub_for_c_module(module_name: str,
                                target: str,
-                               add_header: bool = True,
                                sigs: Optional[Dict[str, str]] = None,
                                class_sigs: Optional[Dict[str, str]] = None) -> None:
     """Generate stub for C module.
@@ -75,8 +74,6 @@ def generate_stub_for_c_module(module_name: str,
         output.append(line)
     output = add_typing_import(output)
     with open(target, 'w') as file:
-        if add_header:
-            write_header(file, module_name)
         for line in output:
             file.write('%s\n' % line)
 
