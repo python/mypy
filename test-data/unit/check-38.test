@@ -1,82 +1,79 @@
-[case testIssue1032]
+[case testIgnoreScopeIssue1032]
 def f(a: int): ...
 f(
-    'BAD'
+    "IGNORE"
 )  # type: ignore
 
-[case testMultipleScopedIgnores1]
+case testIgnoreScopeNested1]
+def f(a: int) -> int: ...
+f(
+    f(
+        "IGNORE"
+    )  # type: ignore
+)
+
+[case testIgnoreScopeNested2]
+[
+    "IGNORE"  # type: ignore
+    &
+    "IGNORE",
+]
+[builtins fixtures/list.pyi]
+
+[case testIgnoreScopeNested3]
+{
+    "IGNORE"
+    |  # type: ignore
+    "IGNORE",
+}
+[builtins fixtures/set.pyi]
+
+[case testIgnoreScopeNested4]
+{
+    "IGNORE"
+    :
+    "IGNORE",  # type: ignore
+}
+[builtins fixtures/dict.pyi]
+
+[case testIgnoreScopeNestedNonOverlapping]
+def f(x: int): ...
+def g(x: int): ...
+(
+    f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+    g("IGNORE"),  # type: ignore
+    f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+)
+
+[case testIgnoreScopeNestedOverlapping]
+def f(x: int): ...
+def g(x: int): ...
+(
+    f("ERROR"), g(  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+        "IGNORE"  # type: ignore
+    ), f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+)
+
+[case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
 (  # type: ignore  # N: unused 'type: ignore' comment
-    'BAD'  # type: ignore
+    "IGNORE"  # type: ignore
     +  # type: ignore  # N: unused 'type: ignore' comment
     0  # type: ignore  # N: unused 'type: ignore' comment
 )  # type: ignore  # N: unused 'type: ignore' comment
 
-[case testMultipleScopedIgnores2]
+[case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
 (  # type: ignore  # N: unused 'type: ignore' comment
-    'BAD'
+    "IGNORE"
     -  # type: ignore
     0  # type: ignore  # N: unused 'type: ignore' comment
 )  # type: ignore  # N: unused 'type: ignore' comment
 
-[case testMultipleScopedIgnores3]
+[case testIgnoreScopeUnused3]
 # flags: --warn-unused-ignores
 (  # type: ignore  # N: unused 'type: ignore' comment
-    'BAD'
+    "IGNORE"
     /
     0  # type: ignore
-)  # type: ignore  # N: unused 'type: ignore' comment
-
-[case testMultipleScopedIgnoresList]
-# flags: --warn-unused-ignores
-[  # type: ignore  # type: ignore  # N: unused 'type: ignore' comment
-    'BAD'  # type: ignore
-    &  # type: ignore  # N: unused 'type: ignore' comment
-    0,  # type: ignore  # N: unused 'type: ignore' comment
-]  # type: ignore  # N: unused 'type: ignore' comment
-[builtins fixtures/list.pyi]
-
-[case testMultipleScopedIgnoresSet]
-# flags: --warn-unused-ignores
-{  # type: ignore  # N: unused 'type: ignore' comment
-    'BAD'
-    |  # type: ignore
-    0,  # type: ignore  # N: unused 'type: ignore' comment
-}  # type: ignore  # N: unused 'type: ignore' comment
-[builtins fixtures/set.pyi]
-
-[case testMultipleScopedIgnoresTuple]
-# flags: --warn-unused-ignores
-(  # type: ignore  # N: unused 'type: ignore' comment
-    'BAD'
-    ^
-    0,  # type: ignore
-)  # type: ignore  # N: unused 'type: ignore' comment
-
-[case testNestedScopedIgnores1]
-# flags: --warn-unused-ignores
-def f(a: int) -> int: ...
-f(  # type: ignore  # N: unused 'type: ignore' comment
-    f(  # type: ignore
-        'BAD'  # type: ignore  # N: unused 'type: ignore' comment
-    )  # type: ignore  # N: unused 'type: ignore' comment
-)  # type: ignore  # N: unused 'type: ignore' comment
-
-[case testNestedScopedIgnores2]
-# flags: --warn-unused-ignores
-def f(a: int) -> int: ...
-f(  # type: ignore  # N: unused 'type: ignore' comment
-    f(
-        'BAD'  # type: ignore
-    )  # type: ignore  # N: unused 'type: ignore' comment
-)  # type: ignore  # N: unused 'type: ignore' comment
-
-[case testNestedScopedIgnores3]
-# flags: --warn-unused-ignores
-def f(a: int) -> int: ...
-f(  # type: ignore  # N: unused 'type: ignore' comment
-    f(
-        'BAD'
-    )  # type: ignore
 )  # type: ignore  # N: unused 'type: ignore' comment
