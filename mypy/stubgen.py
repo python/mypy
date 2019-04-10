@@ -103,6 +103,7 @@ EXTRA_EXPORTED = {
     'pyasn1_modules.rfc2437.univ',
     'pyasn1_modules.rfc2459.char',
     'pyasn1_modules.rfc2459.univ',
+    'elasticsearch.client.utils._make_path',
 }
 
 
@@ -485,7 +486,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add('#   %s\n' % name)
 
     def visit_func_def(self, o: FuncDef, is_abstract: bool = False) -> None:
-        if self.is_private_name(o.name()):
+        if self.is_private_name(o.name(), o.fullname()):
             return
         if self.is_not_in_all(o.name()):
             return
@@ -562,7 +563,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = FUNC
 
     def visit_decorator(self, o: Decorator) -> None:
-        if self.is_private_name(o.func.name()):
+        if self.is_private_name(o.func.name(), o.func.fullname()):
             return
         is_abstract = False
         for decorator in o.original_decorators:
@@ -939,8 +940,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return self.is_top_level() and name not in self._all_
         return False
 
-    def is_private_name(self, name: str) -> bool:
+    def is_private_name(self, name: str, fullname: Optional[str] = None) -> bool:
         if self._include_private:
+            return False
+        if fullname in EXTRA_EXPORTED:
             return False
         return name.startswith('_') and (not name.endswith('__')
                                          or name in ('__all__',
