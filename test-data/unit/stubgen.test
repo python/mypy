@@ -1573,3 +1573,36 @@ class A: ...
 
 class C(A):
     def f(self) -> None: ...
+
+[case testAbstractProperty1_semanal]
+import other
+import abc
+
+class A:
+    @abc.abstractproperty
+    def x(self): pass
+
+[out]
+import abc
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractproperty
+    def x(self) -> Any: ...
+
+[case testAbstractProperty2_semanal]
+import other
+from abc import abstractproperty
+
+class A:
+    @abstractproperty
+    def x(self): pass
+
+[out]
+import abc
+from abc import abstractproperty
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @abstractproperty
+    def x(self) -> Any: ...
