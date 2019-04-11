@@ -42,7 +42,7 @@ class ErrorInfo:
     # The column number related to this error with file.
     column = 0   # -1 if unknown
 
-    # Either 'error', 'note', or 'warning'.
+    # Either 'error' or 'note'
     severity = ''
 
     # The error message.
@@ -240,7 +240,7 @@ class Errors:
             line: line number of error
             message: message to report
             blocker: if True, don't continue analysis after this error
-            severity: 'error', 'note' or 'warning'
+            severity: 'error' or 'note'
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
