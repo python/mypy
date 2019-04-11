@@ -3,8 +3,20 @@ import re
 import pprint
 import sys
 
+<<<<<<< HEAD
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 from typing_extensions import Final
+||||||| merged common ancestors
+from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+=======
+from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, AnyStr
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+>>>>>>> Stubgen: Remove misplaced type comments before parsing
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
@@ -262,6 +274,8 @@ class Options:
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = False
+        # Used to transform source code before parsing if not None
+        self.transform_source = None  # type: Optional[Callable[[AnyStr], AnyStr]]
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool
 

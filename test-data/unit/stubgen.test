@@ -1511,3 +1511,13 @@ class B:
     y: str = ...
     @x.setter
     def x(self, value: Any) -> None: ...
+
+[case testMisplacedTypeComment]
+def f():
+    x = 0
+
+    # type: str
+    y = ''
+
+[out]
+def f() -> None: ...

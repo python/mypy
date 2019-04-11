@@ -76,7 +76,7 @@ from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
     write_header, default_py2_interpreter, CantImport, generate_guarded,
     walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3,
-    report_missing, fail_missing
+    report_missing, fail_missing, remove_misplaced_type_comments
 )
 from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
@@ -977,6 +977,8 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.ignore_errors = True
     options.semantic_analysis_only = True
     options.python_version = stubgen_options.pyversion
+    options.show_traceback = True
+    options.transform_source = remove_misplaced_type_comments
     return options
 
 

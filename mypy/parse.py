@@ -18,6 +18,11 @@ def parse(source: Union[str, bytes],
     The python_version (major, minor) option determines the Python syntax variant.
     """
     is_stub_file = fnam.endswith('.pyi')
+    if options.transform_source is not None:
+        if isinstance(source, str):  # Work around mypy issue
+            source = options.transform_source(source)
+        else:
+            source = options.transform_source(source)
     if options.python_version[0] >= 3 or is_stub_file:
         import mypy.fastparse
         return mypy.fastparse.parse(source,
