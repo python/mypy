@@ -1,1 +1,1 @@
-git+https://github.com/mypyc/mypyc.git@2724a1cf29462c012dccebe41d23426008143bd0#egg=mypyc==0.0.1+dev.2724a1cf29462c012dccebe41d23426008143bd0
+git+https://github.com/mypyc/mypyc.git@7afc879462353edc235f4a4c41f2ce3e4792e849#egg=mypyc==0.0.1+dev.7afc879462353edc235f4a4c41f2ce3e4792e849
