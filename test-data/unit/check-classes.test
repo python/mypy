@@ -3725,7 +3725,6 @@ class C(B):
     a = "a"
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:6: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableSubclassTypeOverwriteImplicit]
 class A:
@@ -4018,7 +4017,6 @@ class B(A):
 class C(B):
     x = ''
 [out]
-main:6: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
 class A:

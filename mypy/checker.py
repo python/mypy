@@ -1870,6 +1870,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Show only one error per variable
                         break
 
+            direct_bases = lvalue_node.info.direct_base_classes()
+            last_immediate_base = direct_bases[-1] if direct_bases else None
+
             for base in lvalue_node.info.mro[1:]:
                 # Only check __slots__ against the 'object'
                 # If a base class defines a Tuple of 3 elements, a child of
@@ -1893,6 +1896,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Only show one error per variable; even if other
                         # base classes are also incompatible
                         return True
+                    if base == last_immediate_base:
+                        # At this point, the attribute was found to be compatible with all immediate parents,
+                        break
         return False
 
     def check_compatibility_super(self, lvalue: RefExpr, lvalue_type: Optional[Type],
