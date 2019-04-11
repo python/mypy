@@ -199,8 +199,12 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
     state = DocStringParser(name)
     # Return all found signatures, even if there is a parse error after some are found.
     with contextlib.suppress(tokenize.TokenError):
-        for token in tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline):
-            state.add_token(token)
+        try:
+            tokens = tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline)
+            for token in tokens:
+                state.add_token(token)
+        except IndentationError:
+            return None
     sigs = state.get_signatures()
 
     def is_unique_args(sig: FunctionSig) -> bool:
