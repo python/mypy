@@ -92,6 +92,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     setup_name = '{}_setup'.format(name_prefix)
     new_name = '{}_new'.format(name_prefix)
+    members_name = '{}_members'.format(name_prefix)
     getseters_name = '{}_getseters'.format(name_prefix)
     vtable_name = '{}_vtable'.format(name_prefix)
     traverse_name = '{}_traverse'.format(name_prefix)
@@ -153,10 +154,23 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # populate these fields ourselves if we want them to have correct
     # values. PyType_Ready will inherit the offsets from tp_base but
     # that isn't what we want.
-    if any(x.inherits_python for x in cl.mro):
+
+    has_dict = any(x.inherits_python for x in cl.mro)
+    # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
+    if has_dict:
+        weak_offset = '{} + sizeof(PyObject *)'.format(base_size)
+        emitter.emit_lines(
+            'PyMemberDef {}[] = {{'.format(members_name),
+            '{{"__dict__", T_OBJECT_EX, {}, 0, NULL}},'.format(base_size),
+            '{{"__weakref__", T_OBJECT_EX, {}, 0, NULL}},'.format(weak_offset),
+            '{0}',
+            '};',
+        )
+
+        fields['tp_members'] = members_name
         fields['tp_basicsize'] = '{} + 2*sizeof(PyObject *)'.format(base_size)
         fields['tp_dictoffset'] = base_size
-        fields['tp_weaklistoffset'] = '{} + sizeof(PyObject *)'.format(base_size)
+        fields['tp_weaklistoffset'] = weak_offset
     else:
         fields['tp_basicsize'] = base_size
 

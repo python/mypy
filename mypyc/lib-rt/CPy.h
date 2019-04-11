@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <Python.h>
 #include <frameobject.h>
+#include <structmember.h>
 #include <assert.h>
 #include "pythonsupport.h"
 #include "mypyc_util.h"
