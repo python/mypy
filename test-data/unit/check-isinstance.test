@@ -2207,3 +2207,11 @@ def bar(x: Union[List[str], List[int], None]) -> None:
     assert isinstance(x, list)
     reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithStarExpression]
+some_types = (str, tuple)
+another_type = list
+var = 'some string'
+if isinstance(var, (*some_types, another_type)):
+    reveal_type(var)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstancelist.pyi]
