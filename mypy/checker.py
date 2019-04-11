@@ -917,16 +917,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
+                body_is_trivial = self.is_trivial_body(defn.body)
                 for arg in item.arguments:
-                    if arg.initializer is not None:
-                        name = arg.variable.name()
-                        msg = 'Incompatible default for '
-                        if name.startswith('__tuple_arg_'):
-                            msg += "tuple argument {}".format(name[12:])
-                        else:
-                            msg += 'argument "{}"'.format(name)
-                        self.check_simple_assignment(arg.variable.type, arg.initializer,
-                            context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
+                    if arg.initializer is None:
+                        continue
+                    if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
+                        continue
+                    name = arg.variable.name()
+                    msg = 'Incompatible default for '
+                    if name.startswith('__tuple_arg_'):
+                        msg += "tuple argument {}".format(name[12:])
+                    else:
+                        msg += 'argument "{}"'.format(name)
+                    self.check_simple_assignment(arg.variable.type, arg.initializer,
+                        context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -944,11 +948,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     return_type = self.return_types[-1]
 
-                if (not isinstance(return_type, (NoneTyp, AnyType))
-                        and not self.is_trivial_body(defn.body)):
+                if not isinstance(return_type, (NoneTyp, AnyType)) and not body_is_trivial:
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
-                    # entirely pass/Ellipsis.
+                    # entirely pass/Ellipsis/raise NotImplementedError.
                     if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
                         self.msg.note(message_registry.INVALID_IMPLICIT_RETURN, defn)
@@ -1012,7 +1015,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         elif len(body) > 1:
             return False
+
         stmt = body[0]
+
+        # Bodies that just raise "NotImplementedError()" count as trivial.
+        # The reason we whitelist only this exception is because bodies
+        # that raise other types of Exceptions are more likely to be
+        # doing non-trivial things -- for example:
+        #
+        #   def halt(self, reason: str = ...) -> NoReturn:
+        #       raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+        #
+        # We probably don't want to simplify type checking on the above.
+        if isinstance(stmt, RaiseStmt):
+            expr = stmt.expr
+            if expr is None:
+                return False
+            if isinstance(expr, CallExpr):
+                expr = expr.callee
+
+            return (isinstance(expr, NameExpr)
+                    and expr.fullname == 'builtins.NotImplementedError')
+
+        # Bodies that contain just "pass" or "..." are also trivial
         return (isinstance(stmt, PassStmt) or
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))
