@@ -992,7 +992,7 @@ import mod
 [file mod.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:1: note: Import of 'mod' ignored
+tmp/main.py:1: error: Import of 'mod' ignored
 tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testAncestorSuppressedWhileAlmostSilent]
@@ -1002,7 +1002,7 @@ tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command
 [file foo/__init__.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/foo/bar.py: note: Ancestor package 'foo' ignored
+tmp/foo/bar.py: error: Ancestor package 'foo' ignored
 tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command line)
 
 [case testStubImportNonStubWhileSilent]

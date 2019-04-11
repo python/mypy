@@ -56,24 +56,24 @@ def g(x: int): ...
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
-(  # type: ignore  # N: unused 'type: ignore' comment
+(  # type: ignore  # E: unused 'type: ignore' comment
     "IGNORE"  # type: ignore
-    +  # type: ignore  # N: unused 'type: ignore' comment
-    0  # type: ignore  # N: unused 'type: ignore' comment
-)  # type: ignore  # N: unused 'type: ignore' comment
+    +  # type: ignore  # E: unused 'type: ignore' comment
+    0  # type: ignore  # E: unused 'type: ignore' comment
+)  # type: ignore  # E: unused 'type: ignore' comment
 
 [case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
-(  # type: ignore  # N: unused 'type: ignore' comment
+(  # type: ignore  # E: unused 'type: ignore' comment
     "IGNORE"
     -  # type: ignore
-    0  # type: ignore  # N: unused 'type: ignore' comment
-)  # type: ignore  # N: unused 'type: ignore' comment
+    0  # type: ignore  # E: unused 'type: ignore' comment
+)  # type: ignore  # E: unused 'type: ignore' comment
 
 [case testIgnoreScopeUnused3]
 # flags: --warn-unused-ignores
-(  # type: ignore  # N: unused 'type: ignore' comment
+(  # type: ignore  # E: unused 'type: ignore' comment
     "IGNORE"
     /
     0  # type: ignore
-)  # type: ignore  # N: unused 'type: ignore' comment
+)  # type: ignore  # E: unused 'type: ignore' comment

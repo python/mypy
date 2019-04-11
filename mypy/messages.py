@@ -142,11 +142,6 @@ class MessageBuilder:
             self.report(msg, context, 'note', file=file, origin=origin,
                         offset=offset)
 
-    def warn(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
-        """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
-
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
         no_quote_regex = r'^<(tuple|union): \d+ items>$'
@@ -1072,7 +1067,7 @@ class MessageBuilder:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
-        self.note('Redundant cast to {}'.format(self.format(typ)), context)
+        self.fail('Redundant cast to {}'.format(self.format(typ)), context)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
@@ -1163,7 +1158,7 @@ class MessageBuilder:
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
         message = 'Returning Any from function declared to return {}'.format(
             self.format(typ))
-        self.warn(message, context)
+        self.fail(message, context)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):

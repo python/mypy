@@ -385,7 +385,7 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: note: Import of 'a' ignored
+main.py:1: error: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: error: Revealed type is 'Any'
 main.py:4: error: Revealed type is 'Any'
@@ -423,7 +423,7 @@ bla bla
 bla bla
 [out]
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: note: Import of 'error' ignored
+main.py:4: error: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
 main.py:5: error: Revealed type is 'builtins.int'
 main.py:6: error: Revealed type is 'builtins.int'
@@ -1114,7 +1114,7 @@ follow_imports_for_stubs = True
 import math
 math.frobnicate()
 [out]
-main.py:1: note: Import of 'math' ignored
+main.py:1: error: Import of 'math' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testFollowImportStubs2]
