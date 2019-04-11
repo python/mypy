@@ -2227,5 +2227,3 @@ var = 'some string'
 if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
     pass
 [builtins fixtures/isinstancelist.pyi]
-
-
