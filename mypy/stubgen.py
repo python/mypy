@@ -85,7 +85,7 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
-from mypy.errors import CompileError
+from mypy.errors import CompileError, Errors
 from mypy.traverser import has_return_statement
 
 MYPY = False
@@ -973,12 +973,12 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, 'rb') as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
-    try:
-        mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
-                                   errors=None, options=mypy_options)
-    except mypy.errors.CompileError as e:
+    errors = Errors()
+    mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
+                               errors=errors, options=mypy_options)
+    if errors.is_blockers():
         # Syntax error!
-        for m in e.messages:
+        for m in errors.new_messages():
             sys.stderr.write('%s\n' % m)
         sys.exit(1)
 

@@ -1443,3 +1443,13 @@ from typing import Any
 class C(Base, metaclass=abc.ABCMeta):
     @abstractmethod
     def other(self) -> Any: ...
+
+[case testInvalidNumberOfArgsInAnnotation]
+def f(x):
+    # type: () -> int
+    return ''
+
+[out]
+from typing import Any
+
+def f(x: Any): ...
