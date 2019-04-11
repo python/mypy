@@ -22,11 +22,12 @@ from mypy.bogus_type import Bogus
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column')
+    __slots__ = ('line', 'column', 'end_line')
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
+        self.end_line = None  # type: Optional[int]
 
     def set_line(self, target: Union['Context', int], column: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
@@ -38,6 +39,7 @@ class Context:
         else:
             self.line = target.line
             self.column = target.column
+            self.end_line = target.end_line
 
         if column is not None:
             self.column = column

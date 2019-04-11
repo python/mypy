@@ -280,6 +280,7 @@ class ASTConverter:
     def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
+        node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
         return node
 
     def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
