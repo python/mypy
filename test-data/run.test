@@ -3714,6 +3714,26 @@ for i in range(10000):
     native.none()
     native.arg(None)
 
+[case testBorrowRefs]
+def make_garbage(arg: object) -> None:
+    b = True
+    while b:
+        arg = None
+        b = False
+
+[file driver.py]
+from native import make_garbage
+import sys
+
+def test():
+    x = object()
+    r0 = sys.getrefcount(x)
+    make_garbage(x)
+    r1 = sys.getrefcount(x)
+    assert r0 == r1
+
+test()
+
 [case testForZipAndEnumerate]
 from typing import Iterable, List, Any
 def f(a: Iterable[int], b: List[int]) -> List[Any]:

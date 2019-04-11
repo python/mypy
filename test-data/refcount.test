@@ -835,3 +835,35 @@ L4:
 L5:
     dec_ref r0
     goto L3
+
+[case testBorrowRefs]
+def make_garbage(arg: object) -> None:
+    b = True
+    while b:
+        arg = None
+        b = False
+[out]
+def make_garbage(arg):
+    arg :: object
+    r0, b :: bool
+    r1 :: None
+    r2 :: object
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = True
+    b = r0
+L1:
+    if b goto L2 else goto L3 :: bool
+L2:
+    r1 = None
+    r2 = box(None, r1)
+    inc_ref r2
+    arg = r2
+    dec_ref arg
+    r3 = False
+    b = r3
+    goto L1
+L3:
+    r4 = None
+    return r4

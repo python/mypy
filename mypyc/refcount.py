@@ -180,19 +180,19 @@ def insert_branch_inc_and_decrefs(
                 branch.true, pre_live, source_defined,
                 source_borrowed, source_live_regs, env, omitted),
             after_branch_increfs(
-                branch.true, pre_borrow, source_borrowed, env))
+                branch.true, pre_live, pre_borrow, source_borrowed, env))
         branch.true = add_block(true_decincs, cache, blocks, branch.true)
 
         false_decincs = (
             after_branch_decrefs(
                 branch.false, pre_live, source_defined, source_borrowed, source_live_regs, env),
             after_branch_increfs(
-                branch.false, pre_borrow, source_borrowed, env))
+                branch.false, pre_live, pre_borrow, source_borrowed, env))
         branch.false = add_block(false_decincs, cache, blocks, branch.false)
     elif isinstance(block.ops[-1], Goto):
         goto = block.ops[-1]
         new_decincs = ((), after_branch_increfs(
-            goto.label, pre_borrow, source_borrowed, env))
+            goto.label, pre_live, pre_borrow, source_borrowed, env))
         goto.label = add_block(new_decincs, cache, blocks, goto.label)
 
 
@@ -213,11 +213,13 @@ def after_branch_decrefs(label: BasicBlock,
 
 
 def after_branch_increfs(label: BasicBlock,
+                         pre_live: AnalysisDict[Value],
                          pre_borrow: AnalysisDict[Value],
                          source_borrowed: Set[Value],
                          env: Environment) -> Tuple[Value, ...]:
+    target_pre_live = pre_live[label, 0]
     target_borrowed = pre_borrow[label, 0]
-    incref = source_borrowed - target_borrowed
+    incref = (source_borrowed - target_borrowed) & target_pre_live
     if incref:
         return tuple(reg
                      for reg in sorted(incref, key=lambda r: env.indexes[r])
