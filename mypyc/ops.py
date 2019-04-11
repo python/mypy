@@ -1503,6 +1503,7 @@ class ClassIR:
         self.mro = [self]  # type: List[ClassIR]
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro = [self]  # type: List[ClassIR]
+        self.has_dict = False
 
         # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
         self.children = []  # type: List[ClassIR]

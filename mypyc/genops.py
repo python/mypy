@@ -239,6 +239,8 @@ def compute_vtable(cls: ClassIR) -> None:
     """Compute the vtable structure for a class."""
     if cls.vtable is not None: return
 
+    cls.has_dict = any(x.inherits_python for x in cls.mro)
+
     for t in cls.mro[1:]:
         # Make sure all ancestors are processed first
         compute_vtable(t)
