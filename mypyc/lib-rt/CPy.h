@@ -673,6 +673,8 @@ static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
                 return false;
             }
         }
+        // PyList_SET_ITEM doesn't decref the old element, so we do
+        Py_DECREF(PyList_GET_ITEM(list, n));
         // N.B: Steals reference
         PyList_SET_ITEM(list, n, value);
         return true;
