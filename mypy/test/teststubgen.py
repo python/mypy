@@ -17,7 +17,7 @@ from mypy.stubgen import (
     generate_stubs, parse_options, Options, collect_build_targets,
     mypy_options
 )
-from mypy.stubutil import walk_packages
+from mypy.stubutil import walk_packages, remove_misplaced_type_comments
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -269,6 +269,129 @@ class StubgenUtilSuite(Suite):
         assert_equal(infer_prop_type_from_docstring('Tuple[int, int]: A tuple.'),
                      'Tuple[int, int]')
         assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
+
+    def test_remove_misplaced_type_comments_1(self) -> None:
+        good = """
+        \u1234
+        def f(x):  # type: (int) -> int
+
+        def g(x):
+            # type: (int) -> int
+
+        def h():
+
+            # type: () int
+
+        x = 1  # type: int
+        """
+
+        assert_equal(remove_misplaced_type_comments(good), good)
+
+    def test_remove_misplaced_type_comments_2(self) -> None:
+        bad = """
+        def f(x):
+            # type: Callable[[int], int]
+            pass
+
+        x = 1
+        # type: int
+        """
+        bad_fixed = """
+        def f(x):
+
+            pass
+
+        x = 1
+
+        """
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_3(self) -> None:
+        bad = '''
+        def f(x):
+            """docstring"""
+            # type: (int) -> int
+            pass
+
+        def g(x):
+            """docstring
+            """
+            # type: (int) -> int
+            pass
+        '''
+        bad_fixed = '''
+        def f(x):
+            """docstring"""
+
+            pass
+
+        def g(x):
+            """docstring
+            """
+
+            pass
+        '''
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_4(self) -> None:
+        bad = """
+        def f(x):
+            '''docstring'''
+            # type: (int) -> int
+            pass
+
+        def g(x):
+            '''docstring
+            '''
+            # type: (int) -> int
+            pass
+        """
+        bad_fixed = """
+        def f(x):
+            '''docstring'''
+
+            pass
+
+        def g(x):
+            '''docstring
+            '''
+
+            pass
+        """
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_bytes(self) -> None:
+        original = b"""
+        \xbf
+        def f(x):  # type: (int) -> int
+
+        def g(x):
+            # type: (int) -> int
+            pass
+
+        def h():
+            # type: int
+            pass
+
+        x = 1  # type: int
+        """
+
+        dest = b"""
+        \xbf
+        def f(x):  # type: (int) -> int
+
+        def g(x):
+            # type: (int) -> int
+            pass
+
+        def h():
+
+            pass
+
+        x = 1  # type: int
+        """
+
+        assert_equal(remove_misplaced_type_comments(original), dest)
 
 
 class StubgenPythonSuite(DataSuite):

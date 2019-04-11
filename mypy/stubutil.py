@@ -7,10 +7,11 @@ import json
 import pkgutil
 import importlib
 import subprocess
+import re
 from types import ModuleType
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, IO, Iterator
+from typing import Optional, Tuple, List, IO, Iterator, AnyStr
 
 
 class CantImport(Exception):
@@ -165,3 +166,25 @@ def report_missing(mod: str, message: Optional[str] = '') -> None:
 
 def fail_missing(mod: str) -> None:
     raise SystemExit("Can't find module '{}' (consider using --search-path)".format(mod))
+
+
+def remove_misplaced_type_comments(source: AnyStr) -> AnyStr:
+    if isinstance(source, bytes):
+        # This gives us a 1-1 character code mapping, so it's roundtrippable.
+        text = source.decode('latin1')
+    else:
+        text = source
+
+    # Remove something that looks like a variable type comment but that's by itself
+    # on a line, as it will often generate a parse error (unless it's # type: ignore).
+    text = re.sub(r'^[ \t]*# +type: +[a-zA-Z_].*$', '', text, flags=re.MULTILINE)
+
+    # Remove something that looks like a function type annotation after docstring,
+    # which will result in a parse error.
+    text = re.sub(r'""" *\n[ \t\n]*# +type: +\(.*$', '"""\n', text, flags=re.MULTILINE)
+    text = re.sub(r"''' *\n[ \t\n]*# +type: +\(.*$", "'''\n", text, flags=re.MULTILINE)
+
+    if isinstance(source, bytes):
+        return text.encode('latin1')
+    else:
+        return text
