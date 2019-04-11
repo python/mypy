@@ -111,11 +111,18 @@ class MessageBuilder:
                file: Optional[str] = None, origin: Optional[Context] = None,
                offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
+        if origin is not None:
+            end_line = origin.end_line
+        elif context is not None:
+            end_line = context.end_line
+        else:
+            end_line = None
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
-                               origin_line=origin.get_line() if origin else None)
+                               origin_line=origin.get_line() if origin else None,
+                               end_line=end_line)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
@@ -916,7 +923,7 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list("'%s'" % a for a in abstract_attributes)
+        attrs = format_string_list(["'%s'" % a for a in abstract_attributes])
         self.fail("Cannot instantiate abstract class '%s' with abstract "
                   "attribute%s %s" % (class_name, plural_s(abstract_attributes),
                                    attrs),
@@ -1502,8 +1509,7 @@ def plural_s(s: Union[int, Sequence[Any]]) -> str:
         return ''
 
 
-def format_string_list(s: Iterable[str]) -> str:
-    lst = list(s)
+def format_string_list(lst: List[str]) -> str:
     assert len(lst) > 0
     if len(lst) == 1:
         return lst[0]

@@ -5004,3 +5004,23 @@ reveal_type(c)
 [out]
 [out2]
 tmp/a.py:3: error: Revealed type is 'Any'
+
+[case testNewAnalyzerIncrementalNestedEnum]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+from b import C
+x: C
+[file a.py.2]
+from b import C
+x: C
+# touch
+[file b.py]
+class C: ...
+from enum import Enum
+
+def test() -> None:
+    Color = Enum('Color', 'RED BLACK')
+[builtins fixtures/list.pyi]
+[out]
+[out2]

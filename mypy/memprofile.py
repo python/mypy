@@ -11,6 +11,7 @@ from typing import List, Dict, Iterable, Tuple, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type
+from mypy.util import get_class_descriptors
 
 
 def collect_memory_stats() -> Tuple[Dict[str, int],
@@ -39,12 +40,11 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
                     if isinstance(x, list):
                         # Keep track of which node a list is associated with.
                         inferred[id(x)] = '%s (list)' % n
-            else:
-                for base in type.mro(type(obj)):
-                    for k in getattr(base, '__slots__', ()):
-                        x = getattr(obj, k, None)
-                        if isinstance(x, list):
-                            inferred[id(x)] = '%s (list)' % n
+
+            for k in get_class_descriptors(type(obj)):
+                x = getattr(obj, k, None)
+                if isinstance(x, list):
+                    inferred[id(x)] = '%s (list)' % n
 
     freqs = {}  # type: Dict[str, int]
     memuse = {}  # type: Dict[str, int]

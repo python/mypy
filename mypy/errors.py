@@ -54,8 +54,9 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
-    # Actual origin of the error message as tuple (path, line number)
-    origin = None  # type: Tuple[str, int]
+    # Actual origin of the error message as tuple (path, line number, end line number)
+    # If end line number is unknown, use line number.
+    origin = None  # type: Tuple[str, int, int]
 
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
@@ -72,7 +73,7 @@ class ErrorInfo:
                  message: str,
                  blocker: bool,
                  only_once: bool,
-                 origin: Optional[Tuple[str, int]] = None,
+                 origin: Optional[Tuple[str, int, int]] = None,
                  target: Optional[str] = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
@@ -85,7 +86,7 @@ class ErrorInfo:
         self.message = message
         self.blocker = blocker
         self.only_once = only_once
-        self.origin = origin or (file, line)
+        self.origin = origin or (file, line, line)
         self.target = target
 
 
@@ -233,7 +234,8 @@ class Errors:
                file: Optional[str] = None,
                only_once: bool = False,
                origin_line: Optional[int] = None,
-               offset: int = 0) -> None:
+               offset: int = 0,
+               end_line: Optional[int] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -244,6 +246,7 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
+            end_line: if non-None, override current context as end
         """
         if self.scope:
             type = self.scope.current_type_name()
@@ -260,10 +263,17 @@ class Errors:
             file = self.file
         if offset:
             message = " " * offset + message
+
+        if origin_line is None:
+            origin_line = line
+
+        if end_line is None:
+            end_line = origin_line
+
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          function, line, column, severity, message,
                          blocker, only_once,
-                         origin=(self.file, origin_line) if origin_line else None,
+                         origin=(self.file, origin_line, end_line),
                          target=self.current_target())
         self.add_error_info(info)
 
@@ -274,12 +284,17 @@ class Errors:
         self.error_info_map[file].append(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        file, line = info.origin
+        file, line, end_line = info.origin
         if not info.blocker:  # Blockers cannot be ignored
-            if file in self.ignored_lines and line in self.ignored_lines[file]:
-                # Annotation requests us to ignore all errors on this line.
-                self.used_ignored_lines[file].add(line)
-                return
+            if file in self.ignored_lines:
+                # Check each line in this context for "type: ignore" comments.
+                # For anything other than Python 3.8 expressions, line == end_line,
+                # so we only loop once.
+                for scope_line in range(line, end_line + 1):
+                    if scope_line in self.ignored_lines[file]:
+                        # Annotation requests us to ignore all errors on this line.
+                        self.used_ignored_lines[file].add(scope_line)
+                        return
             if file in self.ignored_files:
                 return
         if info.only_once:
