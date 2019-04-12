@@ -245,10 +245,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 all_vars = node.alias_tvars
                 target = node.target
                 an_args = self.anal_array(t.args)
-                out = expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
-                if 'RED' in str(t):
-                    print('...')
-                return out
+                return expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t)
             elif isinstance(node, TypeInfo):
                 return self.analyze_unbound_type_with_type_info(t, node)
             else:
@@ -407,15 +404,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # It's unsafe to return RawExpressionType in any other case, since
         # the type would leak out of the semantic analysis phase.
         if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
-            short_name = sym.node.name()
-            base_enum_name = sym.node.info.fullname()
+            value = sym.node.name()
+            base_enum_short_name = sym.node.info.name()
+            base_enum_qualified_name = sym.node.info.fullname()
             if not defining_literal:
-                msg = "Invalid type: try using Literal[{}] instead?".format(name)
+                msg = message_registry.INVALID_TYPE_RAW_ENUM_VALUE.format(
+                    base_enum_short_name, value)
                 self.fail(msg, t)
                 return AnyType(TypeOfAny.from_error)
             return RawExpressionType(
-                literal_value=short_name,
-                base_type_name=base_enum_name,
+                literal_value=value,
+                base_type_name=base_enum_qualified_name,
                 line=t.line,
                 column=t.column,
             )

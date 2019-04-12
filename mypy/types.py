@@ -1467,7 +1467,7 @@ class LiteralType(Type):
         else:
             return NotImplemented
 
-    def is_fallback_enum(self) -> bool:
+    def is_enum_literal(self) -> bool:
         return self.fallback.type.is_enum
 
     def value_repr(self) -> str:
@@ -1481,7 +1481,7 @@ class LiteralType(Type):
         fallback_name = self.fallback.type.fullname()
 
         # If this is backed by an enum,
-        if self.is_fallback_enum():
+        if self.is_enum_literal():
             return '{}.{}'.format(fallback_name, self.value)
 
         if fallback_name == 'builtins.bytes':

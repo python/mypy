@@ -73,7 +73,7 @@ from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any, expand_type_alias
+    check_for_explicit_any
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
