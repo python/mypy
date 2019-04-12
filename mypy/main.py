@@ -700,7 +700,9 @@ def process_options(args: List[str],
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
     config_file = dummy.config_file
-    if config_file is not None and not os.path.exists(config_file):
+    # Don't explicitly test if "config_file is not None" for this check.
+    # This lets `--config-file=` (an empty string) be used to disable all config files.
+    if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.

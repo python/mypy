@@ -57,6 +57,9 @@ Config file
     Settings override mypy's built-in defaults and command line flags
     can override settings.
 
+    Specifying ``--config-file=`` (with no filename) will ignore *all*
+    config files.
+
     See :ref:`config-file` for the syntax of configuration files.
 
 ``--warn-unused-configs``

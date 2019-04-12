@@ -156,6 +156,14 @@ def f():
     except ZeroDivisionError, err:
         print err
 
+[case testNoConfigFile]
+# cmd: mypy main.py --config-file=
+[file mypy.ini]
+[[mypy]
+warn_unused_ignores = True
+[file main.py]
+# type: ignore
+
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
