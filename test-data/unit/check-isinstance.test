@@ -2211,7 +2211,6 @@ def bar(x: Union[List[str], List[int], None]) -> None:
 [case testIsInstanceWithStarExpression]
 from typing import Union, List, Tuple
 
-
 def f(var: Union[List[str], Tuple[str, str], str]) -> None:
     reveal_type(var)  # E: Revealed type is 'Union[builtins.list[builtins.str], Tuple[builtins.str, builtins.str], builtins.str]'
     if isinstance(var, (list, *(str, int))):
@@ -2220,7 +2219,6 @@ def f(var: Union[List[str], Tuple[str, str], str]) -> None:
 
 [case testIsInstanceWithStarExpressionAndVariable]
 from typing import Union
-
 
 def f(var: Union[int, str]) -> None:
     reveal_type(var)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
