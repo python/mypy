@@ -1602,7 +1602,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Verify that inherited attributes are compatible.
         mro = typ.mro[1:]
         for i, base in enumerate(mro):
-            for name in base.names:
+            # Attributes defined in both the type and base are skipped.
+            # Normal checks for attribute compatibility should catch any problems elsewhere.
+            non_overridden_attrs = base.names.keys() - typ.names.keys()
+            for name in non_overridden_attrs:
                 for base2 in mro[i + 1:]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
@@ -1867,6 +1870,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Show only one error per variable
                         break
 
+            direct_bases = lvalue_node.info.direct_base_classes()
+            last_immediate_base = direct_bases[-1] if direct_bases else None
+
             for base in lvalue_node.info.mro[1:]:
                 # Only check __slots__ against the 'object'
                 # If a base class defines a Tuple of 3 elements, a child of
@@ -1890,7 +1896,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Only show one error per variable; even if other
                         # base classes are also incompatible
                         return True
-                    break
+                    if base is last_immediate_base:
+                        # At this point, the attribute was found to be compatible with all
+                        # immediate parents.
+                        break
         return False
 
     def check_compatibility_super(self, lvalue: RefExpr, lvalue_type: Optional[Type],

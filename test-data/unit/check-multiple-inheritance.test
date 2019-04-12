@@ -228,7 +228,7 @@ class B(A, int): pass
 from typing import Callable, TypeVar
 T = TypeVar('T')
 class A(B, C):
-    def f(self): pass
+    pass
 class B:
     @dec
     def f(self): pass
@@ -460,6 +460,121 @@ class Base2:
 class Combo(Base2, Base1): ...
 [out]
 main:10: error: Definition of "NestedVar" in base class "Base2" is incompatible with definition in base class "Base1"
+
+[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base2']
+class A(Base1, Base2):
+    Nested: GenericBase['A']
+[out]
+
+[case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base2']
+class A(Base1, Base2):
+    Nested: GenericBase['Base1']
+[out]
+main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base1]", base class "Base2" defined the type as "GenericBase[Base2]")
+
+[case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base2']
+class A(Base1, Base2):
+    Nested: GenericBase['Base2']
+[out]
+main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base2]", base class "Base1" defined the type as "GenericBase[Base1]")
+
+[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
+from typing import TypeVar, Generic
+T = TypeVar('T', covariant=True)
+class GenericBase(Generic[T]):
+    pass
+class Base1:
+    Nested: GenericBase['Base1']
+class Base2:
+    Nested: GenericBase['Base1']
+class A(Base1, Base2):
+    Nested: GenericBase['Base1']
+[out]
+
+[case testMultipleInheritance_MethodDefinitionsCompatibleWithOverride]
+from typing import TypeVar, Union
+_T = TypeVar('_T')
+
+class Flag:
+    def __or__(self: _T, other: _T) -> _T: ...
+
+# int defines __or__ as:
+#     def __or__(self, n: int) -> int: ...
+class IntFlag(int, Flag):
+    def __or__(self: _T, other: Union[int, _T]) -> _T: ...
+[out]
+
+[case testMultipleInheritance_MethodDefinitionsIncompatibleOverride]
+from typing import TypeVar, Union
+_T = TypeVar('_T')
+
+class Flag:
+    def __or__(self: _T, other: _T) -> _T: ...
+
+class IntFlag(int, Flag):
+    def __or__(self: _T, other: str) -> _T: ...
+[out]
+main:8: error: Argument 1 of "__or__" incompatible with supertype "Flag"
+
+[case testMultipleInheritance_MethodDefinitionsCompatibleNoOverride]
+from typing import TypeVar, Union
+_T = TypeVar('_T')
+
+class Flag:
+    def __or__(self: _T, other: _T) -> _T: ...
+
+class IntFlag(int, Flag):
+    pass
+[out]
+
+[case testMultipleInheritance_MethodsReturningSelfCompatible]
+class A(object):
+    def x(self) -> 'A':
+        return self
+
+class B(object):
+    def x(self) -> 'B':
+        return self
+
+class C(A, B):
+    def x(self) -> 'C':
+        return self
+
+[case testMultipleInheritance_MethodsReturningSelfIncompatible]
+class A(object):
+    def x(self) -> 'A':
+        return self
+
+class B(object):
+    def x(self) -> 'B':
+        return self
+
+class C(A, B): # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+    pass
 
 [case testNestedVariableRefersToSubclassOfAnotherNestedClass]
 class Mixin1:

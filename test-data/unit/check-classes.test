@@ -4025,13 +4025,22 @@ class B(A):
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
-[case testClassIgnoreType]
+[case testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored]
 class A:
     x = 0
 class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''
+[out]
+
+[case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
+class A:
+    x = 0
+class B(A):
+    x = ''  # type: ignore
+class C(B):
+    x = ''  # type: ignore
 [out]
 
 [case testInvalidMetaclassStructure]
