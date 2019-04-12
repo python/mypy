@@ -953,10 +953,11 @@ def find_module_paths_using_imports(modules: List[str],
             else:
                 result = find_module_path_and_all_py3(mod)
         except CantImport as e:
+            tb = traceback.format_exc()
             if verbose:
-                traceback.print_exc()
+                sys.stdout.write(tb)
             if not quiet:
-                report_missing(mod, e.message)
+                report_missing(mod, e.message, tb)
             continue
         if not result:
             c_modules.append(StubSource(mod))
