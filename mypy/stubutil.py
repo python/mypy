@@ -143,11 +143,13 @@ def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[Li
 
 @contextmanager
 def generate_guarded(mod: str, target: str,
-                     ignore_errors: bool = True, quiet: bool = False) -> Iterator[None]:
+                     ignore_errors: bool = True, verbose: bool = False) -> Iterator[None]:
     """Ignore or report errors during stub generation.
 
     Optionally report success.
     """
+    if verbose:
+        print('Processing %s' % mod)
     try:
         yield
     except Exception as e:
@@ -157,7 +159,7 @@ def generate_guarded(mod: str, target: str,
             # --ignore-errors was passed
             print("Stub generation failed for", mod, file=sys.stderr)
     else:
-        if not quiet:
+        if verbose:
             print('Created %s' % target)
 
 
@@ -191,3 +193,16 @@ def remove_misplaced_type_comments(source: AnyStr) -> AnyStr:
         return text.encode('latin1')
     else:
         return text
+
+
+def common_dir_prefix(paths: List[str]) -> str:
+    if not paths:
+        return '.'
+    cur = os.path.dirname(paths[0])
+    for path in paths[1:]:
+        while True:
+            path = os.path.dirname(path)
+            if (cur + '/').startswith(path + '/'):
+                cur = path
+                break
+    return cur or '.'
