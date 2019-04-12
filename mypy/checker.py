@@ -1003,6 +1003,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
+        """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
+        "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
+        start with a statement containing just a string (e.g. a docstring).
+
+        Note: functions that raise other kinds of exceptions do not count as
+        "trivial". We use this function to help us determine when it's ok to
+        relax certain checks on body, but functions that raise arbitrary exceptions
+        are more likely to do non-trivial work. For example:
+
+           def halt(self, reason: str = ...) -> NoReturn:
+               raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+
+        A function that raises just NotImplementedError is much less likely to be
+        this complex.
+        """
         body = block.body
 
         # Skip a docstring
@@ -1018,15 +1033,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         stmt = body[0]
 
-        # Bodies that just raise "NotImplementedError()" count as trivial.
-        # The reason we whitelist only this exception is because bodies
-        # that raise other types of Exceptions are more likely to be
-        # doing non-trivial things -- for example:
-        #
-        #   def halt(self, reason: str = ...) -> NoReturn:
-        #       raise MyCustomError("Fatal error: " + reason, self.line, self.context)
-        #
-        # We probably don't want to simplify type checking on the above.
         if isinstance(stmt, RaiseStmt):
             expr = stmt.expr
             if expr is None:
@@ -1037,7 +1043,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return (isinstance(expr, NameExpr)
                     and expr.fullname == 'builtins.NotImplementedError')
 
-        # Bodies that contain just "pass" or "..." are also trivial
         return (isinstance(stmt, PassStmt) or
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))
