@@ -1443,6 +1443,9 @@ class LiteralType(Type):
 
     For example, 'Literal[42]' is represented as
     'LiteralType(value=42, fallback=instance_of_int)'
+
+    As another example, `Literal[Color.RED]` (where Color is an enum) is
+    represented as `LiteralType(value="RED", fallback=instance_of_color)'.
     """
     __slots__ = ('value', 'fallback')
 
@@ -1464,15 +1467,23 @@ class LiteralType(Type):
         else:
             return NotImplemented
 
+    def is_enum_literal(self) -> bool:
+        return self.fallback.type.is_enum
+
     def value_repr(self) -> str:
         """Returns the string representation of the underlying type.
 
         This function is almost equivalent to running `repr(self.value)`,
         except it includes some additional logic to correctly handle cases
-        where the value is a string, byte string, or a unicode string.
+        where the value is a string, byte string, a unicode string, or an enum.
         """
         raw = repr(self.value)
         fallback_name = self.fallback.type.fullname()
+
+        # If this is backed by an enum,
+        if self.is_enum_literal():
+            return '{}.{}'.format(fallback_name, self.value)
+
         if fallback_name == 'builtins.bytes':
             # Note: 'builtins.bytes' only appears in Python 3, so we want to
             # explicitly prefix with a "b"

@@ -233,7 +233,11 @@ class MessageBuilder:
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
         elif isinstance(typ, LiteralType):
-            return str(typ)
+            if typ.is_enum_literal():
+                underlying_type = self.format_bare(typ.fallback, verbosity=verbosity)
+                return 'Literal[{}.{}]'.format(underlying_type, typ.value)
+            else:
+                return str(typ)
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
