@@ -300,6 +300,8 @@ class StubgenUtilSuite(Suite):
             # type: Callable[[int], int]
             pass
 
+        #  type:  "foo"
+        #  type:  'bar'
         x = 1
         # type: int
         """
@@ -307,6 +309,8 @@ class StubgenUtilSuite(Suite):
         def f(x):
 
             pass
+
+
 
         x = 1
 
