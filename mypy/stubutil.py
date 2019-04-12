@@ -21,10 +21,10 @@ class CantImport(Exception):
 
 
 def is_c_module(module: ModuleType) -> bool:
-    if '__file__' not in module.__dict__:
+    if module.__dict__.get('__file__') is None:
+        # Could be a namespace package. These must be handled through
+        # introspection, since there is no source file.
         return True
-    if module.__dict__['__file__'] is None:
-        return False
     return os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd']
 
 
