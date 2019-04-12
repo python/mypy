@@ -1521,3 +1521,14 @@ def f():
 
 [out]
 def f() -> None: ...
+
+[case testConditionalImportAll_semanal]
+__all__ = ['cookielib']
+
+if object():
+    from http import cookiejar as cookielib
+else:
+    import cookielib
+
+[out]
+import FIXME as cookielib

@@ -336,7 +336,8 @@ class ImportTracker:
                 # We can already generate the import line
                 if name in self.reverse_alias:
                     name, alias = self.reverse_alias[name], name
-                    result.append("import {} as {}\n".format(self.direct_imports[name], alias))
+                    source = self.direct_imports.get(name, 'FIXME')
+                    result.append("import {} as {}\n".format(source, alias))
                 elif name in self.reexports:
                     assert '.' not in name  # Because reexports only has nonqualified names
                     result.append("import {} as {}\n".format(name, name))
