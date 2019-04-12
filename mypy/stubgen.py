@@ -76,7 +76,7 @@ from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
     write_header, default_py2_interpreter, CantImport, generate_guarded,
     walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3,
-    report_missing, fail_missing, remove_misplaced_type_comments
+    report_missing, fail_missing, remove_misplaced_type_comments, common_dir_prefix
 )
 from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
@@ -96,10 +96,21 @@ class Options:
 
     This class is mutable to simplify testing.
     """
-    def __init__(self, pyversion: Tuple[int, int], no_import: bool, doc_dir: str,
-                 search_path: List[str], interpreter: str, parse_only: bool, ignore_errors: bool,
-                 include_private: bool, output_dir: str, modules: List[str], packages: List[str],
-                 files: List[str]) -> None:
+    def __init__(self,
+                 pyversion: Tuple[int, int],
+                 no_import: bool,
+                 doc_dir: str,
+                 search_path: List[str],
+                 interpreter: str,
+                 parse_only: bool,
+                 ignore_errors: bool,
+                 include_private: bool,
+                 output_dir: str,
+                 modules: List[str],
+                 packages: List[str],
+                 files: List[str],
+                 verbose: bool,
+                 quiet: bool) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
         self.no_import = no_import
@@ -114,6 +125,8 @@ class Options:
         self.modules = modules
         self.packages = packages
         self.files = files
+        self.verbose = verbose
+        self.quiet = quiet
 
 
 class StubSource(BuildSource):
@@ -904,7 +917,9 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
             py_modules, c_modules = find_module_paths_using_imports(options.modules,
                                                                     options.packages,
                                                                     options.interpreter,
-                                                                    options.pyversion)
+                                                                    options.pyversion,
+                                                                    options.verbose,
+                                                                    options.quiet)
     else:
         # Use mypy native source collection for files and directories.
         try:
@@ -917,10 +932,12 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
     return py_modules, c_modules
 
 
-def find_module_paths_using_imports(modules: List[str], packages: List[str],
+def find_module_paths_using_imports(modules: List[str],
+                                    packages: List[str],
                                     interpreter: str,
                                     pyversion: Tuple[int, int],
-                                    quiet: bool = True) -> Tuple[List[StubSource],
+                                    verbose: bool,
+                                    quiet: bool) -> Tuple[List[StubSource],
                                                                  List[StubSource]]:
     """Find path and runtime value of __all__ (if possible) for modules and packages.
 
@@ -936,9 +953,10 @@ def find_module_paths_using_imports(modules: List[str], packages: List[str],
             else:
                 result = find_module_path_and_all_py3(mod)
         except CantImport as e:
-            if not quiet:
+            if verbose:
                 traceback.print_exc()
-            report_missing(mod, e.message)
+            if not quiet:
+                report_missing(mod, e.message)
             continue
         if not result:
             c_modules.append(StubSource(mod))
@@ -1074,9 +1092,7 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     return sigs, class_sigs
 
 
-def generate_stubs(options: Options,
-                   # additional args for testing
-                   quiet: bool = False, add_header: bool = True) -> None:
+def generate_stubs(options: Options) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
@@ -1088,6 +1104,7 @@ def generate_stubs(options: Options,
 
     # Use parsed sources to generate stubs for Python modules.
     generate_asts_for_modules(py_modules, options.parse_only, mypy_opts)
+    files = []
     for mod in py_modules:
         assert mod.path is not None, "Not found module was not skipped"
         target = mod.module.replace('.', '/')
@@ -1096,7 +1113,8 @@ def generate_stubs(options: Options,
         else:
             target += '.pyi'
         target = os.path.join(options.output_dir, target)
-        with generate_guarded(mod.module, target, options.ignore_errors, quiet):
+        files.append(target)
+        with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(mod, target,
                                    options.parse_only, options.pyversion,
                                    options.include_private, add_header)
@@ -1105,9 +1123,16 @@ def generate_stubs(options: Options,
     for mod in c_modules:
         target = mod.module.replace('.', '/') + '.pyi'
         target = os.path.join(options.output_dir, target)
-        with generate_guarded(mod.module, target, options.ignore_errors, quiet):
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs,
-                                       add_header=add_header)
+        files.append(target)
+        with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
+            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs, add_header=add_header)
+    num_modules = len(py_modules) + len(c_modules)
+    if not options.quiet and num_modules > 0:
+        print('Processed %d modules' % num_modules)
+        if len(files) == 1:
+            print('Generated %s' % files[0])
+        else:
+            print('Generated files under %s' % common_dir_prefix(files) + os.sep)
 
 
 HEADER = """%(prog)s [-h] [--py2] [more options, see -h]
@@ -1140,6 +1165,10 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument('--include-private', action='store_true',
                         help="generate stubs for objects and members considered private "
                              "(single leading underscore and no trailing underscores)")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="show more verbose messages")
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help="show fewer messages")
     parser.add_argument('--doc-dir', metavar='PATH', default='',
                         help="use .rst documentation in PATH (this may result in "
                              "better stubs in some cases; consider setting this to "
@@ -1168,6 +1197,8 @@ def parse_options(args: List[str]) -> Options:
         ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
     if ns.modules + ns.packages and ns.files:
         parser.error("May only specify one of: modules/packages or files.")
+    if ns.quiet and ns.verbose:
+        parser.error('Cannot specify both quiet and verbose messages')
 
     # Create the output folder if it doesn't already exist.
     if not os.path.exists(ns.output_dir):
@@ -1184,7 +1215,9 @@ def parse_options(args: List[str]) -> Options:
                    output_dir=ns.output_dir,
                    modules=ns.modules,
                    packages=ns.packages,
-                   files=ns.files)
+                   files=ns.files,
+                   verbose=ns.verbose,
+                   quiet=ns.quiet)
 
 
 def main() -> None:

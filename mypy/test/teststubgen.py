@@ -17,7 +17,7 @@ from mypy.stubgen import (
     generate_stubs, parse_options, Options, collect_build_targets,
     mypy_options
 )
-from mypy.stubutil import walk_packages, remove_misplaced_type_comments
+from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -400,6 +400,20 @@ class StubgenUtilSuite(Suite):
 
         assert_equal(remove_misplaced_type_comments(original), dest)
 
+    def test_common_dir_prefix(self) -> None:
+        assert common_dir_prefix([]) == '.'
+        assert common_dir_prefix(['x.pyi']) == '.'
+        assert common_dir_prefix(['./x.pyi']) == '.'
+        assert common_dir_prefix(['foo/bar/x.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi',
+                                  'foo/bar/y.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/x.pyi', 'foo/bar/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
+
 
 class StubgenPythonSuite(DataSuite):
     required_out_section = True
@@ -429,7 +443,7 @@ class StubgenPythonSuite(DataSuite):
                     options.no_import = True
                 if not testcase.name.endswith('_semanal'):
                     options.parse_only = True
-                generate_stubs(options, quiet=True, add_header=False)
+                generate_stubs(options, add_header=False)
                 a = []  # type: List[str]
                 self.add_file(os.path.join(out_dir, 'main.pyi'), a)
             except CompileError as e:
@@ -449,7 +463,10 @@ class StubgenPythonSuite(DataSuite):
             flag_list = flags.group(1).split()
         else:
             flag_list = []
-        return parse_options(flag_list + extra)
+        options = parse_options(flag_list + extra)
+        if '--verbose' not in flag_list:
+            options.quiet = True
+        return options
 
     def add_file(self, path: str, result: List[str]) -> None:
         with open(path, encoding='utf8') as file:
