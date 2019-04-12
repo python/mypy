@@ -2207,3 +2207,29 @@ def bar(x: Union[List[str], List[int], None]) -> None:
     assert isinstance(x, list)
     reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithStarExpression]
+from typing import Union, List, Tuple
+
+def f(var: Union[List[str], Tuple[str, str], str]) -> None:
+    reveal_type(var)  # E: Revealed type is 'Union[builtins.list[builtins.str], Tuple[builtins.str, builtins.str], builtins.str]'
+    if isinstance(var, (list, *(str, int))):
+        reveal_type(var)  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.str]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithStarExpressionAndVariable]
+from typing import Union
+
+def f(var: Union[int, str]) -> None:
+    reveal_type(var)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    some_types = (str, tuple)
+    another_type = list
+    if isinstance(var, (*some_types, another_type)):
+        reveal_type(var)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithWrongStarExpression]
+var = 'some string'
+if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
+    pass
+[builtins fixtures/isinstancelist.pyi]
