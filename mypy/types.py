@@ -923,10 +923,10 @@ class CallableType(FunctionLike):
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
         ret = self.ret_type
-        if isinstance(ret, TupleType):
-            ret = ret.partial_fallback
         if isinstance(ret, TypeVarType):
             ret = ret.upper_bound
+        if isinstance(ret, TupleType):
+            ret = ret.partial_fallback
         assert isinstance(ret, Instance)
         return ret.type
 
