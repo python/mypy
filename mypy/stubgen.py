@@ -880,6 +880,12 @@ def get_qualified_name(o: Expression) -> str:
         return ERROR_MARKER
 
 
+def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
+    return [module for module in modules
+            if module.path is None or not any(substr in (module.path + '\n')
+                                              for substr in BLACKLIST)]
+
+
 def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[List[StubSource],
                                                                              List[StubSource]]:
     """Collect files for which we need to generate stubs.
