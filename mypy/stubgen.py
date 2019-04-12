@@ -1121,7 +1121,11 @@ def generate_stubs(options: Options) -> None:
 
     # Separately analyse C modules using different logic.
     for mod in c_modules:
-        target = mod.module.replace('.', '/') + '.pyi'
+        if any(py_mod.module.startswith(mod.module + '.')
+               for py_mod in py_modules + c_modules):
+            target = mod.module.replace('.', '/') + '/__init__.pyi'
+        else:
+            target = mod.module.replace('.', '/') + '.pyi'
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
