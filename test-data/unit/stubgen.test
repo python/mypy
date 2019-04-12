@@ -1532,3 +1532,13 @@ else:
 
 [out]
 import FIXME as cookielib
+
+[case testCycleInheritanceHierarchy_semanal]
+class A: pass
+
+class int(int, A):
+    pass
+
+[out]
+class A: ...
+class int(int, A): ...

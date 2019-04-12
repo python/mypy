@@ -1493,6 +1493,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not self.verify_base_classes(defn):
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
+            defn.info.bad_mro = True
             return
         self.calculate_class_mro(defn, self.object_type)
 
@@ -1598,12 +1599,12 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
+        cycle = False
         for base in info.bases:
             baseinfo = base.type
             if self.is_base_class(info, baseinfo):
-                self.fail('Cycle in inheritance hierarchy', defn, blocker=True)
-                # Clear bases to forcefully get rid of the cycle.
-                info.bases = []
+                self.fail('Cycle in inheritance hierarchy', defn)
+                cycle = True
             if baseinfo.fullname() == 'builtins.bool':
                 self.fail("'%s' is not a valid base class" %
                           baseinfo.name(), defn, blocker=True)
@@ -1612,7 +1613,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if dup:
             self.fail('Duplicate base class "%s"' % dup.name(), defn, blocker=True)
             return False
-        return True
+        return not cycle
 
     def is_base_class(self, t: TypeInfo, s: TypeInfo) -> bool:
         """Determine if t is a base class of s (but do not use mro)."""
