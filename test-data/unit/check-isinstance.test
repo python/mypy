@@ -2209,17 +2209,25 @@ def bar(x: Union[List[str], List[int], None]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithStarExpression]
-var = 'some string'
-if isinstance(var, (list, *(str, int))):
-    reveal_type(var)  # E: Revealed type is 'builtins.str'
+from typing import Union, List, Tuple
+
+
+def f(var: Union[List[str], Tuple[str, str], str]) -> None:
+    reveal_type(var)  # E: Revealed type is 'Union[builtins.list[builtins.str], Tuple[builtins.str, builtins.str], builtins.str]'
+    if isinstance(var, (list, *(str, int))):
+        reveal_type(var)  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithStarExpressionAndVariable]
-some_types = (str, tuple)
-another_type = list
-var = 'some string'
-if isinstance(var, (*some_types, another_type)):
-    reveal_type(var)  # E: Revealed type is 'builtins.str'
+from typing import Union
+
+
+def f(var: Union[int, str]) -> None:
+    reveal_type(var)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    some_types = (str, tuple)
+    another_type = list
+    if isinstance(var, (*some_types, another_type)):
+        reveal_type(var)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithWrongStarExpression]
