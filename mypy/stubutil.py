@@ -21,8 +21,11 @@ class CantImport(Exception):
 
 
 def is_c_module(module: ModuleType) -> bool:
-    return ('__file__' not in module.__dict__ or
-            os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd'])
+    if '__file__' not in module.__dict__:
+        return True
+    if module.__dict__['__file__'] is None:
+        return False
+    return os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd']
 
 
 def write_header(file: IO[str], module_name: Optional[str] = None,
