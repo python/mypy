@@ -1533,12 +1533,23 @@ else:
 [out]
 import FIXME as cookielib
 
-[case testCycleInheritanceHierarchy_semanal]
-class A: pass
+[case testCannotCalculateMRO_semanal]
+class X: pass
 
-class int(int, A):
+class int(int, X):  # Cycle
     pass
 
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(A, B): pass # No consistent method resolution order
+class E(C, D): pass # Ditto
+
 [out]
+class X: ...
+class int(int, X): ...
 class A: ...
-class int(int, A): ...
+class B(A): ...
+class C(B): ...
+class D(A, B): ...
+class E(C, D): ...

@@ -1486,9 +1486,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         # Calculate the MRO.
         if not self.verify_base_classes(defn):
-            # Give it an MRO consisting of just the class itself and object.
-            defn.info.mro = [defn.info, self.object_type().type]
-            defn.info.bad_mro = True
+            self.set_dummy_mro(defn.info)
             return
         self.calculate_class_mro(defn, self.object_type)
 
@@ -1516,6 +1514,11 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         return base.partial_fallback
 
+    def set_dummy_mro(self, info: TypeInfo) -> None:
+        # Give it an MRO consisting of just the class itself and object.
+        info.mro = [info, self.object_type().type]
+        info.bad_mro = True
+
     def calculate_class_mro(self, defn: ClassDef,
                             obj_type: Optional[Callable[[], Instance]] = None) -> None:
         """Calculate method resolution order for a class.
@@ -1527,9 +1530,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         try:
             calculate_mro(defn.info, obj_type)
         except MroError:
-            self.fail_blocker('Cannot determine consistent method resolution '
-                              'order (MRO) for "%s"' % defn.name, defn)
-            defn.info.mro = []
+            self.fail('Cannot determine consistent method resolution '
+                      'order (MRO) for "%s"' % defn.name, defn)
+            self.set_dummy_mro(defn.info)
         # Allow plugins to alter the MRO to handle the fact that `def mro()`
         # on metaclasses permits MRO rewriting.
         if defn.fullname:
