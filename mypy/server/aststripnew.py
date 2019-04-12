@@ -87,9 +87,7 @@ class NodeStripVisitor(TraverserVisitor):
             if isinstance(sym.node, Var) and sym.implicit:
                 explicit_self_type = sym.node.explicit_self_type
 
-                # These arguments should not be passed, we just want to capture
-                # the names in closure at current iteration in the for-loop.
-                def patch(name: str = name, sym: SymbolTableNode = sym) -> None:
+                def patch(name: str, sym: SymbolTableNode) -> None:
                     existing = node.info.get(name)
                     defined_in_this_class = name in node.info.names
                     # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
@@ -103,7 +101,10 @@ class NodeStripVisitor(TraverserVisitor):
                             explicit_self_type and not defined_in_this_class):
                         node.info.names[name] = sym
 
-                self.patches.append(patch)
+                # Capture the current name, sym in a weird hacky way,
+                # because mypyc doesn't yet support capturing them in
+                # the usual hacky way (as default arguments).
+                self.patches.append((lambda name, sym: lambda: patch(name, sym))(name, sym))
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:
