@@ -2662,7 +2662,10 @@ class Color(Enum):
 r: Literal[Color.RED]
 g: Literal[Color.GREEN]
 b: Literal[Color.BLUE]
-bad: Literal[Color]   # E: Parameter 1 of Literal[...] is invalid
+bad1: Literal[Color]         # E: Parameter 1 of Literal[...] is invalid
+bad2: Literal[Color.func]    # E: Invalid type "__main__.Color.func" \
+                             # E: Parameter 1 of Literal[...] is invalid
+bad3: Literal[Color.func()]  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 
 def expects_color(x: Color) -> None: pass
 def expects_red(x: Literal[Color.RED]) -> None: pass
