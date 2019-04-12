@@ -2269,6 +2269,7 @@ class TypeInfo(SymbolNode):
     # Used to stash the names of the mro classes temporarily between
     # deserialization and fixup. See deserialize() for why.
     _mro_refs = None  # type: Optional[List[str]]
+    bad_mro = False  # Could not construct full MRO
 
     declared_metaclass = None  # type: Optional[mypy.types.Instance]
     metaclass_type = None  # type: Optional[mypy.types.Instance]
