@@ -1033,6 +1033,8 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
 def generate_asts_for_modules(py_modules: List[StubSource],
                               parse_only: bool, mypy_options: MypyOptions) -> None:
     """Use mypy to parse (and optionally analyze) source files."""
+    if not py_modules:
+        return  # Nothing to do here, but there may be C modules
     if parse_only:
         for mod in py_modules:
             parse_source_file(mod, mypy_options)
