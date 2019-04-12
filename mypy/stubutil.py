@@ -163,10 +163,21 @@ def generate_guarded(mod: str, target: str,
             print('Created %s' % target)
 
 
-def report_missing(mod: str, message: Optional[str] = '') -> None:
+PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}
+
+
+def report_missing(mod: str, message: Optional[str] = '', traceback: str = '') -> None:
     if message:
         message = ' with error: ' + message
-    print('Failed to import {}{}; skipping it'.format(mod, message))
+    print('{}: Failed to import, skipping{}'.format(mod, message))
+    m = re.search(r"ModuleNotFoundError: No module named '([^']*)'", traceback)
+    if m:
+        missing_module = m.group(1)
+        if missing_module in PY2_MODULES:
+            print('note: Could not import %r; try --py2 for Python 2 mode' % missing_module)
+        else:
+            print('note: Could not import %r; some dependency may be missing' % missing_module)
+    print()
 
 
 def fail_missing(mod: str) -> None:
