@@ -397,24 +397,25 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return t
 
         # Option 3:
-        # Enum value. Note: Enum values are not real types, so we return
-        # RawExpressionType only when this function is being called by
-        # one of the Literal[...] handlers -- when `defining_literal` is True.
+        # Enum value. Note: we only want to return a LiteralType when
+        # we're using this enum value specifically within context of
+        # a "Literal[...]" type. So, if `defining_literal` is not set,
+        # we bail out early with an error.
         #
-        # It's unsafe to return RawExpressionType in any other case, since
-        # the type would leak out of the semantic analysis phase.
-        if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
+        # If, in the distant future, we decide to permit things like
+        # `def foo(x: Color.RED) -> None: ...`, we can remove that
+        # check entirely.
+        if isinstance(sym.node, Var) and not t.args and sym.node.info and sym.node.info.is_enum:
             value = sym.node.name()
             base_enum_short_name = sym.node.info.name()
-            base_enum_qualified_name = sym.node.info.fullname()
             if not defining_literal:
                 msg = message_registry.INVALID_TYPE_RAW_ENUM_VALUE.format(
                     base_enum_short_name, value)
                 self.fail(msg, t)
                 return AnyType(TypeOfAny.from_error)
-            return RawExpressionType(
-                literal_value=value,
-                base_type_name=base_enum_qualified_name,
+            return LiteralType(
+                value=value,
+                fallback=Instance(sym.node.info, [], line=t.line, column=t.column),
                 line=t.line,
                 column=t.column,
             )
