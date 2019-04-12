@@ -55,7 +55,7 @@ def default_py2_interpreter() -> str:
                      "please use the --python-executable option")
 
 
-def walk_packages(packages: List[str]) -> Iterator[str]:
+def walk_packages(packages: List[str], verbose: bool = False) -> Iterator[str]:
     """Iterates through all packages and sub-packages in the given list.
 
     This uses runtime imports to find both Python and C modules. For Python packages
@@ -65,6 +65,8 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
     all modules imported in the package that have matching names.
     """
     for package_name in packages:
+        if verbose:
+            print('Trying to import %r for runtime introspection' % package_name)
         try:
             package = importlib.import_module(package_name)
         except Exception:
@@ -84,7 +86,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
                                if inspect.ismodule(val)
                                and val.__name__ == package.__name__ + "." + name]
                 # Recursively iterate through the subpackages
-                for submodule in walk_packages(subpackages):
+                for submodule in walk_packages(subpackages, verbose):
                     yield submodule
             # It's a module inside a package.  There's nothing else to walk/yield.
         else:
