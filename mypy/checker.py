@@ -1896,8 +1896,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Only show one error per variable; even if other
                         # base classes are also incompatible
                         return True
-                    if base == last_immediate_base:
-                        # At this point, the attribute was found to be compatible with all immediate parents,
+                    if base is last_immediate_base:
+                        # At this point, the attribute was found to be compatible with all
+                        # immediate parents.
                         break
         return False
 
