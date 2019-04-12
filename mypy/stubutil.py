@@ -14,6 +14,12 @@ from contextlib import contextmanager
 from typing import Optional, Tuple, List, IO, Iterator, AnyStr
 
 
+# Modules that may fail when imported, or that may have side effects.
+NOT_IMPORTABLE_MODULES = {
+    'tensorflow.tools.pip_package.setup',
+}
+
+
 class CantImport(Exception):
     def __init__(self, module: str, message: str):
         self.module = module
@@ -65,6 +71,9 @@ def walk_packages(packages: List[str], verbose: bool = False) -> Iterator[str]:
     all modules imported in the package that have matching names.
     """
     for package_name in packages:
+        if package_name in NOT_IMPORTABLE_MODULES:
+            print('%s: Skipped (blacklisted)' % package_name)
+            continue
         if verbose:
             print('Trying to import %r for runtime introspection' % package_name)
         try:
@@ -131,6 +140,9 @@ def find_module_path_and_all_py3(module: str,
     Return None if the module is a C module. Return (module_path, __all__) if
     it is a Python module. Raise CantImport if import failed.
     """
+    if module in NOT_IMPORTABLE_MODULES:
+        raise CantImport(module)
+
     # TODO: Support custom interpreters.
     if verbose:
         print('Trying to import %r for runtime introspection' % module)
