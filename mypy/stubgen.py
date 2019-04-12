@@ -954,8 +954,8 @@ def find_module_paths_using_imports(modules: List[str],
             if pyversion[0] == 2:
                 result = find_module_path_and_all_py2(mod, interpreter)
             else:
-                result = find_module_path_and_all_py3(mod)
-        except CantImport as e:
+                result = find_module_path_and_all_py3(mod, verbose)
+        except CantImport e:
             tb = traceback.format_exc()
             if verbose:
                 sys.stdout.write(tb)

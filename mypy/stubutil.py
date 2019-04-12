@@ -124,13 +124,16 @@ def find_module_path_and_all_py2(module: str,
     return module_path, module_all
 
 
-def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[List[str]]]]:
+def find_module_path_and_all_py3(module: str,
+                                 verbose: bool) -> Optional[Tuple[str, Optional[List[str]]]]:
     """Find module and determine __all__ for a Python 3 module.
 
     Return None if the module is a C module. Return (module_path, __all__) if
     it is a Python module. Raise CantImport if import failed.
     """
     # TODO: Support custom interpreters.
+    if verbose:
+        print('Trying to import %r for runtime introspection' % module)
     try:
         mod = importlib.import_module(module)
     except Exception as e:
