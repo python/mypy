@@ -151,15 +151,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used = set()  # type: Set[str]
 
-    def visit_unbound_type(self, t: UnboundType) -> Type:
-        typ = self.visit_unbound_type_nonoptional(t)
+    def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
+        typ = self.visit_unbound_type_nonoptional(t, defining_literal)
         if t.optional:
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(typ)
         return typ
 
-    def visit_unbound_type_nonoptional(self, t: UnboundType) -> Type:
+    def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
         sym = self.lookup_qualified(t.name, t, suppress_errors=self.third_pass)
         if sym is not None:
             node = sym.node
@@ -217,7 +217,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
             else:
-                return self.analyze_unbound_type_without_type_info(t, sym)
+                return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
             if self.third_pass:
                 self.fail('Invalid type "{}"'.format(t.name), t)
@@ -348,7 +348,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                     fallback=instance)
         return instance
 
-    def analyze_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode) -> Type:
+    def analyze_unbound_type_without_type_info(self, t: UnboundType, sym: SymbolTableNode,
+                                               defining_literal: bool) -> Type:
         """Figure out what an unbound type that doesn't refer to a TypeInfo node means.
 
         This is something unusual. We try our best to find out what it is.
@@ -372,6 +373,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
         if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
             return t
+
+        # Option 3:
+        # Enum value. Note: Enum values are not real types, so we return
+        # RawExpressionType only when this function is being called by
+        # one of the Literal[...] handlers -- when `defining_literal` is True.
+        #
+        # It's unsafe to return RawExpressionType in any other case, since
+        # the type would leak out of the semantic analysis phase.
+        if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
+            short_name = sym.node.name()
+            base_enum_name = sym.node.info.fullname()
+            if not defining_literal:
+                msg = "Invalid type: try using Literal[{}] instead?".format(name)
+                self.fail(msg, t)
+                return AnyType(TypeOfAny.from_error)
+            return RawExpressionType(
+                literal_value=short_name,
+                base_type_name=base_enum_name,
+                line=t.line,
+                column=t.column,
+            )
 
         # None of the above options worked, we give up.
         self.fail('Invalid type "{}"'.format(name), t)
@@ -631,7 +653,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # If arg is an UnboundType that was *not* originally defined as
         # a string, try expanding it in case it's a type alias or something.
         if isinstance(arg, UnboundType):
-            arg = self.anal_type(arg)
+            self.nesting_level += 1
+            try:
+                arg = self.visit_unbound_type(arg, defining_literal=True)
+            finally:
+                self.nesting_level -= 1
 
         # Literal[...] cannot contain Any. Give up and add an error message
         # (if we haven't already).

@@ -73,7 +73,7 @@ from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any
+    check_for_explicit_any, expand_type_alias
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -3590,10 +3590,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         module namespace is ignored.
         """
         parts = name.split('.')
-        n = self.modules[parts[0]]
+        n = self.modules[parts[0]]  # type: Union[MypyFile, TypeInfo]
         for i in range(1, len(parts) - 1):
             next_sym = n.names[parts[i]]
-            assert isinstance(next_sym.node, MypyFile)
+            assert isinstance(next_sym.node, (MypyFile, TypeInfo))
             n = next_sym.node
         return n.names[parts[-1]]
 

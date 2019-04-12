@@ -3989,10 +3989,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         module namespace is ignored.
         """
         parts = name.split('.')
-        n = self.modules[parts[0]]
+        n = self.modules[parts[0]]  # type: Union[MypyFile, TypeInfo]
         for i in range(1, len(parts) - 1):
             next_sym = n.names[parts[i]]
-            assert isinstance(next_sym.node, MypyFile)
+            assert isinstance(next_sym.node, (MypyFile, TypeInfo))
             n = next_sym.node
         return n.names[parts[-1]]
 
