@@ -1938,7 +1938,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 # Only show dangerous overlap if there are no other errors.
                 elif (not local_errors.is_errors() and cont_type and
-                        self.dangerous_comparison(left_type, cont_type)):
+                        self.dangerous_comparison(left_type, cont_type,
+                                                  original_cont_type=right_type)):
                     self.msg.dangerous_comparison(left_type, cont_type, 'container', e)
                 else:
                     self.msg.add_errors(local_errors)
@@ -1974,8 +1975,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert result is not None
         return result
 
-    def dangerous_comparison(self, left: Type, right: Type) -> bool:
+    def dangerous_comparison(self, left: Type, right: Type,
+                             original_cont_type: Optional[Type] = None) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
+
+        The original_cont_type is the original container type for 'in' checks
+        (and None for equality checks).
 
         Rules:
             * X and None are overlapping even in strict-optional mode. This is to allow
@@ -1985,9 +1990,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             non-overlapping, although technically None is overlap, it is most
             likely an error.
             * Any overlaps with everything, i.e. always safe.
-            * Promotions are ignored, so both 'abc' == b'abc' and 1 == 1.0
-            are errors. This is mostly needed for bytes vs unicode, and
-            int vs float are added just for consistency.
+            * Special case: b'abc' in b'cde' is safe.
         """
         if not self.chk.options.strict_equality:
             return False
@@ -1996,6 +1999,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
+        if (isinstance(original_cont_type, Instance) and
+                original_cont_type.type.fullname() == 'builtins.bytes' and
+                isinstance(left, Instance) and left.type.fullname() == 'builtins.bytes'):
+            return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
