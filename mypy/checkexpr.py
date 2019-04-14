@@ -1954,6 +1954,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     right_type = self.accept(right)
                     if (not self.custom_equality_method(left_type) and
                             not self.custom_equality_method(right_type)):
+                        # We suppress the error if there is a custom __eq__() method on either
+                        # side. User defined (or even standard library) classes can define this
+                        # to return True for comparisons between non-overlapping types.
                         if self.dangerous_comparison(left_type, right_type):
                             self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
 
@@ -1978,6 +1981,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return result
 
     def custom_equality_method(self, typ: Type) -> bool:
+        """Does this type have a custom __eq__() method?"""
         if isinstance(typ, UnionType):
             return any(self.custom_equality_method(t) for t in typ.items)
         if isinstance(typ, Instance):
@@ -1985,9 +1989,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if method and method.info:
                 return not method.info.fullname().startswith('builtins.')
             return False
+        # TODO: support other types (see has_member())?
         return False
 
     def has_bytes_component(self, typ: Type) -> bool:
+        """Is this the builtin bytes type, or a union that contains it?"""
         if isinstance(typ, UnionType):
             return any(self.has_bytes_component(t) for t in typ.items)
         if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
@@ -2019,6 +2025,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left = remove_optional(left)
             right = remove_optional(right)
         if self.has_bytes_component(original_cont_type) and self.has_bytes_component(left):
+            # We need to special case bytes, because both 97 in b'abc' and b'a' in b'abc'
+            # return True (and we want to show the error only if the check can _never_ be True).
             return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
