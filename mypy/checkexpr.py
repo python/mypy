@@ -2024,7 +2024,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
-        if self.has_bytes_component(original_cont_type) and self.has_bytes_component(left):
+        if (original_cont_type and self.has_bytes_component(original_cont_type) and
+                self.has_bytes_component(left)):
             # We need to special case bytes, because both 97 in b'abc' and b'a' in b'abc'
             # return True (and we want to show the error only if the check can _never_ be True).
             return False
