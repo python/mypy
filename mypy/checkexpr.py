@@ -1952,8 +1952,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # testCustomEqCheckStrictEquality for an example.
                 if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
                     right_type = self.accept(right)
-                    if self.dangerous_comparison(left_type, right_type):
-                        self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
+                    if (not self.custom_equality_method(left_type) and
+                            not self.custom_equality_method(right_type)):
+                        if self.dangerous_comparison(left_type, right_type):
+                            self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
 
             elif operator == 'is' or operator == 'is not':
                 right_type = self.accept(right)  # validate the right operand
@@ -1974,6 +1976,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert result is not None
         return result
+
+    def custom_equality_method(self, typ: Type) -> bool:
+        if isinstance(typ, UnionType):
+            return any(self.custom_equality_method(t) for t in typ.items)
+        if isinstance(typ, Instance):
+            method = typ.type.get_method('__eq__')
+            if method and method.info:
+                return not method.info.fullname().startswith('builtins.')
+            return False
+        return False
+
+    def has_bytes_component(self, typ: Type) -> bool:
+        if isinstance(typ, UnionType):
+            return any(self.has_bytes_component(t) for t in typ.items)
+        if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
+            return True
+        return False
 
     def dangerous_comparison(self, left: Type, right: Type,
                              original_cont_type: Optional[Type] = None) -> bool:
@@ -1999,9 +2018,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
-        if (isinstance(original_cont_type, Instance) and
-                original_cont_type.type.fullname() == 'builtins.bytes' and
-                isinstance(left, Instance) and left.type.fullname() == 'builtins.bytes'):
+        if self.has_bytes_component(original_cont_type) and self.has_bytes_component(left):
             return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
