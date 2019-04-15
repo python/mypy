@@ -699,7 +699,7 @@ assert b.z is None
 # N.B: this doesn't match cpython
 assert not hasattr(b, 'bogus')
 
-[case testMethodOverrideDefault]
+[case testMethodOverrideDefault1]
 class A:
     def foo(self, x: int) -> None:
         pass
@@ -721,6 +721,81 @@ b(B())
 1 10
 2 10
 2 3
+
+[case testMethodOverrideDefault2]
+class A:
+    def foo(self, *, x: int = 0) -> None:
+        pass
+    def bar(self, *, x: int = 0, y: int = 0) -> None:
+        pass
+class B(A):
+    def foo(self, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+    def bar(self, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+
+def a(x: A) -> None:
+    x.foo(x=1)
+    x.bar(x=1, y=2)
+    x.bar(x=2, y=1)
+
+[file driver.py]
+from native import B, a
+a(B())
+[out]
+1 0
+1 2
+2 1
+
+[case testMethodOverrideDefault3]
+class A:
+    @classmethod
+    def foo(cls, *, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def bar(*, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def baz() -> object:
+        pass
+class B(A):
+    @classmethod
+    def foo(cls, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+        print(cls.__name__)  # type: ignore
+    @staticmethod
+    def bar(*, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+    @staticmethod
+    def baz() -> int:
+        return 10
+
+# This is just to make sure that this stuff works even when the
+# methods might be overriden.
+class C(B):
+    @classmethod
+    def foo(cls, *, y: int = 0, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def bar(*, y: int = 0, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def baz() -> int:
+        return 10
+
+def a(x: A) -> None:
+    x.foo(x=1)
+    x.bar(x=1)
+    print(x.baz())
+
+[file driver.py]
+from native import B, a
+a(B())
+[out]
+1 0
+B
+1 0
+10
 
 [case testOverride]
 class A:

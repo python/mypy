@@ -258,7 +258,7 @@ def B.foo__A_glue(self, x):
     r0, r1 :: object
 L0:
     r0 = box(int, x)
-    r1 = self.foo(r0)
+    r1 = B.foo(self, r0)
     return r1
 def C.foo(self, x):
     self :: C
@@ -279,7 +279,7 @@ def C.foo__B_glue(self, x):
     r0 :: int
     r1 :: object
 L0:
-    r0 = self.foo(x)
+    r0 = C.foo(self, x)
     r1 = box(int, r0)
     return r1
 def C.foo__A_glue(self, x):
@@ -290,7 +290,7 @@ def C.foo__A_glue(self, x):
     r2 :: object
 L0:
     r0 = box(int, x)
-    r1 = self.foo(r0)
+    r1 = C.foo(self, r0)
     r2 = box(int, r1)
     return r2
 def use_a(x, y):

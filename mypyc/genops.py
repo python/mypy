@@ -212,19 +212,20 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
     updated = []
     for entry in parent.vtable_entries:
         if isinstance(entry, VTableMethod):
-            method = entry.method
-            child_method = None
-
-            method_cls = cls.get_method_and_class(method.name)
+            # Find the original method corresponding to this vtable entry.
+            # (This may not be the method in the entry, if it was overridden.)
+            orig_parent_method = entry.cls.get_method(entry.name)
+            assert orig_parent_method
+            method_cls = cls.get_method_and_class(entry.name)
             if method_cls:
                 child_method, defining_cls = method_cls
                 # TODO: emit a wrapper for __init__ that raises or something
-                if (is_same_method_signature(method.sig, child_method.sig)
-                        or method.name == '__init__'):
-                    entry = VTableMethod(defining_cls, entry.name, child_method)
+                if (is_same_method_signature(orig_parent_method.sig, child_method.sig)
+                        or orig_parent_method.name == '__init__'):
+                    entry = VTableMethod(entry.cls, entry.name, child_method)
                 else:
-                    entry = VTableMethod(defining_cls, entry.name,
-                                         defining_cls.glue_methods[(entry.cls, method.name)])
+                    entry = VTableMethod(entry.cls, entry.name,
+                                         defining_cls.glue_methods[(entry.cls, entry.name)])
         else:
             # If it is an attribute from a trait, we need to find out
             # the real class it got mixed in at and point to that.
@@ -1172,20 +1173,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         values.
         """
         self.enter(FuncInfo())
-
-        rt_args = (RuntimeArg(sig.args[0].name, RInstance(cls)),) + sig.args[1:]
-
-        # TODO: could kw only arguments get shuffled?
-        # The environment operates on Vars, so we make some up
-        fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-        args_opt = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
-                    for var, type in fake_vars]  # type: List[Optional[Value]]
-        args_opt += [None] * (len(target.sig.args) - len(args_opt))
         self.ret_types[-1] = sig.ret_type
 
-        args = self.missing_args_to_error_values(args_opt, target.sig)
-        args = self.coerce_native_call_args(args, target.sig, line)
-        retval = self.add(MethodCall(args[0], target.name, args[1:], line))
+        rt_args = list(sig.args)
+        if target.decl.kind == FUNC_NORMAL:
+            rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+
+        # The environment operates on Vars, so we make some up
+        fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
+        args = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
+                for var, type in fake_vars]
+        arg_names = [arg.name for arg in rt_args]
+        arg_kinds = [arg.kind for arg in rt_args]
+
+        retval = self.call(target.decl, args, arg_kinds, arg_names, line)
         retval = self.coerce(retval, sig.ret_type, line)
         self.add(Return(retval))
 
@@ -1193,7 +1194,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return FuncIR(
             FuncDecl(target.name + '__' + base.name + '_glue',
                      cls.name, self.module_name,
-                     FuncSignature(rt_args, ret_type)),
+                     FuncSignature(rt_args, ret_type),
+                     target.decl.kind),
             blocks, env)
 
     def gen_glue_property(self, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR,
@@ -2384,7 +2386,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def call(self, decl: FuncDecl, args: Sequence[Value],
              arg_kinds: List[int],
-             arg_names: List[Optional[str]],
+             arg_names: Sequence[Optional[str]],
              line: int) -> Value:
         # Normalize keyword args to positionals.
         arg_values_with_nones = self.keyword_args_to_positional(
@@ -2463,7 +2465,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
     def missing_args_to_error_values(self,
-                                     args: List[Optional[Value]],
+                                     args: Sequence[Optional[Value]],
                                      sig: FuncSignature) -> List[Value]:
         """Generate LoadErrorValues for missing arguments.
 
@@ -4543,7 +4545,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def keyword_args_to_positional(self,
                                    args: Sequence[Value],
                                    arg_kinds: List[int],
-                                   arg_names: List[Optional[str]],
+                                   arg_names: Sequence[Optional[str]],
                                    sig: FuncSignature) -> List[Optional[Value]]:
         # NOTE: This doesn't support *args or **kwargs.
         sig_arg_kinds = [arg.kind for arg in sig.args]
