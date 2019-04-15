@@ -376,7 +376,8 @@ This is computed from the following items:
 
 For sources given on the command line, the path is adjusted by crawling
 up from the given file or package to the nearest directory that does not
-contain an ``__init__.py`` or ``__init__.pyi`` file.
+contain an ``__init__.py`` or ``__init__.pyi`` file. If the given path
+is relative, it will only crawl as far as the current working directory.
 
 Second, mypy searches for stub files in addition to regular Python files
 and packages.
