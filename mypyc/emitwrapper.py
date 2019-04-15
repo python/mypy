@@ -138,6 +138,7 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         emitter.emit_line('Py_ssize_t val = CPyTagged_AsLongLong(retval);')
     else:
         emitter.emit_line('Py_ssize_t val = PyLong_AsLongLong(retval);')
+    emitter.emit_dec_ref('retval', fn.ret_type)
     emitter.emit_line('if (PyErr_Occurred()) return -1;')
     # We can't return -1 from a hash function..
     emitter.emit_line('if (val == -1) return -2;')
