@@ -2702,3 +2702,9 @@ roles.role = 1  # E: Incompatible types in assignment (expression has type "int"
 from types import ModuleType
 def __getattr__(name: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
+
+[case testCaseSensitivityDir]
+from a import B  # E: Module 'a' has no attribute 'B'
+
+[file a/__init__.py]
+[file a/b/__init__.py]

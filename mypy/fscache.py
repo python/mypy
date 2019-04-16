@@ -185,10 +185,8 @@ class FileSystemCache:
         """Return whether path exists and is a file.
 
         On case-insensitive filesystems (like Mac or Windows) this returns
-        False if the case of the path's last component does not exactly
-        match the case found in the filesystem.
-        TODO: We should maybe check the case for some directory components also,
-        to avoid permitting wrongly-cased *packages*.
+        False if the case of any path's component does not exactly match
+        the case found in the filesystem.
         """
         if path in self.isfile_case_cache:
             return self.isfile_case_cache[path]
@@ -198,9 +196,21 @@ class FileSystemCache:
         else:
             try:
                 names = self.listdir(head)
+                # This allows to check file name case sensitively in
+                # case-insensitive filesystems.
                 res = tail in names and self.isfile(path)
             except OSError:
                 res = False
+
+        # Also check the other path components in case sensitive way.
+        head, dir = os.path.split(head)
+        while res and head and dir:
+            try:
+                res = dir in self.listdir(head)
+            except OSError:
+                res = False
+            head, dir = os.path.split(head)
+
         self.isfile_case_cache[path] = res
         return res
 
