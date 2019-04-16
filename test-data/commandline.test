@@ -180,6 +180,9 @@ d2 = {2: 3, **d1}  # E: **args in dict expressions is unimplemented
 async def aio(x: Any) -> Any:  # E: async functions are unimplemented
     await x  # E: await is unimplemented
 
+def kwonly1(x: int = 0, *, y: int) -> None: pass  # E: Required keyword-only args that appear after optional args are unimplemented
+def kwonly2(*, x: int = 0, y: int) -> None: pass  # E: Required keyword-only args that appear after optional args are unimplemented
+
 [file foo/__init__.py]
 x = 20
 

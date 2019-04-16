@@ -37,7 +37,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
+    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_NAMED_OPT, ARG_STAR2, is_class_var
 )
 import mypy.nodes
 import mypy.errors
@@ -1313,8 +1313,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         | c_obj |   --------------------------+
         +-------+
         """
-        if any(kind in (ARG_STAR, ARG_STAR2) for kind in fitem.arg_kinds):
+        kinds = fitem.arg_kinds
+        if any(kind in (ARG_STAR, ARG_STAR2) for kind in kinds):
             self.error('Accepting *args or **kwargs is unimplemented', fitem.line)
+
+        # Disallow required kwonly args appearing after optional ones,
+        # since we would miscompile the C API wrappers.
+        seen_optional = False
+        for kind in kinds:
+            if kind in (ARG_OPT, ARG_NAMED_OPT):
+                seen_optional = True
+            if kind == ARG_NAMED and seen_optional:
+                self.error(
+                    'Required keyword-only args that appear after optional args are unimplemented',
+                    fitem.line)
+                break
 
         if fitem.is_coroutine:
             self.error('async functions are unimplemented', fitem.line)
