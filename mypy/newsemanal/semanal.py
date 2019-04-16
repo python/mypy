@@ -4162,7 +4162,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def add_redefinition(self, names: SymbolTable, name: str,
-                              symbol: SymbolTableNode) -> None:
+                         symbol: SymbolTableNode) -> None:
         """Add a symbol table node that reflects a redefinition as a function or a class.
 
         Redefinitions need to be added to the symbol table so that they can be found
