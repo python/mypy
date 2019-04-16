@@ -993,6 +993,31 @@ class C: pass
 import a
 from b import C
 
+[case testNewAnalyzerImportOverExistingInCycle]
+import a
+[file a.py]
+C = 1
+from b import C  # E: Name 'C' already defined on line 1 \
+                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+
+[file b.py]
+import a
+
+class C(B): ...
+class B: ...
+
+[case testNewAnalyzerImportOverExistingInCycleStar]
+import a
+[file a.py]
+C = 1
+from b import *  # E: Name 'C' already defined on line 1
+
+[file b.py]
+import a
+
+class C(B): ...
+class B: ...
+
 [case testNewAnalyzerIncompleteFixture]
 from typing import Tuple
 

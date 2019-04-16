@@ -1592,7 +1592,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         return
                     self.record_incomplete_ref()
                 existing_symbol = self.globals.get(imported_id)
-                if existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode):
+                if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
+                        not isinstance(node.node, PlaceholderNode)):
                     # Import can redefine a variable. They get special treatment.
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
@@ -1701,7 +1702,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         # Star import of submodule from a package, add it as a dependency.
                         self.imports.add(node.node.fullname())
                     existing_symbol = self.lookup_current_scope(name)
-                    if existing_symbol:
+                    if existing_symbol and not isinstance(node.node, PlaceholderNode):
                         # Import can redefine a variable. They get special treatment.
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, node, i):
