@@ -1407,6 +1407,23 @@ reveal_type(x)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x[0])  # E: Revealed type is 'Union[__main__.B, __main__.C]'
 [builtins fixtures/list.pyi]
 
+[case testNewAnalyzerTrickyAliasInFuncDef]
+import a
+[file a.py]
+from b import B
+def func() -> B: ...
+reveal_type(func())  # E: Revealed type is 'builtins.list[Tuple[b.C, b.C]]'
+
+[file b.py]
+from typing import List, Tuple
+from a import func
+
+B = List[Tuple[C, C]]
+
+class C(A): ...
+class A: ...
+[builtins fixtures/list.pyi]
+
 [case testNewAnalyzerListComprehension]
 from typing import List
 a: List[A]

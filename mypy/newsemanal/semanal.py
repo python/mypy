@@ -2338,7 +2338,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.progress = True
                 # We need to defer so that this change can get propagated to base classes.
                 self.defer()
-            existing.node = alias_node
+            if isinstance(existing.node, TypeAlias):
+                # Copy expansion to the existing alias, this matches how we update base classes
+                # for a TypeInfo _in place_ if there are nested placeholders.
+                existing.node.target = res
+                existing.node.alias_tvars = alias_tvars
+                existing.node.no_args = no_args
+            else:
+                # Otherwise just replace existing placeholder with type alias.
+                existing.node = alias_node
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
