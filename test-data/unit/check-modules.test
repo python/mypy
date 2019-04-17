@@ -2702,4 +2702,3 @@ roles.role = 1  # E: Incompatible types in assignment (expression has type "int"
 from types import ModuleType
 def __getattr__(name: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
-
