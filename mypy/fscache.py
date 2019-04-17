@@ -209,7 +209,7 @@ class FileSystemCache:
 
         # Also check the other path components in case sensitive way.
         head, dir = os.path.split(head)
-        while res and head and dir and prefix in head:
+        while res and head and dir and head.startswith(prefix):
             try:
                 res = dir in self.listdir(head)
             except OSError:

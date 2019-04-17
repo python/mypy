@@ -23,6 +23,18 @@ x = 1
 mypy_path = tmp/funky_case
 
 [case testPreferPackageOverFileCase]
+# flags: --config-file tmp/mypy.ini
+import a
+[file funky/a.py]
+/  # Deliberate syntax error, this file should not be parsed.
+[file FuNkY/a/__init__.py]
+pass
+
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/funky
+
+[case testNotPreferPackageOverFileCase]
 import a
 [file a.py]
 'no'()  # E: "str" not callable
