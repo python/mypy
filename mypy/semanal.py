@@ -2288,7 +2288,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if cur_node and is_final:
                 # Overrides will be checked in type checker.
                 self.fail("Cannot redefine an existing name as final", lval)
-            if cur_node and explicit_type:
+            if (cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_inferred and
+                    explicit_type):
                 self.name_already_defined('self.' + lval.name, lval, cur_node)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
