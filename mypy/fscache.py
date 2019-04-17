@@ -181,12 +181,17 @@ class FileSystemCache:
             return False
         return stat.S_ISREG(st.st_mode)
 
-    def isfile_case(self, path: str) -> bool:
+    def isfile_case(self, path: str, prefix: str) -> bool:
         """Return whether path exists and is a file.
 
         On case-insensitive filesystems (like Mac or Windows) this returns
-        False if the case of any path's component does not exactly match
+        False if the case of path's last component does not exactly match
         the case found in the filesystem.
+
+        We check also the case of other path components up to prefix.
+        For example, if path is 'user-stubs/pack/mod.pyi' and prefix is 'user-stubs',
+        we check that the case of 'pack' and 'mod.py' matches exactly, 'user-stubs' will be
+        case insensitive on case insensitive filesystems.
         """
         if path in self.isfile_case_cache:
             return self.isfile_case_cache[path]
@@ -204,7 +209,7 @@ class FileSystemCache:
 
         # Also check the other path components in case sensitive way.
         head, dir = os.path.split(head)
-        while res and head and dir:
+        while res and head and dir and prefix in head:
             try:
                 res = dir in self.listdir(head)
             except OSError:
