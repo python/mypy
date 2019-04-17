@@ -5837,3 +5837,9 @@ def test() -> None:
         return
     reveal_type(x)  # E: Revealed type is 'Union[Type[__main__.One], Type[__main__.Other]]'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testMemberRedefinition]
+class C:
+    def __init__(self) -> None:
+        self.foo = 12
+        self.foo: int = 12  # E: Name 'self.foo' already defined on line 3
