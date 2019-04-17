@@ -192,6 +192,8 @@ class FileSystemCache:
         For example, if path is 'user-stubs/pack/mod.pyi' and prefix is 'user-stubs',
         we check that the case of 'pack' and 'mod.py' matches exactly, 'user-stubs' will be
         case insensitive on case insensitive filesystems.
+
+        The caller must ensure that prefix is a valid file system prefix of path.
         """
         if path in self.isfile_case_cache:
             return self.isfile_case_cache[path]
