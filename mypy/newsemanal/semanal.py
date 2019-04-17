@@ -4159,8 +4159,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     and not (isinstance(old_node, PlaceholderNode)
                              and isinstance(new_node, PlaceholderNode))
                     and not is_same_var_from_getattr(old_node, new_node)):
-                if isinstance(new_node, (FuncDef, Decorator)):
-                    self.add_func_redefinition(names, name, symbol)
+                if isinstance(new_node, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
+                    self.add_redefinition(names, name, symbol)
                 if not (isinstance(new_node, (FuncDef, Decorator))
                         and self.set_original_def(old_node, new_node)):
                     self.name_already_defined(name, context, existing)
@@ -4170,13 +4170,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return True
         return False
 
-    def add_func_redefinition(self, names: SymbolTable, name: str,
-                              symbol: SymbolTableNode) -> None:
-        """Add a symbol table node that reflects a redefinition of a function.
+    def add_redefinition(self, names: SymbolTable, name: str,
+                         symbol: SymbolTableNode) -> None:
+        """Add a symbol table node that reflects a redefinition as a function or a class.
 
         Redefinitions need to be added to the symbol table so that they can be found
         through AST traversal, but they have dummy names of form 'name-redefinition[N]',
         where N ranges over 2, 3, ... (omitted for the first redefinition).
+
+        Note: we always store redefinitions independently of whether they are valid or not
+        (so they will be semantically analyzed), the caller should give an error for invalid
+        redefinitions (such as e.g. variable redefined as a class).
         """
         i = 1
         while True:

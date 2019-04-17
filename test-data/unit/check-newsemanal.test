@@ -2153,3 +2153,29 @@ config = Config()
 [out2]
 tmp/a.py:4: error: Revealed type is 'builtins.int'
 tmp/a.py:5: error: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerRedefineAsClass]
+from typing import Any
+from other import C  # type: ignore
+
+y = 'bad'
+
+class C:  # E: Name 'C' already defined (possibly by an import)
+    def meth(self, other: int) -> None:
+        y()  # E: "str" not callable
+
+[case testNewAnalyzerRedefineAsOverload]
+from typing import overload
+
+y = 'bad'
+
+if int():
+    def f(x: int) -> None:
+        pass
+else:
+    @overload  # E: Name 'f' already defined on line 6
+    def f(x: int) -> None: ...
+    @overload
+    def f(x: str) -> None: ...
+    def f(x) -> None:
+        y()  # E: "str" not callable
