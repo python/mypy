@@ -229,11 +229,11 @@ class FindModuleCache:
                     return path
                 elif fscache.isfile_case(path_stubs, dir_prefix):
                     if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
-                        near_misses.append((path, dir_prefix))
+                        near_misses.append((path_stubs, dir_prefix))
                         continue
                     return path_stubs
                 elif self.options and self.options.namespace_packages and fscache.isdir(base_path):
-                    near_misses.append((path, dir_prefix))
+                    near_misses.append((base_path, dir_prefix))
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
