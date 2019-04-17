@@ -1603,6 +1603,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Special case: allow replacing submodules with variables. This pattern
                     # is used by some libraries.
                     del self.globals[imported_id]
+                if existing_symbol and isinstance(node.node, PlaceholderNode):
+                    # Imports are special, some redefinitions are allowed, so wait until
+                    # we know what is the new symbol node.
+                    continue
                 # 'from m import x as x' exports x in a stub file.
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules

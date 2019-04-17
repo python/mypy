@@ -997,8 +997,7 @@ from b import C
 import a
 [file a.py]
 C = 1
-from b import C  # E: Name 'C' already defined on line 1 \
-                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+from b import C  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
 import a
