@@ -215,28 +215,31 @@ class FindModuleCache:
         near_misses = []  # Collect near misses for namespace mode (see below).
         for base_dir, verify in candidate_base_dirs:
             base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+            dir_prefix = base_dir
+            for _ in range(len(components) - 1):
+                dir_prefix = os.path.dirname(dir_prefix)
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
                 path_stubs = base_path + '-stubs' + sepinit + extension
-                if fscache.isfile_case(path):
-                    if verify and not verify_module(fscache, id, path):
-                        near_misses.append(path)
+                if fscache.isfile_case(path, dir_prefix):
+                    if verify and not verify_module(fscache, id, path, dir_prefix):
+                        near_misses.append((path, dir_prefix))
                         continue
                     return path
-                elif fscache.isfile_case(path_stubs):
-                    if verify and not verify_module(fscache, id, path_stubs):
-                        near_misses.append(path_stubs)
+                elif fscache.isfile_case(path_stubs, dir_prefix):
+                    if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
+                        near_misses.append((path_stubs, dir_prefix))
                         continue
                     return path_stubs
                 elif self.options and self.options.namespace_packages and fscache.isdir(base_path):
-                    near_misses.append(base_path)
+                    near_misses.append((base_path, dir_prefix))
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
-                if fscache.isfile_case(path):
-                    if verify and not verify_module(fscache, id, path):
-                        near_misses.append(path)
+                if fscache.isfile_case(path, dir_prefix):
+                    if verify and not verify_module(fscache, id, path, dir_prefix):
+                        near_misses.append((path, dir_prefix))
                         continue
                     return path
 
@@ -262,9 +265,10 @@ class FindModuleCache:
         # foo/__init__.py it returns 2 (regardless of what's in
         # foo/bar).  It doesn't look higher than that.
         if self.options and self.options.namespace_packages and near_misses:
-            levels = [highest_init_level(fscache, id, path) for path in near_misses]
+            levels = [highest_init_level(fscache, id, path, dir_prefix)
+                      for path, dir_prefix in near_misses]
             index = levels.index(max(levels))
-            return near_misses[index]
+            return near_misses[index][0]
 
         # Finally, we may be asked to produce an ancestor for an
         # installed package with a py.typed marker that is a
@@ -303,26 +307,28 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
+def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = os.path.dirname(path)
     for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
+        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)),
+                                       prefix)
                    for extension in PYTHON_EXTENSIONS):
             return False
     return True
 
 
-def highest_init_level(fscache: FileSystemCache, id: str, path: str) -> int:
+def highest_init_level(fscache: FileSystemCache, id: str, path: str, prefix: str) -> int:
     """Compute the highest level where an __init__ file is found."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = os.path.dirname(path)
     level = 0
     for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
+        if any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)),
+                                   prefix)
                for extension in PYTHON_EXTENSIONS):
             level = i + 1
     return level
