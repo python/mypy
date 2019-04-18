@@ -36,3 +36,4 @@ htmlcov
 .pytest_cache/
 
 .tox
+pip-wheel-metadata
