@@ -2270,8 +2270,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         #     A = float  # OK, but this doesn't define an alias
         #     B = int
         #     B = float  # Error!
-        if existing and (isinstance(existing.node, Var) or
-                         isinstance(existing.node, TypeAlias) and not s.is_alias_def):
+        # Don't create an alias in these cases:
+        if existing and (isinstance(existing.node, Var) or  # existing variable
+                isinstance(existing.node, TypeAlias) and not s.is_alias_def or  # existing alias
+                (isinstance(existing.node, PlaceholderNode) and
+                # TODO: find a more robust way to track the order of definitions.
+                 existing.node.node.line < s.line)):  # or previous incomplete definition
             # Note: if is_alias_def=True, this is just a node from previous iteration.
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail('Cannot assign multiple types to name "{}"'

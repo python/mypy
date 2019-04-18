@@ -2178,3 +2178,25 @@ else:
     def f(x: str) -> None: ...
     def f(x) -> None:
         y()  # E: "str" not callable
+
+[case testNewAnalyzerFirstAliasTargetWins]
+if int():
+    Alias = DesiredTarget
+else:
+    class DummyTarget:
+        pass
+    Alias = DummyTarget  # type: ignore
+
+x: Alias
+reveal_type(x.attr)  # E: Revealed type is 'builtins.int'
+
+class DesiredTarget:
+    attr: int
+
+[case testNewAnalyzerFirstVarDefinitionWins]
+x = y
+x = 1
+
+# We want to check that the first definition creates the variable.
+def x() -> None: ...  # E: Name 'x' already defined on line 1
+y = 2
