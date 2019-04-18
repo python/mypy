@@ -63,7 +63,7 @@ jobs:
 
 install:
 - pip install -U pip setuptools
-- pip install -U tox==3.7.0
+- pip install -U tox==3.9.0
 - tox --notest
 
 script:
