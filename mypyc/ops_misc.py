@@ -44,6 +44,12 @@ ellipsis_op = custom_op(name='...',
                         emit=name_emit('Py_Ellipsis'),
                         is_borrowed=True)
 
+name_ref_op(name='builtins.NotImplemented',
+            result_type=object_rprimitive,
+            error_kind=ERR_NEVER,
+            emit=name_emit('Py_NotImplemented'),
+            is_borrowed=True)
+
 iter_op = func_op(name='builtins.iter',
                   arg_types=[object_rprimitive],
                   result_type=object_rprimitive,
