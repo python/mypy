@@ -1268,3 +1268,39 @@ import d
 # cmd: mypy a.py --no-sqlite-cache --cache-map a.py a.meta.json a.data.json
 [file a.py]
 [out]
+
+[case testIniFiles]
+# cmd: mypy
+[file mypy.ini]
+[[mypy]
+files = a.py, b.py
+[file a.py]
+fail
+[file b.py]
+fail
+[out]
+b.py:1: error: Name 'fail' is not defined
+a.py:1: error: Name 'fail' is not defined
+
+[case testIniFilesGlobbing]
+# cmd: mypy
+[file mypy.ini]
+[[mypy]
+files = **/*.py
+[file a/b.py]
+fail
+[file c.py]
+fail
+[out]
+a/b.py:1: error: Name 'fail' is not defined
+c.py:1: error: Name 'fail' is not defined
+
+
+[case testIniFilesCmdlineOverridesConfig]
+# cmd: mypy override.py
+[file mypy.ini]
+[[mypy]
+files = config.py
+[out]
+mypy: can't read file 'override.py': No such file or directory
+== Return code: 2
