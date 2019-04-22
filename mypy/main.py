@@ -733,7 +733,7 @@ def process_options(args: List[str],
 
     # Paths listed in the config file will be ignored if any paths are passed on
     # the command line.
-    if not special_opts.files and options.files:
+    if options.files and not special_opts.files:
         special_opts.files = options.files
 
     # Check for invalid argument combinations.
@@ -882,7 +882,7 @@ def split_and_match_files(paths: str) -> List[str]:
     """
     expanded_paths = []
 
-    for path in re.split('[,:;]', paths):
+    for path in paths.split(','):
         path = path.strip()
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:

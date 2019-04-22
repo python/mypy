@@ -179,7 +179,7 @@ class Options:
         # source hashes as often.
         self.quickstart_file = None  # type: Optional[str]
 
-        # A comma/semicolon-separated list of files/directories for mypy to type check;
+        # A comma-separated list of files/directories for mypy to type check;
         # supports globbing
         self.files = None  # type: Optional[List[str]]
 

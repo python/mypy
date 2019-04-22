@@ -334,9 +334,11 @@ a list of import discovery options that may be used
     variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
 
 ``files`` (string)
-    Specifies the paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing through
-    [the glob library](https://docs.python.org/3/library/glob.html).
+    A comma-separated list of paths which should be checked by mypy if none are given on the command
+    line. Supports recursive file globbing using
+    [the glob library](https://docs.python.org/3/library/glob.html), where `*` (eg `*.py`) matches
+    files in the current directory and `**/` (eg `**/*.py`) matches files in any directories below
+    the current one.
 
 
 Platform configuration
