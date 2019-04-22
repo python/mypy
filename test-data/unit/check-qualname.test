@@ -1,0 +1,10 @@
+[case testQualNameTypeCheck]
+
+# flags: --python-version 2.7
+class C:
+    NAME = __qualname__ # E: NameError: name '__qualname__' is not defined
+
+# flags: --python-version 3.3
+class A:
+    NAME = __qualname__
+
