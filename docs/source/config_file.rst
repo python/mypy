@@ -335,8 +335,8 @@ a list of import discovery options that may be used
 
 ``files`` (string)
     Specifies the paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing with `*` (eg `*.py` for files in the same directory)
-    and `**/` (eg `**/*.py`) for files in any directory below the current one.
+    line. Supports file globbing through
+    [the glob library](https://docs.python.org/3/library/glob.html).
 
 
 Platform configuration

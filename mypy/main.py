@@ -873,7 +873,8 @@ def process_cache_map(parser: argparse.ArgumentParser,
 
 
 def split_and_match_files(paths: str) -> List[str]:
-    """Take a string representing a list of files/directories (including globbing with */**).
+    """Take a string representing a list of files/directories (with support for globbing
+    through the glob library).
 
     Where a path/glob matches no file, we still include the raw path in the resulting list.
 
@@ -881,7 +882,7 @@ def split_and_match_files(paths: str) -> List[str]:
     """
     expanded_paths = []
 
-    for path in re.split('[,:]', paths):
+    for path in re.split('[,:;]', paths):
         path = path.strip()
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
