@@ -245,7 +245,7 @@ future.
 Changelog
 ---------
 
-Follow Mypy's updates on the blog: http://mypy-lang.blogspot.com/
+Follow mypy's updates on the blog: http://mypy-lang.blogspot.com/
 
 
 Issue tracker
