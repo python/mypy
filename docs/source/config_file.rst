@@ -335,7 +335,7 @@ a list of import discovery options that may be used
 
 ``files`` (string)
     Specifies the paths which should be checked by mypy if none are given on the command
-    line. Supports file globbing through
+    line. Supports recursive file globbing through
     [the glob library](https://docs.python.org/3/library/glob.html).
 
 
