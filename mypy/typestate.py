@@ -23,7 +23,7 @@ SubtypeKind = Tuple[bool, ...]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
-SubtypeCache = Dict[TypeInfo, Dict[Tuple[bool, SubtypeKind], Set[SubtypeRelationship]]]
+SubtypeCache = Dict[TypeInfo, Dict[SubtypeKind, Set[SubtypeRelationship]]]
 
 
 class TypeState:
@@ -106,7 +106,7 @@ class TypeState:
         if info not in TypeState._subtype_caches:
             return False
         cache = TypeState._subtype_caches[info]
-        key = (state.strict_optional, kind)
+        key = (state.strict_optional,) + kind
         if key not in cache:
             return False
         return (left, right) in cache[key]
@@ -115,7 +115,7 @@ class TypeState:
     def record_subtype_cache_entry(kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
         cache = TypeState._subtype_caches.setdefault(right.type, dict())
-        cache.setdefault((state.strict_optional, kind), set()).add((left, right))
+        cache.setdefault((state.strict_optional,) + kind, set()).add((left, right))
 
     @staticmethod
     def reset_protocol_deps() -> None:
