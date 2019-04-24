@@ -1418,7 +1418,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Arguments:
             sym: a symbol that points to method definition
             typ: method type on the definition
-            sub_info: class where the method is mapped to
+            sub_info: class where the method is used
             super_info: class where the method was defined
         """
         if (isinstance(sym.node, (FuncDef, OverloadedFuncDef, Decorator))
@@ -1641,7 +1641,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return None
 
     def check_compatibility(self, name: str, base1: TypeInfo,
-                            base2: TypeInfo, ctx: Context) -> None:
+                            base2: TypeInfo, ctx: TypeInfo) -> None:
         """Check if attribute name in base1 is compatible with base2 in multiple inheritance.
 
         Assume base1 comes before base2 in the MRO, and that base1 and base2 don't have
@@ -1667,12 +1667,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # First bind/map method types when necessary.
                 if isinstance(first.node, (FuncDef, OverloadedFuncDef, Decorator)):
                     first_sig = self.bind_and_map_method(first, first_type,
-                                                         base1, first.node.info)
+                                                         ctx, first.node.info)
                 else:
                     first_sig = first_type
                 if isinstance(first.node, (FuncDef, OverloadedFuncDef, Decorator)):
                     second_sig = self.bind_and_map_method(second, second_type,
-                                                          base2, second.node.info)
+                                                          ctx, second.node.info)
                 else:
                     second_sig = second_type
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
