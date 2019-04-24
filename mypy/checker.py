@@ -1647,6 +1647,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Assume base1 comes before base2 in the MRO, and that base1 and base2 don't have
         a direct subclass relationship (i.e., the compatibility requirement only derives from
         multiple inheritance).
+
+        This checks verifies that a definition taken from base1 (and mapped to the current
+        class ctx), is type compatible with the definition taken from base2 (also mapped), so
+        that unsafe subclassing like this can be detected:
+            class A(Generic[T]):
+                def foo(self, x: T) -> None: ...
+
+            class B:
+                def foo(self, x: str) -> None: ...
+
+            class C(B, A[int]): ...  # this is unsafe because...
+
+            x: A[int] = C()
+            x.foo  # ...runtime type is (str) -> None, while static type is (int) -> None
         """
         if name in ('__init__', '__new__', '__init_subclass__'):
             # __init__ and friends can be incompatible -- it's a special case.
