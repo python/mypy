@@ -1366,18 +1366,3 @@ x: Dict[str, List[int]]
 reveal_type(x['test'][0])
 [out]
 _testNewAnalyzerBasicTypeshed_newsemanal.py:4: error: Revealed type is 'builtins.int*'
-
-[case testGenericMultipleOverrideDict]
-from typing import Any
-
-class JSONDict(dict):
-    pass
-
-class WithChallenge(object):
-    def __getitem__(self, key: str) -> Any: ...
-
-class WithKeyHandle(object):
-    def __getitem__(self, key: str) -> Any: ...
-
-class RegisteredKey(JSONDict, WithChallenge, WithKeyHandle):
-    pass
