@@ -54,11 +54,12 @@ jobs:
     python: 3.7
     env:
     - TOXENV=docs
-  - name: "check dev environment builds"
-    python: 3.7
-    env:
-    - TOXENV=dev
-    - EXTRA_ARGS=
+  # Disabled because of some pip bug? See #6716
+  # - name: "check dev environment builds"
+  #   python: 3.7
+  #   env:
+  #   - TOXENV=dev
+  #   - EXTRA_ARGS=
 
 install:
 - pip install -U pip setuptools
