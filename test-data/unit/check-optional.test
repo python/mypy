@@ -751,3 +751,28 @@ def g(x: Optional[int]) -> int:
         return x
 
 [builtins fixtures/bool.pyi]
+
+[case testStrictOptionalCovarianceCrossModule]
+# flags: --config-file tmp/mypy.ini
+from a import asdf
+x = ["lol"]
+asdf(x)
+
+[file a.py]
+from typing import List, Optional
+
+def asdf(x: List[Optional[str]]) -> None:
+    pass
+
+x = ["lol"]
+asdf(x)
+
+[file mypy.ini]
+[[mypy]
+[[mypy-a]
+strict_optional = False
+[out]
+main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected "List[Optional[str]]"
+main:4: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+main:4: note: Consider using "Sequence" instead, which is covariant
+[builtins fixtures/list.pyi]
