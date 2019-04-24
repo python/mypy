@@ -1387,16 +1387,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                if (isinstance(base_attr.node, (FuncDef, OverloadedFuncDef, Decorator))
-                        and not is_static(base_attr.node)):
-                    bound = bind_self(original_type, self.scope.active_self_type())
-                else:
-                    bound = original_type
-                original = map_type_from_supertype(bound, defn.info, base)
+                original = self.bind_and_map_method(base_attr, original_type,
+                                                    defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
                 self.check_override(typ,
-                                    cast(FunctionLike, original),
+                                    original,
                                     defn.name(),
                                     name,
                                     base.name(),
@@ -1414,6 +1410,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), context)
         return False
+
+    def bind_and_map_method(self, sym: SymbolTableNode, typ: FunctionLike,
+                            sub_info: TypeInfo, super_info: TypeInfo) -> FunctionLike:
+        """Bind self-type and map type variables for a method.
+
+        Arguments:
+            sym: a symbol that points to method definition
+            typ: method type on the definition
+            sub_info: class where the method is mapped to
+            super_info: class where the method was defined
+        """
+        if (isinstance(sym.node, (FuncDef, OverloadedFuncDef, Decorator))
+                and not is_static(sym.node)):
+            bound = bind_self(typ, self.scope.active_self_type())
+        else:
+            bound = typ
+        return cast(FunctionLike, map_type_from_supertype(bound, sub_info, super_info))
 
     def get_op_other_domain(self, tp: FunctionLike) -> Optional[Type]:
         if isinstance(tp, CallableType):
@@ -1643,7 +1656,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         first_type = self.determine_type_of_class_member(first)
         second_type = self.determine_type_of_class_member(second)
 
-        # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             if first_type.is_type_obj() and second_type.is_type_obj():
@@ -1652,8 +1664,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ok = is_subtype(left=fill_typevars_with_any(first_type.type_object()),
                                 right=fill_typevars_with_any(second_type.type_object()))
             else:
-                first_sig = bind_self(first_type)
-                second_sig = bind_self(second_type)
+                # First bind/map method types when necessary.
+                if isinstance(first.node, (FuncDef, OverloadedFuncDef, Decorator)):
+                    first_sig = self.bind_and_map_method(first, first_type,
+                                                         base1, first.node.info)
+                else:
+                    first_sig = first_type
+                if isinstance(first.node, (FuncDef, OverloadedFuncDef, Decorator)):
+                    second_sig = self.bind_and_map_method(second, second_type,
+                                                          base2, second.node.info)
+                else:
+                    second_sig = second_type
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)

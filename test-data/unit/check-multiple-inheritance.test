@@ -624,3 +624,19 @@ class Mixin2:
 class A(Mixin1, Mixin2):
     pass
 [out]
+
+[case testGenericMultipleOverride]
+from typing import TypeVar, Generic, Tuple
+
+K = TypeVar('K')
+V = TypeVar('V')
+T = TypeVar('T')
+
+class ItemsView(Generic[K, V]):
+    def __iter__(self) -> Tuple[K, V]: ...
+
+class Sequence(Generic[T]):
+    def __iter__(self) -> T: ...
+
+class OrderedItemsView(ItemsView[K, V], Sequence[Tuple[K, V]]):
+    def __iter__(self) -> Tuple[K, V]: ...
