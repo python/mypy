@@ -1651,8 +1651,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if name in ('__init__', '__new__', '__init_subclass__'):
             # __init__ and friends can be incompatible -- it's a special case.
             return
-        first = base1[name]
-        second = base2[name]
+        first = base1.names[name]
+        second = base2.names[name]
         first_type = self.determine_type_of_class_member(first)
         second_type = self.determine_type_of_class_member(second)
 
@@ -1665,16 +1665,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 right=fill_typevars_with_any(second_type.type_object()))
             else:
                 # First bind/map method types when necessary.
-                if isinstance(first.node, (FuncDef, OverloadedFuncDef, Decorator)):
-                    first_sig = self.bind_and_map_method(first, first_type,
-                                                         ctx, first.node.info)
-                else:
-                    first_sig = first_type
-                if isinstance(first.node, (FuncDef, OverloadedFuncDef, Decorator)):
-                    second_sig = self.bind_and_map_method(second, second_type,
-                                                          ctx, second.node.info)
-                else:
-                    second_sig = second_type
+                first_sig = self.bind_and_map_method(first, first_type, ctx, base1)
+                second_sig = self.bind_and_map_method(second, second_type, ctx, base2)
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
