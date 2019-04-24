@@ -13,7 +13,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
-    CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
+    CallableType, NoneType, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
     LiteralType, RawExpressionType, PlaceholderType
@@ -230,7 +230,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         Return the bound type if successful, and return None if the type is a normal type.
         """
         if fullname == 'builtins.None':
-            return NoneTyp()
+            return NoneType()
         elif fullname == 'typing.Any' or fullname == 'builtins.Any':
             return AnyType(TypeOfAny.explicit)
         elif fullname in ('typing.Final', 'typing_extensions.Final'):
@@ -412,7 +412,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
@@ -697,7 +697,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback = self.named_type_with_normalized_str(arg.base_type_name)
             assert isinstance(fallback, Instance)
             return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
-        elif isinstance(arg, (NoneTyp, LiteralType)):
+        elif isinstance(arg, (NoneType, LiteralType)):
             # Types that we can just add directly to the literal/potential union of literals.
             return [arg]
         elif isinstance(arg, Instance) and arg.final_value is not None:
@@ -955,7 +955,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_any(self, t: AnyType) -> None:
         pass
 
-    def visit_none_type(self, t: NoneTyp) -> None:
+    def visit_none_type(self, t: NoneType) -> None:
         pass
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> None:
@@ -1262,14 +1262,14 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    if isinstance(t, NoneTyp):
+    if isinstance(t, NoneType):
         return t
     elif isinstance(t, UnionType):
         items = [item for item in union_items(t)
-                 if not isinstance(item, NoneTyp)]
-        return UnionType(items + [NoneTyp()], t.line, t.column)
+                 if not isinstance(item, NoneType)]
+        return UnionType(items + [NoneType()], t.line, t.column)
     else:
-        return UnionType([t, NoneTyp()], t.line, t.column)
+        return UnionType([t, NoneType()], t.line, t.column)
 
 
 def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> None:

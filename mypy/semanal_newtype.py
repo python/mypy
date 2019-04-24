@@ -5,7 +5,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from typing import Tuple, Optional
 
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, AnyType, TypeOfAny
+from mypy.types import Type, Instance, CallableType, NoneType, TupleType, AnyType, TypeOfAny
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
     UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, GDEF, MDEF, ARG_POS
@@ -132,13 +132,13 @@ class NewTypeAnalyzer:
         info.is_newtype = True
 
         # Add __init__ method
-        args = [Argument(Var('self'), NoneTyp(), None, ARG_POS),
+        args = [Argument(Var('self'), NoneType(), None, ARG_POS),
                 self.make_argument('item', old_type)]
         signature = CallableType(
             arg_types=[Instance(info, []), old_type],
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
-            ret_type=NoneTyp(),
+            ret_type=NoneType(),
             fallback=self.api.named_type('__builtins__.function'),
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)

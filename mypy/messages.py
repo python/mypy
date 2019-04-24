@@ -20,7 +20,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
@@ -241,9 +241,9 @@ class MessageBuilder:
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
-                                 sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
+                                 sum(isinstance(t, NoneType) for t in typ.items) == 1)
             if print_as_optional:
-                rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
+                rest = [t for t in typ.items if not isinstance(t, NoneType)]
                 return 'Optional[{}]'.format(self.format_bare(rest[0]))
             else:
                 items = []
@@ -254,7 +254,7 @@ class MessageBuilder:
                     return s
                 else:
                     return '<union: {} items>'.format(len(items))
-        elif isinstance(typ, NoneTyp):
+        elif isinstance(typ, NoneType):
             return 'None'
         elif isinstance(typ, AnyType):
             return 'Any'
@@ -436,7 +436,7 @@ class MessageBuilder:
                 # checks, so we manually convert it back.
                 typ_format = self.format(typ)
                 if typ_format == '"object"' and \
-                        any(type(item) == NoneTyp for item in original_type.items):
+                        any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
                     typ_format, self.format(original_type), member, extra), context)

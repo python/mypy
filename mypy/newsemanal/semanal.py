@@ -83,7 +83,7 @@ from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
+    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType
 )
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -338,7 +338,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bool_type = Instance(bool_info, [])
 
         literal_types = [
-            ('None', NoneTyp()),
+            ('None', NoneType()),
             # reveal_type is a mypy-only function that gives an error with
             # the type of its arg.
             ('reveal_type', AnyType(TypeOfAny.special_form)),
@@ -475,7 +475,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                 assert isinstance(defn.type, CallableType)
                 if isinstance(defn.type.ret_type, AnyType):
-                    defn.type = defn.type.copy_modified(ret_type=NoneTyp())
+                    defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
 
         # Analyze function signature and initializers first.
@@ -2302,7 +2302,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         res = None  # type: Optional[Type]
         if self.is_none_alias(rvalue):
-            res = NoneTyp()
+            res = NoneType()
             alias_tvars, depends_on, qualified_tvars = \
                 [], set(), []  # type: List[str], Set[str], List[str]
         else:

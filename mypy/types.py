@@ -453,7 +453,7 @@ class UninhabitedType(Type):
     This type is the bottom type.
     With strict Optional checking, it is the only common subtype between all
     other types, which allows `meet` to be well defined.  Without strict
-    Optional checking, NoneTyp fills this role.
+    Optional checking, NoneType fills this role.
 
     In general, for any type T:
         join(UninhabitedType, T) = T
@@ -496,7 +496,7 @@ class UninhabitedType(Type):
         return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
-class NoneTyp(Type):
+class NoneType(Type):
     """The type of 'None'.
 
     This type can be written by users as 'None'.
@@ -511,21 +511,26 @@ class NoneTyp(Type):
         return False
 
     def __hash__(self) -> int:
-        return hash(NoneTyp)
+        return hash(NoneType)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, NoneTyp)
+        return isinstance(other, NoneType)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'NoneTyp'}
+        return {'.class': 'NoneType'}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'NoneTyp':
-        assert data['.class'] == 'NoneTyp'
-        return NoneTyp()
+    def deserialize(cls, data: JsonDict) -> 'NoneType':
+        assert data['.class'] == 'NoneType'
+        return NoneType()
+
+
+# NoneType used to be called NoneTyp so to avoid needlessly breaking
+# external plugins we keep that alias here.
+NoneTyp = NoneType
 
 
 class ErasedType(Type):
@@ -1633,7 +1638,7 @@ class UnionType(Type):
         if state.strict_optional:
             return self.items
         else:
-            return [i for i in self.items if not isinstance(i, NoneTyp)]
+            return [i for i in self.items if not isinstance(i, NoneType)]
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
@@ -1727,7 +1732,7 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,
                  line: int = -1, column: int = -1) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
@@ -1864,7 +1869,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     Notes:
      - Represent unbound types as Foo? or Foo?[...].
-     - Represent the NoneTyp type as None.
+     - Represent the NoneType type as None.
     """
 
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
@@ -1889,7 +1894,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
 
-    def visit_none_type(self, t: NoneTyp) -> str:
+    def visit_none_type(self, t: NoneType) -> str:
         return "None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
@@ -1950,7 +1955,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         s = '({})'.format(s)
 
-        if not isinstance(t.ret_type, NoneTyp):
+        if not isinstance(t.ret_type, NoneType):
             s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
@@ -2232,12 +2237,12 @@ def is_generic_instance(tp: Type) -> bool:
 
 
 def is_optional(t: Type) -> bool:
-    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+    return isinstance(t, UnionType) and any(isinstance(e, NoneType) for e in t.items)
 
 
 def remove_optional(typ: Type) -> Type:
     if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
     else:
         return typ
 

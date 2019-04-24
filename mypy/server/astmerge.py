@@ -56,7 +56,7 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, SyntheticTypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
+    Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
     RawExpressionType,
@@ -348,7 +348,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_any(self, typ: AnyType) -> None:
         pass
 
-    def visit_none_type(self, typ: NoneTyp) -> None:
+    def visit_none_type(self, typ: NoneType) -> None:
         pass
 
     def visit_callable_type(self, typ: CallableType) -> None:
