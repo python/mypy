@@ -1038,3 +1038,14 @@ class C(List[C]):
 
 reveal_type(B)  # E: Revealed type is 'def (x: __main__.C) -> __main__.B'
 [builtins fixtures/list.pyi]
+
+[case testDisallowUntypedWorksForwardBad]
+# flags: --disallow-untyped-defs
+import attr
+
+@attr.s  # E: Function is missing a type annotation for one or more arguments
+class B:
+    x = attr.ib()  # E: Need type annotation for 'x'
+
+reveal_type(B)  # E: Revealed type is 'def (x: Any) -> __main__.B'
+[builtins fixtures/list.pyi]
