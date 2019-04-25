@@ -624,3 +624,44 @@ class Mixin2:
 class A(Mixin1, Mixin2):
     pass
 [out]
+
+[case testGenericMultipleOverrideRemap]
+from typing import TypeVar, Generic, Tuple
+
+K = TypeVar('K')
+V = TypeVar('V')
+T = TypeVar('T')
+
+class ItemsView(Generic[K, V]):
+    def __iter__(self) -> Tuple[K, V]: ...
+
+class Sequence(Generic[T]):
+    def __iter__(self) -> T: ...
+
+# Override compatible between bases.
+class OrderedItemsView(ItemsView[K, V], Sequence[Tuple[K, V]]):
+    def __iter__(self) -> Tuple[K, V]: ...
+
+class OrderedItemsViewDirect(ItemsView[K, V], Sequence[Tuple[K, V]]):
+    pass
+
+[case testGenericMultipleOverrideReplace]
+from typing import TypeVar, Generic, Union
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def foo(self, x: T) -> None: ...
+
+class B(A[T]): ...
+
+class C1:
+    def foo(self, x: str) -> None: ...
+
+class C2:
+    def foo(self, x: Union[str, int]) -> None: ...
+
+class D1(B[str], C1): ...
+class D2(B[Union[int, str]], C2): ...
+class D3(C2, B[str]): ...
+class D4(B[str], C2): ...  # E: Definition of "foo" in base class "A" is incompatible with definition in base class "C2"
