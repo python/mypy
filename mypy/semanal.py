@@ -3820,6 +3820,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert not self.options.new_semantic_analyzer
         raise NotImplementedError('This is only available with --new-semantic-analyzer')
 
+    @property
+    def final_iteration(self) -> bool:
+        assert not self.options.new_semantic_analyzer
+        raise NotImplementedError('This is only available with --new-semantic-analyzer')
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):

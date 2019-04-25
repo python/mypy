@@ -71,8 +71,11 @@ class Attribute:
         self.converter = converter
         self.context = context
 
-    def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Argument:
-        """Return this attribute as an argument to __init__."""
+    def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Optional[Argument]:
+        """Return this attribute as an argument to __init__.
+
+        Return None if the type of argument can't be determined yet.
+        """
         assert self.init
         init_type = self.info[self.name].type
 
@@ -126,7 +129,11 @@ class Attribute:
             init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
-            if ctx.api.options.disallow_untyped_defs:
+            if not ctx.api.final_iteration:
+                # Some explicit types may be not yet set because they are not ready.
+                ctx.api.defer()
+                return None
+            elif ctx.api.options.disallow_untyped_defs:
                 # This is a compromise.  If you don't have a type here then the
                 # __init__ will be untyped. But since the __init__ is added it's
                 # pointing at the decorator. So instead we also show the error in the
@@ -548,11 +555,11 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
               adder: 'MethodAdder') -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
-    adder.add_method(
-        '__init__',
-        [attribute.argument(ctx) for attribute in attributes if attribute.init],
-        NoneTyp()
-    )
+    args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
+    if any(arg is None for arg in args):
+        # Some argument types are not ready yet.
+        return
+    adder.add_method('__init__', cast(List[Argument], args), NoneTyp())
 
 
 class MethodAdder:

@@ -1023,3 +1023,18 @@ class A(object):
 class B(object):
     x = attr.ib(kw_only=True)  # E: kw_only is not supported in Python 2
 [builtins_py2 fixtures/bool.pyi]
+
+[case testAttrsDisallowUntypedWorks]
+# flags: --new-semantic-analyzer --disallow-untyped-defs
+import attr
+from typing import List
+
+@attr.s
+class B:
+    x: C = attr.ib()
+
+class C(List[C]):
+    pass
+
+reveal_type(B)  # E: Revealed type is 'def (x: __main__.C) -> __main__.B'
+[builtins fixtures/list.pyi]
