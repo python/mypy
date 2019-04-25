@@ -574,3 +574,15 @@ class C(List[C]):
 
 reveal_type(B)  # E: Revealed type is 'def (x: __main__.C) -> __main__.B'
 [builtins fixtures/list.pyi]
+
+[case testDisallowUntypedWorksForwardBad]
+# flags: --disallow-untyped-defs
+from dataclasses import dataclass
+
+@dataclass
+class B:
+    x: Undefined  # E: Name 'Undefined' is not defined
+    y = undefined()  # E: Name 'undefined' is not defined
+
+reveal_type(B)  # E: Revealed type is 'def (x: Any) -> __main__.B'
+[builtins fixtures/list.pyi]

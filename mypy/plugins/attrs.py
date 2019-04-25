@@ -129,11 +129,11 @@ class Attribute:
             init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
-            if ctx.api.options.new_semantic_analyzer and not ctx.api.final_iteration:
+            if ctx.api.options.new_semantic_analyzer:
                 # Some explicit types may be not yet set because they are not ready.
                 ctx.api.defer()
                 return None
-            elif ctx.api.options.disallow_untyped_defs:
+            if ctx.api.options.disallow_untyped_defs:
                 # This is a compromise.  If you don't have a type here then the
                 # __init__ will be untyped. But since the __init__ is added it's
                 # pointing at the decorator. So instead we also show the error in the
