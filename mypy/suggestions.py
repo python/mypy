@@ -37,6 +37,7 @@ from mypy.build import State, Graph
 from mypy.nodes import (
     ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
     SymbolNode, TypeInfo, Node, Expression, ReturnStmt,
+    reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.server.target import module_prefix, split_target
@@ -471,13 +472,6 @@ class SuggestionEngine:
         return typ.accept(TypeFormatter(cur_module, self.graph))
 
 
-reverse_builtin_aliases = {
-    'builtins.list': 'List',
-    'builtins.dict': 'Dict',
-    'builtins.set': 'Set',
-    'builtins.frozenset': 'FrozenSet',
-}
-
 class TypeFormatter(TypeStrVisitor):
     """Visitor used to format types
     """
@@ -490,33 +484,36 @@ class TypeFormatter(TypeStrVisitor):
 
     def visit_instance(self, t: Instance) -> str:
         if t.type is not None:
-            s = t.type.fullname() or t.type.name() or '<???>'
+            s = t.type.fullname() or t.type.name() or None
         else:
-            s = '<?>'
+            s = None
+        if s is None:
+            return '<???>'
         if s in reverse_builtin_aliases:
             s = reverse_builtin_aliases[s]
+
+        mod_obj = split_target(self.graph, s)
+        assert mod_obj
+        mod, obj = mod_obj
 
         # If a class is imported into the current module, rewrite the reference
         # to point to the current module. This helps the annotation tool avoid
         # inserting redundant imports when a type has been reexported.
         if self.module:
-            mod_obj = split_target(self.graph, s)
-            if mod_obj:
-                mod, obj = mod_obj
-                parts = obj.split('.')  # need to split the object part if it is a nested class
-                tree = self.graph[self.module].tree
-                if tree and parts[0] in tree.names:
-                    s = self.module + '.' + obj
+            parts = obj.split('.')  # need to split the object part if it is a nested class
+            tree = self.graph[self.module].tree
+            if tree and parts[0] in tree.names:
+                mod = self.module
 
-        if s == 'builtins.tuple':
-            s = 'Tuple[' + t.args[0].accept(self) + ', ...]'
+        if (mod, obj) == ('builtins', 'tuple'):
+            mod, obj = 'typing', 'Tuple[' + t.args[0].accept(self) + ', ...]'
         elif t.args != []:
-            s += '[{}]'.format(self.list_str(t.args))
+            obj += '[{}]'.format(self.list_str(t.args))
 
-        if s.startswith('builtins.'):
-            s = s[len('builtins.'):]
-
-        return s
+        if mod == 'builtins':
+            return obj
+        else:
+            return "{}:{}".format(mod, obj)
 
 
     def visit_tuple_type(self, t: TupleType) -> str:

@@ -17,8 +17,8 @@ def bar() -> None:
 [out]
 bar.py:3: (str)
 bar.py:4: (arg=str)
-bar.py:6: (*List[str])
-bar.py:8: (**Dict[str, str])
+bar.py:6: (*typing:List[str])
+bar.py:8: (**typing:Dict[str, str])
 ==
 
 [case testSuggestCallsitesStep2]
@@ -41,8 +41,8 @@ def bar() -> None:
 ==
 bar.py:3: (str)
 bar.py:4: (arg=str)
-bar.py:6: (*List[str])
-bar.py:8: (**Dict[str, str])
+bar.py:6: (*typing:List[str])
+bar.py:8: (**typing:Dict[str, str])
 
 [case testSuggestInferFunc1]
 # flags: --strict-optional
@@ -136,7 +136,7 @@ N = NamedTuple('N', [('x', int)])
 def foo():
     return N(1)
 [out]
-() -> foo.N
+() -> foo:N
 ==
 
 [case testSuggestReexportNaming]
@@ -159,7 +159,7 @@ from baz import B
 foo(B())
 
 [out]
-(baz.B) -> Tuple[foo.A, foo.A.C]
+(baz:B) -> Tuple[foo:A, foo:A.C]
 ==
 
 [case testSuggestInferInit]

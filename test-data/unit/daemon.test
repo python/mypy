@@ -193,8 +193,8 @@ $ dmypy suggest foo.foo.baz
 Object foo.foo is not a class
 == Return code: 2
 $ dmypy suggest --callsites foo.foo
-bar.py:3: (builtins.str)
-bar.py:4: (arg=builtins.str)
+bar.py:3: (str)
+bar.py:4: (arg=str)
 $ dmypy suggest foo.foo
 (str) -> int
 $ {python} -c "import shutil; shutil.copy('foo.py.2', 'foo.py')"
