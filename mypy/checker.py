@@ -1648,7 +1648,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         a direct subclass relationship (i.e., the compatibility requirement only derives from
         multiple inheritance).
 
-        This checks verifies that a definition taken from base1 (and mapped to the current
+        This check verifies that a definition taken from base1 (and mapped to the current
         class ctx), is type compatible with the definition taken from base2 (also mapped), so
         that unsafe subclassing like this can be detected:
             class A(Generic[T]):
