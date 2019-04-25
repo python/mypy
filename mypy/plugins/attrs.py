@@ -225,7 +225,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     adder = MethodAdder(ctx)
     if init:
-        _add_init(ctx, attributes, adder)
+        if not _add_init(ctx, attributes, adder):
+            return
     if cmp:
         _add_cmp(ctx, adder)
     if frozen:
@@ -553,13 +554,18 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 
 
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
-              adder: 'MethodAdder') -> None:
-    """Generate an __init__ method for the attributes and add it to the class."""
+              adder: 'MethodAdder') -> bool:
+    """Generate an __init__ method for the attributes and add it to the class.
+
+    Return value indicates whether method was actually added, or deferred until
+    the next semantic analysis iteration.
+    """
     args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
     if any(arg is None for arg in args):
         # Some argument types are not ready yet.
-        return
+        return False
     adder.add_method('__init__', cast(List[Argument], args), NoneTyp())
+    return True
 
 
 class MethodAdder:
