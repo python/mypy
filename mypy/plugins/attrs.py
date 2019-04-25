@@ -129,7 +129,7 @@ class Attribute:
             init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
-            if not ctx.api.final_iteration:
+            if ctx.api.options.new_semantic_analyzer and not ctx.api.final_iteration:
                 # Some explicit types may be not yet set because they are not ready.
                 ctx.api.defer()
                 return None
