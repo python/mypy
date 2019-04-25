@@ -50,11 +50,16 @@ jobs:
   - name: "trigger a build of wheels"
     python: 3.7
     script: if [[ ($TRAVIS_BRANCH = "master" || $TRAVIS_BRANCH =~ release-*) && $TRAVIS_PULL_REQUEST = "false" ]]; then ./misc/trigger_wheel_build.sh; fi
-  - name: "check dev environment builds"
+  - name: "check documentation build"
     python: 3.7
     env:
-    - TOXENV=dev
-    - EXTRA_ARGS=
+    - TOXENV=docs
+  # Disabled because of some pip bug? See #6716
+  # - name: "check dev environment builds"
+  #   python: 3.7
+  #   env:
+  #   - TOXENV=dev
+  #   - EXTRA_ARGS=
 
 install:
 - pip install -U pip setuptools
