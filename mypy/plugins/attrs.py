@@ -71,11 +71,8 @@ class Attribute:
         self.converter = converter
         self.context = context
 
-    def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Optional[Argument]:
-        """Return this attribute as an argument to __init__.
-
-        Return None if the type of argument can't be determined yet.
-        """
+    def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Argument:
+        """Return this attribute as an argument to __init__."""
         assert self.init
         init_type = self.info[self.name].type
 
@@ -129,11 +126,7 @@ class Attribute:
             init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
-            if ctx.api.options.new_semantic_analyzer and not ctx.api.final_iteration:
-                # Some explicit types may be not yet set because they are not ready.
-                ctx.api.defer()
-                return None
-            elif ctx.api.options.disallow_untyped_defs:
+            if ctx.api.options.disallow_untyped_defs:
                 # This is a compromise.  If you don't have a type here then the
                 # __init__ will be untyped. But since the __init__ is added it's
                 # pointing at the decorator. So instead we also show the error in the
@@ -217,6 +210,13 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
+    if ctx.api.options.new_semantic_analyzer:
+        # Check if attribute types are ready.
+        for attr in attributes:
+            if info[attr.name].type is None and not ctx.api.final_iteration:
+                ctx.api.defer()
+                return
+
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
         'attributes': [attr.serialize() for attr in attributes],
@@ -225,8 +225,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     adder = MethodAdder(ctx)
     if init:
-        if not _add_init(ctx, attributes, adder):
-            return
+        _add_init(ctx, attributes, adder)
     if cmp:
         _add_cmp(ctx, adder)
     if frozen:
@@ -554,18 +553,13 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 
 
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
-              adder: 'MethodAdder') -> bool:
-    """Generate an __init__ method for the attributes and add it to the class.
-
-    Return value indicates whether method was actually added, or deferred until
-    the next semantic analysis iteration.
-    """
-    args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
-    if any(arg is None for arg in args):
-        # Some argument types are not ready yet.
-        return False
-    adder.add_method('__init__', cast(List[Argument], args), NoneTyp())
-    return True
+              adder: 'MethodAdder') -> None:
+    """Generate an __init__ method for the attributes and add it to the class."""
+    adder.add_method(
+        '__init__',
+        [attribute.argument(ctx) for attribute in attributes if attribute.init],
+        NoneTyp()
+    )
 
 
 class MethodAdder:
