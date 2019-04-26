@@ -139,7 +139,6 @@ if USE_MYPYC:
         multi_file=sys.platform == 'win32',
     )
     cmdclass['build_ext'] = MypycifyBuildExt
-    description += " (mypyc-compiled version)"
 else:
     ext_modules = []
 
