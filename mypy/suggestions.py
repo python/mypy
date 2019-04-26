@@ -512,7 +512,8 @@ class TypeFormatter(TypeStrVisitor):
         if mod == 'builtins':
             return obj
         else:
-            return "{}:{}".format(mod, obj)
+            delim = '.' if '.' not in obj else ':'
+            return mod + delim + obj
 
     def visit_tuple_type(self, t: TupleType) -> str:
         if t.partial_fallback and t.partial_fallback.type:
