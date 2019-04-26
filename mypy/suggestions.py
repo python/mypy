@@ -242,7 +242,7 @@ class SuggestionEngine:
             else:
                 # If we don't have anything, we'll try Any and object
                 # (Actually object usually is bad for downstream consumers...)
-                #types.append([AnyType(TypeOfAny.explicit), self.builtin_type('builtins.object')])
+                # types.append([AnyType(TypeOfAny.explicit), self.builtin_type('builtins.object')])
                 types.append([AnyType(TypeOfAny.explicit)])
         return types
 
@@ -458,15 +458,14 @@ class SuggestionEngine:
         }
         return json.dumps([obj], sort_keys=True)
 
-
-    def format_callable(self, cur_module: Optional[str], is_method: bool, typ: CallableType) -> str:
+    def format_callable(self,
+                        cur_module: Optional[str], is_method: bool, typ: CallableType) -> str:
         """Format a callable type in a way suitable as an annotation... kind of"""
         start = int(is_method)
         s = "({}) -> {}".format(
             ", ".join([self.format_type(cur_module, t) for t in typ.arg_types[start:]]),
             self.format_type(cur_module, typ.ret_type))
         return s
-
 
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
         return typ.accept(TypeFormatter(cur_module, self.graph))
@@ -515,7 +514,6 @@ class TypeFormatter(TypeStrVisitor):
         else:
             return "{}:{}".format(mod, obj)
 
-
     def visit_tuple_type(self, t: TupleType) -> str:
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname()
@@ -523,7 +521,6 @@ class TypeFormatter(TypeStrVisitor):
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
-
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:
