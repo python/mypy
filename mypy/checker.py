@@ -30,7 +30,7 @@ from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
+    Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional
@@ -668,7 +668,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.  IOW, tc is None.
-            return NoneTyp()
+            return NoneType()
 
     def get_coroutine_return_type(self, return_type: Type) -> Type:
         if isinstance(return_type, AnyType):
@@ -799,7 +799,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     fdef = item
                     # Check if __init__ has an invalid, non-None return type.
                     if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
-                            not isinstance(typ.ret_type, NoneTyp) and
+                            not isinstance(typ.ret_type, NoneType) and
                             not self.dynamic_funcs[-1]):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
@@ -845,7 +845,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if (self.options.python_version[0] == 2 and
                             isinstance(typ.ret_type, Instance) and
                             typ.ret_type.type.fullname() == 'typing.Generator'):
-                        if not isinstance(typ.ret_type.args[2], (NoneTyp, AnyType)):
+                        if not isinstance(typ.ret_type.args[2], (NoneType, AnyType)):
                             self.fail(message_registry.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
                 # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
@@ -944,7 +944,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     return_type = self.return_types[-1]
 
-                if (not isinstance(return_type, (NoneTyp, AnyType))
+                if (not isinstance(return_type, (NoneType, AnyType))
                         and not self.is_trivial_body(defn.body)):
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
@@ -1253,7 +1253,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     AnyType(TypeOfAny.special_form)],
                                    [nodes.ARG_POS, nodes.ARG_POS, nodes.ARG_POS],
                                    [None, None, None],
-                                   NoneTyp(),
+                                   NoneType(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
@@ -1812,7 +1812,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
                     # Try to infer a proper type for a variable with a partial None type.
                     rvalue_type = self.expr_checker.accept(rvalue)
-                    if isinstance(rvalue_type, NoneTyp):
+                    if isinstance(rvalue_type, NoneType):
                         # This doesn't actually provide any additional information -- multiple
                         # None initializers preserve the partial None type.
                         return
@@ -1823,7 +1823,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if partial_types is not None:
                             if not self.current_node_deferred:
                                 inferred_type = UnionType.make_simplified_union(
-                                    [rvalue_type, NoneTyp()])
+                                    [rvalue_type, NoneType()])
                                 self.set_inferred_type(var, lvalue, inferred_type)
                             else:
                                 var.type = None
@@ -2483,7 +2483,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
-        if isinstance(init_type, NoneTyp):
+        if isinstance(init_type, NoneType):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
@@ -2491,7 +2491,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
                      fullname == 'builtins.dict') and
-                    all(isinstance(t, (NoneTyp, UninhabitedType)) for t in init_type.args)):
+                    all(isinstance(t, (NoneType, UninhabitedType)) for t in init_type.args)):
                 partial_type = PartialType(init_type.type, name, init_type.args)
             else:
                 return False
@@ -2643,7 +2643,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 arg_types=[self.named_type('builtins.str'), item_type],
                 arg_kinds=[ARG_POS, ARG_POS],
                 arg_names=[None, None],
-                ret_type=NoneTyp(),
+                ret_type=NoneType(),
                 fallback=self.named_type('builtins.function')
             )  # type: Type
         else:
@@ -2707,7 +2707,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if s.expr:
                 is_lambda = isinstance(self.scope.top_function(), LambdaExpr)
-                declared_none_return = isinstance(return_type, NoneTyp)
+                declared_none_return = isinstance(return_type, NoneType)
                 declared_any_return = isinstance(return_type, AnyType)
 
                 # This controls whether or not we allow a function call that
@@ -2742,7 +2742,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if declared_none_return:
                     # Lambdas are allowed to have None returns.
                     # Functions returning a value of type None are allowed to have a None return.
-                    if is_lambda or isinstance(typ, NoneTyp):
+                    if is_lambda or isinstance(typ, NoneType):
                         return
                     self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
                 else:
@@ -2760,7 +2760,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         isinstance(return_type, AnyType)):
                     return
 
-                if isinstance(return_type, (NoneTyp, AnyType)):
+                if isinstance(return_type, (NoneType, AnyType)):
                     return
 
                 if self.in_checked_function():
@@ -2870,7 +2870,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         expected_type = self.named_type('builtins.BaseException')  # type: Type
         if optional:
-            expected_type = UnionType([expected_type, NoneTyp()])
+            expected_type = UnionType([expected_type, NoneType()])
         self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> None:
@@ -3191,7 +3191,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.expr_checker.accept(arg)
         if s.target:
             target_type = self.expr_checker.accept(s.target)
-            if not isinstance(target_type, NoneTyp):
+            if not isinstance(target_type, NoneType):
                 # TODO: Also verify the type of 'write'.
                 self.expr_checker.analyze_external_member_access('write', target_type, s.target)
 
@@ -3435,7 +3435,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # two elements in node.operands, and at least one of them
                         # should represent a None.
                         vartype = type_map[expr]
-                        none_typ = [TypeRange(NoneTyp(), is_upper_bound=False)]
+                        none_typ = [TypeRange(NoneType(), is_upper_bound=False)]
                         if_vars, else_vars = conditional_type_map(expr, vartype, none_typ)
                         break
 
@@ -3549,7 +3549,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def contains_none(self, t: Type) -> bool:
         return (
-            isinstance(t, NoneTyp) or
+            isinstance(t, NoneType) or
             (isinstance(t, UnionType) and any(self.contains_none(ut) for ut in t.items)) or
             (isinstance(t, TupleType) and any(self.contains_none(tt) for tt in t.items)) or
             (isinstance(t, Instance) and bool(t.args)
@@ -3687,7 +3687,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and isinstance(var.type, PartialType)
                         and var.type.type is None
                         and not permissive):
-                    var.type = NoneTyp()
+                    var.type = NoneType()
                 else:
                     if var not in self.partial_reported and not permissive:
                         self.msg.need_annotation_for_var(var, context)
@@ -3706,7 +3706,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # 'None' partial type. It has a well-defined type. In an lvalue context
             # we want to preserve the knowledge of it being a partial type.
             if not is_lvalue:
-                return NoneTyp()
+                return NoneType()
             else:
                 return typ
         else:
@@ -3729,7 +3729,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not isinstance(typ, PartialType):
             return typ
         if typ.type is None:
-            return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneTyp()])
+            return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
         else:
             return Instance(
                 typ.type,
@@ -4227,8 +4227,8 @@ def is_valid_inferred_type(typ: Type) -> bool:
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if isinstance(typ, (NoneTyp, UninhabitedType)):
-        # With strict Optional checking, we *may* eventually infer NoneTyp when
+    if isinstance(typ, (NoneType, UninhabitedType)):
+        # With strict Optional checking, we *may* eventually infer NoneType when
         # the initializer is None, but we only do that if we can't infer a
         # specific Optional type.  This resolution happens in
         # leave_partial_types when we pop a partial types scope.

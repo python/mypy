@@ -16,7 +16,7 @@ from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias
 )
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
@@ -325,7 +325,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Warn on calls to functions that always return None. The check
         # of ret_type is both a common-case optimization and prevents reporting
         # the error in dynamic functions (where it will be Any).
-        if (not allow_none_return and isinstance(ret_type, NoneTyp)
+        if (not allow_none_return and isinstance(ret_type, NoneType)
                 and self.always_returns_none(e.callee)):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
@@ -378,13 +378,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check if `defn` can _only_ return None."""
         if isinstance(defn, FuncDef):
             return (isinstance(defn.type, CallableType) and
-                    isinstance(defn.type.ret_type, NoneTyp))
+                    isinstance(defn.type.ret_type, NoneType))
         if isinstance(defn, OverloadedFuncDef):
             return all(isinstance(item.type, CallableType) and
-                       isinstance(item.type.ret_type, NoneTyp) for item in defn.items)
+                       isinstance(item.type.ret_type, NoneType) for item in defn.items)
         if isinstance(defn, Var):
             if (not defn.is_inferred and isinstance(defn.type, CallableType) and
-                    isinstance(defn.type.ret_type, NoneTyp)):
+                    isinstance(defn.type.ret_type, NoneType)):
                 return True
             if isinstance(defn.type, Instance):
                 sym = defn.type.type.get('__call__')
@@ -854,7 +854,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for arg in args:
             arg_type = self.accept(arg)
             if has_erased_component(arg_type):
-                res.append(NoneTyp())
+                res.append(NoneType())
             else:
                 res.append(arg_type)
         return res
@@ -1010,7 +1010,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 #       correspondence with dict type variables. This is a marginal issue and
                 #       a little tricky to fix so it's left unfixed for now.
                 first_arg = inferred_args[0]
-                if isinstance(first_arg, (NoneTyp, UninhabitedType)):
+                if isinstance(first_arg, (NoneType, UninhabitedType)):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not first_arg or not is_subtype(self.named_type('builtins.str'), first_arg):
                     self.msg.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
@@ -1045,7 +1045,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # that they are not applied yet below.
         inferred_args = list(old_inferred_args)
         for i, arg in enumerate(inferred_args):
-            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
+            if isinstance(arg, (NoneType, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
         callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
@@ -1991,7 +1991,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.options.strict_equality:
             return False
-        if isinstance(left, NoneTyp) or isinstance(right, NoneTyp):
+        if isinstance(left, NoneType) or isinstance(right, NoneType):
             return False
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
@@ -2602,7 +2602,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 } if expr.local_nodes is not None else {}
 
                 self.msg.reveal_locals(names_to_types, expr)
-            return NoneTyp()
+            return NoneType()
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...]).
@@ -2915,7 +2915,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if e.expr() not in self.chk.type_map:
                 self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
-            if isinstance(ret_type, NoneTyp):
+            if isinstance(ret_type, NoneType):
                 # For "lambda ...: None", just use type from the context.
                 # Important when the context is Callable[..., None] which
                 # really means Void. See #1425.
@@ -3102,11 +3102,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if any(e.is_async):
             typ = 'typing.AsyncGenerator'
             # received type is always None in async generator expressions
-            additional_args = [NoneTyp()]  # type: List[Type]
+            additional_args = [NoneType()]  # type: List[Type]
         else:
             typ = 'typing.Generator'
             # received type and returned type are None
-            additional_args = [NoneTyp(), NoneTyp()]
+            additional_args = [NoneType(), NoneType()]
         return self.check_generator_or_comprehension(e, typ, '<generator>',
                                                      additional_args=additional_args)
 
@@ -3357,7 +3357,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return_type = self.chk.return_types[-1]
         expected_item_type = self.chk.get_generator_yield_type(return_type, False)
         if e.expr is None:
-            if (not isinstance(expected_item_type, (NoneTyp, AnyType))
+            if (not isinstance(expected_item_type, (NoneType, AnyType))
                     and self.chk.in_checked_function()):
                 self.chk.fail(message_registry.YIELD_VALUE_EXPECTED, e)
         else:
@@ -3443,9 +3443,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
             else:
                 # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
-                expr_type = NoneTyp()
+                expr_type = NoneType()
 
-        if not allow_none_return and isinstance(expr_type, NoneTyp):
+        if not allow_none_return and isinstance(expr_type, NoneType):
             self.chk.msg.does_not_return_value(None, e)
         return expr_type
 
