@@ -88,6 +88,14 @@ def add_method(
     """Adds a new method to a class.
     """
     info = ctx.cls.info
+
+    # First remove any previously generated methods with the same name
+    # to avoid clashes and problems in new semantic analyzer.
+    if name in info.names:
+        sym = info.names[name]
+        if sym.plugin_generated and isinstance(sym.node, FuncDef):
+            ctx.cls.defs.body.remove(sym.node)
+
     self_type = self_type or fill_typevars(info)
     function_type = ctx.api.named_type('__builtins__.function')
 
