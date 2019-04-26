@@ -5842,4 +5842,4 @@ def test() -> None:
 class C:
     def __init__(self) -> None:
         self.foo = 12
-        self.foo: int = 12  # E: Name 'self.foo' already defined on line 3
+        self.foo: int = 12  # E: Attribute 'foo' already defined on line 3
