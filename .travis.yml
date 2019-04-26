@@ -53,7 +53,7 @@ jobs:
   - name: "check documentation build"
     python: 3.7
     env:
-    - TOXENV=docs
+    - TOXENV="docs,linkcheck"
   # Disabled because of some pip bug? See #6716
   # - name: "check dev environment builds"
   #   python: 3.7
