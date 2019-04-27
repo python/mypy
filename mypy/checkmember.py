@@ -777,8 +777,8 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         return AnyType(TypeOfAny.from_error)
 
     # The two is_valid_constructor() checks ensure this.
-    assert isinstance(new_method.node, (FuncBase, Decorator))
-    assert isinstance(init_method.node, (FuncBase, Decorator))
+    assert isinstance(new_method.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
+    assert isinstance(init_method.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
 
     init_index = info.mro.index(init_method.node.info)
     new_index = info.mro.index(new_method.node.info)
