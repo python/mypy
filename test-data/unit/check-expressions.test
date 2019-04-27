@@ -2136,6 +2136,34 @@ x: Union[A, str]
 x == int()
 [builtins fixtures/bool.pyi]
 
+[case testCustomEqCheckStrictEqualityTuple]
+# flags: --strict-equality
+from typing import NamedTuple
+
+class Base(NamedTuple):
+    attr: int
+
+class Custom(Base):
+    def __eq__(self, other: object) -> bool: ...
+
+Base(int()) == int()  # E: Non-overlapping equality check (left operand type: "Base", right operand type: "int")
+Base(int()) == tuple()
+Custom(int()) == int()
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqCheckStrictEqualityMeta]
+# flags: --strict-equality
+class CustomMeta(type):
+    def __eq__(self, other: object) -> bool: ...
+
+class Normal: ...
+class Custom(metaclass=CustomMeta): ...
+
+Normal == int()  # E: Non-overlapping equality check (left operand type: "Type[Normal]", right operand type: "int")
+Normal == Normal
+Custom == int()
+[builtins fixtures/bool.pyi]
+
 [case testCustomContainsCheckStrictEquality]
 # flags: --strict-equality
 class A:
