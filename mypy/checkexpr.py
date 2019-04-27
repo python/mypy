@@ -1938,7 +1938,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 # Only show dangerous overlap if there are no other errors.
                 elif (not local_errors.is_errors() and cont_type and
-                        self.dangerous_comparison(left_type, cont_type)):
+                        self.dangerous_comparison(left_type, cont_type,
+                                                  original_container=right_type)):
                     self.msg.dangerous_comparison(left_type, cont_type, 'container', e)
                 else:
                     self.msg.add_errors(local_errors)
@@ -1951,8 +1952,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # testCustomEqCheckStrictEquality for an example.
                 if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
                     right_type = self.accept(right)
-                    if self.dangerous_comparison(left_type, right_type):
-                        self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
+                    if (not custom_equality_method(left_type) and
+                            not custom_equality_method(right_type)):
+                        # We suppress the error if there is a custom __eq__() method on either
+                        # side. User defined (or even standard library) classes can define this
+                        # to return True for comparisons between non-overlapping types.
+                        if self.dangerous_comparison(left_type, right_type):
+                            self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
 
             elif operator == 'is' or operator == 'is not':
                 right_type = self.accept(right)  # validate the right operand
@@ -1974,8 +1980,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert result is not None
         return result
 
-    def dangerous_comparison(self, left: Type, right: Type) -> bool:
+    def dangerous_comparison(self, left: Type, right: Type,
+                             original_container: Optional[Type] = None) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
+
+        The original_container is the original container type for 'in' checks
+        (and None for equality checks).
 
         Rules:
             * X and None are overlapping even in strict-optional mode. This is to allow
@@ -1985,9 +1995,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             non-overlapping, although technically None is overlap, it is most
             likely an error.
             * Any overlaps with everything, i.e. always safe.
-            * Promotions are ignored, so both 'abc' == b'abc' and 1 == 1.0
-            are errors. This is mostly needed for bytes vs unicode, and
-            int vs float are added just for consistency.
+            * Special case: b'abc' in b'cde' is safe.
         """
         if not self.chk.options.strict_equality:
             return False
@@ -1996,7 +2004,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
-        return not is_overlapping_types(left, right, ignore_promotions=True)
+        if (original_container and has_bytes_component(original_container) and
+                has_bytes_component(left)):
+            # We need to special case bytes, because both 97 in b'abc' and b'a' in b'abc'
+            # return True (and we want to show the error only if the check can _never_ be True).
+            return False
+        return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
@@ -3808,4 +3821,34 @@ def is_expr_literal_type(node: Expression) -> bool:
     if isinstance(node, NameExpr):
         underlying = node.node
         return isinstance(underlying, TypeAlias) and isinstance(underlying.target, LiteralType)
+    return False
+
+
+def custom_equality_method(typ: Type) -> bool:
+    """Does this type have a custom __eq__() method?"""
+    if isinstance(typ, Instance):
+        method = typ.type.get_method('__eq__')
+        if method and method.info:
+            return not method.info.fullname().startswith('builtins.')
+        return False
+    if isinstance(typ, UnionType):
+        return any(custom_equality_method(t) for t in typ.items)
+    if isinstance(typ, TupleType):
+        return custom_equality_method(tuple_fallback(typ))
+    if isinstance(typ, CallableType) and typ.is_type_obj():
+        # Look up __eq__ on the metaclass for class objects.
+        return custom_equality_method(typ.fallback)
+    if isinstance(typ, AnyType):
+        # Avoid false positives in uncertain cases.
+        return True
+    # TODO: support other types (see ExpressionChecker.has_member())?
+    return False
+
+
+def has_bytes_component(typ: Type) -> bool:
+    """Is this the builtin bytes type, or a union that contains it?"""
+    if isinstance(typ, UnionType):
+        return any(has_bytes_component(t) for t in typ.items)
+    if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
+        return True
     return False

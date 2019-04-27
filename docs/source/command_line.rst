@@ -396,15 +396,17 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import Text
+       from typing import List, Text
+
+       items: List[int]
+       if 'some string' in items:  # Error: non-overlapping container check!
+           ...
 
        text: Text
-       if b'some bytes' in text:  # Error: non-overlapping check!
-           ...
-       if text != b'other bytes':  # Error: non-overlapping check!
+       if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
-       assert text is not None  # OK, this special case is allowed.
+       assert text is not None  # OK, check against None is allowed as a special case.
 
 ``--strict``
     This flag mode enables all optional error checking flags.  You can see the
