@@ -286,7 +286,7 @@ for example, when assigning an empty dictionary to some global value:
 You can teach mypy what type ``my_global_dict`` is meant to have by giving it
 a type hint. For example, if you knew this variable is supposed to be a dict
 of ints to floats, you could annotate it using either variable annotations
-(introduced in Python 3.6 by :ref:`PEP 526 <pep526_>`_) or using a comment-based
+(introduced in Python 3.6 by `PEP 526 <pep526_>`_) or using a comment-based
 syntax like so:
 
 .. code-block:: python

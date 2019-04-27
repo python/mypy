@@ -2481,3 +2481,27 @@ def foo() -> None:
 
 def lol():
     x = foo()
+
+[case testConditionalImportFunction]
+import p
+[file p/__init__.py]
+
+if int():
+    from p.a import f
+elif int():
+    from p.b import f
+else:
+    from p.c import f
+
+[file p/a.py]
+def f() -> int: ...
+
+[file p/b.py]
+from p.d import f
+
+[file p/c.py]
+def f() -> int: ...
+
+[file p/d.py]
+import p
+def f() -> int: ...

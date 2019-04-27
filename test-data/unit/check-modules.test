@@ -1047,7 +1047,7 @@ from project.study.a import CustomType
 [file project/study/a.py]
 from project import root
 # TODO (#4498): This test is basically testing the `all_are_submodules` logic
-# in build, which skips generating a dependenecy to a module if
+# in build, which skips generating a dependency to a module if
 # everything in it is a submodule. But that is still all just a
 # workaround for bugs in cycle handling. If we uncomment the next
 # line, we'll still break:

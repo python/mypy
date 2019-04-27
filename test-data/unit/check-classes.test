@@ -5837,3 +5837,53 @@ def test() -> None:
         return
     reveal_type(x)  # E: Revealed type is 'Union[Type[__main__.One], Type[__main__.Other]]'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testAbstractInit]
+from abc import abstractmethod, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def __init__(self, a: int) -> None:
+        pass
+class B(A):
+    pass
+class C(B):
+    def __init__(self, a: int) -> None:
+        self.c = a
+a = A(1) # E: Cannot instantiate abstract class 'A' with abstract attribute '__init__'
+A.c # E: "Type[A]" has no attribute "c"
+b = B(2) # E: Cannot instantiate abstract class 'B' with abstract attribute '__init__'
+B.c # E: "Type[B]" has no attribute "c"
+c = C(3)
+c.c
+C.c
+
+[case testDecoratedConstructors]
+from typing import TypeVar, Callable, Any
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(f: F) -> F: ...
+
+class A:
+    @dec
+    def __init__(self, x: int) -> None: ...
+
+class B:
+    @dec
+    def __new__(cls, x: int) -> B: ...
+
+reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
+reveal_type(B)  # E: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testDecoratedConstructorsBad]
+from typing import Callable, Any
+
+def dec(f: Callable[[Any, int], Any]) -> int: ...
+
+class A:
+    @dec  # E: Unsupported decorated constructor type
+    def __init__(self, x: int) -> None: ...
+
+class B:
+    @dec  # E: Unsupported decorated constructor type
+    def __new__(cls, x: int) -> B: ...

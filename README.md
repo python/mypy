@@ -102,7 +102,7 @@ programs, even if they have type errors:
 You can also try mypy in an [online playground](https://mypy-play.net/) (developed by
 Yusuke Miyazaki).
 
-[statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
+[statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 
 
 IDE & Linter Integrations
@@ -240,6 +240,12 @@ for well over a year at Dropbox, and it has an extensive test suite.
 
 See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.
+
+
+Changelog
+---------
+
+Follow mypy's updates on the blog: http://mypy-lang.blogspot.com/
 
 
 Issue tracker

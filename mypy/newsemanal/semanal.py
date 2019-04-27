@@ -83,7 +83,7 @@ from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneTyp, PlaceholderType
+    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType
 )
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -338,7 +338,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bool_type = Instance(bool_info, [])
 
         literal_types = [
-            ('None', NoneTyp()),
+            ('None', NoneType()),
             # reveal_type is a mypy-only function that gives an error with
             # the type of its arg.
             ('reveal_type', AnyType(TypeOfAny.special_form)),
@@ -475,7 +475,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                 assert isinstance(defn.type, CallableType)
                 if isinstance(defn.type.ret_type, AnyType):
-                    defn.type = defn.type.copy_modified(ret_type=NoneTyp())
+                    defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
 
         # Analyze function signature and initializers first.
@@ -1592,7 +1592,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         return
                     self.record_incomplete_ref()
                 existing_symbol = self.globals.get(imported_id)
-                if existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode):
+                if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
+                        not isinstance(node.node, PlaceholderNode)):
                     # Import can redefine a variable. They get special treatment.
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
@@ -1602,6 +1603,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Special case: allow replacing submodules with variables. This pattern
                     # is used by some libraries.
                     del self.globals[imported_id]
+                if existing_symbol and isinstance(node.node, PlaceholderNode):
+                    # Imports are special, some redefinitions are allowed, so wait until
+                    # we know what is the new symbol node.
+                    continue
                 # 'from m import x as x' exports x in a stub file.
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules
@@ -1701,7 +1706,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         # Star import of submodule from a package, add it as a dependency.
                         self.imports.add(node.node.fullname())
                     existing_symbol = self.lookup_current_scope(name)
-                    if existing_symbol:
+                    if existing_symbol and not isinstance(node.node, PlaceholderNode):
                         # Import can redefine a variable. They get special treatment.
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, node, i):
@@ -2265,8 +2270,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         #     A = float  # OK, but this doesn't define an alias
         #     B = int
         #     B = float  # Error!
-        if existing and (isinstance(existing.node, Var) or
-                         isinstance(existing.node, TypeAlias) and not s.is_alias_def):
+        # Don't create an alias in these cases:
+        if existing and (isinstance(existing.node, Var) or  # existing variable
+                isinstance(existing.node, TypeAlias) and not s.is_alias_def or  # existing alias
+                (isinstance(existing.node, PlaceholderNode) and
+                # TODO: find a more robust way to track the order of definitions.
+                 existing.node.node.line < s.line)):  # or previous incomplete definition
             # Note: if is_alias_def=True, this is just a node from previous iteration.
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail('Cannot assign multiple types to name "{}"'
@@ -2293,7 +2302,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         res = None  # type: Optional[Type]
         if self.is_none_alias(rvalue):
-            res = NoneTyp()
+            res = NoneType()
             alias_tvars, depends_on, qualified_tvars = \
                 [], set(), []  # type: List[str], Set[str], List[str]
         else:
@@ -2338,7 +2347,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.progress = True
                 # We need to defer so that this change can get propagated to base classes.
                 self.defer()
-            existing.node = alias_node
+            if isinstance(existing.node, TypeAlias):
+                # Copy expansion to the existing alias, this matches how we update base classes
+                # for a TypeInfo _in place_ if there are nested placeholders.
+                existing.node.target = res
+                existing.node.alias_tvars = alias_tvars
+                existing.node.no_args = no_args
+            else:
+                # Otherwise just replace existing placeholder with type alias.
+                existing.node = alias_node
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -4150,8 +4167,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     and not (isinstance(old_node, PlaceholderNode)
                              and isinstance(new_node, PlaceholderNode))
                     and not is_same_var_from_getattr(old_node, new_node)):
-                if isinstance(new_node, (FuncDef, Decorator)):
-                    self.add_func_redefinition(names, name, symbol)
+                if isinstance(new_node, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
+                    self.add_redefinition(names, name, symbol)
                 if not (isinstance(new_node, (FuncDef, Decorator))
                         and self.set_original_def(old_node, new_node)):
                     self.name_already_defined(name, context, existing)
@@ -4161,13 +4178,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return True
         return False
 
-    def add_func_redefinition(self, names: SymbolTable, name: str,
-                              symbol: SymbolTableNode) -> None:
-        """Add a symbol table node that reflects a redefinition of a function.
+    def add_redefinition(self, names: SymbolTable, name: str,
+                         symbol: SymbolTableNode) -> None:
+        """Add a symbol table node that reflects a redefinition as a function or a class.
 
         Redefinitions need to be added to the symbol table so that they can be found
         through AST traversal, but they have dummy names of form 'name-redefinition[N]',
         where N ranges over 2, 3, ... (omitted for the first redefinition).
+
+        Note: we always store redefinitions independently of whether they are valid or not
+        (so they will be semantically analyzed), the caller should give an error for invalid
+        redefinitions (such as e.g. variable redefined as a class).
         """
         i = 1
         while True:

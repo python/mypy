@@ -559,3 +559,30 @@ class Foo:
     bar: Optional[int] = field(default=None)
 [builtins fixtures/list.pyi]
 [out]
+
+[case testDisallowUntypedWorksForward]
+# flags: --disallow-untyped-defs
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class B:
+    x: C
+
+class C(List[C]):
+    pass
+
+reveal_type(B)  # E: Revealed type is 'def (x: __main__.C) -> __main__.B'
+[builtins fixtures/list.pyi]
+
+[case testDisallowUntypedWorksForwardBad]
+# flags: --disallow-untyped-defs
+from dataclasses import dataclass
+
+@dataclass
+class B:
+    x: Undefined  # E: Name 'Undefined' is not defined
+    y = undefined()  # E: Name 'undefined' is not defined
+
+reveal_type(B)  # E: Revealed type is 'def (x: Any) -> __main__.B'
+[builtins fixtures/list.pyi]

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import List, Optional
 
 from mypy.types import (
-    Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
+    Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny,
 )
@@ -41,7 +41,7 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
     if isinstance(declaration, UnionType):
         return UnionType.make_simplified_union([s, t])
 
-    if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
+    if isinstance(s, NoneType) and not isinstance(t, NoneType):
         s, t = t, s
 
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
@@ -81,7 +81,7 @@ def join_types(s: Type, t: Type) -> Type:
     if isinstance(s, UnionType) and not isinstance(t, UnionType):
         s, t = t, s
 
-    if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
+    if isinstance(s, NoneType) and not isinstance(t, NoneType):
         s, t = t, s
 
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
@@ -113,9 +113,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         if state.strict_optional:
-            if isinstance(self.s, (NoneTyp, UninhabitedType)):
+            if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
             elif isinstance(self.s, UnboundType):
                 return AnyType(TypeOfAny.special_form)
@@ -173,7 +173,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = join_similar_callables(t, self.s)
-            if any(isinstance(tp, (NoneTyp, UninhabitedType)) for tp in result.arg_types):
+            if any(isinstance(tp, (NoneType, UninhabitedType)) for tp in result.arg_types):
                 # We don't want to return unusable Callable, attempt fallback instead.
                 return join_types(t.fallback, self.s)
             return result

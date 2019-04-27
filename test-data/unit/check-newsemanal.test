@@ -993,6 +993,30 @@ class C: pass
 import a
 from b import C
 
+[case testNewAnalyzerImportOverExistingInCycle]
+import a
+[file a.py]
+C = 1
+from b import C  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+
+[file b.py]
+import a
+
+class C(B): ...
+class B: ...
+
+[case testNewAnalyzerImportOverExistingInCycleStar]
+import a
+[file a.py]
+C = 1
+from b import *  # E: Name 'C' already defined on line 1
+
+[file b.py]
+import a
+
+class C(B): ...
+class B: ...
+
 [case testNewAnalyzerIncompleteFixture]
 from typing import Tuple
 
@@ -1405,6 +1429,23 @@ class C(List[A]): pass
 
 reveal_type(x)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x[0])  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerTrickyAliasInFuncDef]
+import a
+[file a.py]
+from b import B
+def func() -> B: ...
+reveal_type(func())  # E: Revealed type is 'builtins.list[Tuple[b.C, b.C]]'
+
+[file b.py]
+from typing import List, Tuple
+from a import func
+
+B = List[Tuple[C, C]]
+
+class C(A): ...
+class A: ...
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerListComprehension]
@@ -2111,3 +2152,51 @@ config = Config()
 [out2]
 tmp/a.py:4: error: Revealed type is 'builtins.int'
 tmp/a.py:5: error: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerRedefineAsClass]
+from typing import Any
+from other import C  # type: ignore
+
+y = 'bad'
+
+class C:  # E: Name 'C' already defined (possibly by an import)
+    def meth(self, other: int) -> None:
+        y()  # E: "str" not callable
+
+[case testNewAnalyzerRedefineAsOverload]
+from typing import overload
+
+y = 'bad'
+
+if int():
+    def f(x: int) -> None:
+        pass
+else:
+    @overload  # E: Name 'f' already defined on line 6
+    def f(x: int) -> None: ...
+    @overload
+    def f(x: str) -> None: ...
+    def f(x) -> None:
+        y()  # E: "str" not callable
+
+[case testNewAnalyzerFirstAliasTargetWins]
+if int():
+    Alias = DesiredTarget
+else:
+    class DummyTarget:
+        pass
+    Alias = DummyTarget  # type: ignore
+
+x: Alias
+reveal_type(x.attr)  # E: Revealed type is 'builtins.int'
+
+class DesiredTarget:
+    attr: int
+
+[case testNewAnalyzerFirstVarDefinitionWins]
+x = y
+x = 1
+
+# We want to check that the first definition creates the variable.
+def x() -> None: ...  # E: Name 'x' already defined on line 1
+y = 2

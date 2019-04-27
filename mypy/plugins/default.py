@@ -8,7 +8,7 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literal
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneTyp, UnionType, TypedDictType,
+    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
     TypeVarType
 )
 
@@ -178,7 +178,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         value_type = ctx.type.items.get(key)
         if value_type:
             if len(ctx.arg_types) == 1:
-                return UnionType.make_simplified_union([value_type, NoneTyp()])
+                return UnionType.make_simplified_union([value_type, NoneType()])
             elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
                   and len(ctx.args[1]) == 1):
                 default_arg = ctx.args[1][0]
