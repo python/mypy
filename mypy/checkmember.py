@@ -5,7 +5,7 @@ from typing import cast, Callable, List, Optional, TypeVar, Union
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType, UninhabitedType, TypeOfAny, LiteralType,
-    DeletedType, NoneTyp, TypeType, function_type, get_type_vars,
+    DeletedType, NoneType, TypeType, function_type, get_type_vars,
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
@@ -130,7 +130,7 @@ def _analyze_member_access(name: str,
     elif isinstance(typ, (TypedDictType, LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, typ.fallback, mx)
-    elif isinstance(typ, NoneTyp):
+    elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarType):
         return _analyze_member_access(name, typ.upper_bound, mx)
@@ -269,7 +269,7 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
     return UnionType.make_simplified_union(results)
 
 
-def analyze_none_member_access(name: str, typ: NoneTyp, mx: MemberContext) -> Type:
+def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
     is_python_3 = mx.chk.options.python_version[0] >= 3
@@ -332,7 +332,8 @@ def analyze_member_var_access(name: str,
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
-    elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
+    elif (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
+          not mx.is_operator):
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
@@ -429,10 +430,10 @@ def analyze_descriptor_access(instance_type: Type,
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
         owner_type = instance_type.items()[0].ret_type
-        instance_type = NoneTyp()
+        instance_type = NoneType()
     elif isinstance(instance_type, TypeType):
         owner_type = instance_type.item
-        instance_type = NoneTyp()
+        instance_type = NoneType()
     else:
         owner_type = instance_type
 

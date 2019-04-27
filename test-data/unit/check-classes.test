@@ -2494,6 +2494,22 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testGetattrWithGetitem]
+class A:
+    def __getattr__(self, x: str) -> 'A':
+        return A()
+
+a = A()
+a[0]  # E: Value of type "A" is not indexable
+
+[case testGetattrWithCall]
+class A:
+    def __getattr__(self, x: str) -> 'A':
+        return A()
+
+a = A()
+a.y()  # E: "A" not callable
+
 [case testNestedGetattr]
 def foo() -> object:
     def __getattr__() -> None:  # no error because not in a class
@@ -4009,13 +4025,22 @@ class B(A):
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
-[case testClassIgnoreType]
+[case testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored]
 class A:
     x = 0
 class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''
+[out]
+
+[case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
+class A:
+    x = 0
+class B(A):
+    x = ''  # type: ignore
+class C(B):
+    x = ''  # type: ignore
 [out]
 
 [case testInvalidMetaclassStructure]

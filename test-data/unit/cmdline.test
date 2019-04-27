@@ -156,6 +156,14 @@ def f():
     except ZeroDivisionError, err:
         print err
 
+[case testNoConfigFile]
+# cmd: mypy main.py --config-file=
+[file mypy.ini]
+[[mypy]
+warn_unused_ignores = True
+[file main.py]
+# type: ignore
+
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
@@ -385,7 +393,7 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: note: Import of 'a' ignored
+main.py:1: error: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: error: Revealed type is 'Any'
 main.py:4: error: Revealed type is 'Any'
@@ -423,7 +431,7 @@ bla bla
 bla bla
 [out]
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: note: Import of 'error' ignored
+main.py:4: error: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
 main.py:5: error: Revealed type is 'builtins.int'
 main.py:6: error: Revealed type is 'builtins.int'
@@ -1114,7 +1122,7 @@ follow_imports_for_stubs = True
 import math
 math.frobnicate()
 [out]
-main.py:1: note: Import of 'math' ignored
+main.py:1: error: Import of 'math' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testFollowImportStubs2]
@@ -1260,3 +1268,39 @@ import d
 # cmd: mypy a.py --no-sqlite-cache --cache-map a.py a.meta.json a.data.json
 [file a.py]
 [out]
+
+[case testIniFiles]
+# cmd: mypy
+[file mypy.ini]
+[[mypy]
+files = a.py, b.py
+[file a.py]
+fail
+[file b.py]
+fail
+[out]
+b.py:1: error: Name 'fail' is not defined
+a.py:1: error: Name 'fail' is not defined
+
+[case testIniFilesGlobbing]
+# cmd: mypy
+[file mypy.ini]
+[[mypy]
+files = **/*.py
+[file a/b.py]
+fail
+[file c.py]
+fail
+[out]
+a/b.py:1: error: Name 'fail' is not defined
+c.py:1: error: Name 'fail' is not defined
+
+
+[case testIniFilesCmdlineOverridesConfig]
+# cmd: mypy override.py
+[file mypy.ini]
+[[mypy]
+files = config.py
+[out]
+mypy: can't read file 'override.py': No such file or directory
+== Return code: 2

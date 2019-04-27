@@ -11,6 +11,11 @@ if MYPY:
     from typing_extensions import Final
 
 
+# Invalid types
+
+INVALID_TYPE_RAW_ENUM_VALUE = "Invalid type: try using Literal[{}.{}] instead?"  # type: Final
+
+
 # Type checker error message constants --
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final

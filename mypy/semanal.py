@@ -67,7 +67,7 @@ from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
+    TypeTranslator, TypeOfAny, TypeType, NoneType,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -420,7 +420,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                     assert isinstance(defn.type, CallableType)
                     if isinstance(defn.type.ret_type, AnyType):
-                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
+                        defn.type = defn.type.copy_modified(ret_type=NoneType())
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
@@ -3817,6 +3817,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.globals[name] = stnode
 
     def defer(self) -> None:
+        assert not self.options.new_semantic_analyzer
+        raise NotImplementedError('This is only available with --new-semantic-analyzer')
+
+    @property
+    def final_iteration(self) -> bool:
         assert not self.options.new_semantic_analyzer
         raise NotImplementedError('This is only available with --new-semantic-analyzer')
 

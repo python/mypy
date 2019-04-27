@@ -6,7 +6,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 from typing import Tuple, List, Dict, Mapping, Optional, Union, cast
 
 from mypy.types import (
-    Type, TupleType, NoneTyp, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
+    Type, TupleType, NoneType, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
 from mypy.nodes import (

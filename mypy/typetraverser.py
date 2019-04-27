@@ -3,7 +3,7 @@ from typing import Iterable
 from mypy_extensions import trait
 
 from mypy.types import (
-    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneTyp, ErasedType, DeletedType,
+    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
     TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
     Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
     ForwardRef, PlaceholderType, PartialType, RawExpressionType
@@ -22,7 +22,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     def visit_uninhabited_type(self, t: UninhabitedType) -> None:
         pass
 
-    def visit_none_type(self, t: NoneTyp) -> None:
+    def visit_none_type(self, t: NoneType) -> None:
         pass
 
     def visit_erased_type(self, t: ErasedType) -> None:

@@ -97,7 +97,7 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
+    Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, ForwardRef, Overloaded, TypeOfAny, LiteralType,
 )
@@ -891,7 +891,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             return [make_trigger(typ.missing_import_name)]
         return []
 
-    def visit_none_type(self, typ: NoneTyp) -> List[str]:
+    def visit_none_type(self, typ: NoneType) -> List[str]:
         return []
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:

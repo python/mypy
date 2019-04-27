@@ -286,7 +286,7 @@ def f() -> NoReturn:
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
 
-def f() -> NoReturn:  # N: Implicit return in function which does not return
+def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
 [builtins fixtures/dict.pyi]
 
@@ -432,7 +432,7 @@ x + ""
 [file mod.py]
 deliberate syntax error
 [out]
-main:2: note: Import of 'mod' ignored
+main:2: error: Import of 'mod' ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIgnoreMissingImportsFalse]

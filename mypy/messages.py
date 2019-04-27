@@ -20,7 +20,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
@@ -111,11 +111,18 @@ class MessageBuilder:
                file: Optional[str] = None, origin: Optional[Context] = None,
                offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
+        if origin is not None:
+            end_line = origin.end_line
+        elif context is not None:
+            end_line = context.end_line
+        else:
+            end_line = None
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
-                               origin_line=origin.get_line() if origin else None)
+                               origin_line=origin.get_line() if origin else None,
+                               end_line=end_line)
 
     def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
@@ -134,11 +141,6 @@ class MessageBuilder:
         for msg in messages.splitlines():
             self.report(msg, context, 'note', file=file, origin=origin,
                         offset=offset)
-
-    def warn(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
-        """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
 
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
@@ -231,13 +233,17 @@ class MessageBuilder:
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
         elif isinstance(typ, LiteralType):
-            return str(typ)
+            if typ.is_enum_literal():
+                underlying_type = self.format_bare(typ.fallback, verbosity=verbosity)
+                return 'Literal[{}.{}]'.format(underlying_type, typ.value)
+            else:
+                return str(typ)
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
-                                 sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
+                                 sum(isinstance(t, NoneType) for t in typ.items) == 1)
             if print_as_optional:
-                rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
+                rest = [t for t in typ.items if not isinstance(t, NoneType)]
                 return 'Optional[{}]'.format(self.format_bare(rest[0]))
             else:
                 items = []
@@ -248,7 +254,7 @@ class MessageBuilder:
                     return s
                 else:
                     return '<union: {} items>'.format(len(items))
-        elif isinstance(typ, NoneTyp):
+        elif isinstance(typ, NoneType):
             return 'None'
         elif isinstance(typ, AnyType):
             return 'Any'
@@ -430,7 +436,7 @@ class MessageBuilder:
                 # checks, so we manually convert it back.
                 typ_format = self.format(typ)
                 if typ_format == '"object"' and \
-                        any(type(item) == NoneTyp for item in original_type.items):
+                        any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
                     typ_format, self.format(original_type), member, extra), context)
@@ -921,7 +927,7 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list("'%s'" % a for a in abstract_attributes)
+        attrs = format_string_list(["'%s'" % a for a in abstract_attributes])
         self.fail("Cannot instantiate abstract class '%s' with abstract "
                   "attribute%s %s" % (class_name, plural_s(abstract_attributes),
                                    attrs),
@@ -1065,7 +1071,7 @@ class MessageBuilder:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
-        self.note('Redundant cast to {}'.format(self.format(typ)), context)
+        self.fail('Redundant cast to {}'.format(self.format(typ)), context)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
@@ -1156,7 +1162,7 @@ class MessageBuilder:
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
         message = 'Returning Any from function declared to return {}'.format(
             self.format(typ))
-        self.warn(message, context)
+        self.fail(message, context)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):
@@ -1507,8 +1513,7 @@ def plural_s(s: Union[int, Sequence[Any]]) -> str:
         return ''
 
 
-def format_string_list(s: Iterable[str]) -> str:
-    lst = list(s)
+def format_string_list(lst: List[str]) -> str:
     assert len(lst) > 0
     if len(lst) == 1:
         return lst[0]

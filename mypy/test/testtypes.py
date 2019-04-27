@@ -9,8 +9,9 @@ from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.sametypes import is_same_type
 from mypy.types import (
-    UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneTyp, Overloaded,
-    TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny, LiteralType
+    UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
+    Overloaded, TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny,
+    LiteralType,
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -43,7 +44,7 @@ class TypesSuite(Suite):
                          AnyType(TypeOfAny.special_form), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
-        c2 = CallableType([], [], [], NoneTyp(), self.fx.function)
+        c2 = CallableType([], [], [], NoneType(), self.fx.function)
         assert_equal(str(c2), 'def ()')
 
     def test_callable_type_with_default_args(self) -> None:
@@ -87,7 +88,7 @@ class TypesSuite(Suite):
 
         v = [TypeVarDef('Y', 'Y', -1, [], self.fx.o),
              TypeVarDef('X', 'X', -2, [], self.fx.o)]
-        c2 = CallableType([], [], [], NoneTyp(), self.function, name=None, variables=v)
+        c2 = CallableType([], [], [], NoneType(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
 
@@ -310,7 +311,7 @@ class TypeOpsSuite(Suite):
     # true_only / false_only
 
     def test_true_only_of_false_type_is_uninhabited(self) -> None:
-        to = true_only(NoneTyp())
+        to = true_only(NoneType())
         assert_type(UninhabitedType, to)
 
     def test_true_only_of_true_type_is_idempotent(self) -> None:
@@ -344,7 +345,7 @@ class TypeOpsSuite(Suite):
         assert_type(UninhabitedType, fo)
 
     def test_false_only_of_false_type_is_idempotent(self) -> None:
-        always_false = NoneTyp()
+        always_false = NoneType()
         fo = false_only(always_false)
         assert_true(always_false is fo)
 
@@ -451,10 +452,10 @@ class JoinSuite(Suite):
 
     def test_none(self) -> None:
         # Any type t joined with None results in t.
-        for t in [NoneTyp(), self.fx.a, self.fx.o, UnboundType('x'),
+        for t in [NoneType(), self.fx.a, self.fx.o, UnboundType('x'),
                   self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b), self.fx.anyt]:
-            self.assert_join(t, NoneTyp(), t)
+            self.assert_join(t, NoneType(), t)
 
     def test_unbound_type(self) -> None:
         self.assert_join(UnboundType('x'), UnboundType('x'), self.fx.anyt)
@@ -469,7 +470,7 @@ class JoinSuite(Suite):
 
     def test_any_type(self) -> None:
         # Join against 'Any' type always results in 'Any'.
-        for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneTyp(),
+        for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneType(),
                   UnboundType('x'), self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
@@ -710,8 +711,8 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.a, self.fx.o, self.fx.a)
         self.assert_meet(self.fx.a, self.fx.b, self.fx.b)
         self.assert_meet(self.fx.b, self.fx.o, self.fx.b)
-        self.assert_meet(self.fx.a, self.fx.d, NoneTyp())
-        self.assert_meet(self.fx.b, self.fx.c, NoneTyp())
+        self.assert_meet(self.fx.a, self.fx.d, NoneType())
+        self.assert_meet(self.fx.b, self.fx.c, NoneType())
 
     def test_tuples(self) -> None:
         self.assert_meet(self.tuple(), self.tuple(), self.tuple())
@@ -720,14 +721,14 @@ class MeetSuite(Suite):
                          self.tuple(self.fx.a))
         self.assert_meet(self.tuple(self.fx.b, self.fx.c),
                          self.tuple(self.fx.a, self.fx.d),
-                         self.tuple(self.fx.b, NoneTyp()))
+                         self.tuple(self.fx.b, NoneType()))
 
         self.assert_meet(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
                          self.tuple(self.fx.a, self.fx.a))
         self.assert_meet(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
-                         NoneTyp())
+                         NoneType())
 
     def test_function_types(self) -> None:
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
@@ -744,17 +745,17 @@ class MeetSuite(Suite):
     def test_type_vars(self) -> None:
         self.assert_meet(self.fx.t, self.fx.t, self.fx.t)
         self.assert_meet(self.fx.s, self.fx.s, self.fx.s)
-        self.assert_meet(self.fx.t, self.fx.s, NoneTyp())
+        self.assert_meet(self.fx.t, self.fx.s, NoneType())
 
     def test_none(self) -> None:
-        self.assert_meet(NoneTyp(), NoneTyp(), NoneTyp())
+        self.assert_meet(NoneType(), NoneType(), NoneType())
 
-        self.assert_meet(NoneTyp(), self.fx.anyt, NoneTyp())
+        self.assert_meet(NoneType(), self.fx.anyt, NoneType())
 
         # Any type t joined with None results in None, unless t is Any.
         for t in [self.fx.a, self.fx.o, UnboundType('x'), self.fx.t,
                   self.tuple(), self.callable(self.fx.a, self.fx.b)]:
-            self.assert_meet(t, NoneTyp(), NoneTyp())
+            self.assert_meet(t, NoneType(), NoneType())
 
     def test_unbound_type(self) -> None:
         self.assert_meet(UnboundType('x'), UnboundType('x'), self.fx.anyt)
@@ -771,7 +772,7 @@ class MeetSuite(Suite):
 
     def test_dynamic_type(self) -> None:
         # Meet against dynamic type always results in dynamic.
-        for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneTyp(),
+        for t in [self.fx.anyt, self.fx.a, self.fx.o, NoneType(),
                   UnboundType('x'), self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.anyt, t)

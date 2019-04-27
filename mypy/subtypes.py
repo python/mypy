@@ -2,7 +2,7 @@ from typing import List, Optional, Callable, Tuple, Iterator, Set, Union, cast
 from contextlib import contextmanager
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp, function_type,
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType,
@@ -164,9 +164,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_any(self, left: AnyType) -> bool:
         return True
 
-    def visit_none_type(self, left: NoneTyp) -> bool:
+    def visit_none_type(self, left: NoneType) -> bool:
         if state.strict_optional:
-            return (isinstance(self.right, NoneTyp) or
+            return (isinstance(self.right, NoneType) or
                     is_named_instance(self.right, 'builtins.object') or
                     isinstance(self.right, Instance) and self.right.type.is_protocol and
                     not self.right.type.protocol_members)
@@ -184,7 +184,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_instance(self, left: Instance) -> bool:
         if left.type.fallback_to_any:
-            if isinstance(self.right, NoneTyp):
+            if isinstance(self.right, NoneType):
                 # NOTE: `None` is a *non-subclassable* singleton, therefore no class
                 # can by a subtype of it, even with an `Any` fallback.
                 # This special case is needed to treat descriptors in classes with
@@ -495,7 +495,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
                 return False
-            if isinstance(subtype, NoneTyp) and isinstance(supertype, CallableType):
+            if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
             subflags = get_member_flags(member, left.type)
@@ -1073,9 +1073,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
 
-    def visit_none_type(self, left: NoneTyp) -> bool:
+    def visit_none_type(self, left: NoneType) -> bool:
         if state.strict_optional:
-            return (isinstance(self.right, NoneTyp) or
+            return (isinstance(self.right, NoneType) or
                     is_named_instance(self.right, 'builtins.object'))
         return True
 

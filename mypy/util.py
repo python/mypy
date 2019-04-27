@@ -207,7 +207,7 @@ def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
         members = inspect.getmembers(
             cls,
             lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
-        fields_cache[cls] = [x for x, y in members if x != '__weakref__']
+        fields_cache[cls] = [x for x, y in members if x != '__weakref__' and x != '__dict__']
     return fields_cache[cls]
 
 

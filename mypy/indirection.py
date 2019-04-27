@@ -48,7 +48,7 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     def visit_any(self, t: types.AnyType) -> Set[str]:
         return set()
 
-    def visit_none_type(self, t: types.NoneTyp) -> Set[str]:
+    def visit_none_type(self, t: types.NoneType) -> Set[str]:
         return set()
 
     def visit_uninhabited_type(self, t: types.UninhabitedType) -> Set[str]:

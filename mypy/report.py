@@ -419,7 +419,8 @@ class MemoryXmlReporter(AbstractReporter):
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
     # Tabs (#x09) are allowed in XML content.
-    control_fixer = str.maketrans(''.join(chr(i) for i in range(32) if i != 9), '?' * 31)
+    control_fixer = str.maketrans(
+        ''.join(chr(i) for i in range(32) if i != 9), '?' * 31)  # type: Final
 
     def on_file(self,
                 tree: MypyFile,

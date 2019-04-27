@@ -242,6 +242,12 @@ See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.
 
 
+Changelog
+---------
+
+Follow mypy's updates on the blog: http://mypy-lang.blogspot.com/
+
+
 Issue tracker
 -------------
 

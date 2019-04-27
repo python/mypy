@@ -8,7 +8,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
-from mypy.types import Instance, NoneTyp, TypeVarDef, TypeVarType
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType
 from mypy.server.trigger import make_wildcard_trigger
 
 MYPY = False
@@ -97,7 +97,7 @@ class DataclassTransformer:
                 ctx,
                 '__init__',
                 args=[attr.to_argument(info) for attr in attributes if attr.is_in_init],
-                return_type=NoneTyp(),
+                return_type=NoneType(),
             )
 
         if (decorator_arguments['eq'] and info.get('__eq__') is None or

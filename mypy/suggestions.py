@@ -30,7 +30,7 @@ import mypy.checker
 import mypy.types
 from mypy.state import strict_optional_set
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, UnionType, NoneTyp, Instance, is_optional,
+    Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, is_optional,
 )
 from mypy.build import State
 from mypy.nodes import (
@@ -291,7 +291,7 @@ class SuggestionEngine:
             if returns:
                 ret_types = generate_type_combinations(returns)
             else:
-                ret_types = [NoneTyp()]
+                ret_types = [NoneType()]
 
         guesses = [best.copy_modified(ret_type=t) for t in ret_types]
         best = self.find_best(node, guesses)

@@ -39,7 +39,7 @@ Every value stored there must be JSON-serializable.
 
 import types
 
-from abc import abstractmethod
+from abc import abstractmethod, abstractproperty
 from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait
 
@@ -259,6 +259,14 @@ class SemanticAnalyzerPluginInterface:
         """Call this to defer the processing of the current node.
 
         This will request an additional iteration of semantic analysis.
+        Only available with new semantic analyzer.
+        """
+        raise NotImplementedError
+
+    @abstractproperty
+    def final_iteration(self) -> bool:
+        """Is this the final iteration of semantic analysis?
+
         Only available with new semantic analyzer.
         """
         raise NotImplementedError

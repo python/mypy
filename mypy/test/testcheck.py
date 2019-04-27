@@ -85,6 +85,14 @@ typecheck_files = [
     'check-newsemanal.test',
 ]
 
+# Tests that use Python 3.8-only AST features (like expression-scoped ignores):
+if sys.version_info >= (3, 8):
+    typecheck_files.append('check-38.test')
+
+# Special tests for platforms with case-insensitive filesystems.
+if sys.platform in ('darwin', 'win32'):
+    typecheck_files.append('check-modules-case.test')
+
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files

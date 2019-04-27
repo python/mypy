@@ -2180,7 +2180,7 @@ class State:
             # those errors to avoid spuriously flagging them as unused ignores.
             if self.meta:
                 self.verify_dependencies(suppressed_only=True)
-            self.manager.errors.generate_unused_ignore_notes(self.xpath)
+            self.manager.errors.generate_unused_ignore_errors(self.xpath)
 
 
 # Module import and diagnostic glue
@@ -2376,7 +2376,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
     manager.errors.set_file(caller_state.xpath, caller_state.id)
     manager.errors.report(line, 0,
                           "Import of '%s' ignored" % (id,),
-                          severity='note')
+                          severity='error')
     manager.errors.report(line, 0,
                           "(Using --follow-imports=error, module not passed on command line)",
                           severity='note', only_once=True)
@@ -2392,7 +2392,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
     manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
-                          severity='note', only_once=True)
+                          severity='error', only_once=True)
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
                           severity='note', only_once=True)
