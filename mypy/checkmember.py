@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional, TypeVar
+from typing import cast, Callable, List, Optional, TypeVar, Union
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
@@ -764,25 +764,32 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 
     # We take the type from whichever of __init__ and __new__ is first
     # in the MRO, preferring __init__ if there is a tie.
-    init_method = info.get_method('__init__')
-    new_method = info.get_method('__new__')
-    if not init_method:
+    init_method = info.get('__init__')
+    new_method = info.get('__new__')
+    if not init_method or not is_valid_constructor(init_method.node):
         # Must be an invalid class definition.
         return AnyType(TypeOfAny.from_error)
     # There *should* always be a __new__ method except the test stubs
     # lack it, so just copy init_method in that situation
     new_method = new_method or init_method
+    if not is_valid_constructor(new_method.node):
+        # Must be an invalid class definition.
+        return AnyType(TypeOfAny.from_error)
 
-    init_index = info.mro.index(init_method.info)
-    new_index = info.mro.index(new_method.info)
+    # The two is_valid_constructor() checks ensure this.
+    assert isinstance(new_method.node, (FuncBase, Decorator))
+    assert isinstance(init_method.node, (FuncBase, Decorator))
+
+    init_index = info.mro.index(init_method.node.info)
+    new_index = info.mro.index(new_method.node.info)
 
     fallback = info.metaclass_type or builtin_type('builtins.type')
     if init_index < new_index:
-        method = init_method
+        method = init_method.node  # type: Union[FuncBase, Decorator]
     elif init_index > new_index:
-        method = new_method
+        method = new_method.node
     else:
-        if init_method.info.fullname() == 'builtins.object':
+        if init_method.node.info.fullname() == 'builtins.object':
             # Both are defined by object.  But if we've got a bogus
             # base class, we can't know for sure, so check for that.
             if info.fallback_to_any:
@@ -798,17 +805,34 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
         # typeshed (#5647).
-        method = init_method
+        method = init_method.node
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
-    return type_object_type_from_function(method, info, fallback)
+    if isinstance(method, FuncBase):
+        t = function_type(method, fallback)
+    else:
+        assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
+        t = method.type
+    return type_object_type_from_function(t, info, method.info, fallback)
 
 
-def type_object_type_from_function(init_or_new: FuncBase,
+def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
+    """Does this node represents a valid constructor method?
+
+    This includes normal functions, overloaded functions, and decorators
+    that return a callable type.
+    """
+    if isinstance(n, FuncBase):
+        return True
+    if isinstance(n, Decorator):
+        return isinstance(n.type, FunctionLike)
+    return False
+
+
+def type_object_type_from_function(signature: FunctionLike,
                                    info: TypeInfo,
+                                   def_info: TypeInfo,
                                    fallback: Instance) -> FunctionLike:
-    signature = bind_self(function_type(init_or_new, fallback))
-
     # The __init__ method might come from a generic superclass
     # (init_or_new.info) with type variables that do not map
     # identically to the type variables of the class being constructed
@@ -818,10 +842,11 @@ def type_object_type_from_function(init_or_new: FuncBase,
     #   class B(A[List[T]], Generic[T]): pass
     #
     # We need to first map B's __init__ to the type (List[T]) -> None.
+    signature = bind_self(signature)
     signature = cast(FunctionLike,
-                     map_type_from_supertype(signature, info, init_or_new.info))
+                     map_type_from_supertype(signature, info, def_info))
     special_sig = None  # type: Optional[str]
-    if init_or_new.info.fullname() == 'builtins.dict':
+    if def_info.fullname() == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'
 

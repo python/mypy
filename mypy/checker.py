@@ -3124,6 +3124,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)
 
+        if e.func.info and e.func.name() in ('__init__', '__new__'):
+            if e.type and not isinstance(e.type, (FunctionLike, AnyType)):
+                self.fail(message_registry.BAD_CONSTRUCTOR_TYPE, e)
+
     def check_for_untyped_decorator(self,
                                     func: FuncDef,
                                     dec_type: Type,
