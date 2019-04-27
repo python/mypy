@@ -813,14 +813,13 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     else:
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
-    signature = bind_self(t)
-    return type_object_type_from_function(signature, info, method.info, fallback)
+    return type_object_type_from_function(t, info, method.info, fallback)
 
 
 def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
     """Does this node represents a valid constructor method?
 
-    This includes nomral functions, overloaded functions, and decorators
+    This includes normal functions, overloaded functions, and decorators
     that return a callable type.
     """
     if isinstance(n, FuncBase):
@@ -843,6 +842,7 @@ def type_object_type_from_function(signature: FunctionLike,
     #   class B(A[List[T]], Generic[T]): pass
     #
     # We need to first map B's __init__ to the type (List[T]) -> None.
+    signature = bind_self(signature)
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, def_info))
     special_sig = None  # type: Optional[str]
