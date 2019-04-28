@@ -1138,8 +1138,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                               not is_unexpected_arg_error):
                 # No actual for a mandatory named formal
                 if messages:
-                    argname = callee.arg_names[i]
-                    assert argname is not None
+                    argname = callee.arg_names[i] or "?"
                     messages.missing_named_argument(callee, context, argname)
                 ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
