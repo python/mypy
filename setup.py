@@ -173,9 +173,11 @@ setup(name='mypy',
                                         ]},
       classifiers=classifiers,
       cmdclass=cmdclass,
-      install_requires = ['typed-ast >= 1.3.1, < 1.4.0',
+      # When changing this, also update test-requirements.txt.
+      install_requires = ['typed-ast >= 1.3.5, < 1.4.0',
                           'mypy_extensions >= 0.4.0, < 0.5.0',
                           ],
+      # Same here.
       extras_require = {
           'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',
       },
