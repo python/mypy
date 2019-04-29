@@ -1991,10 +1991,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 for_list.init(expr_reg, target_type, reverse=True)
                 return for_list
 
+        type_checker = self.graph[self.module_name].type_checker()
+
         # Default to a generic for loop.
         expr_reg = self.accept(expr)
         for_obj = ForIterable(self, index, body_block, loop_exit, line, nested)
-        for_obj.init(expr_reg)
+        _, inferred_item_type = type_checker.analyze_iterable_item_type(expr)
+        item_type = self.type_to_rtype(inferred_item_type)
+        for_obj.init(expr_reg, item_type)
         return for_obj
 
     def visit_break_stmt(self, node: BreakStmt) -> None:

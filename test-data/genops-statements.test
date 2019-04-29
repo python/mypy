@@ -289,7 +289,7 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0, r1 :: object
-    key, r2 :: int
+    r2, key :: int
     r3, r4 :: object
     r5 :: int
     r6 :: bool
@@ -329,7 +329,7 @@ def sum_over_even_values(d):
     r0 :: short_int
     s :: int
     r1, r2 :: object
-    key, r3 :: int
+    r3, key :: int
     r4, r5 :: object
     r6 :: int
     r7 :: short_int
@@ -854,7 +854,7 @@ def g(x):
     i :: int
     r0 :: short_int
     r1, r2 :: object
-    n, r3 :: int
+    r3, n :: int
     r4, r5 :: short_int
     r6 :: bool
     r7 :: None
@@ -900,7 +900,7 @@ def f(a, b):
     r4 :: bool
     r5, r6 :: object
     x, r7 :: int
-    y, r8, r9 :: bool
+    r8, y, r9 :: bool
     r10, r11, r12 :: short_int
     r13 :: bool
     r14 :: None
@@ -945,7 +945,7 @@ def g(a, b):
     z :: int
     r5 :: object
     r6 :: short_int
-    r7, r8, x, r9 :: bool
+    r7, r8, r9, x :: bool
     r10 :: object
     y, r11 :: int
     r12 :: bool

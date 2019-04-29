@@ -80,7 +80,7 @@ class ForIterable(ForGenerator):
         # Create a new cleanup block for when the loop is finished.
         return True
 
-    def init(self, expr_reg: Value) -> None:
+    def init(self, expr_reg: Value, target_type: RType) -> None:
         # Define targets to contain the expression, along with the iterator that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
@@ -88,6 +88,7 @@ class ForIterable(ForGenerator):
         iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
+        self.target_type = target_type
 
     def gen_condition(self) -> None:
         # We call __next__ on the iterator and check to see if the return value
@@ -103,7 +104,11 @@ class ForIterable(ForGenerator):
         # Assign the value obtained from __next__ to the
         # lvalue so that it can be referenced by code in the body of the loop.
         builder = self.builder
-        builder.assign(builder.get_assignment_target(self.index), self.next_reg, self.line)
+        line = self.line
+        # We unbox here so that iterating with tuple unpacking generates a tuple based
+        # unpack instead of an iterator based one.
+        next_reg = builder.unbox_or_cast(self.next_reg, self.target_type, line)
+        builder.assign(builder.get_assignment_target(self.index), next_reg, line)
 
     def gen_step(self) -> None:
         # Nothing to do here, since we get the next item as part of gen_condition().
