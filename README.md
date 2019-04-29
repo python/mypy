@@ -71,7 +71,7 @@ In Ubuntu, Mint and Debian you can install Python 3 like this:
 
     $ sudo apt-get install python3 python3-pip
 
-For other Linux flavors, OS X and Windows, packages are available at
+For other Linux flavors, macOS and Windows, packages are available at
 
   http://www.python.org/getit/
 
@@ -155,7 +155,7 @@ dependencies, including the `typing` module, will be installed to
 system-dependent locations.  Sometimes the script directory will not
 be in `PATH`, and you have to add the target directory to `PATH`
 manually or create a symbolic link to the script.  In particular, on
-Mac OS X, the script may be installed under `/Library/Frameworks`:
+macOS, the script may be installed under `/Library/Frameworks`:
 
     /Library/Frameworks/Python.framework/Versions/<version>/bin
 
@@ -264,7 +264,7 @@ Compiled version of mypy
 We have built an compiled version of mypy using the [mypyc
 compiler](https://github.com/mypyc/mypyc) for mypy-annotated Python
 code. It is approximately 4 times faster than interpreted mypy and is
-available (and the default) for 64-bit Windows, OS X, and Linux.
+available (and the default) for 64-bit Windows, macOS, and Linux.
 
 To install an interpreted mypy instead, use:
 
