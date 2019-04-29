@@ -88,6 +88,7 @@ dir/a.py:1: error: Name 'undef' is not defined
 undef
 [out]
 sub.pkg is not a valid Python package name
+== Return code: 2
 
 [case testBadFileEncoding]
 # cmd: mypy a.py
