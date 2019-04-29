@@ -270,7 +270,7 @@ To install an interpreted mypy instead, use:
 
     $ python3 -m pip install --no-binary mypy -U mypy
 
-If you wish to test out the compiled version of mypy for development
+If you wish to test out the compiled version of a development
 version of mypy, you can directly install a binary from
 https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
 
