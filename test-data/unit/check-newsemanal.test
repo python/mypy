@@ -2179,12 +2179,6 @@ else:
     def f(x) -> None:
         y()  # E: "str" not callable
 
-[case testNewAnalyzerClassMemberRedefinition]
-class C:
-    def __init__(self) -> None:
-        self.foo = 12
-        self.foo: int = 12  # E: Attribute 'foo' already defined on line 3
-
 [case testNewAnalyzerFirstAliasTargetWins]
 if int():
     Alias = DesiredTarget
