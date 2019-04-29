@@ -30,17 +30,20 @@ import mypy.checker
 import mypy.types
 from mypy.state import strict_optional_set
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, is_optional,
+    Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType, is_optional,
+    TypeStrVisitor,
 )
-from mypy.build import State
+from mypy.build import State, Graph
 from mypy.nodes import (
     ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
     SymbolNode, TypeInfo, Node, Expression, ReturnStmt,
+    reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.server.target import module_prefix, split_target
 from mypy.plugin import Plugin, ChainedPlugin, FunctionContext, MethodContext
 from mypy.traverser import TraverserVisitor
+from mypy.checkexpr import has_any_type
 
 from mypy.join import join_types, join_type_list
 from mypy.sametypes import is_same_type
@@ -49,6 +52,7 @@ from contextlib import contextmanager
 
 import itertools
 import json
+import os
 
 Callsite = NamedTuple(
     'Callsite',
@@ -64,6 +68,9 @@ class SuggestionPlugin(Plugin):
     """Plugin that records all calls to a given target."""
 
     def __init__(self, target: str) -> None:
+        if target.endswith(('.__new__', '.__init__')):
+            target = target.rsplit('.', 1)[0]
+
         self.target = target
         # List of call sites found by dmypy suggest:
         # (path, line, <arg kinds>, <arg names>, <arg types>)
@@ -135,19 +142,28 @@ def is_implicit_any(typ: Type) -> bool:
 class SuggestionEngine:
     """Engine for finding call sites and suggesting signatures."""
 
-    def __init__(self, fgmanager: FineGrainedBuildManager):
+    def __init__(self, fgmanager: FineGrainedBuildManager,
+                 json: bool,
+                 no_errors: bool = False,
+                 no_any: bool = False) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
         self.graph = fgmanager.graph
 
-    def suggest(self, function: str, give_json: bool) -> str:
+        self.give_json = json
+        self.no_errors = no_errors
+        self.no_any = no_any
+
+        self.max_guesses = 16
+
+    def suggest(self, function: str) -> str:
         """Suggest an inferred type for function."""
         with self.restore_after(function):
             with self.with_export_types():
                 suggestion = self.get_suggestion(function)
 
-        if give_json:
+        if self.give_json:
             return self.json_suggestion(function, suggestion)
         else:
             return suggestion
@@ -195,7 +211,8 @@ class SuggestionEngine:
             [AnyType(TypeOfAny.unannotated) for a in fdef.arg_kinds],
             fdef.arg_kinds,
             fdef.arg_names,
-            AnyType(TypeOfAny.unannotated),
+            # We call this a special form so that has_any_type doesn't consider it to be a real any
+            AnyType(TypeOfAny.special_form),
             self.builtin_type('builtins.function'))
 
     def get_args(self, is_method: bool,
@@ -224,7 +241,9 @@ class SuggestionEngine:
                 types.append(generate_type_combinations(all_arg_types))
             else:
                 # If we don't have anything, we'll try Any and object
-                types.append([AnyType(TypeOfAny.explicit), self.builtin_type('builtins.object')])
+                # (Actually object usually is bad for downstream consumers...)
+                # types.append([AnyType(TypeOfAny.explicit), self.builtin_type('builtins.object')])
+                types.append([AnyType(TypeOfAny.explicit)])
         return types
 
     def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
@@ -254,15 +273,26 @@ class SuggestionEngine:
 
         return collector_plugin.mystery_hits, errors
 
-    def find_best(self, func: FuncDef, guesses: List[CallableType]) -> CallableType:
+    def filter_options(self, guesses: List[CallableType]) -> List[CallableType]:
+        """Apply any configured filters to the possible guesses.
+
+        Currently the only option is disabling Anys."""
+        return [
+            t for t in guesses
+            if not self.no_any or not callable_has_any(t)
+        ]
+
+    def find_best(self, func: FuncDef, guesses: List[CallableType]) -> Tuple[CallableType, int]:
         """From a list of possible function types, find the best one.
 
         For best, we want the fewest errors, then the best "score" from score_callable.
         """
+        if not guesses:
+            raise SuggestionFailure("No guesses that match criteria!")
         errors = {guess: self.try_type(func, guess) for guess in guesses}
         best = min(guesses,
                    key=lambda s: (count_errors(errors[s]), score_callable(s)))
-        return best
+        return best, count_errors(errors[best])
 
     def get_suggestion(self, function: str) -> str:
         """Compute a suggestion for a function.
@@ -273,6 +303,9 @@ class SuggestionEngine:
         mod, _, node = self.find_node(function)
         callsites, orig_errors = self.get_callsites(node)
 
+        if self.no_errors and orig_errors:
+            raise SuggestionFailure("Function does not typecheck.")
+
         # FIXME: what about static and class methods?
         is_method = bool(node.info)
 
@@ -282,7 +315,10 @@ class SuggestionEngine:
                 self.get_trivial_type(node),
                 self.get_default_arg_types(graph[mod], node),
                 callsites)
-        best = self.find_best(node, guesses)
+        guesses = self.filter_options(guesses)
+        if len(guesses) > self.max_guesses:
+            raise SuggestionFailure("Too many possibilities!")
+        best, _ = self.find_best(node, guesses)
 
         # Now try to find the return type!
         self.try_type(node, best)
@@ -294,9 +330,13 @@ class SuggestionEngine:
                 ret_types = [NoneType()]
 
         guesses = [best.copy_modified(ret_type=t) for t in ret_types]
-        best = self.find_best(node, guesses)
+        guesses = self.filter_options(guesses)
+        best, errors = self.find_best(node, guesses)
 
-        return format_callable(is_method, best)
+        if self.no_errors and errors:
+            raise SuggestionFailure("No annotation without errors")
+
+        return self.format_callable(mod, is_method, best)
 
     def format_args(self,
                     arg_kinds: List[List[int]],
@@ -305,7 +345,7 @@ class SuggestionEngine:
         args = []  # type: List[str]
         for i in range(len(arg_types)):
             for kind, name, typ in zip(arg_kinds[i], arg_names[i], arg_types[i]):
-                arg = format_type(typ)
+                arg = self.format_type(None, typ)
                 if kind == ARG_STAR:
                     arg = '*' + arg
                 elif kind == ARG_STAR2:
@@ -368,6 +408,7 @@ class SuggestionEngine:
         try:
             res = self.fgmanager.trigger(func.fullname())
             # if res:
+            #     print('===', typ)
             #     print('\n'.join(res))
             return res
         finally:
@@ -402,29 +443,85 @@ class SuggestionEngine:
     def json_suggestion(self, function: str, suggestion: str) -> str:
         """Produce a json blob for a suggestion suitable for application by pyannotate."""
         mod, func_name, node = self.find_node(function)
+
+        # pyannotate works with either paths relative to where the
+        # module is rooted or with absolute paths. We produce absolute
+        # paths because it is simpler.
+        path = os.path.abspath(self.graph[mod].xpath)
+
         obj = {
             'type_comments': [suggestion],
             'line': node.line,
-            'path': self.graph[mod].xpath,
+            'path': path,
             'func_name': func_name,
             'samples': 0
         }
         return json.dumps([obj], sort_keys=True)
 
+    def format_callable(self,
+                        cur_module: Optional[str], is_method: bool, typ: CallableType) -> str:
+        """Format a callable type in a way suitable as an annotation... kind of"""
+        start = int(is_method)
+        s = "({}) -> {}".format(
+            ", ".join([self.format_type(cur_module, t) for t in typ.arg_types[start:]]),
+            self.format_type(cur_module, typ.ret_type))
+        return s
 
-def format_callable(is_method: bool, typ: CallableType) -> str:
-    """Format a callable type in a way suitable as an annotation... kind of"""
-    start = int(is_method)
-    s = "({}) -> {}".format(
-        ", ".join([format_type(t) for t in typ.arg_types[start:]]),
-        format_type(typ.ret_type))
-    return s.replace("builtins.", "")
+    def format_type(self, cur_module: Optional[str], typ: Type) -> str:
+        return typ.accept(TypeFormatter(cur_module, self.graph))
 
 
-def format_type(typ: Type) -> str:
-    # FIXME: callable types are super busted, maybe other things too
-    s = str(typ)
-    return s.replace("*", "")  # Get rid of "inferred" indicators.
+class TypeFormatter(TypeStrVisitor):
+    """Visitor used to format types
+    """
+    # TODO: Generate valid string representation for callable types.
+    # TODO: Probably a bunch more
+    def __init__(self, module: Optional[str], graph: Graph) -> None:
+        super().__init__()
+        self.module = module
+        self.graph = graph
+
+    def visit_instance(self, t: Instance) -> str:
+        if t.type is not None:
+            s = t.type.fullname() or t.type.name() or None
+        else:
+            s = None
+        if s is None:
+            return '<???>'
+        if s in reverse_builtin_aliases:
+            s = reverse_builtin_aliases[s]
+
+        mod_obj = split_target(self.graph, s)
+        assert mod_obj
+        mod, obj = mod_obj
+
+        # If a class is imported into the current module, rewrite the reference
+        # to point to the current module. This helps the annotation tool avoid
+        # inserting redundant imports when a type has been reexported.
+        if self.module:
+            parts = obj.split('.')  # need to split the object part if it is a nested class
+            tree = self.graph[self.module].tree
+            if tree and parts[0] in tree.names:
+                mod = self.module
+
+        if (mod, obj) == ('builtins', 'tuple'):
+            mod, obj = 'typing', 'Tuple[' + t.args[0].accept(self) + ', ...]'
+        elif t.args != []:
+            obj += '[{}]'.format(self.list_str(t.args))
+
+        if mod == 'builtins':
+            return obj
+        else:
+            delim = '.' if '.' not in obj else ':'
+            return mod + delim + obj
+
+    def visit_tuple_type(self, t: TupleType) -> str:
+        if t.partial_fallback and t.partial_fallback.type:
+            fallback_name = t.partial_fallback.type.fullname()
+            if fallback_name != 'builtins.tuple':
+                return t.partial_fallback.accept(self)
+        s = self.list_str(t.items)
+        return 'Tuple[{}]'.format(s)
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:
@@ -462,6 +559,12 @@ def score_type(t: Type) -> int:
 
 def score_callable(t: CallableType) -> int:
     return sum([score_type(x) for x in t.arg_types])
+
+
+def callable_has_any(t: CallableType) -> int:
+    # We count a bare None in argument position as Any, since
+    # pyannotate turns it into Optional[Any]
+    return any(isinstance(at, NoneType) for at in t.arg_types) or has_any_type(t)
 
 
 T = TypeVar('T')

@@ -265,10 +265,15 @@ class FineGrainedSuite(DataSuite):
     def maybe_suggest(self, step: int, server: Server, src: str) -> List[str]:
         output = []  # type: List[str]
         targets = self.get_suggest(src, step)
-        for flag, target in targets:
-            json = flag.strip() == '--json'
-            callsites = flag.strip() == '--callsites'
-            res = cast(Dict[str, Any], server.cmd_suggest(target.strip(), json, callsites))
+        for flags, target in targets:
+            json = '--json' in flags
+            callsites = '--callsites' in flags
+            no_any = '--no-any' in flags
+            no_errors = '--no-errors' in flags
+            res = cast(Dict[str, Any],
+                       server.cmd_suggest(
+                           target.strip(), json=json, no_any=no_any, no_errors=no_errors,
+                           callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
@@ -276,7 +281,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_./?^ ]+ )?([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
+        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./?^ ]+ )*([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 

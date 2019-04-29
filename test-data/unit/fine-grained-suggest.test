@@ -15,10 +15,10 @@ def bar() -> None:
     foo(**kwds)
 [builtins fixtures/dict.pyi]
 [out]
-bar.py:3: (builtins.str)
-bar.py:4: (arg=builtins.str)
-bar.py:6: (*builtins.list[builtins.str])
-bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+bar.py:3: (str)
+bar.py:4: (arg=str)
+bar.py:6: (*typing.List[str])
+bar.py:8: (**typing.Dict[str, str])
 ==
 
 [case testSuggestCallsitesStep2]
@@ -39,10 +39,10 @@ def bar() -> None:
 [builtins fixtures/dict.pyi]
 [out]
 ==
-bar.py:3: (builtins.str)
-bar.py:4: (arg=builtins.str)
-bar.py:6: (*builtins.list[builtins.str])
-bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+bar.py:3: (str)
+bar.py:4: (arg=str)
+bar.py:6: (*typing.List[str])
+bar.py:8: (**typing.Dict[str, str])
 
 [case testSuggestInferFunc1]
 # flags: --strict-optional
@@ -85,6 +85,94 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (str) -> str
+==
+
+[case testSuggestInferFuncAny1]
+# suggest: foo.foo
+# suggest: foo.bar
+[file foo.py]
+def foo(arg):
+    return arg.x
+def bar(arg):
+    pass
+[file bar.py]
+from foo import bar
+bar(None)
+[out]
+(Any) -> Any
+(None) -> None
+==
+
+[case testSuggestInferFuncAny2]
+# suggest: --no-any foo.foo
+# suggest: --no-any foo.bar
+[file foo.py]
+def foo(arg):
+    return arg.x
+def bar(arg):
+    pass
+[file bar.py]
+from foo import bar
+bar(None)
+[out]
+No guesses that match criteria!
+No guesses that match criteria!
+==
+
+[case testSuggestInferTuple]
+# suggest: --no-any foo.foo
+[file foo.py]
+def foo():
+    return 1, "1"
+[out]
+() -> Tuple[int, str]
+==
+
+[case testSuggestInferNamedTuple]
+# suggest: foo.foo
+[file foo.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+def foo():
+    return N(1)
+[out]
+() -> foo.N
+==
+
+[case testSuggestReexportNaming]
+# suggest: foo.foo
+[file foo.py]
+from bar import A
+def foo(x):
+    return A(), A.C()
+[file bar.py]
+from baz import A
+[file baz.py]
+class A:
+    class C:
+        ...
+class B: ...
+
+[file caller.py]
+from foo import foo
+from baz import B
+foo(B())
+
+[out]
+(baz.B) -> Tuple[foo.A, foo:A.C]
+==
+
+[case testSuggestInferInit]
+# suggest: foo.Foo.__init__
+[file foo.py]
+class Foo:
+    def __init__(self, arg):
+        self.arg = arg
+[file bar.py]
+from foo import Foo
+Foo('lol')
+[out]
+(str) -> None
 ==
 
 [case testSuggestInferMethod1]

@@ -193,22 +193,28 @@ $ dmypy suggest foo.foo.baz
 Object foo.foo is not a class
 == Return code: 2
 $ dmypy suggest --callsites foo.foo
-bar.py:3: (builtins.str)
-bar.py:4: (arg=builtins.str)
-bar.py:6: (*builtins.list[builtins.str])
-bar.py:8: (**builtins.dict[builtins.str, builtins.str])
+bar.py:3: (str)
+bar.py:4: (arg=str)
+$ dmypy suggest foo.foo
+(str) -> int
+$ {python} -c "import shutil; shutil.copy('foo.py.2', 'foo.py')"
+$ dmypy check foo.py bar.py
+bar.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+== Return code: 1
 [file foo.py]
 def foo(arg):
     return 12
 class Bar:
     def bar(self): pass
 var = 0
+[file foo.py.2]
+def foo(arg: str) -> int:
+    return 12
+class Bar:
+    def bar(self) -> None: pass
+var = 0
 [file bar.py]
 from foo import foo
 def bar() -> None:
-    foo('abc')
+    x = foo('abc')  # type: str
     foo(arg='xyz')
-    args = ['']
-    foo(*args)
-    kwds = {'arg': ''}
-    foo(**kwds)
