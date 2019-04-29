@@ -23,7 +23,10 @@ class str(Sequence[str]):
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> str: pass
     def format(self, *args) -> str: pass
-class bytes: pass
+class bytes(Sequence[int]):
+    def __iter__(self) -> Iterator[int]: pass
+    def __contains__(self, other: object) -> bool: pass
+    def __getitem__(self, item: int) -> int: pass
 class bytearray: pass
 class tuple(Generic[T]): pass
 class function: pass
