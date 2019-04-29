@@ -5844,6 +5844,12 @@ class C:
         self.foo = 12
         self.foo: int = 12  # E: Attribute 'foo' already defined on line 3
 
+[case testMemberRedefinitionDefinedInClass]
+class C:
+    foo = 12
+    def __init__(self) -> None:
+        self.foo: int = 12  # E: Attribute 'foo' already defined on line 2
+
 [case testAbstractInit]
 from abc import abstractmethod, ABCMeta
 class A(metaclass=ABCMeta):
