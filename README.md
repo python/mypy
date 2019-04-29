@@ -258,18 +258,21 @@ If you have any questions about using mypy or types, please ask
 in the typing gitter instead: https://gitter.im/python/typing
 
 
-mypy_mypyc
-----------
+Compiled version of mypy
+------------------------
 
-We have built an experimental compiled version of mypy using the
-[mypyc compiler](https://github.com/mypyc/mypyc) for mypy-annotated
-Python code. It is approximately 4 times faster than interpreted mypy.
+We have built an compiled version of mypy using the [mypyc
+compiler](https://github.com/mypyc/mypyc) for mypy-annotated Python
+code. It is approximately 4 times faster than interpreted mypy and is
+available (and the default) for 64-bit Windows, OS X, and Linux.
 
-If you wish to test out the compiled version of mypy, and are running
-OS X or Linux, you can directly install a binary from
+To install an interpreted mypy instead, use:
+
+    $ python3 -m pip install --no-binary mypy -U mypy
+
+If you wish to test out the compiled version of mypy for development
+version of mypy, you can directly install a binary from
 https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
-
-Compiled mypy packages on PyPI are Coming Soon.
 
 
 Help wanted
