@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from typing import Optional, List, Set, Tuple, cast
 
-from mypy.types import Type, AnyType, TypeOfAny, TypedDictType
+from mypy.types import Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES
 from mypy.nodes import (
     CallExpr, TypedDictExpr, Expression, NameExpr, Context, StrExpr, BytesExpr, UnicodeExpr,
     ClassDef, RefExpr, TypeInfo, AssignmentStmt, PassStmt, ExpressionStmt, EllipsisExpr, TempNode,
@@ -51,13 +51,12 @@ class TypedDictAnalyzer:
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
-                if (base_expr.fullname == 'mypy_extensions.TypedDict' or
-                        self.is_typeddict(base_expr)):
+                if base_expr.fullname in TPDICT_NAMES or self.is_typeddict(base_expr):
                     possible = True
         if possible:
             if (len(defn.base_type_exprs) == 1 and
                     isinstance(defn.base_type_exprs[0], RefExpr) and
-                    defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
+                    defn.base_type_exprs[0].fullname in TPDICT_NAMES):
                 # Building a new TypedDict
                 fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
                 if fields is None:
@@ -69,7 +68,7 @@ class TypedDictAnalyzer:
                 return True, info
             # Extending/merging existing TypedDicts
             if any(not isinstance(expr, RefExpr) or
-                   expr.fullname != 'mypy_extensions.TypedDict' and
+                   expr.fullname not in TPDICT_NAMES and
                    not self.is_typeddict(expr) for expr in defn.base_type_exprs):
                 self.fail("All bases of a new TypedDict must be TypedDict types", defn)
             typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
@@ -191,7 +190,7 @@ class TypedDictAnalyzer:
         if not isinstance(callee, RefExpr):
             return False, None
         fullname = callee.fullname
-        if fullname != 'mypy_extensions.TypedDict':
+        if fullname not in TPDICT_NAMES:
             return False, None
         res = self.parse_typeddict_args(call)
         if res is None:
@@ -307,7 +306,9 @@ class TypedDictAnalyzer:
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type],
                                  required_keys: Set[str]) -> TypeInfo:
-        fallback = self.api.named_type_or_none('mypy_extensions._TypedDict', [])
+        # Prefer typing_extensions if available.
+        fallback = (self.api.named_type_or_none('typing_extensions._TypedDict', []) or
+                    self.api.named_type_or_none('mypy_extensions._TypedDict', []))
         assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
