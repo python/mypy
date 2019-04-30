@@ -6,7 +6,6 @@ language: python
 cache: pip
 # newer python versions are available only on xenial (while some older only on trusty) Ubuntu distribution
 dist: xenial
-sudo: required
 
 env:
   TOXENV=py
