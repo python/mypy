@@ -873,7 +873,7 @@ b2: b2t              # E: Invalid type "__main__.b2t"
 c2: c2t
 reveal_type(c2)      # E: Revealed type is 'Any'
 d2: d2t              # E: Invalid type "__main__.d2t"
-[builtins fixtures/complex.pyi]
+[builtins fixtures/complex_tuple.pyi]
 [out]
 
 [case testLiteralDisallowComplexExpressions]
