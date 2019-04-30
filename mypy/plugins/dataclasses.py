@@ -300,7 +300,7 @@ class DataclassTransformer:
                     Context(line=attr.line, column=attr.column),
                 )
 
-            found_default = found_default or attr.has_default and attr.is_in_init
+            found_default = found_default or (attr.has_default and attr.is_in_init)
 
         return all_attrs
 
