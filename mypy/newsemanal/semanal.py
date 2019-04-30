@@ -2563,6 +2563,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if cur_node and is_final:
                 # Overrides will be checked in type checker.
                 self.fail("Cannot redefine an existing name as final", lval)
+            # On first encounter with this definition, if this attribute was defined before
+            # with an inferred type and it's marked with an explicit type now, give an error.
+            if (not lval.node and cur_node and isinstance(cur_node.node, Var) and
+                    cur_node.node.is_inferred and explicit_type):
+                self.attribute_already_defined(lval.name, lval, cur_node)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
@@ -4298,9 +4303,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-    def name_already_defined(self, name: str, ctx: Context,
-                             original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
-                             ) -> None:
+    def already_defined(self, name: str, ctx: Context,
+                        original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None, *,
+                        noun: str) -> None:
         if isinstance(original_ctx, SymbolTableNode):
             node = original_ctx.node  # type: Optional[SymbolNode]
         elif isinstance(original_ctx, SymbolNode):
@@ -4319,7 +4324,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("Name '{}' already defined{}".format(unmangle(name), extra_msg), ctx)
+        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx)
+
+    def name_already_defined(self, name: str, ctx: Context,
+                             original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                             ) -> None:
+        self.already_defined(name, ctx, original_ctx, noun='Name')
+
+    def attribute_already_defined(self, name: str, ctx: Context,
+                                  original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                                  ) -> None:
+        self.already_defined(name, ctx, original_ctx, noun='Attribute')
 
     def is_local_name(self, name: str) -> bool:
         """Does name look like reference to a definition in the current module?"""
