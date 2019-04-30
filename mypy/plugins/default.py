@@ -9,7 +9,7 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literal
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
-    TypeVarType
+    TypeVarType, TPDICT_FB_NAMES
 )
 
 
@@ -34,13 +34,13 @@ class DefaultPlugin(Plugin):
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.setdefault':
+        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.pop':
+        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
             return typed_dict_pop_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.update':
+        elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
             return typed_dict_update_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.__delitem__':
+        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
             return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
@@ -54,11 +54,11 @@ class DefaultPlugin(Plugin):
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
-        elif fullname == 'mypy_extensions._TypedDict.setdefault':
+        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_callback
-        elif fullname == 'mypy_extensions._TypedDict.pop':
+        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
             return typed_dict_pop_callback
-        elif fullname == 'mypy_extensions._TypedDict.__delitem__':
+        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
             return typed_dict_delitem_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
