@@ -586,3 +586,22 @@ class B:
 
 reveal_type(B)  # E: Revealed type is 'def (x: Any) -> __main__.B'
 [builtins fixtures/list.pyi]
+
+[case testMemberExprWorksAsField]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    x: int = dataclasses.field(metadata={"doc": "foo"})
+    y: str
+
+@dataclasses.dataclass
+class B:
+    x: int = dataclasses.field(init=False, default=1)
+    y: str
+
+@dataclasses.dataclass
+class C:
+    x: int = dataclasses.field(default=1)
+    y: str = dataclasses.field(metadata={"doc": "foo"})  # E: Attributes without a default cannot follow attributes with one
+[builtins fixtures/dict.pyi]
