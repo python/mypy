@@ -29,7 +29,10 @@ class Context:
         self.column = column
         self.end_line = None  # type: Optional[int]
 
-    def set_line(self, target: Union['Context', int], column: Optional[int] = None) -> None:
+    def set_line(self,
+                 target: Union['Context', int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -43,6 +46,9 @@ class Context:
 
         if column is not None:
             self.column = column
+
+        if end_line is not None:
+            self.end_line = end_line
 
     def get_line(self) -> int:
         """Don't use. Use x.line."""
@@ -534,13 +540,16 @@ class Argument(Node):
         self.initializer = initializer
         self.kind = kind  # must be an ARG_* constant
 
-    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
-        super().set_line(target, column)
+    def set_line(self,
+                 target: Union[Context, int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line)
 
         if self.initializer:
-            self.initializer.set_line(self.line, self.column)
+            self.initializer.set_line(self.line, self.column, self.end_line)
 
-        self.variable.set_line(self.line, self.column)
+        self.variable.set_line(self.line, self.column, self.end_line)
 
 
 FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
@@ -595,10 +604,13 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
-        super().set_line(target, column)
+    def set_line(self,
+                 target: Union[Context, int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line)
         for arg in self.arguments:
-            arg.set_line(self.line, self.column)
+            arg.set_line(self.line, self.column, self.end_line)
 
     def is_dynamic(self) -> bool:
         return self.type is None

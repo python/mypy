@@ -2778,12 +2778,12 @@ class X: pass
 class Z: pass
 [out]
 MypyFile:1(
-  ClassDef:1(
+  ClassDef:2(
     X
     Decorators(
       NameExpr(foo))
     PassStmt:2())
-  ClassDef:3(
+  ClassDef:5(
     Z
     Decorators(
       CallExpr:3(

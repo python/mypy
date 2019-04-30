@@ -387,8 +387,8 @@ app1 >= app3
 # flags: --python-version 3.6
 from dataclasses import dataclass
 
-@dataclass(eq=False, order=True)  # E: eq must be True if order is True
-class Application:
+@dataclass(eq=False, order=True)
+class Application:  # E: eq must be True if order is True
    ...
 
 [builtins fixtures/list.pyi]
