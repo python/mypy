@@ -58,6 +58,7 @@ class GetDependenciesSuite(DataSuite):
                 if module in dumped_modules or dump_all and module not in ('abc',
                                                                            'typing',
                                                                            'mypy_extensions',
+                                                                           'typing_extensions',
                                                                            'enum'):
                     new_deps = get_dependencies(files[module], type_map, python_version, options)
                     for source in new_deps:
