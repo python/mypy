@@ -1,0 +1,56 @@
+name: $(BuildDefinitionName)_$(Date:yyyyMMdd)$(Rev:.rr)
+
+resources:
+  repositories:
+  - repository: tox
+    type: github
+    endpoint: github
+    name: tox-dev/azure-pipelines-template
+    ref: master
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - refs/tags/*
+pr:
+  branches:
+    include:
+    - master
+
+variables:
+  PYTEST_ADDOPTS: "-v -v -ra --showlocals"
+
+jobs:
+- template: run-tox-env.yml@tox
+  parameters:
+    jobs:
+      check:
+        py: '3.7'
+        toxenvs:
+        - type
+        - lint
+        - docs
+        - dev
+      windows:
+        toxenvs:
+        - py37
+        - py36
+        - py35
+      linux:
+        toxenvs:
+        - py37
+        - py36
+        - py35
+      macOs:
+        toxenvs:
+        - py37
+        - py36
+        - py35
+- template: merge-coverage.yml@tox
+  parameters:
+    dependsOn:
+    - windows
+    - linux
+    - macOs
