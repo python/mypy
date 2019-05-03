@@ -2,18 +2,13 @@
 
 This document introduces some ideas for future improvements.
 
-*Note that we don't want to work on most of these until we reach self-compilation.*
-
-## Constants
-
-Make it possible to define module-level constants. Potentially treat
-all-caps names as constants by default. Using an integer constant
-should have no performance penalty over an integer literal.
-
 ## Basic Optimizations
 
 Implement basic optimizations such as common subexpression elimination and
 loop invariant code motion.
+
+Importantly, common subexpression elimination could be used to avoid
+redundant type checks.
 
 ## Operation-specific Optimizations
 
@@ -39,17 +34,6 @@ Implement integer range analysis. This can be used in various ways:
 * Use faster integer arithmetic operations for operations that
   only deal with short integers or that can't overflow.
 * Remove redundant list and string index checks.
-
-## Final Classes
-
-Make it possible to declare a class as final. Final classes don't support
-subclassing, and thus method calls don't need to go through a vtable.
-
-## Final Methods
-
-Similar to final classes, make it possible to declare a method as
-final.  Final methods can't be overridden (as far as mypyc can control
-it).
 
 ## Always Defined Attributes
 

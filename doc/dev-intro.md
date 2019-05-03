@@ -7,23 +7,16 @@ that is not supported, you are not likely to get a good error message.
 
 Here are some major things that aren't supported in compiled code:
 
-* Unannotated functions
 * Functions that take `*args` or `**kwargs`
 * Many dunder methods (only some work, such as `__init__` and `__eq__`)
 * Monkey patching compiled functions or classes
 * Metaclasses
+* Class decorators
 * Async features
 * Generally Python 3.5+ only features
 * General multiple inheritance (a limited form is supported))
-* Classes or functions that use type variables with value restrictions
-* Self types
-* TypedDict
 * Named tuple defined using the class-based syntax
-* Complex numbers
 * Defining protocols
-* Defining overloaded functions
-* `# type: ignore`
-* `del name`
 
 We aren't focused on Python feature completeness right now. Instead,
 we support a Python subset that is good enough to compile mypy. We are
@@ -41,6 +34,7 @@ It has these passes:
 * Translate the mypy AST into a mypyc-specific intermediate representation (IR).
   * The IR is defined in `mypyc.ops`.
   * The translation happens in `mypyc.genops`.
+* Insert checks for uses of potentially uninitialized variables (`mypyc.uninit`).
 * Insert exception handling (`mypyc.exceptions`).
 * Insert explicit reference count inc/dec opcodes (`mypyc.refcount`).
 * Translate the IR into C (`mypyc.emit*`).
@@ -83,15 +77,17 @@ check. For example, when getting a list item we need to insert a
 runtime type check (an unbox or a cast operation), since Python lists
 can contain arbitrary objects.
 
-The generated code uses various helpers defined in `lib-rt/CPy.h`.
-The header should only contain inline or static functions, since
-we don't compile the C helpers into a separate object file.
+The generated code uses various helpers defined in
+`mypyc/lib-rt/CPy.h`.  The header must only contain static functions,
+since it is included in many files. `mypyc/lib-rt/CPy.c` contains
+definitions that must only occur once, but really most of `CPy.h`
+should be moved into it.
 
 ## Other Important Limitations
 
 All of these limitations will likely be fixed in the future:
 
-* We don't detect infinite recursion.
+* We don't detect stack overflow.
 
 * We don't handle Ctrl-C in compiled code.
 
@@ -100,12 +96,37 @@ All of these limitations will likely be fixed in the future:
 This section gives an overview of where to look for and
 what to do to implement specific kinds of mypyc features.
 
+
 ### Syntactic Sugar
 
 Syntactic sugar that doesn't need additional IR operations typically
-only requires changes to `mypyc.genops`. Test cases are located in
-`test-data/genops-*.test` and the test driver is in
-`mypyc.test.test_genops`.
+only requires changes to `mypyc.genops`.
+
+
+### Testing
+
+For better or worse, our bread-and-butter testing strategy is
+compiling code with mypyc and running it. There are downsides to this
+(kind of slow, tests a huge number of components at once, insensitive
+to the particular details of the IR), but there really is no
+substitute for running code.
+
+Run test cases are located in `test-data/run*.test` and the test
+driver is in `mypyc.test.test_run`.
+
+If the specifics of the generated IR of a change is important
+(because, for example, you want to make sure a particular optimization
+is triggering), you should add a genops test as well.  Test cases are
+located in `test-data/genops-*.test` and the test driver is in
+`mypyc.test.test_genops`. Genops tests do a direct comparison of the
+IR output, so try to make the test as targeted as possible so as to
+capture only the important details.
+(Many of our existing genops tests do not follow this advice, unfortunately!)
+
+If you pass the `--update-data` flag to pytest, it will automatically
+update the expected output of any tests to match the actual
+output. This is very useful for changing or creating genops tests, but
+make sure to carefully inspect the diff!
 
 You may also need to add some definitions to the stubs used for
 builtins during tests (`test-data/fixtures/ir.py`). We don't use full
@@ -118,12 +139,13 @@ If you add an operation that compiles into a lot of C code, you may
 also want to add a C helper function for the operation to make the
 generated code smaller. Here is how to do this:
 
-* Add the operation to `lib-rt/CPy.h`. Usually defining a static
+* Add the operation to `mypyc/lib-rt/CPy.h`. Usually defining a static
   function is the right thing to do, but feel free to also define
   inline functions for very simple and performance-critical
   operations. We avoid macros since they are error-prone.
 
-* Add unit test for your C helper in `lib-rt/test_capi.cc`. We use
+* Consider adding a unit test for your C helper in `mypyc/lib-rt/test_capi.cc`.
+  We use
   [Google Test](https://github.com/google/googletest) for writing
   tests in C++. The framework is included in the repository under the
   directory `googletest/`. The C unit tests are run as part of the

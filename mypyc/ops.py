@@ -760,7 +760,6 @@ class Call(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    # TODO: take a FuncIR and extract the ret type
     def __init__(self, fn: 'FuncDecl', args: Sequence[Value], line: int) -> None:
         super().__init__(line)
         self.fn = fn
@@ -790,7 +789,6 @@ class MethodCall(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    # TODO: extract the ret type from the receiver
     def __init__(self,
                  obj: Value,
                  method: str,

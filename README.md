@@ -1,13 +1,31 @@
 mypyc: Mypy to Python C Extension Compiler
 ==========================================
 
-*Mypyc is not yet useful for general Python development.*
+*Mypyc is (mostly) not yet useful for general Python development.*
 
 Mypyc is a compiler that compiles mypy-annotated, statically typed
-Python modules into Python C extensions. Currently our focus is
-on making mypy faster through compilation.
+Python modules into Python C extensions. Currently our primary focus
+is on making mypy faster through compilation---the default mypy wheels
+are compiled with mypyc.
 
-MacOS Requirements
+Mypyc compiles what is essentially a Python language variant using "strict"
+semantics. This means (among some other things):
+
+ * Most type annotations are enforced at runtime (raising ``TypeError`` on mismatch)
+
+ * Classes are compiled into extension classes without ``__dict__``
+   (much, but not quite, like if they used ``__slots__``)
+
+ * Monkey patching doesn't work
+
+ * Instance attributes won't fall back to class attributes if undefined
+
+ * Metaclasses not supported
+
+ * Also there are still a bunch of bad bugs and unsupported features :)
+
+
+macOS Requirements
 ------------------
 
 * macOS Sierra or later
@@ -81,10 +99,23 @@ These are the current planned major milestones:
 
 4. [DONE] Optimize some important performance bottlenecks.
 
-5. Generate useful errors for code that uses unsupported Python
+5. [PARTIALLY DONE] Generate useful errors for code that uses unsupported Python
    features instead of crashing or generating bad code.
 
-6. Release a version of mypy that includes a compiled mypy.
+6. [DONE] Release a version of mypy that includes a compiled mypy.
+
+7a. More feature/compatability work. (100% compatability is distinctly
+    an anti-goal, but more than we have now is a good idea.)
+
+7b. Support compiling Black, which is a prominent tool that could benefit
+    and has maintainer buy-in.
+    (Let us know if you maintain a another Python tool or library and are
+     interested in working with us on this!)
+
+7c. More optimization! Code size reductions in particular are likely to
+    be valuable and will speed up mypyc compilation.
+
+8.  We'll see! Adventure is out there!
 
 Future
 ------
