@@ -1386,7 +1386,7 @@ class TypeConverter:
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
 
         # Do an ignore because the field doesn't exist in 3.8 (where
-        # this function doesn't actually ever run.)
+        # this method doesn't actually ever run.)
         kind = n.kind  # type: str  # type: ignore
 
         if 'u' in kind or self.assume_str_is_unicode:
