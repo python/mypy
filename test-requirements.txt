@@ -4,7 +4,7 @@ flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
 lxml==4.2.4
 mypy_extensions>=0.4.0,<0.5.0
-psutil>=5.4.0,<5.5.0; sys_platform!='win32'
+psutil>=4.0
 pytest>=4.4
 pytest-xdist>=1.22
 pytest-cov>=2.4.0
