@@ -80,7 +80,7 @@ from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
     Type, TypeStrVisitor, CallableType,
-    UnboundType, NoneTyp, TupleType, TypeList,
+    UnboundType, NoneType, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -171,7 +171,7 @@ class AnnotationPrinter(TypeStrVisitor):
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_none_type(self, t: NoneTyp) -> str:
+    def visit_none_type(self, t: NoneType) -> str:
         return "None"
 
     def visit_type_list(self, t: TypeList) -> str:

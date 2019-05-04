@@ -2769,7 +2769,8 @@ class PlaceholderNode(SymbolNode):
 
       fullname: Full name of of the PlaceholderNode.
       node: AST node that contains the definition that caused this to
-          be created. This is only useful for debugging.
+          be created. This is useful for tracking order of incomplete definitions
+          and for debugging.
       becomes_typeinfo: If True, this refers something that will later
           become a TypeInfo. It can't be used with type variables, in
           particular, as this would cause issues with class type variable

@@ -2643,3 +2643,166 @@ c_wrap: Literal[4, c]  # E: Invalid type "__main__.c" \
 d_wrap: Literal[4, d]  # E: Invalid type "__main__.d" \
                        # E: Parameter 2 of Literal[...] is invalid
 [out]
+
+--
+-- Tests for Literals and enums
+--
+
+[case testLiteralWithEnumsBasic]
+from typing_extensions import Literal
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+    def func(self) -> int: pass
+
+r: Literal[Color.RED]
+g: Literal[Color.GREEN]
+b: Literal[Color.BLUE]
+bad1: Literal[Color]         # E: Parameter 1 of Literal[...] is invalid
+bad2: Literal[Color.func]    # E: Invalid type "__main__.Color.func" \
+                             # E: Parameter 1 of Literal[...] is invalid
+bad3: Literal[Color.func()]  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+
+def expects_color(x: Color) -> None: pass
+def expects_red(x: Literal[Color.RED]) -> None: pass
+def bad_func(x: Color.RED) -> None: pass             # E: Invalid type: try using Literal[Color.RED] instead?
+
+expects_color(r)
+expects_color(g)
+expects_color(b)
+expects_red(r)
+expects_red(g)  # E: Argument 1 to "expects_red" has incompatible type "Literal[Color.GREEN]"; expected "Literal[Color.RED]"
+expects_red(b)  # E: Argument 1 to "expects_red" has incompatible type "Literal[Color.BLUE]"; expected "Literal[Color.RED]"
+
+reveal_type(expects_red)  # E: Revealed type is 'def (x: Literal[__main__.Color.RED])'
+reveal_type(r)            # E: Revealed type is 'Literal[__main__.Color.RED]'
+reveal_type(r.func())     # E: Revealed type is 'builtins.int'
+[out]
+
+[case testLiteralWithEnumsDefinedInClass]
+from typing_extensions import Literal
+from enum import Enum
+
+class Wrapper:
+    class Color(Enum):
+        RED = 1
+        GREEN = 2
+        BLUE = 3
+
+def foo(x: Literal[Wrapper.Color.RED]) -> None: pass
+
+r: Literal[Wrapper.Color.RED]
+g: Literal[Wrapper.Color.GREEN]
+
+foo(r)
+foo(g)  # E: Argument 1 to "foo" has incompatible type "Literal[Color.GREEN]"; expected "Literal[Color.RED]"
+
+reveal_type(foo)  # E: Revealed type is 'def (x: Literal[__main__.Wrapper.Color.RED])'
+reveal_type(r)    # E: Revealed type is 'Literal[__main__.Wrapper.Color.RED]'
+[out]
+
+[case testLiteralWithEnumsSimilarDefinitions]
+from typing_extensions import Literal
+import mod_a
+import mod_b
+
+def f(x: Literal[mod_a.Test.FOO]) -> None: pass
+
+a: Literal[mod_a.Test.FOO]
+b: Literal[mod_a.Test2.FOO]
+c: Literal[mod_b.Test.FOO]
+
+f(a)
+f(b)  # E: Argument 1 to "f" has incompatible type "Literal[Test2.FOO]"; expected "Literal[Test.FOO]"
+f(c)  # E: Argument 1 to "f" has incompatible type "Literal[mod_b.Test.FOO]"; expected "Literal[mod_a.Test.FOO]"
+
+[file mod_a.py]
+from enum import Enum
+
+class Test(Enum):
+    FOO = 1
+    BAR = 2
+
+class Test2(Enum):
+    FOO = 1
+    BAR = 2
+
+[file mod_b.py]
+from enum import Enum
+
+class Test(Enum):
+    FOO = 1
+    BAR = 2
+[out]
+
+[case testLiteralWithEnumsDeclaredUsingCallSyntax]
+from typing_extensions import Literal
+from enum import Enum
+
+A = Enum('A', 'FOO BAR')
+B = Enum('B', ['FOO', 'BAR'])
+C = Enum('C', [('FOO', 1), ('BAR', 2)])
+D = Enum('D', {'FOO': 1, 'BAR': 2})
+
+a: Literal[A.FOO]
+b: Literal[B.FOO]
+c: Literal[C.FOO]
+d: Literal[D.FOO]
+
+reveal_type(a)  # E: Revealed type is 'Literal[__main__.A.FOO]'
+reveal_type(b)  # E: Revealed type is 'Literal[__main__.B.FOO]'
+reveal_type(c)  # E: Revealed type is 'Literal[__main__.C.FOO]'
+reveal_type(d)  # E: Revealed type is 'Literal[__main__.D.FOO]'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testLiteralWithEnumsDerivedEnums]
+from typing_extensions import Literal
+from enum import Enum, IntEnum, IntFlag, Flag
+
+def expects_int(x: int) -> None: pass
+
+class A(Enum):
+    FOO = 1
+
+class B(IntEnum):
+    FOO = 1
+
+class C(IntFlag):
+    FOO = 1
+
+class D(Flag):
+    FOO = 1
+
+a: Literal[A.FOO]
+b: Literal[B.FOO]
+c: Literal[C.FOO]
+d: Literal[D.FOO]
+
+expects_int(a)  # E: Argument 1 to "expects_int" has incompatible type "Literal[A.FOO]"; expected "int"
+expects_int(b)
+expects_int(c)
+expects_int(d)  # E: Argument 1 to "expects_int" has incompatible type "Literal[D.FOO]"; expected "int"
+[out]
+
+[case testLiteralWithEnumsAliases-skip]
+# TODO: Fix this test once https://github.com/python/mypy/issues/6667 is resolved.
+#
+# The linked issue is about nested classes, but the same root bug prevents aliases
+# to enums from working.
+from typing_extensions import Literal
+from enum import Enum
+
+class Test(Enum):
+    FOO = 1
+    BAR = 2
+
+Alias = Test
+
+x: Literal[Alias.FOO]
+reveal_type(x)  # E: Revealed type is 'Literal[__main__.Test.FOO]'
+[out]

@@ -20,7 +20,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
@@ -142,11 +142,6 @@ class MessageBuilder:
             self.report(msg, context, 'note', file=file, origin=origin,
                         offset=offset)
 
-    def warn(self, msg: str, context: Context, file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
-        """Report a warning message (unless disabled)."""
-        self.report(msg, context, 'warning', file=file, origin=origin)
-
     def quote_type_string(self, type_string: str) -> str:
         """Quotes a type representation for use in messages."""
         no_quote_regex = r'^<(tuple|union): \d+ items>$'
@@ -238,13 +233,17 @@ class MessageBuilder:
             s = 'TypedDict({{{}}})'.format(', '.join(items))
             return s
         elif isinstance(typ, LiteralType):
-            return str(typ)
+            if typ.is_enum_literal():
+                underlying_type = self.format_bare(typ.fallback, verbosity=verbosity)
+                return 'Literal[{}.{}]'.format(underlying_type, typ.value)
+            else:
+                return str(typ)
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
-                                 sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
+                                 sum(isinstance(t, NoneType) for t in typ.items) == 1)
             if print_as_optional:
-                rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
+                rest = [t for t in typ.items if not isinstance(t, NoneType)]
                 return 'Optional[{}]'.format(self.format_bare(rest[0]))
             else:
                 items = []
@@ -255,7 +254,7 @@ class MessageBuilder:
                     return s
                 else:
                     return '<union: {} items>'.format(len(items))
-        elif isinstance(typ, NoneTyp):
+        elif isinstance(typ, NoneType):
             return 'None'
         elif isinstance(typ, AnyType):
             return 'Any'
@@ -437,7 +436,7 @@ class MessageBuilder:
                 # checks, so we manually convert it back.
                 typ_format = self.format(typ)
                 if typ_format == '"object"' and \
-                        any(type(item) == NoneTyp for item in original_type.items):
+                        any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
                     typ_format, self.format(original_type), member, extra), context)
@@ -1072,7 +1071,7 @@ class MessageBuilder:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
-        self.note('Redundant cast to {}'.format(self.format(typ)), context)
+        self.fail('Redundant cast to {}'.format(self.format(typ)), context)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
@@ -1163,7 +1162,7 @@ class MessageBuilder:
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
         message = 'Returning Any from function declared to return {}'.format(
             self.format(typ))
-        self.warn(message, context)
+        self.fail(message, context)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):

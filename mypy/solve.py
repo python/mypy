@@ -18,7 +18,7 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
     could not be solved.
 
     If a variable has no constraints, if strict=True then arbitrarily
-    pick NoneTyp as the value of the type variable.  If strict=False,
+    pick NoneType as the value of the type variable.  If strict=False,
     pick AnyType.
     """
     # Collect a list of constraints for each type variable.

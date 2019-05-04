@@ -3,6 +3,7 @@
 import argparse
 import ast
 import configparser
+import glob as fileglob
 import os
 import re
 import subprocess
@@ -700,7 +701,9 @@ def process_options(args: List[str],
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
     config_file = dummy.config_file
-    if config_file is not None and not os.path.exists(config_file):
+    # Don't explicitly test if "config_file is not None" for this check.
+    # This lets `--config-file=` (an empty string) be used to disable all config files.
+    if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
@@ -727,6 +730,11 @@ def process_options(args: List[str],
 
     if special_opts.no_executable:
         options.python_executable = None
+
+    # Paths listed in the config file will be ignored if any paths are passed on
+    # the command line.
+    if options.files and not special_opts.files:
+        special_opts.files = options.files
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -864,6 +872,27 @@ def process_cache_map(parser: argparse.ArgumentParser,
         options.cache_map[source] = (meta_file, data_file)
 
 
+def split_and_match_files(paths: str) -> List[str]:
+    """Take a string representing a list of files/directories (with support for globbing
+    through the glob library).
+
+    Where a path/glob matches no file, we still include the raw path in the resulting list.
+
+    Returns a list of file paths
+    """
+    expanded_paths = []
+
+    for path in paths.split(','):
+        path = path.strip()
+        globbed_files = fileglob.glob(path, recursive=True)
+        if globbed_files:
+            expanded_paths.extend(globbed_files)
+        else:
+            expanded_paths.append(path)
+
+    return expanded_paths
+
+
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -874,6 +903,7 @@ config_types = {
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'files': split_and_match_files,
     'quickstart_file': str,
     'junit_xml': str,
     # These two are for backwards compatibility
@@ -1026,4 +1056,4 @@ def parse_section(prefix: str, template: Options,
 
 def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
-    sys.exit(1)
+    sys.exit(2)

@@ -5,7 +5,7 @@ from mypy.join import (
     is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
 )
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
+    Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
 )
@@ -44,7 +44,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if state.strict_optional:
             return UninhabitedType()
         else:
-            return NoneTyp()
+            return NoneType()
     elif isinstance(narrowed, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(declared, x)
                                                 for x in narrowed.relevant_items()])
@@ -147,7 +147,7 @@ def is_overlapping_types(left: Type,
     # If this check fails, we start checking to see if there exists a
     # *partial* overlap between types.
     #
-    # These checks will also handle the NoneTyp and UninhabitedType cases for us.
+    # These checks will also handle the NoneType and UninhabitedType cases for us.
 
     if (is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
             or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)):
@@ -170,7 +170,7 @@ def is_overlapping_types(left: Type,
     # we skip these checks to avoid infinitely recursing.
 
     def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
-        return isinstance(t1, NoneTyp) and isinstance(t2, TypeVarType)
+        return isinstance(t1, NoneType) and isinstance(t2, TypeVarType)
 
     if prohibit_none_typevar_overlap:
         if is_none_typevar_overlap(left, right) or is_none_typevar_overlap(right, left):
@@ -191,7 +191,7 @@ def is_overlapping_types(left: Type,
     # We must perform this check after the TypeVar checks because
     # a TypeVar could be bound to None, for example.
 
-    if state.strict_optional and isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
+    if state.strict_optional and isinstance(left, NoneType) != isinstance(right, NoneType):
         return False
 
     # Next, we handle single-variant types that may be inherently partially overlapping:
@@ -380,7 +380,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        if isinstance(self.s, NoneTyp):
+        if isinstance(self.s, NoneType):
             if state.strict_optional:
                 return AnyType(TypeOfAny.special_form)
             else:
@@ -404,9 +404,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                      for x in t.items]
         return UnionType.make_simplified_union(meets)
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         if state.strict_optional:
-            if isinstance(self.s, NoneTyp) or (isinstance(self.s, Instance) and
+            if isinstance(self.s, NoneType) or (isinstance(self.s, Instance) and
                                                self.s.type.fullname() == 'builtins.object'):
                 return t
             else:
@@ -418,7 +418,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         return t
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        if isinstance(self.s, NoneTyp):
+        if isinstance(self.s, NoneType):
             if state.strict_optional:
                 return t
             else:
@@ -452,7 +452,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     if state.strict_optional:
                         return UninhabitedType()
                     else:
-                        return NoneTyp()
+                        return NoneType()
             else:
                 if is_subtype(t, self.s):
                     return t
@@ -463,7 +463,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     if state.strict_optional:
                         return UninhabitedType()
                     else:
-                        return NoneTyp()
+                        return NoneType()
         elif isinstance(self.s, FunctionLike) and t.type.is_protocol:
             call = unpack_callback_protocol(t)
             if call:
@@ -488,7 +488,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif isinstance(self.s, TypeType) and t.is_type_obj() and not t.is_generic():
             # In this case we are able to potentially produce a better meet.
             res = meet_types(self.s.item, t.ret_type)
-            if not isinstance(res, (NoneTyp, UninhabitedType)):
+            if not isinstance(res, (NoneType, UninhabitedType)):
                 return TypeType.make_normalized(res)
             return self.default(self.s)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
@@ -569,7 +569,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_type_type(self, t: TypeType) -> Type:
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
-            if not isinstance(typ, NoneTyp):
+            if not isinstance(typ, NoneType):
                 typ = TypeType.make_normalized(typ, line=t.line)
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
@@ -589,7 +589,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             if state.strict_optional:
                 return UninhabitedType()
             else:
-                return NoneTyp()
+                return NoneType()
 
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:

@@ -71,7 +71,7 @@ In Ubuntu, Mint and Debian you can install Python 3 like this:
 
     $ sudo apt-get install python3 python3-pip
 
-For other Linux flavors, OS X and Windows, packages are available at
+For other Linux flavors, macOS and Windows, packages are available at
 
   http://www.python.org/getit/
 
@@ -102,7 +102,7 @@ programs, even if they have type errors:
 You can also try mypy in an [online playground](https://mypy-play.net/) (developed by
 Yusuke Miyazaki).
 
-[statically typed parts]: http://mypy.readthedocs.io/en/latest/basics.html#function-signatures
+[statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 
 
 IDE & Linter Integrations
@@ -155,7 +155,7 @@ dependencies, including the `typing` module, will be installed to
 system-dependent locations.  Sometimes the script directory will not
 be in `PATH`, and you have to add the target directory to `PATH`
 manually or create a symbolic link to the script.  In particular, on
-Mac OS X, the script may be installed under `/Library/Frameworks`:
+macOS, the script may be installed under `/Library/Frameworks`:
 
     /Library/Frameworks/Python.framework/Versions/<version>/bin
 
@@ -242,6 +242,12 @@ See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.
 
 
+Changelog
+---------
+
+Follow mypy's updates on the blog: http://mypy-lang.blogspot.com/
+
+
 Issue tracker
 -------------
 
@@ -252,18 +258,21 @@ If you have any questions about using mypy or types, please ask
 in the typing gitter instead: https://gitter.im/python/typing
 
 
-mypy_mypyc
-----------
+Compiled version of mypy
+------------------------
 
-We have built an experimental compiled version of mypy using the
-[mypyc compiler](https://github.com/mypyc/mypyc) for mypy-annotated
-Python code. It is approximately 4 times faster than interpreted mypy.
+We have built an compiled version of mypy using the [mypyc
+compiler](https://github.com/mypyc/mypyc) for mypy-annotated Python
+code. It is approximately 4 times faster than interpreted mypy and is
+available (and the default) for 64-bit Windows, macOS, and Linux.
 
-If you wish to test out the compiled version of mypy, and are running
-OS X or Linux, you can directly install a binary from
+To install an interpreted mypy instead, use:
+
+    $ python3 -m pip install --no-binary mypy -U mypy
+
+If you wish to test out the compiled version of a development
+version of mypy, you can directly install a binary from
 https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
-
-Compiled mypy packages on PyPI are Coming Soon.
 
 
 Help wanted

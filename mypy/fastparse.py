@@ -1384,7 +1384,12 @@ class TypeConverter:
         # If we're analyzing Python 3, that function will translate 'builtins.unicode'
         # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
-        if 'u' in n.kind or self.assume_str_is_unicode:
+
+        # Do an ignore because the field doesn't exist in 3.8 (where
+        # this method doesn't actually ever run.)
+        kind = n.kind  # type: str  # type: ignore
+
+        if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
                                      assume_str_is_unicode=self.assume_str_is_unicode)
         else:

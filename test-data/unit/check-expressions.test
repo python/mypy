@@ -2024,7 +2024,23 @@ cb: Union[Container[A], Container[B]]
 [builtins fixtures/bool.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testStrictEqualityNoPromote]
+[case testStrictEqualityBytesSpecial]
+# flags: --strict-equality
+b'abc' in b'abcde'
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityBytesSpecialUnion]
+# flags: --strict-equality
+from typing import Union
+x: Union[bytes, str]
+
+b'abc' in x
+x in b'abc'
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityNoPromotePy3]
 # flags: --strict-equality
 'a' == b'a'  # E: Non-overlapping equality check (left operand type: "str", right operand type: "bytes")
 b'a' in 'abc'  # E: Non-overlapping container check (element type: "bytes", container item type: "str")
@@ -2032,6 +2048,16 @@ b'a' in 'abc'  # E: Non-overlapping container check (element type: "bytes", cont
 x: str
 y: bytes
 x != y  # E: Non-overlapping equality check (left operand type: "str", right operand type: "bytes")
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityOkPromote]
+# flags: --strict-equality
+from typing import Container
+c: Container[int]
+
+1 == 1.0  # OK
+1.0 in c  # OK
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2084,6 +2110,58 @@ class B:
 
 # Don't report non-overlapping check if there is already and error.
 A() == B()  # E: Unsupported operand types for == ("A" and "B")
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqCheckStrictEqualityOKInstance]
+# flags: --strict-equality
+class A:
+    def __eq__(self, other: object) -> bool:
+        ...
+class B:
+    def __eq__(self, other: object) -> bool:
+        ...
+
+A() == int()  # OK
+int() != B()  # OK
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqCheckStrictEqualityOKUnion]
+# flags: --strict-equality
+from typing import Union
+class A:
+    def __eq__(self, other: object) -> bool:
+        ...
+
+x: Union[A, str]
+x == int()
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqCheckStrictEqualityTuple]
+# flags: --strict-equality
+from typing import NamedTuple
+
+class Base(NamedTuple):
+    attr: int
+
+class Custom(Base):
+    def __eq__(self, other: object) -> bool: ...
+
+Base(int()) == int()  # E: Non-overlapping equality check (left operand type: "Base", right operand type: "int")
+Base(int()) == tuple()
+Custom(int()) == int()
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqCheckStrictEqualityMeta]
+# flags: --strict-equality
+class CustomMeta(type):
+    def __eq__(self, other: object) -> bool: ...
+
+class Normal: ...
+class Custom(metaclass=CustomMeta): ...
+
+Normal == int()  # E: Non-overlapping equality check (left operand type: "Type[Normal]", right operand type: "int")
+Normal == Normal
+Custom == int()
 [builtins fixtures/bool.pyi]
 
 [case testCustomContainsCheckStrictEquality]

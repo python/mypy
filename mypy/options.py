@@ -179,6 +179,10 @@ class Options:
         # source hashes as often.
         self.quickstart_file = None  # type: Optional[str]
 
+        # A comma-separated list of files/directories for mypy to type check;
+        # supports globbing
+        self.files = None  # type: Optional[List[str]]
+
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
 
