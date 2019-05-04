@@ -4,9 +4,10 @@ mypyc: Mypy to Python C Extension Compiler
 *Mypyc is (mostly) not yet useful for general Python development.*
 
 Mypyc is a compiler that compiles mypy-annotated, statically typed
-Python modules into Python C extensions. Currently our primary focus
-is on making mypy faster through compilation---the default mypy wheels
-are compiled with mypyc.
+Python modules into CPython C extensions. Currently our primary focus
+is on making mypy faster through compilation -- the default mypy wheels
+are compiled with mypyc.  Compiled mypy is about 4x faster than
+without compilation.
 
 Mypyc compiles what is essentially a Python language variant using "strict"
 semantics. This means (among some other things):
@@ -24,6 +25,13 @@ semantics. This means (among some other things):
 
  * Also there are still a bunch of bad bugs and unsupported features :)
 
+Compiled modules can import arbitrary Python modules, and compiled modules
+can be used from other Python modules.  Typically mypyc is used to only
+compile modules that contain performance bottlenecks.
+
+You can run compiled modules also as normal, interpreted Python
+modules, since mypyc targets valid Python code. This means that
+all Python developer tools and debuggers can be used.
 
 macOS Requirements
 ------------------
@@ -104,12 +112,12 @@ These are the current planned major milestones:
 
 6. [DONE] Release a version of mypy that includes a compiled mypy.
 
-7a. More feature/compatability work. (100% compatability is distinctly
+7a. More feature/compatibility work. (100% compatibility with Python is distinctly
     an anti-goal, but more than we have now is a good idea.)
 
 7b. Support compiling Black, which is a prominent tool that could benefit
     and has maintainer buy-in.
-    (Let us know if you maintain a another Python tool or library and are
+    (Let us know if you maintain another Python tool or library and are
      interested in working with us on this!)
 
 7c. More optimization! Code size reductions in particular are likely to

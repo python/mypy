@@ -3,7 +3,8 @@
 ## Supported Features
 
 Mypyc supports a subset of Python. If you try to compile something
-that is not supported, you are not likely to get a good error message.
+that is not supported, you may not always get a very good error
+message.
 
 Here are some major things that aren't supported in compiled code:
 
@@ -14,14 +15,12 @@ Here are some major things that aren't supported in compiled code:
 * Class decorators
 * Async features
 * Generally Python 3.5+ only features
-* General multiple inheritance (a limited form is supported))
+* General multiple inheritance (a limited form is supported)
 * Named tuple defined using the class-based syntax
 * Defining protocols
 
-We aren't focused on Python feature completeness right now. Instead,
-we support a Python subset that is good enough to compile mypy. We are
-generally happy to accept contributions that implement new Python
-features, however.
+We are generally happy to accept contributions that implement new Python
+features.
 
 ## High-level Overview
 
