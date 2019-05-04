@@ -20,3 +20,4 @@ class BaseException:
 class Exception(BaseException): pass
 class RuntimeError(Exception): pass
 class NotImplementedError(RuntimeError): pass
+
