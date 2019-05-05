@@ -2689,3 +2689,13 @@ reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
 reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
 
 [builtins fixtures/dict.pyi]
+
+[case testInheritedAttributeNoStrictOptional]
+# flags: --no-strict-optional
+class A:
+    x: str
+
+class B(A):
+    x = None
+    x = ''
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
