@@ -110,7 +110,7 @@ code may accidentally call functions with no actual logic.
 You can also elide default arguments as long as the function body
 also contains no runtime logic: the function body only contains
 a single ellipsis, the pass statement, or a ``raise NotImplementedError()``.
-It is also ok for the function body to contain a docstring.
+It is also acceptable for the function body to contain a docstring.
 For example:
 
 .. code-block:: python
