@@ -192,7 +192,9 @@ def parse_type_comment(type_comment: str,
         typ = ast3_parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
-            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
+            stripped_type = type_comment.split("#", 2)[0].strip()
+            err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+            errors.report(line, e.offset, err_msg, blocker=True)
             return False, None
         else:
             raise
@@ -470,8 +472,10 @@ class ASTConverter:
                 if self.in_method_scope() and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, lineno, n.col_offset)
-                if n.type_comment and n.type_comment[0] != "(":
+                stripped_type = n.type_comment.split("#", 2)[0].strip()
+                err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                self.fail(err_msg, lineno, n.col_offset)
+                if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
                               lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
