@@ -1562,7 +1562,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
-                # suggest alternatives, if any match is found
+                # Suggest alternatives, if any match is found.
                 alternatives = set(module.names.keys()).difference({id})
                 matches = best_matches(id, alternatives)[:3]
                 if matches:
