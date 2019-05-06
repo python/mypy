@@ -1636,11 +1636,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             message += " {}".format(extra)
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
-        alternatives = set(module.names.keys()).difference({source_id})
-        matches = best_matches(source_id, alternatives)[:3]
-        if matches:
-            suggestion = "; maybe {}?".format(pretty_or(matches))
-            message += "{}".format(suggestion)
+        if module:
+            alternatives = set(module.names.keys()).difference({source_id})
+            matches = best_matches(source_id, alternatives)[:3]
+            if matches:
+                suggestion = "; maybe {}?".format(pretty_or(matches))
+                message += "{}".format(suggestion)
         self.fail(message, context)
         self.add_unknown_imported_symbol(imported_id, context)
 
