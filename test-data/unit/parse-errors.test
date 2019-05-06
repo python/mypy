@@ -133,19 +133,19 @@ x = 0 # type: *
 [out]
 file:2: error: syntax error in type comment '*'
 
-[case testInvalidTypeComment5
+[case testInvalidTypeComment5]
 0
 x = 0 # type: * # some comment
 [out]
 file:2: error: syntax error in type comment '*'
 
-[case testInvalidTypeComment6
+[case testInvalidTypeComment6]
 0
 x = 0 # type: *# comment #6
 [out]
 file:2: error: syntax error in type comment '*'
 
-[case testInvalidTypeComment7
+[case testInvalidTypeComment7]
 0
 x = 0 # type: A B #comment #7
 [out]
