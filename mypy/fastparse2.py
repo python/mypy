@@ -337,7 +337,6 @@ class ASTConverter:
             return_type = None
         elif type_comment is not None and len(type_comment) > 0:
             try:
-                print(type_comment)
                 func_type_ast = ast3_parse(type_comment, '<func_type>', 'func_type')
                 assert isinstance(func_type_ast, ast3.FunctionType)
                 # for ellipsis arg
