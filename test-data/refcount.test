@@ -806,7 +806,7 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0, r1 :: object
-    r2, key :: int
+    key, r2 :: int
     r3, r4 :: object
     r5 :: int
     r6 :: bool

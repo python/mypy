@@ -2993,7 +2993,7 @@ def call_any(l):
     l :: object
     r0, r1 :: bool
     r2, r3 :: object
-    r4, i :: int
+    i, r4 :: int
     r5 :: short_int
     r6, r7, r8 :: bool
 L0:
@@ -3025,7 +3025,7 @@ def call_all(l):
     l :: object
     r0, r1 :: bool
     r2, r3 :: object
-    r4, i :: int
+    i, r4 :: int
     r5 :: short_int
     r6, r7, r8, r9 :: bool
 L0:

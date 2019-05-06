@@ -3950,3 +3950,15 @@ def test():
     assert x == y
 
 test()
+
+[case testIterTypeTrickiness]
+# Test inferring the type of a for loop body doesn't cause us grief
+# Extracted from something that broke in mypy
+
+def foo(x: object) -> None:
+    if isinstance(x, dict):
+        for a in x:
+            pass
+
+[file driver.py]
+# really I only care it builds
