@@ -917,16 +917,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
+                body_is_trivial = self.is_trivial_body(defn.body)
                 for arg in item.arguments:
-                    if arg.initializer is not None:
-                        name = arg.variable.name()
-                        msg = 'Incompatible default for '
-                        if name.startswith('__tuple_arg_'):
-                            msg += "tuple argument {}".format(name[12:])
-                        else:
-                            msg += 'argument "{}"'.format(name)
-                        self.check_simple_assignment(arg.variable.type, arg.initializer,
-                            context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
+                    if arg.initializer is None:
+                        continue
+                    if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
+                        continue
+                    name = arg.variable.name()
+                    msg = 'Incompatible default for '
+                    if name.startswith('__tuple_arg_'):
+                        msg += "tuple argument {}".format(name[12:])
+                    else:
+                        msg += 'argument "{}"'.format(name)
+                    self.check_simple_assignment(arg.variable.type, arg.initializer,
+                        context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -944,11 +948,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     return_type = self.return_types[-1]
 
-                if (not isinstance(return_type, (NoneType, AnyType))
-                        and not self.is_trivial_body(defn.body)):
+                if not isinstance(return_type, (NoneType, AnyType)) and not body_is_trivial:
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
-                    # entirely pass/Ellipsis.
+                    # entirely pass/Ellipsis/raise NotImplementedError.
                     if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
                         self.msg.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
@@ -1000,6 +1003,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
+        """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
+        "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
+        start with a statement containing just a string (e.g. a docstring).
+
+        Note: functions that raise other kinds of exceptions do not count as
+        "trivial". We use this function to help us determine when it's ok to
+        relax certain checks on body, but functions that raise arbitrary exceptions
+        are more likely to do non-trivial work. For example:
+
+           def halt(self, reason: str = ...) -> NoReturn:
+               raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+
+        A function that raises just NotImplementedError is much less likely to be
+        this complex.
+        """
         body = block.body
 
         # Skip a docstring
@@ -1012,7 +1030,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         elif len(body) > 1:
             return False
+
         stmt = body[0]
+
+        if isinstance(stmt, RaiseStmt):
+            expr = stmt.expr
+            if expr is None:
+                return False
+            if isinstance(expr, CallExpr):
+                expr = expr.callee
+
+            return (isinstance(expr, NameExpr)
+                    and expr.fullname == 'builtins.NotImplementedError')
+
         return (isinstance(stmt, PassStmt) or
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))
