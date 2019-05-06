@@ -399,7 +399,6 @@ class ASTConverter:
             func_type.definition = func_def
             func_type.line = lineno
 
-        retval: Statement
         if n.decorator_list:
             var = Var(func_def.name())
             var.is_ready = False
@@ -410,7 +409,7 @@ class ASTConverter:
             func_def.body.set_line(func_def.get_line())
             dec = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             dec.set_line(lineno, n.col_offset)
-            retval = dec
+            retval = dec  # type: Statement
         else:
             # Overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset)

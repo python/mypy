@@ -516,7 +516,6 @@ class ASTConverter:
             func_type.definition = func_def
             func_type.line = lineno
 
-        retval: Union[FuncDef, Decorator]
         if n.decorator_list:
             if sys.version_info < (3, 8):
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
@@ -533,7 +532,7 @@ class ASTConverter:
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             deco.set_line(n.decorator_list[0].lineno)
-            retval = deco
+            retval = deco  # type: Union[FuncDef, Decorator]
         else:
             # FuncDef overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset)
