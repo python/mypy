@@ -227,7 +227,8 @@ def include_dir() -> str:
 def generate_c(sources: List[BuildSource], options: Options,
                multi_file: bool,
                shared_lib_name: Optional[str],
-               verbose: bool = False) -> Tuple[List[Tuple[str, str]], str]:
+               verbose: bool = False,
+               strip_asserts: bool = False) -> Tuple[List[Tuple[str, str]], str]:
     """Drive the actual core compilation step.
 
     Returns the C source code and (for debugging) the pretty printed IR.
@@ -249,7 +250,7 @@ def generate_c(sources: List[BuildSource], options: Options,
 
     ops = []  # type: List[str]
     ctext = emitmodule.compile_modules_to_c(result, module_names, shared_lib_name, multi_file,
-                                            ops=ops)
+                                            strip_asserts=strip_asserts, ops=ops)
 
     t2 = time.time()
     if verbose:
@@ -326,7 +327,7 @@ def mypycify(paths: List[str],
              multi_file: bool = False,
              skip_cgen: bool = False,
              verbose: bool = False,
-             omit_asserts: bool = False) -> List[MypycifyExtension]:
+             strip_asserts: bool = False) -> List[MypycifyExtension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
@@ -369,7 +370,7 @@ def mypycify(paths: List[str],
     # so that it can do a corner-cutting version without full stubs.
     # TODO: Be able to do this based on file mtimes?
     if not skip_cgen:
-        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose)
+        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose, strip_asserts=strip_asserts)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)
