@@ -227,6 +227,7 @@ Tests
 The basic way to run tests:
 
     $ pip3 install -r test-requirements.txt
+    $ python2 -m pip install -U typing
     $ ./runtests.py
 
 For more on the tests, see [Test README.md](test-data/unit/README.md)
