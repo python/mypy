@@ -559,13 +559,12 @@ def get_meminfo() -> Dict[str, Any]:
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:
-        if sys.platform != 'win32':
-            res['memory_psutil_missing'] = (
-                'psutil not found, run pip install mypy[dmypy] '
-                'to install the needed components for dmypy'
-            )
+        res['memory_psutil_missing'] = (
+            'psutil not found, run pip install mypy[dmypy] '
+            'to install the needed components for dmypy'
+        )
     else:
-        process = psutil.Process(os.getpid())
+        process = psutil.Process()
         meminfo = process.memory_info()
         res['memory_rss_mib'] = meminfo.rss / MiB
         res['memory_vms_mib'] = meminfo.vms / MiB
