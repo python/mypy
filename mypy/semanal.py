@@ -62,7 +62,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import MessageBuilder
+from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
@@ -1577,6 +1577,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
+                # Suggest alternatives, if any match is found.
+                alternatives = set(module.names.keys()).difference({id})
+                matches = best_matches(id, alternatives)[:3]
+                if matches:
+                    suggestion = "; maybe {}?".format(pretty_or(matches))
+                    message += "{}".format(suggestion)
                 self.fail(message, imp)
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
 

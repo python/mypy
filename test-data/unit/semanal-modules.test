@@ -781,6 +781,47 @@ from m.x import nonexistent
 [out]
 tmp/m/x.py:1: error: Module 'm.x' has no attribute 'nonexistent'
 
+[case testImportMisspellingSingleCandidate]
+import f
+[file m/__init__.py]
+[file m/x.py]
+def some_function():
+    pass
+[file f.py]
+from m.x import somefunction
+[out]
+tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "some_function"?
+
+[case testImportMisspellingMultipleCandidates]
+import f
+[file m/__init__.py]
+[file m/x.py]
+def some_function():
+    pass
+def somef_unction():
+    pass
+[file f.py]
+from m.x import somefunction
+[out]
+tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "somef_unction" or "some_function"?
+
+[case testImportMisspellingMultipleCandidatesTruncated]
+import f
+[file m/__init__.py]
+[file m/x.py]
+def some_function():
+    pass
+def somef_unction():
+    pass
+def somefu_nction():
+    pass
+def somefun_ction():
+    pass
+[file f.py]
+from m.x import somefunction
+[out]
+tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "somefun_ction", "somefu_nction", or "somef_unction"?
+
 [case testFromImportAsInStub]
 from m import *
 x
