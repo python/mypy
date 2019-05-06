@@ -212,6 +212,7 @@ def _build(sources: List[BuildSource],
                            errors=errors,
                            flush_errors=flush_errors,
                            fscache=fscache)
+    manager.trace(repr(options))
 
     reset_global_state()
     try:
