@@ -98,6 +98,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
 from mypyc.crash import catch_errors
+from mypyc.options import Options
 
 GenFunc = Callable[[], None]
 
@@ -128,7 +129,7 @@ class Errors:
 def build_ir(modules: List[MypyFile],
              graph: Graph,
              types: Dict[Expression, Type],
-             strip_asserts: bool) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
+             options: Options) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
     result = []
     mapper = Mapper()
     errors = Errors()
@@ -174,7 +175,7 @@ def build_ir(modules: List[MypyFile],
         module.accept(pbv)
 
         # Second pass.
-        builder = IRBuilder(types, graph, errors, mapper, module_names, pbv, strip_asserts)
+        builder = IRBuilder(types, graph, errors, mapper, module_names, pbv, options)
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             builder.imports,
@@ -793,7 +794,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  mapper: Mapper,
                  modules: List[str],
                  pbv: PreBuildVisitor,
-                 strip_asserts: bool) -> None:
+                 options: Options) -> None:
         self.types = types
         self.graph = graph
         self.environment = Environment()
@@ -805,7 +806,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.final_names = []  # type: List[Tuple[str, RType]]
         self.modules = set(modules)
         self.callable_class_names = set()  # type: Set[str]
-        self.strip_asserts = strip_asserts
+        self.options = options
 
         # These variables keep track of the number of lambdas, implicit indices, and implicit
         # iterators instantiated so we avoid name conflicts. The indices and iterators are
@@ -3257,7 +3258,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         pass
 
     def visit_assert_stmt(self, a: AssertStmt) -> None:
-        if self.strip_asserts:
+        if self.options.strip_asserts:
             return
         cond = self.accept(a.expr)
         ok_block, error_block = BasicBlock(), BasicBlock()

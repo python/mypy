@@ -17,6 +17,7 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc import emitmodule
+from mypyc.options import Options as CompilerOptions
 from mypyc.test.config import prefix
 from mypyc.build import shared_lib_name
 from mypyc.test.testutil import (
@@ -137,7 +138,8 @@ class TestRun(MypycDataSuite):
                     result,
                     module_names=module_names,
                     multi_file=self.multi_file,
-                    shared_lib_name=lib_name)
+                    shared_lib_name=lib_name,
+                    compiler_options=CompilerOptions())
             except CompileError as e:
                 for line in e.messages:
                     print(line)

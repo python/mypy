@@ -38,6 +38,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.build import BuildSource
 from mypyc.namegen import exported_name
+from mypyc.options import Options as CompilerOptions
 
 from mypyc import emitmodule
 
@@ -228,12 +229,13 @@ def generate_c(sources: List[BuildSource], options: Options,
                multi_file: bool,
                shared_lib_name: Optional[str],
                verbose: bool = False,
-               strip_asserts: bool = False) -> Tuple[List[Tuple[str, str]], str]:
+               compiler_options: Optional[CompilerOptions] = None) -> Tuple[List[Tuple[str, str]], str]:
     """Drive the actual core compilation step.
 
     Returns the C source code and (for debugging) the pretty printed IR.
     """
     module_names = [source.module for source in sources]
+    compiler_options = compiler_options or CompilerOptions()
 
     # Do the actual work now
     t0 = time.time()
@@ -250,7 +252,7 @@ def generate_c(sources: List[BuildSource], options: Options,
 
     ops = []  # type: List[str]
     ctext = emitmodule.compile_modules_to_c(result, module_names, shared_lib_name, multi_file,
-                                            strip_asserts=strip_asserts, ops=ops)
+                                            compiler_options=compiler_options, ops=ops)
 
     t2 = time.time()
     if verbose:
@@ -341,6 +343,7 @@ def mypycify(paths: List[str],
     """
 
     setup_mypycify_vars()
+    compiler_options = CompilerOptions(strip_asserts=strip_asserts)
 
     # Create a compiler object so we can make decisions based on what
     # compiler is being used. typeshed is missing some attribues on the
@@ -370,7 +373,7 @@ def mypycify(paths: List[str],
     # so that it can do a corner-cutting version without full stubs.
     # TODO: Be able to do this based on file mtimes?
     if not skip_cgen:
-        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose, strip_asserts=strip_asserts)
+        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose, compiler_options=compiler_options)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)
