@@ -825,6 +825,19 @@ static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     return CPy_ObjectToStatus(res);
 }
 
+static int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff) {
+    // from https://github.com/python/cpython/blob/55d035113dfb1bd90495c8571758f504ae8d4802/Python/ceval.c#L2710
+    int ret = PyDict_Update(dict, stuff);
+    if (ret < 0) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Format(PyExc_TypeError,
+                    "'%.200s' object is not a mapping",
+                    stuff->ob_type->tp_name);
+        }
+    }
+    return ret;
+}
+
 static int CPyDict_Update(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Update(dict, stuff);

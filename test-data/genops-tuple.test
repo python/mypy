@@ -99,3 +99,31 @@ L0:
     r5 = t[r4] :: tuple
     r6 = unbox(int, r5)
     return r6
+
+[case testTupleDisplay]
+from typing import Sequence, Tuple
+def f(x: Sequence[int], y: Sequence[int]) -> Tuple[int, ...]:
+    return (1, 2, *x, *y, 3)
+[out]
+def f(x, y):
+    x, y :: object
+    r0, r1, r2 :: short_int
+    r3, r4 :: object
+    r5 :: list
+    r6, r7, r8 :: object
+    r9 :: bool
+    r10 :: tuple
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = box(short_int, r0)
+    r4 = box(short_int, r1)
+    r5 = [r3, r4]
+    r6 = r5.extend(x) :: list
+    r7 = r5.extend(y) :: list
+    r8 = box(short_int, r2)
+    r9 = r5.append(r8) :: list
+    r10 = tuple r5 :: list
+    return r10
+

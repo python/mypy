@@ -1865,6 +1865,28 @@ def f() -> None:
 from native import f
 f()
 
+[case testDisplays]
+from typing import List, Set, Tuple, Sequence, Dict, Any
+
+def listDisplay(x: List[int], y: List[int]) -> List[int]:
+    return [1, 2, *x, *y, 3]
+
+def setDisplay(x: Set[int], y: Set[int]) -> Set[int]:
+    return {1, 2, *x, *y, 3}
+
+def tupleDisplay(x: Sequence[str], y: Sequence[str]) -> Tuple[str, ...]:
+    return ('1', '2', *x, *y, '3')
+
+def dictDisplay(x: str, y1: Dict[str, int], y2: Dict[str, int]) -> Dict[str, int]:
+    return {x: 2, **y1, 'z': 3, **y2}
+
+[file driver.py]
+from native import listDisplay, setDisplay, tupleDisplay, dictDisplay
+assert listDisplay([4], [5, 6]) == [1, 2, 4, 5, 6, 3]
+assert setDisplay({4}, {5}) == {1, 2, 3, 4, 5}
+assert tupleDisplay(['4', '5'], ['6']) == ('1', '2', '4', '5', '6', '3')
+assert dictDisplay('x', {'y1': 1}, {'y2': 2, 'z': 5}) == {'x': 2, 'y1': 1, 'y2': 2, 'z': 5}
+
 [case testCallableTypes]
 from typing import Callable
 def absolute_value(x: int) -> int:
@@ -1974,9 +1996,14 @@ def test_star2_args() -> None:
     assert g(**{'c': 3, 'a': 1, 'b': 2}) == (1, 2, 3)
     assert g(b=2, **{'a': 1, 'c': 3}) == (1, 2, 3)
 
+def test_star2_args_bad(v: dict) -> bool:
+    return g(a=1, b=2, **v) == (1, 2, 3)
 [file driver.py]
 import native
 native.test_star2_args()
+
+# this should raise TypeError due to duplicate kwarg, but currently it doesn't
+assert native.test_star2_args_bad({'b': 2, 'c': 3})
 
 [case testStarAndStar2Args]
 from typing import Tuple

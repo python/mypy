@@ -180,3 +180,32 @@ L4:
     r8 = no_err_occurred
 L5:
     return d
+
+[case testDictDisplay]
+from typing import Dict
+def f(x: str, y: Dict[str, int]) -> Dict[str, int]:
+    return {x: 2, **y, 'z': 3}
+[out]
+def f(x, y):
+    x :: str
+    y :: dict
+    r0 :: short_int
+    r1 :: str
+    r2 :: short_int
+    r3 :: dict
+    r4 :: object
+    r5, r6 :: bool
+    r7 :: object
+    r8 :: bool
+L0:
+    r0 = 2
+    r1 = unicode_3 :: static  ('z')
+    r2 = 3
+    r3 = {}
+    r4 = box(short_int, r0)
+    r5 = r3.__setitem__(x, r4) :: dict
+    r6 = r3.update(y) (display) :: dict
+    r7 = box(short_int, r2)
+    r8 = r3.__setitem__(r1, r7) :: dict
+    return r3
+

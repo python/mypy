@@ -8,7 +8,7 @@ from mypyc.ops import (
     ERR_FALSE, ERR_MAGIC, ERR_NEVER,
 )
 from mypyc.ops_primitive import (
-    name_ref_op, method_op, binary_op, func_op,
+    name_ref_op, method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit,
     call_emit, call_negative_bool_emit, call_negative_magic_emit,
 )
@@ -50,6 +50,13 @@ dict_update_op = method_op(
     error_kind=ERR_FALSE,
     emit=call_negative_bool_emit('CPyDict_Update'),
     priority=2)
+
+dict_update_in_display_op = custom_op(
+    arg_types=[dict_rprimitive, dict_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    emit=call_negative_bool_emit('CPyDict_UpdateInDisplay'),
+    format_str='{dest} = {args[0]}.update({args[1]}) (display) :: dict',)
 
 method_op(
     name='update',

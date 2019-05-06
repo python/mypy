@@ -1648,7 +1648,7 @@ L0:
     r15 = r13[r14] :: dict
     r16 = ()
     r17 = {}
-    r18 = r17.update(r6) :: dict
+    r18 = r17.update(r6) (display) :: dict
     r19 = box(tuple[], r16)
     r20 = py_call_with_kwargs(r15, r19, r17)
     r21 = unbox(tuple[int, int, int], r20)
@@ -1688,7 +1688,7 @@ L0:
     r12 = r10[r11] :: dict
     r13 = (r0)
     r14 = {}
-    r15 = r14.update(r5) :: dict
+    r15 = r14.update(r5) (display) :: dict
     r16 = box(tuple[int], r13)
     r17 = py_call_with_kwargs(r12, r16, r14)
     r18 = unbox(tuple[int, int, int], r17)

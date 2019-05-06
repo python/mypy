@@ -89,7 +89,7 @@ set_add_op = method_op(
 
 
 # This is not a public API but looks like it should be fine.
-method_op(
+set_update_op = method_op(
     name='update',
     arg_types=[set_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,

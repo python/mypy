@@ -108,9 +108,6 @@ def args(*x: int) -> int:  # E: Accepting *args or **kwargs is unimplemented
 def kwargs(**x: int) -> None:  # E: Accepting *args or **kwargs is unimplemented
     pass
 
-def foo(x: List[int]) -> List[int]:
-    return [1, 2, *x]  # E: Star expressions (in non call contexts) are unimplemented
-
 def busted(b: bool) -> None:
     for i in range(1, 10, 0):  # E: range() step can't be zero
         try:
@@ -121,7 +118,7 @@ def busted(b: bool) -> None:
         finally:
             print('oops')
 
-print(foo([1,2,3]))
+print(sum([1,2,3]))
 
 x = [1,2]
 
@@ -175,7 +172,6 @@ a_str = " ".join(str(i) for i in range(10))
 wtvr = next(i for i in range(10) if i == 5)
 
 d1 = {1: 2}
-d2 = {2: 3, **d1}  # E: **args in dict expressions is unimplemented
 
 async def aio(x: Any) -> Any:  # E: async functions are unimplemented
     await x  # E: await is unimplemented

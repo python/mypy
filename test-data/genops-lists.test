@@ -200,23 +200,28 @@ L3:
 L4:
     return l
 
-[case testPartialListType]
-def f() -> None:
-    x = []
-    x.append(1)
+[case testListDisplay]
+from typing import List
+def f(x: List[int], y: List[int]) -> List[int]:
+    return [1, 2, *x, *y, 3]
 [out]
-def f():
-    r0, x :: list
-    r1 :: short_int
-    r2 :: object
-    r3 :: bool
-    r4, r5 :: None
+def f(x, y):
+    x, y :: list
+    r0, r1, r2 :: short_int
+    r3, r4 :: object
+    r5 :: list
+    r6, r7, r8 :: object
+    r9 :: bool
 L0:
-    r0 = []
-    x = r0
-    r1 = 1
-    r2 = box(short_int, r1)
-    r3 = x.append(r2) :: list
-    r4 = None
-    r5 = None
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = box(short_int, r0)
+    r4 = box(short_int, r1)
+    r5 = [r3, r4]
+    r6 = r5.extend(x) :: list
+    r7 = r5.extend(y) :: list
+    r8 = box(short_int, r2)
+    r9 = r5.append(r8) :: list
     return r5
+

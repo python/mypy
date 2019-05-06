@@ -77,8 +77,10 @@ from mypyc.ops_list import (
     list_append_op, list_extend_op, list_len_op, new_list_op,
 )
 from mypyc.ops_tuple import list_tuple_op
-from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_op
-from mypyc.ops_set import new_set_op, set_add_op
+from mypyc.ops_dict import (
+    new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_in_display_op,
+)
+from mypyc.ops_set import new_set_op, set_add_op, set_update_op
 from mypyc.ops_misc import (
     none_op, none_object_op, true_op, false_op, iter_op, next_op, next_raw_op,
     check_stop_op, send_op, yield_from_except_op,
@@ -100,6 +102,7 @@ from mypyc.sametype import is_same_type, is_same_method_signature
 from mypyc.crash import catch_errors
 
 GenFunc = Callable[[], None]
+DictEntry = Tuple[Optional[Value], Value]
 
 
 class UnsupportedException(Exception):
@@ -2341,9 +2344,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         assert arg_names is not None
 
         pos_arg_values = []
-        kw_arg_key_value_pairs = []
+        kw_arg_key_value_pairs = []  # type: List[DictEntry]
         star_arg_values = []
-        star2_arg_values = []
         for value, kind, name in zip(arg_values, arg_kinds, arg_names):
             if kind == ARG_POS:
                 pos_arg_values.append(value)
@@ -2354,7 +2356,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             elif kind == ARG_STAR:
                 star_arg_values.append(value)
             elif kind == ARG_STAR2:
-                star2_arg_values.append(value)
+                # NOTE: mypy currently only supports a single ** arg, but python supports multiple.
+                # This code supports multiple primarily to make the logic easier to follow.
+                kw_arg_key_value_pairs.append((None, value))
             else:
                 assert False, ("Argument kind should not be possible:", kind)
 
@@ -2370,10 +2374,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             pos_args_tuple = self.primitive_op(list_tuple_op, [pos_args_list], line)
 
         kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
-        # NOTE: mypy currently only supports a single ** arg, but python supports multiple.
-        # This code supports multiple primarily to make the logic easier to follow.
-        for star2_arg_value in star2_arg_values:
-            self.primitive_op(dict_update_op, [kw_args_dict, star2_arg_value], line)
 
         return self.primitive_op(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
@@ -2720,10 +2720,54 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)
 
     def visit_list_expr(self, expr: ListExpr) -> Value:
-        items = [self.accept(item) for item in expr.items]
-        return self.primitive_op(new_list_op, items, expr.line)
+        return self._visit_list_display(expr.items, expr.line)
+
+    def _visit_list_display(self, items: List[Expression], line: int) -> Value:
+        return self._visit_display(
+            items,
+            new_list_op,
+            list_append_op,
+            list_extend_op,
+            line
+        )
+
+    def _visit_display(self,
+                       items: List[Expression],
+                       constructor_op: OpDescription,
+                       append_op: OpDescription,
+                       extend_op: OpDescription,
+                       line: int
+                       ) -> Value:
+        accepted_items = []
+        for item in items:
+            if isinstance(item, StarExpr):
+                accepted_items.append((True, self.accept(item.expr)))
+            else:
+                accepted_items.append((False, self.accept(item)))
+
+        result = None
+        initial_items = []
+        for starred, value in accepted_items:
+            if result is None and not starred and constructor_op.is_var_arg:
+                initial_items.append(value)
+                continue
+
+            if result is None:
+                result = self.primitive_op(constructor_op, initial_items, line)
+
+            self.primitive_op(extend_op if starred else append_op, [result, value], line)
+
+        if result is None:
+            result = self.primitive_op(constructor_op, initial_items, line)
+
+        return result
 
     def visit_tuple_expr(self, expr: TupleExpr) -> Value:
+        if any(isinstance(item, StarExpr) for item in expr.items):
+            # create a tuple of unknown length
+            return self._visit_tuple_display(expr)
+
+        # create an tuple of fixed length (RTuple)
         tuple_type = self.node_type(expr)
         # When handling NamedTuple et. al we might not have proper type info,
         # so make some up if we need it.
@@ -2736,24 +2780,29 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             items.append(self.coerce(reg, item_type, item_expr.line))
         return self.add(TupleSet(items, expr.line))
 
+    def _visit_tuple_display(self, expr: TupleExpr) -> Value:
+        """Create a list, then turn it into a tuple."""
+        val_as_list = self._visit_list_display(expr.items, expr.line)
+        return self.primitive_op(list_tuple_op, [val_as_list], expr.line)
+
     def visit_dict_expr(self, expr: DictExpr) -> Value:
         """First accepts all keys and values, then makes a dict out of them."""
         key_value_pairs = []
         for key_expr, value_expr in expr.items:
-            if key_expr is None:
-                self.bail("**args in dict expressions is unimplemented", expr.line)
-            key = self.accept(key_expr)
+            key = self.accept(key_expr) if key_expr is not None else None
             value = self.accept(value_expr)
             key_value_pairs.append((key, value))
 
         return self.make_dict(key_value_pairs, expr.line)
 
     def visit_set_expr(self, expr: SetExpr) -> Value:
-        set_reg = self.primitive_op(new_set_op, [], expr.line)
-        for key_expr in expr.items:
-            key_reg = self.accept(key_expr)
-            self.primitive_op(set_add_op, [set_reg, key_reg], expr.line)
-        return set_reg
+        return self._visit_display(
+            expr.items,
+            new_set_op,
+            set_add_op,
+            set_update_op,
+            expr.line
+        )
 
     def visit_str_expr(self, expr: StrExpr) -> Value:
         return self.load_static_unicode(expr.value)
@@ -3717,9 +3766,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_await_expr(self, o: AwaitExpr) -> Value:
         self.bail("await is unimplemented", o.line)
 
-    def visit_star_expr(self, o: StarExpr) -> Value:
-        self.bail("Star expressions (in non call contexts) are unimplemented", o.line)
-
     # Unimplemented constructs that shouldn't come up because they are py2 only
     def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
         self.bail("Python 2 features are unsupported", o.line)
@@ -3769,6 +3815,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr should have been handled in CallExpr"
+
+    def visit_star_expr(self, o: StarExpr) -> Value:
+        assert False, "should have been handled in Tuple/List/Set/DictExpr or CallExpr"
 
     # Helpers
 
@@ -3904,15 +3953,24 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def box_expr(self, expr: Expression) -> Value:
         return self.box(self.accept(expr))
 
-    def make_dict(self, key_value_pairs: List[Tuple[Value, Value]], line: int) -> Value:
+    def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         dict_reg = self.add(PrimitiveOp([], new_dict_op, line))
         for key, value in key_value_pairs:
-            self.translate_special_method_call(
-                dict_reg,
-                '__setitem__',
-                [key, value],
-                result_type=None,
-                line=line)
+            if key is not None:
+                # key:value
+                self.translate_special_method_call(
+                    dict_reg,
+                    '__setitem__',
+                    [key, value],
+                    result_type=None,
+                    line=line)
+            else:
+                # **value
+                self.primitive_op(
+                    dict_update_in_display_op,
+                    [dict_reg, value],
+                    line=line
+                )
         return dict_reg
 
     def none(self) -> Value:
