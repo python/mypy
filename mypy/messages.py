@@ -1578,9 +1578,8 @@ def best_matches(current: str, options: Iterable[str]) -> List[str]:
                   reverse=True, key=lambda v: (ratios[v], v))
 
 
-def pretty_or(args: List[str], use_single_quotations: bool = False) -> str:
-    quotations = "'" if use_single_quotations else '"'
-    quoted = ["{0}{1}{0}".format(quotations, a) for a in args]
+def pretty_or(args: List[str]) -> str:
+    quoted = ['"' + a + '"' for a in args]
     if len(quoted) == 1:
         return quoted[0]
     if len(quoted) == 2:

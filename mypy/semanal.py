@@ -1563,10 +1563,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if extra:
                     message += " {}".format(extra)
                 # suggest alternatives, if any match is found
-                alternatives = module.names.keys()
+                alternatives = set(module.names.keys()).difference({id})
                 matches = best_matches(id, alternatives)[:3]
                 if matches:
-                    suggestion = "; maybe {}?".format(pretty_or(matches, True))
+                    suggestion = "; maybe {}?".format(pretty_or(matches))
                     message += "{}".format(suggestion)
                 self.fail(message, imp)
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
