@@ -1,4 +1,5 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
+import sys
 from collections import OrderedDict
 from typing import Optional, Dict, List, cast, Tuple, Iterable
 
@@ -133,7 +134,8 @@ class Attribute:
                 # assignment, which is where you would fix the issue.
                 node = self.info[self.name].node
                 assert node is not None
-                ctx.api.msg.need_annotation_for_var(node, self.context)
+                python_version: Tuple[int, int] = sys.version_info[:2]
+                ctx.api.msg.need_annotation_for_var(node, self.context, python_version)
 
             # Convert type not set to Any.
             init_type = AnyType(TypeOfAny.unannotated)
@@ -403,7 +405,8 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     if auto_attribs and not stmt.new_syntax:
         # auto_attribs requires an annotation on *every* attr.ib.
         assert lhs.node is not None
-        ctx.api.msg.need_annotation_for_var(lhs.node, stmt)
+        python_version: Tuple[int, int] = sys.version_info[:2]
+        ctx.api.msg.need_annotation_for_var(lhs.node, stmt, python_version)
         return None
 
     if len(stmt.lvalues) > 1:

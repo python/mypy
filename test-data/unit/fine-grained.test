@@ -2699,9 +2699,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for 'x'
+main:7: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 ==
-main:7: error: Need type annotation for 'x'
+main:7: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -2716,9 +2716,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for 'x'
+main:5: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 ==
-main:5: error: Need type annotation for 'x'
+main:5: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 
 [case testRefreshTryExcept]
 import a
