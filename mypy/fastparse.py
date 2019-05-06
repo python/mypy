@@ -248,7 +248,6 @@ class ASTConverter:
                  options: Options,
                  is_stub: bool,
                  errors: Errors) -> None:
-        self.class_nesting = 0
         # 'C' for class, 'F' for function
         self.class_and_function_stack = []  # type: List[Literal['C', 'F']]
         self.imports = []  # type: List[ImportBase]
