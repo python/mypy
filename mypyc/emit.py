@@ -21,10 +21,12 @@ from mypyc.sametype import is_same_type
 
 class HeaderDeclaration:
     def __init__(self,
-                 dependencies: Set[str], decl: List[str], defn: Optional[List[str]]) -> None:
+                 dependencies: Set[str], decl: List[str], defn: Optional[List[str]],
+                 needs_extern: bool = False) -> None:
         self.dependencies = dependencies
         self.decl = decl
         self.defn = defn
+        self.needs_extern = needs_extern
 
 
 class EmitterContext:

@@ -192,12 +192,17 @@ class ModuleGenerator:
         declarations.emit_line()
 
         for declaration in sorted_decls:
-            declarations.emit_lines(*declaration.decl)
+            if declaration.needs_extern:
+                declarations.emit_lines(
+                    'extern {}'.format(declaration.decl[0]), *declaration.decl[1:])
+                emitter.emit_lines(*declaration.decl)
+            else:
+                declarations.emit_lines(*declaration.decl)
 
         for module_name, module in self.modules:
             self.declare_finals(module.final_names, declarations)
             for cl in module.classes:
-                generate_class_type_decl(cl, declarations)
+                generate_class_type_decl(cl, emitter, declarations)
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
 
@@ -400,6 +405,7 @@ class ModuleGenerator:
                 set(),
                 ['{}{};'.format(type_spaced, name)],
                 defn,
+                needs_extern=True,
             )
 
     def declare_internal_globals(self, module_name: str, emitter: Emitter) -> None:
@@ -427,7 +433,7 @@ class ModuleGenerator:
     def declare_finals(self, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
         for name, typ in final_names:
             static_name = emitter.static_name(name, 'final')
-            emitter.emit_line('{}{};'.format(emitter.ctype_spaced(typ), static_name))
+            emitter.emit_line('extern {}{};'.format(emitter.ctype_spaced(typ), static_name))
 
     def define_finals(self, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
         for name, typ in final_names:

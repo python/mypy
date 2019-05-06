@@ -125,18 +125,24 @@ int CPyGlobalsInit(void)
 CPyModule *CPyStatic_module_internal = NULL;
 CPyModule *CPyStatic_builtins_module_internal = NULL;
 
-== __native.h ==
-#include <Python.h>
-#include <CPy.h>
-
-int CPyGlobalsInit(void);
-
 PyObject *CPyStatic_unicode_0;
 CPyModule *CPyStatic_module_internal;
 CPyModule *CPyStatic_module;
 PyObject *CPyStatic_globals;
 CPyModule *CPyStatic_builtins_module_internal;
 CPyModule *CPyStatic_builtins_module;
+== __native.h ==
+#include <Python.h>
+#include <CPy.h>
+
+int CPyGlobalsInit(void);
+
+extern PyObject *CPyStatic_unicode_0;
+extern CPyModule *CPyStatic_module_internal;
+extern CPyModule *CPyStatic_module;
+extern PyObject *CPyStatic_globals;
+extern CPyModule *CPyStatic_builtins_module_internal;
+extern CPyModule *CPyStatic_builtins_module;
 CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
 char CPyDef___top_level__(void);

@@ -71,6 +71,7 @@ def setup_mypycify_vars() -> None:
         vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
         # Also disable building 32-bit binaries, since we generate too much code
         # for a 32-bit Mach-O object. There has to be a better way to do this.
+        vars['LDSHARED'] = vars['LDSHARED'].replace('-arch i386', '')
         vars['LDFLAGS'] = vars['LDFLAGS'].replace('-arch i386', '')
         vars['CFLAGS'] = vars['CFLAGS'].replace('-arch i386', '')
 

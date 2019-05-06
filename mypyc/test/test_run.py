@@ -5,7 +5,6 @@ import os.path
 import platform
 import subprocess
 import contextlib
-import unittest
 import sys
 from typing import List, Iterator, Optional
 
@@ -67,10 +66,6 @@ class TestRun(MypycDataSuite):
     multi_file = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        # FIXME: This is broken and I am investigating -sully
-        if self.multi_file and sys.platform == 'darwin':
-            pytest.skip("multifile tests are broken on macOS")
-
         bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
 
         # setup.py wants to be run from the root directory of the package, which we accommodate
