@@ -20,7 +20,7 @@ if MYPY:
 
 
 third_party_modules = {
-    # From Python 3 Wall of Superpowers (https://python3wos.appspot.com/)
+    # From https://hugovk.github.io/top-pypi-packages/
     'pip',
     'urllib3',
     'six',
