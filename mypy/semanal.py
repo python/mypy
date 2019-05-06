@@ -166,6 +166,21 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.classmethod': 'classmethod.pyi',
 }  # type: Final
 
+TYPES_FOR_UNIMPORTED_HINTS = {
+    'typing.Any',
+    'typing.Callable',
+    'typing.Dict',
+    'typing.Iterable',
+    'typing.Iterator',
+    'typing.List',
+    'typing.Optional',
+    'typing.Set',
+    'typing.Tuple',
+    'typing.TypeVar',
+    'typing.Union',
+    'typing.cast',
+}  # type: Final
+
 
 class SemanticAnalyzerPass2(NodeVisitor[None],
                             SemanticAnalyzerInterface,
@@ -2288,6 +2303,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if cur_node and is_final:
                 # Overrides will be checked in type checker.
                 self.fail("Cannot redefine an existing name as final", lval)
+            # If this attribute was defined before with an inferred type and it's marked
+            # with an explicit type now, give an error.
+            if (cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_inferred and
+                    explicit_type):
+                self.attribute_already_defined(lval.name, lval, cur_node)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
@@ -3457,9 +3477,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        matches = [obsolete_name
-                   for obsolete_name in obsolete_name_mapping
-                   if obsolete_name.rsplit('.', 1)[-1] == name]
+        lowercased_names_handled_by_unimported_hints = {
+            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        matches = [
+            obsolete_name for obsolete_name in obsolete_name_mapping
+            if obsolete_name.rsplit('.', 1)[-1] == name
+            and obsolete_name not in lowercased_names_handled_by_unimported_hints
+        ]
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
@@ -3729,6 +3754,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
+
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(name)
@@ -3736,8 +3762,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-    def name_already_defined(self, name: str, ctx: Context,
-                    original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
+        modules_with_unimported_hints = {
+            name.split('.', 1)[0]
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        lowercased = {
+            name.lower(): name
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        for module in modules_with_unimported_hints:
+            fullname = '{}.{}'.format(module, name).lower()
+            if fullname not in lowercased:
+                continue
+            # User probably forgot to import these types.
+            hint = (
+                'Did you forget to import it from "{module}"?'
+                ' (Suggestion: "from {module} import {name}")'
+            ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
+            self.note(hint, ctx)
+
+    def already_defined(self, name: str, ctx: Context,
+                        original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None, *,
+                        noun: str) -> None:
         if isinstance(original_ctx, SymbolTableNode):
             node = original_ctx.node
         elif isinstance(original_ctx, SymbolNode):
@@ -3752,7 +3798,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("Name '{}' already defined{}".format(unmangle(name), extra_msg), ctx)
+        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx)
+
+    def name_already_defined(self, name: str, ctx: Context,
+                             original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                             ) -> None:
+        self.already_defined(name, ctx, original_ctx, noun='Name')
+
+    def attribute_already_defined(self, name: str, ctx: Context,
+                                  original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                                  ) -> None:
+        self.already_defined(name, ctx, original_ctx, noun='Attribute')
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:

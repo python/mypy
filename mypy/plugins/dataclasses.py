@@ -3,7 +3,7 @@ from typing import Dict, List, Set, Tuple
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
-    Context, Expression, FuncDef, JsonDict, NameExpr,
+    Context, Expression, FuncDef, JsonDict, NameExpr, RefExpr,
     SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr
 )
 from mypy.plugin import ClassDefContext
@@ -300,7 +300,7 @@ class DataclassTransformer:
                     Context(line=attr.line, column=attr.column),
                 )
 
-            found_default = found_default or attr.has_default
+            found_default = found_default or (attr.has_default and attr.is_in_init)
 
         return all_attrs
 
@@ -337,7 +337,7 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
     """
     if (
             isinstance(expr, CallExpr) and
-            isinstance(expr.callee, NameExpr) and
+            isinstance(expr.callee, RefExpr) and
             expr.callee.fullname == 'dataclasses.field'
     ):
         # field() only takes keyword arguments.

@@ -2206,3 +2206,21 @@ C in exp  # E: Non-overlapping container check (element type: "Type[C]", contain
 o in exp
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+[case testUnimportedHintAny]
+def f(x: Any) -> None:  # E: Name 'Any' is not defined \
+                        # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
+    pass
+
+
+[case testUnimportedHintAnyLower]
+def f(x: any) -> None:  # E: Name 'any' is not defined \
+                        # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
+    pass
+
+
+[case testUnimportedHintOptional]
+def f(x: Optional[str]) -> None:  # E: Name 'Optional' is not defined \
+                                  # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Optional")
+    pass
