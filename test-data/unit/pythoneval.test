@@ -242,6 +242,7 @@ import typing
 cast(int, 2)
 [out]
 _program.py:2: error: Name 'cast' is not defined
+_program.py:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
 
 [case testBinaryIOType]
 from typing import BinaryIO

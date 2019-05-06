@@ -3481,7 +3481,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
         matches = [obsolete_name
                    for obsolete_name in obsolete_name_mapping
-                   if obsolete_name.rsplit('.', 1)[-1] == name]
+                   if obsolete_name.rsplit('.', 1)[-1] == name
+                   and name not in TYPES_FOR_UNIMPORTED_HINTS]
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
