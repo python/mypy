@@ -135,9 +135,9 @@ file:2: error: syntax error in type comment '*'
 
 [case testInvalidTypeComment5]
 0
-x = 0 # type: * # some comment
+x = 0 # type:# some comment
 [out]
-file:2: error: syntax error in type comment '*'
+file:2: error: syntax error in type comment ''
 
 [case testInvalidTypeComment6]
 0
@@ -149,7 +149,7 @@ file:2: error: syntax error in type comment '*'
 0
 x = 0 # type: A B #comment #7
 [out]
-file:2: error: syntax error in type comment '*'
+file:2: error: syntax error in type comment 'A B'
 
 [case testInvalidSignatureInComment1]
 def f(): # type: x
