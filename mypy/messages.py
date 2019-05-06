@@ -1079,16 +1079,17 @@ class MessageBuilder:
                   ctx)
 
     def need_annotation_for_var(self, node: SymbolNode, context: Context,
-                                python_version: Tuple[int, int]) -> None:
-        hint = ''  # Only gives hint if it's a variable declaration and the partial type is a builtin type
-        if (isinstance(node, Var) and isinstance(node.type, PartialType) and
+                                python_version: Optional[Tuple[int, int]]) -> None:
+        hint = ''
+        # Only gives hint if it's a variable declaration and the partial type is a builtin type
+        if (python_version and isinstance(node, Var) and isinstance(node.type, PartialType) and
                 node.type.type and node.type.type.fullname() in reverse_builtin_aliases):
             alias = reverse_builtin_aliases[node.type.type.fullname()]
             alias = alias.split('.')[-1]
             type_dec = '<type>'
             if alias == 'Dict':
                 type_dec = '{}, {}'.format(type_dec, type_dec)
-            if python_version < PYTHON3_VERSION:
+            if python_version < (3, 6):
                 hint = ' (hint: "{} = ...  # type: {}[{}]")'.format(node.name(), alias, type_dec)
             else:
                 hint = ' (hint: "{}: {}[{}] = ...")'.format(node.name(), alias, type_dec)
