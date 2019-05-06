@@ -1079,7 +1079,7 @@ class MessageBuilder:
                   ctx)
 
     def need_annotation_for_var(self, node: SymbolNode, context: Context,
-                                python_version: Optional[Tuple[int, int]]) -> None:
+                                python_version: Optional[Tuple[int, int]] = None) -> None:
         hint = ''
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
         if (python_version and isinstance(node, Var) and isinstance(node.type, PartialType) and
