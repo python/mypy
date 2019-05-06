@@ -984,7 +984,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
-                if not len(fdef.arguments) or (len(fdef.arg_names) == 1 and 'self' in fdef.arg_names):
+                if (not len(fdef.arguments) or
+                        (len(fdef.arg_names) == 1 and 'self' in fdef.arg_names)):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED_DISALLOW_UNTYPED, fdef)
                     self.note('Use "-> None" if function does not return a value', fdef)
                 else:

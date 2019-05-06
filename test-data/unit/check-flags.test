@@ -27,13 +27,6 @@ def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation
 
-[case testUnannotatedReturnWithNoArgument]
-# flags: --disallow-untyped-defs
-def f(self): pass
-[out]
-main:2: error: Function must have a return type annotation ('disallow_untyped_defs' enabled)
-main:2: note: Use "-> None" if function does not return a value
-
 [case testLambda]
 # flags: --disallow-untyped-defs
 lambda x: x
@@ -44,12 +37,21 @@ lambda x: x
 def f():
     1 + "str"
 [out]
-main:2: error: Function is missing a type annotation
+main:2: error: Function must have a return type annotation ('disallow_untyped_defs' enabled)
+main:2: note: Use "-> None" if function does not return a value
+
+[case testUnannotatedReturnWithOnlySelfArgument]
+# flags: --disallow-untyped-defs
+def f(self): pass
+[out]
+main:2: error: Function must have a return type annotation ('disallow_untyped_defs' enabled)
+main:2: note: Use "-> None" if function does not return a value
 
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
-async def f():  # E: Function is missing a type annotation
-    pass
+async def f():  # E: Function must have a return type annotation ('disallow_untyped_defs' enabled) \
+                # N: Use "-> None" if function does not return a value                
+    pass        
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
