@@ -20,7 +20,7 @@ from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dic
 MYPY = False
 if MYPY:
     import typing  # for typing.Type, which conflicts with types.Type
-    from typing_extensions import Final
+    from typing_extensions import Final, Literal
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -134,7 +134,8 @@ class ASTConverter:
     def __init__(self,
                  options: Options,
                  errors: Errors) -> None:
-        self.class_nesting = 0
+        # 'C' for class, 'F' for function
+        self.class_and_function_stack = []  # type: List[Literal['C', 'F']]
         self.imports = []  # type: List[ImportBase]
 
         self.options = options
@@ -285,8 +286,8 @@ class ASTConverter:
             ret.append(OverloadedFuncDef(current_overload))
         return ret
 
-    def in_class(self) -> bool:
-        return self.class_nesting > 0
+    def in_method_scope(self) -> bool:
+        return self.class_and_function_stack[-2:] == ['C', 'F']
 
     def translate_module_id(self, id: str) -> str:
         """Return the actual, internal module id for a source text id.
@@ -313,10 +314,11 @@ class ASTConverter:
 
     # --- stmt ---
     # FunctionDef(identifier name, arguments args,
-    #             stmt* body, expr* decorator_list, expr? returns, string? type_comment)
+    #             stmt* body, expr*    decorator_list, expr? returns, string? type_comment)
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
+        self.class_and_function_stack.append('F')
         lineno = n.lineno
         converter = TypeConverter(self.errors, line=lineno,
                                   assume_str_is_unicode=self.unicode_literals)
@@ -353,7 +355,7 @@ class ASTConverter:
                 return_type = converter.visit(func_type_ast.returns)
 
                 # add implicit self type
-                if self.in_class() and len(arg_types) < len(args):
+                if self.in_method_scope() and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, lineno, n.col_offset)
@@ -407,11 +409,13 @@ class ASTConverter:
             func_def.body.set_line(func_def.get_line())
             dec = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             dec.set_line(lineno, n.col_offset)
-            return dec
+            retval = dec  # type: Statement
         else:
             # Overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset)
-            return func_def
+            retval = func_def
+        self.class_and_function_stack.pop()
+        return retval
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
         if self.options.no_implicit_optional:
@@ -515,7 +519,7 @@ class ASTConverter:
     #  stmt* body,
     #  expr* decorator_list)
     def visit_ClassDef(self, n: ast27.ClassDef) -> ClassDef:
-        self.class_nesting += 1
+        self.class_and_function_stack.append('C')
 
         cdef = ClassDef(n.name,
                         self.as_required_block(n.body, n.lineno),
@@ -524,7 +528,7 @@ class ASTConverter:
                         metaclass=None)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.set_line(cdef, n)
-        self.class_nesting -= 1
+        self.class_and_function_stack.pop()
         return cdef
 
     # Return(expr? value)
