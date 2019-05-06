@@ -475,7 +475,7 @@ class ASTConverter:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
                 err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
                 self.fail(err_msg, lineno, n.col_offset)
-                if n.type_comment and n.type_comment[0] != "(":
+                if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
                               lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)

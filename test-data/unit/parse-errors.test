@@ -212,6 +212,19 @@ def f(): # type: (x) -> x x
 [out]
 file:1: error: syntax error in type comment '(x) -> x x'
 
+[case testInvalidSignatureInComment11]
+def f(): # type: # abc comment
+  pass
+[out]
+file:1: error: syntax error in type comment ''
+
+[case testInvalidSignatureInComment12]
+def f(): # type: (x) -> x x # comment #2
+  pass
+[out]
+file:1: error: syntax error in type comment '(x) -> x x'
+
+
 [case testDuplicateSignatures1]
 def f() -> None: # type: () -> None
   pass
