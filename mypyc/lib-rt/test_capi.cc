@@ -78,10 +78,10 @@ protected:
     PyObject *min_short;
     PyObject *min_pos_long;
     PyObject *max_neg_long;
-    long long c_max_short;
-    long long c_min_short;
-    long long c_min_pos_long;
-    long long c_max_neg_long;
+    Py_ssize_t c_max_short;
+    Py_ssize_t c_min_short;
+    Py_ssize_t c_min_pos_long;
+    Py_ssize_t c_max_neg_long;
 
     virtual void SetUp() {
         if (!is_initialized) {
@@ -122,9 +122,9 @@ TEST_F(CAPITest, test_cint_conversions) {
     EXPECT_EQ(CPyTagged_ShortFromInt(0), 0);
     EXPECT_EQ(CPyTagged_ShortFromInt(3), 6);
     EXPECT_EQ(CPyTagged_ShortFromInt(-5), -10);
-    EXPECT_EQ(CPyTagged_ShortAsLongLong(0), 0);
-    EXPECT_EQ(CPyTagged_ShortAsLongLong(6), 3);
-    EXPECT_EQ(CPyTagged_ShortAsLongLong(-10), -5);
+    EXPECT_EQ(CPyTagged_ShortAsSsize_t(0), 0);
+    EXPECT_EQ(CPyTagged_ShortAsSsize_t(6), 3);
+    EXPECT_EQ(CPyTagged_ShortAsSsize_t(-10), -5);
 }
 
 TEST_F(CAPITest, test_is_long_int) {
@@ -148,8 +148,8 @@ TEST_F(CAPITest, test_obj_to_short_int) {
     EXPECT_EQ(CPyTagged_FromObject(int_from_str("1234")), CPyTagged_ShortFromInt(1234));
     EXPECT_EQ(CPyTagged_FromObject(int_from_str("-1234")), CPyTagged_ShortFromInt(-1234));
 
-    EXPECT_EQ(CPyTagged_FromObject(max_short), CPyTagged_ShortFromLongLong(c_max_short));
-    EXPECT_EQ(CPyTagged_FromObject(min_short), CPyTagged_ShortFromLongLong(c_min_short));
+    EXPECT_EQ(CPyTagged_FromObject(max_short), CPyTagged_ShortFromSsize_t(c_max_short));
+    EXPECT_EQ(CPyTagged_FromObject(min_short), CPyTagged_ShortFromSsize_t(c_min_short));
 }
 
 TEST_F(CAPITest, test_obj_to_long_int) {
@@ -181,9 +181,9 @@ TEST_F(CAPITest, test_short_int_to_obj) {
                             int_from_str("1234")));
     EXPECT_TRUE(is_py_equal(CPyTagged_AsObject(CPyTagged_ShortFromInt(-1234)),
                             int_from_str("-1234")));
-    EXPECT_TRUE(is_py_equal(CPyTagged_AsObject(CPyTagged_ShortFromLongLong(c_max_short)),
+    EXPECT_TRUE(is_py_equal(CPyTagged_AsObject(CPyTagged_ShortFromSsize_t(c_max_short)),
                             max_short));
-    EXPECT_TRUE(is_py_equal(CPyTagged_AsObject(CPyTagged_ShortFromLongLong(c_min_short)),
+    EXPECT_TRUE(is_py_equal(CPyTagged_AsObject(CPyTagged_ShortFromSsize_t(c_min_short)),
                             min_short));
 }
 
@@ -534,11 +534,11 @@ TEST_F(CAPITest, test_tagged_as_long_long) {
     auto s = eval_int("3");
     auto neg = eval_int("-1");
     auto l = eval_int("2**128");
-    EXPECT_TRUE(CPyTagged_AsLongLong(s) == 3);
+    EXPECT_TRUE(CPyTagged_AsSsize_t(s) == 3);
     EXPECT_FALSE(PyErr_Occurred());
-    EXPECT_TRUE(CPyTagged_AsLongLong(neg) == -1);
+    EXPECT_TRUE(CPyTagged_AsSsize_t(neg) == -1);
     EXPECT_FALSE(PyErr_Occurred());
-    EXPECT_TRUE(CPyTagged_AsLongLong(l) == -1);
+    EXPECT_TRUE(CPyTagged_AsSsize_t(l) == -1);
     EXPECT_TRUE(PyErr_Occurred());
 }
 

@@ -94,8 +94,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_repeat(self) -> None:
         self.assert_emit_binary_op(
             '*', self.ll, self.l, self.n,
-            """long long __tmp1;
-               __tmp1 = CPyTagged_AsLongLong(cpy_r_n);
+            """Py_ssize_t __tmp1;
+               __tmp1 = CPyTagged_AsSsize_t(cpy_r_n);
                if (__tmp1 == -1 && PyErr_Occurred())
                    CPyError_OutOfMemory();
                cpy_r_r0 = PySequence_Repeat(cpy_r_l, __tmp1);
@@ -107,9 +107,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_list_len(self) -> None:
         self.assert_emit(PrimitiveOp([self.l], list_len_op, 55),
-                         """long long __tmp1;
+                         """Py_ssize_t __tmp1;
                             __tmp1 = PyList_GET_SIZE(cpy_r_l);
-                            cpy_r_r0 = CPyTagged_ShortFromLongLong(__tmp1);
+                            cpy_r_r0 = CPyTagged_ShortFromSsize_t(__tmp1);
                          """)
 
     def test_branch(self) -> None:

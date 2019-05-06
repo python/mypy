@@ -52,7 +52,7 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.common import (
     ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, TEMP_ATTR_NAME, LAMBDA_NAME,
-    MAX_SHORT_INT, TOP_LEVEL_NAME, SELF_NAME, decorator_helper_name,
+    MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME, SELF_NAME, decorator_helper_name,
     FAST_ISINSTANCE_MAX_SUBCLASSES
 )
 from mypyc.prebuildvisitor import PreBuildVisitor
@@ -1552,7 +1552,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
-            if val > MAX_SHORT_INT:
+            if val > MAX_LITERAL_SHORT_INT:
                 return self.load_static_int(val)
             return self.add(LoadInt(val))
         elif isinstance(val, float):
@@ -2076,7 +2076,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             base, '__getitem__', [index_reg], self.node_type(expr), expr.line)
 
     def visit_int_expr(self, expr: IntExpr) -> Value:
-        if expr.value > MAX_SHORT_INT:
+        if expr.value > MAX_LITERAL_SHORT_INT:
             return self.load_static_int(expr.value)
         return self.add(LoadInt(expr.value))
 

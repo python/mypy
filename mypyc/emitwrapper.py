@@ -135,9 +135,9 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
                                                       fn.cname(emitter.names)))
     emitter.emit_error_check('retval', fn.ret_type, 'return -1;')
     if is_int_rprimitive(fn.ret_type):
-        emitter.emit_line('Py_ssize_t val = CPyTagged_AsLongLong(retval);')
+        emitter.emit_line('Py_ssize_t val = CPyTagged_AsSsize_t(retval);')
     else:
-        emitter.emit_line('Py_ssize_t val = PyLong_AsLongLong(retval);')
+        emitter.emit_line('Py_ssize_t val = PyLong_AsSsize_t(retval);')
     emitter.emit_dec_ref('retval', fn.ret_type)
     emitter.emit_line('if (PyErr_Occurred()) return -1;')
     # We can't return -1 from a hash function..

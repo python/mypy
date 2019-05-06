@@ -1709,6 +1709,7 @@ def big_int() -> None:
     max_63_bit = 9223372036854775807
     d_64_bit = 9223372036854775808
     max_32_bit = 2147483647
+    max_31_bit = 1073741823
     print(a_62_bit)
     print(max_62_bit)
     print(b_63_bit)
@@ -1716,6 +1717,7 @@ def big_int() -> None:
     print(max_63_bit)
     print(d_64_bit)
     print(max_32_bit)
+    print(max_31_bit)
 [file driver.py]
 from native import big_int
 big_int()
@@ -1727,6 +1729,7 @@ big_int()
 9223372036854775807
 9223372036854775808
 2147483647
+1073741823
 
 [case testForIterable]
 from typing import Iterable, Dict, Any, Tuple

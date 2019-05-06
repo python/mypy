@@ -13,7 +13,9 @@ LAMBDA_NAME = '__mypyc_lambda__'
 SELF_NAME = '__mypyc_self__'
 INT_PREFIX = '__tmp_literal_int_'
 
-MAX_SHORT_INT = (1 << 62) - 1
+# Max short int we accept as a literal is based on 32-bit platforms,
+# so that we can just always emit the same code.
+MAX_LITERAL_SHORT_INT = (1 << 30) - 1
 
 TOP_LEVEL_NAME = '__top_level__'  # Special function representing module top level
 

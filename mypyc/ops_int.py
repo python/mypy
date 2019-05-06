@@ -50,7 +50,7 @@ def int_compare_op(op: str, c_func_name: str) -> None:
               error_kind=ERR_NEVER,
               format_str='{dest} = {args[0]} %s {args[1]} :: short_int' % op,
               emit=simple_emit(
-                  '{dest} = (CPySignedInt){args[0]} %s (CPySignedInt){args[1]};' % op),
+                  '{dest} = (Py_ssize_t){args[0]} %s (Py_ssize_t){args[1]};' % op),
               priority=2)
 
 

@@ -98,9 +98,9 @@ func_op(
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     temp = emitter.temp_name()
-    emitter.emit_declaration('long long %s;' % temp)
+    emitter.emit_declaration('Py_ssize_t %s;' % temp)
     emitter.emit_line('%s = PyDict_Size(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
+    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
 
 
 func_op(name='builtins.len',

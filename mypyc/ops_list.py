@@ -120,9 +120,9 @@ method_op(
 
 def emit_multiply_helper(emitter: EmitterInterface, dest: str, lst: str, num: str) -> None:
     temp = emitter.temp_name()
-    emitter.emit_declaration('long long %s;' % temp)
+    emitter.emit_declaration('Py_ssize_t %s;' % temp)
     emitter.emit_lines(
-        "%s = CPyTagged_AsLongLong(%s);" % (temp, num),
+        "%s = CPyTagged_AsSsize_t(%s);" % (temp, num),
         "if (%s == -1 && PyErr_Occurred())" % temp,
         "    CPyError_OutOfMemory();",
         "%s = PySequence_Repeat(%s, %s);" % (dest, lst, temp))
@@ -153,9 +153,9 @@ binary_op(op='*',
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     temp = emitter.temp_name()
-    emitter.emit_declaration('long long %s;' % temp)
+    emitter.emit_declaration('Py_ssize_t %s;' % temp)
     emitter.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
+    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
 
 
 list_len_op = func_op(name='builtins.len',

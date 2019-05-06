@@ -150,14 +150,14 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
  * overhead allows the out-parameter overflow flag to be collapsed into
  * control flow.
  * Additionally, we check against the possible range of CPyTagged, not of
- * long long. */
-static inline long long
-CPyLong_AsLongLongAndOverflow(PyObject *vv, int *overflow)
+ * Py_ssize_t. */
+static inline Py_ssize_t
+CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
 {
     /* This version by Tim Peters */
     PyLongObject *v = (PyLongObject *)vv;
-    unsigned long long x, prev;
-    long long res;
+    size_t x, prev;
+    Py_ssize_t res;
     Py_ssize_t i;
     int sign;
 
@@ -190,8 +190,8 @@ CPyLong_AsLongLongAndOverflow(PyObject *vv, int *overflow)
         /* Haven't lost any bits, but casting to long requires extra
          * care (see comment above).
          */
-        if (x <= (unsigned long long)CPY_TAGGED_MAX) {
-            res = (long long)x * sign;
+        if (x <= (size_t)CPY_TAGGED_MAX) {
+            res = (Py_ssize_t)x * sign;
         }
         else if (sign < 0 && x == CPY_TAGGED_ABS_MIN) {
             res = CPY_TAGGED_MIN;
@@ -301,7 +301,7 @@ list_count(PyListObject *self, PyObject *value)
         else if (cmp < 0)
             return CPY_INT_TAG;
     }
-    return CPyTagged_ShortFromLongLong(count);
+    return CPyTagged_ShortFromSsize_t(count);
 }
 
 #ifdef __cplusplus

@@ -21,9 +21,6 @@
 #define CPy_dllexport
 #endif
 
-#define CPY_TAGGED_MAX ((1LL << 62) - 1)
-#define CPY_TAGGED_MIN (-(1LL << 62))
-#define CPY_TAGGED_ABS_MIN (0-(unsigned long long)CPY_TAGGED_MIN)
 
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
@@ -33,8 +30,14 @@
 // Here just for consistency
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
-typedef unsigned long long CPyTagged;
-typedef long long CPySignedInt;
+typedef size_t CPyTagged;
+
+#define CPY_INT_BITS (CHAR_BIT * sizeof(CPyTagged))
+
+#define CPY_TAGGED_MAX (((Py_ssize_t)1 << (CPY_INT_BITS - 2)) - 1)
+#define CPY_TAGGED_MIN (-((Py_ssize_t)1 << (CPY_INT_BITS - 2)))
+#define CPY_TAGGED_ABS_MIN (0-(size_t)CPY_TAGGED_MIN)
+
 typedef PyObject CPyModule;
 
 #define CPY_INT_TAG 1
@@ -45,7 +48,7 @@ static inline CPyTagged CPyTagged_ShortFromInt(int x) {
     return x << 1;
 }
 
-static inline CPyTagged CPyTagged_ShortFromLongLong(long long x) {
+static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
 
