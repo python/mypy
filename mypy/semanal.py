@@ -169,18 +169,18 @@ SUGGESTED_TEST_FIXTURES = {
 # Map from the lowercased name of a missing definition to a tuple containing
 # the name of the likely module definition and a suggested import string.
 TYPES_FOR_UNIMPORTED_HINTS = {
-    'any': ('typing', 'from typing import Any'),
-    'callable': ('typing', 'from typing import Callable'),
-    'dict': ('typing', 'from typing import Dict'),
-    'iterable': ('typing', 'from typing import Iterable'),
-    'iterator': ('typing', 'from typing import Iterator'),
-    'list': ('typing', 'from typing import List'),
-    'optional': ('typing', 'from typing import Optional'),
-    'set': ('typing', 'from typing import Set'),
-    'tuple': ('typing', 'from typing import Tuple'),
-    'typevar': ('typing', 'from typing import TypeVar'),
-    'union': ('typing', 'from typing import Union'),
-    'cast': ('typing', 'from typing import cast'),
+    'typing.Any',
+    'typing.Callable',
+    'typing.Dict',
+    'typing.Iterable',
+    'typing.Iterator',
+    'typing.List',
+    'typing.Optional',
+    'typing.Set',
+    'typing.Tuple',
+    'typing.TypeVar',
+    'typing.Union',
+    'typing.cast',
 }  # type: Final
 
 
@@ -3479,10 +3479,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        matches = [obsolete_name
-                   for obsolete_name in obsolete_name_mapping
-                   if obsolete_name.rsplit('.', 1)[-1] == name
-                   and name not in TYPES_FOR_UNIMPORTED_HINTS]
+        lowercased_names_handled_by_unimported_hints = {
+            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        matches = [
+            obsolete_name for obsolete_name in obsolete_name_mapping
+            if obsolete_name.rsplit('.', 1)[-1] == name
+            and obsolete_name not in lowercased_names_handled_by_unimported_hints
+        ]
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
@@ -3760,13 +3764,23 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-        if name.lower() in TYPES_FOR_UNIMPORTED_HINTS:
+        modules_with_unimported_hints = {
+            name.split('.', 1)[0]
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        lowercased = {
+            name.lower(): name
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        for module in modules_with_unimported_hints:
+            fullname = '{}.{}'.format(module, name).lower()
+            if fullname not in lowercased:
+                continue
             # User probably forgot to import these types.
-            unimported_module, suggestion = TYPES_FOR_UNIMPORTED_HINTS[name.lower()]
             hint = (
-                f'Did you forget to import it from "{unimported_module}"?'
-                f' (Suggestion: "{suggestion}")'
-            )
+                'Did you forget to import it from "{module}"?'
+                ' (Suggestion: "from {module} import {name}")'
+            ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
             self.note(hint, ctx)
 
     def already_defined(self, name: str, ctx: Context,
