@@ -325,7 +325,8 @@ def mypycify(paths: List[str],
              opt_level: str = '3',
              multi_file: bool = False,
              skip_cgen: bool = False,
-             verbose: bool = False) -> List[MypycifyExtension]:
+             verbose: bool = False,
+             omit_asserts: bool = False) -> List[MypycifyExtension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the

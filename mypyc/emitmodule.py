@@ -46,12 +46,13 @@ def parse_and_typecheck(sources: List[BuildSource], options: Options,
 def compile_modules_to_c(result: BuildResult, module_names: List[str],
                          shared_lib_name: Optional[str],
                          multi_file: bool,
+                         strip_asserts: bool = False,
                          ops: Optional[List[str]] = None) -> List[Tuple[str, str]]:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
 
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
-    literals, modules, errors = genops.build_ir(file_nodes, result.graph, result.types)
+    literals, modules, errors = genops.build_ir(file_nodes, result.graph, result.types, strip_asserts)
     if errors > 0:
         sys.exit(1)
     # Insert uninit checks.

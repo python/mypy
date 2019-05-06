@@ -76,7 +76,7 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
         os.remove(builtins)
 
 
-def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
+def build_ir_for_single_file(input_lines: List[str], strip_asserts: bool = False) -> List[FuncIR]:
     program_text = '\n'.join(input_lines)
 
     options = Options()
@@ -95,7 +95,7 @@ def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types)
+    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types, strip_asserts)
     assert errors == 0
 
     module = modules[0][1]
