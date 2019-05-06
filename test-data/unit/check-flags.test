@@ -27,6 +27,13 @@ def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation
 
+[case testUnannotatedReturnWithNoArgument]
+# flags: --disallow-untyped-defs
+def f(self): pass
+[out]
+main:2: error: Function must have a return type annotation ('disallow_untyped_defs' enabled)
+main:2: note: Use "-> None" if function does not return a value
+
 [case testLambda]
 # flags: --disallow-untyped-defs
 lambda x: x
