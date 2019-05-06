@@ -382,7 +382,7 @@ empty = False
       1       1      0      0 a
 
 [case testAnyExprReportIgnoresSpecialForms]
-# cmd: mypy --any-exprs-report report i.py j.py k.py
+# cmd: mypy --any-exprs-report report i.py j.py k.py l.py
 
 [file i.py]
 async def some_function() -> None:
@@ -408,12 +408,17 @@ _FuzzyMatch = NamedTuple('_FuzzyMatch', [
 def b() -> None:
     _FuzzyMatch(0, 0)
 
+[file l.py]
+async def some_function(x) -> None:
+    pass
+
 [file report/any-exprs.txt]
 [outfile report/types-of-anys.txt]
  Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
 -----------------------------------------------------------------------------------------------------------------
+    l             1          0            0                  0       0              0                         0
     k             0          0            0                  0       0              0                         0
     j             0          1            0                  0       0              0                         0
     i             0          0            0                  0       0              0                         0
 -----------------------------------------------------------------------------------------------------------------
-Total             0          1            0                  0       0              0                         0
+Total             1          1            0                  0       0              0                         0
