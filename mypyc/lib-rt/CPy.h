@@ -909,6 +909,9 @@ static PyObject *CPyLong_FromFloat(PyObject *o) {
     }
 }
 
+// These functions are basically exactly PyCode_NewEmpty and
+// _PyTraceback_Add which are available in all the versions we support.
+// We're continuing to use them because we'll probably optimize them later.
 static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
     PyObject *filename_obj = PyUnicode_FromString(filename);
     PyObject *funcname_obj = PyUnicode_FromString(funcname);
@@ -940,20 +943,38 @@ static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *func
 
 static void CPy_AddTraceback(const char *filename, const char *funcname, int line,
                              PyObject *globals) {
+
+    PyObject *exc, *val, *tb;
+    PyThreadState *thread_state = PyThreadState_GET();
+    PyFrameObject *frame_obj;
+
+    // We need to save off the exception state because in 3.8,
+    // PyFrame_New fails if there is an error set and it fails to look
+    // up builtins in the globals. (_PyTraceback_Add documents that it
+    // needs to do it because it decodes the filename according to the
+    // FS encoding, which could have a decoder in Python. We don't do
+    // that so *that* doesn't apply to us.)
+    PyErr_Fetch(&exc, &val, &tb);
     PyCodeObject *code_obj = CPy_CreateCodeObject(filename, funcname, line);
     if (code_obj == NULL) {
-        return;
+        goto error;
     }
-    PyThreadState *thread_state = PyThreadState_GET();
-    PyFrameObject *frame_obj = PyFrame_New(thread_state, code_obj, globals, 0);
+
+    frame_obj = PyFrame_New(thread_state, code_obj, globals, 0);
     if (frame_obj == NULL) {
         Py_DECREF(code_obj);
-        return;
+        goto error;
     }
     frame_obj->f_lineno = line;
+    PyErr_Restore(exc, val, tb);
     PyTraceBack_Here(frame_obj);
     Py_DECREF(code_obj);
     Py_DECREF(frame_obj);
+
+    return;
+
+error:
+    _PyErr_ChainExceptions(exc, val, tb);
 }
 
 // mypyc is not very good at dealing with refcount management of
