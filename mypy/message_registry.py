@@ -74,8 +74,6 @@ INCOMPATIBLE_IMPORT_OF = "Incompatible import of"  # type: Final
 FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"  # type: Final
 ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"  # type: Final
 RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"  # type: Final
-RETURN_TYPE_EXPECTED_DISALLOW_UNTYPED = \
-    "Function must have a return type annotation ('disallow_untyped_defs' enabled)"  # type: Final
 ARGUMENT_TYPE_EXPECTED = \
     "Function is missing a type annotation for one or more arguments"  # type: Final
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \

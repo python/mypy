@@ -1063,7 +1063,7 @@ disallow_any_generics = True
 def get_tasks(self):
     return 'whatever'
 [out]
-a.py:1: error: Function must have a return type annotation ('disallow_untyped_defs' enabled)
+a.py:1: error: Function is missing a return type annotation
 a.py:1: note: Use "-> None" if function does not return a value
 
 [case testMissingFile]

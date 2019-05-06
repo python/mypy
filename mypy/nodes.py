@@ -680,6 +680,16 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         del ret.min_args
         return ret
 
+    def has_return_statement(self) -> bool:
+        """Find if a function has a non-trivial return statement.
+
+        Plain 'return' and 'return None' don't count.
+        """
+        seeker = ReturnSeeker()
+        for statement in self.body.body:
+            seeker.visit_statement(statement)
+        return seeker.found
+
 
 # All types that are both SymbolNodes and FuncBases. See the FuncBase
 # docstring for the rationale.
@@ -1100,6 +1110,19 @@ class ReturnStmt(Statement):
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
+
+class ReturnSeeker(StatementVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_statement(self, o: Statement) -> None:
+        if isinstance(o, ReturnStmt):
+            self.visit_return_stmt(o)
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
+            return
+        self.found = True
 
 
 class AssertStmt(Statement):

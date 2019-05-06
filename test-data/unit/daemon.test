@@ -35,7 +35,7 @@ $ dmypy run -- foo.py --follow-imports=error
 Restarting: configuration changed
 Daemon stopped
 Daemon started
-foo.py:1: error: Function must have a return type annotation ('disallow_untyped_defs' enabled)
+foo.py:1: error: Function is missing a return type annotation
 foo.py:1: note: Use "-> None" if function does not return a value
 == Return code: 1
 $ {python} -c "print('def f() -> None: pass')" >foo.py
