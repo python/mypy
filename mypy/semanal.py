@@ -166,6 +166,23 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.classmethod': 'classmethod.pyi',
 }  # type: Final
 
+# Map from the lowercased name of a missing definition to a tuple containing
+# the name of the likely module definition and a suggested import string.
+TYPES_FOR_UNIMPORTED_HINTS = {
+    'any': ('typing', 'from typing import Any'),
+    'callable': ('typing', 'from typing import Callable'),
+    'dict': ('typing', 'from typing import Dict'),
+    'iterable': ('typing', 'from typing import Iterable'),
+    'iterator': ('typing', 'from typing import Iterator'),
+    'list': ('typing', 'from typing import List'),
+    'optional': ('typing', 'from typing import Optional'),
+    'set': ('typing', 'from typing import Set'),
+    'tuple': ('typing', 'from typing import Tuple'),
+    'typevar': ('typing', 'from typing import TypeVar'),
+    'union': ('typing', 'from typing import Union'),
+    'cast': ('typing', 'from typing import cast'),
+}  # type: Final
+
 
 class SemanticAnalyzerPass2(NodeVisitor[None],
                             SemanticAnalyzerInterface,
@@ -3734,12 +3751,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
+
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(name)
             if self.lookup_fully_qualified_or_none(fullname) is None:
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
+
+        if name.lower() in TYPES_FOR_UNIMPORTED_HINTS:
+            # User probably forgot to import these types.
+            unimported_module, suggestion = TYPES_FOR_UNIMPORTED_HINTS[name.lower()]
+            hint = (
+                f'Did you forget to import it from "{unimported_module}"?'
+                f' (Suggestion: "{suggestion}")'
+            )
+            self.note(hint, ctx)
 
     def already_defined(self, name: str, ctx: Context,
                         original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None, *,
