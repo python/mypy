@@ -1649,6 +1649,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             lvalues = [self.get_assignment_target(item)
                        for item in lvalue.items]
             return AssignmentTargetTuple(lvalues)
+        elif isinstance(lvalue, StarExpr):
+            self.error("Unpacking with * is unimplemented", lvalue.line)
+            # Well, we have to return *something*
+            return self.get_assignment_target(lvalue.expr)
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 

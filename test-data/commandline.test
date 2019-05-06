@@ -179,6 +179,8 @@ async def aio(x: Any) -> Any:  # E: async functions are unimplemented
 def kwonly1(x: int = 0, *, y: int) -> None: pass  # E: Required keyword-only args that appear after optional args are unimplemented
 def kwonly2(*, x: int = 0, y: int) -> None: pass  # E: Required keyword-only args that appear after optional args are unimplemented
 
+a, *b, c = [1, 2, 3, 4]  # E: Unpacking with * is unimplemented
+
 [file foo/__init__.py]
 x = 20
 
