@@ -522,13 +522,8 @@ class ASTConverter:
                 lineno += len(n.decorator_list)
                 end_lineno = None
             else:
-                # It's okay that end_lineno is *before* lineno here.
-                # lineno is where the error is reported, and end_lineno defines
-                # the opposite end of the range to search for "# type: ignore"
-                # comments in. This reports the correct line in the event of an
-                # error, but keeps old pre-3.8 "# type: ignore" comments working
-                # correctly.
-                lineno = n.lineno
+                # Set end_lineno to the old pre-3.8 lineno, in order to keep
+                # existing "# type: ignore" comments working:
                 end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
 
             var = Var(func_def.name())
@@ -639,11 +634,8 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        # It's okay if end_lineno is *before* lineno here.
-        # lineno is where the error is reported, and end_lineno defines the
-        # opposite end of the range to search for "# type: ignore" comments in.
-        # This reports the correct line in the event of an error, but keeps old
-        # pre-3.8 "# type: ignore" comments working correctly.
+        # Set end_lineno to the old mypy 0.700 lineno, in order to keep
+        # existing "# type: ignore" comments working:
         if sys.version_info < (3, 8):
             cdef.line = n.lineno + len(n.decorator_list)
             cdef.end_line = n.lineno
