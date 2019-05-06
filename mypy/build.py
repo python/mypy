@@ -2398,12 +2398,38 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           severity='note', only_once=True)
 
 
+def log_configuration(manager: BuildManager) -> None:
+    """Output useful configuration information to LOG and TRACE"""
+
+    manager.log()
+    manager.log("Mypy version %s" % __version__)
+    manager.log("Python interpreter located at: %s" % manager.options.python_executable)
+
+    if manager.options.config_file:
+        manager.log("Using configuration at: %s" % manager.options.config_file)
+    else:
+        manager.log("Using default configuration")
+
+    manager.log("Using cache dir: %s" % manager.options.cache_dir)
+
+    # Complete list of searched paths can get very long, put them under TRACE
+    for path_type, paths in manager.search_paths._asdict().items():
+        if not paths:
+            manager.trace("No %s" % path_type)
+            continue
+
+        manager.trace("%s:" % path_type)
+
+        for pth in paths:
+            manager.trace("    %s" % pth)
+
+
 # The driver
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    manager.log()
-    manager.log("Mypy version %s" % __version__)
+    log_configuration(manager)
+
     t0 = time.time()
     graph = load_graph(sources, manager)
 
