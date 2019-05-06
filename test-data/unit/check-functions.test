@@ -745,6 +745,27 @@ class A:
             # type: () -> None
             pass
 
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        class B:
+            def g(self):
+                # type: () -> None
+                def h(x):  # E: Type signature has too few arguments
+                    # type: () -> None
+                    pass
+
+[case testDeepNestedMethodInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        class B:
+            class C:
+                def g(self):
+                    # type: () -> None
+                    pass
+
 [case testMutuallyRecursiveNestedFunctions]
 def f() -> None:
     def g() -> None:
