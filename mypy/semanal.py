@@ -166,8 +166,6 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.classmethod': 'classmethod.pyi',
 }  # type: Final
 
-# Map from the lowercased name of a missing definition to a tuple containing
-# the name of the likely module definition and a suggested import string.
 TYPES_FOR_UNIMPORTED_HINTS = {
     'typing.Any',
     'typing.Callable',
