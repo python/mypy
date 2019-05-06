@@ -1553,7 +1553,8 @@ def add():
 [builtins fixtures/dict.pyi]
 
 [case testSpecialCaseEmptyListInitialization]
-def f(blocks: Any): # E: Name 'Any' is not defined
+def f(blocks: Any): # E: Name 'Any' is not defined \
+                    # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
     to_process = [] # E: Need type annotation for 'to_process'
     to_process = list(blocks)
 [builtins fixtures/list.pyi]

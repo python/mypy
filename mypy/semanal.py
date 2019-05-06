@@ -166,6 +166,21 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.classmethod': 'classmethod.pyi',
 }  # type: Final
 
+TYPES_FOR_UNIMPORTED_HINTS = {
+    'typing.Any',
+    'typing.Callable',
+    'typing.Dict',
+    'typing.Iterable',
+    'typing.Iterator',
+    'typing.List',
+    'typing.Optional',
+    'typing.Set',
+    'typing.Tuple',
+    'typing.TypeVar',
+    'typing.Union',
+    'typing.cast',
+}  # type: Final
+
 
 class SemanticAnalyzerPass2(NodeVisitor[None],
                             SemanticAnalyzerInterface,
@@ -3462,9 +3477,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        matches = [obsolete_name
-                   for obsolete_name in obsolete_name_mapping
-                   if obsolete_name.rsplit('.', 1)[-1] == name]
+        lowercased_names_handled_by_unimported_hints = {
+            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        matches = [
+            obsolete_name for obsolete_name in obsolete_name_mapping
+            if obsolete_name.rsplit('.', 1)[-1] == name
+            and obsolete_name not in lowercased_names_handled_by_unimported_hints
+        ]
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
@@ -3734,12 +3754,32 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
+
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(name)
             if self.lookup_fully_qualified_or_none(fullname) is None:
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
+
+        modules_with_unimported_hints = {
+            name.split('.', 1)[0]
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        lowercased = {
+            name.lower(): name
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        for module in modules_with_unimported_hints:
+            fullname = '{}.{}'.format(module, name).lower()
+            if fullname not in lowercased:
+                continue
+            # User probably forgot to import these types.
+            hint = (
+                'Did you forget to import it from "{module}"?'
+                ' (Suggestion: "from {module} import {name}")'
+            ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
+            self.note(hint, ctx)
 
     def already_defined(self, name: str, ctx: Context,
                         original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None, *,
