@@ -43,7 +43,7 @@ from distutils.core import setup
 from mypyc.build import mypycify, MypycifyBuildExt
 
 setup(name='test_run_output',
-      ext_modules=mypycify({}, skip_cgen=True),
+      ext_modules=mypycify({}, skip_cgen=True, strip_asserts=False),
       cmdclass={{'build_ext': MypycifyBuildExt}},
 )
 """
