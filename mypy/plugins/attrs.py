@@ -1,5 +1,4 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
-import sys
 from collections import OrderedDict
 from typing import Optional, Dict, List, cast, Tuple, Iterable
 
