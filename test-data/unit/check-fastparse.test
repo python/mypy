@@ -14,13 +14,13 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types in parentheses
+def f():  # E: syntax error in type comment 'None -> None' # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
 [case testFastParseFunctionAnnotationSyntaxErrorSpaces]
 
-def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types in parentheses
+def f():  # E: syntax error in type comment 'None -> None' # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
   pass
 
