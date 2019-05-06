@@ -1634,7 +1634,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         extra = self.undefined_name_extra_info('{}.{}'.format(import_id, source_id))
         if extra:
             message += " {}".format(extra)
-        # suggest alternatives, if any match is found
+        # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         alternatives = set(module.names.keys()).difference({source_id})
         matches = best_matches(source_id, alternatives)[:3]
