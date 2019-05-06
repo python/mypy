@@ -1558,7 +1558,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
-                message = "Module \"{}\" has no attribute \"{}\"".format(import_id, id)
+                message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
@@ -1566,7 +1566,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 alternatives = module.names.keys()
                 matches = best_matches(id, alternatives)[:3]
                 if matches:
-                    suggestion = "; maybe {}?".format(pretty_or(matches))
+                    suggestion = "; maybe {}?".format(pretty_or(matches, True))
                     message += "{}".format(suggestion)
                 self.fail(message, imp)
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
