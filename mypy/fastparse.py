@@ -192,7 +192,8 @@ def parse_type_comment(type_comment: str,
         typ = ast3_parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
-            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
+            err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, type_comment)
+            errors.report(line, e.offset, err_msg, blocker=True)
             return False, None
         else:
             raise
