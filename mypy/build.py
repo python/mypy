@@ -2569,7 +2569,10 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath, st.id)
-            manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
+            manager.errors.report(
+                -1, -1,
+                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath)
+            )
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)

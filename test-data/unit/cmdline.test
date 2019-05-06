@@ -106,7 +106,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named 'mod'
+two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
 == Return code: 2
 
 [case testFlagsFile]
