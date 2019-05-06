@@ -373,7 +373,8 @@ def mypycify(paths: List[str],
     # so that it can do a corner-cutting version without full stubs.
     # TODO: Be able to do this based on file mtimes?
     if not skip_cgen:
-        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose, compiler_options=compiler_options)
+        cfiles, ops_text = generate_c(sources, options, multi_file, lib_name, verbose,
+                                      compiler_options=compiler_options)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)

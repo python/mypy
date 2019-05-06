@@ -98,7 +98,8 @@ def build_ir_for_single_file(input_lines: List[str],
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types, compiler_options)
+    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types,
+                                         compiler_options)
     assert errors == 0
 
     module = modules[0][1]
