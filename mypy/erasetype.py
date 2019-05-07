@@ -131,5 +131,5 @@ class LastKnownValueEraser(TypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         if t.last_known_value:
-            return t.copy_modified(final_value=None)
+            return t.copy_modified(last_known_value=None)
         return t
