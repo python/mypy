@@ -83,7 +83,7 @@ from mypy import message_registry
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType
+    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES
 )
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -1203,8 +1203,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bases = []
         for base_expr in base_type_exprs:
             if (isinstance(base_expr, RefExpr) and
-                    base_expr.fullname in ('typing.NamedTuple',
-                                           'mypy_extensions.TypedDict')):
+                    base_expr.fullname in ('typing.NamedTuple',) + TPDICT_NAMES):
                 # Ignore magic bases for now.
                 continue
 

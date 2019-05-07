@@ -69,6 +69,12 @@ if MYPY:
         SyntheticTypeVisitor as SyntheticTypeVisitor,
     )
 
+# Supported names of TypedDict type constructors.
+TPDICT_NAMES = ('mypy_extensions.TypedDict', 'typing_extensions.TypedDict')  # type: Final
+
+# Supported fallback instance type names for TypedDict types.
+TPDICT_FB_NAMES = ('mypy_extensions._TypedDict', 'typing_extensions._TypedDict')  # type: Final
+
 
 class TypeOfAny:
     """
@@ -1255,7 +1261,7 @@ class TypedDictType(Type):
     are normal dict objects at runtime.
 
     A TypedDictType can be either named or anonymous. If it's anonymous, its
-    fallback will mypy_extensions._TypedDict (Instance). _TypedDict is a subclass
+    fallback will be typing_extensions._TypedDict (Instance). _TypedDict is a subclass
     of Mapping[str, object] and defines all non-mapping dict methods that TypedDict
     supports. Some dict methods are unsafe and not supported. _TypedDict isn't defined
     at runtime.
@@ -1314,7 +1320,7 @@ class TypedDictType(Type):
                              Instance.deserialize(data['fallback']))
 
     def is_anonymous(self) -> bool:
-        return self.fallback.type.fullname() == 'mypy_extensions._TypedDict'
+        return self.fallback.type.fullname() in TPDICT_FB_NAMES
 
     def as_anonymous(self) -> 'TypedDictType':
         if self.is_anonymous():
@@ -1998,7 +2004,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                             for name, typ in t.items.items()) + '}'
         prefix = ''
         if t.fallback and t.fallback.type:
-            if t.fallback.type.fullname() != 'mypy_extensions._TypedDict':
+            if t.fallback.type.fullname() not in TPDICT_FB_NAMES:
                 prefix = repr(t.fallback.type.fullname()) + ', '
         return 'TypedDict({}{})'.format(prefix, s)
 
