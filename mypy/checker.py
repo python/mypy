@@ -1504,6 +1504,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if original_class_or_static and not override_class_or_static:
                 fail = True
 
+        if is_private(name):
+            fail = False
+
         if fail:
             emitted_msg = False
             if (isinstance(override, CallableType) and
@@ -1938,6 +1941,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # is __slots__, where it is allowed for any child class to
                 # redefine it.
                 if lvalue_node.name() == "__slots__" and base.fullname() != "builtins.object":
+                    continue
+
+                if is_private(lvalue_node.name()):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
@@ -4396,3 +4402,8 @@ def is_subtype_no_promote(left: Type, right: Type) -> bool:
 
 def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
     return is_overlapping_types(left, right, ignore_promotions=True)
+
+
+def is_private(node_name: str) -> bool:
+    """Check if node is private to class definition."""
+    return node_name.startswith('__') and not node_name.endswith('__')
