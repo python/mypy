@@ -122,9 +122,7 @@ Mypy can also be integrated into [Flake8] using [flake8-mypy].
 [Flake8]: http://flake8.pycqa.org/
 [flake8-mypy]: https://github.com/ambv/flake8-mypy
 
-Mypy can also be set up as a pre-commit hook.
-
-[pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy)
+Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy).
 
 Web site and documentation
 --------------------------
