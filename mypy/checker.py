@@ -1901,7 +1901,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
+                self.check_forbidden_inference_types(rvalue_type, rvalue)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+
+    def check_forbidden_inference_types(self, rvalue_type: Type, rvalue: Context) -> None:
+        if isinstance(rvalue_type, Instance):
+            if rvalue_type.type.fullname() == 'builtins.list':
+                list_arg_type = rvalue_type.args[0]
+                if isinstance(list_arg_type, Instance) and list_arg_type.type.fullname() == 'builtins.object':
+                    self.msg.forbidden_inference_of_object(rvalue_type, rvalue)
+            elif rvalue_type.type.fullname() == 'builtins.dict':
+                dict_value_type = rvalue_type.args[1]
+                if isinstance(dict_value_type, Instance) and dict_value_type.type.fullname() == 'builtins.object':
+                    self.msg.forbidden_inference_of_object(rvalue_type, rvalue)
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
