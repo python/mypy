@@ -5899,3 +5899,34 @@ class A:
 class B:
     @dec  # E: Unsupported decorated constructor type
     def __new__(cls, x: int) -> B: ...
+
+[case testIgnorePrivateAttributesTypeCheck]
+class B:
+    __foo_: int
+class C(B):
+    __foo_: str
+[out]
+
+[case testIgnorePrivateMethodsTypeCheck]
+class B:
+    def __foo_(self) -> int: ...
+class C(B):
+    def __foo_(self) -> str: ...
+[out]
+
+[case testCheckForPrivateMethodsWhenPublicCheck]
+class B:
+    __foo__: int
+class C(B):
+    __foo__: str
+[out]
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testIgnorePrivateMethodsTypeCheck]
+class A:
+    def __foo_(self) -> int: ...
+class B:
+    def __foo_(self) -> str: ...
+
+class C(A, B): pass
+[out]
