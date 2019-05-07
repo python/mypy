@@ -121,15 +121,15 @@ class TypeVarEraser(TypeTranslator):
         return t
 
 
-def remove_literal_metadata(t: Type) -> Type:
-    return t.accept(LiteralMetadataEraser())
+def remove_instance_last_known_values(t: Type) -> Type:
+    return t.accept(LastKnownValueEraser())
 
 
-class LiteralMetadataEraser(TypeTranslator):
+class LastKnownValueEraser(TypeTranslator):
     """Removes the Literal[...] type that may be associated with any
     Instance types."""
 
     def visit_instance(self, t: Instance) -> Type:
-        if t.final_value:
+        if t.last_known_value:
             return t.copy_modified(final_value=None)
         return t

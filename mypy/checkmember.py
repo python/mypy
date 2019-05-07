@@ -101,8 +101,8 @@ def analyze_member_access(name: str,
                        msg,
                        chk=chk)
     result = _analyze_member_access(name, typ, mx, override_info)
-    if in_literal_context and isinstance(result, Instance) and result.final_value is not None:
-        return result.final_value
+    if in_literal_context and isinstance(result, Instance) and result.last_known_value is not None:
+        return result.last_known_value
     else:
         return result
 

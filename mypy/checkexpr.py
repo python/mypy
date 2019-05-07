@@ -215,8 +215,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if var.type:
             if isinstance(var.type, Instance):
-                if self.is_literal_context() and var.type.final_value is not None:
-                    return var.type.final_value
+                if self.is_literal_context() and var.type.last_known_value is not None:
+                    return var.type.last_known_value
                 if var.name() in {'True', 'False'}:
                     return self.infer_literal_expr_type(var.name() == 'True', 'builtins.bool')
             return var.type
@@ -2441,8 +2441,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         result = self.visit_index_expr_helper(e)
         result = self.narrow_type_from_binder(e, result)
         if (self.is_literal_context() and isinstance(result, Instance)
-                and result.final_value is not None):
-            result = result.final_value
+                and result.last_known_value is not None):
+            result = result.last_known_value
         return result
 
     def visit_index_expr_helper(self, e: IndexExpr) -> Type:
@@ -2535,8 +2535,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(operand, IntExpr):
                     return -1 * operand.value
         typ = self.accept(index)
-        if isinstance(typ, Instance) and typ.final_value is not None:
-            typ = typ.final_value
+        if isinstance(typ, Instance) and typ.last_known_value is not None:
+            typ = typ.last_known_value
         if isinstance(typ, LiteralType) and isinstance(typ.value, int):
             return typ.value
         return None
@@ -2546,8 +2546,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item_name = index.value
         else:
             typ = self.accept(index)
-            if isinstance(typ, Instance) and typ.final_value is not None:
-                typ = typ.final_value
+            if isinstance(typ, Instance) and typ.last_known_value is not None:
+                typ = typ.last_known_value
 
             if isinstance(typ, LiteralType) and isinstance(typ.value, str):
                 item_name = typ.value
