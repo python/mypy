@@ -119,3 +119,17 @@ class TypeVarEraser(TypeTranslator):
         if self.erase_id(t.id):
             return self.replacement
         return t
+
+
+def remove_instance_last_known_values(t: Type) -> Type:
+    return t.accept(LastKnownValueEraser())
+
+
+class LastKnownValueEraser(TypeTranslator):
+    """Removes the Literal[...] type that may be associated with any
+    Instance types."""
+
+    def visit_instance(self, t: Instance) -> Type:
+        if t.last_known_value:
+            return t.copy_modified(final_value=None)
+        return t

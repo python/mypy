@@ -2474,6 +2474,7 @@ from typing_extensions import Final, Literal
 a: Final = 1
 implicit = [a]
 explicit: List[Literal[1]] = [a]
+direct = [1]
 
 def force1(x: List[Literal[1]]) -> None: pass
 def force2(x: Literal[1]) -> None: pass
@@ -2487,6 +2488,12 @@ force2(reveal_type(implicit[0])) # E: Argument 1 to "force2" has incompatible ty
 reveal_type(explicit)            # E: Revealed type is 'builtins.list[Literal[1]]'
 force1(reveal_type(explicit))    # E: Revealed type is 'builtins.list[Literal[1]]'
 force2(reveal_type(explicit[0])) # E: Revealed type is 'Literal[1]'
+
+reveal_type(direct)              # E: Revealed type is 'builtins.list[builtins.int*]'
+force1(reveal_type(direct))      # E: Argument 1 to "force1" has incompatible type "List[int]"; expected "List[Literal[1]]" \
+                                 # E: Revealed type is 'builtins.list[builtins.int*]'
+force2(reveal_type(direct[0]))   # E: Argument 1 to "force2" has incompatible type "int"; expected "Literal[1]" \
+                                 # E: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2805,4 +2812,43 @@ Alias = Test
 
 x: Literal[Alias.FOO]
 reveal_type(x)  # E: Revealed type is 'Literal[__main__.Test.FOO]'
+[out]
+
+[case testLiteralWithFinalPropagation]
+from typing_extensions import Final, Literal
+
+a: Final = 3
+b: Final = a
+c = a
+
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(a)
+expect_3(b)
+expect_3(c)  # E: Argument 1 to "expect_3" has incompatible type "int"; expected "Literal[3]"
+[out]
+
+[case testLiteralWithFinalPropagationIsNotLeaking]
+from typing_extensions import Final, Literal
+
+final_tuple_direct: Final = (2, 3)
+final_tuple_indirect: Final = final_tuple_direct
+mutable_tuple = final_tuple_direct
+final_list_1: Final = [2]
+final_list_2: Final = [2, 2]
+final_dict: Final = {"foo": 2}
+final_set_1: Final = {2}
+final_set_2: Final = {2, 2}
+
+def expect_2(x: Literal[2]) -> None: pass
+
+expect_2(final_tuple_direct[0])
+expect_2(final_tuple_indirect[0])
+
+expect_2(mutable_tuple[0])   # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_list_1[0])    # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_list_2[0])    # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_dict["foo"])  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_set_1.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+[builtins fixtures/isinstancelist.pyi]
 [out]

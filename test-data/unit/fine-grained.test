@@ -8555,8 +8555,9 @@ from typing_extensions import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(foo)
 [file mod1.py]
+from typing_extensions import Final
 from mod2 import bar
-foo = bar
+foo: Final = bar
 [file mod2.py]
 from mod3 import qux as bar
 [file mod3.py]

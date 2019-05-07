@@ -585,11 +585,11 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'final_value')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False,
-                 final_value: Optional['LiteralType'] = None) -> None:
+                 last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = args
@@ -601,15 +601,31 @@ class Instance(Type):
         # True if recovered after incorrect number of type arguments error
         self.invalid = False
 
-        # This field keeps track of the underlying Literal[...] value if this instance
-        # was created via a Final declaration. For example, if we did `x: Final = 3`, x
-        # would have an instance with a `final_value` of `LiteralType(3, int_fallback)`.
+        # This field keeps track of the underlying Literal[...] value associated with
+        # this instance, if one is known.
         #
-        # Or more broadly, this field lets this Instance "remember" its original declaration.
-        # We want this behavior because we want implicit Final declarations to act pretty
-        # much identically with constants: we should be able to replace any places where we
-        # use some Final variable with the original value and get the same type-checking
-        # behavior. For example, we want this program:
+        # This field is set whenever possible within expressions, but is erased upon
+        # variable assignment (see erasetype.remove_instance_last_known_values) unless
+        # the variable is declared to be final.
+        #
+        # For example, consider the following program:
+        #
+        #     a = 1
+        #     b: Final[int] = 2
+        #     c: Final = 3
+        #     print(a + b + c + 4)
+        #
+        # The 'Instance' objects associated with the expressions '1', '2', '3', and '4' will
+        # have last_known_values of type Literal[1], Literal[2], Literal[3], and Literal[4]
+        # respectively. However, the Instance object assigned to 'a' and 'b' will have their
+        # last_known_value erased: variable 'a' is mutable; variable 'b' was declared to be
+        # specifically an int.
+        #
+        # Or more broadly, this field lets this Instance "remember" its original declaration
+        # when applicable. We want this behavior because we want implicit Final declarations
+        # to act pretty much identically with constants: we should be able to replace any
+        # places where we use some Final variable with the original value and get the same
+        # type-checking behavior. For example, we want this program:
         #
         #    def expects_literal(x: Literal[3]) -> None: pass
         #    var: Final = 3
@@ -623,39 +639,37 @@ class Instance(Type):
         # In order to make this work (especially with literal types), we need var's type
         # (an Instance) to remember the "original" value.
         #
-        # This field is currently set only when we encounter an *implicit* final declaration
-        # like `x: Final = 3` where the RHS is some literal expression. This field remains 'None'
-        # when we do things like `x: Final[int] = 3` or `x: Final = foo + bar`.
+        # Preserving this value within expressions is useful for similar reasons.
         #
         # Currently most of mypy will ignore this field and will continue to treat this type like
         # a regular Instance. We end up using this field only when we are explicitly within a
         # Literal context.
-        self.final_value = final_value
+        self.last_known_value = last_known_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args), self.final_value))
+        return hash((self.type, tuple(self.args), self.last_known_value))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
             return NotImplemented
         return (self.type == other.type
                 and self.args == other.args
-                and self.final_value == other.final_value)
+                and self.last_known_value == other.last_known_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
-        if not self.args and not self.final_value:
+        if not self.args and not self.last_known_value:
             return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         data['type_ref'] = type_ref
         data['args'] = [arg.serialize() for arg in self.args]
-        if self.final_value is not None:
-            data['final_value'] = self.final_value.serialize()
+        if self.last_known_value is not None:
+            data['last_known_value'] = self.last_known_value.serialize()
         return data
 
     @classmethod
@@ -672,8 +686,8 @@ class Instance(Type):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
-        if 'final_value' in data:
-            inst.final_value = LiteralType.deserialize(data['final_value'])
+        if 'last_known_value' in data:
+            inst.last_known_value = LiteralType.deserialize(data['last_known_value'])
         return inst
 
     def copy_modified(self, *,
@@ -685,7 +699,7 @@ class Instance(Type):
             self.line,
             self.column,
             self.erased,
-            final_value if final_value is not _dummy else self.final_value,
+            final_value if final_value is not _dummy else self.last_known_value,
         )
 
     def has_readable_member(self, name: str) -> bool:
