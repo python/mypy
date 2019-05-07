@@ -3788,7 +3788,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.note(hint, ctx)
 
     def already_defined(self, name: str, ctx: Context,
-                        original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None, *,
+                        original_ctx: Optional[Union[SymbolTableNode, SymbolNode]],
                         noun: str) -> None:
         if isinstance(original_ctx, SymbolTableNode):
             node = original_ctx.node
