@@ -12,15 +12,16 @@ The function build() is the main interface to this module.
 
 import binascii
 import contextlib
+import errno
 import gc
 import hashlib
 import json
 import os
+import pathlib
 import re
 import stat
 import sys
 import time
-import errno
 import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
@@ -2601,6 +2602,15 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 -1, -1,
                 "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath)
             )
+            p1 = len(pathlib.PurePath(st.xpath).parents)
+            p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
+
+            if p1 != p2:
+                manager.errors.report(
+                    -1, -1,
+                    "Are you missing an __init__.py?"
+                )
+
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)
