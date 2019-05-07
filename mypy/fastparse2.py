@@ -529,7 +529,9 @@ class ASTConverter:
                         self.translate_expr_list(n.bases),
                         metaclass=None)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        self.set_line(cdef, n)
+        cdef.line = n.lineno + len(n.decorator_list)
+        cdef.column = n.col_offset
+        cdef.end_line = n.lineno
         self.class_and_function_stack.pop()
         return cdef
 

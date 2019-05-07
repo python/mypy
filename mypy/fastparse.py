@@ -524,13 +524,18 @@ class ASTConverter:
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
                 # In 3.8, it points to the 'def' line, where we want it.
                 lineno += len(n.decorator_list)
+                end_lineno = None
+            else:
+                # Set end_lineno to the old pre-3.8 lineno, in order to keep
+                # existing "# type: ignore" comments working:
+                end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
 
             var = Var(func_def.name())
             var.is_ready = False
             var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno, n.col_offset)
+            func_def.set_line(lineno, n.col_offset, end_lineno)
             func_def.body.set_line(lineno)  # TODO: Why?
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
@@ -633,15 +638,15 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        if n.decorator_list and sys.version_info >= (3, 8):
-            # Before 3.8, n.lineno points to the first decorator; in
-            # 3.8, it points to the 'class' statement.  We always make
-            # it point to the first decorator.  (The node structure
-            # here is different than for decorated functions.)
-            cdef.line = n.decorator_list[0].lineno
-            cdef.column = n.col_offset
+        # Set end_lineno to the old mypy 0.700 lineno, in order to keep
+        # existing "# type: ignore" comments working:
+        if sys.version_info < (3, 8):
+            cdef.line = n.lineno + len(n.decorator_list)
+            cdef.end_line = n.lineno
         else:
-            self.set_line(cdef, n)
+            cdef.line = n.lineno
+            cdef.end_line = n.decorator_list[0].lineno if n.decorator_list else None
+        cdef.column = n.col_offset
         self.class_and_function_stack.pop()
         return cdef
 

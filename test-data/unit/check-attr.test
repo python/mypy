@@ -74,8 +74,8 @@ A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [case testAttrsUntypedNoUntypedDefs]
 # flags: --disallow-untyped-defs
 import attr
-@attr.s    # E: Function is missing a type annotation for one or more arguments
-class A:
+@attr.s
+class A:  # E: Function is missing a type annotation for one or more arguments
     a = attr.ib()  # E: Need type annotation for 'a'
     _b = attr.ib()  # E: Need type annotation for '_b'
     c = attr.ib(18)  # E: Need type annotation for 'c'
@@ -785,8 +785,8 @@ import attr
 @attr.s
 class Good(object):
     pass
-@attr.s  # E: attrs only works with new-style classes
-class Bad:
+@attr.s
+class Bad:  # E: attrs only works with new-style classes
     pass
 [builtins_py2 fixtures/bool.pyi]
 
@@ -1043,8 +1043,8 @@ reveal_type(B)  # E: Revealed type is 'def (x: __main__.C) -> __main__.B'
 # flags: --disallow-untyped-defs
 import attr
 
-@attr.s  # E: Function is missing a type annotation for one or more arguments
-class B:
+@attr.s
+class B:  # E: Function is missing a type annotation for one or more arguments
     x = attr.ib()  # E: Need type annotation for 'x'
 
 reveal_type(B)  # E: Revealed type is 'def (x: Any) -> __main__.B'

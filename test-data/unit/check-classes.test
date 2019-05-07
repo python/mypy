@@ -4850,19 +4850,19 @@ class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'typ
                        # E: Metaclasses not inheriting from 'type' are not supported
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
-@six.add_metaclass(M)  # E: Multiple metaclass definitions
-class D4(metaclass=M): pass
+@six.add_metaclass(M)
+class D4(metaclass=M): pass  # E: Multiple metaclass definitions
 class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
 @six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
 class D5: pass
 
-@six.add_metaclass(M)  # E: Multiple metaclass definitions
-class CD(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-@six.add_metaclass(M)  # E: Inconsistent metaclass structure for 'CQA'
-class CQA(Q1): pass
+@six.add_metaclass(M)
+class CQA(Q1): pass  # E: Inconsistent metaclass structure for 'CQA'
 class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
 
 [case testSixMetaclassErrors_python2]
@@ -4972,20 +4972,20 @@ def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
 @decorate(11)
 class A: pass
 
-@decorate  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
-class A2: pass
+@decorate
+class A2: pass  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...
-@not_a_class_decorator(7)  # E: "int" not callable
-class A3: pass
+@not_a_class_decorator(7)
+class A3: pass  # E: "int" not callable
 
 not_a_function = 17
 @not_a_function()  # E: "int" not callable
 class B: pass
 
-@not_a_function    # E: "int" not callable
-class B2: pass
+@not_a_function
+class B2: pass    # E: "int" not callable
 
 b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
