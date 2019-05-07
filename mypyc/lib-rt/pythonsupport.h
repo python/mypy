@@ -304,6 +304,21 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 8
+static PyObject *
+_PyDict_GetItemStringWithError(PyObject *v, const char *key)
+{
+    PyObject *kv, *rv;
+    kv = PyUnicode_FromString(key);
+    if (kv == NULL) {
+        return NULL;
+    }
+    rv = PyDict_GetItemWithError(v, kv);
+    Py_DECREF(kv);
+    return rv;
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif

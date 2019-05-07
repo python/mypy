@@ -418,9 +418,10 @@ def mypycify(paths: List[str],
             ]
 
     # Copy the runtime library in
-    rt_file = os.path.join(build_dir, 'CPy.c')
-    shutil.copyfile(os.path.join(include_dir(), 'CPy.c'), rt_file)
-    cfilenames.append(rt_file)
+    for name in ['CPy.c', 'getargs.c']:
+        rt_file = os.path.join(build_dir, name)
+        shutil.copyfile(os.path.join(include_dir(), name), rt_file)
+        cfilenames.append(rt_file)
 
     if use_shared_lib:
         assert lib_name

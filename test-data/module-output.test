@@ -53,7 +53,7 @@ CPyL0: ;
 PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     static char *kwlist[] = {"x", 0};
     PyObject *obj_x;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "O:f", kwlist, &obj_x)) {
+    if (!CPyArg_ParseTupleAndKeywords(args, kw, "O:f", kwlist, &obj_x)) {
         return NULL;
     }
     CPyTagged arg_x;
@@ -112,7 +112,7 @@ int CPyGlobalsInit(void)
 {
     static int is_initialized = 0;
     if (is_initialized) return 0;
-    
+
     CPy_Init();
     CPyStatic_module = Py_None;
     CPyStatic_builtins_module = Py_None;

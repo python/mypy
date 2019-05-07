@@ -46,7 +46,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     )
     arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in real_args)
     emitter.emit_lines(
-        'if (!PyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
+        'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
             arg_format, arg_ptrs),
         'return NULL;',
         '}')

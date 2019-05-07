@@ -1178,6 +1178,8 @@ static int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     return 2;
 }
 
+int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
+                                 const char *, char **, ...);
 
 #ifdef __cplusplus
 }

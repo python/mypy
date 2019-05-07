@@ -26,8 +26,9 @@ DEALINGS IN THE SOFTWARE.
 
 = = = = =
 
-Portions of mypyc are licensed under different licenses.  The file
-lib-rt/pythonsupport.h is licensed under the PSF 2 License, reproduced below.
+Portions of mypyc are licensed under different licenses.  The files
+mypyc/lib-rt/pythonsupport.h and mypyc/lib-rt/getargs.c are licensed
+under the PSF 2 License, reproduced below.
 
 = = = = =
 
