@@ -105,8 +105,12 @@ Yusuke Miyazaki).
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 
 
-IDE & Linter Integrations
--------------------------
+Pre-commit, IDE, and Linter Integrations
+----------------------------------------
+
+Mypy can be set up as a pre-commit hook:
+
+* [pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy)
 
 Mypy can be integrated into popular IDEs:
 
