@@ -190,7 +190,8 @@ you need to pull in the typeshed repo as follows:
     $ git submodule init
     $ git submodule update
 
-Either way you should now have a subdirectory `typeshed` containing a
+Either way you should now have a subdirectory `typeshed` inside your mypy repo,
+your folders tree should be like `mypy/mypy/typeshed`, containing a
 clone of the typeshed repo (`https://github.com/python/typeshed`).
 
 From the mypy directory, use pip to install mypy:
