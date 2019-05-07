@@ -18,6 +18,7 @@ from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
 from mypyc.ops import FuncIR, ClassIR, ModuleIR, LiteralsMap, format_func, RType, RTuple
+from mypyc.options import CompilerOptions
 from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
@@ -45,13 +46,14 @@ def parse_and_typecheck(sources: List[BuildSource], options: Options,
 
 def compile_modules_to_c(result: BuildResult, module_names: List[str],
                          shared_lib_name: Optional[str],
-                         multi_file: bool,
+                         compiler_options: CompilerOptions,
                          ops: Optional[List[str]] = None) -> List[Tuple[str, str]]:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
 
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
-    literals, modules, errors = genops.build_ir(file_nodes, result.graph, result.types)
+    literals, modules, errors = genops.build_ir(file_nodes, result.graph, result.types,
+                                                compiler_options)
     if errors > 0:
         sys.exit(1)
     # Insert uninit checks.
@@ -75,7 +77,8 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
-    generator = ModuleGenerator(literals, modules, source_paths, shared_lib_name, multi_file)
+    generator = ModuleGenerator(literals, modules, source_paths, shared_lib_name,
+                                compiler_options.multi_file)
     return generator.generate_c_for_modules()
 
 

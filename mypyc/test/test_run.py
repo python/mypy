@@ -16,6 +16,7 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc import emitmodule
+from mypyc.options import CompilerOptions
 from mypyc.test.config import prefix
 from mypyc.build import shared_lib_name
 from mypyc.test.testutil import (
@@ -42,7 +43,7 @@ from distutils.core import setup
 from mypyc.build import mypycify, MypycifyBuildExt
 
 setup(name='test_run_output',
-      ext_modules=mypycify({}, skip_cgen=True),
+      ext_modules=mypycify({}, skip_cgen=True, strip_asserts=False),
       cmdclass={{'build_ext': MypycifyBuildExt}},
 )
 """
@@ -131,8 +132,8 @@ class TestRun(MypycDataSuite):
                 cfiles = emitmodule.compile_modules_to_c(
                     result,
                     module_names=module_names,
-                    multi_file=self.multi_file,
-                    shared_lib_name=lib_name)
+                    shared_lib_name=lib_name,
+                    compiler_options=CompilerOptions(multi_file=self.multi_file))
             except CompileError as e:
                 for line in e.messages:
                     print(line)

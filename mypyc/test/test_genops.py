@@ -12,6 +12,7 @@ from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
     assert_test_output, remove_comment_lines
 )
+from mypyc.options import CompilerOptions
 
 files = [
     'genops-basic.test',
@@ -27,6 +28,7 @@ files = [
     'genops-generics.test',
     'genops-try.test',
     'genops-set.test',
+    'genops-strip-asserts.test',
 ]
 
 
@@ -36,12 +38,14 @@ class TestGenOps(MypycDataSuite):
     optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        # Kind of hacky. Not sure if we need more structure here.
+        options = CompilerOptions(strip_asserts='StripAssert' in testcase.name)
         """Perform a runtime checking transformation test case."""
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
 
             try:
-                ir = build_ir_for_single_file(testcase.input)
+                ir = build_ir_for_single_file(testcase.input, options)
             except CompileError as e:
                 actual = e.messages
             else:

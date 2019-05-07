@@ -14,6 +14,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc import genops
+from mypyc.options import CompilerOptions
 from mypyc.ops import FuncIR
 from mypyc.test.config import test_data_prefix
 
@@ -76,9 +77,11 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
         os.remove(builtins)
 
 
-def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
+def build_ir_for_single_file(input_lines: List[str],
+                             compiler_options: Optional[CompilerOptions] = None) -> List[FuncIR]:
     program_text = '\n'.join(input_lines)
 
+    compiler_options = compiler_options or CompilerOptions()
     options = Options()
     options.show_traceback = True
     options.use_builtins_fixtures = True
@@ -95,7 +98,8 @@ def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types)
+    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types,
+                                         compiler_options)
     assert errors == 0
 
     module = modules[0][1]

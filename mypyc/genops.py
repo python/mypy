@@ -100,6 +100,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
 from mypyc.crash import catch_errors
+from mypyc.options import CompilerOptions
 
 GenFunc = Callable[[], None]
 DictEntry = Tuple[Optional[Value], Value]
@@ -130,7 +131,8 @@ class Errors:
 
 def build_ir(modules: List[MypyFile],
              graph: Graph,
-             types: Dict[Expression, Type]) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
+             types: Dict[Expression, Type],
+             options: CompilerOptions) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
     result = []
     mapper = Mapper()
     errors = Errors()
@@ -176,7 +178,7 @@ def build_ir(modules: List[MypyFile],
         module.accept(pbv)
 
         # Second pass.
-        builder = IRBuilder(types, graph, errors, mapper, module_names, pbv)
+        builder = IRBuilder(types, graph, errors, mapper, module_names, pbv, options)
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             builder.imports,
@@ -794,7 +796,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  errors: Errors,
                  mapper: Mapper,
                  modules: List[str],
-                 pbv: PreBuildVisitor) -> None:
+                 pbv: PreBuildVisitor,
+                 options: CompilerOptions) -> None:
         self.types = types
         self.graph = graph
         self.environment = Environment()
@@ -806,6 +809,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.final_names = []  # type: List[Tuple[str, RType]]
         self.modules = set(modules)
         self.callable_class_names = set()  # type: Set[str]
+        self.options = options
 
         # These variables keep track of the number of lambdas, implicit indices, and implicit
         # iterators instantiated so we avoid name conflicts. The indices and iterators are
@@ -3303,6 +3307,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         pass
 
     def visit_assert_stmt(self, a: AssertStmt) -> None:
+        if self.options.strip_asserts:
+            return
         cond = self.accept(a.expr)
         ok_block, error_block = BasicBlock(), BasicBlock()
         self.add_bool_branch(cond, ok_block, error_block)
