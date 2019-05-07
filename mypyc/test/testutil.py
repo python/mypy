@@ -14,7 +14,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc import genops
-from mypyc.options import Options as CompilerOptions
+from mypyc.options import CompilerOptions
 from mypyc.ops import FuncIR
 from mypyc.test.config import test_data_prefix
 

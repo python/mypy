@@ -98,7 +98,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
 from mypyc.crash import catch_errors
-from mypyc.options import Options
+from mypyc.options import CompilerOptions
 
 GenFunc = Callable[[], None]
 
@@ -129,7 +129,7 @@ class Errors:
 def build_ir(modules: List[MypyFile],
              graph: Graph,
              types: Dict[Expression, Type],
-             options: Options) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
+             options: CompilerOptions) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
     result = []
     mapper = Mapper()
     errors = Errors()
@@ -794,7 +794,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  mapper: Mapper,
                  modules: List[str],
                  pbv: PreBuildVisitor,
-                 options: Options) -> None:
+                 options: CompilerOptions) -> None:
         self.types = types
         self.graph = graph
         self.environment = Environment()

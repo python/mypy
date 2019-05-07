@@ -12,7 +12,7 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc import emitmodule
-from mypyc.options import Options as CompilerOptions
+from mypyc.options import CompilerOptions
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
 )
@@ -39,7 +39,7 @@ class TestCompiler(MypycDataSuite):
             options.strict_optional = True
             options.python_version = (3, 6)
             options.export_types = True
-            compiler_options = CompilerOptions()
+            compiler_options = CompilerOptions(multi_file=True)
             source = build.BuildSource('prog.py', 'prog', text)
 
             try:
@@ -48,7 +48,8 @@ class TestCompiler(MypycDataSuite):
                     options=options,
                     alt_lib_path=test_temp_dir)
                 cfiles = emitmodule.compile_modules_to_c(
-                    result, module_names=['prog'], multi_file=True, shared_lib_name=None, compiler_options=compiler_options)
+                    result, module_names=['prog'], shared_lib_name=None,
+                    compiler_options=compiler_options)
                 out = []
                 for cfile, ctext in cfiles:
                     out.append('== {} =='.format(cfile))
