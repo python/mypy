@@ -1652,6 +1652,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Normal checks for attribute compatibility should catch any problems elsewhere.
             non_overridden_attrs = base.names.keys() - typ.names.keys()
             for name in non_overridden_attrs:
+                if is_private(name):
+                    continue
                 for base2 in mro[i + 1:]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
