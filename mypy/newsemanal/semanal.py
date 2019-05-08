@@ -2223,7 +2223,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             assert value is not None
             typ = self.named_type_or_none(type_name)
             if typ and is_final:
-                return typ.copy_modified(final_value=LiteralType(
+                return typ.copy_modified(last_known_value=LiteralType(
                     value=value,
                     fallback=typ,
                     line=typ.line,
