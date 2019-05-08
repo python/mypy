@@ -1064,7 +1064,6 @@ def get_tasks(self):
     return 'whatever'
 [out]
 a.py:1: error: Function is missing a return type annotation
-a.py:1: note: Use "-> None" if function does not return a value
 
 [case testMissingFile]
 # cmd: mypy nope.py

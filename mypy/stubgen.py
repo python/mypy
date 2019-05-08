@@ -97,6 +97,7 @@ class Options:
 
     This class is mutable to simplify testing.
     """
+
     def __init__(self, pyversion: Tuple[int, int], no_import: bool, doc_dir: str,
                  search_path: List[str], interpreter: str, parse_only: bool, ignore_errors: bool,
                  include_private: bool, output_dir: str, modules: List[str], packages: List[str],
@@ -123,6 +124,7 @@ class StubSource(BuildSource):
     A simple extension of BuildSource that also carries the AST and
     the value of __all__ detected at runtime.
     """
+
     def __init__(self, module: str, path: Optional[str] = None,
                  runtime_all: Optional[List[str]] = None) -> None:
         super().__init__(path, module, None)
@@ -160,6 +162,7 @@ class AnnotationPrinter(TypeStrVisitor):
     """
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
+
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
@@ -183,6 +186,7 @@ class AliasPrinter(NodeVisitor[str]):
 
     Visit r.h.s of the definition to get the string representation of type alias.
     """
+
     def __init__(self, stubgen: 'StubGenerator') -> None:
         self.stubgen = stubgen
         super().__init__()
@@ -431,7 +435,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated.
             retname = 'Any'
             self.add_typing_import("Any")
-        elif o.name() == '__init__' or not has_return_statement(o) and not is_abstract:
+        elif o.name() == '__init__' or not o.has_return_statement() and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -850,26 +854,6 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
     traverser = SelfTraverser()
     fdef.accept(traverser)
     return traverser.results
-
-
-class ReturnSeeker(mypy.traverser.TraverserVisitor):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None':
-            return
-        self.found = True
-
-
-def has_return_statement(fdef: FuncBase) -> bool:
-    """Find if a function has a non-trivial return statement.
-
-    Plain 'return' and 'return None' don't count.
-    """
-    seeker = ReturnSeeker()
-    fdef.accept(seeker)
-    return seeker.found
 
 
 def get_qualified_name(o: Expression) -> str:
