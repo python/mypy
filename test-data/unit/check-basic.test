@@ -388,5 +388,5 @@ x: Dict[str, int]
 y: Dict[str, float]
 y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]", variable has type "Dict[str, float]") \
      # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
-     # N: Consider using "Mapping" instead, which is covariant
+     # N: Consider using "Mapping" instead, which is covariant in the value type
 [builtins fixtures/dict.pyi]
