@@ -2505,3 +2505,108 @@ def f() -> int: ...
 [file p/d.py]
 import p
 def f() -> int: ...
+
+[case testFactory]
+from typing import Type
+class A:
+    x = "foo"
+def f() -> Type[A]:
+    return A
+def g() -> A:
+    return A()
+
+f().x = "bar"
+f().x = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+f()().x = "baz"
+f()().x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+g().x = ""
+g().x = 2 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testFactoryWithInheritance]
+from typing import Type
+class A:
+    x = "foo"
+class B(A):
+    pass
+def f() -> Type[B]:
+    return B
+def g() -> B:
+    return B()
+
+f().x = "bar"
+f().x = 0 # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+f()().x = "baz"
+f()().x = 1 # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+g().x = ""
+g().x = 2 # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+
+[case testRecursiveCallable]
+from typing import Optional
+class A:
+    x = 0 # Type: int
+    def __init__(self, b: bool = True) -> None:
+        self.b = b
+    def __call__(self, b: Optional[bool] = None) -> A:
+        if b is not None:
+            self.b = b
+        return self
+
+A.x = 1
+A().x = 2
+A(True).x = 3
+A()().x = 4
+A(True)().x = 5
+A()()().x = 6
+A(True)()().x = 7
+a = A()
+a().x = 8
+a = A(True)
+a().x = 9
+
+A.x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A().x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A(False).x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A()().x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A(False)().x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A()()().x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A(False)()().x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = A()
+a().x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = A()
+a(False).x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+A.b = True
+A(True)
+A(True).b = False
+A(True)(False)
+A(True)(False)(True).b = False
+A(True)(None)
+A(True)().b = False
+A(True)(None).b = True
+A(True)(None).b = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "bool")
+A(True)()(False).b = "" # E: Incompatible types in assignment (expression has type "str", variable has type "bool")
+
+[builtins fixtures/bool.pyi]
+
+[case testMultiLayerCallable]
+class A:
+    y = 0 # Type: int
+class B(A):
+    def __init__(self, z: int) -> None:
+        self.z = z
+def foo(x: int) -> B:
+    return B(x)
+def bar(x: int) -> B:
+    return foo(x)
+
+a = bar(1)
+a.z = 2
+a.z = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.y = 2
+a.y = "" # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+
+b = foo(3)
+a.z = 4
+a.z = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.y = 4
+a.y = "" # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")

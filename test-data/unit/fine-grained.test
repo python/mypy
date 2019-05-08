@@ -1105,7 +1105,7 @@ class A:
 [out]
 ==
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:9: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
 main:14: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testChangeBaseClassAttributeType]
@@ -1123,7 +1123,7 @@ class A:
         self.x = 'a'
 [out]
 ==
-main:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
 
 [case testRemoveAttributeInBaseClass]
 import m
@@ -2912,7 +2912,7 @@ class M(type):
     x = None  # type: int
 [out]
 ==
-a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+a.py:4: error: Incompatible types in assignment (expression has type "int", base class "M" defined the type as "str")
 ==
 a.py:4: error: "Type[C]" has no attribute "x"
 ==
@@ -4220,7 +4220,7 @@ class C:
     y: str
 [out]
 ==
-main:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4: error: Incompatible types in assignment (expression has type "int", base class "C" defined the type as "str")
 
 [case testNewTypeDependencies2]
 from a import N

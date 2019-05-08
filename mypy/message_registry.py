@@ -138,6 +138,8 @@ CANNOT_OVERRIDE_INSTANCE_VAR = \
 CANNOT_OVERRIDE_CLASS_VAR = \
     'Cannot override class variable (previously declared on base class "{}") with instance ' \
     'variable'  # type: Final
+PARENT_CLASS_MISMATCH = \
+    'base class "{}" defined the type as'  # type: Final
 
 # Protocol
 RUNTIME_PROTOCOL_EXPECTED = \

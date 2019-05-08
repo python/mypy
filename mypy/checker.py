@@ -1980,7 +1980,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return self.check_subtype(compare_type, base_type, lvalue,
                                       message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
-                                      'base class "%s" defined the type as' % base.name())
+                                      message_registry.PARENT_CLASS_MISMATCH.format(base.name()))
         return True
 
     def lvalue_type_from_base(self, expr_node: Var,
@@ -2554,7 +2554,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
-                                rvalue: Expression, context: Context) -> Tuple[Type, Type, bool]:
+                                rvalue: Expression, context: MemberExpr
+                                ) -> Tuple[Type, Type, bool]:
         """Type member assignment.
 
         This defers to check_simple_assignment, unless the member expression
@@ -2567,9 +2568,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         care about interaction between binder and __set__().
         """
         # Descriptors don't participate in class-attribute access
-        if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
-                isinstance(instance_type, TypeType)):
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+        if (isinstance(instance_type, CallableType) and instance_type.is_type_obj() and
+                isinstance(instance_type.ret_type, Instance)):
+            rvalue_type = self.check_parent_member_assignment(instance_type.ret_type,
+                                                              attribute_type, attribute_type,
+                                                              rvalue, context)
+            return rvalue_type, attribute_type, True
+
+        elif isinstance(instance_type, TypeType) and isinstance(instance_type.item, Instance):
+            rvalue_type = self.check_parent_member_assignment(instance_type.item,
+                                                              attribute_type, attribute_type,
+                                                              rvalue, context)
             return rvalue_type, attribute_type, True
 
         if not isinstance(attribute_type, Instance):
@@ -2585,7 +2594,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
+            rvalue_type = self.check_parent_member_assignment(instance_type, get_type,
+                                                              attribute_type, rvalue, context)
             return rvalue_type, get_type, True
 
         dunder_set = attribute_type.type.get_method('__set__')
@@ -2628,6 +2638,52 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
         infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
+
+    def check_parent_member_assignment(self, lvalue_type: Type,
+                                       lvalue_attribute_type: Type, rvalue_type: Type,
+                                       rvalue: Expression, context: MemberExpr) -> Type:
+        """Type inherited member assignment.
+
+        This defers to check_simple_assignment if the attribute is local to the instance_type,
+        otherwise it will inform the user where the attribute type was originally defined.
+
+        Return the inferred rvalue_type.
+        """
+        if isinstance(lvalue_type, (Instance)):
+            attribute_is_defined = lvalue_type.has_readable_member(context.name)
+            if isinstance(lvalue_type, UnionType):
+                direct_lvalue_vars = list(itertools.chain.from_iterable(
+                                          i.type.names for i in lvalue_type.items))
+                lvalue_bases = list(itertools.chain.from_iterable(
+                                    i.type.bases for i in lvalue_type.items))
+            else:
+                direct_lvalue_vars = lvalue_type.type.names
+                lvalue_bases = lvalue_type.type.bases
+                if '__metaclass__' in lvalue_type.type.names:
+                    # if the assigned metaclass is not class itself we have other problems
+                    metacls = lvalue_type.type.names['__metaclass__'].type.ret_type  # type: ignore
+                    lvalue_bases.append(metacls)
+                    attribute_is_defined = (attribute_is_defined or
+                                            metacls.has_readable_member(context.name))
+            if attribute_is_defined and context.name not in direct_lvalue_vars:
+                for base in lvalue_bases:
+                    if context.name in base.type.names:
+                        parent_context = base.type.names[context.name].node
+                        if isinstance(parent_context, Var) and parent_context.info.is_generic():
+                            # attribute may have been defined in this class but its type is
+                            # probably defined elsewhere, possibly in the instance itself.
+                            continue
+                        always_allow_any = (rvalue_type is not None and
+                                            not isinstance(rvalue_type, AnyType))
+                        rvalue_type_accept = self.expr_checker.accept(rvalue, rvalue_type,
+                                                                      always_allow_any)
+                        self.check_subtype(rvalue_type_accept, rvalue_type, context,
+                                           message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                           'expression has type',
+                                           message_registry.PARENT_CLASS_MISMATCH.format(
+                                               base.type.defn.name))
+                        return rvalue_type_accept
+        return self.check_simple_assignment(lvalue_attribute_type, rvalue, context)
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Expression, context: Context) -> None:
