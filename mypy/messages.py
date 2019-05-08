@@ -1035,12 +1035,6 @@ class MessageBuilder:
                       forward_method, self.format(forward_class)),
                   context)
 
-    def forbidden_inference_of_object(self, expr: Type, context: Context) -> None:
-        self.fail('Variable inferred to {}, which is forbidden.'.format(
-            self.format(expr)),
-            context
-        )
-
     def forward_operator_not_callable(
             self, forward_method: str, context: Context) -> None:
         self.fail('Forward operator "{}" is not callable'.format(
