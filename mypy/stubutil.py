@@ -14,8 +14,9 @@ from typing import Optional, Tuple, List, IO, Iterator
 
 
 class CantImport(Exception):
-    pass
-
+    def __init__(self, module: str, message: str):
+        self.module = module
+        self.message = message
 
 def is_c_module(module: ModuleType) -> bool:
     return ('__file__' not in module.__dict__ or
@@ -104,7 +105,7 @@ def find_module_path_and_all_py2(module: str,
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError:
-        raise CantImport(module)
+        raise CantImport(module, e.args)
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
     if not module_path.endswith(('.py', '.pyc', '.pyo')):
@@ -125,8 +126,8 @@ def find_module_path_and_all_py3(module: str) -> Optional[Tuple[str, Optional[Li
     # TODO: Support custom interpreters.
     try:
         mod = importlib.import_module(module)
-    except Exception:
-        raise CantImport(module)
+    except Exception as e:
+        raise CantImport(module, e.args)
     if is_c_module(mod):
         return None
     module_all = getattr(mod, '__all__', None)
@@ -155,8 +156,8 @@ def generate_guarded(mod: str, target: str,
             print('Created %s' % target)
 
 
-def report_missing(mod: str) -> None:
-    print('Failed to import {}; skipping it'.format(mod))
+def report_missing(mod: str, message: str) -> None:
+    print('Failed to import {} with error: {}; skipping it'.format(mod, message))
 
 
 def fail_missing(mod: str) -> None:

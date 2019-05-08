@@ -266,6 +266,7 @@ class StubgenPythonSuite(DataSuite):
             with open(file, 'w') as f:
                 f.write(content)
 
+        sys.path.append('.')
         options = self.parse_flags(source, extra)
         out_dir = 'out'
         try:
