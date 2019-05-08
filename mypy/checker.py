@@ -1904,8 +1904,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_forbidden_inference_types(lvalue, rvalue, rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
-    def check_forbidden_inference_types(self, lvalue: Lvalue, rvalue: Context, rvalue_type: Type) -> None:
-        if (isinstance(rvalue_type, Instance) and isinstance(lvalue, RefExpr)):
+    def check_forbidden_inference_types(self, lvalue: Lvalue, rvalue: Context,
+                                        rvalue_type: Type) -> None:
+        """Check for any list or dict literals that are inferred ambiguously and require annotation.
+        """
+        if not self.scope.top_function() and self.options.allow_untyped_globals:
+            return
+
+        if isinstance(rvalue_type, Instance) and isinstance(lvalue, RefExpr):
             if isinstance(rvalue, ListExpr):
                 list_arg_type = rvalue_type.args[0]
                 if isinstance(list_arg_type, Instance):
@@ -1913,7 +1919,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # This list has a specific type, no further checks needed.
                         return
 
-                    if self.iterable_has_object_type(iter(rvalue.items)):
+                    if self.iterable_has_object_type(rvalue.items):
                         return
 
                     self.msg.need_annotation_for_var(lvalue.node, rvalue)
@@ -1926,18 +1932,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # are needed
                         return
 
-                    if self.iterable_has_object_type(map(lambda x: x[1], rvalue.items)):
+                    if self.iterable_has_object_type([v for k, v in rvalue.items]):
                         return
 
                     self.msg.need_annotation_for_var(lvalue.node, rvalue)
 
-    def iterable_has_object_type(self, items: Iterator[Expression]) -> bool:
+    def iterable_has_object_type(self, items: Iterable[Expression]) -> bool:
+        """Check for any instance that has type `object`.
+
+        A list that contains an an instance must necessarily be of type List[object],
+        since there is no more specific type that can be assigned.
+        """
         for i in items:
             i_type = self.type_map[i]
             if isinstance(i_type, Instance):
                 if i_type.type.fullname() == 'builtins.object':
-                    # At least one value in the list has type object,
-                    # so the type is allowed to be inferred as List[object].
+                    # At least one value in the iterable has type object,
+                    # so the type is allowed to be inferred as *[object].
                     return True
 
         return False
