@@ -1371,6 +1371,14 @@ y: Final[Any]
 z: Final[object]
 t: Final[Any]
 
+[case testFinalInvalid_semanal]
+Final = 'boom'
+
+x: Final = 1
+[out]
+Final: str
+x: Final
+
 [case testNoFunctionNested_semanal]
 import a
 from typing import Dict, Any
