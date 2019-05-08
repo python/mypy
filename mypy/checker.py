@@ -3578,7 +3578,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     extra_info.append(supertype_label + ' ' + supertype_str)
                 note_msg = make_inferred_type_note(context, subtype,
                                                    supertype, supertype_str)
-                if msg == message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT:
+                if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                     notes = append_invariance_notes([], subtype,  supertype)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
