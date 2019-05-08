@@ -10,7 +10,8 @@ class C: ...  # E: Name 'C' already defined on line 4
 def d(f): ...  # type: ignore
 @d
 
-def f(): ...  # E: Function is missing a type annotation
+def f(): ...  # E: Function is missing a return type annotation \
+              # N: Use "-> None" if function does not return a value
 
 [case testIgnoreDecoratedFunction1]
 # flags: --disallow-untyped-defs --warn-unused-ignores
