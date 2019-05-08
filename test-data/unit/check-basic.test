@@ -373,7 +373,7 @@ b = none.__bool__()
 reveal_type(b)  # E: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
-[case testAssignmentInvariantNote]
+[case testAssignmentInvariantNoteForList]
 from typing import List
 x: List[int]
 y: List[float]
@@ -381,3 +381,12 @@ y = x # E: Incompatible types in assignment (expression has type "List[int]", va
      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
+
+[case testAssignmentInvariantNoteForDict]
+from typing import Dict
+x: Dict[str, int]
+y: Dict[str, float]
+y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]", variable has type "Dict[str, float]") \
+     # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: Consider using "Sequence" instead, which is covariant
+[builtins fixtures/dict.pyi]
