@@ -737,6 +737,35 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
+[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        def g(x):  # E: Type signature has too few arguments
+            # type: () -> None
+            pass
+
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        class B:
+            def g(self):
+                # type: () -> None
+                def h(x):  # E: Type signature has too few arguments
+                    # type: () -> None
+                    pass
+
+[case testDeepNestedMethodInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        class B:
+            class C:
+                def g(self):
+                    # type: () -> None
+                    pass
+
 [case testMutuallyRecursiveNestedFunctions]
 def f() -> None:
     def g() -> None:
@@ -1485,7 +1514,7 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for 'f'
+f = [] # E: Need type annotation for 'f' (hint: "f: List[<type>] = ...")
 if object():
     def f(): pass # E: Incompatible redefinition
 f()  # E: "List[Any]" not callable
@@ -2291,13 +2320,21 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for 'bad'
+bad = make_list()  # E: Need type annotation for 'bad' (hint: "bad: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
 foo(y=2)  # E: Missing positional arguments
+
+[case testMissingArgumentError]
+def f(a, b, c, d=None) -> None: pass
+f(1, 2, d=3) # E: Missing positional argument "c" in call to "f"
+
+[case testMissingArgumentsError]
+def f(a, b, c, d=None) -> None: pass
+f(1, d=3) # E: Missing positional arguments "b", "c" in call to "f"
 
 [case testReturnTypeLineNumberWithDecorator]
 def dec(f): pass

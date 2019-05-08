@@ -287,9 +287,14 @@ class Errors:
         file, line, end_line = info.origin
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines:
+                # It's okay if end_line is *before* line.
+                # Function definitions do this, for example, because the correct
+                # error reporting line is at the *end* of the ignorable range
+                # (for compatibility reasons). If so, just flip 'em!
+                if end_line < line:
+                    line, end_line = end_line, line
                 # Check each line in this context for "type: ignore" comments.
-                # For anything other than Python 3.8 expressions, line == end_line,
-                # so we only loop once.
+                # line == end_line for most nodes, so we only loop once.
                 for scope_line in range(line, end_line + 1):
                     if scope_line in self.ignored_lines[file]:
                         # Annotation requests us to ignore all errors on this line.

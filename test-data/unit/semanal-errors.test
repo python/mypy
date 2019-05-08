@@ -1220,6 +1220,7 @@ def f() -> List[int]: pass
 [builtins fixtures/list.pyi]
 [out]
 main:2: error: Name 'List' is not defined
+main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testImportObsoleteTypingFunction]
 from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
@@ -1260,7 +1261,7 @@ main:1: error: Module 'typing' has no attribute 'typevar' (it's now called 'typi
 t = typevar('t')
 [out]
 main:1: error: Name 'typevar' is not defined
-main:1: note: (Did you mean 'typing.TypeVar'?)
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 
 [case testUseObsoleteNameForTypeVar3]
 import typing

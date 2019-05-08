@@ -35,5 +35,11 @@ htmlcov
 # pytest cache
 .pytest_cache/
 
+# virtualenv
+.Python
+bin/
+lib/
+include/
+
 .tox
 pip-wheel-metadata

@@ -106,7 +106,20 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named 'mod'
+two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
+== Return code: 2
+
+[case promptsForgotInit]
+# cmd: mypy a.py one/mod/a.py
+[file one/__init__.py]
+# type: ignore
+[file a.py]
+# type: ignore
+[file one/mod/a.py]
+#type: ignore
+[out]
+one/mod/a.py: error: Duplicate module named 'a' (also at 'a.py')
+one/mod/a.py: error: Are you missing an __init__.py?
 == Return code: 2
 
 [case testFlagsFile]
@@ -924,7 +937,7 @@ y: List = []  # error
 m.py:3: error: Missing type parameters for generic type
 m.py:5: error: Missing type parameters for generic type
 m.py:6: error: Missing type parameters for generic type
-m.py:8: error: Need type annotation for 'x'
+m.py:8: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
 m.py:9: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsCustomGenericClass]

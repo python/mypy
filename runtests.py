@@ -34,7 +34,7 @@ ALL_NON_FAST = [CMDLINE,
                 STUBGEN_PY]
 
 # We split the pytest run into three parts to improve test
-# parallelization. Each run should have tests that each take a roughly similiar
+# parallelization. Each run should have tests that each take a roughly similar
 # time to run.
 cmds = {
     # Self type check

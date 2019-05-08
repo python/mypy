@@ -754,7 +754,7 @@ class C:
     pass
 [out]
 MypyFile:1(
-  ClassDef:1(
+  ClassDef:2(
     C
     Decorators(
       CallExpr:1(

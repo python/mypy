@@ -12,15 +12,16 @@ The function build() is the main interface to this module.
 
 import binascii
 import contextlib
+import errno
 import gc
 import hashlib
 import json
 import os
+import pathlib
 import re
 import stat
 import sys
 import time
-import errno
 import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
@@ -212,6 +213,7 @@ def _build(sources: List[BuildSource],
                            errors=errors,
                            flush_errors=flush_errors,
                            fscache=fscache)
+    manager.trace(repr(options))
 
     reset_global_state()
     try:
@@ -2398,12 +2400,39 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           severity='note', only_once=True)
 
 
+def log_configuration(manager: BuildManager) -> None:
+    """Output useful configuration information to LOG and TRACE"""
+
+    manager.log()
+    configuration_vars = (
+        ("Mypy Version", __version__),
+        ("Config File", (manager.options.config_file or "Default")),
+        ("Configured Executable", manager.options.python_executable),
+        ("Current Executable", sys.executable),
+        ("Cache Dir", manager.options.cache_dir),
+    )
+
+    for conf_name, conf_value in configuration_vars:
+        manager.log("{:24}{}".format(conf_name + ":", conf_value))
+
+    # Complete list of searched paths can get very long, put them under TRACE
+    for path_type, paths in manager.search_paths._asdict().items():
+        if not paths:
+            manager.trace("No %s" % path_type)
+            continue
+
+        manager.trace("%s:" % path_type)
+
+        for pth in paths:
+            manager.trace("    %s" % pth)
+
+
 # The driver
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    manager.log()
-    manager.log("Mypy version %s" % __version__)
+    log_configuration(manager)
+
     t0 = time.time()
     graph = load_graph(sources, manager)
 
@@ -2569,7 +2598,19 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath, st.id)
-            manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
+            manager.errors.report(
+                -1, -1,
+                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath)
+            )
+            p1 = len(pathlib.PurePath(st.xpath).parents)
+            p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
+
+            if p1 != p2:
+                manager.errors.report(
+                    -1, -1,
+                    "Are you missing an __init__.py?"
+                )
+
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)

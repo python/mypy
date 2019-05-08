@@ -513,12 +513,14 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
                 elif m.group(1) == 'W':
                     severity = 'warning'
                 col = m.group('col')
+                message = m.group('message')
+                message = message.replace('\\#', '#')  # adds back escaped # character
                 if col is None:
                     output.append(
-                        '{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
+                        '{}:{}: {}: {}'.format(fnam, i + 1, severity, message))
                 else:
                     output.append('{}:{}:{}: {}: {}'.format(
-                        fnam, i + 1, col, severity, m.group('message')))
+                        fnam, i + 1, col, severity, message))
 
 
 def fix_win_path(line: str) -> str:

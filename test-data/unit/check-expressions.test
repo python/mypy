@@ -1714,7 +1714,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 
 [case testDictWithoutKeywordArgs]
 from typing import Dict
-d = dict() # E: Need type annotation for 'd'
+d = dict() # E: Need type annotation for 'd' (hint: "d: Dict[<type>, <type>] = ...")
 d2 = dict() # type: Dict[int, str]
 dict(undefined) # E: Name 'undefined' is not defined
 [builtins fixtures/dict.pyi]
@@ -1953,8 +1953,8 @@ a.__pow__() # E: Too few arguments for "__pow__" of "int"
 [builtins fixtures/ops.pyi]
 
 [case testTypeAnnotationNeededMultipleAssignment]
-x, y = [], [] # E: Need type annotation for 'x' \
-            # E: Need type annotation for 'y'
+x, y = [], [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...") \
+            # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testStrictEqualityEq]
@@ -2206,3 +2206,21 @@ C in exp  # E: Non-overlapping container check (element type: "Type[C]", contain
 o in exp
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+[case testUnimportedHintAny]
+def f(x: Any) -> None:  # E: Name 'Any' is not defined \
+                        # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
+    pass
+
+
+[case testUnimportedHintAnyLower]
+def f(x: any) -> None:  # E: Name 'any' is not defined \
+                        # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
+    pass
+
+
+[case testUnimportedHintOptional]
+def f(x: Optional[str]) -> None:  # E: Name 'Optional' is not defined \
+                                  # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Optional")
+    pass

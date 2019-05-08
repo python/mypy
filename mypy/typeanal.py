@@ -730,9 +730,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif isinstance(arg, (NoneType, LiteralType)):
             # Types that we can just add directly to the literal/potential union of literals.
             return [arg]
-        elif isinstance(arg, Instance) and arg.final_value is not None:
+        elif isinstance(arg, Instance) and arg.last_known_value is not None:
             # Types generated from declarations like "var: Final = 4".
-            return [arg.final_value]
+            return [arg.last_known_value]
         elif isinstance(arg, UnionType):
             out = []
             for union_arg in arg.items:
