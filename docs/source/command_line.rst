@@ -132,7 +132,6 @@ imports.
     the Python executable running mypy.
 
     See :ref:`installed-packages` for more on making PEP 561 compliant packages.
-    This flag will attempt to set ``--python-version`` if not already set.
 
 ``--no-site-packages``
     This flag will disable searching for `PEP 561`_ compliant packages. This

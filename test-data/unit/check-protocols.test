@@ -1486,8 +1486,8 @@ class C(Protocol):
 [case testSimpleRuntimeProtocolCheck]
 from typing import Protocol, runtime
 
-@runtime # E: @runtime can only be used with protocol classes
-class C:
+@runtime
+class C:  # E: @runtime can only be used with protocol classes
     pass
 
 class P(Protocol):

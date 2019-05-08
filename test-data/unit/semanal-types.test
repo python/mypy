@@ -1375,7 +1375,7 @@ class S: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [_promote])
-  ClassDef:2(
+  ClassDef:3(
     S
     Promote(builtins.str)
     Decorators(

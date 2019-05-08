@@ -425,7 +425,7 @@ class B(A): pass
 [case testLocalVariableInferenceFromEmptyList]
 import typing
 def f() -> None:
-    a = []     # E: Need type annotation for 'a'
+    a = []     # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
     b = [None]
     c = [B()]
     if int():

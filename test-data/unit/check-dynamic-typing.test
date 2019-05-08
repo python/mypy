@@ -698,7 +698,7 @@ class C:
 class B(C):
     def f(self, a): pass
 class A(B):
-    def f(self, a: 'D') -> None: # E: Argument 1 of "f" incompatible with supertype "C"
+    def f(self, a: 'D') -> None: # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "A"
         pass
 class D: pass
 [out]

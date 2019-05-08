@@ -480,15 +480,74 @@ def f(x: int = ...) -> None: pass
 
 [case testEllipsisDefaultArgValueInStub2]
 import m
-def f(x: int = ...) -> None: pass
+def f1(x: int = ...) -> int: return 1
+def f2(x: int = '') -> int: return 1
 [file m.pyi]
-def g(x: int = '') -> None: pass
+def g1(x: int = ...) -> int: pass
+def g2(x: int = '') -> int: pass
 [out]
-tmp/m.pyi:1: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
+tmp/m.pyi:2: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
 main:2: error: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+main:3: error: Incompatible default for argument "x" (default has type "str", argument has type "int")
 
 [case testEllipsisDefaultArgValueInNonStub]
-def f(x: int = ...) -> None: pass # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+def ok_1(x: int = ...) -> None: pass
+def ok_2(x: int = ...) -> None: ...
+def ok_3(x: int = ...) -> None: raise NotImplementedError
+def ok_4(x: int = ...) -> None: raise NotImplementedError()
+def ok_5(x: int = ...) -> None:
+    """Docstring here"""
+    pass
+
+def bad_1(x: int = ...) -> None: 1   # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+def bad_2(x: int = ...) -> None:     # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+    """Docstring here"""
+    ok_1()
+def bad_3(x: int = ...) -> None:     # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
+    raise Exception("Some other exception")
+[builtins fixtures/exception.pyi]
+[out]
+
+[case testEllipsisDefaultArgValueInNonStubsOverload]
+from typing import overload, Union
+
+Both = Union[int, str]
+
+@overload
+def foo(x: int, y: int = ...) -> int: ...
+@overload
+def foo(x: str, y: str = ...) -> str: ...
+def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "Union[int, str]")
+    return x
+
+@overload
+def bar(x: int, y: int = ...) -> int: ...
+@overload
+def bar(x: str, y: str = ...) -> str: ...
+def bar(x: Both, y: Both = ...) -> Both:
+    raise NotImplementedError
+[builtins fixtures/exception.pyi]
+[out]
+
+[case testEllipsisDefaultArgValueInNonStubsMethods]
+from typing import Generic, TypeVar
+from typing_extensions import Protocol
+from abc import abstractmethod
+
+T = TypeVar('T')
+class Wrap(Generic[T]): ...
+
+class MyProtocol(Protocol):
+    def no_impl(self, x: Wrap[int] = ...) -> int: ...
+    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "Wrap[int]")
+
+class MyAbstractClass:
+    @abstractmethod
+    def no_impl(self, x: Wrap[int] = ...) -> int: raise NotImplementedError
+
+    @abstractmethod
+    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "Wrap[int]")
+[builtins fixtures/exception.pyi]
 [out]
 
 [case testStarImportOverlapping]

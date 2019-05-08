@@ -8,7 +8,7 @@ from mypy.nodes import (
     Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance
+from mypy.types import Type, FunctionLike, Instance, TPDICT_FB_NAMES
 from mypy.tvar_scope import TypeVarScope
 
 MYPY = False
@@ -145,7 +145,7 @@ def create_indirect_imported_name(file_node: MypyFile,
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
-            if fdef.info.fullname() == 'mypy_extensions._TypedDict':
+            if fdef.info.fullname() in TPDICT_FB_NAMES:
                 # Avoid exposing the internal _TypedDict name.
                 class_name = 'TypedDict'
             else:

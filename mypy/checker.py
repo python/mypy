@@ -53,7 +53,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.mro import calculate_mro
-from mypy.erasetype import erase_typevars
+from mypy.erasetype import erase_typevars, remove_instance_last_known_values
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
@@ -917,16 +917,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
+                body_is_trivial = self.is_trivial_body(defn.body)
                 for arg in item.arguments:
-                    if arg.initializer is not None:
-                        name = arg.variable.name()
-                        msg = 'Incompatible default for '
-                        if name.startswith('__tuple_arg_'):
-                            msg += "tuple argument {}".format(name[12:])
-                        else:
-                            msg += 'argument "{}"'.format(name)
-                        self.check_simple_assignment(arg.variable.type, arg.initializer,
-                            context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
+                    if arg.initializer is None:
+                        continue
+                    if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
+                        continue
+                    name = arg.variable.name()
+                    msg = 'Incompatible default for '
+                    if name.startswith('__tuple_arg_'):
+                        msg += "tuple argument {}".format(name[12:])
+                    else:
+                        msg += 'argument "{}"'.format(name)
+                    self.check_simple_assignment(arg.variable.type, arg.initializer,
+                        context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -944,11 +948,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     return_type = self.return_types[-1]
 
-                if (not isinstance(return_type, (NoneType, AnyType))
-                        and not self.is_trivial_body(defn.body)):
+                if not isinstance(return_type, (NoneType, AnyType)) and not body_is_trivial:
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
-                    # entirely pass/Ellipsis.
+                    # entirely pass/Ellipsis/raise NotImplementedError.
                     if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
                         self.msg.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
@@ -1000,6 +1003,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def is_trivial_body(self, block: Block) -> bool:
+        """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
+        "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
+        start with a statement containing just a string (e.g. a docstring).
+
+        Note: functions that raise other kinds of exceptions do not count as
+        "trivial". We use this function to help us determine when it's ok to
+        relax certain checks on body, but functions that raise arbitrary exceptions
+        are more likely to do non-trivial work. For example:
+
+           def halt(self, reason: str = ...) -> NoReturn:
+               raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+
+        A function that raises just NotImplementedError is much less likely to be
+        this complex.
+        """
         body = block.body
 
         # Skip a docstring
@@ -1012,7 +1030,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         elif len(body) > 1:
             return False
+
         stmt = body[0]
+
+        if isinstance(stmt, RaiseStmt):
+            expr = stmt.expr
+            if expr is None:
+                return False
+            if isinstance(expr, CallExpr):
+                expr = expr.callee
+
+            return (isinstance(expr, NameExpr)
+                    and expr.fullname == 'builtins.NotImplementedError')
+
         return (isinstance(stmt, PassStmt) or
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))
@@ -1474,6 +1504,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if original_class_or_static and not override_class_or_static:
                 fail = True
 
+        if is_private(name):
+            fail = False
+
         if fail:
             emitted_msg = False
             if (isinstance(override, CallableType) and
@@ -1501,8 +1534,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for i in range(len(override.arg_types)):
                     if not is_subtype(original.arg_types[i],
                                       erase_override(override.arg_types[i])):
+                        arg_type_in_super = original.arg_types[i]
                         self.msg.argument_incompatible_with_supertype(
-                            i + 1, name, type_name, name_in_super, supertype, node)
+                            i + 1,
+                            name,
+                            type_name,
+                            name_in_super,
+                            arg_type_in_super,
+                            supertype,
+                            node
+                        )
                         emitted_msg = True
 
                 if not is_subtype(erase_override(override.ret_type),
@@ -1619,6 +1660,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Normal checks for attribute compatibility should catch any problems elsewhere.
             non_overridden_attrs = base.names.keys() - typ.names.keys()
             for name in non_overridden_attrs:
+                if is_private(name):
+                    continue
                 for base2 in mro[i + 1:]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
@@ -1868,10 +1911,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                rvalue_type = self.expr_checker.accept(
-                    rvalue,
-                    in_final_declaration=inferred.is_final,
-                )
+                rvalue_type = self.expr_checker.accept(rvalue)
+                if not inferred.is_final:
+                    rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
@@ -1908,6 +1950,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # is __slots__, where it is allowed for any child class to
                 # redefine it.
                 if lvalue_node.name() == "__slots__" and base.fullname() != "builtins.object":
+                    continue
+
+                if is_private(lvalue_node.name()):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
@@ -2466,13 +2511,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # partial type which will be made more specific later. A partial type
             # gets generated in assignment like 'x = []' where item type is not known.
             if not self.infer_partial_type(name, lvalue, init_type):
-                self.msg.need_annotation_for_var(name, context)
+                self.msg.need_annotation_for_var(name, context, self.options.python_version)
                 self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
               and lvalue.def_var and lvalue.def_var in self.inferred_attribute_types
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
             # Multiple, inconsistent types inferred for an attribute.
-            self.msg.need_annotation_for_var(name, context)
+            self.msg.need_annotation_for_var(name, context, self.options.python_version)
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
@@ -3750,7 +3795,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = NoneType()
                 else:
                     if var not in self.partial_reported and not permissive:
-                        self.msg.need_annotation_for_var(var, context)
+                        self.msg.need_annotation_for_var(var, context, self.options.python_version)
                         self.partial_reported.add(var)
                     if var.type:
                         var.type = self.fixup_partial_type(var.type)
@@ -3774,7 +3819,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if in_scope:
                     context = partial_types[node]
                     if is_local or not self.options.allow_untyped_globals:
-                        self.msg.need_annotation_for_var(node, context)
+                        self.msg.need_annotation_for_var(node, context,
+                                                         self.options.python_version)
                 else:
                     # Defer the node -- we might get a better type in the outer scope
                     self.handle_cannot_determine_type(node.name(), context)
@@ -4422,3 +4468,8 @@ def is_subtype_no_promote(left: Type, right: Type) -> bool:
 
 def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
     return is_overlapping_types(left, right, ignore_promotions=True)
+
+
+def is_private(node_name: str) -> bool:
+    """Check if node is private to class definition."""
+    return node_name.startswith('__') and not node_name.endswith('__')

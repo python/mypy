@@ -7,7 +7,7 @@ from typing import (
 MYPY = False
 if MYPY:
     import typing  # for typing.Type, which conflicts with types.Type
-    from typing_extensions import Final
+    from typing_extensions import Final, Literal
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -192,7 +192,9 @@ def parse_type_comment(type_comment: str,
         typ = ast3_parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
-            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
+            stripped_type = type_comment.split("#", 2)[0].strip()
+            err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+            errors.report(line, e.offset, err_msg, blocker=True)
             return False, None
         else:
             raise
@@ -248,7 +250,8 @@ class ASTConverter:
                  options: Options,
                  is_stub: bool,
                  errors: Errors) -> None:
-        self.class_nesting = 0
+        # 'C' for class, 'F' for function
+        self.class_and_function_stack = []  # type: List[Literal['C', 'F']]
         self.imports = []  # type: List[ImportBase]
 
         self.options = options
@@ -382,8 +385,8 @@ class ASTConverter:
             ret.append(OverloadedFuncDef(current_overload))
         return ret
 
-    def in_class(self) -> bool:
-        return self.class_nesting > 0
+    def in_method_scope(self) -> bool:
+        return self.class_and_function_stack[-2:] == ['C', 'F']
 
     def translate_module_id(self, id: str) -> str:
         """Return the actual, internal module id for a source text id.
@@ -424,6 +427,7 @@ class ASTConverter:
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
+        self.class_and_function_stack.append('F')
         no_type_check = bool(n.decorator_list and
                              any(is_no_type_check_decorator(d) for d in n.decorator_list))
 
@@ -465,11 +469,13 @@ class ASTConverter:
                                             line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
-                if self.in_class() and len(arg_types) < len(args):
+                if self.in_method_scope() and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, lineno, n.col_offset)
-                if n.type_comment and n.type_comment[0] != "(":
+                stripped_type = n.type_comment.split("#", 2)[0].strip()
+                err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                self.fail(err_msg, lineno, n.col_offset)
+                if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
                               lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
@@ -518,22 +524,29 @@ class ASTConverter:
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
                 # In 3.8, it points to the 'def' line, where we want it.
                 lineno += len(n.decorator_list)
+                end_lineno = None
+            else:
+                # Set end_lineno to the old pre-3.8 lineno, in order to keep
+                # existing "# type: ignore" comments working:
+                end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
 
             var = Var(func_def.name())
             var.is_ready = False
             var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno, n.col_offset)
+            func_def.set_line(lineno, n.col_offset, end_lineno)
             func_def.body.set_line(lineno)  # TODO: Why?
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             deco.set_line(n.decorator_list[0].lineno)
-            return deco
+            retval = deco  # type: Union[FuncDef, Decorator]
         else:
             # FuncDef overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset)
-            return func_def
+            retval = func_def
+        self.class_and_function_stack.pop()
+        return retval
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
         if self.options.no_implicit_optional:
@@ -614,7 +627,7 @@ class ASTConverter:
     #  stmt* body,
     #  expr* decorator_list)
     def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
-        self.class_nesting += 1
+        self.class_and_function_stack.append('C')
         keywords = [(kw.arg, self.visit(kw.value))
                     for kw in n.keywords if kw.arg]
 
@@ -625,16 +638,16 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        if n.decorator_list and sys.version_info >= (3, 8):
-            # Before 3.8, n.lineno points to the first decorator; in
-            # 3.8, it points to the 'class' statement.  We always make
-            # it point to the first decorator.  (The node structure
-            # here is different than for decorated functions.)
-            cdef.line = n.decorator_list[0].lineno
-            cdef.column = n.col_offset
+        # Set end_lineno to the old mypy 0.700 lineno, in order to keep
+        # existing "# type: ignore" comments working:
+        if sys.version_info < (3, 8):
+            cdef.line = n.lineno + len(n.decorator_list)
+            cdef.end_line = n.lineno
         else:
-            self.set_line(cdef, n)
-        self.class_nesting -= 1
+            cdef.line = n.lineno
+            cdef.end_line = n.decorator_list[0].lineno if n.decorator_list else None
+        cdef.column = n.col_offset
+        self.class_and_function_stack.pop()
         return cdef
 
     # Return(expr? value)

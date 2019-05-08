@@ -185,7 +185,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.record_line(self.line, TYPE_UNANALYZED)
             return
 
-        if isinstance(t, AnyType) and t.type_of_any == TypeOfAny.special_form:
+        if isinstance(t, AnyType) and is_special_form_any(t):
             # This is not a real Any type, so don't collect stats for it.
             return
 
@@ -204,10 +204,9 @@ class StatisticsVisitor(TraverserVisitor):
 
         for typ in collect_all_inner_types(t) + [t]:
             if isinstance(typ, AnyType):
-                if typ.type_of_any == TypeOfAny.from_another_any:
-                    assert typ.source_any
-                    assert typ.source_any.type_of_any != TypeOfAny.from_another_any
-                    typ = typ.source_any
+                typ = get_original_any(typ)
+                if is_special_form_any(typ):
+                    continue
                 self.type_of_any_counter[typ.type_of_any] += 1
                 self.num_any_types += 1
                 if self.line in self.any_line_map:
@@ -276,7 +275,7 @@ class HasAnyQuery(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_any(self, t: AnyType) -> bool:
-        return True
+        return not is_special_form_any(t)
 
     def visit_instance(self, t: Instance) -> bool:
         if t.type.fullname() == 'builtins.tuple':
@@ -308,3 +307,15 @@ def is_complex(t: Type) -> bool:
 def ensure_dir_exists(dir: str) -> None:
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+
+def is_special_form_any(t: AnyType) -> bool:
+    return get_original_any(t).type_of_any == TypeOfAny.special_form
+
+
+def get_original_any(t: AnyType) -> AnyType:
+    if t.type_of_any == TypeOfAny.from_another_any:
+        assert t.source_any
+        assert t.source_any.type_of_any != TypeOfAny.from_another_any
+        t = t.source_any
+    return t

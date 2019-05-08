@@ -790,7 +790,8 @@ class DependencyVisitor(TraverserVisitor):
 
         If the target is not given explicitly, use the current target.
         """
-        if trigger.startswith(('<builtins.', '<typing.', '<mypy_extensions.')):
+        if trigger.startswith(('<builtins.', '<typing.',
+                               '<mypy_extensions.', '<typing_extensions.')):
             # Don't track dependencies to certain library modules to keep the size of
             # the dependencies manageable. These dependencies should only
             # change on mypy version updates, which will require a full rebuild
@@ -882,8 +883,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
-        if typ.final_value:
-            triggers.extend(self.get_type_triggers(typ.final_value))
+        if typ.last_known_value:
+            triggers.extend(self.get_type_triggers(typ.last_known_value))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:

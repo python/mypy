@@ -1571,3 +1571,15 @@ alias = b.__delitem__
 alias('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
 alias(s) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
 [builtins fixtures/dict.pyi]
+
+[case testCanCreateTypedDictWithTypingExtensions]
+# flags: --python-version 3.6
+from typing_extensions import TypedDict
+
+class Point(TypedDict):
+    x: int
+    y: int
+
+p = Point(x=42, y=1337)
+reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
+[builtins fixtures/dict.pyi]

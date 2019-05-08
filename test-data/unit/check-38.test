@@ -1,3 +1,31 @@
+[case testDecoratedClassLine]
+def d(c): ...
+@d
+
+class C: ...
+class C: ...  # E: Name 'C' already defined on line 4
+
+[case testDecoratedFunctionLine]
+# flags: --disallow-untyped-defs
+def d(f): ...  # type: ignore
+@d
+
+def f(): ...  # E: Function is missing a type annotation
+
+[case testIgnoreDecoratedFunction1]
+# flags: --disallow-untyped-defs --warn-unused-ignores
+def d(f): ...  # type: ignore
+@d
+# type: ignore
+def f(): ...  # type: ignore  # E: unused 'type: ignore' comment
+
+[case testIgnoreDecoratedFunction2]
+# flags: --disallow-untyped-defs
+def d(f): ...  # type: ignore
+@d
+
+def f(): ...  # type: ignore
+
 [case testIgnoreScopeIssue1032]
 def f(a: int): ...
 f(

@@ -163,17 +163,17 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        final_value = None  # type: Optional[LiteralType]
-        if t.final_value is not None:
-            raw_final_value = t.final_value.accept(self)
-            assert isinstance(raw_final_value, LiteralType)
-            final_value = raw_final_value
+        last_known_value = None  # type: Optional[LiteralType]
+        if t.last_known_value is not None:
+            raw_last_known_value = t.last_known_value.accept(self)
+            assert isinstance(raw_last_known_value, LiteralType)
+            last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
             args=self.translate_types(t.args),
             line=t.line,
             column=t.column,
-            final_value=final_value,
+            last_known_value=last_known_value,
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:

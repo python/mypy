@@ -21,7 +21,7 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType, TypeOfAny, ForwardRef, UnboundType
+    UninhabitedType, TypeOfAny, ForwardRef, UnboundType, PartialType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
@@ -29,6 +29,7 @@ from mypy.nodes import (
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
 )
+from mypy.defaults import PYTHON3_VERSION
 from mypy.util import unmangle
 from mypy import message_registry
 
@@ -643,7 +644,9 @@ class MessageBuilder:
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
         if (argument_names is not None and not all(k is None for k in argument_names)
                 and len(argument_names) >= 1):
-            diff = [k for k in callee.arg_names if k not in argument_names]
+            num_positional_args = sum(k is None for k in argument_names)
+            arguments_left = callee.arg_names[num_positional_args:]
+            diff = [k for k in arguments_left if k not in argument_names]
             if len(diff) == 1:
                 msg = 'Missing positional argument'
             else:
@@ -796,10 +799,13 @@ class MessageBuilder:
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
-            name_in_supertype: str, supertype: str, context: Context) -> None:
+            name_in_supertype: str, arg_type_in_supertype: Type, supertype: str,
+            context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
-        self.fail('Argument {} of "{}" incompatible with {}'
-                  .format(arg_num, name, target), context)
+        arg_type_in_supertype_f = self.format_bare(arg_type_in_supertype)
+        self.fail('Argument {} of "{}" is incompatible with {}; '
+                  'supertype defines the argument type as "{}"'
+                  .format(arg_num, name, target, arg_type_in_supertype_f), context)
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
@@ -1077,8 +1083,22 @@ class MessageBuilder:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
 
-    def need_annotation_for_var(self, node: SymbolNode, context: Context) -> None:
-        self.fail("Need type annotation for '{}'".format(unmangle(node.name())), context)
+    def need_annotation_for_var(self, node: SymbolNode, context: Context,
+                                python_version: Optional[Tuple[int, int]] = None) -> None:
+        hint = ''
+        # Only gives hint if it's a variable declaration and the partial type is a builtin type
+        if (python_version and isinstance(node, Var) and isinstance(node.type, PartialType) and
+                node.type.type and node.type.type.fullname() in reverse_builtin_aliases):
+            alias = reverse_builtin_aliases[node.type.type.fullname()]
+            alias = alias.split('.')[-1]
+            type_dec = '<type>'
+            if alias == 'Dict':
+                type_dec = '{}, {}'.format(type_dec, type_dec)
+            if python_version < (3, 6):
+                hint = ' (hint: "{} = ...  # type: {}[{}]")'.format(node.name(), alias, type_dec)
+            else:
+                hint = ' (hint: "{}: {}[{}] = ...")'.format(node.name(), alias, type_dec)
+        self.fail("Need type annotation for '{}'{}".format(unmangle(node.name()), hint), context)
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)

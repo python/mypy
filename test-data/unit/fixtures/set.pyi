@@ -14,6 +14,7 @@ class function: pass
 class int: pass
 class str: pass
 class bool: pass
+class ellipsis: pass
 
 class set(Iterable[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: pass

@@ -2699,9 +2699,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for 'x'
+main:7: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 ==
-main:7: error: Need type annotation for 'x'
+main:7: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -2716,9 +2716,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for 'x'
+main:5: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 ==
-main:5: error: Need type annotation for 'x'
+main:5: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
 
 [case testRefreshTryExcept]
 import a
@@ -7841,11 +7841,13 @@ def bar(x: T) -> T:
 x = 1
 [out]
 a.py:1: error: Name 'TypeVar' is not defined
+a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Invalid type "a.T"
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Invalid type "a.T"
 ==
 a.py:1: error: Name 'TypeVar' is not defined
+a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Invalid type "a.T"
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Invalid type "a.T"
@@ -8553,8 +8555,9 @@ from typing_extensions import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(foo)
 [file mod1.py]
+from typing_extensions import Final
 from mod2 import bar
-foo = bar
+foo: Final = bar
 [file mod2.py]
 from mod3 import qux as bar
 [file mod3.py]

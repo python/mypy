@@ -717,7 +717,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             typename = self.print_annotation(annotation)
             if (isinstance(annotation, UnboundType) and not annotation.args and
                     annotation.name == 'Final' and
-                    self.import_tracker.module_for.get('Final') in ('typing, typing_extensions')):
+                    self.import_tracker.module_for.get('Final') in ('typing',
+                                                                    'typing_extensions')):
                 # Final without type argument is invalid in stubs.
                 final_arg = self.get_str_type_of_node(rvalue)
                 typename += '[{}]'.format(final_arg)

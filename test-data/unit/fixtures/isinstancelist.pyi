@@ -51,3 +51,4 @@ class set(Generic[T]):
     def add(self, x: T) -> None: pass
     def discard(self, x: T) -> None: pass
     def update(self, x: Set[T]) -> None: pass
+    def pop(self) -> T: pass
