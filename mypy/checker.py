@@ -3569,7 +3569,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
             extra_info = []  # type: List[str]
             note_msg = ''
-            notes = []
+            notes = []  # type: List[str]
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
