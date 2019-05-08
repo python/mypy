@@ -3583,9 +3583,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
-            if notes:
-                for note in notes:
-                    self.msg.note(note, context)
+            for note in notes:
+                self.msg.note(note, context)
             if note_msg:
                 self.note(note_msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
