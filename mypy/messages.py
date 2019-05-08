@@ -799,10 +799,13 @@ class MessageBuilder:
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
-            name_in_supertype: str, supertype: str, context: Context) -> None:
+            name_in_supertype: str, arg_type_in_supertype: Type, supertype: str,
+            context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
-        self.fail('Argument {} of "{}" incompatible with {}'
-                  .format(arg_num, name, target), context)
+        arg_type_in_supertype_f = self.format_bare(arg_type_in_supertype)
+        self.fail('Argument {} of "{}" is incompatible with {}; '
+                  'supertype defines the argument type as "{}"'
+                  .format(arg_num, name, target, arg_type_in_supertype_f), context)
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
