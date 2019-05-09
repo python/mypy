@@ -16,7 +16,6 @@ if MYPY:
 import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-
 from mypy.bogus_type import Bogus
 
 
@@ -614,16 +613,6 @@ class FuncItem(FuncBase):
 
     def is_dynamic(self) -> bool:
         return self.type is None
-
-    def has_return_statement(self) -> bool:
-        """Find if a function has a non-trivial return statement.
-
-        Plain 'return' and 'return None' don't count.
-        """
-        seeker = ReturnSeeker()
-        for statement in self.body.body:
-            seeker.visit_statement(statement)
-        return seeker.found
 
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
@@ -2190,97 +2179,6 @@ class AwaitExpr(Expression):
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_await_expr(self)
 
-
-class ReturnSeeker(StatementVisitor[None]):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_statement(self, o: Statement) -> None:
-        if isinstance(o, ReturnStmt):
-            self.visit_return_stmt(o)
-
-    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        pass
-
-    def visit_for_stmt(self, o: ForStmt) -> None:
-        pass
-
-    def visit_with_stmt(self, o: WithStmt) -> None:
-        pass
-
-    def visit_del_stmt(self, o: DelStmt) -> None:
-        pass
-
-    def visit_func_def(self, o: FuncDef) -> None:
-        pass
-
-    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
-        pass
-
-    def visit_class_def(self, o: ClassDef) -> None:
-        pass
-
-    def visit_global_decl(self, o: GlobalDecl) -> None:
-        pass
-
-    def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
-        pass
-
-    def visit_decorator(self, o: Decorator) -> None:
-        pass
-
-    def visit_import(self, o: Import) -> None:
-        pass
-
-    def visit_import_from(self, o: ImportFrom) -> T:
-        pass
-
-    def visit_import_all(self, o: ImportAll) -> T:
-        pass
-
-    def visit_block(self, o: Block) -> T:
-        pass
-
-    def visit_expression_stmt(self, o: ExpressionStmt) -> T:
-        pass
-
-    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> T:
-        pass
-
-    def visit_while_stmt(self, o: WhileStmt) -> T:
-        pass
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
-            return
-        self.found = True
-
-    def visit_assert_stmt(self, o: AssertStmt) -> T:
-        pass
-
-    def visit_if_stmt(self, o: IfStmt) -> T:
-        pass
-
-    def visit_break_stmt(self, o: BreakStmt) -> T:
-        pass
-
-    def visit_continue_stmt(self, o: ContinueStmt) -> T:
-        pass
-
-    def visit_pass_stmt(self, o: PassStmt) -> T:
-        pass
-
-    def visit_raise_stmt(self, o: RaiseStmt) -> T:
-        pass
-
-    def visit_try_stmt(self, o: TryStmt) -> T:
-        pass
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        pass
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        pass
 
 # Constants
 

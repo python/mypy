@@ -66,6 +66,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state
+from mypy.traverser import has_return_statement
 
 MYPY = False
 if MYPY:
@@ -990,7 +991,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (not fdef.arguments or (len(fdef.arguments) == 1 and
                         (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                    if not fdef.has_return_statement():
+                    if not has_return_statement(fdef):
                         self.note('Use "-> None" if function does not return a value', fdef)
                 else:
                     self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)

@@ -86,6 +86,7 @@ from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError
+from mypy.traverser import has_return_statement
 
 MYPY = False
 if MYPY:
@@ -97,7 +98,6 @@ class Options:
 
     This class is mutable to simplify testing.
     """
-
     def __init__(self, pyversion: Tuple[int, int], no_import: bool, doc_dir: str,
                  search_path: List[str], interpreter: str, parse_only: bool, ignore_errors: bool,
                  include_private: bool, output_dir: str, modules: List[str], packages: List[str],
@@ -124,7 +124,6 @@ class StubSource(BuildSource):
     A simple extension of BuildSource that also carries the AST and
     the value of __all__ detected at runtime.
     """
-
     def __init__(self, module: str, path: Optional[str] = None,
                  runtime_all: Optional[List[str]] = None) -> None:
         super().__init__(path, module, None)
@@ -162,7 +161,6 @@ class AnnotationPrinter(TypeStrVisitor):
     """
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
-
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
@@ -186,7 +184,6 @@ class AliasPrinter(NodeVisitor[str]):
 
     Visit r.h.s of the definition to get the string representation of type alias.
     """
-
     def __init__(self, stubgen: 'StubGenerator') -> None:
         self.stubgen = stubgen
         super().__init__()
@@ -435,7 +432,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated.
             retname = 'Any'
             self.add_typing_import("Any")
-        elif o.name() == '__init__' or not o.has_return_statement() and not is_abstract:
+        elif o.name() == '__init__' or not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
