@@ -1331,7 +1331,10 @@ if int():
 if int():
     a = x2
 if int():
-    a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+    a = x3 \
+     # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
+     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1351,7 +1354,10 @@ if int():
 if int():
     a = x2
 if int():
-    a = x3 # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+    a = x3 \
+     # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
+     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 

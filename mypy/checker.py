@@ -36,7 +36,7 @@ from mypy.types import (
     is_optional, remove_optional
 )
 from mypy.sametypes import is_same_type
-from mypy.messages import MessageBuilder, make_inferred_type_note
+from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
@@ -3569,6 +3569,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
             extra_info = []  # type: List[str]
             note_msg = ''
+            notes = []  # type: List[str]
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
@@ -3577,9 +3578,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     extra_info.append(supertype_label + ' ' + supertype_str)
                 note_msg = make_inferred_type_note(context, subtype,
                                                    supertype, supertype_str)
+                if isinstance(subtype, Instance) and isinstance(supertype, Instance):
+                    notes = append_invariance_notes([], subtype, supertype)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            for note in notes:
+                self.msg.note(note, context)
             if note_msg:
                 self.note(note_msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
