@@ -66,6 +66,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state
+from mypy.traverser import has_return_statement
 
 MYPY = False
 if MYPY:
@@ -987,7 +988,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
-                self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                if (not fdef.arguments or (len(fdef.arguments) == 1 and
+                        (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    if not has_return_statement(fdef):
+                        self.note('Use "-> None" if function does not return a value', fdef)
+                else:
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = fdef.type.ret_type
                 if is_unannotated_any(ret_type):

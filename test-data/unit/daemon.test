@@ -35,7 +35,8 @@ $ dmypy run -- foo.py --follow-imports=error
 Restarting: configuration changed
 Daemon stopped
 Daemon started
-foo.py:1: error: Function is missing a type annotation
+foo.py:1: error: Function is missing a return type annotation
+foo.py:1: note: Use "-> None" if function does not return a value
 == Return code: 1
 $ {python} -c "print('def f() -> None: pass')" >foo.py
 $ dmypy run -- foo.py --follow-imports=error

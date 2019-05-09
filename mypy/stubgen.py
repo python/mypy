@@ -86,6 +86,7 @@ from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError
+from mypy.traverser import has_return_statement
 
 MYPY = False
 if MYPY:
@@ -851,26 +852,6 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
     traverser = SelfTraverser()
     fdef.accept(traverser)
     return traverser.results
-
-
-class ReturnSeeker(mypy.traverser.TraverserVisitor):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None':
-            return
-        self.found = True
-
-
-def has_return_statement(fdef: FuncBase) -> bool:
-    """Find if a function has a non-trivial return statement.
-
-    Plain 'return' and 'return None' don't count.
-    """
-    seeker = ReturnSeeker()
-    fdef.accept(seeker)
-    return seeker.found
 
 
 def get_qualified_name(o: Expression) -> str:

@@ -1076,7 +1076,7 @@ disallow_any_generics = True
 def get_tasks(self):
     return 'whatever'
 [out]
-a.py:1: error: Function is missing a type annotation
+a.py:1: error: Function is missing a return type annotation
 
 [case testMissingFile]
 # cmd: mypy nope.py
