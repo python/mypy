@@ -16,6 +16,7 @@ if MYPY:
 import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
+
 from mypy.bogus_type import Bogus
 
 
