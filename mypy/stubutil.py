@@ -18,6 +18,7 @@ class CantImport(Exception):
         self.module = module
         self.message = message
 
+
 def is_c_module(module: ModuleType) -> bool:
     return ('__file__' not in module.__dict__ or
             os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd'])
@@ -161,6 +162,7 @@ def report_missing(mod: str, message: Optional[str] = None) -> None:
         print('Failed to import {} with error: {}; skipping it'.format(mod, message))
     else:
         print('Failed to import {}; skipping it'.format(mod))
+
 
 def fail_missing(mod: str) -> None:
     raise SystemExit("Can't find module '{}' (consider using --search-path)".format(mod))
