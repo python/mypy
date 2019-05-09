@@ -3579,7 +3579,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 note_msg = make_inferred_type_note(context, subtype,
                                                    supertype, supertype_str)
                 if isinstance(subtype, Instance) and isinstance(supertype, Instance):
-                    notes = append_invariance_notes([], subtype,  supertype)
+                    notes = append_invariance_notes([], subtype, supertype)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
