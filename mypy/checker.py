@@ -1901,17 +1901,32 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
-                self.check_forbidden_inference_types(lvalue, rvalue, rvalue_type)
+                self.check_forbidden_inference_types(inferred, rvalue, rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
-    def check_forbidden_inference_types(self, lvalue: Lvalue, rvalue: Context,
+    def check_forbidden_inference_types(self, var: Var, rvalue: Context,
                                         rvalue_type: Type) -> None:
         """Check for any list or dict literals that are inferred ambiguously and require annotation.
+
+        List and Dict literals with multiple object types require annotation:
+
+        >>> x = [1, 'a']  # Error
+        >>> x = {'a': 1, 'b': 'c'}  # Error
+
+        >>> x: List[object] = [1, 'a']  # OK
+
+        Unannotated List and Dict literals that contain an object of type `object` are OK:
+
+        >>> x = [1, 'a', object()]  # OK
+
+        Dict keys may be inferred to type `object` without annotation:
+
+        >>> x = ['a': 1, 2: 2]  # OK
         """
         if not self.scope.top_function() and self.options.allow_untyped_globals:
             return
 
-        if isinstance(rvalue_type, Instance) and isinstance(lvalue, RefExpr):
+        if isinstance(rvalue_type, Instance):
             if isinstance(rvalue, ListExpr):
                 list_arg_type = rvalue_type.args[0]
                 if isinstance(list_arg_type, Instance):
@@ -1920,9 +1935,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return
 
                     if self.iterable_has_object_type(rvalue.items):
+                        # A list that contains an an instance must necessarily be of type List[object],
+                        # since there is no more specific type that can be assigned.
                         return
 
-                    self.msg.need_annotation_for_var(lvalue.node, rvalue)
+                    self.msg.need_annotation_for_var(var, rvalue)
 
             elif isinstance(rvalue, DictExpr):
                 dict_value_type = rvalue_type.args[1]
@@ -1935,22 +1952,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if self.iterable_has_object_type([v for k, v in rvalue.items]):
                         return
 
-                    self.msg.need_annotation_for_var(lvalue.node, rvalue)
+                    self.msg.need_annotation_for_var(var, rvalue)
 
     def iterable_has_object_type(self, items: Iterable[Expression]) -> bool:
         """Check for any instance that has type `object`.
-
-        A list that contains an an instance must necessarily be of type List[object],
-        since there is no more specific type that can be assigned.
         """
         for i in items:
             i_type = self.type_map[i]
             if isinstance(i_type, Instance):
                 if i_type.type.fullname() == 'builtins.object':
-                    # At least one value in the iterable has type object,
-                    # so the type is allowed to be inferred as *[object].
                     return True
-
         return False
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
