@@ -1061,8 +1061,12 @@ def get_qualified_name(o: Expression) -> str:
 
 def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
     return [module for module in modules
-            if module.path is None or not any(substr in (module.path + '\n')
-                                              for substr in BLACKLIST)]
+            if module.path is None or not is_blacklisted_path(module.path)]
+
+
+def is_blacklisted_path(path: str) -> bool:
+    return any(substr in (path + '\n')
+               for substr in BLACKLIST)
 
 
 def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[List[StubSource],
@@ -1139,10 +1143,13 @@ def find_module_paths_using_imports(modules: List[str],
 
 def remove_test_modules(modules: List[str]) -> List[str]:
     """Remove anything from modules that looks like a test."""
-    return [module for module in modules
-            if (not module.endswith(('.tests', '.test'))
-                and '.tests.' not in module
-                and '.test.' not in module)]
+    return [mod for mod in modules if not is_test_module(mod)]
+
+
+def is_test_module(module: str) -> bool:
+    return (module.endswith(('.tests', '.test'))
+            or '.tests.' in module
+            or '.test.' in module)
 
 
 def find_module_paths_using_search(modules: List[str], packages: List[str],
