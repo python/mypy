@@ -283,19 +283,18 @@ def f(a):
     # type: (Tuple(int, int)) -> int
     pass
 [out]
-main:3: error: Invalid type comment or annotation
-main:3: note: Suggestion: use Tuple[...] instead of Tuple(...)
+main:2: error: Invalid type comment or annotation
+main:2: note: Suggestion: use Tuple[...] instead of Tuple(...)
 
 [case testFasterParseTypeErrorList_python2]
-
 from typing import List
 def f(a):
     # type: (List(int)) -> int
     pass
 [builtins_py2 fixtures/floatdict_python2.pyi]
 [out]
-main:3: error: Invalid type comment or annotation
-main:3: note: Suggestion: use List[...] instead of List(...)
+main:2: error: Invalid type comment or annotation
+main:2: note: Suggestion: use List[...] instead of List(...)
 
 [case testFasterParseTypeErrorCustom]
 
