@@ -455,7 +455,7 @@ class SuggestionEngine:
             'path': path,
             'func_name': func_name,
             'samples': 0
-        }
+        }  # type: Dict[str, object]
         return json.dumps([obj], sort_keys=True)
 
     def format_callable(self,

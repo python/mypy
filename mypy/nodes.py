@@ -2498,7 +2498,7 @@ class TypeInfo(SymbolNode):
             base,
             mro,
             ('Names', names),
-        ]
+        ]  # type: List[object]
         if self.declared_metaclass:
             items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
         if self.metaclass_type:

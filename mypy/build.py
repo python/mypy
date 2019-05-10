@@ -804,7 +804,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
             hash = st.meta.hash
         meta_snapshot[id] = hash
 
-    meta = {'snapshot': meta_snapshot, 'deps_meta': fg_deps_meta}
+    meta = {'snapshot': meta_snapshot, 'deps_meta': fg_deps_meta}  # type: Dict[str, object]
 
     if not metastore.write(DEPS_META_FILE, json.dumps(meta)):
         manager.log("Error writing fine-grained deps meta JSON file {}".format(DEPS_META_FILE))
@@ -1225,7 +1225,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'interface_hash': meta.interface_hash,
                 'version_id': manager.version_id,
                 'ignore_all': meta.ignore_all,
-            }
+            }  # type: Dict[str, object]
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
@@ -1365,7 +1365,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
-            }
+            }  # type: Dict[str, object]
 
     # Write meta cache file
     meta_str = json_dumps(meta, manager.options.debug_cache)

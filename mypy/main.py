@@ -913,7 +913,7 @@ config_types = {
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
-}  # type: Final
+}  # type: Final[Dict[str, object]]
 
 
 def parse_config_file(options: Options, filename: Optional[str]) -> None:
