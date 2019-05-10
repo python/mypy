@@ -1,5 +1,0 @@
-[case testSingleFunctionXiaoxi]
-def f():
-    x = 1
-[out]
-def f() -> None: ...
