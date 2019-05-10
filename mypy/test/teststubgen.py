@@ -256,6 +256,15 @@ class StubgenPythonSuite(DataSuite):
     files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        old_sys_path = sys.path[:]
+        if not ('' in sys.path or '.' in sys.path):
+            sys.path.insert(0, '')
+        try:
+            self.run_case_inner(testcase)
+        finally:
+            sys.path = old_sys_path
+
+    def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
         extra = []
         mods = []
         source = '\n'.join(testcase.input)
