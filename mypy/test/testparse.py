@@ -65,7 +65,8 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
               Options())
         raise AssertionError('No errors reported')
     except CompileError as e:
-        assert e.module_with_blocker == '__main__'
+        if e.module_with_blocker is not None:
+            assert e.module_with_blocker == '__main__'
         # Verify that there was a compile error and that the error messages
         # are equivalent.
         assert_string_arrays_equal(

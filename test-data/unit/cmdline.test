@@ -1101,7 +1101,6 @@ def foo(x):
     return
 [out]
 a.py:1: error: Type signature has too many arguments
-== Return code: 2
 
 [case testModulesAndPackages]
 # cmd: mypy --package p.a --package p.b --module c

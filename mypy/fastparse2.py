@@ -165,8 +165,9 @@ class ASTConverter:
 
         self.extra_type_ignores = []  # type: List[int]
 
-    def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg, blocker=True)
+    def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
+        if blocker or not self.options.ignore_errors:
+            self.errors.report(line, column, msg, blocker=blocker)
 
     def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
         if node is None:
@@ -376,9 +377,9 @@ class ASTConverter:
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature.", lineno, 0)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, 0)
+                self.fail('Type signature has too many arguments', lineno, 0, blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, 0)
+                self.fail('Type signature has too few arguments', lineno, 0, blocker=False)
             else:
                 any_type = AnyType(TypeOfAny.unannotated)
                 func_type = CallableType([a if a is not None else any_type for a in arg_types],
