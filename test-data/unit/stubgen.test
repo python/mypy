@@ -1435,12 +1435,3 @@ from typing import Any
 class C(Base, metaclass=abc.ABCMeta):
     @abstractmethod
     def other(self) -> Any: ...
-
-[case testImportErrorMessage_import]
-# flags: --module a
-
-[file a.py]
-import b
-
-
-[out]

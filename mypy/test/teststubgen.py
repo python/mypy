@@ -64,6 +64,23 @@ class StubgenCmdLineSuite(Suite):
             finally:
                 os.chdir(current)
 
+    def test_module_not_found(self) -> None:
+        current = os.getcwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                import io
+                capturedOutput = io.StringIO()
+                sys.stdout = capturedOutput
+                os.chdir(tmp)
+                self.make_file(tmp, 'mymodule.py', content='import a')
+                opts = parse_options(['-m', 'mymodule'])
+                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                sys.stdout = sys.__stdout__
+                match = re.search('No module named \'a\'', capturedOutput.getvalue())
+                self.assertTrue(match)
+            finally:
+                os.chdir(current)
+
     def make_file(self, *path: str, content: str = '') -> None:
         file = os.path.join(*path)
         with open(file, 'w') as f:
@@ -266,7 +283,6 @@ class StubgenPythonSuite(DataSuite):
             with open(file, 'w') as f:
                 f.write(content)
 
-        sys.path.append('.')
         options = self.parse_flags(source, extra)
         out_dir = 'out'
         try:

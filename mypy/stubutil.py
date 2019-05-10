@@ -157,11 +157,10 @@ def generate_guarded(mod: str, target: str,
             print('Created %s' % target)
 
 
-def report_missing(mod: str, message: Optional[str] = None) -> None:
+def report_missing(mod: str, message: Optional[str] = '') -> None:
     if message:
-        print('Failed to import {} with error: {}; skipping it'.format(mod, message))
-    else:
-        print('Failed to import {}; skipping it'.format(mod))
+        message = ' with error: ' + message
+    print('Failed to import {}{}; skipping it'.format(mod, message))
 
 
 def fail_missing(mod: str) -> None:
