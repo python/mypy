@@ -15,7 +15,7 @@ from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stubs, parse_options, Options, collect_build_targets,
-    mypy_options
+    mypy_options, is_blacklisted_path, is_test_module
 )
 from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
@@ -421,6 +421,34 @@ class StubgenUtilSuite(Suite):
         assert common_dir_prefix(['foo/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == 'foo/bar'
         assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
+
+
+class StubgenHelpersSuite(Suite):
+    def test_is_blacklisted_path(self) -> None:
+        assert not is_blacklisted_path('foo/bar.py')
+        assert not is_blacklisted_path('foo.py')
+        assert not is_blacklisted_path('foo/xvendor/bar.py')
+        assert not is_blacklisted_path('foo/vendorx/bar.py')
+        assert is_blacklisted_path('foo/vendor/bar.py')
+        assert is_blacklisted_path('foo/vendored/bar.py')
+        assert is_blacklisted_path('foo/vendored/bar/thing.py')
+        assert is_blacklisted_path('foo/six.py')
+
+    def test_is_test_module(self) -> None:
+        assert not is_test_module('foo')
+        assert not is_test_module('foo.bar')
+
+        # The following could be test modules, but we are very conservative and
+        # don't treat them as such since they could plausibly be real modules.
+        assert not is_test_module('foo.bartest')
+        assert not is_test_module('foo.bartests')
+        assert not is_test_module('foo.test_bar')
+        assert not is_test_module('foo.testbar')
+
+        assert is_test_module('foo.test')
+        assert is_test_module('foo.test.foo')
+        assert is_test_module('foo.tests')
+        assert is_test_module('foo.tests.foo')
 
 
 class StubgenPythonSuite(DataSuite):
