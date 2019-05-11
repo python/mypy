@@ -1,11 +1,11 @@
 import os
 import re
-import subprocess
 import sys
 import time
 import shutil
+import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
 
 from mypy import defaults
 from mypy.test.config import test_temp_dir
@@ -98,14 +98,14 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
                 if len(a) > width:
                     sys.stderr.write('...')
             sys.stderr.write('\n')
-        if actual == []:
+        if not actual:
             sys.stderr.write('  (empty)\n')
         if num_skip_end > 0:
             sys.stderr.write('  ...\n')
 
         sys.stderr.write('\n')
 
-        if first_diff >= 0 and first_diff < len(actual) and (
+        if 0 <= first_diff < len(actual) and (
                 len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
                 or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT):
             # Display message that helps visualize the differences between two
@@ -244,6 +244,22 @@ def clean_up(a: List[str]) -> List[str]:
         ss = re.sub(' +$', '', ss)
         res.append(re.sub('\\r$', '', ss))
     return res
+
+
+@contextlib.contextmanager
+def local_sys_path_set() -> Iterator[None]:
+    """Temporary insert current directory into sys.path.
+
+    This can be used by test cases that do runtime imports, for example
+    by the stubgen tests.
+    """
+    old_sys_path = sys.path[:]
+    if not ('' in sys.path or '.' in sys.path):
+        sys.path.insert(0, '')
+    try:
+        yield
+    finally:
+        sys.path = old_sys_path
 
 
 def num_skipped_prefix_lines(a1: List[str], a2: List[str]) -> int:
