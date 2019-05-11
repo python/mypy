@@ -912,10 +912,10 @@ def find_module_paths_using_imports(modules: List[str], packages: List[str],
                 result = find_module_path_and_all_py2(mod, interpreter)
             else:
                 result = find_module_path_and_all_py3(mod)
-        except CantImport:
+        except CantImport as e:
             if not quiet:
                 traceback.print_exc()
-            report_missing(mod)
+            report_missing(mod, e.message)
             continue
         if not result:
             c_modules.append(StubSource(mod))
