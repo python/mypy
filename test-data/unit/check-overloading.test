@@ -5003,7 +5003,7 @@ reveal_type(f(g([])))  # E: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
 
 [case testTypeCheckOverloadCoroutine]
-from asyncio import coroutine
+from types import coroutine
 from typing import overload
 @overload
 @coroutine
