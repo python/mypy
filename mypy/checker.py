@@ -430,6 +430,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         num_abstract = 0
+        num_awaitable_coroutine = 0
         if not defn.items:
             # In this case we have already complained about none of these being
             # valid overloads.
@@ -445,8 +446,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_func_item(fdef.func, name=fdef.func.name())
             if fdef.func.is_abstract:
                 num_abstract += 1
+            if fdef.func.is_awaitable_coroutine:
+                num_awaitable_coroutine += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
+        if num_awaitable_coroutine not in (0, len(defn.items)):
+            self.fail(message_registry.INCONSISTENT_COROUTINE_OVERLOAD, defn)
+        # If items contains coroutines and check_func_item fixed their type,
+        # also fix the overload type.
+        if num_awaitable_coroutine:
+            defn.type = Overloaded([
+                self.get_awaitable_coroutine_return_type(fdef.func, typ)
+                for fdef, typ in zip(defn.items, defn.type.items())
+            ])
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
@@ -853,18 +865,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if defn.is_awaitable_coroutine:
                     # Update the return type to AwaitableGenerator.
                     # (This doesn't exist in typing.py, only in typing.pyi.)
-                    t = typ.ret_type
-                    c = defn.is_coroutine
-                    ty = self.get_generator_yield_type(t, c)
-                    tc = self.get_generator_receive_type(t, c)
-                    if c:
-                        tr = self.get_coroutine_return_type(t)
-                    else:
-                        tr = self.get_generator_return_type(t, c)
-                    ret_type = self.named_generic_type('typing.AwaitableGenerator',
-                                                       [ty, tc, tr, t])
-                    typ = typ.copy_modified(ret_type=ret_type)
-                    defn.type = typ
+                    defn.type = self.get_awaitable_coroutine_return_type(defn, typ)
 
                 # Push return type.
                 self.return_types.append(typ.ret_type)
@@ -962,6 +963,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def get_awaitable_coroutine_return_type(self, defn: FuncItem, typ: CallableType):
+        t = typ.ret_type
+        c = defn.is_coroutine
+        ty = self.get_generator_yield_type(t, c)
+        tc = self.get_generator_receive_type(t, c)
+        if c:
+            tr = self.get_coroutine_return_type(t)
+        else:
+            tr = self.get_generator_return_type(t, c)
+        ret_type = self.named_generic_type('typing.AwaitableGenerator',
+                                           [ty, tc, tr, t])
+        return typ.copy_modified(ret_type=ret_type)
 
     def is_forward_op_method(self, method_name: str) -> bool:
         if self.options.python_version[0] == 2 and method_name == '__div__':

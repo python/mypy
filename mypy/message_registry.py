@@ -62,6 +62,8 @@ CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
 INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'  # type: Final
+INCONSISTENT_COROUTINE_OVERLOAD = \
+    'Overloaded method has both coroutine and non-coroutine variants'  # type: Final
 MULTIPLE_OVERLOADS_REQUIRED = 'Single overload definition, multiple required'  # type: Final
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
     'Read-only property cannot override read-write property'  # type: Final
