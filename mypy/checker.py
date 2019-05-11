@@ -868,7 +868,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if defn.is_awaitable_coroutine:
                     # Update the return type to AwaitableGenerator.
                     # (This doesn't exist in typing.py, only in typing.pyi.)
-                    defn.type = self.get_awaitable_coroutine_return_type(defn, typ)
+                    typ = self.get_awaitable_coroutine_return_type(defn, typ)
+                    defn.type = typ
 
                 # Push return type.
                 self.return_types.append(typ.ret_type)
