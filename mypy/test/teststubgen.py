@@ -1,4 +1,5 @@
 import glob
+import io
 import os.path
 import shutil
 import sys
@@ -68,19 +69,17 @@ class StubgenCmdLineSuite(Suite):
 
     def test_module_not_found(self) -> None:
         current = os.getcwd()
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
         with tempfile.TemporaryDirectory() as tmp:
             try:
-                import io
-                capturedOutput = io.StringIO()
-                sys.stdout = capturedOutput
                 os.chdir(tmp)
                 self.make_file(tmp, 'mymodule.py', content='import a')
                 opts = parse_options(['-m', 'mymodule'])
                 py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
-                sys.stdout = sys.__stdout__
-                match = re.search('No module named \'a\'', capturedOutput.getvalue())
-                self.assertTrue(match)
+                self.assertRegex(captured_output.getvalue(), "No module named 'a'")
             finally:
+                sys.stdout = sys.__stdout__
                 os.chdir(current)
 
     def make_file(self, *path: str, content: str = '') -> None:
