@@ -455,10 +455,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If items contains coroutines and check_func_item fixed their type,
         # also fix the overload type.
         if num_awaitable_coroutine:
-            defn.type = Overloaded([
-                self.get_awaitable_coroutine_return_type(fdef.func, typ)
-                for fdef, typ in zip(defn.items, defn.type.items())
-            ])
+            assert isinstance(defn.type, Overloaded)
+            types = []
+            for fdef, typ in zip(defn.items, defn.type.items()):
+                assert isinstance(fdef, Decorator)
+                types.append(
+                    self.get_awaitable_coroutine_return_type(fdef.func, typ))
+            defn.type = Overloaded(types)
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
@@ -964,7 +967,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             self.binder = old_binder
 
-    def get_awaitable_coroutine_return_type(self, defn: FuncItem, typ: CallableType):
+    def get_awaitable_coroutine_return_type(self,
+                                            defn: FuncItem,
+                                            typ: CallableType) -> CallableType:
         t = typ.ret_type
         c = defn.is_coroutine
         ty = self.get_generator_yield_type(t, c)
