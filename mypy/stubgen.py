@@ -85,7 +85,8 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
-from mypy.errors import CompileError
+from mypy.errors import CompileError, Errors
+from mypy.traverser import has_return_statement
 
 MYPY = False
 if MYPY:
@@ -717,7 +718,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             typename = self.print_annotation(annotation)
             if (isinstance(annotation, UnboundType) and not annotation.args and
                     annotation.name == 'Final' and
-                    self.import_tracker.module_for.get('Final') in ('typing, typing_extensions')):
+                    self.import_tracker.module_for.get('Final') in ('typing',
+                                                                    'typing_extensions')):
                 # Final without type argument is invalid in stubs.
                 final_arg = self.get_str_type_of_node(rvalue)
                 typename += '[{}]'.format(final_arg)
@@ -852,26 +854,6 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
     return traverser.results
 
 
-class ReturnSeeker(mypy.traverser.TraverserVisitor):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None':
-            return
-        self.found = True
-
-
-def has_return_statement(fdef: FuncBase) -> bool:
-    """Find if a function has a non-trivial return statement.
-
-    Plain 'return' and 'return None' don't count.
-    """
-    seeker = ReturnSeeker()
-    fdef.accept(seeker)
-    return seeker.found
-
-
 def get_qualified_name(o: Expression) -> str:
     if isinstance(o, NameExpr):
         return o.name
@@ -991,12 +973,12 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, 'rb') as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
-    try:
-        mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
-                                   errors=None, options=mypy_options)
-    except mypy.errors.CompileError as e:
+    errors = Errors()
+    mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
+                               errors=errors, options=mypy_options)
+    if errors.is_blockers():
         # Syntax error!
-        for m in e.messages:
+        for m in errors.new_messages():
             sys.stderr.write('%s\n' % m)
         sys.exit(1)
 

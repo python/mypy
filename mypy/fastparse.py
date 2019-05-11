@@ -266,8 +266,9 @@ class ASTConverter:
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note')
 
-    def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg, blocker=True)
+    def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
+        if blocker or not self.options.ignore_errors:
+            self.errors.report(line, column, msg, blocker=blocker)
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -494,9 +495,9 @@ class ASTConverter:
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature.", lineno, 0)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, 0)
+                self.fail('Type signature has too many arguments', lineno, 0, blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, 0)
+                self.fail('Type signature has too few arguments', lineno, 0, blocker=False)
             else:
                 func_type = CallableType([a if a is not None else
                                           AnyType(TypeOfAny.unannotated) for a in arg_types],

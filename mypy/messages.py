@@ -644,7 +644,9 @@ class MessageBuilder:
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
         if (argument_names is not None and not all(k is None for k in argument_names)
                 and len(argument_names) >= 1):
-            diff = [k for k in callee.arg_names if k not in argument_names]
+            num_positional_args = sum(k is None for k in argument_names)
+            arguments_left = callee.arg_names[num_positional_args:]
+            diff = [k for k in arguments_left if k not in argument_names]
             if len(diff) == 1:
                 msg = 'Missing positional argument'
             else:
@@ -797,10 +799,13 @@ class MessageBuilder:
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
-            name_in_supertype: str, supertype: str, context: Context) -> None:
+            name_in_supertype: str, arg_type_in_supertype: Type, supertype: str,
+            context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
-        self.fail('Argument {} of "{}" incompatible with {}'
-                  .format(arg_num, name, target), context)
+        arg_type_in_supertype_f = self.format_bare(arg_type_in_supertype)
+        self.fail('Argument {} of "{}" is incompatible with {}; '
+                  'supertype defines the argument type as "{}"'
+                  .format(arg_num, name, target, arg_type_in_supertype_f), context)
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)

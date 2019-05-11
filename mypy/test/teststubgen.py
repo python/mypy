@@ -6,9 +6,11 @@ import tempfile
 import re
 from types import ModuleType
 
-from typing import List, Tuple
+from typing import Any, List, Tuple, Optional
 
-from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
+from mypy.test.helpers import (
+    Suite, assert_equal, assert_string_arrays_equal, local_sys_path_set
+)
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
@@ -85,6 +87,10 @@ class StubgenCmdLineSuite(Suite):
         file = os.path.join(*path)
         with open(file, 'w') as f:
             f.write(content)
+
+    def run(self, result: Optional[Any] = None) -> Optional[Any]:
+        with local_sys_path_set():
+            return super().run(result)
 
 
 class StubgenCliParseSuite(Suite):
@@ -273,6 +279,10 @@ class StubgenPythonSuite(DataSuite):
     files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        with local_sys_path_set():
+            self.run_case_inner(testcase)
+
+    def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
         extra = []
         mods = []
         source = '\n'.join(testcase.input)

@@ -36,7 +36,7 @@ from mypy.types import (
     is_optional, remove_optional
 )
 from mypy.sametypes import is_same_type
-from mypy.messages import MessageBuilder, make_inferred_type_note
+from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
@@ -66,6 +66,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state
+from mypy.traverser import has_return_statement
 
 MYPY = False
 if MYPY:
@@ -987,7 +988,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
-                self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                if (not fdef.arguments or (len(fdef.arguments) == 1 and
+                        (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    if not has_return_statement(fdef):
+                        self.note('Use "-> None" if function does not return a value', fdef)
+                else:
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = fdef.type.ret_type
                 if is_unannotated_any(ret_type):
@@ -1504,6 +1511,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if original_class_or_static and not override_class_or_static:
                 fail = True
 
+        if is_private(name):
+            fail = False
+
         if fail:
             emitted_msg = False
             if (isinstance(override, CallableType) and
@@ -1531,8 +1541,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for i in range(len(override.arg_types)):
                     if not is_subtype(original.arg_types[i],
                                       erase_override(override.arg_types[i])):
+                        arg_type_in_super = original.arg_types[i]
                         self.msg.argument_incompatible_with_supertype(
-                            i + 1, name, type_name, name_in_super, supertype, node)
+                            i + 1,
+                            name,
+                            type_name,
+                            name_in_super,
+                            arg_type_in_super,
+                            supertype,
+                            node
+                        )
                         emitted_msg = True
 
                 if not is_subtype(erase_override(override.ret_type),
@@ -1649,6 +1667,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Normal checks for attribute compatibility should catch any problems elsewhere.
             non_overridden_attrs = base.names.keys() - typ.names.keys()
             for name in non_overridden_attrs:
+                if is_private(name):
+                    continue
                 for base2 in mro[i + 1:]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
@@ -1937,6 +1957,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # is __slots__, where it is allowed for any child class to
                 # redefine it.
                 if lvalue_node.name() == "__slots__" and base.fullname() != "builtins.object":
+                    continue
+
+                if is_private(lvalue_node.name()):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
@@ -3553,6 +3576,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
             extra_info = []  # type: List[str]
             note_msg = ''
+            notes = []  # type: List[str]
             if subtype_label is not None or supertype_label is not None:
                 subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
                 if subtype_label is not None:
@@ -3561,9 +3585,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     extra_info.append(supertype_label + ' ' + supertype_str)
                 note_msg = make_inferred_type_note(context, subtype,
                                                    supertype, supertype_str)
+                if isinstance(subtype, Instance) and isinstance(supertype, Instance):
+                    notes = append_invariance_notes([], subtype, supertype)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
             self.fail(msg, context)
+            for note in notes:
+                self.msg.note(note, context)
             if note_msg:
                 self.note(note_msg, context)
             if (isinstance(supertype, Instance) and supertype.type.is_protocol and
@@ -4396,3 +4424,8 @@ def is_subtype_no_promote(left: Type, right: Type) -> bool:
 
 def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
     return is_overlapping_types(left, right, ignore_promotions=True)
+
+
+def is_private(node_name: str) -> bool:
+    """Check if node is private to class definition."""
+    return node_name.startswith('__') and not node_name.endswith('__')

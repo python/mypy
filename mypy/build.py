@@ -700,7 +700,6 @@ class BuildManager(BuildManagerBase):
 
         Raise CompileError if there is a parse error.
         """
-        num_errs = self.errors.num_messages()
         t0 = time.time()
         tree = parse(source, path, id, self.errors, options=self.options)
         tree._fullname = id
@@ -709,7 +708,7 @@ class BuildManager(BuildManagerBase):
                        stubs_parsed=int(tree.is_stub),
                        parse_time=time.time() - t0)
 
-        if self.errors.num_messages() != num_errs:
+        if self.errors.is_blockers():
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 

@@ -2,15 +2,16 @@
 
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
-    Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
+    Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
+    TryStmt, WithStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE,
+    Statement
 )
 
 
@@ -285,3 +286,23 @@ class TraverserVisitor(NodeVisitor[None]):
             o.globals.accept(self)
         if o.locals:
             o.locals.accept(self)
+
+
+class ReturnSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
+            return
+        self.found = True
+
+
+def has_return_statement(fdef: FuncBase) -> bool:
+    """Find if a function has a non-trivial return statement.
+
+    Plain 'return' and 'return None' don't count.
+    """
+    seeker = ReturnSeeker()
+    fdef.accept(seeker)
+    return seeker.found

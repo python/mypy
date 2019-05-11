@@ -45,7 +45,7 @@ class A(object):
     def f(self, a: int, b: str) -> None: pass
 
 class B(A):
-    def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" incompatible with supertype "A" # E: Argument 2 of "f" incompatible with supertype "A"
+    def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
 
 class C(A):
     def f(self, foo: int, bar: str) -> None: pass
@@ -2328,6 +2328,14 @@ def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
 foo(y=2)  # E: Missing positional arguments
 
+[case testMissingArgumentError]
+def f(a, b, c, d=None) -> None: pass
+f(1, 2, d=3) # E: Missing positional argument "c" in call to "f"
+
+[case testMissingArgumentsError]
+def f(a, b, c, d=None) -> None: pass
+f(1, d=3) # E: Missing positional arguments "b", "c" in call to "f"
+
 [case testReturnTypeLineNumberWithDecorator]
 def dec(f): pass
 
@@ -2356,12 +2364,16 @@ from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
     return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant \
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
     return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
+      # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Mapping" instead, which is covariant in the value type \
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
 
 def h() -> Dict[Union[str, int], str]:
     x = {'a': 'a'}
@@ -2370,7 +2382,9 @@ def h() -> Dict[Union[str, int], str]:
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]")
+    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
 
 [builtins fixtures/dict.pyi]
 

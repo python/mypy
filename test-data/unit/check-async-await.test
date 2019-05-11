@@ -694,7 +694,8 @@ async def f() -> AsyncGenerator[Any, Any]:
 async def h() -> Any:
     yield 0
 
-async def g():  # E: Function is missing a type annotation
+async def g():  # E: Function is missing a return type annotation \
+                # N: Use "-> None" if function does not return a value   
     yield 0
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]

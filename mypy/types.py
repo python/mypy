@@ -692,14 +692,14 @@ class Instance(Type):
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
-                      final_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
+                      last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
             self.erased,
-            final_value if final_value is not _dummy else self.last_known_value,
+            last_known_value if last_known_value is not _dummy else self.last_known_value,
         )
 
     def has_readable_member(self, name: str) -> bool:
