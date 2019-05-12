@@ -2651,6 +2651,45 @@ d_wrap: Literal[4, d]  # E: Invalid type "__main__.d" \
                        # E: Parameter 2 of Literal[...] is invalid
 [out]
 
+[case testLiteralWithFinalPropagation]
+from typing_extensions import Final, Literal
+
+a: Final = 3
+b: Final = a
+c = a
+
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(a)
+expect_3(b)
+expect_3(c)  # E: Argument 1 to "expect_3" has incompatible type "int"; expected "Literal[3]"
+[out]
+
+[case testLiteralWithFinalPropagationIsNotLeaking]
+from typing_extensions import Final, Literal
+
+final_tuple_direct: Final = (2, 3)
+final_tuple_indirect: Final = final_tuple_direct
+mutable_tuple = final_tuple_direct
+final_list_1: Final = [2]
+final_list_2: Final = [2, 2]
+final_dict: Final = {"foo": 2}
+final_set_1: Final = {2}
+final_set_2: Final = {2, 2}
+
+def expect_2(x: Literal[2]) -> None: pass
+
+expect_2(final_tuple_direct[0])
+expect_2(final_tuple_indirect[0])
+
+expect_2(mutable_tuple[0])   # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_list_1[0])    # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_list_2[0])    # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_dict["foo"])  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_set_1.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
+[builtins fixtures/isinstancelist.pyi]
+[out]
+
 --
 -- Tests for Literals and enums
 --
@@ -2814,41 +2853,68 @@ x: Literal[Alias.FOO]
 reveal_type(x)  # E: Revealed type is 'Literal[__main__.Test.FOO]'
 [out]
 
-[case testLiteralWithFinalPropagation]
-from typing_extensions import Final, Literal
+[case testLiteralUsingEnumAttributesInLiteralContexts]
+from typing_extensions import Literal, Final
+from enum import Enum
 
-a: Final = 3
-b: Final = a
-c = a
+class Test1(Enum):
+    FOO = 1
+    BAR = 2
+Test2 = Enum('Test2', [('FOO', 1), ('BAR', 2)])
 
-def expect_3(x: Literal[3]) -> None: pass
-expect_3(a)
-expect_3(b)
-expect_3(c)  # E: Argument 1 to "expect_3" has incompatible type "int"; expected "Literal[3]"
+def expects_test1_foo(x: Literal[Test1.FOO]) -> None: ...
+def expects_test2_foo(x: Literal[Test2.FOO]) -> None: ...
+
+expects_test1_foo(Test1.FOO)
+expects_test1_foo(Test1.BAR)  # E: Argument 1 to "expects_test1_foo" has incompatible type "Literal[Test1.BAR]"; expected "Literal[Test1.FOO]"
+expects_test2_foo(Test2.FOO)
+expects_test2_foo(Test2.BAR)  # E: Argument 1 to "expects_test2_foo" has incompatible type "Literal[Test2.BAR]"; expected "Literal[Test2.FOO]"
+
+# Make sure the two 'FOO's are not interchangeable
+expects_test1_foo(Test2.FOO)  # E: Argument 1 to "expects_test1_foo" has incompatible type "Literal[Test2.FOO]"; expected "Literal[Test1.FOO]"
+expects_test2_foo(Test1.FOO)  # E: Argument 1 to "expects_test2_foo" has incompatible type "Literal[Test1.FOO]"; expected "Literal[Test2.FOO]"
+
+# Make sure enums follow the same semantics as 'x = 1' vs 'x: Final = 1'
+var1 = Test1.FOO
+final1: Final = Test1.FOO
+expects_test1_foo(var1)       # E: Argument 1 to "expects_test1_foo" has incompatible type "Test1"; expected "Literal[Test1.FOO]"
+expects_test1_foo(final1)
+
+var2 = Test2.FOO
+final2: Final = Test2.FOO
+expects_test2_foo(var2)       # E: Argument 1 to "expects_test2_foo" has incompatible type "Test2"; expected "Literal[Test2.FOO]"
+expects_test2_foo(final2)
 [out]
 
-[case testLiteralWithFinalPropagationIsNotLeaking]
-from typing_extensions import Final, Literal
+[case testLiteralUsingEnumAttributeNamesInLiteralContexts]
+from typing_extensions import Literal, Final
+from enum import Enum
 
-final_tuple_direct: Final = (2, 3)
-final_tuple_indirect: Final = final_tuple_direct
-mutable_tuple = final_tuple_direct
-final_list_1: Final = [2]
-final_list_2: Final = [2, 2]
-final_dict: Final = {"foo": 2}
-final_set_1: Final = {2}
-final_set_2: Final = {2, 2}
+class Test1(Enum):
+    FOO = 1
+    BAR = 2
+Test2 = Enum('Test2', [('FOO', 1), ('BAR', 2)])
+Test3 = Enum('Test3', 'FOO BAR')
+Test4 = Enum('Test4', ['FOO', 'BAR'])
+Test5 = Enum('Test5', {'FOO': 1, 'BAR': 2})
 
-def expect_2(x: Literal[2]) -> None: pass
+def expects_foo(x: Literal['FOO']) -> None: ...
 
-expect_2(final_tuple_direct[0])
-expect_2(final_tuple_indirect[0])
+expects_foo(Test1.FOO.name)
+expects_foo(Test2.FOO.name)
+expects_foo(Test3.FOO.name)
+expects_foo(Test4.FOO.name)
+expects_foo(Test5.FOO.name)
 
-expect_2(mutable_tuple[0])   # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
-expect_2(final_list_1[0])    # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
-expect_2(final_list_2[0])    # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
-expect_2(final_dict["foo"])  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
-expect_2(final_set_1.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
-expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
-[builtins fixtures/isinstancelist.pyi]
+expects_foo(Test1.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
+expects_foo(Test2.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
+expects_foo(Test3.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
+expects_foo(Test4.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
+expects_foo(Test5.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
+
+reveal_type(Test1.FOO.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Test2.FOO.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Test3.FOO.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Test4.FOO.name)  # E: Revealed type is 'builtins.str'
+reveal_type(Test5.FOO.name)  # E: Revealed type is 'builtins.str'
 [out]

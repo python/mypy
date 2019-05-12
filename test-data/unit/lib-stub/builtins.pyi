@@ -9,6 +9,7 @@ class type:
 
 # These are provided here for convenience.
 class int:
+    def __init__(self, x: object = ..., base: int = ...) -> None: pass
     def __add__(self, other: int) -> int: pass
     def __rmul__(self, other: int) -> int: pass
 class float: pass
