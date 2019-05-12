@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from enum import Enum
 import os
+import pytest  # type: ignore
 import subprocess
 from subprocess import PIPE
 import sys
@@ -187,6 +188,9 @@ class TestPEP561(TestCase):
         dirs = get_site_packages_dirs(sys.executable)
         assert dirs
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_stub_package(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -198,6 +202,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -221,6 +228,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_stubs_python2(self) -> None:
         self.simple_prog.create()
         python2 = try_find_python2_interpreter()
@@ -247,6 +257,9 @@ class TestPEP561(TestCase):
                     venv_dir=venv_dir,
                 )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_egg(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -258,6 +271,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_editable(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -269,6 +285,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_egg_editable(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
