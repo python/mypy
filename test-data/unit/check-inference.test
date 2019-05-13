@@ -2696,3 +2696,31 @@ reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
 reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
 
 [builtins fixtures/dict.pyi]
+
+[case testInheritedAttributeNoStrictOptional]
+# flags: --no-strict-optional
+class A:
+    x: str
+
+class B(A):
+    x = None
+    x = ''
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+
+[case testIncompatibleInheritedAttributeNoStrictOptional]
+# flags: --no-strict-optional
+class A:
+    x: str
+
+class B(A):
+    x = None
+    x = 2  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+
+[case testInheritedAttributeStrictOptional]
+# flags: --strict-optional
+class A:
+    x: str
+
+class B(A):
+    x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
+    x = ''

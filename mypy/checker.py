@@ -1836,7 +1836,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-
             # If we're assigning to __getattr__ or similar methods, check that the signature is
             # valid.
             if isinstance(lvalue, NameExpr) and lvalue.node:
@@ -1853,7 +1852,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
-            if isinstance(lvalue, RefExpr):
+            # Defer PartialType's super type checking.
+            if (isinstance(lvalue, RefExpr) and
+                    not (isinstance(lvalue_type, PartialType) and lvalue_type.type is None)):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
@@ -1883,6 +1884,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Try to infer a partial type. No need to check the return value, as
                         # an error will be reported elsewhere.
                         self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                    # Handle None PartialType's super type checking here, after it's resolved.
+                    if (isinstance(lvalue, RefExpr) and
+                            self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue)):
+                        # We hit an error on this line; don't check for any others
+                        return
                 elif (is_literal_none(rvalue) and
                         isinstance(lvalue, NameExpr) and
                         isinstance(lvalue.node, Var) and
