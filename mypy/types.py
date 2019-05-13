@@ -2127,8 +2127,13 @@ def false_only(t: Type) -> Type:
     Restricted version of t with only False-ish values
     """
     if not t.can_be_false:
-        # All values of t are True-ish, so there are no false values in it
-        return UninhabitedType(line=t.line)
+        if state.strict_optional:
+            # All values of t are True-ish, so there are no false values in it
+            return UninhabitedType(line=t.line)
+        else:
+            # When strict optional checking is disabled, everything can be
+            # False-ish since anything can be None
+            return NoneType(line=t.line)
     elif not t.can_be_true:
         # All values of t are already False-ish, so false_only is idempotent in this case
         return t
