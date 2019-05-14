@@ -4,7 +4,7 @@
 Dynamically typed code
 ======================
 
-As mentioned earlier, bodies of functions that don't have have any
+As mentioned earlier, bodies of functions that don't have any
 explicit types in their function annotation are dynamically typed
 (operations are checked at runtime). Code outside functions is
 statically typed by default, and types of variables are inferred. This
