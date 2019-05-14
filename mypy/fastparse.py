@@ -294,49 +294,48 @@ class ASTConverter:
             res.append(exp)
         return res
 
-    def get_line(self, n: ast3.stmt) -> int:
-        if (isinstance(n, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
-                and n.decorator_list):
-            return n.decorator_list[0].lineno
-        return n.lineno
+    def get_lineno(self, node: Union[ast3.expr, ast3.stmt]) -> int:
+        if (isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
+                and node.decorator_list):
+            return node.decorator_list[0].lineno
+        return node.lineno
 
     def translate_stmt_list(self,
-                            l: Sequence[ast3.stmt],
-                            module: bool = False) -> List[Statement]:
-
+                            stmts: Sequence[ast3.stmt],
+                            ismodule: bool = False) -> List[Statement]:
         # A "# type: ignore" comment before the first statement of a module
         # ignores the whole module:
-
-        if module and l and self.type_ignores and min(self.type_ignores) < self.get_line(l[0]):
+        if (ismodule and stmts and self.type_ignores
+                and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
-            b = Block(self.fix_function_overloads(self.translate_stmt_list(l)))
-            b.is_unreachable = True
-            return [b]
+            block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+            block.is_unreachable = True
+            return [block]
 
         res = []  # type: List[Statement]
         line = 0
 
-        for i, e in enumerate(l):
+        for i, stmt in enumerate(stmts):
 
-            if module:  # and...
+            if ismodule:  # This line needs to be split for mypy to branch on version:
                 if sys.version_info >= (3, 8):
-
-                    # In Python 3.8, a "# type: ignore" comment between statements at
-                    # the top level of a module skips checking for everything else:
-
-                    ignores = set(range(line + 1, self.get_line(e))) & self.type_ignores
+                    # In Python 3.8+ (we need end_lineno), a "# type: ignore" comment
+                    # between statements at the top level of a module skips checking
+                    # for everything else:
+                    ignores = set(range(line + 1, self.get_lineno(stmt))) & self.type_ignores
 
                     if ignores:
                         self.errors.used_ignored_lines[self.errors.file].add(min(ignores))
-                        b = Block(self.fix_function_overloads(self.translate_stmt_list(l[i:])))
-                        b.is_unreachable = True
-                        res.append(b)
+                        rest = self.fix_function_overloads(self.translate_stmt_list(stmts[i:]))
+                        block = Block(rest)
+                        block.is_unreachable = True
+                        res.append(block)
                         return res
 
-                    line = e.end_lineno if e.end_lineno is not None else e.lineno
+                    line = stmt.end_lineno if stmt.end_lineno is not None else stmt.lineno
 
-            stmt = self.visit(e)
-            res.append(stmt)
+            node = self.visit(stmt)
+            res.append(node)
 
         return res
 
@@ -443,11 +442,11 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {ti.lineno for ti in mod.type_ignores}
-        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, module=True))
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
                         False,
-                        set(self.type_ignores),
+                        self.type_ignores,
                         )
 
     # --- stmt ---

@@ -193,29 +193,28 @@ class ASTConverter:
             res.append(exp)
         return res
 
-    def get_line(self, n: ast27.stmt) -> int:
-        if isinstance(n, (ast27.ClassDef, ast27.FunctionDef)) and n.decorator_list:
-            return n.decorator_list[0].lineno
-        return n.lineno
+    def get_lineno(self, node: Union[ast27.expr, ast27.stmt]) -> int:
+        if isinstance(node, (ast27.ClassDef, ast27.FunctionDef)) and node.decorator_list:
+            return node.decorator_list[0].lineno
+        return node.lineno
 
     def translate_stmt_list(self,
-                            l: Sequence[ast27.stmt],
+                            stmts: Sequence[ast27.stmt],
                             module: bool = False) -> List[Statement]:
-
         # A "# type: ignore" comment before the first statement of a module
         # ignores the whole module:
-
-        if module and l and self.type_ignores and min(self.type_ignores) < self.get_line(l[0]):
+        if (module and stmts and self.type_ignores
+                and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
-            b = Block(self.fix_function_overloads(self.translate_stmt_list(l)))
-            b.is_unreachable = True
-            return [b]
+            block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+            block.is_unreachable = True
+            return [block]
 
         res = []  # type: List[Statement]
-        for e in l:
-            stmt = self.visit(e)
-            assert isinstance(stmt, Statement)
-            res.append(stmt)
+        for stmt in stmts:
+            node = self.visit(stmt)
+            assert isinstance(node, Statement)
+            res.append(node)
         return res
 
     op_map = {
@@ -326,7 +325,7 @@ class ASTConverter:
         return MypyFile(body,
                         self.imports,
                         False,
-                        set(self.type_ignores),
+                        self.type_ignores,
                         )
 
     # --- stmt ---
