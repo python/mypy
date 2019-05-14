@@ -318,21 +318,22 @@ class ASTConverter:
 
         for i, e in enumerate(l):
 
-            # In Python 3.8, a "# type: ignore" comment between statements at
-            # the top level of a module skips checking for everything else:
+            if module:  # and...
+                if sys.version_info >= (3, 8):
 
-            if module and sys.version_info >= (3, 8):
+                    # In Python 3.8, a "# type: ignore" comment between statements at
+                    # the top level of a module skips checking for everything else:
 
-                ignores = set(range(line + 1, self.get_line(e))) & self.type_ignores
+                    ignores = set(range(line + 1, self.get_line(e))) & self.type_ignores
 
-                if ignores:
-                    self.errors.used_ignored_lines[self.errors.file].add(min(ignores))
-                    b = Block(self.fix_function_overloads(self.translate_stmt_list(l[i:])))
-                    b.is_unreachable = True
-                    res.append(b)
-                    return res
+                    if ignores:
+                        self.errors.used_ignored_lines[self.errors.file].add(min(ignores))
+                        b = Block(self.fix_function_overloads(self.translate_stmt_list(l[i:])))
+                        b.is_unreachable = True
+                        res.append(b)
+                        return res
 
-                line = e.end_lineno if e.end_lineno is not None else e.lineno
+                    line = e.end_lineno if e.end_lineno is not None else e.lineno
 
             stmt = self.visit(e)
             res.append(stmt)
