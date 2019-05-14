@@ -65,6 +65,7 @@ Config file
 ``--warn-unused-configs``
     This flag makes mypy warn about unused ``[mypy-<pattern>]`` config
     file sections.
+    (This requires turning off incremental mode using ``--no-incremental``.)
 
 
 .. _import-discovery:

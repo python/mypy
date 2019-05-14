@@ -87,7 +87,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         blockers = True
         if not e.use_stdout:
             serious = True
-    if options.warn_unused_configs and options.unused_configs:
+    if options.warn_unused_configs and options.unused_configs and not options.incremental:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
