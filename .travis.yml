@@ -9,15 +9,12 @@ cache:
 matrix:
   include:
     - os: linux
-      sudo: false
       python: "3.5"
       env: PYTHON_DEBUG_BUILD=0
     - os: linux
-      sudo: false
       python: "3.6"
       env: PYTHON_DEBUG_BUILD=0
     - os: linux
-      sudo: false
       python: "3.6"
       env: PYTHON_DEBUG_BUILD=1
     - os: linux
