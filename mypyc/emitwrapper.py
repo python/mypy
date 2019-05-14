@@ -9,6 +9,9 @@ from mypyc.ops import (
     FUNC_STATICMETHOD,
 )
 from mypyc.namegen import NameGenerator
+
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED
+
 from typing import List, Optional
 
 
@@ -32,25 +35,40 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         arg = real_args.pop(0)
         emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
 
-    optional_args = [arg for arg in fn.args if arg.optional]
+    # Need to order args as: required, optional, kwonly optional, kwonly required
+    # This is because CPyArg_ParseTupleAndKeywords format string requires
+    # them grouped in that way.
+    required_pos = [arg for arg in real_args if arg.kind == ARG_POS]
+    optional_pos = [arg for arg in real_args if arg.kind == ARG_OPT]
+    optional_kwonly = [arg for arg in real_args if arg.kind == ARG_NAMED_OPT]
+    required_kwonly = [arg for arg in real_args if arg.kind == ARG_NAMED]
 
-    arg_names = ''.join('"{}", '.format(arg.name) for arg in real_args)
+    reordered_args = required_pos + optional_pos + optional_kwonly + required_kwonly
+
+    arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
     emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))
-    arg_format = '{}{}:{}'.format(
-        'O' * (len(real_args) - len(optional_args)),
-        '|' + 'O' * len(optional_args) if len(optional_args) > 0 else '',
-        fn.name,
-    )
-    arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in real_args)
+
+    # Construct the format string. Each group requires the previous
+    # groups delimiters to be present first.
+    main_format = 'O' * len(required_pos)
+    if optional_pos or optional_kwonly or required_kwonly:
+        main_format += '|' + 'O' * len(optional_pos)
+    if optional_kwonly or required_kwonly:
+        main_format += '$' + 'O' * len(optional_kwonly)
+    if required_kwonly:
+        main_format += '@' + 'O' * len(required_kwonly)
+
+    arg_format = '{}:{}'.format(main_format, fn.name)
+    arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in reordered_args)
     emitter.emit_lines(
         'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
             arg_format, arg_ptrs),
         'return NULL;',
         '}')
-    generate_wrapper_core(fn, emitter, optional_args)
+    generate_wrapper_core(fn, emitter, optional_pos + optional_kwonly)
     emitter.emit_line('}')
 
 

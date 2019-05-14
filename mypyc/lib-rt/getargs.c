@@ -1,5 +1,8 @@
 /* getargs implementation copied from Python 3.8 and stripped down to only include
  * the functions we need.
+ * We also add support for required kwonly args.
+ * A good idea would be to also vendor in the Fast versions and get our stuff
+ * working with *that*.
  * Another probably good idea is to strip out all the formatting stuff we don't need
  * and then add in custom stuff that we do need.
  */
@@ -1151,6 +1154,8 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     const char *fname, *msg, *custom_msg;
     int min = INT_MAX;
     int max = INT_MAX;
+    int required_kwonly_start = INT_MAX;
+    int has_required_kws = 0;
     int i, pos, len;
     int skip = 0;
     Py_ssize_t nargs, nkwargs;
@@ -1234,6 +1239,11 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                                 "Invalid format string ($ before |)");
                 return cleanreturn(0, &freelist);
             }
+
+            /* If there are optional args, figure out whether we have
+             * required keyword arguments so that we don't bail without
+             * enforcing them. */
+            has_required_kws = strchr(format, '@') != NULL;
         }
         if (*format == '$') {
             if (max != INT_MAX) {
@@ -1269,13 +1279,29 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                                  " (%zd given)",
                                  (fname == NULL) ? "function" : fname,
                                  (fname == NULL) ? "" : "()",
-                                 (min != INT_MAX) ? "at most" : "exactly",
+                                 (min < max) ? "at most" : "exactly",
                                  max,
                                  max == 1 ? "" : "s",
                                  nargs);
                 }
                 return cleanreturn(0, &freelist);
             }
+        }
+        if (*format == '@') {
+            if (min == INT_MAX && max == INT_MAX) {
+                PyErr_SetString(PyExc_SystemError,
+                                "Invalid format string "
+                                "(@ without preceding | and $)");
+                return cleanreturn(0, &freelist);
+            }
+            if (required_kwonly_start != INT_MAX) {
+                PyErr_SetString(PyExc_SystemError,
+                                "Invalid format string (@ specified twice)");
+                return cleanreturn(0, &freelist);
+            }
+
+            required_kwonly_start = i;
+            format++;
         }
         if (IS_END_OF_FORMAT(*format)) {
             PyErr_Format(PyExc_SystemError,
@@ -1310,7 +1336,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 continue;
             }
 
-            if (i < min) {
+            if (i < min || i >= required_kwonly_start) {
                 if (i < pos) {
                     assert (min == INT_MAX);
                     assert (max == INT_MAX);
@@ -1321,11 +1347,22 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                      * or the end of the format. */
                 }
                 else {
-                    PyErr_Format(PyExc_TypeError,  "%.200s%s missing required "
-                                 "argument '%s' (pos %d)",
-                                 (fname == NULL) ? "function" : fname,
-                                 (fname == NULL) ? "" : "()",
-                                 kwlist[i], i+1);
+                    if (i >= max) {
+                        PyErr_Format(PyExc_TypeError,
+                                     "%.200s%s missing required "
+                                     "keyword-only argument '%s'",
+                                     (fname == NULL) ? "function" : fname,
+                                     (fname == NULL) ? "" : "()",
+                                     kwlist[i]);
+                    }
+                    else {
+                        PyErr_Format(PyExc_TypeError,
+                                     "%.200s%s missing required "
+                                     "argument '%s' (pos %d)",
+                                     (fname == NULL) ? "function" : fname,
+                                     (fname == NULL) ? "" : "()",
+                                     kwlist[i], i+1);
+                    }
                     return cleanreturn(0, &freelist);
                 }
             }
@@ -1333,7 +1370,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
              * fulfilled and no keyword args left, with no further
              * validation. XXX Maybe skip this in debug build ?
              */
-            if (!nkwargs && !skip) {
+            if (!nkwargs && !skip && !has_required_kws) {
                 return cleanreturn(1, &freelist);
             }
         }
@@ -1361,7 +1398,9 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         return cleanreturn(0, &freelist);
     }
 
-    if (!IS_END_OF_FORMAT(*format) && (*format != '|') && (*format != '$')) {
+    if (!IS_END_OF_FORMAT(*format) &&
+        (*format != '|') && (*format != '$') && (*format != '@'))
+    {
         PyErr_Format(PyExc_SystemError,
             "more argument specifiers than keyword list entries "
             "(remaining format:'%s')", format);

@@ -3962,3 +3962,80 @@ def foo(x: object) -> None:
 
 [file driver.py]
 # really I only care it builds
+
+[case testKeywordOnly]
+from typing import Tuple
+
+def kwonly1(x: int = 0, *, y: int) -> Tuple[int, int]:
+    return x, y
+
+def kwonly2(*, x: int = 0, y: int) -> Tuple[int, int]:
+    return x, y
+
+def kwonly3(a: int, b: int = 0, *, y: int, x: int = 1) -> Tuple[int, int, int, int]:
+    return a, b, x, y
+
+def kwonly4(*, x: int, y: int) -> Tuple[int, int]:
+    return x, y
+
+[file testutil.py]
+# TODO: This should go into some general mypyc test support lib (along
+# with other things)
+from contextlib import contextmanager
+from typing import Iterator
+
+@contextmanager
+def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
+    try:
+        yield
+    except Exception as e:
+        assert isinstance(e, typ), "{} is not a {}".format(e, typ.__name__)
+        assert msg in str(e), 'Message "{}" does not match "{}"'.format(e, msg)
+    else:
+        assert False, "Expected {} but got no exception".format(typ.__name__)
+
+[file driver.py]
+from native import kwonly1, kwonly2, kwonly3, kwonly4
+from testutil import assertRaises
+
+assert kwonly1(10, y=20) == (10, 20)
+assert kwonly1(y=20) == (0, 20)
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly1()
+with assertRaises(TypeError, "takes at most 1 positional argument (2 given)"):
+    kwonly1(10, 20)
+
+assert kwonly2(x=10, y=20) == (10, 20)
+assert kwonly2(y=20) == (0, 20)
+
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly2()
+with assertRaises(TypeError, "takes no positional arguments"):
+    kwonly2(10, 20)
+
+assert kwonly3(10, y=20) == (10, 0, 1, 20)
+assert kwonly3(a=10, y=20) == (10, 0, 1, 20)
+assert kwonly3(10, 30, y=20) == (10, 30, 1, 20)
+assert kwonly3(10, b=30, y=20) == (10, 30, 1, 20)
+assert kwonly3(a=10, b=30, y=20) == (10, 30, 1, 20)
+
+assert kwonly3(10, x=40, y=20) == (10, 0, 40, 20)
+assert kwonly3(a=10, x=40, y=20) == (10, 0, 40, 20)
+assert kwonly3(10, 30, x=40, y=20) == (10, 30, 40, 20)
+assert kwonly3(10, b=30, x=40, y=20) == (10, 30, 40, 20)
+assert kwonly3(a=10, b=30, x=40, y=20) == (10, 30, 40, 20)
+
+with assertRaises(TypeError, "missing required argument 'a'"):
+    kwonly3(b=30, x=40, y=20)
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly3(10)
+
+assert kwonly4(x=1, y=2) == (1, 2)
+assert kwonly4(y=2, x=1) == (1, 2)
+
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly4(x=1)
+with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
+    kwonly4(y=1)
+with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
+    kwonly4()
