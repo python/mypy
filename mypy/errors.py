@@ -585,8 +585,14 @@ def remove_path_prefix(path: str, prefix: Optional[str]) -> str:
         return path
 
 
-def report_internal_error(err: Exception, file: Optional[str], line: int,
-                          errors: Errors, options: Options, stdout: TextIO = sys.stdout, stderr: TextIO = sys.stderr) -> None:
+def report_internal_error(err: Exception,
+                          file: Optional[str],
+                          line: int,
+                          errors: Errors,
+                          options: Options,
+                          stdout: TextIO = sys.stdout,
+                          stderr: TextIO = sys.stderr
+                          ) -> None:
     """Report internal error and exit.
 
     This optionally starts pdb or shows a traceback.

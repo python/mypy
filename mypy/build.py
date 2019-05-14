@@ -325,7 +325,11 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options, errors: Errors, stdout: TextIO = sys.stdout) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins(
+        options: Options,
+        errors: Errors,
+        stdout: TextIO = sys.stdout
+) -> Tuple[Plugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
@@ -389,7 +393,8 @@ def load_plugins(options: Options, errors: Errors, stdout: TextIO = sys.stdout) 
         try:
             plugin_type = getattr(module, func_name)(__version__)
         except Exception:
-            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path), file=stdout)
+            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path),
+                  file=stdout)
             raise  # Propagate to display traceback
 
         if not isinstance(plugin_type, type):
@@ -404,7 +409,8 @@ def load_plugins(options: Options, errors: Errors, stdout: TextIO = sys.stdout) 
             custom_plugins.append(plugin_type(options))
             snapshot[module_name] = take_module_snapshot(module)
         except Exception:
-            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__), file=stdout)
+            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
+                  file=stdout)
             raise  # Propagate to display traceback
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
@@ -912,7 +918,9 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     return snapshot
 
 
-def read_quickstart_file(options: Options, stdout: TextIO = sys.stdout) -> Optional[Dict[str, Tuple[float, int, str]]]:
+def read_quickstart_file(options: Options,
+                         stdout: TextIO = sys.stdout
+                         ) -> Optional[Dict[str, Tuple[float, int, str]]]:
     quickstart = None  # type: Optional[Dict[str, Tuple[float, int, str]]]
     if options.quickstart_file:
         # This is very "best effort". If the file is missing or malformed,
@@ -1777,7 +1785,8 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0, self.manager.errors, self.options, self.manager.stdout, self.manager.stderr)
+            report_internal_error(err, self.path, 0, self.manager.errors,
+                                  self.options, self.manager.stdout, self.manager.stderr)
         self.manager.errors.set_import_context(save_import_context)
         # TODO: Move this away once we've removed the old semantic analyzer?
         if check_blockers:
@@ -2437,7 +2446,10 @@ def log_configuration(manager: BuildManager) -> None:
 # The driver
 
 
-def dispatch(sources: List[BuildSource], manager: BuildManager, stdout: TextIO = sys.stdout) -> Graph:
+def dispatch(sources: List[BuildSource],
+             manager: BuildManager,
+             stdout: TextIO = sys.stdout
+             ) -> Graph:
     log_configuration(manager)
 
     t0 = time.time()
