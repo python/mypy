@@ -1193,6 +1193,7 @@ s1.py:2: error: Incompatible return value type (got "int", expected "str")
 [file mypy.ini]
 [[mypy]
 warn_unused_configs = True
+incremental = False
 [[mypy-bar]
 [[mypy-foo]
 [[mypy-baz.*]
