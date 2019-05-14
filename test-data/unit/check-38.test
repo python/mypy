@@ -106,3 +106,8 @@ def g(x: int): ...
     /
     0  # type: ignore
 )  # type: ignore  # E: unused 'type: ignore' comment
+
+[case testIgnoreRestOfModule]
+ERROR  # E: Name 'ERROR' is not defined
+# type: ignore
+IGNORE

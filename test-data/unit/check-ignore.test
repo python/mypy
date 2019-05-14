@@ -218,3 +218,43 @@ def f() -> None: pass
 
 [case testCannotIgnoreBlockingError]
 yield  # type: ignore  # E: 'yield' outside function
+
+[case testIgnoreWholeModule1]
+# flags: --warn-unused-ignores
+# type: ignore
+IGNORE # type: ignore  # E: unused 'type: ignore' comment
+
+[case testIgnoreWholeModule2]
+# type: ignore
+if True:
+    IGNORE
+
+[case testIgnoreWholeModule3]
+# type: ignore
+@d
+class C: ...
+IGNORE
+
+[case testIgnoreWholeModule4]
+# type: ignore
+@d
+
+def f(): ...
+IGNORE
+
+[case testDontIgnoreWholeModule1]
+if True:
+    # type: ignore
+    ERROR # E: Name 'ERROR' is not defined
+ERROR # E: Name 'ERROR' is not defined
+
+[case testDontIgnoreWholeModule2]
+@d  # type: ignore
+class C: ...
+ERROR # E: Name 'ERROR' is not defined
+
+[case testDontIgnoreWholeModule3]
+@d  # type: ignore
+
+def f(): ...
+ERROR # E: Name 'ERROR' is not defined
