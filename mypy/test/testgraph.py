@@ -1,5 +1,6 @@
 """Test cases for graph processing code in build.py."""
 
+import sys
 from typing import AbstractSet, Dict, Set, List
 
 from io import StringIO
@@ -44,8 +45,6 @@ class GraphSuite(Suite):
         options = Options()
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
-        stdout = StringIO()
-        stderr = StringIO()
         manager = BuildManager(
             data_dir='',
             search_paths=search_paths,
@@ -59,8 +58,8 @@ class GraphSuite(Suite):
             errors=errors,
             flush_errors=lambda msgs, serious: None,
             fscache=fscache,
-            stdout=stdout,
-            stderr=stderr,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
         return manager
 

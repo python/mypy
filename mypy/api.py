@@ -48,13 +48,13 @@ from typing import List, Tuple, Union, TextIO, Callable
 from mypy_extensions import DefaultArg
 
 
-def _run(f: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:
+def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:
 
     stdout = StringIO()
     stderr = StringIO()
 
     try:
-        f(stdout, stderr)
+        main_wrapper(stdout, stderr)
         exit_status = 0
     except SystemExit as system_exit:
         exit_status = system_exit.code

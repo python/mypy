@@ -47,9 +47,11 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def main(script_path: Optional[str], args: Optional[List[str]] = None,
-         stdout: TextIO = sys.stdout,
-         stderr: TextIO = sys.stderr) -> None:
+def main(script_path: Optional[str],
+         stdout: TextIO,
+         stderr: TextIO,
+         args: Optional[List[str]] = None,
+         ) -> None:
     """Main entry point to the type checker.
 
     Args:

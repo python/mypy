@@ -590,13 +590,15 @@ def report_internal_error(err: Exception,
                           line: int,
                           errors: Errors,
                           options: Options,
-                          stdout: TextIO = sys.stdout,
-                          stderr: TextIO = sys.stderr
+                          stdout: Optional[TextIO] = None,
+                          stderr: Optional[TextIO] = None,
                           ) -> None:
     """Report internal error and exit.
 
     This optionally starts pdb or shows a traceback.
     """
+    stdout = (stdout or sys.stdout)
+    stderr = (stderr or sys.stderr)
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
     try:

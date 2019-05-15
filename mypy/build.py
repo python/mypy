@@ -128,8 +128,8 @@ def build(sources: List[BuildSource],
           alt_lib_path: Optional[str] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           fscache: Optional[FileSystemCache] = None,
-          stdout: TextIO = sys.stdout,
-          stderr: TextIO = sys.stderr,
+          stdout: Optional[TextIO] = None,
+          stderr: Optional[TextIO] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -161,6 +161,8 @@ def build(sources: List[BuildSource],
         messages.extend(new_messages)
 
     flush_errors = flush_errors or default_flush_errors
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
 
     try:
         result = _build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
@@ -325,11 +327,10 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(
-        options: Options,
-        errors: Errors,
-        stdout: TextIO = sys.stdout
-) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins(options: Options,
+                 errors: Errors,
+                 stdout: TextIO,
+                 ) -> Tuple[Plugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
@@ -919,7 +920,7 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
 
 
 def read_quickstart_file(options: Options,
-                         stdout: TextIO = sys.stdout
+                         stdout: TextIO,
                          ) -> Optional[Dict[str, Tuple[float, int, str]]]:
     quickstart = None  # type: Optional[Dict[str, Tuple[float, int, str]]]
     if options.quickstart_file:
@@ -2448,7 +2449,7 @@ def log_configuration(manager: BuildManager) -> None:
 
 def dispatch(sources: List[BuildSource],
              manager: BuildManager,
-             stdout: TextIO = sys.stdout
+             stdout: TextIO,
              ) -> Graph:
     log_configuration(manager)
 
