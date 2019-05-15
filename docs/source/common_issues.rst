@@ -131,30 +131,6 @@ The second line is now fine, since the ignore comment causes the name
     if we did have a stub available for ``frobnicate`` then mypy would
     ignore the ``# type: ignore`` comment and typecheck the stub as usual.
 
-A ``# type: ignore`` comment at the top of a module (before any statements,
-including imports or docstrings) has the effect of ignoring the *entire* module.
-
-.. code-block:: python
-
-    # type: ignore
-    import frobnicate
-    frobnicate.start()
-
-When running mypy with Python 3.8 or later, a ``# type: ignore`` comment
-anywhere at the top indentation level of a module will skip type checking for
-all remaining lines in the file.
-
-.. code-block:: python
-
-    """Docstring."""
-
-    import spam  # These imports are still checked!
-    import eggs
-    
-    # type: ignore
-    import frobnicate
-    frobnicate.start()
-
 Another option is to explicitly annotate values with type ``Any`` --
 mypy will let you perform arbitrary operations on ``Any``
 values. Sometimes there is no more precise type you can use for a
@@ -172,6 +148,39 @@ Finally, you can create a stub file (``.pyi``) for a file that
 generates spurious errors. Mypy will only look at the stub file
 and ignore the implementation, since stub files take precedence
 over ``.py`` files.
+
+Ignoring a whole file
+---------------------
+
+A ``# type: ignore`` comment at the top of a module (before any statements,
+including imports or docstrings) has the effect of ignoring the *entire* module.
+
+.. code-block:: python
+
+    # type: ignore
+
+    import foo
+
+    foo.bar()
+
+When running mypy with Python 3.8 or later, a ``# type: ignore`` comment
+anywhere at the top indentation level of a module will skip type checking for
+all remaining lines in the file.
+
+.. code-block:: python
+
+    """Docstring."""
+
+    import spam
+    import eggs
+    import foo
+
+    eggs.fry()  # This code is still checked!
+
+    # type: ignore
+    
+    foo.bar()  # Mypy skips over everything here.
+    foo.baz()
 
 Unexpected errors about 'None' and/or 'Optional' types
 ------------------------------------------------------
