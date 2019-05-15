@@ -4,12 +4,12 @@
 Dynamically typed code
 ======================
 
-As mentioned earlier, bodies of functions that don't have have any
-explicit types in their function annotation are dynamically typed
-(operations are checked at runtime). Code outside functions is
-statically typed by default, and types of variables are inferred. This
-does usually the right thing, but you can also make any variable
-dynamically typed by defining it explicitly with the type ``Any``:
+As mentioned earlier, bodies of functions that don't have any explicit
+types in their function annotation are dynamically typed (operations
+are checked at runtime). Code outside functions is statically typed by
+default, and types of variables are inferred. This does usually the
+right thing, but you can also make any variable dynamically typed by
+defining it explicitly with the type ``Any``:
 
 .. code-block:: python
 
