@@ -18,6 +18,9 @@ T = TypeVar('T')
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
+MYPY_RE = \
+    re.compile(r'^#.mypy: (.*)$', re.MULTILINE)  # type: Final
+
 default_python2_interpreter = \
     ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
 
@@ -87,6 +90,10 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     except LookupError as lookuperr:
         raise DecodeError(str(lookuperr))
     return source_text
+
+
+def get_mypy_comments(source: str) -> List[str]:
+    return list(re.findall(MYPY_RE, source))
 
 
 _python2_interpreter = None  # type: Optional[str]

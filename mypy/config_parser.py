@@ -1,6 +1,7 @@
 import argparse
 import configparser
 import glob as fileglob
+from io import StringIO
 import os
 import re
 import sys
@@ -116,24 +117,22 @@ def parse_config_file(options: Options, filename: Optional[str],
             print("%s: No [mypy] section in config file" % file_read, file=stderr)
     else:
         section = parser['mypy']
-        prefix = '%s: [%s]' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, section,
-                                             stdout, stderr)
+        prefix = '%s: [%s]: ' % (file_read, 'mypy')
+        updates, report_dirs = parse_section(prefix, options, section, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            prefix = '%s: [%s]' % (file_read, name)
-            updates, report_dirs = parse_section(prefix, options, section,
-                                                 stdout, stderr)
+            prefix = '%s: [%s]: ' % (file_read, name)
+            updates, report_dirs = parse_section(prefix, options, section, stderr)
             if report_dirs:
-                print("%s: Per-module sections should not specify reports (%s)" %
+                print("%sPer-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
                       file=stderr)
             if set(updates) - PER_MODULE_OPTIONS:
-                print("%s: Per-module sections should only specify per-module flags (%s)" %
+                print("%sPer-module sections should only specify per-module flags (%s)" %
                       (prefix, ', '.join(sorted(set(updates) - PER_MODULE_OPTIONS))),
                       file=stderr)
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
@@ -146,7 +145,7 @@ def parse_config_file(options: Options, filename: Optional[str],
 
                 if (any(c in glob for c in '?[]!') or
                         any('*' in x and x != '*' for x in glob.split('.'))):
-                    print("%s: Patterns must be fully-qualified module names, optionally "
+                    print("%sPatterns must be fully-qualified module names, optionally "
                           "with '*' in some components (e.g spam.*.eggs.*)"
                           % prefix,
                           file=stderr)
@@ -156,7 +155,6 @@ def parse_config_file(options: Options, filename: Optional[str],
 
 def parse_section(prefix: str, template: Options,
                   section: Mapping[str, str],
-                  stdout: TextIO = sys.stdout,
                   stderr: TextIO = sys.stderr
                   ) -> Tuple[Dict[str, object], Dict[str, str]]:
     """Parse one section of a config file.
@@ -176,17 +174,17 @@ def parse_section(prefix: str, template: Options,
                     if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = section[key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                        print("%sUnrecognized report type: %s" % (prefix, key),
                               file=stderr)
                     continue
                 if key.startswith('x_'):
                     continue  # Don't complain about `x_blah` flags
                 elif key == 'strict':
-                    print("%s: Strict mode is not supported in configuration files: specify "
+                    print("%sStrict mode is not supported in configuration files: specify "
                           "individual flags instead (see 'mypy -h' for the list of flags enabled "
                           "in strict mode)" % prefix, file=stderr)
                 else:
-                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                    print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=stderr)
                 continue
             ct = type(dv)
@@ -198,18 +196,18 @@ def parse_section(prefix: str, template: Options,
                 try:
                     v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
-                    print("%s: %s: %s" % (prefix, key, err), file=stderr)
+                    print("%s%s: %s" % (prefix, key, err), file=stderr)
                     continue
             else:
-                print("%s: Don't know what type %s should have" % (prefix, key), file=stderr)
+                print("%sDon't know what type %s should have" % (prefix, key), file=stderr)
                 continue
         except ValueError as err:
-            print("%s: %s: %s" % (prefix, key, err), file=stderr)
+            print("%s%s: %s" % (prefix, key, err), file=stderr)
             continue
         if key == 'cache_dir':
             v = os.path.expanduser(v)
         if key == 'silent_imports':
-            print("%s: silent_imports has been replaced by "
+            print("%ssilent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=stderr)
             if v:
                 if 'ignore_missing_imports' not in results:
@@ -217,10 +215,56 @@ def parse_section(prefix: str, template: Options,
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'skip'
         if key == 'almost_silent':
-            print("%s: almost_silent has been replaced by "
+            print("%salmost_silent has been replaced by "
                   "follow_imports=error" % prefix, file=stderr)
             if v:
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'
         results[key] = v
     return results, report_dirs
+
+
+def mypy_comments_to_config_map(args: List[str], template: Options) -> Dict[str, str]:
+    """Rewrite the mypy comment syntax into ini file syntax"""
+    options = {}
+    for line in args:
+        for entry in line.split(', '):
+            if '=' not in entry:
+                name = entry
+                value = None
+            else:
+                name, value = entry.split('=', 1)
+
+            name = name.replace('-', '_')
+            if value is None:
+                if name.startswith('no_') and not hasattr(template, name):
+                    name = name[3:]
+                    value = 'False'
+                else:
+                    value = 'True'
+            options[name] = value
+
+    return options
+
+
+def parse_mypy_comments(
+        args: List[str], template: Options) -> Tuple[Dict[str, object], List[str]]:
+    """Parse a collection of inline mypy: configuration comments.
+
+    Returns a dictionary of options to be applied and a list of error messages
+    generated.
+    """
+
+    # In order to easily match the behavior for bools, we abuse configparser.
+    # Oddly, the only way to get the SectionProxy object with the getboolean
+    # method is to create a config parser.
+    parser = configparser.RawConfigParser()
+    parser['dummy'] = mypy_comments_to_config_map(args, template)
+
+    stderr = StringIO()
+    sections, reports = parse_section('', template, parser['dummy'], stderr=stderr)
+    errors = [x for x in stderr.getvalue().strip().split('\n') if x]
+    if reports:
+        errors.append("Reports not supported in inline configuration")
+
+    return sections, errors
