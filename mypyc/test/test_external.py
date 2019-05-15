@@ -1,5 +1,7 @@
 """Test cases that run tests as subprocesses."""
 
+from typing import List
+
 import os
 import subprocess
 import sys
@@ -17,18 +19,27 @@ class TestExternal(unittest.TestCase):
         """Run C unit tests in a subprocess."""
         # Build Google Test, the C++ framework we use for testing C code.
         # The source code for Google Test is copied to this repository.
+        cppflags = []  # type: List[str]
+        env = os.environ.copy()
         if sys.platform == 'darwin':
-            env = {'CPPFLAGS': '-mmacosx-version-min=10.10'}
-        else:
-            env = os.environ.copy()
-        subprocess.check_call(['make', 'gtest_main.a'],
+            cppflags += ['-mmacosx-version-min=10.10', '-stdlib=libc++']
+        env['CPPFLAGS'] = ' '.join(cppflags)
+        subprocess.check_call(['make', 'libgtest.a'],
                               env=env,
                               cwd=os.path.join(base_dir, 'external', 'googletest', 'make'))
-        # Build and run C unit tests.
+        # Build Python wrapper for C unit tests.
+        env = os.environ.copy()
+        env['CPPFLAGS'] = ' '.join(cppflags)
+        status = subprocess.check_call(
+            [sys.executable, 'setup.py', 'build_ext', '--inplace'],
+            env=env,
+            cwd=os.path.join(base_dir, 'mypyc', 'lib-rt'))
+        # Run C unit tests.
         env = os.environ.copy()
         if 'GTEST_COLOR' not in os.environ:
             env['GTEST_COLOR'] = 'yes'  # Use fancy colors
-        status = subprocess.call(['make', 'test'],
+        status = subprocess.call([sys.executable, '-c',
+                                  'import sys, test_capi; sys.exit(test_capi.run_tests())'],
                                  env=env,
                                  cwd=os.path.join(base_dir, 'mypyc', 'lib-rt'))
         if status != 0:
