@@ -8815,3 +8815,33 @@ B().x
 [out]
 ==
 ==
+
+[case testNewSemanticAnalyzerUpdateMethodAndClass]
+# flags: --new-semantic-analyzer
+import m
+
+m.x
+
+class A:
+    def f(self) -> None:
+        self.x = 0
+        m.y
+
+    def g(self) -> None:
+        m.x
+
+[file m.py]
+x = 0
+y = 0
+
+[file m.py.2]
+x = ''
+y = 0
+
+[file m.py.3]
+x = ''
+y = ''
+
+[out]
+==
+==

@@ -950,7 +950,8 @@ def reprocess_nodes(manager: BuildManager,
         if not manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
-            patches = strip_target_new(deferred.node)
+            new_patches = strip_target_new(deferred.node)
+            patches.extend(new_patches)
     if not options.new_semantic_analyzer:
         re_analyze_nodes(file_node, nodes, manager, options)
     else:
