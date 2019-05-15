@@ -10,7 +10,8 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple, TextIO
+from io import StringIO
 
 from mypy import build
 from mypy import defaults
@@ -46,7 +47,11 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
+def main(script_path: Optional[str],
+         stdout: TextIO,
+         stderr: TextIO,
+         args: Optional[List[str]] = None,
+         ) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -62,13 +67,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args = sys.argv[1:]
 
     fscache = FileSystemCache()
-    sources, options = process_options(args, fscache=fscache)
+    sources, options = process_options(args, stdout=stdout, stderr=stderr,
+                                       fscache=fscache)
 
     messages = []
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         messages.extend(new_messages)
-        f = sys.stderr if serious else sys.stdout
+        f = stderr if serious else stdout
         try:
             for msg in new_messages:
                 f.write(msg + '\n')
@@ -82,7 +88,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache)
+        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -92,7 +98,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               (options.config_file,
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
                          if glob in options.unused_configs)),
-              file=sys.stderr)
+              file=stderr)
     if options.junit_xml:
         t1 = time.time()
         py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
@@ -280,6 +286,8 @@ FOOTER = """Environment variables:
 
 
 def process_options(args: List[str],
+                    stdout: TextIO = sys.stdout,
+                    stderr: TextIO = sys.stderr,
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
@@ -708,7 +716,7 @@ def process_options(args: List[str],
 
     # Parse config file first, so command line can override.
     options = Options()
-    parse_config_file(options, config_file)
+    parse_config_file(options, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
@@ -795,10 +803,11 @@ def process_options(args: List[str],
         cache = FindModuleCache(search_paths, fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
-                fail("Package name '{}' cannot have a slash in it.".format(p))
+                fail("Package name '{}' cannot have a slash in it.".format(p),
+                     stderr)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p))
+                fail("Can't find package '{}'".format(p), stderr)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -811,7 +820,7 @@ def process_options(args: List[str],
         try:
             targets = create_source_list(special_opts.files, options, fscache)
         except InvalidSourceList as e:
-            fail(str(e))
+            fail(str(e), stderr)
         return targets, options
 
 
@@ -916,7 +925,9 @@ config_types = {
 }  # type: Final
 
 
-def parse_config_file(options: Options, filename: Optional[str]) -> None:
+def parse_config_file(options: Options, filename: Optional[str],
+                      stdout: TextIO = sys.stdout,
+                      stderr: TextIO = sys.stderr) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
@@ -936,7 +947,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
         try:
             parser.read(config_file)
         except configparser.Error as err:
-            print("%s: %s" % (config_file, err), file=sys.stderr)
+            print("%s: %s" % (config_file, err), file=stderr)
         else:
             file_read = config_file
             options.config_file = file_read
@@ -946,11 +957,12 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
-            print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
+            print("%s: No [mypy] section in config file" % file_read, file=stderr)
     else:
         section = parser['mypy']
         prefix = '%s: [%s]' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, section)
+        updates, report_dirs = parse_section(prefix, options, section,
+                                             stdout, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
@@ -958,15 +970,16 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
     for name, section in parser.items():
         if name.startswith('mypy-'):
             prefix = '%s: [%s]' % (file_read, name)
-            updates, report_dirs = parse_section(prefix, options, section)
+            updates, report_dirs = parse_section(prefix, options, section,
+                                                 stdout, stderr)
             if report_dirs:
                 print("%s: Per-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
-                      file=sys.stderr)
+                      file=stderr)
             if set(updates) - PER_MODULE_OPTIONS:
                 print("%s: Per-module sections should only specify per-module flags (%s)" %
                       (prefix, ', '.join(sorted(set(updates) - PER_MODULE_OPTIONS))),
-                      file=sys.stderr)
+                      file=stderr)
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
             globs = name[5:]
             for glob in globs.split(','):
@@ -980,13 +993,16 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                     print("%s: Patterns must be fully-qualified module names, optionally "
                           "with '*' in some components (e.g spam.*.eggs.*)"
                           % prefix,
-                          file=sys.stderr)
+                          file=stderr)
                 else:
                     options.per_module_options[glob] = updates
 
 
 def parse_section(prefix: str, template: Options,
-                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
+                  section: Mapping[str, str],
+                  stdout: TextIO = sys.stdout,
+                  stderr: TextIO = sys.stderr
+                  ) -> Tuple[Dict[str, object], Dict[str, str]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.
@@ -1005,17 +1021,17 @@ def parse_section(prefix: str, template: Options,
                         report_dirs[report_type] = section[key]
                     else:
                         print("%s: Unrecognized report type: %s" % (prefix, key),
-                              file=sys.stderr)
+                              file=stderr)
                     continue
                 if key.startswith('x_'):
                     continue  # Don't complain about `x_blah` flags
                 elif key == 'strict':
                     print("%s: Strict mode is not supported in configuration files: specify "
                           "individual flags instead (see 'mypy -h' for the list of flags enabled "
-                          "in strict mode)" % prefix, file=sys.stderr)
+                          "in strict mode)" % prefix, file=stderr)
                 else:
                     print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
-                          file=sys.stderr)
+                          file=stderr)
                 continue
             ct = type(dv)
         v = None  # type: Any
@@ -1026,19 +1042,19 @@ def parse_section(prefix: str, template: Options,
                 try:
                     v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
-                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+                    print("%s: %s: %s" % (prefix, key, err), file=stderr)
                     continue
             else:
-                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
+                print("%s: Don't know what type %s should have" % (prefix, key), file=stderr)
                 continue
         except ValueError as err:
-            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+            print("%s: %s: %s" % (prefix, key, err), file=stderr)
             continue
         if key == 'cache_dir':
             v = os.path.expanduser(v)
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
-                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
+                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=stderr)
             if v:
                 if 'ignore_missing_imports' not in results:
                     results['ignore_missing_imports'] = True
@@ -1046,7 +1062,7 @@ def parse_section(prefix: str, template: Options,
                     results['follow_imports'] = 'skip'
         if key == 'almost_silent':
             print("%s: almost_silent has been replaced by "
-                  "follow_imports=error" % prefix, file=sys.stderr)
+                  "follow_imports=error" % prefix, file=stderr)
             if v:
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'
@@ -1054,6 +1070,6 @@ def parse_section(prefix: str, template: Options,
     return results, report_dirs
 
 
-def fail(msg: str) -> None:
-    sys.stderr.write('%s\n' % msg)
+def fail(msg: str, stderr: TextIO) -> None:
+    stderr.write('%s\n' % msg)
     sys.exit(2)

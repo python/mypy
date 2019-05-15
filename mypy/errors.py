@@ -3,7 +3,7 @@ import sys
 import traceback
 from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO
 
 from mypy.scope import Scope
 from mypy.options import Options
@@ -585,19 +585,27 @@ def remove_path_prefix(path: str, prefix: Optional[str]) -> str:
         return path
 
 
-def report_internal_error(err: Exception, file: Optional[str], line: int,
-                          errors: Errors, options: Options) -> None:
+def report_internal_error(err: Exception,
+                          file: Optional[str],
+                          line: int,
+                          errors: Errors,
+                          options: Options,
+                          stdout: Optional[TextIO] = None,
+                          stderr: Optional[TextIO] = None,
+                          ) -> None:
     """Report internal error and exit.
 
     This optionally starts pdb or shows a traceback.
     """
+    stdout = (stdout or sys.stdout)
+    stderr = (stderr or sys.stderr)
     # Dump out errors so far, they often provide a clue.
     # But catch unexpected errors rendering them.
     try:
         for msg in errors.new_messages():
             print(msg)
     except Exception as e:
-        print("Failed to dump errors:", repr(e), file=sys.stderr)
+        print("Failed to dump errors:", repr(e), file=stderr)
 
     # Compute file:line prefix for official-looking error messages.
     if file:
@@ -612,11 +620,11 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
     print('{}error: INTERNAL ERROR --'.format(prefix),
           'please report a bug at https://github.com/python/mypy/issues',
           'version: {}'.format(mypy_version),
-          file=sys.stderr)
+          file=stderr)
 
     # If requested, drop into pdb. This overrides show_tb.
     if options.pdb:
-        print('Dropping into pdb', file=sys.stderr)
+        print('Dropping into pdb', file=stderr)
         import pdb
         pdb.post_mortem(sys.exc_info()[2])
 
@@ -627,15 +635,15 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
         if not options.pdb:
             print('{}: note: please use --show-traceback to print a traceback '
                   'when reporting a bug'.format(prefix),
-                  file=sys.stderr)
+                  file=stderr)
     else:
         tb = traceback.extract_stack()[:-2]
         tb2 = traceback.extract_tb(sys.exc_info()[2])
         print('Traceback (most recent call last):')
         for s in traceback.format_list(tb + tb2):
             print(s.rstrip('\n'))
-        print('{}: {}'.format(type(err).__name__, err))
-        print('{}: note: use --pdb to drop into pdb'.format(prefix), file=sys.stderr)
+        print('{}: {}'.format(type(err).__name__, err), file=stdout)
+        print('{}: note: use --pdb to drop into pdb'.format(prefix), file=stderr)
 
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
