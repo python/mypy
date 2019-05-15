@@ -2807,7 +2807,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+a.py:4: error: Incompatible types in assignment (expression has type "int", metaclass "M" defined the type as "str")
 ==
 a.py:4: error: "Type[C]" has no attribute "x"
 ==
@@ -2836,7 +2836,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+a.py:3: error: Incompatible types in assignment (expression has type "int", metaclass "M" defined the type as "str")
 ==
 a.py:3: error: "Type[C]" has no attribute "x"
 ==
@@ -2912,7 +2912,7 @@ class M(type):
     x = None  # type: int
 [out]
 ==
-a.py:4: error: Incompatible types in assignment (expression has type "int", base class "M" defined the type as "str")
+a.py:4: error: Incompatible types in assignment (expression has type "int", metaclass "M" defined the type as "str")
 ==
 a.py:4: error: "Type[C]" has no attribute "x"
 ==

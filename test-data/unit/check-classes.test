@@ -5930,3 +5930,31 @@ class B:
 
 class C(A, B): pass
 [out]
+
+[case testMetaclassParentAttribute]
+import submod
+class A(metaclass=submod.M):
+    pass
+A.x = ""
+A.x = 1
+[file submod.py]
+class N(type):
+    x: str
+class M(N):
+    pass
+[out]
+main:5: error: Incompatible types in assignment (expression has type "int", base class "N" of metaclass "M" defined the type as "str")
+
+[case testParentMetaclassAttribute]
+import submod
+class A(metaclass=submod.M):
+    pass
+class B(A):
+    pass
+B.x = ""
+B.x = 1
+[file submod.py]
+class M(type):
+    x: str
+[out]
+main:7: error: Incompatible types in assignment (expression has type "int", metaclass "M" defined the type as "str")

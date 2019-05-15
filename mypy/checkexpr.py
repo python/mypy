@@ -467,8 +467,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.check_simple_assignment(
                     lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                     msg=message_registry.INCOMPATIBLE_TYPES,
-                    lvalue_name='TypedDict item "{}"'.format(item_name),
-                    rvalue_name='expression')
+                    lvalue_name='TypedDict item "{}" has type'.format(item_name),
+                    rvalue_name='expression has type')
 
         return callee
 

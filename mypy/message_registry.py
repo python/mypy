@@ -140,6 +140,8 @@ CANNOT_OVERRIDE_CLASS_VAR = \
     'variable'  # type: Final
 PARENT_CLASS_MISMATCH = \
     'base class "{}" defined the type as'  # type: Final
+METACLASS_MISMATCH = \
+    'metaclass "{}" defined the type as'  # type: Final
 
 # Protocol
 RUNTIME_PROTOCOL_EXPECTED = \
