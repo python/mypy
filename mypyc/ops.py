@@ -1505,8 +1505,6 @@ class ClassIR:
 
         # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
         self.children = []  # type: List[ClassIR]
-        # Does this class or any subclass have a __bool__method
-        self.has_bool = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -1549,6 +1547,10 @@ class ClassIR:
         except KeyError:
             return False
         return True
+
+    def is_method_final(self, name: str) -> bool:
+        return all(subc.get_method(name) is self.get_method(name)
+            for subc in self.subclasses())
 
     def has_attr(self, name: str) -> bool:
         try:

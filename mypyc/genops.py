@@ -37,7 +37,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_NAMED_OPT, ARG_STAR2, is_class_var
+    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_NAMED_OPT, ARG_STAR2, is_class_var, op_methods
 )
 import mypy.nodes
 import mypy.errors
@@ -517,12 +517,6 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
     for base in bases:
         base.children.append(ir)
-
-    # We need to know whether any children of a class have a __bool__
-    # method in order to know whether we can assume it is always true.
-    if ir.has_method('__bool__'):
-        for base in ir.mro:
-            base.has_bool = True
 
 
 class FuncInfo(object):
@@ -2010,6 +2004,39 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.shortcircuit_expr(expr)
         return self.binary_op(self.accept(expr.left), self.accept(expr.right), expr.op, expr.line)
 
+    def translate_eq_cmp(self,
+                         lreg: Value,
+                         rreg: Value,
+                         expr_op: str,
+                         line: int) -> Optional[Value]:
+        ltype = lreg.type
+        rtype = rreg.type
+        if not (isinstance(ltype, RInstance) and ltype == rtype):
+            return None
+
+        class_ir = ltype.class_ir
+        # Check whether any subclasses of the operand redefines __eq__.
+        cmp_varies_at_runtime = (not class_ir.is_method_final('__eq__')
+            or not class_ir.is_method_final('__ne__'))
+
+        if cmp_varies_at_runtime:
+            # We might need to call left.__eq__(right) or right.__eq__(left)
+            # depending on which is the more specific type.
+            return None
+
+        if not class_ir.has_method('__eq__'):
+            # There's no __eq__ defined, so just use object identity.
+            identity_ref_op = 'is' if expr_op == '==' else 'is not'
+            return self.binary_op(lreg, rreg, identity_ref_op, line)
+
+        return self.gen_method_call(
+            lreg,
+            op_methods[expr_op],
+            [rreg],
+            ltype,
+            line
+        )
+
     def matching_primitive_op(self,
                               candidates: List[OpDescription],
                               args: List[Value],
@@ -2046,6 +2073,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                   rreg: Value,
                   expr_op: str,
                   line: int) -> Value:
+        # Special case == and != when we can resolve the method call statically.
+        value = None
+        if expr_op in ('==', '!='):
+            value = self.translate_eq_cmp(lreg, rreg, expr_op, line)
+        if value is not None:
+            return value
+
         ops = binary_ops.get(expr_op, [])
         target = self.matching_primitive_op(ops, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % expr_op
@@ -2877,10 +2911,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 is_none = self.binary_op(value, self.none_object(), 'is not', value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
                 self.add(branch)
-                if isinstance(value_type, RInstance) and not value_type.class_ir.has_bool:
-                    # Optional[X] where X is always truthy
-                    pass
-                else:
+                always_truthy = False
+                if isinstance(value_type, RInstance):
+                    # check whether X.__bool__ is always just the default (object.__bool__)
+                    if (not value_type.class_ir.has_method('__bool__')
+                            and value_type.class_ir.is_method_final('__bool__')):
+                        always_truthy = True
+
+                if not always_truthy:
                     # Optional[X] where X may be falsey and requires a check
                     branch.true = self.new_block()
                     # unbox_or_cast instead of coerce because we want the
