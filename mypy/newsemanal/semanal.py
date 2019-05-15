@@ -2580,7 +2580,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
-            cur_node = self.type.names.get(lval.name, None)
+            cur_node = self.type.names.get(lval.name)
             node = self.type.get(lval.name)
             if cur_node and is_final:
                 # Overrides will be checked in type checker.
@@ -2591,11 +2591,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     cur_node.node.is_inferred and explicit_type):
                 self.attribute_already_defined(lval.name, lval, cur_node)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
-            if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
+            if (node is None
+                    or (isinstance(node.node, Var) and node.node.is_abstract_var)
                     # ... also an explicit declaration on self also creates a new Var.
                     # Note that `explicit_type` might has been erased for bare `Final`,
                     # so we also check if `is_final` is passed.
-                    (cur_node is None and (explicit_type or is_final))):
+                    or (cur_node is None and (explicit_type or is_final))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:

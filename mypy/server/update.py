@@ -136,7 +136,7 @@ from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, process_selected_targets
+from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.aststripnew import strip_target_new
@@ -955,7 +955,7 @@ def reprocess_nodes(manager: BuildManager,
     if not options.new_semantic_analyzer:
         re_analyze_nodes(file_node, nodes, manager, options)
     else:
-        process_selected_targets(graph[module_id], nodes, graph, patches)
+        semantic_analysis_for_targets(graph[module_id], nodes, graph, patches)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
