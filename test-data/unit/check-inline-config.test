@@ -29,7 +29,7 @@ def foo() -> List:  # E: Missing type parameters for generic type
 [builtins fixtures/list.pyi]
 
 [case testInlineList]
-# mypy: disallow-any-generics, always-false=FOO,BAR
+# mypy: disallow-any-generics,always-false="FOO,BAR"
 
 from typing import List
 

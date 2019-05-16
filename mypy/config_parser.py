@@ -224,11 +224,34 @@ def parse_section(prefix: str, template: Options,
     return results, report_dirs
 
 
+def split_directive(s: str) -> List[str]:
+    """Split s on commas, except during quoted sections"""
+    parts = []
+    cur = []  # type: List[str]
+    i = 0
+    while i < len(s):
+        if s[i] == ',':
+            parts.append(''.join(cur).strip())
+            cur = []
+        elif s[i] == '"':
+            i += 1
+            while i < len(s) and s[i] != '"':
+                cur.append(s[i])
+                i += 1
+        else:
+            cur.append(s[i])
+        i += 1
+    if cur:
+        parts.append(''.join(cur).strip())
+
+    return parts
+
+
 def mypy_comments_to_config_map(args: List[str], template: Options) -> Dict[str, str]:
     """Rewrite the mypy comment syntax into ini file syntax"""
     options = {}
     for line in args:
-        for entry in line.split(', '):
+        for entry in split_directive(line):
             if '=' not in entry:
                 name = entry
                 value = None
