@@ -847,7 +847,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
         if not defn.info and not self.is_core_builtin_class(defn):
-            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn)
+            # Add placeholder so that self-references in base classes can be
+            # resolved.  We don't want this to cause a deferral, since if there
+            # are no incomplete references, we'll replace this with a TypeInfo
+            # before returning.
+            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn,
+                            can_defer=False)
 
         tag = self.track_incomplete_refs()
 
@@ -4117,7 +4122,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return kind
 
     def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
-                   module_public: bool = True, module_hidden: bool = False) -> bool:
+                   module_public: bool = True, module_hidden: bool = False,
+                   can_defer: bool = True) -> bool:
         """Add symbol to the currently active symbol table.
 
         Generally additions to symbol table should go through this method or
@@ -4126,6 +4132,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Return True if we actually added the symbol, or False if we refused to do so
         (because something is not ready).
+
+        If can_defer is True, defer current target if adding a placeholder.
         """
         if self.is_func_scope():
             kind = LDEF
@@ -4137,7 +4145,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
-        return self.add_symbol_table_node(name, symbol, context)
+        return self.add_symbol_table_node(name, symbol, context, can_defer)
 
     def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
         """Same as above, but skipping the local namespace.
@@ -4177,16 +4185,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                      or name in self.nonlocal_decls[-1]))
 
     def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
-                              context: Optional[Context] = None) -> bool:
+                              context: Optional[Context] = None,
+                              can_defer: bool = True) -> bool:
         """Add symbol table node to the currently active symbol table.
 
         Return True if we actually added the symbol, or False if we refused to do so
         (because something is not ready).
+
+        If can_defer is True, defer current target if adding a placeholder.
         """
         names = self.current_symbol_table()
         existing = names.get(name)
         is_placeholder = isinstance(symbol.node, PlaceholderNode)
-        if is_placeholder:
+        if is_placeholder and can_defer:
             self.defer()
         if (existing is not None
                 and context is not None
