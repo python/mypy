@@ -50,7 +50,8 @@ class NewTypeAnalyzer:
         if (not call.analyzed or
                 isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info):
             # Start from labeling this as a future class, as we do for normal ClassDefs.
-            self.api.add_symbol(name, PlaceholderNode(fullname, s, becomes_typeinfo=True), s)
+            self.api.add_symbol(name, PlaceholderNode(fullname, s, becomes_typeinfo=True), s,
+                                can_defer=False)
 
         old_type, should_defer = self.check_newtype_args(name, call, s)
         if not call.analyzed:

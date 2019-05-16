@@ -313,7 +313,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(name, var, None)
             else:
                 self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
-                self.defer()
 
     def prepare_file(self, file_node: MypyFile) -> None:
         """Prepare a freshly parsed file for semantic analysis."""
@@ -848,7 +847,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
         if not defn.info and not self.is_core_builtin_class(defn):
-            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn)
+            # Add placeholder so that self-references in base classes can be
+            # resolved.  We don't want this to cause a deferral, since if there
+            # are no incomplete references, we'll replace this with a TypeInfo
+            # before returning.
+            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn,
+                            can_defer=False)
 
         tag = self.track_incomplete_refs()
 
@@ -3900,7 +3904,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return None
 
     def defer(self) -> None:
-        """Defer current analysis target to be analyzed again."""
+        """Defer current analysis target to be analyzed again.
+
+        This must be called if something in the current target is
+        incomplete or has a placeholder node.
+        """
         self.deferred = True
 
     def track_incomplete_refs(self) -> Tag:
@@ -4115,7 +4123,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return kind
 
     def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
-                   module_public: bool = True, module_hidden: bool = False) -> bool:
+                   module_public: bool = True, module_hidden: bool = False,
+                   can_defer: bool = True) -> bool:
         """Add symbol to the currently active symbol table.
 
         Generally additions to symbol table should go through this method or
@@ -4124,6 +4133,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Return True if we actually added the symbol, or False if we refused to do so
         (because something is not ready).
+
+        If can_defer is True, defer current target if adding a placeholder.
         """
         if self.is_func_scope():
             kind = LDEF
@@ -4135,7 +4146,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                  node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
-        return self.add_symbol_table_node(name, symbol, context)
+        return self.add_symbol_table_node(name, symbol, context, can_defer)
 
     def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
         """Same as above, but skipping the local namespace.
@@ -4175,21 +4186,26 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                      or name in self.nonlocal_decls[-1]))
 
     def add_symbol_table_node(self, name: str, symbol: SymbolTableNode,
-                              context: Optional[Context] = None) -> bool:
+                              context: Optional[Context] = None,
+                              can_defer: bool = True) -> bool:
         """Add symbol table node to the currently active symbol table.
 
         Return True if we actually added the symbol, or False if we refused to do so
         (because something is not ready).
+
+        If can_defer is True, defer current target if adding a placeholder.
         """
         names = self.current_symbol_table()
         existing = names.get(name)
+        if isinstance(symbol.node, PlaceholderNode) and can_defer:
+            self.defer()
         if (existing is not None
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
-                     or isinstance(symbol.node, PlaceholderNode) and
-                     # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
-                     # This can happen for type aliases and NewTypes.
-                     not symbol.node.becomes_typeinfo)):
+                     or (isinstance(symbol.node, PlaceholderNode) and
+                         # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
+                         # This can happen for type aliases and NewTypes.
+                         not symbol.node.becomes_typeinfo))):
             # There is an existing node, so this may be a redefinition.
             # If the new node points to the same node as the old one,
             # or if both old and new nodes are placeholders, we don't
