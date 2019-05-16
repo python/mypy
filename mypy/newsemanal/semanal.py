@@ -4196,13 +4196,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         names = self.current_symbol_table()
         existing = names.get(name)
-        is_placeholder = isinstance(symbol.node, PlaceholderNode)
-        if is_placeholder and can_defer:
+        if isinstance(symbol.node, PlaceholderNode) and can_defer:
             self.defer()
         if (existing is not None
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
-                     or (is_placeholder and
+                     or (isinstance(symbol.node, PlaceholderNode) and
                          # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
                          # This can happen for type aliases and NewTypes.
                          not symbol.node.becomes_typeinfo))):
