@@ -313,7 +313,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(name, var, None)
             else:
                 self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
-                self.defer()
 
     def prepare_file(self, file_node: MypyFile) -> None:
         """Prepare a freshly parsed file for semantic analysis."""
@@ -3899,7 +3898,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return None
 
     def defer(self) -> None:
-        """Defer current analysis target to be analyzed again."""
+        """Defer current analysis target to be analyzed again.
+
+        This must called if something in the current target is
+        incomplete or has a placeholder node.
+        """
         self.deferred = True
 
     def track_incomplete_refs(self) -> Tag:
@@ -4182,13 +4185,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         names = self.current_symbol_table()
         existing = names.get(name)
+        is_placeholder = isinstance(symbol.node, PlaceholderNode)
+        if is_placeholder:
+            self.defer()
         if (existing is not None
                 and context is not None
                 and (not isinstance(existing.node, PlaceholderNode)
-                     or isinstance(symbol.node, PlaceholderNode) and
-                     # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
-                     # This can happen for type aliases and NewTypes.
-                     not symbol.node.becomes_typeinfo)):
+                     or (is_placeholder and
+                         # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
+                         # This can happen for type aliases and NewTypes.
+                         not symbol.node.becomes_typeinfo))):
             # There is an existing node, so this may be a redefinition.
             # If the new node points to the same node as the old one,
             # or if both old and new nodes are placeholders, we don't
