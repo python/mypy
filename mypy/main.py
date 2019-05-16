@@ -23,6 +23,7 @@ from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
 from mypy.config_parser import parse_version, parse_config_file
+from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
@@ -121,28 +122,6 @@ def main(script_path: Optional[str],
         util.hard_exit(code)
     elif code:
         sys.exit(code)
-
-
-class SplitNamespace(argparse.Namespace):
-    def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
-        self.__dict__['_standard_namespace'] = standard_namespace
-        self.__dict__['_alt_namespace'] = alt_namespace
-        self.__dict__['_alt_prefix'] = alt_prefix
-
-    def _get(self) -> Tuple[Any, Any]:
-        return (self._standard_namespace, self._alt_namespace)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name.startswith(self._alt_prefix):
-            setattr(self._alt_namespace, name[len(self._alt_prefix):], value)
-        else:
-            setattr(self._standard_namespace, name, value)
-
-    def __getattr__(self, name: str) -> Any:
-        if name.startswith(self._alt_prefix):
-            return getattr(self._alt_namespace, name[len(self._alt_prefix):])
-        else:
-            return getattr(self._standard_namespace, name)
 
 
 # Make the help output a little less jarring.
@@ -799,8 +778,11 @@ def process_options(args: List[str],
     else:
         try:
             targets = create_source_list(special_opts.files, options, fscache)
-        except InvalidSourceList as e:
-            fail(str(e), stderr)
+        # Variable named e2 instead of e to work around mypyc bug #620
+        # which causes issues when using the same variable to catch
+        # exceptions of different types.
+        except InvalidSourceList as e2:
+            fail(str(e2), stderr)
         return targets, options
 
 
