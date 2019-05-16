@@ -89,7 +89,7 @@ if USE_MYPYC:
         # Need to be runnable as scripts
         '__main__.py',
         'sitepkgs.py',
-        'dmypy.py',
+        'dmypy/__main__.py',
 
         # Needs to be interpreted to provide a hook to interpreted plugins
         'interpreted_plugin.py',
@@ -171,7 +171,7 @@ setup(name='mypy',
       package_data={'mypy': package_data},
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
-                                        'dmypy=mypy.dmypy:console_entry',
+                                        'dmypy=mypy.dmypy.client:console_entry',
                                         ]},
       classifiers=classifiers,
       cmdclass=cmdclass,
