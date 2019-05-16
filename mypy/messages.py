@@ -1396,7 +1396,7 @@ class MessageBuilder:
 
         # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
         if tp.definition is not None and tp.definition.name() is not None:
-            definition_args = getattr(tp.definition, 'arg_names')
+            definition_args = tp.definition.arg_names  # type: ignore
             if definition_args and tp.arg_names != definition_args \
                     and len(definition_args) > 0:
                 if s:

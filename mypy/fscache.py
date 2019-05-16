@@ -146,7 +146,7 @@ class FileSystemCache:
         tpl = tuple(seq)
         # FIXME: this works around typeshed claiming stat_result is from posix
         # (typeshed #2683)
-        st = getattr(os, 'stat_result')(tpl)
+        st = getattr(os, 'stat_result')(tpl)  # noqa
         self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)
