@@ -90,16 +90,19 @@ if USE_MYPYC:
         'mypyc_hacks.py',
         'interpreted_plugin.py',
 
-        # Can't be compiled because they need to be runnable as scripts
+        # Need to be runnable as scripts
         '__main__.py',
         'sitepkgs.py',
-
-        # Can't be compiled because something goes wrong
-        'bogus_type.py',
         'dmypy.py',
-        'gclogger.py',
+
+        # We lie to mypy about code reachability here
+        'bogus_type.py',
+
+        # Something goes wrong
         'main.py',
-        'memprofile.py',
+
+        # We don't populate __file__ properly at the top level or something?
+        # Also I think there would be problems with how we generate new version.pys
         'version.py',
     )
 
