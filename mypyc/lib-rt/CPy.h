@@ -505,7 +505,8 @@ static CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
 }
 
 static inline bool CPyTagged_MaybeRemainderOverflow(CPyTagged left, CPyTagged right) {
-    return right == -0x8000000000000000ULL || left == -0x8000000000000000ULL;
+    // The remainder can't overflow but it can divide by 0
+    return right == 0;
 }
 
 static CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
