@@ -3905,7 +3905,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def defer(self) -> None:
         """Defer current analysis target to be analyzed again.
 
-        This must called if something in the current target is
+        This must be called if something in the current target is
         incomplete or has a placeholder node.
         """
         self.deferred = True
