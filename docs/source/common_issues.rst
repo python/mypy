@@ -163,25 +163,6 @@ including imports or docstrings) has the effect of ignoring the *entire* module.
 
     foo.bar()
 
-When running mypy with Python 3.8 or later, a ``# type: ignore`` comment
-anywhere at the top indentation level of a module will skip type checking for
-all remaining lines in the file.
-
-.. code-block:: python
-
-    """Docstring."""
-
-    import spam
-    import eggs
-    import foo
-
-    eggs.fry()  # This code is still checked!
-
-    # type: ignore
-    
-    foo.bar()  # Mypy skips over everything here.
-    foo.baz()
-
 Unexpected errors about 'None' and/or 'Optional' types
 ------------------------------------------------------
 

@@ -313,27 +313,7 @@ class ASTConverter:
             return [block]
 
         res = []  # type: List[Statement]
-        line = 0
-
-        for i, stmt in enumerate(stmts):
-
-            if ismodule:  # This line needs to be split for mypy to branch on version:
-                if sys.version_info >= (3, 8):
-                    # In Python 3.8+ (we need end_lineno), a "# type: ignore" comment
-                    # between statements at the top level of a module skips checking
-                    # for everything else:
-                    ignores = set(range(line + 1, self.get_lineno(stmt))) & self.type_ignores
-
-                    if ignores:
-                        self.errors.used_ignored_lines[self.errors.file].add(min(ignores))
-                        rest = self.fix_function_overloads(self.translate_stmt_list(stmts[i:]))
-                        block = Block(rest)
-                        block.is_unreachable = True
-                        res.append(block)
-                        return res
-
-                    line = stmt.end_lineno if stmt.end_lineno is not None else stmt.lineno
-
+        for stmt in stmts:
             node = self.visit(stmt)
             res.append(node)
 
