@@ -1009,7 +1009,8 @@ class B: ...
 import a
 [file a.py]
 C = 1
-from b import *  # E: Name 'C' already defined on line 1
+from b import *  # E: Name 'C' already defined on line 1 \
+                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
 import a
@@ -2200,3 +2201,40 @@ x = 1
 # We want to check that the first definition creates the variable.
 def x() -> None: ...  # E: Name 'x' already defined on line 1
 y = 2
+
+[case testNewAnalyzerImportStarSpecialCase]
+import unittest
+[file unittest/__init__.pyi]
+from unittest.suite import *
+
+def load_tests() -> TestSuite: ...
+[file unittest/suite.pyi]
+from typing import Union # Iterable not imported
+import unittest.case
+
+_TestType = Union[unittest.case.TestCase]
+
+class BaseTestSuite(Iterable[_TestType]):
+    ...
+
+class TestSuite(BaseTestSuite):
+    ...
+
+[file unittest/case.pyi]
+class TestCase: ...
+
+[out]
+tmp/unittest/suite.pyi:6: error: Name 'Iterable' is not defined
+tmp/unittest/suite.pyi:6: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Iterable")
+
+[case testNewAnalyzerNewTypeSpecialCase]
+from typing import NewType
+from typing_extensions import Final, Literal
+
+X = NewType('X', int)
+
+var1: Final = 1
+
+def force1(x: Literal[1]) -> None: pass
+
+force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'

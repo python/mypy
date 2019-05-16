@@ -44,36 +44,31 @@ print('\nExit status:', result[2])
 
 import sys
 from io import StringIO
-from typing import List, Tuple, Callable
+from typing import List, Tuple, Union, TextIO, Callable
+from mypy_extensions import DefaultArg
 
 
-def _run(f: Callable[[], None]) -> Tuple[str, str, int]:
-    old_stdout = sys.stdout
-    new_stdout = StringIO()
-    sys.stdout = new_stdout
+def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:
 
-    old_stderr = sys.stderr
-    new_stderr = StringIO()
-    sys.stderr = new_stderr
+    stdout = StringIO()
+    stderr = StringIO()
 
     try:
-        f()
+        main_wrapper(stdout, stderr)
         exit_status = 0
     except SystemExit as system_exit:
         exit_status = system_exit.code
-    finally:
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
 
-    return new_stdout.getvalue(), new_stderr.getvalue(), exit_status
+    return stdout.getvalue(), stderr.getvalue(), exit_status
 
 
 def run(args: List[str]) -> Tuple[str, str, int]:
     # Lazy import to avoid needing to import all of mypy to call run_dmypy
     from mypy.main import main
-    return _run(lambda: main(None, args=args))
+    return _run(lambda stdout, stderr: main(None, args=args,
+                                            stdout=stdout, stderr=stderr))
 
 
 def run_dmypy(args: List[str]) -> Tuple[str, str, int]:
     from mypy.dmypy import main
-    return _run(lambda: main(args))
+    return _run(lambda stdout, stderr: main(args))

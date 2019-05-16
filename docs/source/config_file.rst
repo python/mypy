@@ -439,6 +439,7 @@ Miscellaneous
 ``warn_unused_configs`` (bool, default False)
     Warns about per-module sections in the config file that do not
     match any files processed when invoking mypy.
+    (This requires turning off incremental mode using ``incremental = False``.)
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.

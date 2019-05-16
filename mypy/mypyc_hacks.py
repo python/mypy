@@ -1,13 +1,15 @@
 """Stuff that we had to move out of its right place because of mypyc limitations."""
 
-from typing import Dict, Any
+from typing import Dict, Any, TextIO
 import sys
 
 
 # Extracted from build.py because we can't handle *args righit
 class BuildManagerBase:
-    def __init__(self) -> None:
+    def __init__(self, stdout: TextIO, stderr: TextIO) -> None:
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+        self.stdout = stdout
+        self.stderr = stderr
 
     def verbosity(self) -> int:
         return self.options.verbosity  # type: ignore
@@ -15,10 +17,10 @@ class BuildManagerBase:
     def log(self, *message: str) -> None:
         if self.verbosity() >= 1:
             if message:
-                print('LOG: ', *message, file=sys.stderr)
+                print('LOG: ', *message, file=self.stderr)
             else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
+                print(file=self.stderr)
+            self.stderr.flush()
 
     def log_fine_grained(self, *message: str) -> None:
         import mypy.build
@@ -27,15 +29,15 @@ class BuildManagerBase:
         elif mypy.build.DEBUG_FINE_GRAINED:
             # Output log in a simplified format that is quick to browse.
             if message:
-                print(*message, file=sys.stderr)
+                print(*message, file=self.stderr)
             else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
+                print(file=self.stderr)
+            self.stderr.flush()
 
     def trace(self, *message: str) -> None:
         if self.verbosity() >= 2:
-            print('TRACE:', *message, file=sys.stderr)
-            sys.stderr.flush()
+            print('TRACE:', *message, file=self.stderr)
+            self.stderr.flush()
 
     def add_stats(self, **kwds: Any) -> None:
         for key, value in kwds.items():

@@ -96,8 +96,8 @@ def cleanup_builtin_scc(state: 'State') -> None:
     remove_imported_names_from_symtable(state.tree.names, 'builtins')
 
 
-def process_selected_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
-                             graph: 'Graph', strip_patches: List[Callable[[], None]]) -> None:
+def semantic_analysis_for_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
+                                  graph: 'Graph', strip_patches: List[Callable[[], None]]) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()

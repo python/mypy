@@ -25,7 +25,7 @@ import time
 import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
-                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
+                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 MYPY = False
 if MYPY:
     from typing import ClassVar
@@ -128,6 +128,8 @@ def build(sources: List[BuildSource],
           alt_lib_path: Optional[str] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           fscache: Optional[FileSystemCache] = None,
+          stdout: Optional[TextIO] = None,
+          stderr: Optional[TextIO] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -159,9 +161,11 @@ def build(sources: List[BuildSource],
         messages.extend(new_messages)
 
     flush_errors = flush_errors or default_flush_errors
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
 
     try:
-        result = _build(sources, options, alt_lib_path, flush_errors, fscache)
+        result = _build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
         result.errors = messages
         return result
     except CompileError as e:
@@ -180,6 +184,8 @@ def _build(sources: List[BuildSource],
            alt_lib_path: Optional[str],
            flush_errors: Callable[[List[str], bool], None],
            fscache: Optional[FileSystemCache],
+           stdout: TextIO,
+           stderr: TextIO,
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(150 * 1000)
@@ -197,7 +203,7 @@ def _build(sources: List[BuildSource],
 
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin, snapshot = load_plugins(options, errors)
+    plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -212,12 +218,14 @@ def _build(sources: List[BuildSource],
                            plugins_snapshot=snapshot,
                            errors=errors,
                            flush_errors=flush_errors,
-                           fscache=fscache)
+                           fscache=fscache,
+                           stdout=stdout,
+                           stderr=stderr)
     manager.trace(repr(options))
 
     reset_global_state()
     try:
-        graph = dispatch(sources, manager)
+        graph = dispatch(sources, manager, stdout)
         if not options.fine_grained_incremental:
             TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
@@ -319,7 +327,10 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins(options: Options,
+                 errors: Errors,
+                 stdout: TextIO,
+                 ) -> Tuple[Plugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
@@ -383,7 +394,8 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
         try:
             plugin_type = getattr(module, func_name)(__version__)
         except Exception:
-            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path))
+            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path),
+                  file=stdout)
             raise  # Propagate to display traceback
 
         if not isinstance(plugin_type, type):
@@ -398,7 +410,8 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
             custom_plugins.append(plugin_type(options))
             snapshot[module_name] = take_module_snapshot(module)
         except Exception:
-            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
+            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
+                  file=stdout)
             raise  # Propagate to display traceback
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
@@ -496,8 +509,10 @@ class BuildManager(BuildManagerBase):
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
+                 stdout: TextIO,
+                 stderr: TextIO,
                  ) -> None:
-        super().__init__()
+        super().__init__(stdout, stderr)
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -558,7 +573,7 @@ class BuildManager(BuildManagerBase):
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
-        self.quickstart_state = read_quickstart_file(options)
+        self.quickstart_state = read_quickstart_file(options, self.stdout)
 
     def dump_stats(self) -> None:
         self.log("Stats:")
@@ -904,7 +919,9 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     return snapshot
 
 
-def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, int, str]]]:
+def read_quickstart_file(options: Options,
+                         stdout: TextIO,
+                         ) -> Optional[Dict[str, Tuple[float, int, str]]]:
     quickstart = None  # type: Optional[Dict[str, Tuple[float, int, str]]]
     if options.quickstart_file:
         # This is very "best effort". If the file is missing or malformed,
@@ -918,7 +935,7 @@ def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, in
             for file, (x, y, z) in raw_quickstart.items():
                 quickstart[file] = (x, y, z)
         except Exception as e:
-            print("Warning: Failed to load quickstart file: {}\n".format(str(e)))
+            print("Warning: Failed to load quickstart file: {}\n".format(str(e)), file=stdout)
     return quickstart
 
 
@@ -1769,7 +1786,8 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0, self.manager.errors, self.options)
+            report_internal_error(err, self.path, 0, self.manager.errors,
+                                  self.options, self.manager.stdout, self.manager.stderr)
         self.manager.errors.set_import_context(save_import_context)
         # TODO: Move this away once we've removed the old semantic analyzer?
         if check_blockers:
@@ -2429,7 +2447,10 @@ def log_configuration(manager: BuildManager) -> None:
 # The driver
 
 
-def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
+def dispatch(sources: List[BuildSource],
+             manager: BuildManager,
+             stdout: TextIO,
+             ) -> Graph:
     log_configuration(manager)
 
     t0 = time.time()
@@ -2454,11 +2475,11 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
                       fm_cache_size=len(manager.find_module_cache.results),
                       )
     if not graph:
-        print("Nothing to do?!")
+        print("Nothing to do?!", file=stdout)
         return graph
     manager.log("Loaded graph with %d nodes (%.3f sec)" % (len(graph), t1 - t0))
     if manager.options.dump_graph:
-        dump_graph(graph)
+        dump_graph(graph, stdout)
         return graph
 
     # Fine grained dependencies that didn't have an associated module in the build
@@ -2480,7 +2501,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
             manager.cache_enabled = False
             manager.log("Falling back to full run -- reloading graph...")
-            return dispatch(sources, manager)
+            return dispatch(sources, manager, stdout)
 
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the
@@ -2528,7 +2549,7 @@ class NodeInfo:
                                                      json.dumps(self.deps))
 
 
-def dump_graph(graph: Graph) -> None:
+def dump_graph(graph: Graph, stdout: TextIO = sys.stdout) -> None:
     """Dump the graph as a JSON string to stdout.
 
     This copies some of the work by process_graph()
@@ -2562,7 +2583,7 @@ def dump_graph(graph: Graph) -> None:
                         if (dep_id != node.node_id and
                                 (dep_id not in node.deps or pri < node.deps[dep_id])):
                             node.deps[dep_id] = pri
-    print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
+    print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]", file=stdout)
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager,
