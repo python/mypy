@@ -16,7 +16,7 @@ two in a typesafe way.
 """
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, Set
 MYPY = False
 if MYPY:
     import typing  # for typing.Type, which conflicts with types.Type
@@ -163,7 +163,7 @@ class ASTConverter:
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
-        self.extra_type_ignores = []  # type: List[int]
+        self.type_ignores = set()  # type: Set[int]
 
     def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
@@ -193,12 +193,28 @@ class ASTConverter:
             res.append(exp)
         return res
 
-    def translate_stmt_list(self, l: Sequence[AST]) -> List[Statement]:
+    def get_lineno(self, node: Union[ast27.expr, ast27.stmt]) -> int:
+        if isinstance(node, (ast27.ClassDef, ast27.FunctionDef)) and node.decorator_list:
+            return node.decorator_list[0].lineno
+        return node.lineno
+
+    def translate_stmt_list(self,
+                            stmts: Sequence[ast27.stmt],
+                            module: bool = False) -> List[Statement]:
+        # A "# type: ignore" comment before the first statement of a module
+        # ignores the whole module:
+        if (module and stmts and self.type_ignores
+                and min(self.type_ignores) < self.get_lineno(stmts[0])):
+            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+            block.is_unreachable = True
+            return [block]
+
         res = []  # type: List[Statement]
-        for e in l:
-            stmt = self.visit(e)
-            assert isinstance(stmt, Statement)
-            res.append(stmt)
+        for stmt in stmts:
+            node = self.visit(stmt)
+            assert isinstance(node, Statement)
+            res.append(node)
         return res
 
     op_map = {
@@ -304,13 +320,12 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
+        self.type_ignores = {ti.lineno for ti in mod.type_ignores}
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-        ignores = [ti.lineno for ti in mod.type_ignores]
-        ignores.extend(self.extra_type_ignores)
         return MypyFile(body,
                         self.imports,
                         False,
-                        set(ignores),
+                        self.type_ignores,
                         )
 
     # --- stmt ---
@@ -558,7 +573,7 @@ class ASTConverter:
             extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
 
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
@@ -578,7 +593,7 @@ class ASTConverter:
             extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             typ = None
         stmt = ForStmt(self.visit(n.target),
@@ -608,7 +623,7 @@ class ASTConverter:
             extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             typ = None
         stmt = WithStmt([self.visit(n.context_expr)],

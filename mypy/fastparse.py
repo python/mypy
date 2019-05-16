@@ -2,7 +2,7 @@ import re
 import sys
 
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload, Set
 )
 MYPY = False
 if MYPY:
@@ -258,7 +258,7 @@ class ASTConverter:
         self.is_stub = is_stub
         self.errors = errors
 
-        self.extra_type_ignores = []  # type: List[int]
+        self.type_ignores = set()  # type: Set[int]
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
@@ -294,11 +294,29 @@ class ASTConverter:
             res.append(exp)
         return res
 
-    def translate_stmt_list(self, l: Sequence[AST]) -> List[Statement]:
+    def get_lineno(self, node: Union[ast3.expr, ast3.stmt]) -> int:
+        if (isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
+                and node.decorator_list):
+            return node.decorator_list[0].lineno
+        return node.lineno
+
+    def translate_stmt_list(self,
+                            stmts: Sequence[ast3.stmt],
+                            ismodule: bool = False) -> List[Statement]:
+        # A "# type: ignore" comment before the first statement of a module
+        # ignores the whole module:
+        if (ismodule and stmts and self.type_ignores
+                and min(self.type_ignores) < self.get_lineno(stmts[0])):
+            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+            block.is_unreachable = True
+            return [block]
+
         res = []  # type: List[Statement]
-        for e in l:
-            stmt = self.visit(e)
-            res.append(stmt)
+        for stmt in stmts:
+            node = self.visit(stmt)
+            res.append(node)
+
         return res
 
     op_map = {
@@ -403,13 +421,12 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
-        body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-        ignores = [ti.lineno for ti in mod.type_ignores]
-        ignores.extend(self.extra_type_ignores)
+        self.type_ignores = {ti.lineno for ti in mod.type_ignores}
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
                         False,
-                        set(ignores),
+                        self.type_ignores,
                         )
 
     # --- stmt ---
@@ -615,7 +632,7 @@ class ASTConverter:
             elif type_comment is not None:
                 extra_ignore, arg_type = parse_type_comment(type_comment, arg.lineno, self.errors)
                 if extra_ignore:
-                    self.extra_type_ignores.append(arg.lineno)
+                    self.type_ignores.add(arg.lineno)
 
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
@@ -673,7 +690,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             typ = None
         s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
@@ -707,7 +724,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             target_type = None
         node = ForStmt(self.visit(n.target),
@@ -722,7 +739,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             target_type = None
         node = ForStmt(self.visit(n.target),
@@ -753,7 +770,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             target_type = None
         node = WithStmt([self.visit(i.context_expr) for i in n.items],
@@ -767,7 +784,7 @@ class ASTConverter:
         if n.type_comment is not None:
             extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
             if extra_ignore:
-                self.extra_type_ignores.append(n.lineno)
+                self.type_ignores.add(n.lineno)
         else:
             target_type = None
         s = WithStmt([self.visit(i.context_expr) for i in n.items],
