@@ -1,10 +1,21 @@
 /* getargs implementation copied from Python 3.8 and stripped down to only include
  * the functions we need.
- * We also add support for required kwonly args.
+ * We also add support for required kwonly args and accepting *args / **kwargs.
  * A good idea would be to also vendor in the Fast versions and get our stuff
  * working with *that*.
  * Another probably good idea is to strip out all the formatting stuff we don't need
  * and then add in custom stuff that we do need.
+ *
+ * DOCUMENTATION OF THE EXTENSIONS:
+ *  - Arguments given after a @ format specify are required keyword-only arguments.
+ *    The | and $ specifiers must both appear before @.
+ *  - If the first character of a format string is %, then the function can support
+ *    *args and **kwargs. On seeing a %, the parser will consume two arguments,
+ *    which should be pointers to variables to store the *args and **kwargs, respectively.
+ *    Either pointer can be NULL, in which case the function doesn't take that
+ *    variety of vararg.
+ *    Unlike most format specifiers, the caller takes ownership of these objects
+ *    and is responsible for decrefing them.
  */
 
 #include "Python.h"
@@ -1162,6 +1173,9 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     PyObject *current_arg;
     freelistentry_t static_entries[STATIC_FREELIST_ENTRIES];
     freelist_t freelist;
+    int bound_pos_args;
+
+    PyObject **p_args = NULL, **p_kwargs = NULL;
 
     freelist.entries = static_entries;
     freelist.first_available = 0;
@@ -1197,6 +1211,12 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         }
     }
 
+    if (*format == '%') {
+        p_args = va_arg(*p_va, PyObject **);
+        p_kwargs = va_arg(*p_va, PyObject **);
+        format++;
+    }
+
     if (len > STATIC_FREELIST_ENTRIES) {
         freelist.entries = PyMem_NEW(freelistentry_t, len);
         if (freelist.entries == NULL) {
@@ -1208,7 +1228,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
 
     nargs = PyTuple_GET_SIZE(args);
     nkwargs = (kwargs == NULL) ? 0 : PyDict_GET_SIZE(kwargs);
-    if (nargs + nkwargs > len) {
+    if (nargs + nkwargs > len && !p_args && !p_kwargs) {
         /* Adding "keyword" (when nargs == 0) prevents producing wrong error
            messages in some special cases (see bpo-31229). */
         PyErr_Format(PyExc_TypeError,
@@ -1266,7 +1286,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                  * informative message (see below). */
                 break;
             }
-            if (max < nargs) {
+            if (max < nargs && !p_args) {
                 if (max == 0) {
                     PyErr_Format(PyExc_TypeError,
                                  "%.200s%s takes no positional arguments",
@@ -1310,7 +1330,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             return cleanreturn(0, &freelist);
         }
         if (!skip) {
-            if (i < nargs) {
+            if (i < nargs && i < max) {
                 current_arg = PyTuple_GET_ITEM(args, i);
             }
             else if (nkwargs && i >= pos) {
@@ -1370,7 +1390,9 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
              * fulfilled and no keyword args left, with no further
              * validation. XXX Maybe skip this in debug build ?
              */
-            if (!nkwargs && !skip && !has_required_kws) {
+            if (!nkwargs && !skip && !has_required_kws &&
+                !p_args && !p_kwargs)
+            {
                 return cleanreturn(1, &freelist);
             }
         }
@@ -1407,11 +1429,37 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         return cleanreturn(0, &freelist);
     }
 
+    bound_pos_args = Py_MIN(nargs, Py_MIN(max, len));
+    if (p_args) {
+        *p_args = PyTuple_GetSlice(args, bound_pos_args, nargs);
+        if (!*p_args) {
+            return cleanreturn(0, &freelist);
+        }
+    }
+
+    if (p_kwargs) {
+        /* This unfortunately needs to be special cased because if len is 0 then we
+         * never go through the main loop. */
+        if (nargs > 0 && len == 0 && !p_args) {
+            PyErr_Format(PyExc_TypeError,
+                         "%.200s%s takes no positional arguments",
+                         (fname == NULL) ? "function" : fname,
+                         (fname == NULL) ? "" : "()");
+
+            return cleanreturn(0, &freelist);
+        }
+
+        *p_kwargs = PyDict_New();
+        if (!*p_kwargs) {
+            goto latefail;
+        }
+    }
+
     if (nkwargs > 0) {
-        PyObject *key;
+        PyObject *key, *value;
         Py_ssize_t j;
         /* make sure there are no arguments given by name and position */
-        for (i = pos; i < nargs; i++) {
+        for (i = pos; i < bound_pos_args && i < len; i++) {
             current_arg = _PyDict_GetItemStringWithError(kwargs, kwlist[i]);
             if (current_arg) {
                 /* arg present in tuple and in dict */
@@ -1421,20 +1469,20 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                              (fname == NULL) ? "function" : fname,
                              (fname == NULL) ? "" : "()",
                              kwlist[i], i+1);
-                return cleanreturn(0, &freelist);
+                goto latefail;
             }
             else if (PyErr_Occurred()) {
-                return cleanreturn(0, &freelist);
+                goto latefail;
             }
         }
         /* make sure there are no extraneous keyword arguments */
         j = 0;
-        while (PyDict_Next(kwargs, &j, &key, NULL)) {
+        while (PyDict_Next(kwargs, &j, &key, &value)) {
             int match = 0;
             if (!PyUnicode_Check(key)) {
                 PyErr_SetString(PyExc_TypeError,
                                 "keywords must be strings");
-                return cleanreturn(0, &freelist);
+                goto latefail;
             }
             for (i = pos; i < len; i++) {
                 if (_PyUnicode_EqualToASCIIString(key, kwlist[i])) {
@@ -1443,18 +1491,34 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 }
             }
             if (!match) {
-                PyErr_Format(PyExc_TypeError,
-                             "'%U' is an invalid keyword "
-                             "argument for %.200s%s",
-                             key,
-                             (fname == NULL) ? "this function" : fname,
-                             (fname == NULL) ? "" : "()");
-                return cleanreturn(0, &freelist);
+                if (!p_kwargs) {
+                    PyErr_Format(PyExc_TypeError,
+                                 "'%U' is an invalid keyword "
+                                 "argument for %.200s%s",
+                                 key,
+                                 (fname == NULL) ? "this function" : fname,
+                                 (fname == NULL) ? "" : "()");
+                    goto latefail;
+                } else {
+                    if (PyDict_SetItem(*p_kwargs, key, value) < 0) {
+                        goto latefail;
+                    }
+                }
             }
         }
     }
 
     return cleanreturn(1, &freelist);
+    /* Handle failures that have happened after we have tried to
+     * create *args and **kwargs, if they exist. */
+latefail:
+    if (p_args) {
+        Py_XDECREF(*p_args);
+    }
+    if (p_kwargs) {
+        Py_XDECREF(*p_kwargs);
+    }
+    return cleanreturn(0, &freelist);
 }
 
 

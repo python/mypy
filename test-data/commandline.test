@@ -102,12 +102,6 @@ from typing import List, Any
 from typing_extensions import Final
 from mypy_extensions import trait
 
-def args(*x: int) -> int:  # E: Accepting *args or **kwargs is unimplemented
-    return sum(x)
-
-def kwargs(**x: int) -> None:  # E: Accepting *args or **kwargs is unimplemented
-    pass
-
 def busted(b: bool) -> None:
     for i in range(1, 10, 0):  # E: range() step can't be zero
         try:

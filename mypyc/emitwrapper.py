@@ -5,12 +5,12 @@ from mypyc.emit import Emitter
 from mypyc.ops import (
     ClassIR, FuncIR, RType, RuntimeArg,
     is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive,
-    bool_rprimitive,
+    bool_rprimitive, object_rprimitive,
     FUNC_STATICMETHOD,
 )
 from mypyc.namegen import NameGenerator
 
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
 from typing import List, Optional
 
@@ -19,6 +19,22 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
     return 'PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
         prefix=PREFIX,
         name=fn.cname(names))
+
+
+def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
+    # Construct the format string. Each group requires the previous
+    # groups delimiters to be present first.
+    main_format = ''
+    if groups[ARG_STAR] or groups[ARG_STAR2]:
+        main_format += '%'
+    main_format += 'O' * len(groups[ARG_POS])
+    if groups[ARG_OPT] or groups[ARG_NAMED_OPT] or groups[ARG_NAMED]:
+        main_format += '|' + 'O' * len(groups[ARG_OPT])
+    if groups[ARG_NAMED_OPT] or groups[ARG_NAMED]:
+        main_format += '$' + 'O' * len(groups[ARG_NAMED_OPT])
+    if groups[ARG_NAMED]:
+        main_format += '@' + 'O' * len(groups[ARG_NAMED])
+    return '{}:{}'.format(main_format, func_name)
 
 
 def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
@@ -38,12 +54,8 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     # Need to order args as: required, optional, kwonly optional, kwonly required
     # This is because CPyArg_ParseTupleAndKeywords format string requires
     # them grouped in that way.
-    required_pos = [arg for arg in real_args if arg.kind == ARG_POS]
-    optional_pos = [arg for arg in real_args if arg.kind == ARG_OPT]
-    optional_kwonly = [arg for arg in real_args if arg.kind == ARG_NAMED_OPT]
-    required_kwonly = [arg for arg in real_args if arg.kind == ARG_NAMED]
-
-    reordered_args = required_pos + optional_pos + optional_kwonly + required_kwonly
+    groups = [[arg for arg in real_args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
+    reordered_args = groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
 
     arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
     emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
@@ -51,24 +63,23 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))
 
-    # Construct the format string. Each group requires the previous
-    # groups delimiters to be present first.
-    main_format = 'O' * len(required_pos)
-    if optional_pos or optional_kwonly or required_kwonly:
-        main_format += '|' + 'O' * len(optional_pos)
-    if optional_kwonly or required_kwonly:
-        main_format += '$' + 'O' * len(optional_kwonly)
-    if required_kwonly:
-        main_format += '@' + 'O' * len(required_kwonly)
+    cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
+                for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_format = '{}:{}'.format(main_format, fn.name)
-    arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in reordered_args)
+    arg_ptrs = []  # type: List[str]
+    if groups[ARG_STAR] or groups[ARG_STAR2]:
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
+    arg_ptrs += ['&obj_{}'.format(arg.name) for arg in reordered_args]
+
     emitter.emit_lines(
         'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
-            arg_format, arg_ptrs),
+            make_format_string(fn.name, groups), ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
-    generate_wrapper_core(fn, emitter, optional_pos + optional_kwonly)
+    generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
+                          cleanups=cleanups)
+
     emitter.emit_line('}')
 
 
@@ -188,34 +199,49 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
                           optional_args: List[RuntimeArg] = [],
-                          arg_names: Optional[List[str]] = None) -> None:
+                          arg_names: Optional[List[str]] = None,
+                          cleanups: Optional[List[str]] = None) -> None:
     """Generates the core part of a wrapper function for a native function.
     This expects each argument as a PyObject * named obj_{arg} as a precondition.
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
     makes the call, then boxes the result if necessary and returns it.
     """
+    cleanups = cleanups or []
+    error_code = 'return NULL;' if not cleanups else 'goto fail;'
+
     arg_names = arg_names or [arg.name for arg in fn.args]
     for arg_name, arg in zip(arg_names, fn.args):
-        generate_arg_check(arg_name, arg.type, emitter, arg in optional_args)
+        # Suppress the argument check for *args/**kwargs, since we know it must be right.
+        typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
+        generate_arg_check(arg_name, typ, emitter, error_code, arg in optional_args)
     native_args = ', '.join('arg_{}'.format(arg) for arg in arg_names)
-    if fn.ret_type.is_unboxed:
+    if fn.ret_type.is_unboxed or cleanups:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
         #       Are they relevant?
         emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
                                                         NATIVE_PREFIX,
                                                         fn.cname(emitter.names),
                                                         native_args))
-        emitter.emit_error_check('retval', fn.ret_type, 'return NULL;')
-        emitter.emit_box('retval', 'retbox', fn.ret_type, declare_dest=True)
-        emitter.emit_line('return retbox;')
+        if fn.ret_type.is_unboxed:
+            emitter.emit_error_check('retval', fn.ret_type, error_code)
+            emitter.emit_box('retval', 'retbox', fn.ret_type, declare_dest=True)
+
+        emitter.emit_lines(*cleanups)
+        emitter.emit_line('return {};'.format('retbox' if fn.ret_type.is_unboxed else 'retval'))
     else:
         emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
                                                     fn.cname(emitter.names),
                                                     native_args))
         # TODO: Tracebacks?
 
+    if cleanups:
+        emitter.emit_label('fail')
+        emitter.emit_lines(*cleanups)
+        emitter.emit_lines('return NULL;')
 
-def generate_arg_check(name: str, typ: RType, emitter: Emitter, optional: bool = False) -> None:
+
+def generate_arg_check(name: str, typ: RType, emitter: Emitter,
+                       error_code: str, optional: bool = False) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
     The object is named PyObject *obj_{}. This is expected to generate
@@ -225,9 +251,9 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter, optional: bool =
     if typ.is_unboxed:
         # Borrow when unboxing to avoid reference count manipulation.
         emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                           'return NULL;', declare_dest=True, borrow=True, optional=optional)
+                           error_code, declare_dest=True, borrow=True, optional=optional)
     elif is_object_rprimitive(typ):
-        # Trivial, since any object is valid.
+        # Object is trivial since any object is valid
         if optional:
             emitter.emit_line('PyObject *arg_{};'.format(name))
             emitter.emit_line('if (obj_{} == NULL) {{'.format(name))
@@ -239,7 +265,7 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter, optional: bool =
         emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                           declare_dest=True, optional=optional)
         if optional:
-            emitter.emit_line('if (obj_{} != NULL && arg_{} == NULL) return NULL;'.format(
-                              name, name))
+            emitter.emit_line('if (obj_{} != NULL && arg_{} == NULL) {}'.format(
+                              name, name, error_code))
         else:
-            emitter.emit_line('if (arg_{} == NULL) return NULL;'.format(name, name))
+            emitter.emit_line('if (arg_{} == NULL) {}'.format(name, error_code))

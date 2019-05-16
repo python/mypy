@@ -375,9 +375,18 @@ class Mapper:
         # actually show up, so anything else is a bug somewhere.
         assert False, 'unexpected type %s' % type(typ)
 
+    def get_arg_rtype(self, typ: Type, kind: int) -> RType:
+        if kind == ARG_STAR:
+            return tuple_rprimitive
+        elif kind == ARG_STAR2:
+            return dict_rprimitive
+        else:
+            return self.type_to_rtype(typ)
+
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
         if isinstance(fdef.type, CallableType):
-            arg_types = [self.type_to_rtype(arg) for arg in fdef.type.arg_types]
+            arg_types = [self.get_arg_rtype(typ, kind)
+                         for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)]
             ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
@@ -1320,10 +1329,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         | c_obj |   --------------------------+
         +-------+
         """
-        kinds = fitem.arg_kinds
-        if any(kind in (ARG_STAR, ARG_STAR2) for kind in kinds):
-            self.error('Accepting *args or **kwargs is unimplemented', fitem.line)
-
         if fitem.is_coroutine:
             self.error('async functions are unimplemented', fitem.line)
 
@@ -2397,9 +2402,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
              arg_kinds: List[int],
              arg_names: Sequence[Optional[str]],
              line: int) -> Value:
-        # Normalize keyword args to positionals.
-        arg_values_with_nones = self.keyword_args_to_positional(
-            args, arg_kinds, arg_names, decl.sig)
+        # Normalize args to positionals.
+        arg_values_with_nones = self.native_args_to_positional(
+            args, arg_kinds, arg_names, decl.sig, line)
         # Put in errors for missing args
         args = self.missing_args_to_error_values(arg_values_with_nones, decl.sig)
 
@@ -2586,10 +2591,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 else:
                     assert arg_names is not None, "arg_kinds present but arg_names is not"
 
-                # Normalize keyword args to positionals.
+                # Normalize args to positionals.
                 assert decl.bound_sig
-                arg_values_with_nones = self.keyword_args_to_positional(
-                    arg_values, arg_kinds, arg_names, decl.bound_sig)
+                arg_values_with_nones = self.native_args_to_positional(
+                    arg_values, arg_kinds, arg_names, decl.bound_sig, line)
                 arg_values = self.missing_args_to_error_values(arg_values_with_nones,
                                                                decl.bound_sig)
                 arg_values = self.coerce_native_call_args(arg_values, decl.bound_sig, base.line)
@@ -4611,12 +4616,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return tmp
         return src
 
-    def keyword_args_to_positional(self,
-                                   args: Sequence[Value],
-                                   arg_kinds: List[int],
-                                   arg_names: Sequence[Optional[str]],
-                                   sig: FuncSignature) -> List[Optional[Value]]:
-        # NOTE: This doesn't support *args or **kwargs.
+    def native_args_to_positional(self,
+                                  args: Sequence[Value],
+                                  arg_kinds: List[int],
+                                  arg_names: Sequence[Optional[str]],
+                                  sig: FuncSignature,
+                                  line: int) -> List[Optional[Value]]:
+        """Prepare arguments for a native call.
+
+        Given args/kinds/names and a target signature for a native call, map
+        keyword arguments to their appropriate place in the argument list and
+        and package arguments that will go into *args/**kwargs into a tuple/dict.
+        """
+        # TODO: missing_args_to_error_values and coerce_native_call_args should just
+        # be merged into this. Leaving it to a later PR because it is a bunch of churn.
+
         sig_arg_kinds = [arg.kind for arg in sig.args]
         sig_arg_names = [arg.name for arg in sig.args]
         formal_to_actual = map_actuals_to_formals(arg_kinds,
@@ -4624,7 +4638,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                   sig_arg_kinds,
                                                   sig_arg_names,
                                                   lambda n: AnyType(TypeOfAny.special_form))
-        return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]
+
+        # Flatten out the arguments, constructing tuples/dicts for
+        # star args when needed.  As mentioned above, we should also
+        # merge the rest of native call argument munging into this.
+        output_args = []  # type: List[Optional[Value]]
+        for idx, lst in enumerate(formal_to_actual):
+            output_arg = None
+            if sig_arg_kinds[idx] == ARG_STAR:
+                output_arg = self.add(TupleSet([args[i] for i in lst], line))
+            elif sig_arg_kinds[idx] == ARG_STAR2:
+                dict_entries = [(self.load_static_unicode(cast(str, arg_names[i])), args[i])
+                                for i in lst]
+                output_arg = self.make_dict(dict_entries, line)
+            elif not lst:
+                output_arg = None
+            else:
+                output_arg = args[lst[0]]
+
+            output_args.append(output_arg)
+
+        return output_args
 
     def get_func_target(self, fdef: FuncDef) -> AssignmentTarget:
         """

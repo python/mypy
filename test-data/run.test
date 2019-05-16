@@ -3963,8 +3963,8 @@ def foo(x: object) -> None:
 [file driver.py]
 # really I only care it builds
 
-[case testKeywordOnly]
-from typing import Tuple
+[case testComplicatedArgs]
+from typing import Tuple, Dict
 
 def kwonly1(x: int = 0, *, y: int) -> Tuple[int, int]:
     return x, y
@@ -3977,6 +3977,65 @@ def kwonly3(a: int, b: int = 0, *, y: int, x: int = 1) -> Tuple[int, int, int, i
 
 def kwonly4(*, x: int, y: int) -> Tuple[int, int]:
     return x, y
+
+def varargs1(*args: int) -> Tuple[int, ...]:
+    return args
+
+def varargs2(*args: int, **kwargs: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
+    return args, kwargs
+
+def varargs3(**kwargs: int) -> Dict[str, int]:
+    return kwargs
+
+def varargs4(a: int, b: int = 0,
+             *args: int, y: int, x: int = 1,
+             **kwargs: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
+    return (a, b, *args), {'x': x, 'y': y, **kwargs}
+
+def varargs_tests() -> None:
+    assert varargs1() == ()
+    assert varargs1(1, 2, 3) == (1, 2, 3)
+    assert varargs2(1, 2, 3) == ((1, 2, 3), {})
+    assert varargs2(1, 2, 3, x=4) == ((1, 2, 3), {'x': 4})
+    assert varargs2(x=4) == ((), {'x': 4})
+    assert varargs3() == {}
+    assert varargs3(x=4) == {'x': 4}
+    assert varargs3(x=4, y=5) == {'x': 4, 'y': 5}
+
+    assert varargs4(-1, y=2) == ((-1, 0), {'x': 1, 'y': 2})
+    assert varargs4(-1, 2, y=2) == ((-1, 2), {'x': 1, 'y': 2})
+    assert varargs4(-1, 2, 3, y=2) == ((-1, 2, 3), {'x': 1, 'y': 2})
+    assert varargs4(-1, 2, 3, x=10, y=2) == ((-1, 2, 3), {'x': 10, 'y': 2})
+    assert varargs4(-1, x=10, y=2) == ((-1, 0), {'x': 10, 'y': 2})
+    assert varargs4(-1, y=2, z=20) == ((-1, 0), {'x': 1, 'y': 2, 'z': 20})
+    assert varargs4(-1, 2, y=2, z=20) == ((-1, 2), {'x': 1, 'y': 2, 'z': 20})
+    assert varargs4(-1, 2, 3, y=2, z=20) == ((-1, 2, 3), {'x': 1, 'y': 2, 'z': 20})
+    assert varargs4(-1, 2, 3, x=10, y=2, z=20) == ((-1, 2, 3), {'x': 10, 'y': 2, 'z': 20})
+    assert varargs4(-1, x=10, y=2, z=20) == ((-1, 0), {'x': 10, 'y': 2, 'z': 20})
+
+    x: A = B()
+    assert x.f(1) == (1,)
+    assert x.g(1) == ((1,), {})
+    # This one is really funny! When we make native calls we lose
+    # track of which arguments are positional or keyword, so the glue
+    # calls them all positional unless they are keyword only...
+    # It would be possible to fix this by dynamically tracking which
+    # arguments were passed by keyword (for example, by passing a bitmask
+    # to functions indicating this), but paying a speed, size, and complexity
+    # cost for something so deeply marginal seems like a bad choice.
+    # assert x.g(x=1) == ((), {'x': 1})
+
+class A:
+    def f(self, x: int) -> Tuple[int, ...]:
+        return (x,)
+    def g(self, x: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
+        return (x,), {}
+
+class B(A):
+    def f(self, *args: int) -> Tuple[int, ...]:
+        return args
+    def g(self, *args: int, **kwargs: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
+        return args, kwargs
 
 [file testutil.py]
 # TODO: This should go into some general mypyc test support lib (along
@@ -3995,9 +4054,14 @@ def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
         assert False, "Expected {} but got no exception".format(typ.__name__)
 
 [file driver.py]
-from native import kwonly1, kwonly2, kwonly3, kwonly4
+from native import (
+    kwonly1, kwonly2, kwonly3, kwonly4,
+    varargs1, varargs2, varargs3, varargs4, varargs_tests,
+)
+
 from testutil import assertRaises
 
+# kwonly arg tests
 assert kwonly1(10, y=20) == (10, 20)
 assert kwonly1(y=20) == (0, 20)
 with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
@@ -4039,3 +4103,46 @@ with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
     kwonly4(y=1)
 with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
     kwonly4()
+
+# varargs tests
+assert varargs1() == ()
+assert varargs1(1, 2, 3) == (1, 2, 3)
+assert varargs2(1, 2, 3) == ((1, 2, 3), {})
+assert varargs2(1, 2, 3, x=4) == ((1, 2, 3), {'x': 4})
+assert varargs2(x=4) == ((), {'x': 4})
+assert varargs3() == {}
+assert varargs3(x=4) == {'x': 4}
+assert varargs3(x=4, y=5) == {'x': 4, 'y': 5}
+
+with assertRaises(TypeError, "'x' is an invalid keyword argument for varargs1()"):
+    varargs1(x=10)
+with assertRaises(TypeError, "'x' is an invalid keyword argument for varargs1()"):
+    varargs1(1, x=10)
+with assertRaises(TypeError, "varargs3() takes no positional arguments"):
+    varargs3(10)
+with assertRaises(TypeError, "varargs3() takes no positional arguments"):
+    varargs3(10, x=10)
+
+assert varargs4(-1, y=2) == ((-1, 0), {'x': 1, 'y': 2})
+assert varargs4(-1, 2, y=2) == ((-1, 2), {'x': 1, 'y': 2})
+assert varargs4(-1, 2, 3, y=2) == ((-1, 2, 3), {'x': 1, 'y': 2})
+assert varargs4(-1, 2, 3, x=10, y=2) == ((-1, 2, 3), {'x': 10, 'y': 2})
+assert varargs4(-1, x=10, y=2) == ((-1, 0), {'x': 10, 'y': 2})
+assert varargs4(-1, y=2, z=20) == ((-1, 0), {'x': 1, 'y': 2, 'z': 20})
+assert varargs4(-1, 2, y=2, z=20) == ((-1, 2), {'x': 1, 'y': 2, 'z': 20})
+assert varargs4(-1, 2, 3, y=2, z=20) == ((-1, 2, 3), {'x': 1, 'y': 2, 'z': 20})
+assert varargs4(-1, 2, 3, x=10, y=2, z=20) == ((-1, 2, 3), {'x': 10, 'y': 2, 'z': 20})
+assert varargs4(-1, x=10, y=2, z=20) == ((-1, 0), {'x': 10, 'y': 2, 'z': 20})
+
+with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
+    varargs4()
+with assertRaises(TypeError, "varargs4() missing required keyword-only argument 'y'"):
+    varargs4(1, 2)
+with assertRaises(TypeError, "varargs4() missing required keyword-only argument 'y'"):
+    varargs4(1, 2, x=1)
+with assertRaises(TypeError, "varargs4() missing required keyword-only argument 'y'"):
+    varargs4(1, 2, 3)
+with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
+    varargs4(y=20)
+
+varargs_tests()
