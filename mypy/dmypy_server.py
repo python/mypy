@@ -519,15 +519,11 @@ class Server:
     def cmd_suggest(self,
                     function: str,
                     callsites: bool,
-                    # We'd like to just use **kwargs here and save some duplication but
-                    # mypyc doesn't support it yet...
-                    json: bool,
-                    no_errors: bool,
-                    no_any: bool) -> Dict[str, object]:
+                    **kwargs: bool) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}
-        engine = SuggestionEngine(self.fine_grained_manager, json, no_errors, no_any)
+        engine = SuggestionEngine(self.fine_grained_manager, **kwargs)
         try:
             if callsites:
                 out = engine.suggest_callsites(function)
