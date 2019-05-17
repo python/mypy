@@ -885,6 +885,10 @@ def make_dict1(x: Any) -> Dict[Any, Any]:
 def make_dict2(x: Dict[Any, Any]) -> Dict[Any, Any]:
     return dict(x)
 
+def u(x: int) -> int:
+    d = {} # type: Dict[str, int]
+    d.update(x=x)
+    return d['x']
 
 [file defaultdictwrap.py]
 from typing import Dict
@@ -893,7 +897,7 @@ def make_dict() -> Dict[str, int]:
     return defaultdict(int)
 
 [file driver.py]
-from native import f, g, h, make_dict1, make_dict2, update_dict
+from native import f, g, h, u, make_dict1, make_dict2, update_dict
 assert f(1) == 2
 assert f(2) == 1
 assert g() == 30
@@ -913,6 +917,8 @@ assert make_dict1(object.__dict__) == dict(object.__dict__)
 d = {}
 update_dict(d, object.__dict__)
 assert d == dict(object.__dict__)
+
+assert u(10) == 10
 
 [case testPyMethodCall]
 from typing import List

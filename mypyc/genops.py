@@ -2605,9 +2605,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                           arg_kinds, arg_names)
 
         # Try to do a special-cased method call
-        target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
-        if target:
-            return target
+        if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
+            target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
+            if target:
+                return target
 
         # Fall back to Python method call
         return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)

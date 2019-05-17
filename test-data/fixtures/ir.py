@@ -116,7 +116,12 @@ class dict(Mapping[K, V]):
     def __contains__(self, item: object) -> bool: pass
     def __iter__(self) -> Iterator[K]: pass
     def __len__(self) -> int: pass
-    def update(self, a: Mapping[K, V]) -> None: pass
+    @overload
+    def update(self, __m: Mapping[K, V], **kwargs: V) -> None: pass
+    @overload
+    def update(self, __m: Iterable[Tuple[K, V]], **kwargs: V) -> None: ...
+    @overload
+    def update(self, **kwargs: V) -> None: ...
     def pop(self, x: int) -> K: pass
     def keys(self) -> List[K]: pass
 
