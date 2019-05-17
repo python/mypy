@@ -1,6 +1,7 @@
 // Collects code that was copied in from cpython, for a couple of different reasons:
 //  * We wanted to modify it to produce a more efficient version for our uses
 //  * We needed to call it and it was static :(
+//  * We wanted to call it and needed to backport it
 
 #ifndef CPY_PYTHONSUPPORT_H
 #define CPY_PYTHONSUPPORT_H
@@ -317,6 +318,14 @@ _PyDict_GetItemStringWithError(PyObject *v, const char *key)
     Py_DECREF(kv);
     return rv;
 }
+#endif
+
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 6
+/* _PyUnicode_EqualToASCIIString got added in 3.5.3 (argh!) so we can't actually know
+ * whether it will be precent at runtime, so we just assume we don't have it in 3.5. */
+#define CPyUnicode_EqualToASCIIString(x, y) (PyUnicode_CompareWithASCIIString((x), (y)) == 0)
+#elif PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
+#define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
 #endif
 
 #ifdef __cplusplus

@@ -9,7 +9,7 @@ cache:
 matrix:
   include:
     - os: linux
-      python: "3.5"
+      python: "3.5.2"
       env: PYTHON_DEBUG_BUILD=0
     - os: linux
       python: "3.6"

@@ -14,11 +14,11 @@ It would be translated to something that conceptually looks like this:
    return r3
 """
 from typing import (
-    Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, NoReturn, cast, overload,
+    Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast, overload,
 )
 MYPY = False
 if MYPY:
-    from typing import ClassVar
+    from typing import ClassVar, NoReturn
 from abc import abstractmethod
 import sys
 import traceback
@@ -4698,7 +4698,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def error(self, msg: str, line: int) -> None:
         self.errors.error(msg, self.module_path, line)
 
-    def bail(self, msg: str, line: int) -> NoReturn:
+    def bail(self, msg: str, line: int) -> 'NoReturn':
         """Reports an error and aborts compilation up until the last accept() call
 
         (accept() catches the UnsupportedException and keeps on

@@ -1485,7 +1485,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 goto latefail;
             }
             for (i = pos; i < len; i++) {
-                if (_PyUnicode_EqualToASCIIString(key, kwlist[i])) {
+                if (CPyUnicode_EqualToASCIIString(key, kwlist[i])) {
                     match = 1;
                     break;
                 }

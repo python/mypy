@@ -424,9 +424,11 @@ Traceback (most recent call last):
 AttributeError: attribute 'x' of 'X' undefined
 
 [case testClassMethods]
-from typing import ClassVar
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 class C:
-    lurr: ClassVar[int] = 9
+    lurr: 'ClassVar[int]' = 9
     @staticmethod
     def foo(x: int) -> int: return 10 + x
     @classmethod
@@ -638,7 +640,9 @@ else:
     assert False, "instantiating was supposed to fail"
 
 [case testClassVariable]
-from typing import ClassVar
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 class A:
     x = 10  # type: ClassVar[int]
 
@@ -653,7 +657,7 @@ A.x = 200
 assert f() == 200
 
 [case testDefaultVars]
-from typing import ClassVar, Optional
+from typing import Optional
 class A:
     x = 10
     w: object = 10
