@@ -3212,7 +3212,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def is_valid_del_target(self, s: Expression) -> bool:
         if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
             return True
-        elif isinstance(s, TupleExpr):
+        elif isinstance(s, (TupleExpr, ListExpr)):
             return all(self.is_valid_del_target(item) for item in s.items)
         else:
             return False
