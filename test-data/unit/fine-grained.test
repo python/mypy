@@ -8845,3 +8845,21 @@ y = ''
 [out]
 ==
 ==
+
+[case testWrongNumberOfArguments]
+
+[file a.py]
+def bar(x):
+    # type: () -> None
+    pass
+
+[file b.py]
+x = ''
+
+[file m.py.2]
+x = 1
+
+[out]
+a.py:1: error: Type signature has too few arguments
+==
+a.py:1: error: Type signature has too few arguments

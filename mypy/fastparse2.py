@@ -166,6 +166,8 @@ class ASTConverter:
         self.type_ignores = set()  # type: Set[int]
 
     def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
+        # Fine-grained mode doesn't support non-blocking parse errors yet.
+        blocker = blocker or self.options.fine_grained_incremental
         if blocker or not self.options.ignore_errors:
             self.errors.report(line, column, msg, blocker=blocker)
 
