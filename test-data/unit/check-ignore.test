@@ -242,6 +242,10 @@ IGNORE
 def f(): ...
 IGNORE
 
+[case testIgnoreWholeModule5]
+# type: ignore
+import MISSING
+
 [case testDontIgnoreWholeModule1]
 if True:
     # type: ignore
