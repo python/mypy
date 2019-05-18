@@ -5001,3 +5001,31 @@ def f(x):
 
 reveal_type(f(g([])))  # E: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
+
+[case testOverloadDeferredNode]
+from typing import Callable, TypeVar, Generic, Any, overload
+
+_S = TypeVar('_S')
+_T = TypeVar('_T')
+_R = TypeVar('_R')
+_F = TypeVar('_F', bound=Callable[..., Any])
+
+@overload
+def partial(__func: Callable[[_T], _S], __arg: _T) -> Callable[[], _S]: ...
+@overload
+def partial(__func: Callable[[_T, _S], _S], __arg: _T) -> Callable[[_S], _R]: ...
+def partial(*args: Any) -> Any:
+    pass
+
+
+def f(f: Callable[[int], int]) -> None:
+    pass
+
+def dec(f: Callable[[_S, _T], _R]) -> Callable[[_S, _T], _R]: pass
+
+def asdf() -> None:
+    f(partial(lol, 0))
+
+@dec
+def lol(x: int, y: int) -> int:
+    pass
