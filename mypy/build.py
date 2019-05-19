@@ -62,8 +62,6 @@ from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadat
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 
-from mypy.mypyc_hacks import BuildManagerBase
-
 
 # Switch to True to produce debug output related to fine-grained incremental
 # mode only that is useful during development. This produces only a subset of
@@ -455,7 +453,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class BuildManager(BuildManagerBase):
+class BuildManager:
     """This class holds shared state for building a mypy program.
 
     It is used to coordinate parsing, import processing, semantic
@@ -512,7 +510,9 @@ class BuildManager(BuildManagerBase):
                  stdout: TextIO,
                  stderr: TextIO,
                  ) -> None:
-        super().__init__(stdout, stderr)
+        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+        self.stdout = stdout
+        self.stderr = stderr
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -747,6 +747,41 @@ class BuildManager(BuildManagerBase):
                     options: Options) -> None:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
+
+    def verbosity(self) -> int:
+        return self.options.verbosity
+
+    def log(self, *message: str) -> None:
+        if self.verbosity() >= 1:
+            if message:
+                print('LOG: ', *message, file=self.stderr)
+            else:
+                print(file=self.stderr)
+            self.stderr.flush()
+
+    def log_fine_grained(self, *message: str) -> None:
+        import mypy.build
+        if self.verbosity() >= 1:
+            self.log('fine-grained:', *message)
+        elif mypy.build.DEBUG_FINE_GRAINED:
+            # Output log in a simplified format that is quick to browse.
+            if message:
+                print(*message, file=self.stderr)
+            else:
+                print(file=self.stderr)
+            self.stderr.flush()
+
+    def trace(self, *message: str) -> None:
+        if self.verbosity() >= 2:
+            print('TRACE:', *message, file=self.stderr)
+            self.stderr.flush()
+
+    def add_stats(self, **kwds: Any) -> None:
+        for key, value in kwds.items():
+            if key in self.stats:
+                self.stats[key] += value
+            else:
+                self.stats[key] = value
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
