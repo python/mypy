@@ -1037,6 +1037,13 @@ del (a, b)
 b + 1 # E: Trying to read deleted variable 'b'
 [builtins fixtures/ops.pyi]
 
+[case testDelStatementWithAssignmentList]
+a = 1
+b = 1
+del [a, b]
+b + 1 # E: Trying to read deleted variable 'b'
+[builtins fixtures/list.pyi]
+
 [case testDelStatementWithAssignmentClass]
 class C:
     a = 1
