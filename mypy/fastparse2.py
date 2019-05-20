@@ -47,6 +47,7 @@ from mypy import message_registry
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment, bytes_to_human_readable_repr
 from mypy.options import Options
+from mypy.reachability import mark_block_unreachable
 
 try:
     from typed_ast import ast27
@@ -209,7 +210,7 @@ class ASTConverter:
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-            block.is_unreachable = True
+            mark_block_unreachable(block)
             return [block]
 
         res = []  # type: List[Statement]

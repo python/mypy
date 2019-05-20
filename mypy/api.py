@@ -45,7 +45,6 @@ print('\nExit status:', result[2])
 import sys
 from io import StringIO
 from typing import List, Tuple, Union, TextIO, Callable
-from mypy_extensions import DefaultArg
 
 
 def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:
@@ -70,5 +69,5 @@ def run(args: List[str]) -> Tuple[str, str, int]:
 
 
 def run_dmypy(args: List[str]) -> Tuple[str, str, int]:
-    from mypy.dmypy import main
+    from mypy.dmypy.client import main
     return _run(lambda stdout, stderr: main(args))
