@@ -167,7 +167,9 @@ setup(name='mypy',
       license='MIT License',
       py_modules=[],
       ext_modules=ext_modules,
-      packages=['mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.newsemanal'],
+      packages=[
+          'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.newsemanal', 'mypy.dmypy'
+      ],
       package_data={'mypy': package_data},
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
