@@ -3942,7 +3942,7 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 
 def make_any_non_explicit(t: Type) -> Type:
-    """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    """Replace all Any types within in with Any that has attribute 'explicit' set to False."""
     return t.accept(MakeAnyNonExplicit())
 
 
