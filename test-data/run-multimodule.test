@@ -463,6 +463,29 @@ except TypeError:
 else:
     assert False
 
+[case testMultiModuleRelative]
+from package.a import f
+[file package/__init__.py]
+[file package/a.py]
+from . import b
+from .c import c3
+def f() -> None:
+    print("Hello " + b.b2())
+    print("Hello " + c3())
+[file package/b.py]
+def b2() -> str:
+    return "moon!"
+[file package/c.py]
+def c3() -> str:
+    return "sun!"
+
+[file driver.py]
+from native import f
+f()
+[out]
+Hello moon!
+Hello sun!
+
 [case testMultiModuleCrash]
 b = False
 if b:

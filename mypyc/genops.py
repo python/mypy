@@ -22,6 +22,7 @@ if MYPY:
 from abc import abstractmethod
 import sys
 import traceback
+import importlib.util
 import itertools
 
 from mypy.build import Graph
@@ -1127,13 +1128,17 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_import_from(self, node: ImportFrom) -> None:
         if node.is_mypy_only:
             return
-        # TODO support these?
-        if node.relative:
-            self.error("Relative imports are unimplemented", node.line)
-            return
 
-        self.gen_import(node.id, node.line)
-        module = self.add(LoadStatic(object_rprimitive, 'module', node.id))
+        module_state = self.graph[self.module_name]
+        if module_state.ancestors is not None and module_state.ancestors:
+            module_package = module_state.ancestors[0]
+        else:
+            module_package = ''
+
+        id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
+
+        self.gen_import(id, node.line)
+        module = self.add(LoadStatic(object_rprimitive, 'module', id))
 
         # Copy everything into our module's dict.
         # Note that we miscompile import from inside of functions here,
@@ -1143,8 +1148,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for name, maybe_as_name in node.names:
             # If one of the things we are importing is a module,
             # import it as a module also.
-            fullname = node.id + '.' + name
-            if fullname in self.graph or fullname in self.graph[self.module_name].suppressed:
+            fullname = id + '.' + name
+            if fullname in self.graph or fullname in module_state.suppressed:
                 self.gen_import(fullname, node.line)
 
             as_name = maybe_as_name or name
