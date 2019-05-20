@@ -8863,3 +8863,20 @@ x = 1
 a.py:1: error: Type signature has too few arguments
 ==
 a.py:1: error: Type signature has too few arguments
+
+[case testErrorReportingNewAnalyzer]
+# flags: --disallow-any-generics
+from a import A
+
+def f() -> None:
+    x: A
+[file a.py]
+class A: ...
+
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]): ...
+[out]
+==
+main:5: error: Missing type parameters for generic type

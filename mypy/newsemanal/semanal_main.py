@@ -320,8 +320,13 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
     with state.wrap_context():
         with strict_optional_set(state.options.strict_optional):
             for target in targets:
-                analyzer.recurse_into_functions = not isinstance(target.node, MypyFile)
-                target.node.accept(analyzer)
+                func = None  # type: Optional[Union[FuncDef, OverloadedFuncDef]]
+                if isinstance(target.node, (FuncDef, OverloadedFuncDef)):
+                    func = target.node
+                saved = (state.id, target.active_typeinfo, func)  # module, class, function
+                with errors.scope.saved_scope(saved) if errors.scope else nothing():
+                    analyzer.recurse_into_functions = func is not None
+                    target.node.accept(analyzer)
 
 
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
