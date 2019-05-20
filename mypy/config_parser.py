@@ -82,14 +82,17 @@ config_types = {
 
 
 def parse_config_file(options: Options, filename: Optional[str],
-                      stdout: TextIO = sys.stdout,
-                      stderr: TextIO = sys.stderr) -> None:
+                      stdout: Optional[TextIO] = None,
+                      stderr: Optional[TextIO] = None) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
 
     If filename is None, fall back to default config files.
     """
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
+
     if filename is not None:
         config_files = (filename,)  # type: Tuple[str, ...]
     else:
