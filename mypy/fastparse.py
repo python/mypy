@@ -38,6 +38,7 @@ from mypy import defaults
 from mypy import message_registry
 from mypy.errors import Errors
 from mypy.options import Options
+from mypy.reachability import mark_block_unreachable
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -311,7 +312,7 @@ class ASTConverter:
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-            block.is_unreachable = True
+            mark_block_unreachable(block)
             return [block]
 
         res = []  # type: List[Statement]
