@@ -679,7 +679,7 @@ def process_options(args: List[str],
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
-    if getattr(dummy, 'special-opts:strict'):
+    if getattr(dummy, 'special-opts:strict'):  # noqa
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
 
