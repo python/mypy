@@ -5,6 +5,7 @@ import mypy
 from unittest import TestCase
 import os
 
+
 class MypycTest(TestCase):
     def test_using_mypyc(self) -> None:
         if os.getenv('TEST_MYPYC', None) == '1':
