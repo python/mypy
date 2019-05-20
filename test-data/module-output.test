@@ -112,7 +112,7 @@ int CPyGlobalsInit(void)
 {
     static int is_initialized = 0;
     if (is_initialized) return 0;
-
+    
     CPy_Init();
     CPyStatic_module = Py_None;
     CPyStatic_builtins_module = Py_None;

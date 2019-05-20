@@ -799,6 +799,181 @@ L0:
     r3 = unbox(int, r2)
     return r3
 
+
+[case testNoEqDefined]
+class A:
+    pass
+
+def f(a: A, b: A) -> bool:
+    return a == b
+
+def f2(a: A, b: A) -> bool:
+    return a != b
+
+[out]
+def f(a, b):
+    a, b :: A
+    r0 :: bool
+L0:
+    r0 = a is b
+    return r0
+def f2(a, b):
+    a, b :: A
+    r0 :: bool
+L0:
+    r0 = a is not b
+    return r0
+
+[case testEqDefined]
+class Base:
+    def __eq__(self, other: object) -> bool:
+        return False
+class Derived(Base):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+def f(a: Base, b: Base) -> bool:
+    return a == b
+
+def f2(a: Base, b: Base) -> bool:
+    return a != b
+
+def fOpt(a: Derived, b: Derived) -> bool:
+    return a == b
+
+def fOpt2(a: Derived, b: Derived) -> bool:
+    return a != b
+
+[out]
+def Base.__eq__(self, other):
+    self :: Base
+    other :: object
+    r0 :: bool
+    r1 :: object
+L0:
+    r0 = False
+    r1 = box(bool, r0)
+    return r1
+def Base.__ne__(self, rhs):
+    self :: Base
+    rhs, r0 :: object
+    r1 :: bool
+L0:
+    r0 = self.__eq__(rhs)
+    r1 = not r0
+    return r1
+def Derived.__eq__(self, other):
+    self :: Derived
+    other :: object
+    r0 :: bool
+    r1 :: object
+L0:
+    r0 = True
+    r1 = box(bool, r0)
+    return r1
+def f(a, b):
+    a, b :: Base
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = a == b
+    r1 = unbox(bool, r0)
+    return r1
+def f2(a, b):
+    a, b :: Base
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = a != b
+    r1 = unbox(bool, r0)
+    return r1
+def fOpt(a, b):
+    a, b :: Derived
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = a.__eq__(b)
+    r1 = unbox(bool, r0)
+    return r1
+def fOpt2(a, b):
+    a, b :: Derived
+    r0 :: bool
+L0:
+    r0 = a.__ne__(b)
+    return r0
+
+[case testEqDefinedLater]
+def f(a: 'Base', b: 'Base') -> bool:
+    return a == b
+
+def f2(a: 'Base', b: 'Base') -> bool:
+    return a != b
+
+def fOpt(a: 'Derived', b: 'Derived') -> bool:
+    return a == b
+
+def fOpt2(a: 'Derived', b: 'Derived') -> bool:
+    return a != b
+
+class Base:
+    pass
+class Derived(Base):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+[out]
+def f(a, b):
+    a, b :: Base
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = a == b
+    r1 = unbox(bool, r0)
+    return r1
+def f2(a, b):
+    a, b :: Base
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = a != b
+    r1 = unbox(bool, r0)
+    return r1
+def fOpt(a, b):
+    a, b :: Derived
+    r0 :: object
+    r1 :: bool
+L0:
+    r0 = a.__eq__(b)
+    r1 = unbox(bool, r0)
+    return r1
+def fOpt2(a, b):
+    a, b :: Derived
+    r0 :: str
+    r1 :: object
+    r2 :: bool
+L0:
+    r0 = unicode_1 :: static  ('__ne__')
+    r1 = py_method_call(a, r0, b)
+    r2 = unbox(bool, r1)
+    return r2
+def Derived.__eq__(self, other):
+    self :: Derived
+    other :: object
+    r0 :: bool
+    r1 :: object
+L0:
+    r0 = True
+    r1 = box(bool, r0)
+    return r1
+def Derived.__ne__(self, rhs):
+    self :: Derived
+    rhs, r0 :: object
+    r1 :: bool
+L0:
+    r0 = self.__eq__(rhs)
+    r1 = not r0
+    return r1
+
 [case testDefaultVars]
 from typing import ClassVar, Optional
 class A:

@@ -26,6 +26,61 @@ L2:
     r4 = 2
     return r4
 
+[case testIsNotNone]
+from typing import Optional
+
+class A: pass
+
+def f(x: Optional[A]) -> int:
+    if x is not None:
+        return 1
+    return 2
+[out]
+def f(x):
+    x :: union[A, None]
+    r0 :: None
+    r1 :: object
+    r2, r3 :: bool
+    r4, r5 :: short_int
+L0:
+    r0 = None
+    r1 = box(None, r0)
+    r2 = x is r1
+    r3 = !r2
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = 1
+    return r4
+L2:
+    r5 = 2
+    return r5
+
+[case testIsTruthy]
+from typing import Optional
+
+class A: pass
+
+def f(x: Optional[A]) -> int:
+    if x:
+        return 1
+    return 2
+[out]
+def f(x):
+    x :: union[A, None]
+    r0 :: object
+    r1 :: bool
+    r2, r3 :: short_int
+L0:
+    r0 = builtins.None :: object
+    r1 = x is not r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    return r2
+L2:
+    r3 = 2
+    return r3
+
 [case testIsTruthyOverride]
 from typing import Optional
 
@@ -66,35 +121,6 @@ L2:
     r4 = 1
     return r4
 L3:
-    r5 = 2
-    return r5
-
-[case testIsNotNone]
-from typing import Optional
-
-class A: pass
-
-def f(x: Optional[A]) -> int:
-    if x is not None:
-        return 1
-    return 2
-[out]
-def f(x):
-    x :: union[A, None]
-    r0 :: None
-    r1 :: object
-    r2, r3 :: bool
-    r4, r5 :: short_int
-L0:
-    r0 = None
-    r1 = box(None, r0)
-    r2 = x is r1
-    r3 = !r2
-    if r3 goto L1 else goto L2 :: bool
-L1:
-    r4 = 1
-    return r4
-L2:
     r5 = 2
     return r5
 
