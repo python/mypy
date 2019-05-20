@@ -245,8 +245,8 @@ FOOTER = """Environment variables:
 
 
 def process_options(args: List[str],
-                    stdout: TextIO = sys.stdout,
-                    stderr: TextIO = sys.stderr,
+                    stdout: Optional[TextIO] = None,
+                    stderr: Optional[TextIO] = None,
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
@@ -258,6 +258,8 @@ def process_options(args: List[str],
     If a FileSystemCache is passed in, and package_root options are given,
     call fscache.set_package_root() to set the cache's package root.
     """
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
 
     parser = argparse.ArgumentParser(prog=program,
                                      usage=header,

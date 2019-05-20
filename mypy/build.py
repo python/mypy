@@ -2584,12 +2584,13 @@ class NodeInfo:
                                                      json.dumps(self.deps))
 
 
-def dump_graph(graph: Graph, stdout: TextIO = sys.stdout) -> None:
+def dump_graph(graph: Graph, stdout: Optional[TextIO] = None) -> None:
     """Dump the graph as a JSON string to stdout.
 
     This copies some of the work by process_graph()
     (sorted_components() and order_ascc()).
     """
+    stdout = stdout or sys.stdout
     nodes = []
     sccs = sorted_components(graph)
     for i, ascc in enumerate(sccs):
