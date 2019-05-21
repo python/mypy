@@ -28,6 +28,16 @@ def foo() -> List:  # E: Missing type parameters for generic type
 
 [builtins fixtures/list.pyi]
 
+
+[case testInlineSimple4]
+# mypy: disallow-any-generics = true, warn-no-return = 0
+
+from typing import List
+def foo() -> List:  # E: Missing type parameters for generic type
+    20
+
+[builtins fixtures/list.pyi]
+
 [case testInlineList]
 # mypy: disallow-any-generics,always-false="FOO,BAR"
 
@@ -104,5 +114,16 @@ def foo() -> int:
 
 [case testInlineError1]
 # mypy: invalid-whatever
+# mypy: no-warn-no-return; no-strict-optional
+# mypy: always-true=FOO,BAR
+# mypy: always-true="FOO,BAR
 [out]
-main: error: Unrecognized option: invalid_whatever = True
+main:1: error: Unrecognized option: invalid_whatever = True
+main:2: error: Unrecognized option: warn_no_return; no_strict_optional = False
+main:3: error: Unrecognized option: bar = True
+main:4: error: Unterminated quote in configuration comment
+
+[case testInlineError2]
+# mypy: skip-file
+[out]
+main:1: error: Unrecognized option: skip_file = True

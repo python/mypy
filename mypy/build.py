@@ -1981,14 +1981,14 @@ class State:
         self.check_blockers()
 
     def parse_inline_configuration(self, source: str) -> None:
-        # Check for inline mypy: options directive and parse them.
+        """Check for inline mypy: options directive and parse them."""
         flags = get_mypy_comments(source)
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id)
-            for error in config_errors:
-                self.manager.errors.report(-1, 0, error)
+            for lineno, error in config_errors:
+                self.manager.errors.report(lineno, 0, error)
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.

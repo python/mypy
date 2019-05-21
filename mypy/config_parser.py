@@ -224,10 +224,13 @@ def parse_section(prefix: str, template: Options,
     return results, report_dirs
 
 
-def split_directive(s: str) -> List[str]:
-    """Split s on commas, except during quoted sections"""
+def split_directive(s: str) -> Tuple[List[str], List[str]]:
+    """Split s on commas, except during quoted sections.
+
+    Returns the parts and a list of error messages."""
     parts = []
     cur = []  # type: List[str]
+    errors = []
     i = 0
     while i < len(s):
         if s[i] == ',':
@@ -238,56 +241,71 @@ def split_directive(s: str) -> List[str]:
             while i < len(s) and s[i] != '"':
                 cur.append(s[i])
                 i += 1
+            if i == len(s):
+                errors.append("Unterminated quote in configuration comment")
+                cur.clear()
         else:
             cur.append(s[i])
         i += 1
     if cur:
         parts.append(''.join(cur).strip())
 
-    return parts
+    return parts, errors
 
 
-def mypy_comments_to_config_map(args: List[str], template: Options) -> Dict[str, str]:
-    """Rewrite the mypy comment syntax into ini file syntax"""
+def mypy_comments_to_config_map(line: str,
+                                template: Options) -> Tuple[Dict[str, str], List[str]]:
+    """Rewrite the mypy comment syntax into ini file syntax.
+
+    Returns
+    """
     options = {}
-    for line in args:
-        for entry in split_directive(line):
-            if '=' not in entry:
-                name = entry
-                value = None
+    entries, errors = split_directive(line)
+    for entry in entries:
+        if '=' not in entry:
+            name = entry
+            value = None
+        else:
+            name, value = [x.strip() for x in entry.split('=', 1)]
+
+        name = name.replace('-', '_')
+        if value is None:
+            if name.startswith('no_') and not hasattr(template, name):
+                name = name[3:]
+                value = 'False'
             else:
-                name, value = entry.split('=', 1)
+                value = 'True'
+        options[name] = value
 
-            name = name.replace('-', '_')
-            if value is None:
-                if name.startswith('no_') and not hasattr(template, name):
-                    name = name[3:]
-                    value = 'False'
-                else:
-                    value = 'True'
-            options[name] = value
-
-    return options
+    return options, errors
 
 
 def parse_mypy_comments(
-        args: List[str], template: Options) -> Tuple[Dict[str, object], List[str]]:
+        args: List[Tuple[int, str]],
+        template: Options) -> Tuple[Dict[str, object], List[Tuple[int, str]]]:
     """Parse a collection of inline mypy: configuration comments.
 
     Returns a dictionary of options to be applied and a list of error messages
     generated.
     """
 
-    # In order to easily match the behavior for bools, we abuse configparser.
-    # Oddly, the only way to get the SectionProxy object with the getboolean
-    # method is to create a config parser.
-    parser = configparser.RawConfigParser()
-    parser['dummy'] = mypy_comments_to_config_map(args, template)
+    errors = []  # type: List[Tuple[int, str]]
+    sections = {}
 
-    stderr = StringIO()
-    sections, reports = parse_section('', template, parser['dummy'], stderr=stderr)
-    errors = [x for x in stderr.getvalue().strip().split('\n') if x]
-    if reports:
-        errors.append("Reports not supported in inline configuration")
+    for lineno, line in args:
+        # In order to easily match the behavior for bools, we abuse configparser.
+        # Oddly, the only way to get the SectionProxy object with the getboolean
+        # method is to create a config parser.
+        parser = configparser.RawConfigParser()
+        options, parse_errors = mypy_comments_to_config_map(line, template)
+        parser['dummy'] = options
+        errors.extend((lineno, x) for x in parse_errors)
+
+        stderr = StringIO()
+        new_sections, reports = parse_section('', template, parser['dummy'], stderr=stderr)
+        errors.extend((lineno, x) for x in stderr.getvalue().strip().split('\n') if x)
+        if reports:
+            errors.append((lineno, "Reports not supported in inline configuration"))
+        sections.update(new_sections)
 
     return sections, errors
