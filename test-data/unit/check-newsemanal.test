@@ -2243,3 +2243,9 @@ force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
 class A(A): ...
 [out]
 main: error: Internal error: maximum semantic analysis iteration count reached
+
+[case testNewAnalyzerReportLoopInMRO2]
+def f() -> None:
+    class A(A): ...
+[out]
+main: error: Internal error: maximum semantic analysis iteration count reached
