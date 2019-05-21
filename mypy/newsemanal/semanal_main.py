@@ -225,7 +225,10 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
     while deferred:
         iteration += 1
         if iteration == MAX_ITERATIONS:
-            analyzer.report_hang()
+            # Just pick some module inside the current SCC for error context.
+            assert state.tree is not None
+            with analyzer.file_context(state.tree, state.tree.path, state.options):
+                analyzer.report_hang()
             break
         if not (deferred or incomplete) or final_iteration:
             # OK, this is one last pass, now missing names will be reported.
