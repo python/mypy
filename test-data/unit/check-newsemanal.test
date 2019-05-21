@@ -2243,3 +2243,27 @@ force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
 class A(A): ...
 [out]
 main: error: Internal error: maximum semantic analysis iteration count reached
+
+[case testNewSemanticAnalyzerUnimportedSpecialCase]
+# flags: --ignore-missing-imports
+import other
+import p.u
+
+[file p/__init__.py]
+
+[file p/u.pyi]
+from . import c
+x: c.C
+
+[file other.py]
+from p.c import B
+
+[out]
+
+[case testNewSemanticAnalyzerQualifiedFunctionAsType]
+import m
+
+x: m.C.a.b # E: Name 'm.C.a.b' is not defined
+
+[file m.py]
+def C(): pass

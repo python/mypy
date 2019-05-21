@@ -3869,39 +3869,67 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             n = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
             if n:
                 for i in range(1, len(parts)):
-                    if isinstance(n.node, TypeInfo):
-                        n = n.node.get(parts[i])
-                    elif isinstance(n.node, MypyFile):
-                        namespace = n.node.fullname()
-                        names = n.node.names
+                    node = n.node
+                    error_type = None
+                    if isinstance(node, TypeInfo):
+                        nn = node.get(parts[i])
+                    elif isinstance(node, MypyFile):
+                        namespace = node.fullname()
+                        names = node.names
                         # Rebind potential references to old version of current module in
                         # fine-grained incremental mode.
                         #
                         # TODO: Do this for all modules in the set of modified files.
                         if namespace == self.cur_mod_id:
                             names = self.globals
-                        n = names.get(parts[i], None)
-                        if (not n
+                        nn = names.get(parts[i], None)
+                        if (not nn
                                 and '__getattr__' in names
                                 and not self.is_incomplete_namespace(namespace)):
                             fullname = namespace + '.' + '.'.join(parts[i:])
                             gvar = self.create_getattr_var(names['__getattr__'],
                                                            parts[i], fullname)
                             if gvar:
-                                n = SymbolTableNode(GDEF, gvar)
-                    # TODO: What if node is Var or FuncDef?
-                    # Currently, missing these cases results in controversial behavior, when
-                    # lookup_qualified(x.y.z) returns Var(x).
-                    if not n:
+                                nn = SymbolTableNode(GDEF, gvar)
+                    else:
+                        nn = None
+                        if isinstance(node, Var) and isinstance(node.type, AnyType):
+                            suppress_errors = True
+                            error_type = node.type
+                        else:
+                            # Invalid things such as variable or function.
+                            nn = None
+                    if not nn:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx, namespace=namespace)
+                        n = self.error_symbol(n, name, parts[i:], error_type)
                         break
+                    else:
+                        n = nn
                 if n:
                     if n and n.module_hidden:
                         self.name_not_defined(name, ctx, namespace=namespace)
             if n and not n.module_hidden:
                 return n
             return None
+
+    def error_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
+                     error_type: Optional[AnyType]) -> SymbolTableNode:
+        if n.node is None:
+            basename = None
+        else:
+            basename = n.node.fullname()
+        if basename is None:
+            fullname = name
+        else:
+            fullname = basename + '.' + '.'.join(parts)
+        if error_type:
+            error_type = AnyType(TypeOfAny.from_another_any, error_type)
+        else:
+            error_type = AnyType(TypeOfAny.from_error)
+        var = Var(parts[-1], error_type)
+        var._fullname = fullname
+        return SymbolTableNode(GDEF, var)
 
     def defer(self) -> None:
         """Defer current analysis target to be analyzed again.
