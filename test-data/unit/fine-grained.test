@@ -8882,6 +8882,18 @@ a.py:2: error: Missing return statement
 
 [builtins fixtures/list.pyi]
 
+[case testInlineConfigFineGrained2]
+import a
+[file a.py]
+# mypy: bogus-flag
+
+[file b.py.2]
+
+[out]
+a.py:1: error: Unrecognized option: bogus_flag = True
+==
+a.py:1: error: Unrecognized option: bogus_flag = True
+
 [case testWrongNumberOfArguments]
 
 [file a.py]
