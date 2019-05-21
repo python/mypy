@@ -8846,6 +8846,42 @@ y = ''
 ==
 ==
 
+[case testInlineConfigFineGrained1]
+import a
+[file a.py]
+# mypy: no-warn-no-return
+
+from typing import List
+def foo() -> List:
+    20
+
+[file a.py.2]
+# mypy: disallow-any-generics, no-warn-no-return
+
+from typing import List
+def foo() -> List:
+    20
+
+[file a.py.3]
+# mypy: no-warn-no-return
+
+from typing import List
+def foo() -> List:
+    20
+
+[file a.py.4]
+from typing import List
+def foo() -> List:
+    20
+[out]
+==
+a.py:4: error: Missing type parameters for generic type
+==
+==
+a.py:2: error: Missing return statement
+
+[builtins fixtures/list.pyi]
+
 [case testWrongNumberOfArguments]
 
 [file a.py]

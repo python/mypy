@@ -43,7 +43,7 @@ from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding, is_sub_path
+from mypy.util import DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
@@ -61,6 +61,7 @@ from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
+from mypy.config_parser import parse_mypy_comments
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -1399,6 +1400,11 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
+    # Note that the options we store in the cache are the options as
+    # specified by the command line/config file and *don't* reflect
+    # updates made by inline config directives in the file. This is
+    # important, or otherwise the options would never match when
+    # verifying the cache.
     options = manager.options.clone_for_module(id)
     assert source_hash is not None
     meta = {'id': id,
@@ -1957,6 +1963,8 @@ class State:
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
+
+            self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
                                            self.ignore_all or self.options.ignore_errors)
 
@@ -1971,6 +1979,16 @@ class State:
             self.tree.names = manager.semantic_analyzer.globals
 
         self.check_blockers()
+
+    def parse_inline_configuration(self, source: str) -> None:
+        """Check for inline mypy: options directive and parse them."""
+        flags = get_mypy_comments(source)
+        if flags:
+            changes, config_errors = parse_mypy_comments(flags, self.options)
+            self.options = self.options.apply_changes(changes)
+            self.manager.errors.set_file(self.xpath, self.id)
+            for lineno, error in config_errors:
+                self.manager.errors.report(lineno, 0, error)
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.
