@@ -408,7 +408,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
-                     active_type: Optional[TypeInfo],
+                     active_type: Optional[TypeInfo] = None,
                      scope: Optional[Scope] = None) -> Iterator[None]:
         # TODO: Use this above in visit_file
         scope = scope or self.scope
