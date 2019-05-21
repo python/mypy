@@ -628,10 +628,10 @@ class MessageBuilder:
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
-            expected_types = (
-                expected_type.items if isinstance(expected_type, UnionType)
-                else [expected_type]
-            )
+            if isinstance(expected_type, UnionType):
+                expected_types = expected_type.items
+            else:
+                expected_types = [expected_type]
             for type in expected_types:
                 if isinstance(arg_type, Instance) and isinstance(type, Instance):
                     notes = append_invariance_notes(notes, arg_type, type)
