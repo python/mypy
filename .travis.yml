@@ -6,22 +6,27 @@ cache:
     - $HOME/.pyenv/versions
     - $HOME/Library/Caches/pip
 
+env: PYTHON_DEBUG_BUILD=0
+
 matrix:
   include:
     - os: linux
       python: "3.5.2"
-      env: PYTHON_DEBUG_BUILD=0
-    - os: linux
-      python: "3.6"
-      env: PYTHON_DEBUG_BUILD=0
+    # We disable this build (3.6 linux non-debug) to keep within the 5
+    # parallel jobs that travis gives us. Between the OS X 3.6 release
+    # build and the Linux 3.6 debug build, I think this should be
+    # pretty safe.
+    # - os: linux
+    #   python: "3.6"
     - os: linux
       python: "3.6"
       env: PYTHON_DEBUG_BUILD=1
     - os: linux
       dist: xenial
-      sudo: required
       python: "3.7"
-      env: PYTHON_DEBUG_BUILD=0
+    - os: linux
+      dist: xenial
+      python: "3.8-dev"
     - os: osx
       osx_image: xcode8.3
       language: generic
@@ -33,12 +38,7 @@ before_install: |
     export PYTHONVERSION=`python --version | awk '{ print $2 }'`
 
     if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then
-      export PYTHONDIR=~/python-debug/python-$PYTHONVERSION
-    else
-      export PYTHONDIR="/opt/python/$PYTHONVERSION"
-    fi
-
-    if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then
+      PYTHONDIR=~/python-debug/python-$PYTHONVERSION
       VENV=$PYTHONDIR/env
       scripts/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
       source $VENV/bin/activate
@@ -66,8 +66,6 @@ install:
 script: |
   set -e
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    export PYTHONCONFIG="$PYTHONDIR/bin/python-config"
-    export LD_LIBRARY_PATH="$PYTHONDIR/lib"
     if [[ $PYTHON_DEBUG_BUILD != 1 ]]; then
       pytest -n4 mypyc
     fi
