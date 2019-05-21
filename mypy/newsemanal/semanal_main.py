@@ -148,7 +148,11 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
     while worklist:
         iteration += 1
         if iteration > MAX_ITERATIONS:
-            state.manager.new_semantic_analyzer.report_hang()
+            analyzer = state.manager.new_semantic_analyzer
+            # Just pick some module inside the current SCC for error context.
+            assert state.tree is not None
+            with analyzer.file_context(state.tree, state.tree.path, state.options):
+                analyzer.report_hang()
             break
         if final_iteration:
             # Give up. It's impossible to bind all names.

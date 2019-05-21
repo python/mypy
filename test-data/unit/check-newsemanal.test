@@ -2238,3 +2238,8 @@ var1: Final = 1
 def force1(x: Literal[1]) -> None: pass
 
 force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
+
+[case testNewAnalyzerReportLoopInMRO]
+class A(A): ...
+[out]
+main: error: Internal error: maximum semantic analysis iteration count reached
