@@ -1988,7 +1988,9 @@ class State:
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id)
             for lineno, error in config_errors:
-                self.manager.errors.report(lineno, 0, error)
+                # Unfortunately these need to be blockers, since otherwise they will
+                # be lost on daemon reprocessing.
+                self.manager.errors.report(lineno, 0, error, blocker=True)
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.
