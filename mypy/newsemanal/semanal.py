@@ -3866,10 +3866,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         else:
             parts = name.split('.')
             namespace = self.cur_mod_id
-            n = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
-            if n:
+            sym = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
+            if sym:
                 for i in range(1, len(parts)):
-                    node = n.node
+                    node = sym.node
                     error_type = None
                     if isinstance(node, TypeInfo):
                         nn = node.get(parts[i])
@@ -3902,15 +3902,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if not nn:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx, namespace=namespace)
-                        n = self.error_symbol(n, name, parts[i:], error_type)
+                        sym = self.error_symbol(sym, name, parts[i:], error_type)
                         break
                     else:
-                        n = nn
-                if n:
-                    if n and n.module_hidden:
+                        sym = nn
+                if sym:
+                    if sym and sym.module_hidden:
                         self.name_not_defined(name, ctx, namespace=namespace)
-            if n and not n.module_hidden:
-                return n
+            if sym and not sym.module_hidden:
+                return sym
             return None
 
     def error_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
