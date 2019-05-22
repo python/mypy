@@ -2428,26 +2428,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
 
-    def coerce_native_call_args(self,
-                                args: Sequence[Value],
-                                sig: FuncSignature,
-                                line: int) -> List[Value]:
-        coerced_arg_regs = []
-        for reg, arg in zip(args, sig.args):
-            coerced_arg_regs.append(self.coerce(reg, arg.type, line))
-        return coerced_arg_regs
-
     def call(self, decl: FuncDecl, args: Sequence[Value],
              arg_kinds: List[int],
              arg_names: Sequence[Optional[str]],
              line: int) -> Value:
         # Normalize args to positionals.
-        arg_values_with_nones = self.native_args_to_positional(
+        args = self.native_args_to_positional(
             args, arg_kinds, arg_names, decl.sig, line)
-        # Put in errors for missing args
-        args = self.missing_args_to_error_values(arg_values_with_nones, decl.sig)
-
-        args = self.coerce_native_call_args(args, decl.sig, line)
         return self.add(Call(decl, args, line))
 
     def visit_call_expr(self, expr: CallExpr) -> Value:
@@ -2516,21 +2503,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function = self.accept(callee)
         return self.py_call(function, arg_values, expr.line,
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
-
-    def missing_args_to_error_values(self,
-                                     args: Sequence[Optional[Value]],
-                                     sig: FuncSignature) -> List[Value]:
-        """Generate LoadErrorValues for missing arguments.
-
-        These get resolved to default values if they exist for the function in question. See
-        gen_arg_default.
-        """
-        ret_args = []  # type: List[Value]
-        for reg, arg in zip(args, sig.args):
-            if reg is None:
-                reg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
-            ret_args.append(reg)
-        return ret_args
 
     def translate_method_call(self, expr: CallExpr, callee: MemberExpr) -> Value:
         """Generate IR for an arbitrary call of form e.m(...).
@@ -2632,12 +2604,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
                 # Normalize args to positionals.
                 assert decl.bound_sig
-                arg_values_with_nones = self.native_args_to_positional(
+                arg_values = self.native_args_to_positional(
                     arg_values, arg_kinds, arg_names, decl.bound_sig, line)
-                arg_values = self.missing_args_to_error_values(arg_values_with_nones,
-                                                               decl.bound_sig)
-                arg_values = self.coerce_native_call_args(arg_values, decl.bound_sig, base.line)
-
                 return self.add(MethodCall(base, name, arg_values, line))
         elif isinstance(base.type, RUnion):
             return self.union_method_call(base, base.type, name, arg_values, return_rtype, line,
@@ -4665,15 +4633,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                   arg_kinds: List[int],
                                   arg_names: Sequence[Optional[str]],
                                   sig: FuncSignature,
-                                  line: int) -> List[Optional[Value]]:
+                                  line: int) -> List[Value]:
         """Prepare arguments for a native call.
 
         Given args/kinds/names and a target signature for a native call, map
-        keyword arguments to their appropriate place in the argument list and
-        and package arguments that will go into *args/**kwargs into a tuple/dict.
+        keyword arguments to their appropriate place in the argument list,
+        fill in error values for unspecified default arguments,
+        package arguments that will go into *args/**kwargs into a tuple/dict,
+        and coerce arguments to the appropriate type.
         """
-        # TODO: missing_args_to_error_values and coerce_native_call_args should just
-        # be merged into this. Leaving it to a later PR because it is a bunch of churn.
 
         sig_arg_kinds = [arg.kind for arg in sig.args]
         sig_arg_names = [arg.name for arg in sig.args]
@@ -4683,24 +4651,24 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                   sig_arg_names,
                                                   lambda n: AnyType(TypeOfAny.special_form))
 
-        # Flatten out the arguments, constructing tuples/dicts for
-        # star args when needed.  As mentioned above, we should also
-        # merge the rest of native call argument munging into this.
-        output_args = []  # type: List[Optional[Value]]
-        for idx, lst in enumerate(formal_to_actual):
+        # Flatten out the arguments, loading error values for default
+        # arguments, constructing tuples/dicts for star args, and
+        # coercing everything to the expected type.
+        output_args = []
+        for lst, arg in zip(formal_to_actual, sig.args):
             output_arg = None
-            if sig_arg_kinds[idx] == ARG_STAR:
+            if arg.kind == ARG_STAR:
                 output_arg = self.add(TupleSet([args[i] for i in lst], line))
-            elif sig_arg_kinds[idx] == ARG_STAR2:
+            elif arg.kind == ARG_STAR2:
                 dict_entries = [(self.load_static_unicode(cast(str, arg_names[i])), args[i])
                                 for i in lst]
                 output_arg = self.make_dict(dict_entries, line)
             elif not lst:
-                output_arg = None
+                output_arg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
             else:
                 output_arg = args[lst[0]]
 
-            output_args.append(output_arg)
+            output_args.append(self.coerce(output_arg, arg.type, line))
 
         return output_args
 
