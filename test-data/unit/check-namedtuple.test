@@ -859,6 +859,6 @@ a: C
 if not a:
     1()  # E: "int" not callable
 b = (1, 2)
-if not a:
+if not b:
     ''()  # E: "str" not callable
 [builtins fixtures/tuple.pyi]
