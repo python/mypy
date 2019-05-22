@@ -3880,17 +3880,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     return sym
                 else:
                     # Invalid things such as variable or function
-                    nextsym = None
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
                         # Allow access through Var with Any type without error.
-                        suppress_errors = True
-                        source_type = node.type
-                if not nextsym:
+                        return self.missing_symbol(sym, name, parts[i:], node.type)
+                    nextsym = None
+                if not nextsym or nextsym.module_hidden:
                     if not suppress_errors:
                         self.name_not_defined(name, ctx, namespace=namespace)
-                    return self.missing_symbol(sym, name, parts[i:], source_type)
-                if nextsym.module_hidden:
-                    self.name_not_defined(name, ctx, namespace=namespace)
                     return None
                 sym = nextsym
         return sym
