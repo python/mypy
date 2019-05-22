@@ -3870,7 +3870,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym:
             for i in range(1, len(parts)):
                 node = sym.node
-                error_type = None
+                source_type = None
                 if isinstance(node, TypeInfo):
                     nextsym = node.get(parts[i])
                 elif isinstance(node, MypyFile):
@@ -3882,22 +3882,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Invalid things such as variable or function
                     nextsym = None
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
+                        # Allow access through Var with Any type without error.
                         suppress_errors = True
-                        error_type = node.type
+                        source_type = node.type
                 if not nextsym:
                     if not suppress_errors:
                         self.name_not_defined(name, ctx, namespace=namespace)
-                    sym = self.error_symbol(sym, name, parts[i:], error_type)
-                    break
-                else:
-                    sym = nextsym
+                    return self.missing_symbol(sym, name, parts[i:], source_type)
+                sym = nextsym
             if sym.module_hidden:
                 self.name_not_defined(name, ctx, namespace=namespace)
-                sym = None
+                return None
         return sym
 
     def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
         """Look up a symbol from the module symbol table."""
+        # TODO: Use this logic in more places?
         module = node.fullname()
         names = node.names
         # Rebind potential references to old version of current module in
@@ -3907,7 +3907,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         sym = names.get(parts[0], None)
         if (not sym
                 and '__getattr__' in names
-                and not self.is_incomplete_namespace(module)):
+                and not self.is_incomplete_namespace(module)
+                and (node.is_stub or self.options.python_version >= (3, 7))):
             fullname = module + '.' + '.'.join(parts)
             gvar = self.create_getattr_var(names['__getattr__'],
                                            parts[0], fullname)
@@ -3915,8 +3916,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 sym = SymbolTableNode(GDEF, gvar)
         return sym
 
-    def error_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
-                     error_type: Optional[AnyType]) -> SymbolTableNode:
+    def missing_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
+                       source_type: Optional[AnyType]) -> SymbolTableNode:
         if n.node is None:
             basename = None
         else:
@@ -3925,11 +3926,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             fullname = name
         else:
             fullname = basename + '.' + '.'.join(parts)
-        if error_type:
-            error_type = AnyType(TypeOfAny.from_another_any, error_type)
+        if source_type:
+            var_type = AnyType(TypeOfAny.from_another_any, source_type)
         else:
-            error_type = AnyType(TypeOfAny.from_error)
-        var = Var(parts[-1], error_type)
+            var_type = AnyType(TypeOfAny.from_error)
+        var = Var(parts[-1], var_type)
         var._fullname = fullname
         return SymbolTableNode(GDEF, var)
 
