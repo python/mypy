@@ -3882,30 +3882,30 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         # TODO: Do this for all modules in the set of modified files.
                         if namespace == self.cur_mod_id:
                             names = self.globals
-                        nn = names.get(parts[i], None)
-                        if (not nn
+                        nextsym = names.get(parts[i], None)
+                        if (not nextsym
                                 and '__getattr__' in names
                                 and not self.is_incomplete_namespace(namespace)):
                             fullname = namespace + '.' + '.'.join(parts[i:])
                             gvar = self.create_getattr_var(names['__getattr__'],
                                                            parts[i], fullname)
                             if gvar:
-                                nn = SymbolTableNode(GDEF, gvar)
+                                nextsym = SymbolTableNode(GDEF, gvar)
                     else:
-                        nn = None
+                        newsym = None
                         if isinstance(node, Var) and isinstance(node.type, AnyType):
                             suppress_errors = True
                             error_type = node.type
                         else:
                             # Invalid things such as variable or function.
-                            nn = None
-                    if not nn:
+                            nextsym = None
+                    if not nextsym:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx, namespace=namespace)
                         sym = self.error_symbol(sym, name, parts[i:], error_type)
                         break
                     else:
-                        sym = nn
+                        sym = nextsym
                 if sym:
                     if sym and sym.module_hidden:
                         self.name_not_defined(name, ctx, namespace=namespace)
