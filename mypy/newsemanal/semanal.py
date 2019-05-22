@@ -3863,55 +3863,54 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
             return self.lookup(name, ctx, suppress_errors=suppress_errors)
-        else:
-            parts = name.split('.')
-            namespace = self.cur_mod_id
-            sym = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
-            if sym:
-                for i in range(1, len(parts)):
-                    node = sym.node
-                    error_type = None
-                    if isinstance(node, TypeInfo):
-                        nn = node.get(parts[i])
-                    elif isinstance(node, MypyFile):
-                        namespace = node.fullname()
-                        names = node.names
-                        # Rebind potential references to old version of current module in
-                        # fine-grained incremental mode.
-                        #
-                        # TODO: Do this for all modules in the set of modified files.
-                        if namespace == self.cur_mod_id:
-                            names = self.globals
-                        nextsym = names.get(parts[i], None)
-                        if (not nextsym
-                                and '__getattr__' in names
-                                and not self.is_incomplete_namespace(namespace)):
-                            fullname = namespace + '.' + '.'.join(parts[i:])
-                            gvar = self.create_getattr_var(names['__getattr__'],
-                                                           parts[i], fullname)
-                            if gvar:
-                                nextsym = SymbolTableNode(GDEF, gvar)
+        parts = name.split('.')
+        namespace = self.cur_mod_id
+        sym = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
+        if sym:
+            for i in range(1, len(parts)):
+                node = sym.node
+                error_type = None
+                if isinstance(node, TypeInfo):
+                    nn = node.get(parts[i])
+                elif isinstance(node, MypyFile):
+                    namespace = node.fullname()
+                    names = node.names
+                    # Rebind potential references to old version of current module in
+                    # fine-grained incremental mode.
+                    #
+                    # TODO: Do this for all modules in the set of modified files.
+                    if namespace == self.cur_mod_id:
+                        names = self.globals
+                    nextsym = names.get(parts[i], None)
+                    if (not nextsym
+                            and '__getattr__' in names
+                            and not self.is_incomplete_namespace(namespace)):
+                        fullname = namespace + '.' + '.'.join(parts[i:])
+                        gvar = self.create_getattr_var(names['__getattr__'],
+                                                       parts[i], fullname)
+                        if gvar:
+                            nextsym = SymbolTableNode(GDEF, gvar)
+                else:
+                    newsym = None
+                    if isinstance(node, Var) and isinstance(node.type, AnyType):
+                        suppress_errors = True
+                        error_type = node.type
                     else:
-                        newsym = None
-                        if isinstance(node, Var) and isinstance(node.type, AnyType):
-                            suppress_errors = True
-                            error_type = node.type
-                        else:
-                            # Invalid things such as variable or function.
-                            nextsym = None
-                    if not nextsym:
-                        if not suppress_errors:
-                            self.name_not_defined(name, ctx, namespace=namespace)
-                        sym = self.error_symbol(sym, name, parts[i:], error_type)
-                        break
-                    else:
-                        sym = nextsym
-                if sym:
-                    if sym and sym.module_hidden:
+                        # Invalid things such as variable or function.
+                        nextsym = None
+                if not nextsym:
+                    if not suppress_errors:
                         self.name_not_defined(name, ctx, namespace=namespace)
-            if sym and not sym.module_hidden:
-                return sym
-            return None
+                    sym = self.error_symbol(sym, name, parts[i:], error_type)
+                    break
+                else:
+                    sym = nextsym
+            if sym:
+                if sym and sym.module_hidden:
+                    self.name_not_defined(name, ctx, namespace=namespace)
+        if sym and not sym.module_hidden:
+            return sym
+        return None
 
     def error_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
                      error_type: Optional[AnyType]) -> SymbolTableNode:
