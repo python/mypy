@@ -3889,10 +3889,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if not suppress_errors:
                         self.name_not_defined(name, ctx, namespace=namespace)
                     return self.missing_symbol(sym, name, parts[i:], source_type)
+                if nextsym.module_hidden:
+                    self.name_not_defined(name, ctx, namespace=namespace)
+                    return None
                 sym = nextsym
-            if sym.module_hidden:
-                self.name_not_defined(name, ctx, namespace=namespace)
-                return None
         return sym
 
     def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:

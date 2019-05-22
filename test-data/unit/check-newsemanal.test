@@ -2267,3 +2267,15 @@ x: m.C.a.b # E: Name 'm.C.a.b' is not defined
 
 [file m.py]
 def C(): pass
+
+[case testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified]
+import m
+
+x: m.n.C # E: Name 'm.n.C' is not defined
+reveal_type(x) # E: Revealed type is 'Any'
+
+[file m.pyi]
+import n
+
+[file n.pyi]
+class C: pass
