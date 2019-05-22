@@ -3870,7 +3870,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym:
             for i in range(1, len(parts)):
                 node = sym.node
-                source_type = None
                 if isinstance(node, TypeInfo):
                     nextsym = node.get(parts[i])
                 elif isinstance(node, MypyFile):
