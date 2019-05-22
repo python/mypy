@@ -3862,6 +3862,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
+            # Simple case: look up a short name.
             return self.lookup(name, ctx, suppress_errors=suppress_errors)
         parts = name.split('.')
         namespace = self.cur_mod_id
@@ -3871,25 +3872,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 node = sym.node
                 error_type = None
                 if isinstance(node, TypeInfo):
-                    nn = node.get(parts[i])
+                    nextsym = node.get(parts[i])
                 elif isinstance(node, MypyFile):
+                    nextsym = self.get_module_symbol(node, parts[i:])
                     namespace = node.fullname()
-                    names = node.names
-                    # Rebind potential references to old version of current module in
-                    # fine-grained incremental mode.
-                    #
-                    # TODO: Do this for all modules in the set of modified files.
-                    if namespace == self.cur_mod_id:
-                        names = self.globals
-                    nextsym = names.get(parts[i], None)
-                    if (not nextsym
-                            and '__getattr__' in names
-                            and not self.is_incomplete_namespace(namespace)):
-                        fullname = namespace + '.' + '.'.join(parts[i:])
-                        gvar = self.create_getattr_var(names['__getattr__'],
-                                                       parts[i], fullname)
-                        if gvar:
-                            nextsym = SymbolTableNode(GDEF, gvar)
                 else:
                     newsym = None
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
@@ -3911,6 +3897,25 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym and not sym.module_hidden:
             return sym
         return None
+
+    def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
+        """Look up a symbol from the module symbol table."""
+        module = node.fullname()
+        names = node.names
+        # Rebind potential references to old version of current module in
+        # fine-grained incremental mode.
+        if module == self.cur_mod_id:
+            names = self.globals
+        sym = names.get(parts[0], None)
+        if (not sym
+                and '__getattr__' in names
+                and not self.is_incomplete_namespace(module)):
+            fullname = module + '.' + '.'.join(parts)
+            gvar = self.create_getattr_var(names['__getattr__'],
+                                           parts[0], fullname)
+            if gvar:
+                sym = SymbolTableNode(GDEF, gvar)
+        return sym
 
     def error_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
                      error_type: Optional[AnyType]) -> SymbolTableNode:
