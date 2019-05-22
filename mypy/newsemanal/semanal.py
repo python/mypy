@@ -3862,46 +3862,70 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
+            # Simple case: look up a short name.
             return self.lookup(name, ctx, suppress_errors=suppress_errors)
-        else:
-            parts = name.split('.')
-            namespace = self.cur_mod_id
-            n = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
-            if n:
-                for i in range(1, len(parts)):
-                    if isinstance(n.node, TypeInfo):
-                        n = n.node.get(parts[i])
-                    elif isinstance(n.node, MypyFile):
-                        namespace = n.node.fullname()
-                        names = n.node.names
-                        # Rebind potential references to old version of current module in
-                        # fine-grained incremental mode.
-                        #
-                        # TODO: Do this for all modules in the set of modified files.
-                        if namespace == self.cur_mod_id:
-                            names = self.globals
-                        n = names.get(parts[i], None)
-                        if (not n
-                                and '__getattr__' in names
-                                and not self.is_incomplete_namespace(namespace)):
-                            fullname = namespace + '.' + '.'.join(parts[i:])
-                            gvar = self.create_getattr_var(names['__getattr__'],
-                                                           parts[i], fullname)
-                            if gvar:
-                                n = SymbolTableNode(GDEF, gvar)
-                    # TODO: What if node is Var or FuncDef?
-                    # Currently, missing these cases results in controversial behavior, when
-                    # lookup_qualified(x.y.z) returns Var(x).
-                    if not n:
-                        if not suppress_errors:
-                            self.name_not_defined(name, ctx, namespace=namespace)
-                        break
-                if n:
-                    if n and n.module_hidden:
+        parts = name.split('.')
+        namespace = self.cur_mod_id
+        sym = self.lookup(parts[0], ctx, suppress_errors=suppress_errors)
+        if sym:
+            for i in range(1, len(parts)):
+                node = sym.node
+                if isinstance(node, TypeInfo):
+                    nextsym = node.get(parts[i])
+                elif isinstance(node, MypyFile):
+                    nextsym = self.get_module_symbol(node, parts[i:])
+                    namespace = node.fullname()
+                elif isinstance(node, PlaceholderNode):
+                    return sym
+                else:
+                    if isinstance(node, Var) and isinstance(node.type, AnyType):
+                        # Allow access through Var with Any type without error.
+                        return self.implicit_symbol(sym, name, parts[i:], node.type)
+                    # Lookup through invalid node, such as variable or function
+                    nextsym = None
+                if not nextsym or nextsym.module_hidden:
+                    if not suppress_errors:
                         self.name_not_defined(name, ctx, namespace=namespace)
-            if n and not n.module_hidden:
-                return n
-            return None
+                    return None
+                sym = nextsym
+        return sym
+
+    def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
+        """Look up a symbol from the module symbol table."""
+        # TODO: Use this logic in more places?
+        module = node.fullname()
+        names = node.names
+        # Rebind potential references to old version of current module in
+        # fine-grained incremental mode.
+        if module == self.cur_mod_id:
+            names = self.globals
+        sym = names.get(parts[0], None)
+        if (not sym
+                and '__getattr__' in names
+                and not self.is_incomplete_namespace(module)
+                and (node.is_stub or self.options.python_version >= (3, 7))):
+            fullname = module + '.' + '.'.join(parts)
+            gvar = self.create_getattr_var(names['__getattr__'],
+                                           parts[0], fullname)
+            if gvar:
+                sym = SymbolTableNode(GDEF, gvar)
+        return sym
+
+    def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
+                        source_type: AnyType) -> SymbolTableNode:
+        """Create symbol for a qualified name reference through Any type."""
+        if sym.node is None:
+            basename = None
+        else:
+            basename = sym.node.fullname()
+        if basename is None:
+            fullname = name
+        else:
+            fullname = basename + '.' + '.'.join(parts)
+        var_type = AnyType(TypeOfAny.from_another_any, source_type)
+        var = Var(parts[-1], var_type)
+        var._fullname = fullname
+        return SymbolTableNode(GDEF, var)
 
     def defer(self) -> None:
         """Defer current analysis target to be analyzed again.

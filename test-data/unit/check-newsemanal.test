@@ -2244,6 +2244,67 @@ class A(A): ...
 [out]
 main: error: Internal error: maximum semantic analysis iteration count reached
 
+[case testNewSemanticAnalyzerUnimportedSpecialCase]
+# flags: --ignore-missing-imports
+import other
+import p.u
+
+[file p/__init__.py]
+
+[file p/u.pyi]
+from . import c
+x: c.C
+
+[file other.py]
+from p.c import B
+
+[out]
+
+[case testNewSemanticAnalyzerQualifiedFunctionAsType]
+import m
+
+x: m.C.a.b # E: Name 'm.C.a.b' is not defined
+
+[file m.py]
+def C(): pass
+
+[case testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified]
+import m
+
+x: m.n.C # E: Name 'm.n.C' is not defined
+reveal_type(x) # E: Revealed type is 'Any'
+
+[file m.pyi]
+import n
+
+[file n.pyi]
+class C: pass
+
+[case testNextSemanticAnalyzerModuleGetAttrInPython36]
+# flags: --python-version 3.6
+import m
+import n
+
+x: m.n.C # E: Name 'm.n.C' is not defined
+y: n.D # E: Name 'n.D' is not defined
+[file m.py]
+import n
+[file n.py]
+def __getattr__(x): pass
+
+
+[case testNextSemanticAnalyzerModuleGetAttrInPython37]
+# flags: --python-version 3.7
+import m
+import n
+
+x: m.n.C
+y: n.D
+[file m.py]
+import n
+[file n.py]
+def __getattr__(x): pass
+
 [case testNewAnalyzerReportLoopInMRO2]
 def f() -> None:
     class A(A): ...
