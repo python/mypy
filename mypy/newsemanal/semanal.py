@@ -3876,14 +3876,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 elif isinstance(node, MypyFile):
                     nextsym = self.get_module_symbol(node, parts[i:])
                     namespace = node.fullname()
+                elif isinstance(node, PlaceholderNode):
+                    return sym
                 else:
+                    # Invalid things such as variable or function
                     nextsym = None
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
                         suppress_errors = True
                         error_type = node.type
-                    else:
-                        # Invalid things such as variable or function.
-                        nextsym = None
                 if not nextsym:
                     if not suppress_errors:
                         self.name_not_defined(name, ctx, namespace=namespace)
