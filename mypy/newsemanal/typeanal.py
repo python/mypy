@@ -110,7 +110,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def __init__(self,
                  api: SemanticAnalyzerCoreInterface,
-                 tvar_scope: Optional[TypeVarScope],
+                 tvar_scope: TypeVarScope,
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool, *,
@@ -119,8 +119,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
                  allow_placeholder: bool = False,
-                 report_invalid_types: bool = True,
-                 third_pass: bool = False) -> None:
+                 report_invalid_types: bool = True) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
         self.lookup_fqn_func = api.lookup_fully_qualified
@@ -147,7 +146,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.plugin = plugin
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
-        self.third_pass = third_pass
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used = set()  # type: Set[str]
 
@@ -160,7 +158,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return typ
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
-        sym = self.lookup_qualified(t.name, t, suppress_errors=self.third_pass)
+        sym = self.lookup_qualified(t.name, t)
         if sym is not None:
             node = sym.node
             if isinstance(node, PlaceholderNode):
@@ -187,10 +185,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
-            if self.tvar_scope is not None:
-                tvar_def = self.tvar_scope.get_binding(sym)
-            else:
-                tvar_def = None
+            tvar_def = self.tvar_scope.get_binding(sym)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
@@ -219,9 +214,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
-            if self.third_pass:
-                self.fail('Invalid type "{}"'.format(t.name), t)
-                return AnyType(TypeOfAny.from_error)
             return AnyType(TypeOfAny.special_form)
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
@@ -370,8 +362,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
         unbound_tvar = (isinstance(sym.node, TypeVarExpr) and
-                        (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None))
-        if self.allow_unbound_tvars and unbound_tvar and not self.third_pass:
+                        self.tvar_scope.get_binding(sym) is None)
+        if self.allow_unbound_tvars and unbound_tvar:
             return t
 
         # Option 3:
@@ -401,9 +393,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # None of the above options worked, we give up.
         self.fail('Invalid type "{}"'.format(name), t)
 
-        if self.third_pass and isinstance(sym.node, TypeVarExpr):
-            self.note_func("Forward references to type variables are prohibited", t)
-            return AnyType(TypeOfAny.from_error)
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages
         # are more detailed, on the other hand, some of them may be bogus.
@@ -726,18 +715,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     @contextmanager
     def tvar_scope_frame(self) -> Iterator[None]:
         old_scope = self.tvar_scope
-        if self.tvar_scope:
-            self.tvar_scope = self.tvar_scope.method_frame()
-        else:
-            assert self.third_pass, "Internal error: type variable scope not given"
+        self.tvar_scope = self.tvar_scope.method_frame()
         yield
         self.tvar_scope = old_scope
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
         """Return list of unique type variables referred to in a callable."""
-        if not self.tvar_scope:
-            return []  # We are in third pass, nothing new here
         names = []  # type: List[str]
         tvars = []  # type: List[TypeVarExpr]
         for arg in type.arg_types:
@@ -761,8 +745,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def bind_function_type_variables(self,
                                      fun_type: CallableType, defn: Context) -> List[TypeVarDef]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
-        if not self.tvar_scope:
-            return []  # We are in third pass, nothing new here
         if fun_type.variables:
             for var in fun_type.variables:
                 var_node = self.lookup_qualified(var.name, var)
@@ -787,8 +769,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return defs
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
-        if self.tvar_scope is None:
-            return False
         tvar_node = self.lookup_qualified(tvar, context)
         if not tvar_node:
             return False
