@@ -3877,7 +3877,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     nextsym = self.get_module_symbol(node, parts[i:])
                     namespace = node.fullname()
                 else:
-                    newsym = None
+                    nextsym = None
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
                         suppress_errors = True
                         error_type = node.type
