@@ -21,7 +21,6 @@ static struct PyModuleDef module = {
     module_methods
 };
 
-CPy_dllexport
 PyMODINIT_FUNC PyInit_prog(void)
 {
     if (CPyStatic_module_internal) {

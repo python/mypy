@@ -22,11 +22,10 @@ base_path = os.path.join(os.path.dirname(__file__), '..')
 
 setup_format = """\
 from distutils.core import setup
-from mypyc.build import mypycify, MypycifyBuildExt
+from mypyc.build import mypycify
 
 setup(name='mypyc_output',
       ext_modules=mypycify([], {}, {}),
-      cmdclass={{'build_ext': MypycifyBuildExt}},
 )
 """
 

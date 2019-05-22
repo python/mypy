@@ -15,13 +15,6 @@
 #define CPy_Unreachable() abort()
 #endif
 
-#if defined(_MSC_VER)
-#define CPy_dllexport __declspec(dllexport)
-#else
-#define CPy_dllexport
-#endif
-
-
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
 // I'm honestly kind of surprised that this isn't done by default.

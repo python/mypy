@@ -175,18 +175,6 @@ class ModuleGenerator:
 
         emitter.emit_line()
 
-        # Generate a dummy initialization function for the shared lib,
-        # since the windows linker gets mad if it isn't present.
-        if self.shared_lib_name:
-            emitter.emit_line()
-            emitter.emit_lines(
-                'PyMODINIT_FUNC PyInit_lib{}(void)'.format(self.shared_lib_name),
-                '{',
-                'PyErr_SetString(PyExc_RuntimeError, "mypyc shared lib is not to be imported");',
-                'return NULL;',
-                '}',
-            )
-
         declarations = Emitter(self.context)
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
@@ -209,8 +197,60 @@ class ModuleGenerator:
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
 
+        if self.shared_lib_name:
+            self.generate_shared_lib_init(emitter)
+
         return file_contents + [('__native.c', ''.join(emitter.fragments)),
                                 ('__native.h', ''.join(declarations.fragments))]
+
+    def generate_shared_lib_init(self, emitter: Emitter) -> None:
+        """Generate the init function for a shared library.
+
+        A shared library contains all of the actual code for a set of modules.
+
+        The init function is responsible for creating Capsules that wrap
+        pointers to the initialization function of all the real init functions
+        for modules in this shared library.
+        """
+        emitter.emit_line()
+        emitter.emit_lines(
+            'PyMODINIT_FUNC PyInit_{}(void)'.format(self.shared_lib_name),
+            '{',
+            ('static PyModuleDef def = {{ PyModuleDef_HEAD_INIT, "{}", NULL, -1, NULL, NULL }};'
+             .format(self.shared_lib_name)),
+            'int res;',
+            'PyObject *capsule;',
+            'PyObject *module = PyModule_Create(&def);',
+            'if (!module) {',
+            'goto fail;',
+            '}',
+            '',
+        )
+
+        for mod, _ in self.modules:
+            name = exported_name(mod)
+            emitter.emit_lines(
+                'extern PyObject *CPyInit_{}(void);'.format(name),
+                'capsule = PyCapsule_New((void *)CPyInit_{}, "{}.{}", NULL);'.format(
+                    name, self.shared_lib_name, name),
+                'if (!capsule) {',
+                'goto fail;',
+                '}',
+                'res = PyObject_SetAttrString(module, "{}", capsule);'.format(name),
+                'Py_DECREF(capsule);',
+                'if (res < 0) {',
+                'goto fail;',
+                '}',
+                '',
+            )
+
+        emitter.emit_lines(
+            'return module;',
+            'fail:',
+            'Py_XDECREF(module);'
+            'return NULL;',
+            '}',
+        )
 
     def generate_globals_init(self, emitter: Emitter) -> None:
         emitter.emit_lines(
@@ -308,8 +348,7 @@ class ModuleGenerator:
             declaration = 'PyMODINIT_FUNC PyInit_{}(void)'.format(module_name)
         else:
             declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
-        emitter.emit_lines('CPy_dllexport',
-                           declaration,
+        emitter.emit_lines(declaration,
                            '{')
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
