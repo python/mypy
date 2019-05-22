@@ -3880,7 +3880,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 else:
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
                         # Allow access through Var with Any type without error.
-                        return self.missing_symbol(sym, name, parts[i:], node.type)
+                        return self.implicit_symbol(sym, name, parts[i:], node.type)
                     # Lookup through invalid node, such as variable or function
                     nextsym = None
                 if not nextsym or nextsym.module_hidden:
@@ -3911,20 +3911,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 sym = SymbolTableNode(GDEF, gvar)
         return sym
 
-    def missing_symbol(self, n: SymbolTableNode, name: str, parts: List[str],
-                       source_type: Optional[AnyType]) -> SymbolTableNode:
-        if n.node is None:
+    def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
+                        source_type: AnyType) -> SymbolTableNode:
+        """Create symbol for a qualified name reference through Any type."""
+        if sym.node is None:
             basename = None
         else:
-            basename = n.node.fullname()
+            basename = sym.node.fullname()
         if basename is None:
             fullname = name
         else:
             fullname = basename + '.' + '.'.join(parts)
-        if source_type:
-            var_type = AnyType(TypeOfAny.from_another_any, source_type)
-        else:
-            var_type = AnyType(TypeOfAny.from_error)
+        var_type = AnyType(TypeOfAny.from_another_any, source_type)
         var = Var(parts[-1], var_type)
         var._fullname = fullname
         return SymbolTableNode(GDEF, var)
