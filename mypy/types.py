@@ -1843,7 +1843,7 @@ class PlaceholderType(Type):
 
     This is needed when there's a reference to a type before the real symbol
     table entry of the target type is available (specifically, we use a
-    temporary PlaceholderTypeInfo symbol node). Consider this example:
+    temporary PlaceholderNode symbol node). Consider this example:
 
       class str(Sequence[str]): ...
 
