@@ -3878,10 +3878,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 elif isinstance(node, PlaceholderNode):
                     return sym
                 else:
-                    # Invalid things such as variable or function
                     if isinstance(node, Var) and isinstance(node.type, AnyType):
                         # Allow access through Var with Any type without error.
                         return self.missing_symbol(sym, name, parts[i:], node.type)
+                    # Lookup through invalid node, such as variable or function
                     nextsym = None
                 if not nextsym or nextsym.module_hidden:
                     if not suppress_errors:
