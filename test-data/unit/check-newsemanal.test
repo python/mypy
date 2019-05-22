@@ -2279,3 +2279,9 @@ import n
 
 [file n.pyi]
 class C: pass
+
+[case testNewAnalyzerReportLoopInMRO2]
+def f() -> None:
+    class A(A): ...
+[out]
+main: error: Internal error: maximum semantic analysis iteration count reached
