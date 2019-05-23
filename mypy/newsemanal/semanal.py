@@ -3904,9 +3904,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def str_type(self) -> Instance:
         return self.named_type('__builtins__.str')
 
-    def class_type(self, self_type: Type) -> Type:
-        return TypeType.make_normalized(self_type)
-
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, Context())
         assert sym, "Internal error: attempted to construct unknown type"
@@ -4518,6 +4515,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return None
         self.add_type_alias_deps(a.aliases_used)
         return typ
+
+    def class_type(self, self_type: Type) -> Type:
+        return TypeType.make_normalized(self_type)
 
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
