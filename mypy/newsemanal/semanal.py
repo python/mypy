@@ -464,6 +464,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         scope.leave()
         del self.options
 
+    #
+    # Functions
+    #
+
     def visit_func_def(self, defn: FuncDef) -> None:
         defn.is_conditional = self.block_depth[-1] > 0
 
@@ -477,20 +481,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # get always added, since they aren't separate targets.
         if not self.recurse_into_functions or len(self.function_stack) > 0:
             if not defn.is_decorated and not defn.is_overload:
-                self.add_func_to_symbol_table(defn)
+                self.add_function_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
 
         with self.scope.function_scope(defn):
             self._visit_func_def(defn)
-
-    def add_func_to_symbol_table(self, func: Union[FuncDef, OverloadedFuncDef]) -> None:
-        if self.is_class_scope():
-            assert self.type is not None
-            func.info = self.type
-        func._fullname = self.qualified_name(func.name())
-        self.add_symbol(func.name(), func, func)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         self.function_stack.append(defn)
@@ -591,7 +588,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             fun_type.variables = a.bind_function_type_variables(fun_type, defn)
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        self.add_func_to_symbol_table(defn)
+        self.add_function_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
             return
@@ -811,6 +808,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if isinstance(item, Decorator):
                 item.func.accept(self)
 
+    def add_function_to_symbol_table(self, func: Union[FuncDef, OverloadedFuncDef]) -> None:
+        if self.is_class_scope():
+            assert self.type is not None
+            func.info = self.type
+        func._fullname = self.qualified_name(func.name())
+        self.add_symbol(func.name(), func, func)
+
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
@@ -857,6 +861,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
+
+    #
+    # Classes
+    #
 
     def visit_class_def(self, defn: ClassDef) -> None:
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
@@ -1533,6 +1541,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
 
+    #
+    # Imports
+    #
+
     def visit_import(self, i: Import) -> None:
         for id, as_id in i.ids:
             if as_id is not None:
@@ -1762,20 +1774,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             pass
 
     #
-    # Statements
+    # Assignment
     #
-
-    def visit_block(self, b: Block) -> None:
-        if b.is_unreachable:
-            return
-        self.block_depth[-1] += 1
-        for s in b.body:
-            self.accept(s)
-        self.block_depth[-1] -= 1
-
-    def visit_block_maybe(self, b: Optional[Block]) -> None:
-        if b:
-            self.visit_block(b)
 
     def type_analyzer(self, *,
                       tvar_scope: Optional[TypeVarScope] = None,
@@ -3087,6 +3087,22 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    #
+    # Misc statements
+    #
+
+    def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
+        self.block_depth[-1] += 1
+        for s in b.body:
+            self.accept(s)
+        self.block_depth[-1] -= 1
+
+    def visit_block_maybe(self, b: Optional[Block]) -> None:
+        if b:
+            self.visit_block(b)
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         s.expr.accept(self)
