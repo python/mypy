@@ -861,6 +861,75 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
+    def visit_decorator(self, dec: Decorator) -> None:
+        dec.func.is_conditional = self.block_depth[-1] > 0
+        if not dec.is_overload:
+            self.add_symbol(dec.name(), dec, dec)
+        dec.func._fullname = self.qualified_name(dec.name())
+        for d in dec.decorators:
+            d.accept(self)
+        removed = []  # type: List[int]
+        no_type_check = False
+        for i, d in enumerate(dec.decorators):
+            # A bunch of decorators are special cased here.
+            if refers_to_fullname(d, 'abc.abstractmethod'):
+                removed.append(i)
+                dec.func.is_abstract = True
+                self.check_decorated_function_is_method('abstractmethod', dec)
+            elif (refers_to_fullname(d, 'asyncio.coroutines.coroutine') or
+                  refers_to_fullname(d, 'types.coroutine')):
+                removed.append(i)
+                dec.func.is_awaitable_coroutine = True
+            elif refers_to_fullname(d, 'builtins.staticmethod'):
+                removed.append(i)
+                dec.func.is_static = True
+                dec.var.is_staticmethod = True
+                self.check_decorated_function_is_method('staticmethod', dec)
+            elif refers_to_fullname(d, 'builtins.classmethod'):
+                removed.append(i)
+                dec.func.is_class = True
+                dec.var.is_classmethod = True
+                self.check_decorated_function_is_method('classmethod', dec)
+            elif (refers_to_fullname(d, 'builtins.property') or
+                  refers_to_fullname(d, 'abc.abstractproperty')):
+                removed.append(i)
+                dec.func.is_property = True
+                dec.var.is_property = True
+                if refers_to_fullname(d, 'abc.abstractproperty'):
+                    dec.func.is_abstract = True
+                self.check_decorated_function_is_method('property', dec)
+                if len(dec.func.arguments) > 1:
+                    self.fail('Too many arguments', dec.func)
+            elif refers_to_fullname(d, 'typing.no_type_check'):
+                dec.var.type = AnyType(TypeOfAny.special_form)
+                no_type_check = True
+            elif (refers_to_fullname(d, 'typing.final') or
+                  refers_to_fullname(d, 'typing_extensions.final')):
+                if self.is_class_scope():
+                    assert self.type is not None, "No type set at class scope"
+                    if self.type.is_protocol:
+                        self.msg.protocol_members_cant_be_final(d)
+                    else:
+                        dec.func.is_final = True
+                        dec.var.is_final = True
+                    removed.append(i)
+                else:
+                    self.fail("@final cannot be used with non-method functions", d)
+        for i in reversed(removed):
+            del dec.decorators[i]
+        if (not dec.is_overload or dec.var.is_property) and self.type:
+            dec.var.info = self.type
+            dec.var.is_initialized_in_class = True
+        if not no_type_check and self.recurse_into_functions:
+            dec.func.accept(self)
+        if dec.decorators and dec.var.is_property:
+            self.fail('Decorated property not supported', dec)
+
+    def check_decorated_function_is_method(self, decorator: str,
+                                           context: Context) -> None:
+        if not self.type or self.is_func_scope():
+            self.fail("'%s' used with a non-method" % decorator, context)
+
     #
     # Classes
     #
@@ -2875,75 +2944,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         elif lval.is_inferred_def:
                             lnode.kind = self.current_symbol_kind()
                             lnode.node = rnode.node
-
-    def visit_decorator(self, dec: Decorator) -> None:
-        dec.func.is_conditional = self.block_depth[-1] > 0
-        if not dec.is_overload:
-            self.add_symbol(dec.name(), dec, dec)
-        dec.func._fullname = self.qualified_name(dec.name())
-        for d in dec.decorators:
-            d.accept(self)
-        removed = []  # type: List[int]
-        no_type_check = False
-        for i, d in enumerate(dec.decorators):
-            # A bunch of decorators are special cased here.
-            if refers_to_fullname(d, 'abc.abstractmethod'):
-                removed.append(i)
-                dec.func.is_abstract = True
-                self.check_decorated_function_is_method('abstractmethod', dec)
-            elif (refers_to_fullname(d, 'asyncio.coroutines.coroutine') or
-                  refers_to_fullname(d, 'types.coroutine')):
-                removed.append(i)
-                dec.func.is_awaitable_coroutine = True
-            elif refers_to_fullname(d, 'builtins.staticmethod'):
-                removed.append(i)
-                dec.func.is_static = True
-                dec.var.is_staticmethod = True
-                self.check_decorated_function_is_method('staticmethod', dec)
-            elif refers_to_fullname(d, 'builtins.classmethod'):
-                removed.append(i)
-                dec.func.is_class = True
-                dec.var.is_classmethod = True
-                self.check_decorated_function_is_method('classmethod', dec)
-            elif (refers_to_fullname(d, 'builtins.property') or
-                  refers_to_fullname(d, 'abc.abstractproperty')):
-                removed.append(i)
-                dec.func.is_property = True
-                dec.var.is_property = True
-                if refers_to_fullname(d, 'abc.abstractproperty'):
-                    dec.func.is_abstract = True
-                self.check_decorated_function_is_method('property', dec)
-                if len(dec.func.arguments) > 1:
-                    self.fail('Too many arguments', dec.func)
-            elif refers_to_fullname(d, 'typing.no_type_check'):
-                dec.var.type = AnyType(TypeOfAny.special_form)
-                no_type_check = True
-            elif (refers_to_fullname(d, 'typing.final') or
-                  refers_to_fullname(d, 'typing_extensions.final')):
-                if self.is_class_scope():
-                    assert self.type is not None, "No type set at class scope"
-                    if self.type.is_protocol:
-                        self.msg.protocol_members_cant_be_final(d)
-                    else:
-                        dec.func.is_final = True
-                        dec.var.is_final = True
-                    removed.append(i)
-                else:
-                    self.fail("@final cannot be used with non-method functions", d)
-        for i in reversed(removed):
-            del dec.decorators[i]
-        if (not dec.is_overload or dec.var.is_property) and self.type:
-            dec.var.info = self.type
-            dec.var.is_initialized_in_class = True
-        if not no_type_check and self.recurse_into_functions:
-            dec.func.accept(self)
-        if dec.decorators and dec.var.is_property:
-            self.fail('Decorated property not supported', dec)
-
-    def check_decorated_function_is_method(self, decorator: str,
-                                           context: Context) -> None:
-        if not self.type or self.is_func_scope():
-            self.fail("'%s' used with a non-method" % decorator, context)
 
     def process__all__(self, s: AssignmentStmt) -> None:
         """Export names if argument is a __all__ assignment."""
