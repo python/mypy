@@ -1720,35 +1720,92 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Assignment
     #
 
-    def add_type_alias_deps(self, aliases_used: Iterable[str],
-                            target: Optional[str] = None) -> None:
-        """Add full names of type aliases on which the current node depends.
-
-        This is used by fine-grained incremental mode to re-check the corresponding nodes.
-        If `target` is None, then the target node used will be the current scope.
-        """
-        if not aliases_used:
-            # A basic optimization to avoid adding targets with no dependencies to
-            # the `alias_deps` dict.
+    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        tag = self.track_incomplete_refs()
+        s.rvalue.accept(self)
+        if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
+            # Initializer couldn't be fully analyzed. Defer the current node and give up.
+            # Make sure that if we skip the definition of some local names, they can't be
+            # added later in this scope, since an earlier definition should take precedence.
+            for expr in names_modified_by_assignment(s):
+                self.mark_incomplete(expr.name, expr)
             return
-        if target is None:
-            target = self.scope.current_target()
-        self.cur_mod_node.alias_deps[target].update(aliases_used)
 
-    def is_none_alias(self, node: Expression) -> bool:
-        """Is this a r.h.s. for a None alias?
+        # The r.h.s. is now ready to be classified, first check if it is a special form:
+        special_form = False
+        # * type alias
+        if self.check_and_set_up_type_alias(s):
+            s.is_alias_def = True
+            special_form = True
+        # * type variable definition
+        elif self.process_typevar_declaration(s):
+            special_form = True
+        # * type constructors
+        elif self.analyze_namedtuple_assign(s):
+            special_form = True
+        elif self.analyze_typeddict_assign(s):
+            special_form = True
+        elif self.newtype_analyzer.process_newtype_declaration(s):
+            special_form = True
+        elif self.analyze_enum_assign(s):
+            special_form = True
+        if special_form:
+            self.record_special_form_lvalue(s)
+            return
 
-        We special case the assignments like Void = type(None), to allow using
-        Void in type annotations.
+        # OK, this is a regular assignment, perform the necessary analysis steps.
+        s.is_final_def = self.unwrap_final(s)
+        self.analyze_lvalues(s)
+        self.check_final_implicit_def(s)
+        self.check_classvar(s)
+        self.process_type_annotation(s)
+        self.apply_dynamic_class_hook(s)
+        self.store_final_status(s)
+        if not s.type:
+            self.process_module_assignment(s.lvalues, s.rvalue, s)
+        self.process__all__(s)
+
+    def should_wait_rhs(self, rv: Expression) -> bool:
+        """Can we already classify this r.h.s. of an assignment or should we wait?
+
+        This returns True if we don't have enough information to decide whether
+        an assignment is just a normal variable definition or a special form.
+        Always return False if this is a final iteration. This will typically cause
+        the lvalue to be classified as a variable plus emit an error.
         """
-        if isinstance(node, CallExpr):
-            if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
-                    isinstance(node.args[0], NameExpr)):
-                call = self.lookup_qualified(node.callee.name, node.callee)
-                arg = self.lookup_qualified(node.args[0].name, node.args[0])
-                if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
-                        arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
+        if self.final_iteration:
+            # No chance, nothing has changed.
+            return False
+        if isinstance(rv, NameExpr):
+            n = self.lookup(rv.name, rv)
+            if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
+                return True
+        elif isinstance(rv, MemberExpr):
+            fname = get_member_expr_fullname(rv)
+            if fname:
+                n = self.lookup_qualified(fname, rv, suppress_errors=True)
+                if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
                     return True
+        elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
+            return self.should_wait_rhs(rv.base)
+        elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
+            # This is only relevant for builtin SCC where things like 'TypeVar'
+            # may be not ready.
+            return self.should_wait_rhs(rv.callee)
+        return False
+
+    def can_be_type_alias(self, rv: Expression) -> bool:
+        """Is this a valid r.h.s. for an alias definition?
+
+        Note: this function should be only called for expressions where self.should_wait_rhs()
+        returns False.
+        """
+        if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
+            return True
+        if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
+            return True
+        if self.is_none_alias(rv):
+            return True
         return False
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
@@ -1805,47 +1862,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     return True
         return False
 
-    def should_wait_rhs(self, rv: Expression) -> bool:
-        """Can we already classify this r.h.s. of an assignment or should we wait?
+    def is_none_alias(self, node: Expression) -> bool:
+        """Is this a r.h.s. for a None alias?
 
-        This returns True if we don't have enough information to decide whether
-        an assignment is just a normal variable definition or a special form.
-        Always return False if this is a final iteration. This will typically cause
-        the lvalue to be classified as a variable plus emit an error.
+        We special case the assignments like Void = type(None), to allow using
+        Void in type annotations.
         """
-        if self.final_iteration:
-            # No chance, nothing has changed.
-            return False
-        if isinstance(rv, NameExpr):
-            n = self.lookup(rv.name, rv)
-            if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
-                return True
-        elif isinstance(rv, MemberExpr):
-            fname = get_member_expr_fullname(rv)
-            if fname:
-                n = self.lookup_qualified(fname, rv, suppress_errors=True)
-                if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
+        if isinstance(node, CallExpr):
+            if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
+                    isinstance(node.args[0], NameExpr)):
+                call = self.lookup_qualified(node.callee.name, node.callee)
+                arg = self.lookup_qualified(node.args[0].name, node.args[0])
+                if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
+                        arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
                     return True
-        elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-            return self.should_wait_rhs(rv.base)
-        elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
-            # This is only relevant for builtin SCC where things like 'TypeVar'
-            # may be not ready.
-            return self.should_wait_rhs(rv.callee)
-        return False
-
-    def can_be_type_alias(self, rv: Expression) -> bool:
-        """Is this a valid r.h.s. for an alias definition?
-
-        Note: this function should be only called for expressions where self.should_wait_rhs()
-        returns False.
-        """
-        if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
-            return True
-        if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
-            return True
-        if self.is_none_alias(rv):
-            return True
         return False
 
     def record_special_form_lvalue(self, s: AssignmentStmt) -> None:
@@ -1859,51 +1889,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.current_symbol_kind() == GDEF:
             lvalue.fullname = self.qualified_name(lvalue.name)
         lvalue.kind = self.current_symbol_kind()
-
-    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        tag = self.track_incomplete_refs()
-        s.rvalue.accept(self)
-        if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
-            # Initializer couldn't be fully analyzed. Defer the current node and give up.
-            # Make sure that if we skip the definition of some local names, they can't be
-            # added later in this scope, since an earlier definition should take precedence.
-            for expr in names_modified_by_assignment(s):
-                self.mark_incomplete(expr.name, expr)
-            return
-
-        # The r.h.s. is now ready to be classified, first check if it is a special form:
-        special_form = False
-        # * type alias
-        if self.check_and_set_up_type_alias(s):
-            s.is_alias_def = True
-            special_form = True
-        # * type variable definition
-        elif self.process_typevar_declaration(s):
-            special_form = True
-        # * type constructors
-        elif self.analyze_namedtuple_assign(s):
-            special_form = True
-        elif self.analyze_typeddict_assign(s):
-            special_form = True
-        elif self.newtype_analyzer.process_newtype_declaration(s):
-            special_form = True
-        elif self.analyze_enum_assign(s):
-            special_form = True
-        if special_form:
-            self.record_special_form_lvalue(s)
-            return
-
-        # OK, this is a regular assignment, perform the necessary analysis steps.
-        s.is_final_def = self.unwrap_final(s)
-        self.analyze_lvalues(s)
-        self.check_final_implicit_def(s)
-        self.check_classvar(s)
-        self.process_type_annotation(s)
-        self.apply_dynamic_class_hook(s)
-        self.store_final_status(s)
-        if not s.type:
-            self.process_module_assignment(s.lvalues, s.rvalue, s)
-        self.process__all__(s)
 
     def analyze_enum_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines an Enum."""
@@ -2388,14 +2373,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return unmangle(name) + "'" in self.type.names
         return False
 
-    def is_mangled_global(self, name: str) -> bool:
-        # A global is mangled if there exists at least one renamed variant.
-        return unmangle(name) + "'" in self.globals
-
-    def is_initial_mangled_global(self, name: str) -> bool:
-        # If there are renamed definitions for a global, the first one has exactly one prime.
-        return name == unmangle(name) + "'"
-
     def is_alias_for_final_name(self, name: str) -> bool:
         if self.is_func_scope():
             if not name.endswith("'"):
@@ -2801,14 +2778,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))
         return result
-
-    def parse_bool(self, expr: Expression) -> Optional[bool]:
-        if isinstance(expr, NameExpr):
-            if expr.fullname == 'builtins.True':
-                return True
-            if expr.fullname == 'builtins.False':
-                return False
-        return None
 
     def check_classvar(self, s: AssignmentStmt) -> None:
         """Check if assignment defines a class variable."""
@@ -4525,6 +4494,37 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if target is None:
             target = self.scope.current_target()
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
+
+    def add_type_alias_deps(self, aliases_used: Iterable[str],
+                            target: Optional[str] = None) -> None:
+        """Add full names of type aliases on which the current node depends.
+
+        This is used by fine-grained incremental mode to re-check the corresponding nodes.
+        If `target` is None, then the target node used will be the current scope.
+        """
+        if not aliases_used:
+            # A basic optimization to avoid adding targets with no dependencies to
+            # the `alias_deps` dict.
+            return
+        if target is None:
+            target = self.scope.current_target()
+        self.cur_mod_node.alias_deps[target].update(aliases_used)
+
+    def is_mangled_global(self, name: str) -> bool:
+        # A global is mangled if there exists at least one renamed variant.
+        return unmangle(name) + "'" in self.globals
+
+    def is_initial_mangled_global(self, name: str) -> bool:
+        # If there are renamed definitions for a global, the first one has exactly one prime.
+        return name == unmangle(name) + "'"
+
+    def parse_bool(self, expr: Expression) -> Optional[bool]:
+        if isinstance(expr, NameExpr):
+            if expr.fullname == 'builtins.True':
+                return True
+            if expr.fullname == 'builtins.False':
+                return False
+        return None
 
 
 class HasPlaceholders(TypeQuery[bool]):
