@@ -281,42 +281,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def final_iteration(self) -> bool:
         return self._final_iteration
 
-    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
-        """Add dependency from trigger to a target.
-
-        If the target is not given explicitly, use the current target.
-        """
-        if target is None:
-            target = self.scope.current_target()
-        self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
-
-    def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
-        """Manually add implicit definitions of module '__name__' etc."""
-        for name, t in implicit_module_attrs.items():
-            # unicode docstrings should be accepted in Python 2
-            if name == '__doc__':
-                if self.options.python_version >= (3, 0):
-                    typ = UnboundType('__builtins__.str')  # type: Type
-                else:
-                    typ = UnionType([UnboundType('__builtins__.str'),
-                                     UnboundType('__builtins__.unicode')])
-            else:
-                assert t is not None, 'type should be specified for {}'.format(name)
-                typ = UnboundType(t)
-
-            existing = file_node.names.get(name)
-            if existing is not None and not isinstance(existing.node, PlaceholderNode):
-                # Already exists.
-                continue
-
-            an_type = self.anal_type(typ)
-            if an_type:
-                var = Var(name, an_type)
-                var._fullname = self.qualified_name(name)
-                var.is_ready = True
-                self.add_symbol(name, var, None)
-            else:
-                self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
+    #
+    # Preparing module (performed before semantic analysis)
+    #
 
     def prepare_file(self, file_node: MypyFile) -> None:
         """Prepare a freshly parsed file for semantic analysis."""
@@ -378,6 +345,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             v._fullname = 'builtins.%s' % name
             file_node.names[name] = SymbolTableNode(GDEF, v)
 
+    #
+    # Analyzing a target
+    #
+
     def refresh_partial(self,
                         node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]],
@@ -409,6 +380,34 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
         self.adjust_public_exports()
+
+    def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
+        """Manually add implicit definitions of module '__name__' etc."""
+        for name, t in implicit_module_attrs.items():
+            # unicode docstrings should be accepted in Python 2
+            if name == '__doc__':
+                if self.options.python_version >= (3, 0):
+                    typ = UnboundType('__builtins__.str')  # type: Type
+                else:
+                    typ = UnionType([UnboundType('__builtins__.str'),
+                                     UnboundType('__builtins__.unicode')])
+            else:
+                assert t is not None, 'type should be specified for {}'.format(name)
+                typ = UnboundType(t)
+
+            existing = file_node.names.get(name)
+            if existing is not None and not isinstance(existing.node, PlaceholderNode):
+                # Already exists.
+                continue
+
+            an_type = self.anal_type(typ)
+            if an_type:
+                var = Var(name, an_type)
+                var._fullname = self.qualified_name(name)
+                var.is_ready = True
+                self.add_symbol(name, var, None)
+            else:
+                self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
 
     def adjust_public_exports(self) -> None:
         """Make variables not in __all__ not be public"""
@@ -1398,28 +1397,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self,
-                              expr: Expression,
-                              report_invalid_types: bool = True,
-                              allow_placeholder: bool = False) -> Optional[Type]:
-        if isinstance(expr, CallExpr):
-            expr.accept(self)
-            is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
-                                                                              self.is_func_scope())
-            if not is_named_tuple:
-                # Some form of namedtuple is the only valid type that looks like a call
-                # expression. This isn't a valid type.
-                raise TypeTranslationError()
-            elif not info:
-                self.defer()
-                return None
-            assert info.tuple_type, "NamedTuple without tuple type"
-            fallback = Instance(info, [])
-            return TupleType(info.tuple_type.items, fallback=fallback)
-        typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ, report_invalid_types=report_invalid_types,
-                              allow_placeholder=allow_placeholder)
-
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
         for base in info.bases:
@@ -1506,40 +1483,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 defn.info.is_enum = True
                 if defn.type_vars:
                     self.fail("Enum class cannot be generic", defn)
-
-    def object_type(self) -> Instance:
-        return self.named_type('__builtins__.object')
-
-    def str_type(self) -> Instance:
-        return self.named_type('__builtins__.str')
-
-    def class_type(self, self_type: Type) -> Type:
-        return TypeType.make_normalized(self_type)
-
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
-        sym = self.lookup_qualified(qualified_name, Context())
-        assert sym, "Internal error: attempted to construct unknown type"
-        node = sym.node
-        assert isinstance(node, TypeInfo)
-        if args:
-            # TODO: assert len(args) == len(node.defn.type_vars)
-            return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
-
-    def named_type_or_none(self, qualified_name: str,
-                           args: Optional[List[Type]] = None) -> Optional[Instance]:
-        sym = self.lookup_fully_qualified_or_none(qualified_name)
-        if not sym or isinstance(sym.node, PlaceholderNode):
-            return None
-        node = sym.node
-        if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)
-            node = node.target.type
-        assert isinstance(node, TypeInfo), node
-        if args is not None:
-            # TODO: assert len(args) == len(node.defn.type_vars)
-            return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
 
     #
     # Imports
@@ -1776,54 +1719,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     #
     # Assignment
     #
-
-    def type_analyzer(self, *,
-                      tvar_scope: Optional[TypeVarScope] = None,
-                      allow_tuple_literal: bool = False,
-                      allow_unbound_tvars: bool = False,
-                      allow_placeholder: bool = False,
-                      report_invalid_types: bool = True) -> TypeAnalyser:
-        if tvar_scope is None:
-            tvar_scope = self.tvar_scope
-        tpan = TypeAnalyser(self,
-                            tvar_scope,
-                            self.plugin,
-                            self.options,
-                            self.is_typeshed_stub_file,
-                            allow_unbound_tvars=allow_unbound_tvars,
-                            allow_tuple_literal=allow_tuple_literal,
-                            report_invalid_types=report_invalid_types,
-                            allow_unnormalized=self.is_stub_file,
-                            allow_placeholder=allow_placeholder)
-        tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
-        tpan.global_scope = not self.type and not self.function_stack
-        return tpan
-
-    def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
-                  allow_tuple_literal: bool = False,
-                  allow_unbound_tvars: bool = False,
-                  allow_placeholder: bool = False,
-                  report_invalid_types: bool = True,
-                  third_pass: bool = False) -> Optional[Type]:
-        """Semantically analyze a type.
-
-        Return None only if some part of the type couldn't be bound *and* it referred
-        to an incomplete namespace. In case of other errors, report an error message
-        and return AnyType.
-        """
-        a = self.type_analyzer(tvar_scope=tvar_scope,
-                               allow_unbound_tvars=allow_unbound_tvars,
-                               allow_tuple_literal=allow_tuple_literal,
-                               allow_placeholder=allow_placeholder,
-                               report_invalid_types=report_invalid_types)
-        tag = self.track_incomplete_refs()
-        typ = t.accept(a)
-        if self.found_incomplete_ref(tag):
-            # Something could not be bound yet.
-            return None
-        self.add_type_alias_deps(a.aliases_used)
-        return typ
 
     def add_type_alias_deps(self, aliases_used: Iterable[str],
                             target: Optional[str] = None) -> None:
@@ -4132,6 +4027,40 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
         return result
 
+    def object_type(self) -> Instance:
+        return self.named_type('__builtins__.object')
+
+    def str_type(self) -> Instance:
+        return self.named_type('__builtins__.str')
+
+    def class_type(self, self_type: Type) -> Type:
+        return TypeType.make_normalized(self_type)
+
+    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+        sym = self.lookup_qualified(qualified_name, Context())
+        assert sym, "Internal error: attempted to construct unknown type"
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        if args:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
+
+    def named_type_or_none(self, qualified_name: str,
+                           args: Optional[List[Type]] = None) -> Optional[Instance]:
+        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        if not sym or isinstance(sym.node, PlaceholderNode):
+            return None
+        node = sym.node
+        if isinstance(node, TypeAlias):
+            assert isinstance(node.target, Instance)
+            node = node.target.type
+        assert isinstance(node, TypeInfo), node
+        if args is not None:
+            # TODO: assert len(args) == len(node.defn.type_vars)
+            return Instance(node, args)
+        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
+
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
             return self.type._fullname + '.' + n
@@ -4492,6 +4421,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         except Exception as err:
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
+    def expr_to_analyzed_type(self,
+                              expr: Expression,
+                              report_invalid_types: bool = True,
+                              allow_placeholder: bool = False) -> Optional[Type]:
+        if isinstance(expr, CallExpr):
+            expr.accept(self)
+            is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
+                                                                              self.is_func_scope())
+            if not is_named_tuple:
+                # Some form of namedtuple is the only valid type that looks like a call
+                # expression. This isn't a valid type.
+                raise TypeTranslationError()
+            elif not info:
+                self.defer()
+                return None
+            assert info.tuple_type, "NamedTuple without tuple type"
+            fallback = Instance(info, [])
+            return TupleType(info.tuple_type.items, fallback=fallback)
+        typ = expr_to_unanalyzed_type(expr)
+        return self.anal_type(typ, report_invalid_types=report_invalid_types,
+                              allow_placeholder=allow_placeholder)
+
     def analyze_type_expr(self, expr: Expression) -> None:
         # There are certain expressions that mypy does not need to semantically analyze,
         # since they analyzed solely as type. (For example, indexes in type alias definitions
@@ -4501,6 +4452,54 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # in a fresh tvar scope in order to suppress any errors about using type variables.
         with self.tvar_scope_frame(TypeVarScope()):
             expr.accept(self)
+
+    def type_analyzer(self, *,
+                      tvar_scope: Optional[TypeVarScope] = None,
+                      allow_tuple_literal: bool = False,
+                      allow_unbound_tvars: bool = False,
+                      allow_placeholder: bool = False,
+                      report_invalid_types: bool = True) -> TypeAnalyser:
+        if tvar_scope is None:
+            tvar_scope = self.tvar_scope
+        tpan = TypeAnalyser(self,
+                            tvar_scope,
+                            self.plugin,
+                            self.options,
+                            self.is_typeshed_stub_file,
+                            allow_unbound_tvars=allow_unbound_tvars,
+                            allow_tuple_literal=allow_tuple_literal,
+                            report_invalid_types=report_invalid_types,
+                            allow_unnormalized=self.is_stub_file,
+                            allow_placeholder=allow_placeholder)
+        tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
+        tpan.global_scope = not self.type and not self.function_stack
+        return tpan
+
+    def anal_type(self, t: Type, *,
+                  tvar_scope: Optional[TypeVarScope] = None,
+                  allow_tuple_literal: bool = False,
+                  allow_unbound_tvars: bool = False,
+                  allow_placeholder: bool = False,
+                  report_invalid_types: bool = True,
+                  third_pass: bool = False) -> Optional[Type]:
+        """Semantically analyze a type.
+
+        Return None only if some part of the type couldn't be bound *and* it referred
+        to an incomplete namespace. In case of other errors, report an error message
+        and return AnyType.
+        """
+        a = self.type_analyzer(tvar_scope=tvar_scope,
+                               allow_unbound_tvars=allow_unbound_tvars,
+                               allow_tuple_literal=allow_tuple_literal,
+                               allow_placeholder=allow_placeholder,
+                               report_invalid_types=report_invalid_types)
+        tag = self.track_incomplete_refs()
+        typ = t.accept(a)
+        if self.found_incomplete_ref(tag):
+            # Something could not be bound yet.
+            return None
+        self.add_type_alias_deps(a.aliases_used)
+        return typ
 
     def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
         if self.locals[-1] is not None:
@@ -4517,6 +4516,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.errors.report(-1, -1,
                            'Internal error: maximum semantic analysis iteration count reached',
                            blocker=True)
+
+    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Add dependency from trigger to a target.
+
+        If the target is not given explicitly, use the current target.
+        """
+        if target is None:
+            target = self.scope.current_target()
+        self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
 
 class HasPlaceholders(TypeQuery[bool]):
