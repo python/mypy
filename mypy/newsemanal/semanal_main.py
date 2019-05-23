@@ -151,7 +151,7 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
             analyzer = state.manager.new_semantic_analyzer
             # Just pick some module inside the current SCC for error context.
             assert state.tree is not None
-            with analyzer.file_context(state.tree, state.tree.path, state.options):
+            with analyzer.file_context(state.tree, state.options):
                 analyzer.report_hang()
             break
         if final_iteration:
@@ -227,7 +227,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
         if iteration == MAX_ITERATIONS:
             # Just pick some module inside the current SCC for error context.
             assert state.tree is not None
-            with analyzer.file_context(state.tree, state.tree.path, state.options):
+            with analyzer.file_context(state.tree, state.options):
                 analyzer.report_hang()
             break
         if not (deferred or incomplete) or final_iteration:
@@ -280,17 +280,18 @@ def semantic_analyze_target(target: str,
     analyzer.globals = tree.names
     analyzer.progress = False
     with state.wrap_context(check_blockers=False):
-        with analyzer.file_context(file_node=tree,
-                                   fnam=tree.path,
-                                   options=state.options,
-                                   active_type=active_type):
-            refresh_node = node
-            if isinstance(refresh_node, Decorator):
-                # Decorator expressions will be processed as part of the module top level.
-                refresh_node = refresh_node.func
-            analyzer.refresh_partial(refresh_node, patches, final_iteration)
-            if isinstance(node, Decorator):
-                infer_decorator_signature_if_simple(node, analyzer)
+        refresh_node = node
+        if isinstance(refresh_node, Decorator):
+            # Decorator expressions will be processed as part of the module top level.
+            refresh_node = refresh_node.func
+        analyzer.refresh_partial(refresh_node,
+                                 patches,
+                                 final_iteration,
+                                 file_node=tree,
+                                 options=state.options,
+                                 active_type=active_type)
+        if isinstance(node, Decorator):
+            infer_decorator_signature_if_simple(node, analyzer)
     for dep in analyzer.imports:
         state.dependencies.append(dep)
         priority = mypy.build.PRI_LOW

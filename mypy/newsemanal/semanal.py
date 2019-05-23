@@ -381,7 +381,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def refresh_partial(self,
                         node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]],
-                        final_iteration: bool) -> None:
+                        final_iteration: bool,
+                        file_node: MypyFile,
+                        options: Options,
+                        active_type: Optional[TypeInfo] = None) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
         self.deferred = False
@@ -389,11 +392,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self._final_iteration = final_iteration
         self.missing_names = set()
 
-        if isinstance(node, MypyFile):
-            self.refresh_top_level(node)
-        else:
-            self.recurse_into_functions = True
-            self.accept(node)
+        with self.file_context(file_node, options, active_type):
+            if isinstance(node, MypyFile):
+                self.refresh_top_level(node)
+            else:
+                self.recurse_into_functions = True
+                self.accept(node)
         del self.patches
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
@@ -414,17 +418,24 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     g.module_public = False
 
     @contextmanager
-    def file_context(self, file_node: MypyFile, fnam: str, options: Options,
-                     active_type: Optional[TypeInfo] = None,
-                     scope: Optional[Scope] = None) -> Iterator[None]:
-        # TODO: Use this above in visit_file
-        scope = scope or self.scope
+    def file_context(self,
+                     file_node: MypyFile,
+                     options: Options,
+                     active_type: Optional[TypeInfo] = None) -> Iterator[None]:
+        """Configure analyzer for analyzing targets within a file/class.
+
+        Args:
+            file_node: target file
+            options: options specific to the file
+            active_type: must be the surrounding class to analyze method targets
+        """
+        scope = self.scope
         self.options = options
-        self.errors.set_file(fnam, file_node.fullname(), scope=scope)
+        self.errors.set_file(file_node.path, file_node.fullname(), scope=scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         scope.enter_file(self.cur_mod_id)
-        self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.is_stub_file = file_node.path.lower().endswith('.pyi')
         self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
