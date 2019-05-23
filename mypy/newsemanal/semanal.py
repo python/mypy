@@ -527,9 +527,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
 
         with self.scope.function_scope(defn):
-            self._visit_func_def(defn)
+            self.analyze_func_def(defn)
 
-    def _visit_func_def(self, defn: FuncDef) -> None:
+    def analyze_func_def(self, defn: FuncDef) -> None:
         self.function_stack.append(defn)
 
         if defn.type:
