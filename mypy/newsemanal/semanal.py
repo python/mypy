@@ -3445,21 +3445,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     expr.fullname = n.fullname
                     expr.node = n.node
 
-    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
-        """Process a reference targeting placeholder node.
-
-        If this is not a final iteration, defer current node,
-        otherwise report an error.
-
-        The 'kind' argument indicates if this a name or attribute expression
-        (used for better error message).
-        """
-        if self.final_iteration:
-            self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name),
-                      ctx)
-        else:
-            self.defer()
-
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
 
@@ -3551,16 +3536,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return None
             types.append(analyzed)
         return types
-
-    def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
-        try:
-            t = expr_to_unanalyzed_type(expr)
-        except TypeTranslationError:
-            return None
-        if isinstance(t, UnboundType):
-            n = self.lookup_qualified(t.name, expr, suppress_errors=True)
-            return n
-        return None
 
     def visit_slice_expr(self, expr: SliceExpr) -> None:
         if expr.begin_index:
@@ -3690,7 +3665,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def lookup(self, name: str, ctx: Context,
                suppress_errors: bool = False) -> Optional[SymbolTableNode]:
-        """Look up an unqualified name in all active namespaces."""
+        """Look up an unqualified (no dots) name in all active namespaces."""
         implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
@@ -3742,18 +3717,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return implicit_node
         return None
 
-    def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        lowercased_names_handled_by_unimported_hints = {
-            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
-        }
-        matches = [
-            obsolete_name for obsolete_name in obsolete_name_mapping
-            if obsolete_name.rsplit('.', 1)[-1] == name
-            and obsolete_name not in lowercased_names_handled_by_unimported_hints
-        ]
-        if len(matches) == 1:
-            self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
-
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         if '.' not in name:
@@ -3784,6 +3747,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     return None
                 sym = nextsym
         return sym
+
+    def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
+        try:
+            t = expr_to_unanalyzed_type(expr)
+        except TypeTranslationError:
+            return None
+        if isinstance(t, UnboundType):
+            n = self.lookup_qualified(t.name, expr, suppress_errors=True)
+            return n
+        return None
 
     def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
         """Look up a symbol from the module symbol table."""
@@ -3870,6 +3843,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         current analysis target.
         """
         return fullname in self.incomplete_namespaces
+
+    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
+        """Process a reference targeting placeholder node.
+
+        If this is not a final iteration, defer current node,
+        otherwise report an error.
+
+        The 'kind' argument indicates if this a name or attribute expression
+        (used for better error message).
+        """
+        if self.final_iteration:
+            self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name),
+                      ctx)
+        else:
+            self.defer()
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[Var]:
@@ -4319,6 +4307,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 ' (Suggestion: "from {module} import {name}")'
             ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
             self.note(hint, ctx)
+
+    def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
+        lowercased_names_handled_by_unimported_hints = {
+            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        matches = [
+            obsolete_name for obsolete_name in obsolete_name_mapping
+            if obsolete_name.rsplit('.', 1)[-1] == name
+            and obsolete_name not in lowercased_names_handled_by_unimported_hints
+        ]
+        if len(matches) == 1:
+            self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def already_defined(self, name: str, ctx: Context,
                         original_ctx: Optional[Union[SymbolTableNode, SymbolNode]],
