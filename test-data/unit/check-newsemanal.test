@@ -2240,9 +2240,8 @@ def force1(x: Literal[1]) -> None: pass
 force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
 
 [case testNewAnalyzerReportLoopInMRO]
-class A(A): ...
+class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
 [out]
-main: error: Internal error: maximum semantic analysis iteration count reached
 
 [case testNewSemanticAnalyzerUnimportedSpecialCase]
 # flags: --ignore-missing-imports
@@ -2280,7 +2279,7 @@ import n
 [file n.pyi]
 class C: pass
 
-[case testNextSemanticAnalyzerModuleGetAttrInPython36]
+[case testNewAnalyzerModuleGetAttrInPython36]
 # flags: --python-version 3.6
 import m
 import n
@@ -2293,7 +2292,7 @@ import n
 def __getattr__(x): pass
 
 
-[case testNextSemanticAnalyzerModuleGetAttrInPython37]
+[case testNewAnalyzerModuleGetAttrInPython37]
 # flags: --python-version 3.7
 import m
 import n
@@ -2307,6 +2306,13 @@ def __getattr__(x): pass
 
 [case testNewAnalyzerReportLoopInMRO2]
 def f() -> None:
-    class A(A): ...
-[out]
-main: error: Internal error: maximum semantic analysis iteration count reached
+    class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
+
+[case testNewAnalyzerUnsupportedBaseClassInsideFunction]
+class C:
+    class E: pass
+
+    def f(self) -> None:
+        # TODO: Error message could be better
+        class D(self.E): # E: Name 'self.E' is not defined
+            pass
