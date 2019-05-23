@@ -24,18 +24,19 @@ See semanal_main.py for the top-level logic.
 
 Some important properties:
 
-* After semantic analysis is complete, no PlaceholderTypeInfo and
+* After semantic analysis is complete, no PlaceholderNode and
   PlaceholderType instances should remain. During semantic analysis,
   if we encounter one of these, the current target should be deferred.
 
 * A TypeInfo is only created once we know certain basic information about
   a type, such as the MRO, existence of a Tuple base class (e.g., for named
   tuples), and whether we have a TypedDict. We use a temporary
-  PlaceholderTypeInfo node in the symbol table if some such information is
+  PlaceholderNode node in the symbol table if some such information is
   missing.
 
-* For assignments, we only add a symbol table entry once we know the
-  sort of thing being defined (variable, NamedTuple, type alias, etc.).
+* For assignments, we only add a non-placeholder symbol table entry once
+  we know the sort of thing being defined (variable, NamedTuple, type alias,
+  etc.).
 
 * Every part of the analysis step must support multiple iterations over
   the same AST nodes, and each iteration must be able to fill in arbitrary
@@ -172,9 +173,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                           SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
-    The analyzer binds names and does various consistency checks for a
-    parse tree. Note that type checking is performed as a separate
-    pass.
+    The analyzer binds names and does various consistency checks for an
+    AST. Note that type checking is performed as a separate pass.
     """
 
     # Module name space
@@ -205,11 +205,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # placeholder definition. If some iteration makes no progress,
     # there can be at most one additional final iteration (see below).
     progress = False
-
+    deferred = False  # Set to true if another analysis pass is needed
+    incomplete = False  # Set to true if current module namespace is missing things
     # Is this the final iteration of semantic analysis (where we report
-    # unbound names due to cyclic definitions)?
+    # unbound names due to cyclic definitions and should not defer)?
     _final_iteration = False
-
+    # These names couldn't be added to the symbol table due to incomplete deps.
+    missing_names = None  # type: Set[str]
+    # Callbacks that will be called after semantic analysis to tweak things.
+    patches = None  # type: List[Tuple[int, Callable[[], None]]]
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
@@ -337,6 +341,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     file_node.defs.remove(stmt)
 
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
+        """Add certain special-cased definitions to the builtins module.
+
+        Some definitions are too special or fundamental to be processed
+        normally from the AST.
+        """
         names = file_node.names
 
         # Add empty definition for core built-in classes, since they are required for basic
@@ -351,7 +360,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         assert isinstance(bool_info, TypeInfo)
         bool_type = Instance(bool_info, [])
 
-        literal_types = [
+        special_var_types = [
             ('None', NoneType()),
             # reveal_type is a mypy-only function that gives an error with
             # the type of its arg.
@@ -364,7 +373,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             ('__debug__', bool_type),
         ]  # type: List[Tuple[str, Type]]
 
-        for name, typ in literal_types:
+        for name, typ in special_var_types:
             v = Var(name, typ)
             v._fullname = 'builtins.%s' % name
             file_node.names[name] = SymbolTableNode(GDEF, v)
@@ -375,12 +384,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         final_iteration: bool) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
-        # TODO: Don't define any attributes here (better to do it in class body or __init__)
-        self.deferred = False  # Set to true if another analysis pass is needed
-        self.incomplete = False  # Set to true if current module namespace is missing things
-        self._final_iteration = final_iteration  # True if we shouldn't defer any more
-        # These names couldn't be added to the symbol table due to incomplete deps.
-        self.missing_names = set()  # type: Set[str]
+        self.deferred = False
+        self.incomplete = False
+        self._final_iteration = final_iteration
+        self.missing_names = set()
 
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
