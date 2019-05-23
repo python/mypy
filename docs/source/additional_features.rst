@@ -342,6 +342,11 @@ at least if your codebase is hundreds of thousands of lines or more:
 Extended Callable types
 ***********************
 
+.. note::
+
+   This feature is deprecated.  You can use
+   :ref:`callback protocols <callback_protocols>` as a replacement.
+
 As an experimental mypy extension, you can specify ``Callable`` types
 that support keyword arguments, optional arguments, and more.  When
 you specify the arguments of a Callable, you can choose to supply just
@@ -454,11 +459,9 @@ is (roughly) equivalent to
 
 .. note::
 
-   This feature is experimental.  Details of the implementation may
-   change and there may be unknown limitations. **IMPORTANT:**
    Each of the functions above currently just returns its ``type``
-   argument, so the information contained in the argument specifiers
-   is not available at runtime.  This limitation is necessary for
-   backwards compatibility with the existing ``typing.py`` module as
-   present in the Python 3.5+ standard library and distributed via
-   PyPI.
+   argument at runtime, so the information contained in the argument
+   specifiers is not available at runtime.  This limitation is
+   necessary for backwards compatibility with the existing
+   ``typing.py`` module as present in the Python 3.5+ standard library
+   and distributed via PyPI.
