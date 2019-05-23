@@ -415,6 +415,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                      file_node: MypyFile,
                      options: Options,
                      active_type: Optional[TypeInfo] = None) -> Iterator[None]:
+        """Configure analyzer for analyzing targets within a file/class.
+
+        Args:
+            file_node: target file
+            options: options specific to the file
+            active_type: must be the surrounding class to analyze method targets
+        """
         scope = self.scope
         self.options = options
         self.errors.set_file(file_node.path, file_node.fullname(), scope=scope)
