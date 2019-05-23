@@ -638,9 +638,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # This is fine, though, because only the outermost function is
         # used to compute targets.
         with self.scope.function_scope(defn):
-            self._visit_overloaded_func_def(defn)
+            self.analyze_overloaded_func_def(defn)
 
-    def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+    def analyze_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
         # more than one declaration for the same function in a row.  This occurs
         # with a @property with a setter or a deleter, and for a classic
