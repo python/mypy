@@ -3694,15 +3694,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         expr.expr.accept(self)
 
     #
-    # Helpers
+    # Lookup functions
     #
-
-    @contextmanager
-    def tvar_scope_frame(self, frame: TypeVarScope) -> Iterator[None]:
-        old_scope = self.tvar_scope
-        self.tvar_scope = frame
-        yield
-        self.tvar_scope = old_scope
 
     def lookup(self, name: str, ctx: Context,
                suppress_errors: bool = False) -> Optional[SymbolTableNode]:
@@ -3859,88 +3852,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
-    def defer(self) -> None:
-        """Defer current analysis target to be analyzed again.
-
-        This must be called if something in the current target is
-        incomplete or has a placeholder node.
-        """
-        self.deferred = True
-
-    def track_incomplete_refs(self) -> Tag:
-        """Return tag that can be used for tracking references to incomplete names."""
-        return self.num_incomplete_refs
-
-    def found_incomplete_ref(self, tag: Tag) -> bool:
-        """Have we encountered an incomplete reference since starting tracking?"""
-        return self.num_incomplete_refs != tag
-
-    def record_incomplete_ref(self) -> None:
-        """Record the encounter of an incomplete reference and defer current analysis target."""
-        self.defer()
-        self.num_incomplete_refs += 1
-
-    def mark_incomplete(self, name: str, node: Node,
-                        becomes_typeinfo: bool = False) -> None:
-        """Mark a definition as incomplete (and defer current analysis target).
-
-        Also potentially mark the current namespace as incomplete.
-
-        Args:
-            name: The name that we weren't able to define (or '*' if the name is unknown)
-            node: The node that refers to the name (definition or lvalue)
-            becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
-                named tuples that will create TypeInfos).
-        """
-        self.defer()
-        if name == '*':
-            self.incomplete = True
-        elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
-            fullname = self.qualified_name(name)
-            self.add_symbol(name, PlaceholderNode(fullname, node, becomes_typeinfo), context=None)
-        self.missing_names.add(name)
-
-    def is_incomplete_namespace(self, fullname: str) -> bool:
-        """Is a module or class namespace potentially missing some definitions?
-
-        If a name is missing from an incomplete namespace, we'll need to defer the
-        current analysis target.
-        """
-        return fullname in self.incomplete_namespaces
-
-    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
-        """Process a reference targeting placeholder node.
-
-        If this is not a final iteration, defer current node,
-        otherwise report an error.
-
-        The 'kind' argument indicates if this a name or attribute expression
-        (used for better error message).
-        """
-        if self.final_iteration:
-            self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name),
-                      ctx)
-        else:
-            self.defer()
-
-    def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
-        """If node refers to old version of module, return reference to new version.
-
-        If the reference is removed in the new version, return None.
-        """
-        # TODO: Handle type variables and other sorts of references
-        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var, TypeAlias)):
-            # TODO: Why is it possible for fullname() to be None, even though it's not
-            #   annotated as Optional[str]?
-            # TODO: Do this for all modules in the set of modified files
-            # TODO: This doesn't work for things nested within classes
-            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
-                # This is an indirect reference to a name defined in the current module.
-                # Rebind it.
-                return self.globals.get(n.node.name())
-        # No need to rebind.
-        return n
-
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
 
@@ -4021,50 +3932,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
 
-    def qualified_name(self, name: str) -> str:
-        if self.type is not None:
-            return self.type._fullname + '.' + name
-        elif self.is_func_scope():
-            return name
+    def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
+        if self.locals[-1] is not None:
+            return self.locals[-1].get(name)
+        elif self.type is not None:
+            return self.type.names.get(name)
         else:
-            return self.cur_mod_id + '.' + name
+            return self.globals.get(name)
 
-    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
-        """Enter a function, generator or comprehension scope."""
-        names = self.saved_locals.setdefault(function, SymbolTable())
-        self.locals.append(names)
-        self.global_decls.append(set())
-        self.nonlocal_decls.append(set())
-        # -1 since entering block will increment this to 0.
-        self.block_depth.append(-1)
-
-    def leave(self) -> None:
-        self.locals.pop()
-        self.global_decls.pop()
-        self.nonlocal_decls.pop()
-        self.block_depth.pop()
-
-    def is_func_scope(self) -> bool:
-        return self.locals[-1] is not None
-
-    def is_nested_within_func_scope(self) -> bool:
-        """Are we underneath a function scope, even if we are in a nested class also?"""
-        return any(l is not None for l in self.locals)
-
-    def is_class_scope(self) -> bool:
-        return self.type is not None and not self.is_func_scope()
-
-    def is_module_scope(self) -> bool:
-        return not (self.is_class_scope() or self.is_func_scope())
-
-    def current_symbol_kind(self) -> int:
-        if self.is_class_scope():
-            kind = MDEF
-        elif self.is_func_scope():
-            kind = LDEF
-        else:
-            kind = GDEF
-        return kind
+    #
+    # Adding symbols
+    #
 
     def add_symbol(self,
                    name: str,
@@ -4117,21 +3995,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             kind = GDEF
         symbol = SymbolTableNode(kind, node)
         names[name] = symbol
-
-    def current_symbol_table(self) -> SymbolTable:
-        if self.is_func_scope():
-            assert self.locals[-1] is not None
-            names = self.locals[-1]
-        elif self.type is not None:
-            names = self.type.names
-        else:
-            names = self.globals
-        return names
-
-    def is_global_or_nonlocal(self, name: str) -> bool:
-        return (self.is_func_scope()
-                and (name in self.global_decls[-1]
-                     or name in self.nonlocal_decls[-1]))
 
     def add_symbol_table_node(self,
                               name: str,
@@ -4272,6 +4135,159 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         var.type = any_type
         var.is_suppressed_import = True
         self.add_symbol(name, var, context)
+
+    #
+    # Other helpers
+    #
+
+    @contextmanager
+    def tvar_scope_frame(self, frame: TypeVarScope) -> Iterator[None]:
+        old_scope = self.tvar_scope
+        self.tvar_scope = frame
+        yield
+        self.tvar_scope = old_scope
+
+    def defer(self) -> None:
+        """Defer current analysis target to be analyzed again.
+
+        This must be called if something in the current target is
+        incomplete or has a placeholder node.
+        """
+        self.deferred = True
+
+    def track_incomplete_refs(self) -> Tag:
+        """Return tag that can be used for tracking references to incomplete names."""
+        return self.num_incomplete_refs
+
+    def found_incomplete_ref(self, tag: Tag) -> bool:
+        """Have we encountered an incomplete reference since starting tracking?"""
+        return self.num_incomplete_refs != tag
+
+    def record_incomplete_ref(self) -> None:
+        """Record the encounter of an incomplete reference and defer current analysis target."""
+        self.defer()
+        self.num_incomplete_refs += 1
+
+    def mark_incomplete(self, name: str, node: Node,
+                        becomes_typeinfo: bool = False) -> None:
+        """Mark a definition as incomplete (and defer current analysis target).
+
+        Also potentially mark the current namespace as incomplete.
+
+        Args:
+            name: The name that we weren't able to define (or '*' if the name is unknown)
+            node: The node that refers to the name (definition or lvalue)
+            becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
+                named tuples that will create TypeInfos).
+        """
+        self.defer()
+        if name == '*':
+            self.incomplete = True
+        elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
+            fullname = self.qualified_name(name)
+            self.add_symbol(name, PlaceholderNode(fullname, node, becomes_typeinfo), context=None)
+        self.missing_names.add(name)
+
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        """Is a module or class namespace potentially missing some definitions?
+
+        If a name is missing from an incomplete namespace, we'll need to defer the
+        current analysis target.
+        """
+        return fullname in self.incomplete_namespaces
+
+    def process_placeholder(self, name: str, kind: str, ctx: Context) -> None:
+        """Process a reference targeting placeholder node.
+
+        If this is not a final iteration, defer current node,
+        otherwise report an error.
+
+        The 'kind' argument indicates if this a name or attribute expression
+        (used for better error message).
+        """
+        if self.final_iteration:
+            self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name),
+                      ctx)
+        else:
+            self.defer()
+
+    def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
+        """If node refers to old version of module, return reference to new version.
+
+        If the reference is removed in the new version, return None.
+        """
+        # TODO: Handle type variables and other sorts of references
+        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var, TypeAlias)):
+            # TODO: Why is it possible for fullname() to be None, even though it's not
+            #   annotated as Optional[str]?
+            # TODO: Do this for all modules in the set of modified files
+            # TODO: This doesn't work for things nested within classes
+            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
+                # This is an indirect reference to a name defined in the current module.
+                # Rebind it.
+                return self.globals.get(n.node.name())
+        # No need to rebind.
+        return n
+
+    def qualified_name(self, name: str) -> str:
+        if self.type is not None:
+            return self.type._fullname + '.' + name
+        elif self.is_func_scope():
+            return name
+        else:
+            return self.cur_mod_id + '.' + name
+
+    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
+        """Enter a function, generator or comprehension scope."""
+        names = self.saved_locals.setdefault(function, SymbolTable())
+        self.locals.append(names)
+        self.global_decls.append(set())
+        self.nonlocal_decls.append(set())
+        # -1 since entering block will increment this to 0.
+        self.block_depth.append(-1)
+
+    def leave(self) -> None:
+        self.locals.pop()
+        self.global_decls.pop()
+        self.nonlocal_decls.pop()
+        self.block_depth.pop()
+
+    def is_func_scope(self) -> bool:
+        return self.locals[-1] is not None
+
+    def is_nested_within_func_scope(self) -> bool:
+        """Are we underneath a function scope, even if we are in a nested class also?"""
+        return any(l is not None for l in self.locals)
+
+    def is_class_scope(self) -> bool:
+        return self.type is not None and not self.is_func_scope()
+
+    def is_module_scope(self) -> bool:
+        return not (self.is_class_scope() or self.is_func_scope())
+
+    def current_symbol_kind(self) -> int:
+        if self.is_class_scope():
+            kind = MDEF
+        elif self.is_func_scope():
+            kind = LDEF
+        else:
+            kind = GDEF
+        return kind
+
+    def current_symbol_table(self) -> SymbolTable:
+        if self.is_func_scope():
+            assert self.locals[-1] is not None
+            names = self.locals[-1]
+        elif self.type is not None:
+            names = self.type.names
+        else:
+            names = self.globals
+        return names
+
+    def is_global_or_nonlocal(self, name: str) -> bool:
+        return (self.is_func_scope()
+                and (name in self.global_decls[-1]
+                     or name in self.nonlocal_decls[-1]))
 
     def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
         exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
@@ -4502,14 +4518,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return None
         self.add_type_alias_deps(a.aliases_used)
         return typ
-
-    def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
-        if self.locals[-1] is not None:
-            return self.locals[-1].get(name)
-        elif self.type is not None:
-            return self.type.names.get(name)
-        else:
-            return self.globals.get(name)
 
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
