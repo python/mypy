@@ -11,7 +11,7 @@ from mypyc.ops import (
     object_rprimitive, ERR_NEVER, ERR_MAGIC
 )
 from mypyc.ops_primitive import (
-    func_op, method_op, call_emit,
+    func_op, method_op, custom_op, call_emit, simple_emit,
 )
 
 
@@ -21,6 +21,16 @@ tuple_get_item_op = method_op(
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
     emit=call_emit('CPySequenceTuple_GetItem'))
+
+
+new_tuple_op = custom_op(
+    arg_types=[object_rprimitive],
+    result_type=tuple_rprimitive,
+    is_var_arg=True,
+    error_kind=ERR_MAGIC,
+    steals=False,
+    format_str='{dest} = ({comma_args}) :: tuple',
+    emit=simple_emit('{dest} = PyTuple_Pack({num_args}{pre_comma_args});'))
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:

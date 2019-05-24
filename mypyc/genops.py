@@ -77,7 +77,7 @@ from mypyc.ops_int import unsafe_short_add
 from mypyc.ops_list import (
     list_append_op, list_extend_op, list_len_op, new_list_op,
 )
-from mypyc.ops_tuple import list_tuple_op
+from mypyc.ops_tuple import list_tuple_op, new_tuple_op
 from mypyc.ops_dict import (
     new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_in_display_op,
 )
@@ -1043,7 +1043,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
         if base_exprs:
             bases = [self.accept(x) for x in base_exprs]
-            tp_bases = self.box(self.add(TupleSet(bases, cdef.line)))
+            tp_bases = self.primitive_op(new_tuple_op, bases, cdef.line)
         else:
             tp_bases = self.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
         modname = self.load_static_unicode(self.module_name)
@@ -2400,7 +2400,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         if len(star_arg_values) == 0:
             # We can directly construct a tuple if there are no star args.
-            pos_args_tuple = self.add(TupleSet(pos_arg_values, line))
+            pos_args_tuple = self.primitive_op(new_tuple_op, pos_arg_values, line)
         else:
             # Otherwise we construct a list and call extend it with the star args, since tuples
             # don't have an extend method.
@@ -4658,7 +4658,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for lst, arg in zip(formal_to_actual, sig.args):
             output_arg = None
             if arg.kind == ARG_STAR:
-                output_arg = self.add(TupleSet([args[i] for i in lst], line))
+                output_arg = self.primitive_op(new_tuple_op, [args[i] for i in lst], line)
             elif arg.kind == ARG_STAR2:
                 dict_entries = [(self.load_static_unicode(cast(str, arg_names[i])), args[i])
                                 for i in lst]

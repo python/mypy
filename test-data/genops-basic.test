@@ -1089,24 +1089,23 @@ def call_python_function_with_keyword_arg(x):
     r0 :: short_int
     r1 :: object
     r2 :: str
-    r3 :: tuple[str]
+    r3 :: tuple
     r4 :: dict
     r5 :: object
     r6 :: bool
-    r7, r8 :: object
-    r9 :: int
+    r7 :: object
+    r8 :: int
 L0:
     r0 = 2
     r1 = int
     r2 = unicode_3 :: static  ('base')
-    r3 = (x)
+    r3 = (x) :: tuple
     r4 = {}
     r5 = box(short_int, r0)
     r6 = r4.__setitem__(r2, r5) :: dict
-    r7 = box(tuple[str], r3)
-    r8 = py_call_with_kwargs(r1, r7, r4)
-    r9 = unbox(int, r8)
-    return r9
+    r7 = py_call_with_kwargs(r1, r3, r4)
+    r8 = unbox(int, r7)
+    return r8
 def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
     first, second :: int
@@ -1114,50 +1113,50 @@ def call_python_method_with_keyword_args(xs, first, second):
     r1 :: str
     r2 :: object
     r3 :: str
-    r4 :: tuple[int]
-    r5 :: dict
-    r6 :: object
-    r7 :: bool
-    r8, r9 :: object
+    r4 :: object
+    r5 :: tuple
+    r6 :: dict
+    r7 :: object
+    r8 :: bool
+    r9 :: object
     r10 :: None
     r11 :: short_int
     r12 :: str
     r13 :: object
     r14, r15 :: str
-    r16 :: tuple[]
+    r16 :: tuple
     r17 :: dict
     r18 :: object
     r19 :: bool
     r20 :: object
     r21 :: bool
-    r22, r23 :: object
-    r24 :: None
+    r22 :: object
+    r23 :: None
 L0:
     r0 = 0
     r1 = unicode_4 :: static  ('insert')
     r2 = getattr xs, r1
     r3 = unicode_5 :: static  ('x')
-    r4 = (r0)
-    r5 = {}
-    r6 = box(int, first)
-    r7 = r5.__setitem__(r3, r6) :: dict
-    r8 = box(tuple[int], r4)
-    r9 = py_call_with_kwargs(r2, r8, r5)
+    r4 = box(short_int, r0)
+    r5 = (r4) :: tuple
+    r6 = {}
+    r7 = box(int, first)
+    r8 = r6.__setitem__(r3, r7) :: dict
+    r9 = py_call_with_kwargs(r2, r5, r6)
     r10 = unbox(None, r9)
     r11 = 1
     r12 = unicode_4 :: static  ('insert')
     r13 = getattr xs, r12
     r14 = unicode_5 :: static  ('x')
     r15 = unicode_6 :: static  ('i')
-    r16 = ()
+    r16 = () :: tuple
     r17 = {}
     r18 = box(int, second)
     r19 = r17.__setitem__(r14, r18) :: dict
     r20 = box(short_int, r11)
     r21 = r17.__setitem__(r15, r20) :: dict
-    r22 = box(tuple[], r16)
-    r23 = py_call_with_kwargs(r13, r22, r17)
-    r24 = unbox(None, r23)
+    r22 = py_call_with_kwargs(r13, r16, r17)
+    r23 = unbox(None, r22)
     return xs
 
 [case testObjectAsBoolean]
@@ -1625,11 +1624,11 @@ def g():
     r13 :: dict
     r14 :: str
     r15 :: object
-    r16 :: tuple[]
+    r16 :: tuple
     r17 :: dict
     r18 :: bool
-    r19, r20 :: object
-    r21 :: tuple[int, int, int]
+    r19 :: object
+    r20 :: tuple[int, int, int]
 L0:
     r0 = unicode_3 :: static  ('a')
     r1 = 1
@@ -1647,13 +1646,12 @@ L0:
     r13 = __main__.globals :: static
     r14 = unicode_6 :: static  ('f')
     r15 = r13[r14] :: dict
-    r16 = ()
+    r16 = () :: tuple
     r17 = {}
     r18 = r17.update(r6) (display) :: dict
-    r19 = box(tuple[], r16)
-    r20 = py_call_with_kwargs(r15, r19, r17)
-    r21 = unbox(tuple[int, int, int], r20)
-    return r21
+    r19 = py_call_with_kwargs(r15, r16, r17)
+    r20 = unbox(tuple[int, int, int], r19)
+    return r20
 def h():
     r0 :: short_int
     r1 :: str
@@ -1667,11 +1665,11 @@ def h():
     r9 :: bool
     r10 :: dict
     r11 :: str
-    r12 :: object
-    r13 :: tuple[int]
-    r14 :: dict
-    r15 :: bool
-    r16, r17 :: object
+    r12, r13 :: object
+    r14 :: tuple
+    r15 :: dict
+    r16 :: bool
+    r17 :: object
     r18 :: tuple[int, int, int]
 L0:
     r0 = 1
@@ -1687,11 +1685,11 @@ L0:
     r10 = __main__.globals :: static
     r11 = unicode_6 :: static  ('f')
     r12 = r10[r11] :: dict
-    r13 = (r0)
-    r14 = {}
-    r15 = r14.update(r5) (display) :: dict
-    r16 = box(tuple[int], r13)
-    r17 = py_call_with_kwargs(r12, r16, r14)
+    r13 = box(short_int, r0)
+    r14 = (r13) :: tuple
+    r15 = {}
+    r16 = r15.update(r5) (display) :: dict
+    r17 = py_call_with_kwargs(r12, r14, r15)
     r18 = unbox(tuple[int, int, int], r17)
     return r18
 

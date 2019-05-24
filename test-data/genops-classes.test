@@ -383,15 +383,14 @@ def __top_level__():
     r60 :: dict
     r61 :: str
     r62, r63 :: object
-    r64 :: tuple[object, object, object]
-    r65 :: object
-    r66 :: str
-    r67, r68 :: object
-    r69 :: bool
-    r70 :: dict
-    r71 :: str
-    r72 :: bool
-    r73 :: None
+    r64 :: tuple
+    r65 :: str
+    r66, r67 :: object
+    r68 :: bool
+    r69 :: dict
+    r70 :: str
+    r71 :: bool
+    r72 :: None
 L0:
     r0 = builtins.module :: static
     r1 = builtins.None :: object
@@ -471,18 +470,17 @@ L6:
     r61 = unicode_6 :: static  ('T')
     r62 = r60[r61] :: dict
     r63 = r59[r62] :: object
-    r64 = (r55, r56, r63)
-    r65 = box(tuple[object, object, object], r64)
-    r66 = unicode_7 :: static  ('__main__')
-    r67 = __main__.D_template :: type
-    r68 = pytype_from_template(r67, r65, r66)
-    r69 = D_trait_vtable_setup()
-    __main__.D = r68 :: type
-    r70 = __main__.globals :: static
-    r71 = unicode_10 :: static  ('D')
-    r72 = r70.__setitem__(r71, r68) :: dict
-    r73 = None
-    return r73
+    r64 = (r55, r56, r63) :: tuple
+    r65 = unicode_7 :: static  ('__main__')
+    r66 = __main__.D_template :: type
+    r67 = pytype_from_template(r66, r64, r65)
+    r68 = D_trait_vtable_setup()
+    __main__.D = r67 :: type
+    r69 = __main__.globals :: static
+    r70 = unicode_10 :: static  ('D')
+    r71 = r69.__setitem__(r70, r67) :: dict
+    r72 = None
+    return r72
 
 [case testIsInstance]
 class A: pass
