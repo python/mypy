@@ -4002,17 +4002,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                               can_defer: bool = True) -> bool:
         """Add symbol table node to the currently active symbol table.
 
-        Return True if we actually added the symbol, or False if we refused to do so
-        (because something is not ready).
+        Return True if we actually added the symbol, or False if we refused
+        to do so (because something is not ready or it was a no-op).
 
-        If can_defer is True, defer current target if adding a placeholder.
+        Generate an error if there is an invalid redefinition.
+
+        If context is None, unconditionally add node, since we can't report
+        an error. Note that this is used by plugins to forcibly replace nodes!
+
+        TODO: Prevent plugins from replacing nodes, as it could cause problems?
+
+        Args:
+            name: short name of symbol
+            symbol: Node to add
+            can_defer: if True, defer current target if adding a placeholder
+            context: error context (see above about None value)
         """
-        context = context or dummy_context()
         names = self.current_symbol_table()
         existing = names.get(name)
         if isinstance(symbol.node, PlaceholderNode) and can_defer:
             self.defer()
         if (existing is not None
+                and context is not None
                 and not is_valid_replacement(existing, symbol)):
             # There is an existing node, so this may be a redefinition.
             # If the new node points to the same node as the old one,
