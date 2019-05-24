@@ -177,7 +177,7 @@ Foo('lol')
 
 [case testSuggestInferMethod1]
 # flags: --strict-optional
-# suggest: foo.Foo.foo
+# suggest: --no-any foo.Foo.foo
 [file foo.py]
 class Foo:
     def __init__(self) -> None:
@@ -347,4 +347,99 @@ def baz() -> None:
 [out]
 (Union[str, int, None], Union[int, None]) -> object
 (Union[str, int, None], Union[int, None]) -> None
+==
+
+[case testSuggestInferFuncDecorator1]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+from typing import TypeVar
+F = TypeVar('F')
+
+def dec(x: F) -> F:
+    return x
+
+@dec
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator2]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(x: F) -> F:
+    return x
+
+@dec
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator3]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(s: str) -> Callable[[F], F]:
+    def f(x: F) -> F:
+        return x
+    return f
+
+@dec('lol')
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator4]
+# flags: --strict-optional
+# suggest: foo.foo
+[file dec.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(s: str) -> Callable[[F], F]:
+    def f(x: F) -> F:
+        return x
+    return f
+
+[file foo.py]
+import dec
+
+@dec.dec('lol')
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
 ==
