@@ -405,9 +405,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 var = Var(name, an_type)
                 var._fullname = self.qualified_name(name)
                 var.is_ready = True
-                self.add_symbol(name, var, None)
+                self.add_symbol(name, var, dummy_context())
             else:
-                self.add_symbol(name, PlaceholderNode(self.qualified_name(name), file_node), None)
+                self.add_symbol(name,
+                                PlaceholderNode(self.qualified_name(name), file_node),
+                                dummy_context())
 
     def add_builtin_aliases(self, tree: MypyFile) -> None:
         """Add builtin type aliases to typing module.
@@ -3944,7 +3946,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def add_symbol(self,
                    name: str,
                    node: SymbolNode,
-                   context: Optional[Context],
+                   context: Context,
                    module_public: bool = True,
                    module_hidden: bool = False,
                    can_defer: bool = True) -> bool:
@@ -4000,10 +4002,21 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                               can_defer: bool = True) -> bool:
         """Add symbol table node to the currently active symbol table.
 
-        Return True if we actually added the symbol, or False if we refused to do so
-        (because something is not ready).
+        Return True if we actually added the symbol, or False if we refused
+        to do so (because something is not ready or it was a no-op).
 
-        If can_defer is True, defer current target if adding a placeholder.
+        Generate an error if there is an invalid redefinition.
+
+        If context is None, unconditionally add node, since we can't report
+        an error. Note that this is used by plugins to forcibly replace nodes!
+
+        TODO: Prevent plugins from replacing nodes, as it could cause problems?
+
+        Args:
+            name: short name of symbol
+            symbol: Node to add
+            can_defer: if True, defer current target if adding a placeholder
+            context: error context (see above about None value)
         """
         names = self.current_symbol_table()
         existing = names.get(name)
@@ -4011,25 +4024,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.defer()
         if (existing is not None
                 and context is not None
-                and (not isinstance(existing.node, PlaceholderNode)
-                     or (isinstance(symbol.node, PlaceholderNode) and
-                         # Allow replacing becomes_typeinfo=False with becomes_typeinfo=True.
-                         # This can happen for type aliases and NewTypes.
-                         not symbol.node.becomes_typeinfo))):
+                and not is_valid_replacement(existing, symbol)):
             # There is an existing node, so this may be a redefinition.
             # If the new node points to the same node as the old one,
             # or if both old and new nodes are placeholders, we don't
             # need to do anything.
-            old_node = existing.node
-            new_node = symbol.node
-            if (old_node != new_node
-                    and not (isinstance(old_node, PlaceholderNode)
-                             and isinstance(new_node, PlaceholderNode))
-                    and not is_same_var_from_getattr(old_node, new_node)):
-                if isinstance(new_node, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
+            old = existing.node
+            new = symbol.node
+            if not is_same_symbol(old, new):
+                if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
-                if not (isinstance(new_node, (FuncDef, Decorator))
-                        and self.set_original_def(old_node, new_node)):
+                if not (isinstance(new, (FuncDef, Decorator))
+                        and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names and '*' not in self.missing_names:
             names[name] = symbol
@@ -4149,6 +4155,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         This must be called if something in the current target is
         incomplete or has a placeholder node.
+
+        This must not be called during the final analysis iteration!
+        Instead, an error should be generated.
         """
         self.deferred = True
 
@@ -4182,7 +4191,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
-            self.add_symbol(name, PlaceholderNode(fullname, node, becomes_typeinfo), context=None)
+            self.add_symbol(name,
+                            PlaceholderNode(fullname, node, becomes_typeinfo),
+                            context=dummy_context())
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
@@ -4203,10 +4214,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         (used for better error message).
         """
         if self.final_iteration:
-            self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name),
-                      ctx)
+            self.cannot_resolve_name(name, kind, ctx)
         else:
             self.defer()
+
+    def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
+        self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
 
     def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
         """If node refers to old version of module, return reference to new version.
@@ -4686,3 +4699,29 @@ def is_same_var_from_getattr(n1: Optional[SymbolNode], n2: Optional[SymbolNode])
             and isinstance(n2, Var)
             and n2.from_module_getattr
             and n1.fullname() == n2.fullname())
+
+
+def dummy_context() -> Context:
+    return TempNode(AnyType(TypeOfAny.special_form))
+
+
+def is_valid_replacement(old: SymbolTableNode, new: SymbolTableNode) -> bool:
+    """Can symbol table node replace an existing one?
+
+    These are the only valid cases:
+
+    1. Placeholder gets replaced with a non-placeholder
+    2. Placeholder that isn't known to become type replaced with a
+       placeholder that can become a type
+    """
+    return (isinstance(old.node, PlaceholderNode)
+            and (not isinstance(new.node, PlaceholderNode)
+                 or (not old.node.becomes_typeinfo
+                     and new.node.becomes_typeinfo)))
+
+
+def is_same_symbol(a: Optional[SymbolNode], b: Optional[SymbolNode]) -> bool:
+    return (a == b
+            or (isinstance(a, PlaceholderNode)
+                and isinstance(b, PlaceholderNode))
+            or is_same_var_from_getattr(a, b))

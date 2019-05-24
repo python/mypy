@@ -164,7 +164,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if isinstance(node, PlaceholderNode):
                 if node.becomes_typeinfo:
                     # Reference to placeholder type.
-                    if self.allow_placeholder:
+                    if self.api.final_iteration:
+                        # TODO: Move error message generation to messages.py. We'd first
+                        #       need access to MessageBuilder here. Also move the similar
+                        #       message generation logic in semanal.py.
+                        self.api.fail(
+                            'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
+                            t)
+                        return AnyType(TypeOfAny.from_error)
+                    elif self.allow_placeholder:
                         self.api.defer()
                     else:
                         self.api.record_incomplete_ref()
