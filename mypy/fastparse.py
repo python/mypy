@@ -455,9 +455,11 @@ class ASTConverter:
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
 
+        posonlyargs = [arg.arg for arg in getattr(n.args, "posonlyargs", [])]
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
-        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
+        arg_names = [None if argument_elide_name(name) or name in posonlyargs else name
+                     for name in arg_names]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
         arg_types = []  # type: List[Optional[Type]]
@@ -584,7 +586,7 @@ class ASTConverter:
                        ) -> List[Argument]:
         new_args = []
         names = []  # type: List[ast3.arg]
-        args_args = args.args
+        args_args = getattr(args, "posonlyargs", []) + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
         # positional arguments without defaults
