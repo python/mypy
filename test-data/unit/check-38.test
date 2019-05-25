@@ -106,3 +106,69 @@ def g(x: int): ...
     /
     0  # type: ignore
 )  # type: ignore  # E: unused 'type: ignore' comment
+
+[case testPEP570ArgTypesMissing]
+# flags: --disallow-untyped-defs
+def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+
+[case testPEP570ArgTypesBadDefault]
+def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")
+
+[case testPEP570ArgTypesDefault]
+def f(arg: int = 0, /) -> None:
+    reveal_type(arg)  # E: Revealed type is 'builtins.int'
+
+[case testPEP570ArgTypesRequired]
+def f(arg: int, /) -> None:
+    reveal_type(arg)  # E: Revealed type is 'builtins.int'
+
+[case testPEP570Required]
+def f(arg: int, /) -> None: ...  # N: "f" defined here
+f(1)
+f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
+f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+
+[case testPEP570Default]
+def f(arg: int = 0, /) -> None: ...  # N: "f" defined here
+f()
+f(1)
+f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
+f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+
+[case testPEP570Signatures1]
+def f(p1: bytes, p2: float, /, p_or_kw: int, *, kw: str) -> None:
+    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # E: Revealed type is 'builtins.float'
+    reveal_type(p_or_kw)  # E: Revealed type is 'builtins.int'
+    reveal_type(kw)  # E: Revealed type is 'builtins.str'
+
+[case testPEP570Signatures2]
+def f(p1: bytes, p2: float = 0.0, /, p_or_kw: int = 0, *, kw: str) -> None:
+    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # E: Revealed type is 'builtins.float'
+    reveal_type(p_or_kw)  # E: Revealed type is 'builtins.int'
+    reveal_type(kw)  # E: Revealed type is 'builtins.str'
+
+[case testPEP570Signatures3]
+def f(p1: bytes, p2: float = 0.0, /, *, kw: int) -> None:
+    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # E: Revealed type is 'builtins.float'
+    reveal_type(kw)  # E: Revealed type is 'builtins.int'
+
+[case testPEP570Signatures4]
+def f(p1: bytes, p2: int = 0, /) -> None:
+    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # E: Revealed type is 'builtins.int'
+
+[case testPEP570Signatures5]
+def f(p1: bytes, p2: float, /, p_or_kw: int) -> None:
+    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # E: Revealed type is 'builtins.float'
+    reveal_type(p_or_kw)  # E: Revealed type is 'builtins.int'
+
+[case testPEP570Signatures6]
+def f(p1: bytes, p2: float, /) -> None:
+    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # E: Revealed type is 'builtins.float'
