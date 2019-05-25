@@ -174,6 +174,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if sem.type is not None:
             # Don't process methods during pass 1.
             return
+        for arg in func.arguments:
+            if arg.initializer:
+                arg.initializer.accept(self)
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
         at_module = sem.is_module_scope() and not decorated
@@ -309,6 +312,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         if self.sem.is_module_scope():
+            s.expr.accept(self)
             s.body.accept(self)
             if s.else_body:
                 s.else_body.accept(self)
