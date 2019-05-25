@@ -154,6 +154,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             node.accept(self)
         self.sem.block_depth[-1] -= 1
 
+    def visit_assignment_expr(self, s: AssignmentStmt) -> None:
+        if self.sem.is_module_scope():
+            self.analyze_lvalue(s.target)
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         if self.sem.is_module_scope():
             for lval in s.lvalues:
@@ -333,6 +337,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, self.sem.options)
+        for expr in s.expr:
+            expr.accept(self)
         for node in s.body:
             node.accept(self)
         if s.else_body:

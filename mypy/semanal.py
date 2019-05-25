@@ -48,7 +48,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, ListComprehension, GeneratorExpr,
-    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
+    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr, AssignmentExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
@@ -1779,6 +1779,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if target is None:
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
+
+    def visit_assignment_expr(self, e: AssignmentExpr) -> None:
+        self.analyze_lvalue(e.target)
+        e.value.accept(self)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         s.is_final_def = self.unwrap_final(s)

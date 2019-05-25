@@ -73,7 +73,7 @@ from mypy.nodes import (
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
-    EnumCallExpr
+    EnumCallExpr, AssignmentExpr,
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1830,6 +1830,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     #
     # Assignment
     #
+
+    def visit_assignment_expr(self, s: AssignmentExpr) -> None:
+        s.value.accept(self)
+        self.analyze_lvalue(s.target)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         tag = self.track_incomplete_refs()
