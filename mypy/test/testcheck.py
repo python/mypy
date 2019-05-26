@@ -90,6 +90,11 @@ typecheck_files = [
 if sys.version_info >= (3, 8):
     typecheck_files.append('check-38.test')
 
+    # Remove this once Travis supports 3.8.0a4+.
+    if sys.version_info >= (3, 8, 0, "alpha", 4) and os.environ.get("TRAVIS"):
+        import warnings
+        warnings.warn("PEP 570 tests in check-38.test can be unskipped! 🎉")
+
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
     typecheck_files.append('check-modules-case.test')
