@@ -2427,7 +2427,7 @@ from typing import Protocol
 class P(Protocol): ...
 class C(P): ...
 
-reveal_type(C.register(int))  # E: Revealed type is 'def (x: builtins.object =, base: builtins.int =) -> builtins.int'
+reveal_type(C.register(int))  # E: Revealed type is 'def () -> builtins.int'
 [typing fixtures/typing-full.pyi]
 [out]
 

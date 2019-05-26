@@ -464,6 +464,7 @@ class Test(Enum):
     b = auto()
 
 reveal_type(Test.a)  # E: Revealed type is '__main__.Test'
+[builtins fixtures/primitives.pyi]
 
 [case testEnumAttributeAccessMatrix]
 from enum import Enum, IntEnum, IntFlag, Flag, EnumMeta, auto
@@ -553,9 +554,10 @@ reveal_type(D3.x.value)         # E: Revealed type is 'builtins.int'
 reveal_type(D3.x._value_)       # E: Revealed type is 'builtins.int'
 
 # TODO: Generalize our enum functional API logic to work with subclasses of Enum
+# See https://github.com/python/mypy/issues/6037
 
 class Parent(Enum): pass
-#E1 = Parent('E1', 'x')
+# E1 = Parent('E1', 'x')  # See above TODO
 class E2(Parent):
     x = auto()
 class E3(Parent):
@@ -586,6 +588,7 @@ F3.x.name      # E: "F3" has no attribute "name"
 F3.x._name_    # E: "F3" has no attribute "_name_"
 F3.x.value     # E: "F3" has no attribute "value"
 F3.x._value_   # E: "F3" has no attribute "_value_"
+[builtins fixtures/primitives.pyi]
 
 [case testEnumAttributeChangeIncremental]
 from a import SomeEnum
