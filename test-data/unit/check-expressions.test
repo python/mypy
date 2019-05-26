@@ -1694,6 +1694,15 @@ def g() -> Iterator[int]:
     a = yield from f()
 [out]
 
+[case testYieldFromTupleExpression]
+from typing import Generator
+def g() -> Generator[int, None, None]:
+    x = None  # type: None
+    x = yield from ()
+    x = yield from (0, 1, 2)
+    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int")
+    x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int")
+
 
 -- dict(...)
 -- ---------
