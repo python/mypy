@@ -2444,7 +2444,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             type = type.fallback
         return (is_subtype(type, self.named_generic_type('typing.Iterable',
                                                          [AnyType(TypeOfAny.special_form)])) and
-                isinstance(type, Instance))
+                isinstance(type, (Instance, TupleType)))
 
     def check_multi_assignment_from_iterable(self, lvalues: List[Lvalue], rvalue_type: Type,
                                              context: Context,

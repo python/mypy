@@ -3406,17 +3406,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Check that the expr is an instance of Iterable and get the type of the iterator produced
         # by __iter__.
-        if isinstance(subexpr_type, TupleType):
-            # Tuples get special handling here, since they "don't have __iter__"...
-            item_type = join.join_type_list(subexpr_type.items)
-            any_type = AnyType(TypeOfAny.special_form)
-            iter_type = self.chk.named_generic_type('typing.Generator',
-                                                    [item_type, any_type, any_type])  # type: Type
-        elif isinstance(subexpr_type, AnyType):
-            iter_type = AnyType(TypeOfAny.from_another_any, source_any=subexpr_type)
+        if isinstance(subexpr_type, AnyType):
+            iter_type = AnyType(TypeOfAny.from_another_any, source_any=subexpr_type)  # type: Type
         elif self.chk.type_is_iterable(subexpr_type):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
+            elif isinstance(subexpr_type, TupleType):
+                # Tuples get special handling here, since they "don't have __iter__"...
+                item_type = join.join_type_list(subexpr_type.items)
+                subexpr_type = self.chk.named_generic_type('typing.Iterable', [item_type])
 
             any_type = AnyType(TypeOfAny.special_form)
             generic_generator_type = self.chk.named_generic_type('typing.Generator',
