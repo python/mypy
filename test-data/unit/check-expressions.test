@@ -1703,6 +1703,7 @@ def g() -> Generator[int, None, None]:
                                  # E: Function does not return a value
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
                                # E: Function does not return a value
+[builtins fixtures/tuple.pyi]
 
 -- dict(...)
 -- ---------
