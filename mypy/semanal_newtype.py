@@ -5,7 +5,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from typing import Tuple, Optional
 
-from mypy.types import Type, Instance, CallableType, NoneType, TupleType, AnyType, TypeOfAny
+from mypy.types import Type, Instance, CallableType, NoneType, TupleType, AnyType
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
     UnicodeExpr, Block, FuncDef, Argument, TypeInfo, Var, SymbolTableNode, GDEF, MDEF, ARG_POS

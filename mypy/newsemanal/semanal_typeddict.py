@@ -7,7 +7,7 @@ from mypy.types import Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES
 from mypy.nodes import (
     CallExpr, TypedDictExpr, Expression, NameExpr, Context, StrExpr, BytesExpr, UnicodeExpr,
     ClassDef, RefExpr, TypeInfo, AssignmentStmt, PassStmt, ExpressionStmt, EllipsisExpr, TempNode,
-    SymbolTableNode, DictExpr, GDEF, ARG_POS, ARG_NAMED
+    DictExpr, ARG_POS, ARG_NAMED
 )
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError

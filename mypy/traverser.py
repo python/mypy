@@ -11,7 +11,6 @@ from mypy.nodes import (
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
     YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE,
-    Statement
 )
 
 

@@ -42,9 +42,8 @@ print('\nExit status:', result[2])
 
 """
 
-import sys
 from io import StringIO
-from typing import List, Tuple, Union, TextIO, Callable
+from typing import List, Tuple, TextIO, Callable
 
 
 def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:

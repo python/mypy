@@ -29,7 +29,6 @@ from mypy.nodes import (
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
 )
-from mypy.defaults import PYTHON3_VERSION
 from mypy.util import unmangle
 from mypy import message_registry
 
