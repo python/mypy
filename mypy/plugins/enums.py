@@ -17,15 +17,15 @@ from mypy.types import Type, Instance, LiteralType
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
-ENUM_PREFIXES: Final = {'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'}
-ENUM_NAME_ACCESS: Final = (
+ENUM_PREFIXES = {'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'}  # type: Final
+ENUM_NAME_ACCESS = (
     {'{}.name'.format(prefix) for prefix in ENUM_PREFIXES}
     | {'{}._name_'.format(prefix) for prefix in ENUM_PREFIXES}
-)
-ENUM_VALUE_ACCESS: Final = (
+)  # type: Final
+ENUM_VALUE_ACCESS = (
     {'{}.value'.format(prefix) for prefix in ENUM_PREFIXES}
     | {'{}._value_'.format(prefix) for prefix in ENUM_PREFIXES}
-)
+)  # type: Final
 
 
 def enum_name_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
@@ -68,7 +68,9 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     the actual runtime behavior.
 
     This plugin works simply by looking up the original value assigned
-    to the enum. For example,
+    to the enum. For example, when this plugin sees 'SomeEnum.BAR.value',
+    it will look up whatever type 'BAR' had in the SomeEnum TypeInfo and
+    use that as the inferred type of the overall expression.
 
     This plugin assumes that the provided context is an attribute access
     matching one of the strings found in 'ENUM_VALUE_ACCESS'.
