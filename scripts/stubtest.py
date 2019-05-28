@@ -6,7 +6,7 @@ at runtime.
 
 import importlib
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any
 from collections import defaultdict, namedtuple
 
 from mypy import build

@@ -1,17 +1,12 @@
 """Mypy type checker command line tool."""
 
 import argparse
-import ast
-import configparser
-import glob as fileglob
 import os
-import re
 import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, TextIO
-from io import StringIO
+from typing import Dict, List, Optional, Tuple, TextIO
 
 from mypy import build
 from mypy import defaults
@@ -21,7 +16,7 @@ from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPat
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
-from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
+from mypy.options import Options, BuildType
 from mypy.config_parser import parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 

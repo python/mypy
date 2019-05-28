@@ -10,7 +10,6 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
-import binascii
 import contextlib
 import errno
 import gc

@@ -23,11 +23,9 @@ Other things:
 """
 
 from typing import (
-    List, Optional, Set, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator,
+    List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator,
 )
 
-import mypy.checker
-import mypy.types
 from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType, is_optional,
@@ -35,17 +33,17 @@ from mypy.types import (
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
-    ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
-    SymbolNode, TypeInfo, Node, Expression, ReturnStmt,
+    ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
+    SymbolNode, TypeInfo, Expression, ReturnStmt,
     reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.server.target import module_prefix, split_target
-from mypy.plugin import Plugin, ChainedPlugin, FunctionContext, MethodContext
+from mypy.plugin import Plugin, FunctionContext, MethodContext
 from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type
 
-from mypy.join import join_types, join_type_list
+from mypy.join import join_type_list
 from mypy.sametypes import is_same_type
 
 from contextlib import contextmanager

@@ -1,16 +1,14 @@
 """Utility functions with no non-trivial dependencies."""
-import contextlib
 import os
 import pathlib
 import re
 import subprocess
 import sys
-from types import TracebackType
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
 MYPY = False
 if MYPY:
-    from typing import Type, ClassVar
+    from typing import Type
     from typing_extensions import Final
 
 T = TypeVar('T')
