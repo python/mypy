@@ -10,7 +10,6 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
-import binascii
 import contextlib
 import errno
 import gc
@@ -43,7 +42,7 @@ from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding, is_sub_path
+from mypy.util import DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
@@ -61,8 +60,7 @@ from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
-
-from mypy.mypyc_hacks import BuildManagerBase
+from mypy.config_parser import parse_mypy_comments
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -455,7 +453,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class BuildManager(BuildManagerBase):
+class BuildManager:
     """This class holds shared state for building a mypy program.
 
     It is used to coordinate parsing, import processing, semantic
@@ -512,7 +510,9 @@ class BuildManager(BuildManagerBase):
                  stdout: TextIO,
                  stderr: TextIO,
                  ) -> None:
-        super().__init__(stdout, stderr)
+        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+        self.stdout = stdout
+        self.stderr = stderr
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -747,6 +747,41 @@ class BuildManager(BuildManagerBase):
                     options: Options) -> None:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
+
+    def verbosity(self) -> int:
+        return self.options.verbosity
+
+    def log(self, *message: str) -> None:
+        if self.verbosity() >= 1:
+            if message:
+                print('LOG: ', *message, file=self.stderr)
+            else:
+                print(file=self.stderr)
+            self.stderr.flush()
+
+    def log_fine_grained(self, *message: str) -> None:
+        import mypy.build
+        if self.verbosity() >= 1:
+            self.log('fine-grained:', *message)
+        elif mypy.build.DEBUG_FINE_GRAINED:
+            # Output log in a simplified format that is quick to browse.
+            if message:
+                print(*message, file=self.stderr)
+            else:
+                print(file=self.stderr)
+            self.stderr.flush()
+
+    def trace(self, *message: str) -> None:
+        if self.verbosity() >= 2:
+            print('TRACE:', *message, file=self.stderr)
+            self.stderr.flush()
+
+    def add_stats(self, **kwds: Any) -> None:
+        for key, value in kwds.items():
+            if key in self.stats:
+                self.stats[key] += value
+            else:
+                self.stats[key] = value
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
@@ -1364,6 +1399,11 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
+    # Note that the options we store in the cache are the options as
+    # specified by the command line/config file and *don't* reflect
+    # updates made by inline config directives in the file. This is
+    # important, or otherwise the options would never match when
+    # verifying the cache.
     options = manager.options.clone_for_module(id)
     assert source_hash is not None
     meta = {'id': id,
@@ -1922,6 +1962,8 @@ class State:
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
+
+            self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
                                            self.ignore_all or self.options.ignore_errors)
 
@@ -1936,6 +1978,18 @@ class State:
             self.tree.names = manager.semantic_analyzer.globals
 
         self.check_blockers()
+
+    def parse_inline_configuration(self, source: str) -> None:
+        """Check for inline mypy: options directive and parse them."""
+        flags = get_mypy_comments(source)
+        if flags:
+            changes, config_errors = parse_mypy_comments(flags, self.options)
+            self.options = self.options.apply_changes(changes)
+            self.manager.errors.set_file(self.xpath, self.id)
+            for lineno, error in config_errors:
+                # Unfortunately these need to be blockers, since otherwise they will
+                # be lost on daemon reprocessing.
+                self.manager.errors.report(lineno, 0, error, blocker=True)
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.
@@ -2549,12 +2603,13 @@ class NodeInfo:
                                                      json.dumps(self.deps))
 
 
-def dump_graph(graph: Graph, stdout: TextIO = sys.stdout) -> None:
+def dump_graph(graph: Graph, stdout: Optional[TextIO] = None) -> None:
     """Dump the graph as a JSON string to stdout.
 
     This copies some of the work by process_graph()
     (sorted_components() and order_ascc()).
     """
+    stdout = stdout or sys.stdout
     nodes = []
     sccs = sorted_components(graph)
     for i, ascc in enumerate(sccs):

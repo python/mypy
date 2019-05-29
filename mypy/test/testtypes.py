@@ -341,8 +341,17 @@ class TypeOpsSuite(Suite):
         assert_true(to.items[1] is tup_type)
 
     def test_false_only_of_true_type_is_uninhabited(self) -> None:
-        fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
-        assert_type(UninhabitedType, fo)
+        with strict_optional_set(True):
+            fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
+            assert_type(UninhabitedType, fo)
+
+    def test_false_only_tuple(self) -> None:
+        with strict_optional_set(False):
+            fo = false_only(self.tuple(self.fx.a))
+            assert_equal(fo, NoneType())
+        with strict_optional_set(True):
+            fo = false_only(self.tuple(self.fx.a))
+            assert_equal(fo, UninhabitedType())
 
     def test_false_only_of_false_type_is_idempotent(self) -> None:
         always_false = NoneType()
@@ -359,18 +368,19 @@ class TypeOpsSuite(Suite):
         assert_true(self.fx.a.can_be_true)
 
     def test_false_only_of_union(self) -> None:
-        tup_type = self.tuple()
-        # Union of something that is unknown, something that is always true, something
-        # that is always false
-        union_type = UnionType([self.fx.a, self.tuple(AnyType(TypeOfAny.special_form)),
-                                tup_type])
-        assert_equal(len(union_type.items), 3)
-        fo = false_only(union_type)
-        assert isinstance(fo, UnionType)
-        assert_equal(len(fo.items), 2)
-        assert_false(fo.items[0].can_be_true)
-        assert_true(fo.items[0].can_be_false)
-        assert_true(fo.items[1] is tup_type)
+        with strict_optional_set(True):
+            tup_type = self.tuple()
+            # Union of something that is unknown, something that is always true, something
+            # that is always false
+            union_type = UnionType([self.fx.a, self.tuple(AnyType(TypeOfAny.special_form)),
+                                    tup_type])
+            assert_equal(len(union_type.items), 3)
+            fo = false_only(union_type)
+            assert isinstance(fo, UnionType)
+            assert_equal(len(fo.items), 2)
+            assert_false(fo.items[0].can_be_true)
+            assert_true(fo.items[0].can_be_false)
+            assert_true(fo.items[1] is tup_type)
 
     # Helpers
 

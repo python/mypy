@@ -29,7 +29,6 @@ from mypy.nodes import (
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
 )
-from mypy.defaults import PYTHON3_VERSION
 from mypy.util import unmangle
 from mypy import message_registry
 
@@ -628,8 +627,13 @@ class MessageBuilder:
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
-            if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
-                notes = append_invariance_notes(notes, arg_type, expected_type)
+            if isinstance(expected_type, UnionType):
+                expected_types = expected_type.items
+            else:
+                expected_types = [expected_type]
+            for type in expected_types:
+                if isinstance(arg_type, Instance) and isinstance(type, Instance):
+                    notes = append_invariance_notes(notes, arg_type, type)
         self.fail(msg, context)
         if notes:
             for note_msg in notes:
@@ -1396,7 +1400,7 @@ class MessageBuilder:
 
         # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
         if tp.definition is not None and tp.definition.name() is not None:
-            definition_args = getattr(tp.definition, 'arg_names')
+            definition_args = tp.definition.arg_names  # type: ignore
             if definition_args and tp.arg_names != definition_args \
                     and len(definition_args) > 0:
                 if s:

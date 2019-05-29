@@ -3276,7 +3276,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 has_any_type(typ)):
             self.msg.disallowed_any_type(typ, node)
 
-        if not self.chk.in_checked_function():
+        if not self.chk.in_checked_function() or self.chk.current_node_deferred:
             return AnyType(TypeOfAny.unannotated)
         else:
             return typ

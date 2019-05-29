@@ -2890,7 +2890,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def is_valid_del_target(self, s: Expression) -> bool:
         if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
             return True
-        elif isinstance(s, TupleExpr):
+        elif isinstance(s, (TupleExpr, ListExpr)):
             return all(self.is_valid_del_target(item) for item in s.items)
         else:
             return False
@@ -3942,7 +3942,7 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 
 def make_any_non_explicit(t: Type) -> Type:
-    """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    """Replace all Any types within in with Any that has attribute 'explicit' set to False."""
     return t.accept(MakeAnyNonExplicit())
 
 

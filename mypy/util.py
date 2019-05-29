@@ -1,16 +1,14 @@
 """Utility functions with no non-trivial dependencies."""
-import contextlib
 import os
 import pathlib
 import re
 import subprocess
 import sys
-from types import TracebackType
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, TextIO
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
 MYPY = False
 if MYPY:
-    from typing import Type, ClassVar
+    from typing import Type
     from typing_extensions import Final
 
 T = TypeVar('T')
@@ -87,6 +85,20 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     except LookupError as lookuperr:
         raise DecodeError(str(lookuperr))
     return source_text
+
+
+def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
+    PREFIX = '# mypy: '
+    # Don't bother splitting up the lines unless we know it is useful
+    if PREFIX not in source:
+        return []
+    lines = source.split('\n')
+    results = []
+    for i, line in enumerate(lines):
+        if line.startswith(PREFIX):
+            results.append((i + 1, line[len(PREFIX):]))
+
+    return results
 
 
 _python2_interpreter = None  # type: Optional[str]

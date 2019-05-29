@@ -104,16 +104,15 @@ def f() -> None:
 
 def g(): pass
 
-[case testCannotRedefineLocalWithinWith]
+[case testRedefineLocalWithinWith]
 # flags: --allow-redefinition
 def f() -> None:
     with g():
         x = 0
         x
-        g()  # Might raise an exception
-        x = '' \
-        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    reveal_type(x) # E: Revealed type is 'builtins.int'
+        g()  # Might raise an exception, but we ignore this
+        x = ''
+    reveal_type(x) # E: Revealed type is 'builtins.str'
     y = 0
     y
     y = ''

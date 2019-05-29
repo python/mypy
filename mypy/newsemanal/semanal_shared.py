@@ -106,8 +106,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
-                  report_invalid_types: bool = True,
-                  third_pass: bool = False) -> Optional[Type]:
+                  report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 
     @abstractmethod
@@ -132,7 +131,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
+    def add_symbol(self, name: str, node: SymbolNode, context: Context,
                    module_public: bool = True, module_hidden: bool = False,
                    can_defer: bool = True) -> bool:
         """Add symbol to the current symbol table."""

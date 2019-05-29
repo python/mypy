@@ -8846,6 +8846,54 @@ y = ''
 ==
 ==
 
+[case testInlineConfigFineGrained1]
+import a
+[file a.py]
+# mypy: no-warn-no-return
+
+from typing import List
+def foo() -> List:
+    20
+
+[file a.py.2]
+# mypy: disallow-any-generics, no-warn-no-return
+
+from typing import List
+def foo() -> List:
+    20
+
+[file a.py.3]
+# mypy: no-warn-no-return
+
+from typing import List
+def foo() -> List:
+    20
+
+[file a.py.4]
+from typing import List
+def foo() -> List:
+    20
+[out]
+==
+a.py:4: error: Missing type parameters for generic type
+==
+==
+a.py:2: error: Missing return statement
+
+[builtins fixtures/list.pyi]
+
+[case testInlineConfigFineGrained2]
+import a
+[file a.py]
+# mypy: bogus-flag
+
+[file b.py.2]
+
+[out]
+a.py:1: error: Unrecognized option: bogus_flag = True
+==
+a.py:1: error: Unrecognized option: bogus_flag = True
+
 [case testWrongNumberOfArguments]
 
 [file a.py]
@@ -8863,3 +8911,20 @@ x = 1
 a.py:1: error: Type signature has too few arguments
 ==
 a.py:1: error: Type signature has too few arguments
+
+[case testErrorReportingNewAnalyzer]
+# flags: --disallow-any-generics
+from a import A
+
+def f() -> None:
+    x: A
+[file a.py]
+class A: ...
+
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]): ...
+[out]
+==
+main:5: error: Missing type parameters for generic type

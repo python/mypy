@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from typing import List
 
-from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, OverloadedFuncDef
+from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block
 from mypy.types import Type, Instance, TypeVarType, AnyType, TypeOfAny
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype

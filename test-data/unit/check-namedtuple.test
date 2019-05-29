@@ -846,3 +846,19 @@ class Child(Parent):
 
 reveal_type(Child.class_method())  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.Child]'
 [builtins fixtures/classmethod.pyi]
+
+[case testNamedTupleAsConditionalStrictOptionalDisabled]
+# flags: --no-strict-optional
+from typing import NamedTuple
+
+class C(NamedTuple):
+    a: int
+    b: str
+
+a: C
+if not a:
+    1()  # E: "int" not callable
+b = (1, 2)
+if not b:
+    ''()  # E: "str" not callable
+[builtins fixtures/tuple.pyi]

@@ -112,8 +112,8 @@ def is_c_property(obj: object) -> bool:
     return inspect.isdatadescriptor(obj) and hasattr(obj, 'fget')
 
 
-def is_c_property_readonly(prop: object) -> bool:
-    return getattr(prop, 'fset') is None
+def is_c_property_readonly(prop: Any) -> bool:
+    return prop.fset is None
 
 
 def is_c_type(obj: object) -> bool:
@@ -243,7 +243,7 @@ def generate_c_type_stub(module: ModuleType,
     """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
+    obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]  # noqa
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods = []  # type: List[str]
     properties = []  # type: List[str]
