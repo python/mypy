@@ -32,11 +32,13 @@ func_op(
     priority=1)
 
 
-def int_binary_op(op: str, c_func_name: str, result_type: RType = int_rprimitive) -> None:
+def int_binary_op(op: str, c_func_name: str,
+                  result_type: RType = int_rprimitive,
+                  error_kind: int = ERR_NEVER) -> None:
     binary_op(op=op,
               arg_types=[int_rprimitive, int_rprimitive],
               result_type=result_type,
-              error_kind=ERR_NEVER,
+              error_kind=error_kind,
               format_str='{dest} = {args[0]} %s {args[1]} :: int' % op,
               emit=call_emit(c_func_name))
 
@@ -57,8 +59,10 @@ def int_compare_op(op: str, c_func_name: str) -> None:
 int_binary_op('+', 'CPyTagged_Add')
 int_binary_op('-', 'CPyTagged_Subtract')
 int_binary_op('*', 'CPyTagged_Multiply')
-int_binary_op('//', 'CPyTagged_FloorDivide')
-int_binary_op('%', 'CPyTagged_Remainder')
+# Divide and remainder we honestly propagate errors from because they
+# can raise ZeroDivisionError
+int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
+int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 
 # this should work because assignment operators are parsed differently
 # and the code in genops that handles it does the assignment
@@ -66,8 +70,8 @@ int_binary_op('%', 'CPyTagged_Remainder')
 int_binary_op('+=', 'CPyTagged_Add')
 int_binary_op('-=', 'CPyTagged_Subtract')
 int_binary_op('*=', 'CPyTagged_Multiply')
-int_binary_op('//=', 'CPyTagged_FloorDivide')
-int_binary_op('%=', 'CPyTagged_Remainder')
+int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
+int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 
 int_compare_op('==', 'CPyTagged_IsEq')
 int_compare_op('!=', 'CPyTagged_IsNe')

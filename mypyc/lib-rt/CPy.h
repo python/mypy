@@ -453,7 +453,7 @@ static CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
 
 static inline bool CPyTagged_IsMultiplyOverflow(CPyTagged left, CPyTagged right) {
     // This is conservative -- return false only in a small number of all non-overflow cases
-    return left >= (1U << 31) || right >= (1U << 31);
+    return left >= (1U << (CPY_INT_BITS/2 - 1)) || right >= (1U << (CPY_INT_BITS/2 - 1));
 }
 
 static CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
@@ -474,16 +474,13 @@ static CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-static inline bool CPyTagged_MaybeFloorDivideOverflow(CPyTagged left, CPyTagged right) {
-    return right == -((size_t)1 << (CPY_INT_BITS-1))
-        || left == -((size_t)1 << (CPY_INT_BITS-1));
+static inline bool CPyTagged_MaybeFloorDivideFault(CPyTagged left, CPyTagged right) {
+    return right == 0 || left == -((size_t)1 << (CPY_INT_BITS-1));
 }
 
 static CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
-        && !CPyTagged_MaybeFloorDivideOverflow(left, right)) {
-        if (right == 0)
-            abort();
+        && !CPyTagged_MaybeFloorDivideFault(left, right)) {
         Py_ssize_t result = ((Py_ssize_t)left / CPyTagged_ShortAsSsize_t(right)) & ~1;
         if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
             if (result / 2 * right != left) {
@@ -496,22 +493,27 @@ static CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_FloorDivide(left_obj, right_obj);
-    if (result == NULL) {
-        CPyError_OutOfMemory();
-    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_StealFromObject(result);
+    // Handle exceptions honestly because it could be ZeroDivisionError
+    if (result == NULL) {
+        return CPY_INT_TAG;
+    } else {
+        return CPyTagged_StealFromObject(result);
+    }
 }
 
-static inline bool CPyTagged_MaybeRemainderOverflow(CPyTagged left, CPyTagged right) {
-    // The remainder can't overflow but it can divide by 0
+static inline bool CPyTagged_MaybeRemainderFault(CPyTagged left, CPyTagged right) {
+    // Division/modulus can fault when dividing INT_MIN by -1, but we
+    // do our mods on still-tagged integers with the low-bit clear, so
+    // -1 is actually represented as -2 and can't overflow.
+    // Mod by 0 can still fault though.
     return right == 0;
 }
 
 static CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
-        && !CPyTagged_MaybeRemainderOverflow(left, right)) {
+        && !CPyTagged_MaybeRemainderFault(left, right)) {
         Py_ssize_t result = (Py_ssize_t)left % (Py_ssize_t)right;
         if (((Py_ssize_t)right < 0) != ((Py_ssize_t)left < 0) && result != 0) {
             result += right;
@@ -521,12 +523,14 @@ static CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Remainder(left_obj, right_obj);
-    if (result == NULL) {
-        CPyError_OutOfMemory();
-    }
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
-    return CPyTagged_StealFromObject(result);
+    // Handle exceptions honestly because it could be ZeroDivisionError
+    if (result == NULL) {
+        return CPY_INT_TAG;
+    } else {
+        return CPyTagged_StealFromObject(result);
+    }
 }
 
 static bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {

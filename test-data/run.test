@@ -1584,6 +1584,55 @@ assert get_item(d, 'x') == 5
 set_item(d, 'y', 6)
 assert d['y'] == 6
 
+[case testIntMathOps]
+# This tests integer math things that are either easier to test in Python than
+# in our C tests or are tested here because (for annoying reasons) we don't run
+# the C unit tests in our 32-bit CI.
+def multiply(x: int, y: int) -> int:
+    return x * y
+
+# these stringify their outputs because that will catch if exceptions are mishandled
+def floor_div(x: int, y: int) -> str:
+    return str(x // y)
+def remainder(x: int, y: int) -> str:
+    return str(x % y)
+
+[file driver.py]
+from native import multiply, floor_div, remainder
+
+def test_multiply(x, y):
+    assert multiply(x, y) == x * y
+def test_floor_div(x, y):
+    assert floor_div(x, y) == str(x // y)
+def test_remainder(x, y):
+    assert remainder(x, y) == str(x % y)
+
+test_multiply(10**6, 10**6)
+test_multiply(2**15, 2**15-1)
+test_multiply(2**14, 2**14)
+
+test_multiply(10**12, 10**12)
+test_multiply(2**30, 2**30-1)
+test_multiply(2**29, 2**29)
+
+test_floor_div(-2**62, -1)
+test_floor_div(-2**30, -1)
+try:
+    floor_div(10, 0)
+except ZeroDivisionError:
+    pass
+else:
+    assert False, "Expected ZeroDivisionError"
+
+test_remainder(-2**62, -1)
+test_remainder(-2**30, -1)
+try:
+    remainder(10, 0)
+except ZeroDivisionError:
+    pass
+else:
+    assert False, "Expected ZeroDivisionError"
+
 [case testAnyAttributeAndMethodAccess]
 from typing import Any, List
 class C:

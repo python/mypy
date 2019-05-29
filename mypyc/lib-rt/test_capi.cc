@@ -87,14 +87,14 @@ protected:
             fail("Could not find module dictionary");
         }
 
-        max_short = int_from_str("4611686018427387903"); // 2**62-1
-        min_pos_long = int_from_str("4611686018427387904"); // 2**62
-        min_short = int_from_str("-4611686018427387904"); // -2**62
-        max_neg_long = int_from_str("-4611686018427387905"); // -(2**62+1)
-        c_max_short = 4611686018427387903LL;
-        c_min_pos_long = 4611686018427387904LL;
-        c_min_short = -4611686018427387904LL;
-        c_max_neg_long = -4611686018427387905LL;
+        c_max_short = CPY_TAGGED_MAX; // 2**62-1
+        c_min_pos_long = c_max_short + 1; // 2**62
+        c_min_short = CPY_TAGGED_MIN; // -2**62
+        c_max_neg_long = c_min_short - 1; // -(2**62+1)
+        max_short = PyLong_FromSsize_t(c_max_short);
+        min_pos_long = PyLong_FromSsize_t(c_min_pos_long);
+        min_short = PyLong_FromSsize_t(c_min_short);
+        max_neg_long = PyLong_FromSsize_t(c_max_neg_long);
     }
 
     virtual void TearDown() {
@@ -282,6 +282,8 @@ TEST_F(CAPITest, test_multiply_int) {
     ASSERT_MULTIPLY("2**30-1", "2**30-1", "(2**30-1)**2");
     ASSERT_MULTIPLY("2**30", "2**30-1", "2**30 * (2**30-1)");
     ASSERT_MULTIPLY("2**30-1", "2**30", "2**30 * (2**30-1)");
+    ASSERT_MULTIPLY("2**15", "2**15-1", "2**15 * (2**15-1)");
+    ASSERT_MULTIPLY("2**15-1", "2**15", "2**15 * (2**15-1)");
     ASSERT_MULTIPLY("3", "-5", "-15");
     ASSERT_MULTIPLY("-3", "5", "-15");
     ASSERT_MULTIPLY("-3", "-5", "15");
@@ -312,6 +314,11 @@ TEST_F(CAPITest, test_floor_divide_short_int) {
     ASSERT_FLOOR_DIV("-2**62", "1", "-2**62");
     ASSERT_FLOOR_DIV("2**62 - 1", "1", "2**62 - 1");
     ASSERT_FLOOR_DIV("2**62 - 1", "-1", "-2**62 + 1");
+    ASSERT_FLOOR_DIV("2**60", "3", "2**60 // 3");
+    ASSERT_FLOOR_DIV("-2**30", "-1", "2**30");
+    ASSERT_FLOOR_DIV("-2**30", "1", "-2**30");
+    ASSERT_FLOOR_DIV("2**30 - 1", "1", "2**30 - 1");
+    ASSERT_FLOOR_DIV("2**30 - 1", "-1", "-2**30 + 1");
 }
 
 TEST_F(CAPITest, test_floor_divide_long_int) {
