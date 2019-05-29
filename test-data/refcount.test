@@ -614,21 +614,6 @@ L0:
     r5 = 0
     return r5
 
-[case testReturnList]
-from typing import List
-def f(x: int) -> List[int]:
-    return [x]
-[out]
-def f(x):
-    x :: int
-    r0 :: object
-    r1 :: list
-L0:
-    inc_ref x :: int
-    r0 = box(int, x)
-    r1 = [r0]
-    return r1
-
 [case testListSet]
 from typing import List
 def f(a: List[int], b: List[int]) -> None:
@@ -806,7 +791,7 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0, r1 :: object
-    key, r2 :: int
+    r2, key :: int
     r3, r4 :: object
     r5 :: int
     r6 :: bool

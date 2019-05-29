@@ -1997,8 +1997,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Default to a generic for loop.
         expr_reg = self.accept(expr)
         for_obj = ForIterable(self, index, body_block, loop_exit, line, nested)
-        for_obj.init(expr_reg)
+        item_type = self._analyze_iterable_item_type(expr)
+        item_rtype = self.type_to_rtype(item_type)
+        for_obj.init(expr_reg, item_rtype)
         return for_obj
+
+    def _analyze_iterable_item_type(self, expr: Expression) -> Type:
+        """Return the item type given by 'expr' in an iterable context."""
+        # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
+        iterable = self.graph[self.module_name].type_map()[expr]
+        echk = self.graph[self.module_name].type_checker().expr_checker
+        iterator = echk.check_method_call_by_name('__iter__', iterable, [], [], expr)[0]
+
+        from mypy.join import join_types
+        if isinstance(iterable, TupleType):
+            joined = UninhabitedType()  # type: Type
+            for item in iterable.items:
+                joined = join_types(joined, item)
+            return joined
+        else:
+            # Non-tuple iterable.
+            return echk.check_method_call_by_name('__next__', iterator, [], [], expr)[0]
 
     def visit_break_stmt(self, node: BreakStmt) -> None:
         self.nonlocal_control[-1].gen_break(self, node.line)

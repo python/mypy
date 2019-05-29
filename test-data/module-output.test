@@ -151,3 +151,4 @@ def f(x: List[int]) -> None: pass
 [out]
 prog.py:1: error: Name 'List' is not defined
 prog.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
+

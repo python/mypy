@@ -4203,3 +4203,15 @@ with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)")
     varargs4(y=20)
 
 varargs_tests()
+
+[case testIterTypeTrickiness]
+# Test inferring the type of a for loop body doesn't cause us grief
+# Extracted from something that broke in mypy
+
+def foo(x: object) -> None:
+    if isinstance(x, dict):
+        for a in x:
+            pass
+
+[file driver.py]
+# really I only care it builds

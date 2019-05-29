@@ -156,7 +156,7 @@ def increment(d: Dict[str, int]) -> Dict[str, int]:
 def increment(d):
     d :: dict
     r0, r1 :: object
-    k, r2 :: str
+    r2, k :: str
     r3 :: object
     r4 :: short_int
     r5, r6 :: object
