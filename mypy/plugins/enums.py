@@ -11,7 +11,9 @@ we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
 from typing import Optional
-from typing_extensions import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 import mypy.plugin  # To avoid circular imports.
 from mypy.types import Type, Instance, LiteralType
 

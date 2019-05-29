@@ -180,7 +180,6 @@ setup(name='mypy',
       # When changing this, also update test-requirements.txt.
       install_requires=['typed-ast >= 1.3.5, < 1.4.0',
                         'mypy_extensions >= 0.4.0, < 0.5.0',
-                        'typing_extensions >= 3.7.0, < 4.0.0',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},
