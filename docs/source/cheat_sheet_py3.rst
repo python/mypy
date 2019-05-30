@@ -104,7 +104,7 @@ Python 3 supports an annotation syntax for function declarations.
    x: Callable[[int, float], float] = f
 
    # A generator function that yields ints is secretly just a function that
-   # returns an iterator (see below) of ints, so that's how we annotate it
+   # returns an iterator of ints, so that's how we annotate it
    def g(n: int) -> Iterator[int]:
        i = 0
        while i < n:

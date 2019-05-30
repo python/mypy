@@ -95,7 +95,7 @@ Functions
    x = f  # type: Callable[[int, float], float]
 
    # A generator function that yields ints is secretly just a function that
-   # returns an iterator (see below) of ints, so that's how we annotate it
+   # returns an iterator of ints, so that's how we annotate it
    def g(n):
        # type: (int) -> Iterator[int]
        i = 0
