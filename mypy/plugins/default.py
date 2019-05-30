@@ -69,11 +69,16 @@ class DefaultPlugin(Plugin):
     def get_attribute_hook(self, fullname: str
                            ) -> Optional[Callable[[AttributeContext], Type]]:
         from mypy.plugins import ctypes
+        from mypy.plugins import enums
 
         if fullname == 'ctypes.Array.value':
             return ctypes.array_value_callback
         elif fullname == 'ctypes.Array.raw':
             return ctypes.array_raw_callback
+        elif fullname in enums.ENUM_NAME_ACCESS:
+            return enums.enum_name_callback
+        elif fullname in enums.ENUM_VALUE_ACCESS:
+            return enums.enum_value_callback
         return None
 
     def get_class_decorator_hook(self, fullname: str

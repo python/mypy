@@ -615,7 +615,8 @@ def analyze_class_attribute_access(itype: Instance,
         check_final_member(name, itype.type, mx.msg, mx.context)
 
     if itype.type.is_enum and not (mx.is_lvalue or is_decorated or is_method):
-        return itype
+        enum_literal = LiteralType(name, fallback=itype)
+        return itype.copy_modified(last_known_value=enum_literal)
 
     t = node.type
     if t:
