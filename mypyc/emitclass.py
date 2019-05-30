@@ -4,8 +4,8 @@
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 from collections import OrderedDict
 
-from mypyc.common import NATIVE_PREFIX, PREFIX, REG_PREFIX
-from mypyc.emit import Emitter
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
+from mypyc.emit import Emitter, HeaderDeclaration
 from mypyc.emitfunc import native_function_header, native_getter_name, native_setter_name
 from mypyc.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
@@ -78,16 +78,20 @@ def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str,
     return fields
 
 
-def generate_class_type_decl(cl: ClassIR, c_emitter: Emitter, emitter: Emitter) -> None:
-    c_emitter.emit_line('PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
-    emitter.emit_line('extern PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
-    emitter.emit_line()
-    generate_object_struct(cl, emitter)
-    emitter.emit_line()
+def generate_class_type_decl(cl: ClassIR, c_emitter: Emitter,
+                             external_emitter: Emitter,
+                             emitter: Emitter) -> None:
+    context = c_emitter.context
+    name = emitter.type_struct_name(cl)
+    context.declarations[name] = HeaderDeclaration(
+        'PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
+
+    generate_object_struct(cl, external_emitter)
     declare_native_getters_and_setters(cl, emitter)
     generate_full = not cl.is_trait and not cl.builtin_base
     if generate_full:
-        emitter.emit_line('{};'.format(native_function_header(cl.ctor, emitter)))
+        context.declarations[emitter.native_function_name(cl.ctor)] = HeaderDeclaration(
+            '{};'.format(native_function_header(cl.ctor, emitter)))
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -241,30 +245,42 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    emitter.emit_lines('typedef struct {',
-                       'PyObject_HEAD',
-                       'CPyVTableItem *vtable;')
     seen_attrs = set()  # type: Set[Tuple[str, RType]]
+    lines = []  # type: List[str]
+    lines += ['typedef struct {',
+              'PyObject_HEAD',
+              'CPyVTableItem *vtable;']
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
-                    emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype),
-                                                     emitter.attr(attr)))
+                    lines.append('{}{};'.format(emitter.ctype_spaced(rtype),
+                                                emitter.attr(attr)))
                     seen_attrs.add((attr, rtype))
-    emitter.emit_line('}} {};'.format(cl.struct_name(emitter.names)))
+    lines.append('}} {};'.format(cl.struct_name(emitter.names)))
+    lines.append('')
+    emitter.context.declarations[cl.struct_name(emitter.names)] = HeaderDeclaration(
+        lines,
+        is_type=True
+    )
 
 
 def declare_native_getters_and_setters(cl: ClassIR,
                                        emitter: Emitter) -> None:
+    decls = emitter.context.declarations
     for attr, rtype in cl.attributes.items():
-        emitter.emit_line('{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
-                                                   native_getter_name(cl, attr, emitter.names),
-                                                   cl.struct_name(emitter.names)))
-        emitter.emit_line(
+        getter_name = native_getter_name(cl, attr, emitter.names)
+        setter_name = native_setter_name(cl, attr, emitter.names)
+        decls[getter_name] = HeaderDeclaration(
+            '{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
+                                     getter_name,
+                                     cl.struct_name(emitter.names))
+        )
+        decls[setter_name] = HeaderDeclaration(
             'bool {}({} *self, {}value);'.format(native_setter_name(cl, attr, emitter.names),
                                                  cl.struct_name(emitter.names),
-                                                 emitter.ctype_spaced(rtype)))
+                                                 emitter.ctype_spaced(rtype))
+        )
 
 
 def generate_native_getters_and_setters(cl: ClassIR,
