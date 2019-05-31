@@ -83,7 +83,8 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     emitter.context.declarations[emitter.native_function_name(fn.decl)] = HeaderDeclaration(
-        '{};'.format(native_function_header(fn.decl, emitter)))
+        '{};'.format(native_function_header(fn.decl, emitter)),
+        needs_export=True)
     if fn.name != TOP_LEVEL_NAME:
         emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
             '{};'.format(wrapper_function_header(fn, emitter.names)))
@@ -102,6 +103,14 @@ def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
     # This is a kind of abusive way to do this...
     escaped = str(b)[2:-1].replace('"', '\\"')
     return '"{}"'.format(escaped), len(b)
+
+
+def pointerize(s: str, name: str) -> str:
+    # This doesn't work in general but does work for all our types...
+    if '(' in s:
+        return s.replace(name, '(*{})'.format(name))
+    else:
+        return s.replace(name, '*{}'.format(name))
 
 
 class ModuleGenerator:
@@ -217,6 +226,8 @@ class ModuleGenerator:
                 decls.emit_lines(*declaration.decl)
 
         if self.shared_lib_name:
+            self.generate_linking_struct(ext_declarations, emitter)
+
             self.generate_shared_lib_init(emitter)
 
         ext_declarations.emit_line('#endif')
@@ -226,6 +237,29 @@ class ModuleGenerator:
                                 ('__native_internal.h', ''.join(declarations.fragments)),
                                 ('__native.h', ''.join(ext_declarations.fragments)),
                                 ]
+
+    def generate_linking_struct(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
+        decls = decl_emitter.context.declarations
+
+        decl_emitter.emit_lines(
+            '',
+            'struct linking_table {',
+        )
+        for name, decl in decls.items():
+            if decl.needs_export:
+                decl_emitter.emit_line(pointerize('\n'.join(decl.decl), name))
+
+        decl_emitter.emit_line('};')
+
+        code_emitter.emit_lines(
+            '',
+            'static struct linking_table exports = {',
+        )
+        for name, decl in decls.items():
+            if decl.needs_export:
+                code_emitter.emit_line('&{},'.format(name))
+
+        code_emitter.emit_line('};')
 
     def generate_shared_lib_init(self, emitter: Emitter) -> None:
         """Generate the init function for a shared library.
@@ -251,16 +285,30 @@ class ModuleGenerator:
             '',
         )
 
+        emitter.emit_lines(
+            'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
+                self.shared_lib_name),
+            'if (!capsule) {',
+            'goto fail;',
+            '}',
+            'res = PyObject_SetAttrString(module, "exports", capsule);',
+            'Py_DECREF(capsule);',
+            'if (res < 0) {',
+            'goto fail;',
+            '}',
+            '',
+        )
+
         for mod, _ in self.modules:
             name = exported_name(mod)
             emitter.emit_lines(
                 'extern PyObject *CPyInit_{}(void);'.format(name),
-                'capsule = PyCapsule_New((void *)CPyInit_{}, "{}.{}", NULL);'.format(
+                'capsule = PyCapsule_New((void *)CPyInit_{}, "{}.init_{}", NULL);'.format(
                     name, self.shared_lib_name, name),
                 'if (!capsule) {',
                 'goto fail;',
                 '}',
-                'res = PyObject_SetAttrString(module, "{}", capsule);'.format(name),
+                'res = PyObject_SetAttrString(module, "init_{}", capsule);'.format(name),
                 'Py_DECREF(capsule);',
                 'if (res < 0) {',
                 'goto fail;',
@@ -271,7 +319,7 @@ class ModuleGenerator:
         emitter.emit_lines(
             'return module;',
             'fail:',
-            'Py_XDECREF(module);'
+            'Py_XDECREF(module);',
             'return NULL;',
             '}',
         )
@@ -499,7 +547,9 @@ class ModuleGenerator:
             self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
         for name, typ in final_names:
             static_name = emitter.static_name(name, module)
-            emitter.emit_line('extern {}{};'.format(emitter.ctype_spaced(typ), static_name))
+            emitter.context.declarations[static_name] = HeaderDeclaration(
+                '{}{};'.format(emitter.ctype_spaced(typ), static_name),
+                needs_export=True)
 
     def define_finals(
             self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:

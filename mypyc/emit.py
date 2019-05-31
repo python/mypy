@@ -31,6 +31,8 @@ class HeaderDeclaration:
       dependencies: The names of any objects that must be declared prior.
       is_type: Whether the declaration is of a C type. (C types will be declared in
                external header files and not marked 'extern'.)
+      needs_export: Whether the declared object needs to be exported to
+                    other modules in the linking table.
     """
 
     def __init__(self,
@@ -38,12 +40,14 @@ class HeaderDeclaration:
                  defn: Optional[List[str]] = None,
                  *,
                  dependencies: Optional[Set[str]] = None,
-                 is_type: bool = False
+                 is_type: bool = False,
+                 needs_export: bool = False
                  ) -> None:
         self.decl = [decl] if isinstance(decl, str) else decl
         self.defn = defn
         self.dependencies = dependencies or set()
         self.is_type = is_type
+        self.needs_export = needs_export
 
 
 class EmitterContext:

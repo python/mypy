@@ -112,7 +112,7 @@ shim_template = """\
 PyMODINIT_FUNC
 PyInit_{modname}(void)
 {{
-    void *init_func = PyCapsule_Import("{libname}.{full_modname}", 0);
+    void *init_func = PyCapsule_Import("{libname}.init_{full_modname}", 0);
     if (!init_func) {{
         return NULL;
     }}

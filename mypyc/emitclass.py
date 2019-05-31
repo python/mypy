@@ -84,14 +84,18 @@ def generate_class_type_decl(cl: ClassIR, c_emitter: Emitter,
     context = c_emitter.context
     name = emitter.type_struct_name(cl)
     context.declarations[name] = HeaderDeclaration(
-        'PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
+        'PyTypeObject *{};'.format(emitter.type_struct_name(cl)),
+        needs_export=True)
 
     generate_object_struct(cl, external_emitter)
-    declare_native_getters_and_setters(cl, emitter)
     generate_full = not cl.is_trait and not cl.builtin_base
     if generate_full:
+        declare_native_getters_and_setters(cl, emitter)
+
         context.declarations[emitter.native_function_name(cl.ctor)] = HeaderDeclaration(
-            '{};'.format(native_function_header(cl.ctor, emitter)))
+            '{};'.format(native_function_header(cl.ctor, emitter)),
+            needs_export=True,
+        )
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -274,12 +278,14 @@ def declare_native_getters_and_setters(cl: ClassIR,
         decls[getter_name] = HeaderDeclaration(
             '{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
                                      getter_name,
-                                     cl.struct_name(emitter.names))
+                                     cl.struct_name(emitter.names)),
+            needs_export=True,
         )
         decls[setter_name] = HeaderDeclaration(
             'bool {}({} *self, {}value);'.format(native_setter_name(cl, attr, emitter.names),
                                                  cl.struct_name(emitter.names),
-                                                 emitter.ctype_spaced(rtype))
+                                                 emitter.ctype_spaced(rtype)),
+            needs_export=True,
         )
 
 
