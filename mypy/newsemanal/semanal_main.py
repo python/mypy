@@ -25,7 +25,7 @@ will be incomplete.
 """
 
 import contextlib
-from typing import List, Tuple, Optional, Union, Callable, Iterator, Dict
+from typing import List, Tuple, Optional, Union, Callable, Iterator
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, SymbolTableNode, Var, ClassDef
@@ -42,6 +42,7 @@ from mypy.newsemanal.semanal_classprop import (
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
+from mypy.server.aststripnew import SavedAttributes
 import mypy.build
 
 MYPY = False
@@ -100,7 +101,7 @@ def semantic_analysis_for_targets(
         state: 'State',
         nodes: List[FineGrainedDeferredNode],
         graph: 'Graph',
-        saved_attrs: Dict[Tuple[ClassDef, str], SymbolTableNode]) -> None:
+        saved_attrs: SavedAttributes) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
@@ -129,7 +130,7 @@ def semantic_analysis_for_targets(
     calculate_class_properties(graph, [state.id], state.manager.errors)
 
 
-def restore_saved_attrs(saved_attrs: Dict[Tuple[ClassDef, str], SymbolTableNode]) -> None:
+def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
     """Restore instance variables removed during AST strip that haven't been added yet."""
     for (cdef, name), sym in saved_attrs.items():
         info = cdef.info
