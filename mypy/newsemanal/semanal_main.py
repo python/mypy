@@ -111,6 +111,8 @@ def semantic_analysis_for_targets(state: 'State', nodes: List[FineGrainedDeferre
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
+    for patch in strip_patches:
+        patch()
     analyzer = state.manager.new_semantic_analyzer
     for n in nodes:
         if isinstance(n.node, MypyFile):
@@ -119,8 +121,6 @@ def semantic_analysis_for_targets(state: 'State', nodes: List[FineGrainedDeferre
         process_top_level_function(analyzer, state, state.id,
                                    n.node.fullname(), n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
-    for patch in strip_patches:
-        patch()
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
