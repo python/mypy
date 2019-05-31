@@ -28,7 +28,7 @@ import contextlib
 from typing import List, Tuple, Optional, Union, Callable, Iterator
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
+    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, SymbolTableNode, Var, ClassDef
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
@@ -42,6 +42,7 @@ from mypy.newsemanal.semanal_classprop import (
 from mypy.errors import Errors
 from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
+from mypy.server.aststripnew import SavedAttributes
 import mypy.build
 
 MYPY = False
@@ -96,21 +97,26 @@ def cleanup_builtin_scc(state: 'State') -> None:
     remove_imported_names_from_symtable(state.tree.names, 'builtins')
 
 
-def semantic_analysis_for_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
-                                  graph: 'Graph', strip_patches: List[Callable[[], None]]) -> None:
+def semantic_analysis_for_targets(
+        state: 'State',
+        nodes: List[FineGrainedDeferredNode],
+        graph: 'Graph',
+        saved_attrs: SavedAttributes) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
     except that we process only some targets. This is used in fine grained
     incremental mode, when propagating an update.
 
-    The strip_patches are additional patches that may be produced by aststrip.py to
-    re-introduce implicitly declared instance variables (attributes defined on self).
+    The saved_attrs are implicitly declared instance attributes (attributes
+    defined on self) removed by AST stripper that may need to be reintroduced
+    here.  They must be added before any methods are analyzed.
     """
     patches = []  # type: Patches
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
+    restore_saved_attrs(saved_attrs)
     analyzer = state.manager.new_semantic_analyzer
     for n in nodes:
         if isinstance(n.node, MypyFile):
@@ -119,11 +125,28 @@ def semantic_analysis_for_targets(state: 'State', nodes: List[FineGrainedDeferre
         process_top_level_function(analyzer, state, state.id,
                                    n.node.fullname(), n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
-    for patch in strip_patches:
-        patch()
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
+
+
+def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
+    """Restore instance variables removed during AST strip that haven't been added yet."""
+    for (cdef, name), sym in saved_attrs.items():
+        info = cdef.info
+        existing = info.get(name)
+        defined_in_this_class = name in info.names
+        assert isinstance(sym.node, Var)
+        # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
+        # regarding the existing variable in class body or in a superclass:
+        # If the attribute of self is not defined in superclasses, create a new Var.
+        if (existing is None or
+                # (An abstract Var is considered as not defined.)
+                (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
+                # Also an explicit declaration on self creates a new Var unless
+                # there is already one defined in the class body.
+                sym.node.explicit_self_type and not defined_in_this_class):
+            info.names[name] = sym
 
 
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:

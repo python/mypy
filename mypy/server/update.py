@@ -139,7 +139,7 @@ from mypy.server.astdiff import (
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.aststripnew import strip_target_new
+from mypy.server.aststripnew import strip_target_new, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target, trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
@@ -944,18 +944,17 @@ def reprocess_nodes(manager: BuildManager,
     manager.errors.clear_errors_in_targets(file_node.path, targets)
 
     # Strip semantic analysis information.
-    patches = []  # type: List[Callable[[], None]]
+    saved_attrs = {}  # type: SavedAttributes
     for deferred in nodes:
         processed_targets.append(deferred.node.fullname())
         if not manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
-            new_patches = strip_target_new(deferred.node)
-            patches.extend(new_patches)
+            strip_target_new(deferred.node, saved_attrs)
     if not options.new_semantic_analyzer:
         re_analyze_nodes(file_node, nodes, manager, options)
     else:
-        semantic_analysis_for_targets(graph[module_id], nodes, graph, patches)
+        semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.

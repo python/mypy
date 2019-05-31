@@ -8928,3 +8928,26 @@ class A(Generic[T]): ...
 [out]
 ==
 main:5: error: Missing type parameters for generic type
+
+[case testStripNewAnalyzer]
+# flags: --ignore-missing-imports
+import a
+[file a.py]
+from typing import List
+from b import B
+
+class A:
+    def __init__(self) -> None:
+        self.x: List[int] = []
+
+    def method(self) -> None:
+        B()
+        self.x = []
+
+[file b.py]
+class B: ...
+[delete b.py.2]
+
+[builtins fixtures/list.pyi]
+[out]
+==
