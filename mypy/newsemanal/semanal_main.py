@@ -96,24 +96,6 @@ def cleanup_builtin_scc(state: 'State') -> None:
     remove_imported_names_from_symtable(state.tree.names, 'builtins')
 
 
-def restore_saved_attrs(saved_attrs: Dict[Tuple[ClassDef, str], SymbolTableNode]) -> None:
-    for (cdef, name), sym in saved_attrs.items():
-        info = cdef.info
-        existing = info.get(name)
-        defined_in_this_class = name in info.names
-        assert isinstance(sym.node, Var)
-        # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
-        # regarding the existing variable in class body or in a superclass:
-        # If the attribute of self is not defined in superclasses, create a new Var.
-        if (existing is None or
-                # (An abstract Var is considered as not defined.)
-                (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
-                # Also an explicit declaration on self creates a new Var unless
-                # there is already one defined in the class body.
-                sym.node.explicit_self_type and not defined_in_this_class):
-            info.names[name] = sym
-
-
 def semantic_analysis_for_targets(
         state: 'State',
         nodes: List[FineGrainedDeferredNode],
@@ -125,10 +107,9 @@ def semantic_analysis_for_targets(
     except that we process only some targets. This is used in fine grained
     incremental mode, when propagating an update.
 
-    The top_level_strip_patches are additional patches that may be produced
-    by aststrip.py to re-introduce implicitly declared instance variables
-    (attributes defined on self). They must be run before any methods are
-    analyzed.
+    The saved_attrs are implicitly declared instance attributes (attributes
+    defined on self) removed by AST stripper that may need to be reintroduced
+    here.  They must be added before any methods are analyzed.
     """
     patches = []  # type: Patches
     if any(isinstance(n.node, MypyFile) for n in nodes):
@@ -146,6 +127,25 @@ def semantic_analysis_for_targets(
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
+
+
+def restore_saved_attrs(saved_attrs: Dict[Tuple[ClassDef, str], SymbolTableNode]) -> None:
+    """Restore instance variables removed during AST strip that haven't been added yet."""
+    for (cdef, name), sym in saved_attrs.items():
+        info = cdef.info
+        existing = info.get(name)
+        defined_in_this_class = name in info.names
+        assert isinstance(sym.node, Var)
+        # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
+        # regarding the existing variable in class body or in a superclass:
+        # If the attribute of self is not defined in superclasses, create a new Var.
+        if (existing is None or
+                # (An abstract Var is considered as not defined.)
+                (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
+                # Also an explicit declaration on self creates a new Var unless
+                # there is already one defined in the class body.
+                sym.node.explicit_self_type and not defined_in_this_class):
+            info.names[name] = sym
 
 
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:

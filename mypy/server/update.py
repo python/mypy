@@ -951,7 +951,6 @@ def reprocess_nodes(manager: BuildManager,
             strip_target(deferred.node)
         else:
             strip_target_new(deferred.node, saved_attrs)
-            #saved_attrs.update(new_saved)
     if not options.new_semantic_analyzer:
         re_analyze_nodes(file_node, nodes, manager, options)
     else:
