@@ -96,22 +96,26 @@ def cleanup_builtin_scc(state: 'State') -> None:
     remove_imported_names_from_symtable(state.tree.names, 'builtins')
 
 
-def semantic_analysis_for_targets(state: 'State', nodes: List[FineGrainedDeferredNode],
-                                  graph: 'Graph', strip_patches: List[Callable[[], None]]) -> None:
+def semantic_analysis_for_targets(state: 'State',
+                                  nodes: List[FineGrainedDeferredNode],
+                                  graph: 'Graph',
+                                  top_level_strip_patches: List[Callable[[], None]]) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
     except that we process only some targets. This is used in fine grained
     incremental mode, when propagating an update.
 
-    The strip_patches are additional patches that may be produced by aststrip.py to
-    re-introduce implicitly declared instance variables (attributes defined on self).
+    The top_level_strip_patches are additional patches that may be produced
+    by aststrip.py to re-introduce implicitly declared instance variables
+    (attributes defined on self). They must be run before any methods are
+    analyzed.
     """
     patches = []  # type: Patches
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
-    for patch in strip_patches:
+    for patch in top_level_strip_patches:
         patch()
     analyzer = state.manager.new_semantic_analyzer
     for n in nodes:

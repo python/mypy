@@ -33,7 +33,7 @@ def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]
         visitor.strip_file_top_level(node)
     else:
         node.accept(visitor)
-    return visitor.patches
+    return visitor.top_level_patches
 
 
 class NodeStripVisitor(TraverserVisitor):
@@ -45,7 +45,12 @@ class NodeStripVisitor(TraverserVisitor):
         # By default, process function definitions. If False, don't -- this is used for
         # processing module top levels.
         self.recurse_into_functions = True
-        self.patches = []  # type: List[Callable[[], None]]
+        # These patch functions will reintroduce some implicitly defined
+        # attributes of top-level classes removed during strip. These must be
+        # called before semantically analyzing any methods. These allow moving
+        # attribute definition from a method (through self.x) to a definition
+        # inside class body (x = ...).
+        self.top_level_patches = []  # type: List[Callable[[], None]]
 
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
@@ -104,7 +109,8 @@ class NodeStripVisitor(TraverserVisitor):
                 # Capture the current name, sym in a weird hacky way,
                 # because mypyc doesn't yet support capturing them in
                 # the usual hacky way (as default arguments).
-                self.patches.append((lambda name, sym: lambda: patch(name, sym))(name, sym))
+                self.top_level_patches.append(
+                    (lambda name, sym: lambda: patch(name, sym))(name, sym))
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:
