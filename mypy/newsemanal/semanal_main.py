@@ -25,10 +25,10 @@ will be incomplete.
 """
 
 import contextlib
-from typing import List, Tuple, Optional, Union, Callable, Iterator
+from typing import List, Tuple, Optional, Union, Callable, Iterator, Dict, Tuple
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef
+    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, SymbolTableNode, Var, ClassDef
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
@@ -96,10 +96,39 @@ def cleanup_builtin_scc(state: 'State') -> None:
     remove_imported_names_from_symtable(state.tree.names, 'builtins')
 
 
-def semantic_analysis_for_targets(state: 'State',
-                                  nodes: List[FineGrainedDeferredNode],
-                                  graph: 'Graph',
-                                  top_level_strip_patches: List[Callable[[], None]]) -> None:
+def restore_saved_attrs(saved_attrs: Dict[Tuple[ClassDef, str], SymbolTableNode]) -> None:
+    import sys
+    for (cdef, name), sym in saved_attrs.items():
+        print('//saved', name, file=sys.stderr)
+        info = cdef.info
+        existing = info.get(name)
+        defined_in_this_class = name in info.names
+        print('!', existing, file=sys.stderr)
+        print('!', defined_in_this_class, file=sys.stderr)
+        assert isinstance(sym.node, Var)
+        print('!', sym.node.explicit_self_type, file=sys.stderr)
+        # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
+        # regarding the existing variable in class body or in a superclass:
+        # If the attribute of self is not defined in superclasses, create a new Var.
+        if (existing is None or
+                # (An abstract Var is considered as not defined.)
+                (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
+                # Also an explicit declaration on self creates a new Var unless
+                # there is already one defined in the class body.
+                sym.node.explicit_self_type and not defined_in_this_class):
+            print('//restore', name, file=sys.stderr)
+            info.names[name] = sym
+
+    #    if name not in info.names:
+    #        print('restore', info.fullname(), name)
+    #        info.names[name] = sym
+
+
+def semantic_analysis_for_targets(
+        state: 'State',
+        nodes: List[FineGrainedDeferredNode],
+        graph: 'Graph',
+        saved_attrs: Dict[Tuple[ClassDef, str], SymbolTableNode]) -> None:
     """Semantically analyze only selected nodes in a given module.
 
     This essentially mirrors the logic of semantic_analysis_for_scc()
@@ -115,8 +144,9 @@ def semantic_analysis_for_targets(state: 'State',
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
-    for patch in top_level_strip_patches:
-        patch()
+    restore_saved_attrs(saved_attrs)
+    #for patch in top_level_strip_patches:
+    #    patch()
     analyzer = state.manager.new_semantic_analyzer
     for n in nodes:
         if isinstance(n.node, MypyFile):

@@ -4,7 +4,7 @@ TODO: copy docstring here, when this is the default implementation.
 """
 
 import contextlib
-from typing import Union, Iterator, Optional, List, Callable
+from typing import Union, Iterator, Optional, List, Callable, Dict, Tuple
 
 from mypy.nodes import (
     FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
@@ -18,8 +18,11 @@ from mypy.typestate import TypeState
 from mypy.server.aststrip import nothing
 
 
-def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]
-                     ) -> List[Callable[[], None]]:
+SavedAttributes = Dict[Tuple[ClassDef, str], SymbolTableNode]
+
+
+def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
+                     saved_attrs: SavedAttributes) -> None:
     """Reset a fine-grained incremental target to state before main pass of semantic analysis.
 
     The most notable difference from the old version of strip_target() is that new semantic
@@ -28,16 +31,18 @@ def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef]
     defined as attributes on self. This is done by patches (callbacks) returned from this function
     that re-add these variables when called.
     """
-    visitor = NodeStripVisitor()
+    import sys
+    print('&& strip', node.fullname(), file=sys.stderr)
+    visitor = NodeStripVisitor(saved_attrs)
     if isinstance(node, MypyFile):
         visitor.strip_file_top_level(node)
     else:
         node.accept(visitor)
-    return visitor.top_level_patches
+    #return visitor.saved_class_attrs
 
 
 class NodeStripVisitor(TraverserVisitor):
-    def __init__(self) -> None:
+    def __init__(self, saved_class_attrs: SavedAttributes) -> None:
         # The current active class.
         self.type = None  # type: Optional[TypeInfo]
         # This is True at class scope, but not in methods.
@@ -45,12 +50,7 @@ class NodeStripVisitor(TraverserVisitor):
         # By default, process function definitions. If False, don't -- this is used for
         # processing module top levels.
         self.recurse_into_functions = True
-        # These patch functions will reintroduce some implicitly defined
-        # attributes of top-level classes removed during strip. These must be
-        # called before semantically analyzing any methods. These allow moving
-        # attribute definition from a method (through self.x) to a definition
-        # inside class body (x = ...).
-        self.top_level_patches = []  # type: List[Callable[[], None]]
+        self.saved_class_attrs = saved_class_attrs
 
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
@@ -90,27 +90,26 @@ class NodeStripVisitor(TraverserVisitor):
         """Produce callbacks that re-add attributes defined on self."""
         for name, sym in node.info.names.items():
             if isinstance(sym.node, Var) and sym.implicit:
-                explicit_self_type = sym.node.explicit_self_type
+                #explicit_self_type = sym.node.explicit_self_type
 
-                def patch(name: str, sym: SymbolTableNode) -> None:
-                    existing = node.info.get(name)
-                    defined_in_this_class = name in node.info.names
-                    # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
-                    # regarding the existing variable in class body or in a superclass:
-                    # If the attribute of self is not defined in superclasses, create a new Var.
-                    if (existing is None or
-                            # (An abstract Var is considered as not defined.)
-                            (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
-                            # Also an explicit declaration on self creates a new Var unless
-                            # there is already one defined in the class body.
-                            explicit_self_type and not defined_in_this_class):
-                        node.info.names[name] = sym
+                #def patch(name: str, sym: SymbolTableNode) -> None:
+                #    existing = node.info.get(name)
+                #    defined_in_this_class = name in node.info.names
+                #    # This needs to mimic the logic in SemanticAnalyzer.analyze_member_lvalue()
+                #    # regarding the existing variable in class body or in a superclass:
+                #    # If the attribute of self is not defined in superclasses, create a new Var.
+                #    if (existing is None or
+                #            # (An abstract Var is considered as not defined.)
+                #            (isinstance(existing.node, Var) and existing.node.is_abstract_var) or
+                #            # Also an explicit declaration on self creates a new Var unless
+                #            # there is already one defined in the class body.
+                #            explicit_self_type and not defined_in_this_class):
+                #        node.info.names[name] = sym
 
                 # Capture the current name, sym in a weird hacky way,
                 # because mypyc doesn't yet support capturing them in
                 # the usual hacky way (as default arguments).
-                self.top_level_patches.append(
-                    (lambda name, sym: lambda: patch(name, sym))(name, sym))
+                self.saved_class_attrs[node, name] = sym
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:
@@ -199,12 +198,19 @@ class NodeStripVisitor(TraverserVisitor):
 
     def process_lvalue_in_method(self, lvalue: Node) -> None:
         if isinstance(lvalue, MemberExpr):
+            import sys
+            print('$$$ lvalue', lvalue.name, lvalue.is_new_def, lvalue.is_inferred_def, file=sys.stderr)
             if lvalue.is_new_def:
+                print('1', self.saved_class_attrs, file=sys.stderr)
                 # Remove defined attribute from the class symbol table. If is_new_def is
                 # true for a MemberExpr, we know that it must be an assignment through
                 # self, since only those can define new attributes.
                 assert self.type is not None
                 del self.type.names[lvalue.name]
+                key = (self.type.defn, lvalue.name)
+                if key in self.saved_class_attrs:
+                    print(2, file=sys.stderr)
+                    del self.saved_class_attrs[key]
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             for item in lvalue.items:
                 self.process_lvalue_in_method(item)
