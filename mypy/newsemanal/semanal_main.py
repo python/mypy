@@ -25,7 +25,7 @@ will be incomplete.
 """
 
 import contextlib
-from typing import List, Tuple, Optional, Union, Callable, Iterator, Dict, Tuple
+from typing import List, Tuple, Optional, Union, Callable, Iterator, Dict
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, SymbolTableNode, Var, ClassDef
