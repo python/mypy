@@ -207,8 +207,7 @@ def f(x: int = (c := 4)) -> None:
 
     filtered_data = [y3 for x in l if (y3 := a) is not None]
     reveal_type(filtered_data)  # E: Revealed type is 'builtins.list[builtins.int*]'
-    # TODO this should be valid: https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
-    y3  # E: Name 'y3' is not defined
+    reveal_type(y3)  # E: Revealed type is 'builtins.int'
 
     # https://www.python.org/dev/peps/pep-0572/#exceptional-cases
     (y4 := 3)

@@ -247,6 +247,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         using the Errors instance.
         """
         self.locals = [None]
+        # Whether each nested scope is a comprehension.
+        self.is_comprehension_stack = [False]  # type: List[bool]
         self.imports = set()
         self.type = None
         self.type_stack = []
@@ -931,6 +933,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # Remember previous active class
         self.type_stack.append(self.type)
         self.locals.append(None)  # Add class scope
+        self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
         self.postpone_nested_functions_stack.append(FUNCTION_BOTH_PHASES)
         self.type = info
@@ -940,6 +943,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.postpone_nested_functions_stack.pop()
         self.block_depth.pop()
         self.locals.pop()
+        self.is_comprehension_stack.pop()
         self.type = self.type_stack.pop()
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
@@ -1781,7 +1785,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def visit_assignment_expr(self, e: AssignmentExpr) -> None:
-        self.analyze_lvalue(e.target)
+        self.analyze_lvalue(e.target, escape_comprehension=True)
         e.value.accept(self)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
@@ -2101,7 +2105,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False,
-                       is_final: bool = False) -> None:
+                       is_final: bool = False,
+                       escape_comprehension: bool = False) -> None:
         """Analyze an lvalue or assignment target.
 
         Note that this is used in both pass 1 and 2.
@@ -2111,9 +2116,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             nested: If true, the lvalue is within a tuple or list lvalue expression
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
+            escape_comprehension: If we are inside a comprehension, set the variable
+            in the enclosing scope instead. This implements
+            https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
         """
+        if escape_comprehension:
+            assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"
         if isinstance(lval, NameExpr):
-            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final, escape_comprehension)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, is_final)
@@ -2142,7 +2152,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             lval: NameExpr,
                             add_global: bool,
                             explicit_type: bool,
-                            is_final: bool) -> None:
+                            is_final: bool,
+                            escape_comprehension: bool) -> None:
         """Analyze an lvalue that targets a name expression.
 
         Arguments are similar to "analyze_lvalue".
@@ -2179,7 +2190,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
               lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
-            self.add_local(v, lval)
+            self.add_local(v, lval, escape_comprehension=escape_comprehension)
             if unmangle(lval.name) == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
@@ -3344,7 +3355,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
-        self.enter()
+        self.enter(is_comprehension=True)
         self.analyze_comp_for(expr)
         expr.key.accept(self)
         expr.value.accept(self)
@@ -3352,7 +3363,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
-        self.enter()
+        self.enter(is_comprehension=True)
         self.analyze_comp_for(expr)
         expr.left_expr.accept(self)
         self.leave()
@@ -3658,18 +3669,20 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             base = self.cur_mod_id
         return base + '.' + n
 
-    def enter(self) -> None:
+    def enter(self, is_comprehension: bool = False) -> None:
         self.locals.append(SymbolTable())
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
+        self.is_comprehension_stack.append(is_comprehension)
 
     def leave(self) -> None:
         self.locals.pop()
         self.global_decls.pop()
         self.nonlocal_decls.pop()
         self.block_depth.pop()
+        self.is_comprehension_stack.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None
@@ -3731,15 +3744,25 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     return
             self.globals[name] = node
 
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context,
+                  escape_comprehension: bool = False) -> None:
         """Add local variable or function."""
         assert self.locals[-1] is not None, "Should not add locals outside a function"
+        if escape_comprehension:
+            for i, is_comprehension in enumerate(reversed(self.is_comprehension_stack)):
+                if not is_comprehension:
+                    scope = self.locals[-1 - i]
+                    break
+            else:
+                assert False, "Should have at least one non-comprehension scope"
+        else:
+            scope = self.locals[-1]
         name = node.name()
-        if name in self.locals[-1]:
-            self.name_already_defined(name, ctx, self.locals[-1][name])
+        if name in scope:
+            self.name_already_defined(name, ctx, scope[name])
             return
         node._fullname = name
-        self.locals[-1][name] = SymbolTableNode(LDEF, node)
+        scope[name] = SymbolTableNode(LDEF, node)
 
     def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
         exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
