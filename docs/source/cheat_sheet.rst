@@ -58,7 +58,7 @@ Functions
 
 .. code-block:: python
 
-   from typing import Callable, Iterable, Union, Optional, List
+   from typing import Callable, Iterator, Union, Optional, List
 
    # This is how you annotate a function definition
    def stringify(num):
@@ -95,9 +95,9 @@ Functions
    x = f  # type: Callable[[int, float], float]
 
    # A generator function that yields ints is secretly just a function that
-   # returns an iterable (see below) of ints, so that's how we annotate it
-   def f(n):
-       # type: (int) -> Iterable[int]
+   # returns an iterator of ints, so that's how we annotate it
+   def g(n):
+       # type: (int) -> Iterator[int]
        i = 0
        while i < n:
            yield i
