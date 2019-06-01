@@ -9,7 +9,7 @@ dist: xenial
 
 env:
   TOXENV=py
-  EXTRA_ARGS="-n 12"
+  PYTEST_ADDOPTS="-n 2"
   TEST_MYPYC=0
 
 jobs:
@@ -27,19 +27,19 @@ jobs:
     dist: trusty
     env:
     - TOXENV=py
-    - EXTRA_ARGS="-n 12"
+    - PYTEST_ADDOPTS="-n 2"
     - NEWSEMANAL=1
   - name: "run test suite with python 3.7 (new semantic analyzer)"
     python: 3.7
     env:
     - TOXENV=py
-    - EXTRA_ARGS="-n 12"
+    - PYTEST_ADDOPTS="-n 2"
     - NEWSEMANAL=1
   - name: "run test suite with python 3.7 (compiled with mypyc)"
     python: 3.7
     env:
     - TOXENV=py
-    - EXTRA_ARGS="-n 12"
+    - PYTEST_ADDOPTS="-n 2"
     - TEST_MYPYC=1
   # - name: "run test suite with python 3.8-dev"
   #   python: 3.8-dev
@@ -47,12 +47,10 @@ jobs:
     python: 3.7
     env:
     - TOXENV=type
-    - EXTRA_ARGS=
   - name: "check code style with flake8"
     python: 3.7
     env:
     - TOXENV=lint
-    - EXTRA_ARGS=
   - name: "trigger a build of wheels"
     python: 3.7
     script: if [[ ($TRAVIS_BRANCH = "master" || $TRAVIS_BRANCH =~ release-*) && $TRAVIS_PULL_REQUEST = "false" ]]; then ./misc/trigger_wheel_build.sh; fi
@@ -65,7 +63,6 @@ jobs:
   #   python: 3.7
   #   env:
   #   - TOXENV=dev
-  #   - EXTRA_ARGS=
 
 install:
 - pip install -U pip setuptools
@@ -78,4 +75,4 @@ install:
 - if [[ $TEST_MYPYC == 1 ]]; then pip install -r mypyc-requirements.txt; CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace; fi
 
 script:
-- tox -- $EXTRA_ARGS
+- tox
