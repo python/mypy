@@ -4,7 +4,12 @@ import textwrap
 from mypy.test.helpers import Suite, assert_equal
 from mypy.report import CoberturaPackage, get_line_rate
 
-import lxml.etree as etree  # type: ignore
+try:
+    import lxml.etree as etree  # type: ignore
+except Exception as exc:
+    import pytest  # type: ignore  # no pytest in typeshed
+
+    pytestmark = pytest.mark.skip("no lxml: {}".format(exc))
 
 
 class CoberturaReportSuite(Suite):
