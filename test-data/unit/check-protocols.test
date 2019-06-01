@@ -107,7 +107,7 @@ z = x
 x = C()
 x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "SubP")
 
-reveal_type(fun(C())) # E: Revealed type is 'builtins.str'
+reveal_type(fun(C())) # N: Revealed type is 'builtins.str'
 fun(B()) # E: Argument 1 to "fun" has incompatible type "B"; expected "SubP"
 
 [case testSimpleProtocolTwoMethodsMerge]
@@ -141,8 +141,8 @@ class AnotherP(Protocol):
         pass
 
 x: P
-reveal_type(x.meth1())  # E: Revealed type is 'builtins.int'
-reveal_type(x.meth2())  # E: Revealed type is 'builtins.str'
+reveal_type(x.meth1())  # N: Revealed type is 'builtins.int'
+reveal_type(x.meth2())  # N: Revealed type is 'builtins.str'
 
 c: C
 c1: C1
@@ -185,8 +185,8 @@ class C:
         pass
 
 x: P2
-reveal_type(x.meth1()) # E: Revealed type is 'builtins.int'
-reveal_type(x.meth2()) # E: Revealed type is 'builtins.str'
+reveal_type(x.meth1()) # N: Revealed type is 'builtins.int'
+reveal_type(x.meth2()) # N: Revealed type is 'builtins.str'
 
 if int():
     x = C() # OK
@@ -368,8 +368,8 @@ class P(Protocol):
 
 x: object
 if isinstance(x, P):
-    reveal_type(x)  # E: Revealed type is '__main__.P'
-    reveal_type(x.meth())  # E: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is '__main__.P'
+    reveal_type(x.meth())  # N: Revealed type is 'builtins.int'
 
 class C:
     def meth(self) -> int:
@@ -392,7 +392,7 @@ class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
 
 P2() # E: Cannot instantiate abstract class 'P2' with abstract attribute 'attr'
 p: P2
-reveal_type(p.attr) # E: Revealed type is 'builtins.int'
+reveal_type(p.attr) # N: Revealed type is 'builtins.int'
 
 -- Generic protocol types
 -- ----------------------
@@ -513,10 +513,10 @@ def close_all(args: Sequence[Closeable[T]]) -> T:
 
 arg: Closeable[int]
 
-reveal_type(close(F())) # E: Revealed type is 'builtins.int*'
-reveal_type(close(arg)) # E: Revealed type is 'builtins.int*'
-reveal_type(close_all([F()])) # E: Revealed type is 'builtins.int*'
-reveal_type(close_all([arg])) # E: Revealed type is 'builtins.int*'
+reveal_type(close(F())) # N: Revealed type is 'builtins.int*'
+reveal_type(close(arg)) # N: Revealed type is 'builtins.int*'
+reveal_type(close_all([F()])) # N: Revealed type is 'builtins.int*'
+reveal_type(close_all([arg])) # N: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -535,7 +535,7 @@ class C:
 
 def fun3(x: P[T, T]) -> T:
     pass
-reveal_type(fun3(C())) # E: Revealed type is 'builtins.int*'
+reveal_type(fun3(C())) # N: Revealed type is 'builtins.int*'
 
 [case testProtocolGenericInferenceCovariant]
 from typing import Generic, TypeVar, Protocol
@@ -553,7 +553,7 @@ class C:
 
 def fun4(x: U, y: P[U, U]) -> U:
     pass
-reveal_type(fun4('a', C())) # E: Revealed type is 'builtins.object*'
+reveal_type(fun4('a', C())) # N: Revealed type is 'builtins.object*'
 
 [case testUnrealtedGenericProtolsEquivalent]
 from typing import TypeVar, Protocol
@@ -800,7 +800,7 @@ class L:
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L())) # E: Revealed type is 'builtins.int*'
+reveal_type(last(L())) # N: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 
 [case testRecursiveProtocolSubtleMismatch]
@@ -1128,7 +1128,7 @@ class P(Protocol):
 class C(P):
     pass
 x = C()
-reveal_type(x.meth('hi')) # E: Revealed type is 'builtins.bool'
+reveal_type(x.meth('hi')) # N: Revealed type is 'builtins.bool'
 [builtins fixtures/isinstance.pyi]
 
 [case testProtocolsWithIdenticalOverloads]
@@ -1200,9 +1200,9 @@ y: P2
 l0 = [x, x]
 l1 = [y, y]
 l = [x, y]
-reveal_type(l0) # E: Revealed type is 'builtins.list[__main__.P*]'
-reveal_type(l1) # E: Revealed type is 'builtins.list[__main__.P2*]'
-reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
+reveal_type(l0) # N: Revealed type is 'builtins.list[__main__.P*]'
+reveal_type(l1) # N: Revealed type is 'builtins.list[__main__.P2*]'
+reveal_type(l) # N: Revealed type is 'builtins.list[__main__.P*]'
 [builtins fixtures/list.pyi]
 
 [case testJoinOfIncompatibleProtocols]
@@ -1215,7 +1215,7 @@ class P2(Protocol):
 
 x: P
 y: P2
-reveal_type([x, y]) # E: Revealed type is 'builtins.list[builtins.object*]'
+reveal_type([x, y]) # N: Revealed type is 'builtins.list[builtins.object*]'
 [builtins fixtures/list.pyi]
 
 [case testJoinProtocolWithNormal]
@@ -1232,7 +1232,7 @@ y: C
 
 l = [x, y]
 
-reveal_type(l) # E: Revealed type is 'builtins.list[__main__.P*]'
+reveal_type(l) # N: Revealed type is 'builtins.list[__main__.P*]'
 [builtins fixtures/list.pyi]
 
 [case testMeetProtocolWithProtocol]
@@ -1247,7 +1247,7 @@ class P2(Protocol):
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
-reveal_type(f(g)) # E: Revealed type is '__main__.P2*'
+reveal_type(f(g)) # N: Revealed type is '__main__.P2*'
 
 [case testMeetOfIncompatibleProtocols]
 from typing import Protocol, Callable, TypeVar
@@ -1261,7 +1261,7 @@ T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
 x = f(g)
-reveal_type(x)  # E: Revealed type is 'None'
+reveal_type(x)  # N: Revealed type is 'None'
 [case testMeetProtocolWithNormal]
 from typing import Protocol, Callable, TypeVar
 
@@ -1273,7 +1273,7 @@ class C:
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: C) -> None: pass
-reveal_type(f(g)) # E: Revealed type is '__main__.C*'
+reveal_type(f(g)) # N: Revealed type is '__main__.C*'
 
 [case testInferProtocolFromProtocol]
 from typing import Protocol, Sequence, TypeVar, Generic
@@ -1292,8 +1292,8 @@ class L(Generic[T]):
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L[int]())) # E: Revealed type is '__main__.Box*[builtins.int*]'
-reveal_type(last(L[str]()).content) # E: Revealed type is 'builtins.str*'
+reveal_type(last(L[int]())) # N: Revealed type is '__main__.Box*[builtins.int*]'
+reveal_type(last(L[str]()).content) # N: Revealed type is 'builtins.str*'
 
 [case testOverloadOnProtocol]
 from typing import overload, Protocol, runtime
@@ -1320,11 +1320,11 @@ def f(x):
     if isinstance(x, P2): # E: Only @runtime protocols can be used with instance and class checks
         return P1.attr2
 
-reveal_type(f(C1())) # E: Revealed type is 'builtins.int'
-reveal_type(f(C2())) # E: Revealed type is 'builtins.str'
+reveal_type(f(C1())) # N: Revealed type is 'builtins.int'
+reveal_type(f(C2())) # N: Revealed type is 'builtins.str'
 class D(C1, C2): pass # Compatible with both P1 and P2
 # TODO: Should this return a union instead?
-reveal_type(f(D())) # E: Revealed type is 'builtins.int'
+reveal_type(f(D())) # N: Revealed type is 'builtins.int'
 f(C()) # E: No overload variant of "f" matches argument type "C" \
        # N: Possible overload variants: \
        # N:     def f(x: P1) -> int \
@@ -1502,11 +1502,11 @@ class R(Protocol):
 x: object
 
 if isinstance(x, P):  # E: Only @runtime protocols can be used with instance and class checks
-    reveal_type(x)  # E: Revealed type is '__main__.P'
+    reveal_type(x)  # N: Revealed type is '__main__.P'
 
 if isinstance(x, R):
-    reveal_type(x)  # E: Revealed type is '__main__.R'
-    reveal_type(x.meth())  # E: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is '__main__.R'
+    reveal_type(x.meth())  # N: Revealed type is 'builtins.int'
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1516,7 +1516,7 @@ from typing import Iterable, List, Union
 x: Union[int, List[str]]
 
 if isinstance(x, Iterable):
-    reveal_type(x) # E: Revealed type is 'builtins.list[builtins.str]'
+    reveal_type(x) # N: Revealed type is 'builtins.list[builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1547,35 +1547,35 @@ class C(C1[int], C2): pass
 
 c = C()
 if isinstance(c, P1):
-    reveal_type(c) # E: Revealed type is '__main__.C'
+    reveal_type(c) # N: Revealed type is '__main__.C'
 else:
     reveal_type(c) # Unreachable
 if isinstance(c, P):
-    reveal_type(c) # E: Revealed type is '__main__.C'
+    reveal_type(c) # N: Revealed type is '__main__.C'
 else:
     reveal_type(c) # Unreachable
 
 c1i: C1[int]
 if isinstance(c1i, P1):
-    reveal_type(c1i) # E: Revealed type is '__main__.C1[builtins.int]'
+    reveal_type(c1i) # N: Revealed type is '__main__.C1[builtins.int]'
 else:
     reveal_type(c1i) # Unreachable
 if isinstance(c1i, P):
     reveal_type(c1i) # Unreachable
 else:
-    reveal_type(c1i) # E: Revealed type is '__main__.C1[builtins.int]'
+    reveal_type(c1i) # N: Revealed type is '__main__.C1[builtins.int]'
 
 c1s: C1[str]
 if isinstance(c1s, P1):
     reveal_type(c1s) # Unreachable
 else:
-    reveal_type(c1s) # E: Revealed type is '__main__.C1[builtins.str]'
+    reveal_type(c1s) # N: Revealed type is '__main__.C1[builtins.str]'
 
 c2: C2
 if isinstance(c2, P):
     reveal_type(c2) # Unreachable
 else:
-    reveal_type(c2) # E: Revealed type is '__main__.C2'
+    reveal_type(c2) # N: Revealed type is '__main__.C2'
 
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
@@ -1603,14 +1603,14 @@ class C2:
 
 x: Union[C1[int], C2]
 if isinstance(x, P1):
-    reveal_type(x) # E: Revealed type is '__main__.C1[builtins.int]'
+    reveal_type(x) # N: Revealed type is '__main__.C1[builtins.int]'
 else:
-    reveal_type(x) # E: Revealed type is '__main__.C2'
+    reveal_type(x) # N: Revealed type is '__main__.C2'
 
 if isinstance(x, P2):
-    reveal_type(x) # E: Revealed type is '__main__.C2'
+    reveal_type(x) # N: Revealed type is '__main__.C2'
 else:
-    reveal_type(x) # E: Revealed type is '__main__.C1[builtins.int]'
+    reveal_type(x) # N: Revealed type is '__main__.C1[builtins.int]'
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1675,9 +1675,9 @@ fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected "P[int,
            # N: 'N2' is missing following 'P' protocol member: \
            # N:     y
 
-reveal_type(fun3(z)) # E: Revealed type is 'builtins.object*'
+reveal_type(fun3(z)) # N: Revealed type is 'builtins.object*'
 
-reveal_type(fun3(z3)) # E: Revealed type is 'builtins.int*'
+reveal_type(fun3(z3)) # N: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 
 [case testBasicCallableStructuralSubtyping]
@@ -1696,7 +1696,7 @@ T = TypeVar('T')
 def apply_gen(f: Callable[[T], T]) -> T:
     pass
 
-reveal_type(apply_gen(Add5())) # E: Revealed type is 'builtins.int*'
+reveal_type(apply_gen(Add5())) # N: Revealed type is 'builtins.int*'
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected "Callable[[str], int]" \
@@ -1737,7 +1737,7 @@ def inc(a: int, temp: str) -> int:
 def foo(f: Callable[[int], T]) -> T:
     return f(1)
 
-reveal_type(foo(partial(inc, 'temp'))) # E: Revealed type is 'builtins.int*'
+reveal_type(foo(partial(inc, 'temp'))) # N: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 
 [case testStructuralInferenceForCallable]
@@ -1750,7 +1750,7 @@ class Actual:
     def __call__(self, arg: int) -> str: pass
 
 def fun(cb: Callable[[T], S]) -> Tuple[T, S]: pass
-reveal_type(fun(Actual())) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+reveal_type(fun(Actual())) # N: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
 [builtins fixtures/tuple.pyi]
 
 -- Standard protocol types (SupportsInt, Sized, etc.)
@@ -1875,8 +1875,8 @@ class A:
 
 class B(A): pass
 
-reveal_type(list(b for b in B()))  # E: Revealed type is 'builtins.list[__main__.B*]'
-reveal_type(list(B()))  # E: Revealed type is 'builtins.list[__main__.B*]'
+reveal_type(list(b for b in B()))  # N: Revealed type is 'builtins.list[__main__.B*]'
+reveal_type(list(B()))  # N: Revealed type is 'builtins.list[__main__.B*]'
 [builtins fixtures/list.pyi]
 
 [case testIterableProtocolOnMetaclass]
@@ -1892,8 +1892,8 @@ class E(metaclass=EMeta):
 class C(E):
     pass
 
-reveal_type(list(c for c in C))  # E: Revealed type is 'builtins.list[__main__.C*]'
-reveal_type(list(C))  # E: Revealed type is 'builtins.list[__main__.C*]'
+reveal_type(list(c for c in C))  # N: Revealed type is 'builtins.list[__main__.C*]'
+reveal_type(list(C))  # N: Revealed type is 'builtins.list[__main__.C*]'
 [builtins fixtures/list.pyi]
 
 [case testClassesGetattrWithProtocols]
@@ -1919,9 +1919,9 @@ class D:
         pass
 
 def fun(x: P) -> None:
-    reveal_type(P.attr) # E: Revealed type is 'builtins.int'
+    reveal_type(P.attr) # N: Revealed type is 'builtins.int'
 def fun_p(x: PP) -> None:
-    reveal_type(P.attr) # E: Revealed type is 'builtins.int'
+    reveal_type(P.attr) # N: Revealed type is 'builtins.int'
 
 fun(C())  # E: Argument 1 to "fun" has incompatible type "C"; expected "P" \
           # N: Protocol member P.attr expected settable variable, got read-only attribute
@@ -2212,9 +2212,9 @@ cls: Type[Union[C, E]]
 issubclass(cls, PBad)  # E: Only protocols that don't have non-method members can be used with issubclass() \
                        # N: Protocol "PBad" has non-method member(s): x
 if issubclass(cls, P):
-    reveal_type(cls)  # E: Revealed type is 'Type[__main__.C]'
+    reveal_type(cls)  # N: Revealed type is 'Type[__main__.C]'
 else:
-    reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
+    reveal_type(cls)  # N: Revealed type is 'Type[__main__.E]'
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
@@ -2251,7 +2251,7 @@ def call(x: int, y: str) -> Tuple[int, str]: ...
 def func(caller: Caller[T, S]) -> Tuple[T, S]:
     pass
 
-reveal_type(func(call))  # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+reveal_type(func(call))  # N: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2396,8 +2396,8 @@ Normal = Callable[[A], D]
 a: Call
 b: Normal
 
-reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
-reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
+reveal_type([a, b])  # N: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
+reveal_type([b, a])  # N: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2416,8 +2416,8 @@ Normal = Callable[[D], A]
 def a(x: Call) -> None: ...
 def b(x: Normal) -> None: ...
 
-reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
-reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
+reveal_type([a, b])  # N: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
+reveal_type([b, a])  # N: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2427,7 +2427,7 @@ from typing import Protocol
 class P(Protocol): ...
 class C(P): ...
 
-reveal_type(C.register(int))  # E: Revealed type is 'def () -> builtins.int'
+reveal_type(C.register(int))  # N: Revealed type is 'def () -> builtins.int'
 [typing fixtures/typing-full.pyi]
 [out]
 
