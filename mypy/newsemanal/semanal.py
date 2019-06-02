@@ -4273,7 +4273,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Enter a function, generator or comprehension scope."""
         names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
-        self.is_comprehension_stack.append(isinstance(function, (GeneratorExpr, DictionaryComprehension)))
+        is_comprehension = isinstance(function, (GeneratorExpr, DictionaryComprehension))
+        self.is_comprehension_stack.append(is_comprehension)
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
@@ -4320,6 +4321,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     assert False, "Should have at least one non-comprehension scope"
             else:
                 names = self.locals[-1]
+            assert names is not None
         elif self.type is not None:
             names = self.type.names
         else:

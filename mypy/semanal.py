@@ -2123,7 +2123,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if escape_comprehension:
             assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"
         if isinstance(lval, NameExpr):
-            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final, escape_comprehension)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final,
+                                     escape_comprehension=escape_comprehension)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, is_final)
@@ -3755,6 +3756,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     break
             else:
                 assert False, "Should have at least one non-comprehension scope"
+            assert scope is not None
         else:
             scope = self.locals[-1]
         name = node.name()

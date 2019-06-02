@@ -25,7 +25,7 @@ from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
-    implicit_module_attrs, AssertStmt,
+    implicit_module_attrs, AssertStmt, AssignmentExpr,
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneType, CallableType
 from mypy.semanal import SemanticAnalyzerPass2
@@ -154,7 +154,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             node.accept(self)
         self.sem.block_depth[-1] -= 1
 
-    def visit_assignment_expr(self, s: AssignmentStmt) -> None:
+    def visit_assignment_expr(self, s: AssignmentExpr) -> None:
         if self.sem.is_module_scope():
             self.analyze_lvalue(s.target)
 
