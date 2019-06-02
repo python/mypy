@@ -2442,15 +2442,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_is_iterable(self, type: Type) -> bool:
         if isinstance(type, CallableType) and type.is_type_obj():
             type = type.fallback
-        return (is_subtype(type, self.named_generic_type('typing.Iterable',
-                                                         [AnyType(TypeOfAny.special_form)])) and
-                isinstance(type, Instance))
+        return is_subtype(type, self.named_generic_type('typing.Iterable',
+                                                        [AnyType(TypeOfAny.special_form)]))
 
     def check_multi_assignment_from_iterable(self, lvalues: List[Lvalue], rvalue_type: Type,
                                              context: Context,
                                              infer_lvalue_type: bool = True) -> None:
-        if self.type_is_iterable(rvalue_type):
-            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
+        if self.type_is_iterable(rvalue_type) and isinstance(rvalue_type, Instance):
+            item_type = self.iterable_item_type(rvalue_type)
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
                     items_type = self.named_generic_type('builtins.list', [item_type])
