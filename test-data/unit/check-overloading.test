@@ -5008,7 +5008,6 @@ from typing import Callable, TypeVar, Generic, Any, overload
 _S = TypeVar('_S')
 _T = TypeVar('_T')
 _R = TypeVar('_R')
-_F = TypeVar('_F', bound=Callable[..., Any])
 
 @overload
 def partial(__func: Callable[[_T], _S], __arg: _T) -> Callable[[], _S]: ...
@@ -5016,7 +5015,6 @@ def partial(__func: Callable[[_T], _S], __arg: _T) -> Callable[[], _S]: ...
 def partial(__func: Callable[[_T, _S], _S], __arg: _T) -> Callable[[_S], _R]: ...
 def partial(*args: Any) -> Any:
     pass
-
 
 def f(f: Callable[[int], int]) -> None:
     pass
