@@ -439,7 +439,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             return ForwardRef(t)
 
-        # None of the above options worked, we give up.
+        # None of the above options worked. We parse the args (if there are any)
+        # to make sure there are no remaining semanal-only types, then give up.
+        t = t.copy_modified(args=self.anal_array(t.args))
         self.fail('Invalid type "{}"'.format(name), t)
         if self.third_pass and isinstance(sym.node, TypeVarExpr):
             self.note_func("Forward references to type variables are prohibited", t)

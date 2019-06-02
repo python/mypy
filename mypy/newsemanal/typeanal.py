@@ -398,7 +398,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 column=t.column,
             )
 
-        # None of the above options worked, we give up.
+        # None of the above options worked. We parse the args (if there are any)
+        # to make sure there are no remaining semanal-only types, then give up.
+        t = t.copy_modified(args=self.anal_array(t.args))
         self.fail('Invalid type "{}"'.format(name), t)
 
         # TODO: Would it be better to always return Any instead of UnboundType

@@ -75,6 +75,9 @@ TPDICT_NAMES = ('mypy_extensions.TypedDict', 'typing_extensions.TypedDict')  # t
 # Supported fallback instance type names for TypedDict types.
 TPDICT_FB_NAMES = ('mypy_extensions._TypedDict', 'typing_extensions._TypedDict')  # type: Final
 
+# A placeholder used for Bogus[...] parameters
+_dummy = object()  # type: Final[Any]
+
 
 class TypeOfAny:
     """
@@ -300,6 +303,22 @@ class UnboundType(Type):
         self.original_str_expr = original_str_expr
         self.original_str_fallback = original_str_fallback
 
+    def copy_modified(self,
+                      args: Bogus[Optional[List[Type]]] = _dummy,
+                      ) -> 'UnboundType':
+        if args is _dummy:
+            args = self.args
+        return UnboundType(
+            name=self.name,
+            args=args,
+            line=self.line,
+            column=self.column,
+            optional=self.optional,
+            empty_tuple_index=self.empty_tuple_index,
+            original_str_expr=self.original_str_expr,
+            original_str_fallback=self.original_str_fallback,
+        )
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
@@ -376,9 +395,6 @@ class TypeList(Type):
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
-
-
-_dummy = object()  # type: Final[Any]
 
 
 class AnyType(Type):
