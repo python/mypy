@@ -379,7 +379,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             assert sym.node is not None
             name = sym.node.name()
 
-
         # Option 1:
         # Something with an Any type -- make it an alias for Any in a type
         # context. This is slightly problematic as it allows using the type 'Any'

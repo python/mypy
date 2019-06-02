@@ -305,7 +305,7 @@ class UnboundType(Type):
 
     def copy_modified(self,
                       args: Bogus[Optional[List[Type]]] = _dummy,
-                      ) -> 'AnyType':
+                      ) -> 'UnboundType':
         if args is _dummy:
             args = self.args
         return UnboundType(
