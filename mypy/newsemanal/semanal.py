@@ -3731,7 +3731,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
-                return node
+                if node.node is None or node.node.line < ctx.line:
+                    return node
             implicit_name = True
             implicit_node = node
         # 3. Local (function) scopes
