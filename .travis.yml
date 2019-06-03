@@ -18,54 +18,8 @@ jobs:
   - name: "run test suite with python 3.5.1"
     python: 3.5.1
     dist: trusty
-  - name: "run test suite with python 3.6"
-    python: 3.6    # 3.6.3  pip  9.0.1
-  - name: "run test suite with python 3.7"
-    python: 3.7    # 3.7.0  pip 10.0.1
-  - name: "run test suite with python 3.5.1 (new semantic analyzer)"
-    python: 3.5.1
-    dist: trusty
-    env:
-    - TOXENV=py
-    - EXTRA_ARGS="-n 12"
-    - NEWSEMANAL=1
-  - name: "run test suite with python 3.7 (new semantic analyzer)"
-    python: 3.7
-    env:
-    - TOXENV=py
-    - EXTRA_ARGS="-n 12"
-    - NEWSEMANAL=1
-  - name: "run test suite with python 3.7 (compiled with mypyc)"
-    python: 3.7
-    env:
-    - TOXENV=py
-    - EXTRA_ARGS="-n 12"
-    - TEST_MYPYC=1
   - name: "run test suite with python 3.8-dev"
     python: 3.8-dev
-  - name: "type check our own code"
-    python: 3.7
-    env:
-    - TOXENV=type
-    - EXTRA_ARGS=
-  - name: "check code style with flake8"
-    python: 3.7
-    env:
-    - TOXENV=lint
-    - EXTRA_ARGS=
-  - name: "trigger a build of wheels"
-    python: 3.7
-    script: if [[ ($TRAVIS_BRANCH = "master" || $TRAVIS_BRANCH =~ release-*) && $TRAVIS_PULL_REQUEST = "false" ]]; then ./misc/trigger_wheel_build.sh; fi
-  - name: "check documentation build"
-    python: 3.7
-    env:
-    - TOXENV=docs
-  # Disabled because of some pip bug? See #6716
-  # - name: "check dev environment builds"
-  #   python: 3.7
-  #   env:
-  #   - TOXENV=dev
-  #   - EXTRA_ARGS=
 
 install:
 - pip install -U pip setuptools
