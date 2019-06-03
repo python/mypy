@@ -4,7 +4,7 @@ TODO: copy docstring here, when this is the default implementation.
 """
 
 import contextlib
-from typing import Union, Iterator, Optional, List, Callable, Dict, Tuple
+from typing import Union, Iterator, Optional, Dict, Tuple
 
 from mypy.nodes import (
     FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,

@@ -5,13 +5,12 @@ import os.path
 from mypy import build
 from mypy.modulefinder import BuildSource
 from mypy.test.helpers import (
-    assert_string_arrays_equal, testfile_pyversion, normalize_error_messages, parse_options
+    assert_string_arrays_equal, normalize_error_messages, parse_options
 )
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
 from mypy.test.visitors import TypeAssertTransformVisitor
 from mypy.errors import CompileError
-from mypy.options import Options
 
 
 class TransformSuite(DataSuite):

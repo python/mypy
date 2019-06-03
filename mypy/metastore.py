@@ -15,7 +15,7 @@ import os
 import time
 
 from abc import abstractmethod
-from typing import Dict, List, Set, Iterable, Any, Optional
+from typing import List, Iterable, Any, Optional
 
 
 class MetadataStore:

@@ -1,7 +1,7 @@
 """Semantic analysis of types"""
 
 from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
 
 from itertools import chain
 
@@ -13,16 +13,16 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
-    CallableType, NoneType, DeletedType, TypeList, TypeVarDef, TypeVisitor, SyntheticTypeVisitor,
+    CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef, Overloaded,
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef,
     LiteralType, RawExpressionType, PlaceholderType
 )
 
 from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
-    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, CallExpr, NameExpr,
+    nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
+    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr,
     TypeAlias, PlaceholderNode
 )
 from mypy.typetraverser import TypeTraverserVisitor

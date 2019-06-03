@@ -55,7 +55,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, nongen_builtins,
     get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
 )
 from mypy.tvar_scope import TypeVarScope
@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy import message_registry
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    FunctionLike, UnboundType, TypeVarDef, TupleType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType,
 )

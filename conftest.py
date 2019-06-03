@@ -1,7 +1,5 @@
 import os.path
 
-import pytest
-
 pytest_plugins = [
     'mypy.test.data',
 ]

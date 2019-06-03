@@ -53,7 +53,7 @@ import argparse
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
+    List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
 )
 
 import mypy.build
@@ -67,7 +67,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
-    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module

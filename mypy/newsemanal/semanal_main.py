@@ -28,7 +28,7 @@ import contextlib
 from typing import List, Tuple, Optional, Union, Callable, Iterator
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, SymbolTableNode, Var, ClassDef
+    MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
 )
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
