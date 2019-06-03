@@ -2316,3 +2316,21 @@ class C:
         # TODO: Error message could be better
         class D(self.E): # E: Name 'self.E' is not defined
             pass
+
+
+[case testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass]
+# Only one semantic analysis pass
+class X: pass
+class C:
+    X = X
+    reveal_type(X)  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(C.X)  # E: Revealed type is 'def () -> __main__.X'
+
+[case testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses]
+c: C  # Force second semantic analysis pass
+class X: pass
+class C:
+    X = X
+    reveal_type(X)  # E: Revealed type is 'def () -> __main__.X'
+
+reveal_type(C.X)  # E: Revealed type is 'def () -> __main__.X'
