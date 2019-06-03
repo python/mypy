@@ -1655,7 +1655,7 @@ class State:
     transitive_error = False
 
     # Errors reported before semantic analysis, to allow fine-grained
-    # mode to keep reporting them
+    # mode to keep reporting them.
     early_errors = None  # type: List[ErrorInfo]
 
     # Type checker used for checking this file.  Use type_checker() for
