@@ -15,6 +15,7 @@ from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
+import pytest
 import mypy.version
 
 # Path to Python 3 interpreter
@@ -45,6 +46,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         for s in testcase.input:
             file.write('{}\n'.format(s))
     args = parse_args(testcase.input[0])
+    if "--html-report" in args:
+        pytest.importorskip('lxml')
     args.append('--show-traceback')
     args.append('--no-site-packages')
     # Type check the program.
