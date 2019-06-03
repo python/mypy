@@ -2,7 +2,7 @@ attrs>=18.0
 flake8>=3.7
 flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
-lxml==4.2.4
+lxml>=4.2.4
 mypy_extensions>=0.4.0,<0.5.0
 psutil>=4.0
 pytest>=4.4
