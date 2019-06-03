@@ -1831,9 +1831,9 @@ z = x + y
 reveal_locals()
 [out]
 main:4: note: Revealed local types are:
-main:4: note: x: builtins.int
-main:4: note: y: builtins.int
-main:4: note: z: builtins.int
+main:4: note:     x: builtins.int
+main:4: note:     y: builtins.int
+main:4: note:     z: builtins.int
 
 [case testUndefinedRevealType]
 reveal_type(x)

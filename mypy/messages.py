@@ -1075,7 +1075,7 @@ class MessageBuilder:
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
         self.note("Revealed local types are:", context)
-        for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
+        for line in ['    {}: {}'.format(k, v) for k, v in sorted_locals.items()]:
             self.note(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:

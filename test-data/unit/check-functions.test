@@ -2451,14 +2451,14 @@ def f(a: int, b: int) -> int:
 reveal_locals()
 [out]
 main:6: note: Revealed local types are:
-main:6: note: a: builtins.int
-main:6: note: b: builtins.int
+main:6: note:     a: builtins.int
+main:6: note:     b: builtins.int
 main:9: note: Revealed local types are:
-main:9: note: a: builtins.int
-main:9: note: b: builtins.int
-main:9: note: c: builtins.int
+main:9: note:     a: builtins.int
+main:9: note:     b: builtins.int
+main:9: note:     c: builtins.int
 main:12: note: Revealed local types are:
-main:12: note: a: builtins.float
+main:12: note:     a: builtins.float
 
 [case testNoComplainOverloadNone]
 # flags: --no-strict-optional

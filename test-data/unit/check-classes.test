@@ -5013,8 +5013,8 @@ class C1(object):
 
 [out]
 main:5: note: Revealed local types are:
-main:5: note: t: builtins.str
-main:5: note: y: builtins.float
+main:5: note:     t: builtins.str
+main:5: note:     y: builtins.float
 
 [case testAbstractClasses]
 import a
