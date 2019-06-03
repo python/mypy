@@ -942,6 +942,13 @@ def reprocess_nodes(manager: BuildManager,
             targets.add(target)
     manager.errors.clear_errors_in_targets(file_node.path, targets)
 
+    # If one of the nodes is the module itself, emit any errors that
+    # happened before semantic analysis.
+    for target in targets:
+        if target == module_id:
+            for info in graph[module_id].early_errors:
+                manager.errors.add_error_info(info)
+
     # Strip semantic analysis information.
     saved_attrs = {}  # type: SavedAttributes
     for deferred in nodes:

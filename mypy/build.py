@@ -41,7 +41,7 @@ from mypy.newsemanal.semanal import NewSemanticAnalyzer
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -1653,6 +1653,10 @@ class State:
     # Whether the module has an error or any of its dependencies have one.
     transitive_error = False
 
+    # Errors reported before semantic analysis, to allow fine-grained
+    # mode to keep reporting them.
+    early_errors = None  # type: List[ErrorInfo]
+
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
@@ -1688,6 +1692,7 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
+        self.early_errors = []
         self._type_checker = None
         if not path and source is None:
             assert id is not None
@@ -1969,6 +1974,11 @@ class State:
 
         modules[self.id] = self.tree
 
+        # Make a copy of any errors produced during parse time so that
+        # fine-grained mode can repeat them when the module is
+        # reprocessed.
+        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
+
         self.semantic_analysis_pass1()
 
         if not self.options.new_semantic_analyzer:
@@ -1987,9 +1997,7 @@ class State:
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id)
             for lineno, error in config_errors:
-                # Unfortunately these need to be blockers, since otherwise they will
-                # be lost on daemon reprocessing.
-                self.manager.errors.report(lineno, 0, error, blocker=True)
+                self.manager.errors.report(lineno, 0, error)
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.

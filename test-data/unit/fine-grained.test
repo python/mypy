@@ -8901,16 +8901,37 @@ def bar(x):
     # type: () -> None
     pass
 
+def baz(x):
+    # type: () -> None
+    pass
+
+def f():
+    # type: () -> None
+    def g(x):
+        # type: () -> None
+        pass
+
+[file c.py]
+def bar(x):
+    # type: () -> None
+    pass
+
 [file b.py]
 x = ''
 
-[file m.py.2]
+[file b.py.2]
 x = 1
 
 [out]
+c.py:1: error: Type signature has too few arguments
 a.py:1: error: Type signature has too few arguments
+a.py:5: error: Type signature has too few arguments
+a.py:11: error: Type signature has too few arguments
 ==
 a.py:1: error: Type signature has too few arguments
+a.py:5: error: Type signature has too few arguments
+a.py:11: error: Type signature has too few arguments
+c.py:1: error: Type signature has too few arguments
 
 [case testErrorReportingNewAnalyzer]
 # flags: --disallow-any-generics
