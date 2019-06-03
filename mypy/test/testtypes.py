@@ -1,6 +1,6 @@
 """Test cases for mypy types and type operations."""
 
-from typing import List, Tuple, cast
+from typing import List, Tuple
 
 from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
 from mypy.erasetype import erase_type

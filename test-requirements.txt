@@ -1,5 +1,5 @@
 attrs>=18.0
-flake8
+flake8>=3.7
 flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
 lxml==4.2.4

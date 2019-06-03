@@ -105,7 +105,7 @@ try:
         Constant = Any
 except ImportError:
     try:
-        from typed_ast import ast35  # type: ignore
+        from typed_ast import ast35  # type: ignore  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
               'You can install it with `python3 -m pip install typed-ast`.',

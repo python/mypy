@@ -16,7 +16,7 @@ from mypy.nodes import (
     Var, EllipsisExpr, Argument, StrExpr, BytesExpr, UnicodeExpr, ExpressionStmt, NameExpr,
     AssignmentStmt, PassStmt, Decorator, FuncBase, ClassDef, Expression, RefExpr, TypeInfo,
     NamedTupleExpr, CallExpr, Context, TupleExpr, ListExpr, SymbolTableNode, FuncDef, Block,
-    TempNode, SymbolTable, TypeVarExpr, ARG_POS, ARG_NAMED_OPT, ARG_OPT, MDEF, GDEF
+    TempNode, SymbolTable, TypeVarExpr, ARG_POS, ARG_NAMED_OPT, ARG_OPT, MDEF
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError

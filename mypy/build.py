@@ -499,7 +499,7 @@ class BuildManager:
                  search_paths: SearchPaths,
                  ignore_prefix: str,
                  source_set: BuildSourceSet,
-                 reports: Optional['Reports'],
+                 reports: 'Optional[Reports]',
                  options: Options,
                  version_id: str,
                  plugin: Plugin,

@@ -114,8 +114,7 @@ test cases (test-data/unit/fine-grained*.test).
 
 import time
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, NamedTuple, Callable,
-    Sequence
+    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Callable, Sequence
 )
 
 from mypy.build import (
