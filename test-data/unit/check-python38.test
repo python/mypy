@@ -183,6 +183,7 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p2)  # E: Revealed type is 'builtins.float'
 
 [case testWalrus]
+# flags: --strict-optional
 from typing import NamedTuple, Optional
 from typing_extensions import Final
 
@@ -255,5 +256,12 @@ def check_binder(x: Optional[int], y: Optional[int]) -> None:
 
     if x or (y := 1):
         reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
+
+def check_partial() -> None:
+    x = None
+    if bool() and (x := 2):
+        pass
+
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
 
 [builtins fixtures/f_string.pyi]
