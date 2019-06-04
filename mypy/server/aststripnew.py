@@ -30,6 +30,11 @@ def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
     is more thorough: all TypeInfos are killed. Therefore we need to preserve the variables
     defined as attributes on self. This is done by patches (callbacks) returned from this function
     that re-add these variables when called.
+
+    Args:
+        node: node to strip
+        saved_attrs: collect attributes here that may need to be re-added to
+            classes afterwards if stripping a class body (this dict is mutated)
     """
     visitor = NodeStripVisitor(saved_attrs)
     if isinstance(node, MypyFile):
@@ -49,9 +54,7 @@ class NodeStripVisitor(TraverserVisitor):
         self.recurse_into_functions = True
         # These attributes were removed from top-level classes during strip and
         # will be added afterwards (if no existing definition is found). These
-        # must be added back before semantically analyzing any methods. These
-        # allow moving attribute definition from a method (through self.x) to a
-        # definition inside class body (x = ...).
+        # must be added back before semantically analyzing any methods.
         self.saved_class_attrs = saved_class_attrs
 
     def strip_file_top_level(self, file_node: MypyFile) -> None:
