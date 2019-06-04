@@ -44,6 +44,7 @@ PER_MODULE_OPTIONS = {
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
+    "implicit_reexport",
     "show_none_errors",
     "strict_optional",
     "strict_optional_whitelist",
@@ -150,6 +151,9 @@ class Options:
 
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
+
+        # Don't re-export names unless they are imported with `from ... as ...`
+        self.implicit_reexport = True
 
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
