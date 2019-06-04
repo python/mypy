@@ -183,7 +183,8 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p2)  # E: Revealed type is 'builtins.float'
 
 [case testWalrus]
-from typing import NamedTuple
+from typing import NamedTuple, Optional
+from typing_extensions import Final
 
 if a := 2:
     reveal_type(a)  # E: Revealed type is 'builtins.int'
@@ -239,5 +240,20 @@ def f(x: int = (c := 4)) -> int:
     return (y9 := 3) + y9
 
 reveal_type(c)  # E: Revealed type is 'builtins.int'
+
+def check_final() -> None:
+    x: Final = 3
+
+    if x := 4:  # E: Cannot assign to final name "x"
+        pass
+
+def check_binder(x: Optional[int], y: Optional[int]) -> None:
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+
+    (x := 1)
+    reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+    if x or (y := 1):
+        reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 
 [builtins fixtures/f_string.pyi]

@@ -22,7 +22,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr,
+    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
 )
 from mypy import nodes
@@ -2153,7 +2153,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         finally:
             self._is_final_def = old_ctx
 
-    def check_final(self, s: Union[AssignmentStmt, OperatorAssignmentStmt]) -> None:
+    def check_final(self,
+                    s: Union[AssignmentStmt, OperatorAssignmentStmt, AssignmentExpr]) -> None:
         """Check if this assignment does not assign to a final attribute.
 
         This function performs the check only for name assignments at module
@@ -2162,6 +2163,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         if isinstance(s, AssignmentStmt):
             lvs = self.flatten_lvalues(s.lvalues)
+        elif isinstance(s, AssignmentExpr):
+            lvs = [s.target]
         else:
             lvs = [s.lvalue]
         is_final_decl = s.is_final_def if isinstance(s, AssignmentStmt) else False

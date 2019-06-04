@@ -2424,6 +2424,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_assignment_expr(self, e: AssignmentExpr) -> Type:
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
+        self.chk.check_final(e)
         return value
 
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
