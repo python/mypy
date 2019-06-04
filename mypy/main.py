@@ -492,7 +492,6 @@ def process_options(args: List[str],
 
     add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
                         dest='implicit_reexport',
-                        action='store_false',
                         help="Treat imports as private unless aliased",
                         group=strictness_group)
 
