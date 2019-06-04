@@ -2419,8 +2419,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             nested: If true, the lvalue is within a tuple or list lvalue expression
             explicit_type: Assignment has type annotation
             escape_comprehensions: If we are inside a comprehension, set the variable
-            in the enclosing scope instead. This implements
-            https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
+                in the enclosing scope instead. This implements
+                https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
         """
         if escape_comprehensions:
             assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"

@@ -2117,8 +2117,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
             escape_comprehension: If we are inside a comprehension, set the variable
-            in the enclosing scope instead. This implements
-            https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
+                in the enclosing scope instead. This implements
+                https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
         """
         if escape_comprehension:
             assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"
