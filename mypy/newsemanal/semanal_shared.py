@@ -133,7 +133,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @abstractmethod
     def add_symbol(self, name: str, node: SymbolNode, context: Context,
                    module_public: bool = True, module_hidden: bool = False,
-                   can_defer: bool = True) -> bool:
+                   can_defer: bool = True, escape_comprehensions: bool = False) -> bool:
         """Add symbol to the current symbol table."""
         raise NotImplementedError
 
