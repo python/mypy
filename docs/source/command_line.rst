@@ -396,6 +396,7 @@ of the above sections.
     stub files. For example:
 
     .. code-block:: python
+
        # This won't re-export the value
        from foo import bar
        # This will re-export it as bar and allow other modules to import it

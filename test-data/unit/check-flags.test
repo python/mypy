@@ -1141,13 +1141,10 @@ strict_equality = False
 [case testNoImplicitReexport]
 # flags: --no-implicit-reexport
 from other_module_2 import a
-
 [file other_module_1.py]
 a = 5
-
 [file other_module_2.py]
 from other_module_1 import a
-
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
 

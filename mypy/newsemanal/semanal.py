@@ -1713,7 +1713,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Imports are special, some redefinitions are allowed, so wait until
                     # we know what is the new symbol node.
                     continue
-                # 'from m import x as x' exports x in a stub file or when implicit exports are disabled.
+                # 'from m import x as x' exports x in a stub file or when implicit
+                # re-exports are disabled.
                 module_public = (
                     not self.is_stub_file
                     and self.options.implicit_reexport
