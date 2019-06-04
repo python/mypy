@@ -1453,9 +1453,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
             else:
                 # Modules imported in a stub file without using 'as x' won't get exported
+                # Modules with implicit reexport disabled have the same behavior as stubs.
                 module_public = (
                     not self.is_stub_file
-                    and not self.options.no_implicit_reexport
+                    and self.options.implicit_reexport
                 )
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
@@ -1565,10 +1566,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue
-                # 'from m import x as x' exports x in a stub file.
+                # 'from m import x as x' exports x in a stub file, or when implicit reexport
+                # is disabled.
                 module_public = (
                     not self.is_stub_file
-                    and not self.options.no_implicit_reexport
+                    and self.options.implicit_reexport
                     or as_id is not None
                 )
                 module_hidden = not module_public and possible_module_id not in self.modules

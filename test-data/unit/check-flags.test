@@ -1163,8 +1163,8 @@ from other_module_1 import a
 
 [file mypy.ini]
 [[mypy]
-no_implicit_reexport = False
+implicit_reexport = True
 [[mypy-other_module_2]
-no_implicit_reexport = True
+implicit_reexport = False
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
