@@ -2291,7 +2291,6 @@ import n
 [file n.py]
 def __getattr__(x): pass
 
-
 [case testNewAnalyzerModuleGetAttrInPython37]
 # flags: --python-version 3.7
 import m
@@ -2316,3 +2315,95 @@ class C:
         # TODO: Error message could be better
         class D(self.E): # E: Name 'self.E' is not defined
             pass
+
+[case testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass]
+# Only one semantic analysis pass
+class X: pass
+class C:
+    X = X
+    reveal_type(X)  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(C.X)  # E: Revealed type is 'def () -> __main__.X'
+
+[case testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses]
+c: C  # Force second semantic analysis pass
+class X: pass
+class C:
+    X = X
+    reveal_type(X)  # E: Revealed type is 'def () -> __main__.X'
+
+reveal_type(C.X)  # E: Revealed type is 'def () -> __main__.X'
+
+[case testNewAnalyzerAnnotationConflictsWithAttributeSinglePass]
+class C:
+    def x(self) -> int:
+        return 0
+
+    def __init__(self) -> None:
+        self.int = ''
+
+    def y(self) -> int:
+        return 0
+
+    z: str
+
+    def str(self) -> str:
+        return 0 # E: Incompatible return value type (got "int", expected "str")
+
+    zz: str # E: Invalid type "__main__.C.str"
+
+reveal_type(C().x()) # E: Revealed type is 'builtins.int'
+reveal_type(C().y()) # E: Revealed type is 'builtins.int'
+reveal_type(C().z) # E: Revealed type is 'builtins.str'
+reveal_type(C().str()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses]
+c: C  # Force second semantic analysis pass
+
+class C:
+    def x(self) -> int:
+        return 0
+
+    def __init__(self) -> None:
+        self.int = ''
+
+    def y(self) -> int:
+        return 0
+
+    z: str
+
+    def str(self) -> str:
+        return 0 # E: Incompatible return value type (got "int", expected "str")
+
+    zz: str # E: Invalid type "__main__.C.str"
+
+reveal_type(C().x()) # E: Revealed type is 'builtins.int'
+reveal_type(C().y()) # E: Revealed type is 'builtins.int'
+reveal_type(C().z) # E: Revealed type is 'builtins.str'
+reveal_type(C().str()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerNameConflictsAndMultiLineDefinition]
+c: C  # Force second semantic analysis pass
+
+class X: pass
+
+class C:
+    X = (
+        X)
+
+    def str(self
+            ) -> str:
+        return 0 # E: Incompatible return value type (got "int", expected "str")
+
+reveal_type(C.X) # E:  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(C().str()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerNameNotDefinedYetInClassBody]
+class C:
+    X = Y  # E: Name 'Y' is not defined
+    Y = 1
+
+    f = g  # E: Name 'g' is not defined
+
+    def g(self) -> None: pass
+
+reveal_type(C.X)  # E: Revealed type is 'Any'

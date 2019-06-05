@@ -431,6 +431,7 @@ class NamedTupleAnalyzer:
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
             func._fullname = info.fullname() + '.' + funcname
+            func.line = line
             if is_classmethod:
                 v = Var(funcname, func.type)
                 v.is_classmethod = True
