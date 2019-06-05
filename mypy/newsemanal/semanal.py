@@ -907,6 +907,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_decorator(self, dec: Decorator) -> None:
+        self.statement = dec
         dec.func.is_conditional = self.block_depth[-1] > 0
         if not dec.is_overload:
             self.add_symbol(dec.name(), dec, dec)
