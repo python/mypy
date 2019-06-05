@@ -2492,7 +2492,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
             self.make_name_lvalue_point_to_existing_def(lvalue, explicit_type, is_final)
-        # TODO: Special case local '_' assignment to always infer 'Any'
 
     def is_final_redefinition(self, kind: int, name: str) -> bool:
         if kind == GDEF:
@@ -2548,30 +2547,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Update an lvalue to point to existing definition in the same scope.
 
         Arguments are similar to "analyze_lvalue".
+
+        Assume that an existing name exists.
         """
-        # Assume that an existing name exists. Try to find the original definition.
-        global_def = self.globals.get(lval.name)
-        if self.locals:
-            locals_last = self.locals[-1]
-            if locals_last:
-                local_def = locals_last.get(lval.name)
-            else:
-                local_def = None
-        else:
-            local_def = None
-        type_def = self.type.names.get(lval.name) if self.type else None
-
-        original_def = global_def or local_def or type_def
-
-        # Redefining an existing name with final is always an error.
         if is_final:
+            # Redefining an existing name with final is always an error.
             self.fail("Cannot redefine an existing name as final", lval)
+        original_def = self.lookup(lval.name, lval, suppress_errors=True)
+        if original_def is None and self.type and not self.is_func_scope():
+            # Workaround to allow "x, x = ..." in class body.
+            original_def = self.type.get(lval.name)
         if explicit_type:
-            # Don't re-bind types
+            # Don't re-bind if there is a type annotation.
             self.name_already_defined(lval.name, lval, original_def)
         else:
             # Bind to an existing name.
-            lval.accept(self)
+            if original_def:
+                self.bind_name_expr(lval, original_def)
             self.check_lvalue_validity(lval.node, lval)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
@@ -3233,15 +3225,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
-            if isinstance(n.node, TypeVarExpr) and self.tvar_scope.get_binding(n):
-                self.fail("'{}' is a type variable and only valid in type "
-                          "context".format(expr.name), expr)
-            elif isinstance(n.node, PlaceholderNode):
-                self.process_placeholder(expr.name, 'name', expr)
-            else:
-                expr.kind = n.kind
-                expr.node = n.node
-                expr.fullname = n.fullname
+            self.bind_name_expr(expr, n)
+
+    def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
+        if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
+            self.fail("'{}' is a type variable and only valid in type "
+                      "context".format(expr.name), expr)
+        elif isinstance(sym.node, PlaceholderNode):
+            self.process_placeholder(expr.name, 'name', expr)
+        else:
+            expr.kind = sym.kind
+            expr.node = sym.node
+            expr.fullname = sym.fullname
 
     def visit_super_expr(self, expr: SuperExpr) -> None:
         if not self.type:
