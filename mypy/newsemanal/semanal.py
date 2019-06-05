@@ -3755,7 +3755,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
-                if node.node is None or node.node.line < self.statement.line:
+                # Only allow access to most class attributes after the definition
+                # so that it's possible to fall back to the outer scope
+                # (except for types).
+                if (node.node is None
+                        or node.node.line < self.statement.line
+                        or isinstance(node.node, TypeInfo)):
                     return node
             else:
                 # Defined through self.x assignment
