@@ -2991,7 +2991,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # respect explicitly annotated type
                     if (isinstance(lval.node, Var) and lval.node.type is not None):
                         continue
-                    lnode = self.lookup(lval.name, ctx)
+                    lnode = self.current_symbol_table().get(lval.name)
                     if lnode:
                         if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
                             self.fail(
