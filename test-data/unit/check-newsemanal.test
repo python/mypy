@@ -2291,7 +2291,6 @@ import n
 [file n.py]
 def __getattr__(x): pass
 
-
 [case testNewAnalyzerModuleGetAttrInPython37]
 # flags: --python-version 3.7
 import m
@@ -2316,7 +2315,6 @@ class C:
         # TODO: Error message could be better
         class D(self.E): # E: Name 'self.E' is not defined
             pass
-
 
 [case testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass]
 # Only one semantic analysis pass

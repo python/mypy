@@ -3228,6 +3228,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.bind_name_expr(expr, n)
 
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
+        """Bind name expression to a symbol table node."""
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
             self.fail("'{}' is a type variable and only valid in type "
                       "context".format(expr.name), expr)
@@ -3751,9 +3752,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
-                # Only allow access to most class attributes after the definition
-                # so that it's possible to fall back to the outer scope
-                # (except for types).
+                # Only allow access to class attributes textually after
+                # the definition, so that it's possible to fall back to the
+                # outer scope. Example:
+                #
+                #     class X: ...
+                #
+                #     class C:
+                #         X = X  # Initializer refers to outer scope
+                #
+                # Nested classes are an exception, since we want to support
+                # arbitrary forward references in type annotations.
                 if (node.node is None
                         or node.node.line < self.statement.line
                         or isinstance(node.node, TypeInfo)):
