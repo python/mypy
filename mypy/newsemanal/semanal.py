@@ -2564,6 +2564,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # Bind to an existing name.
             if original_def:
                 self.bind_name_expr(lval, original_def)
+            else:
+                self.name_not_defined(lval.name, lval)
             self.check_lvalue_validity(lval.node, lval)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
