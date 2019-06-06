@@ -5,6 +5,7 @@ import os.path
 import platform
 import subprocess
 import contextlib
+import shutil
 import sys
 from typing import List, Iterator, Optional
 
@@ -20,7 +21,8 @@ from mypyc.options import CompilerOptions
 from mypyc.test.config import prefix
 from mypyc.build import shared_lib_name
 from mypyc.test.testutil import (
-    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output,
+    ICODE_GEN_BUILTINS, TESTUTIL_PATH,
+    use_custom_builtins, MypycDataSuite, assert_test_output,
     heading, show_c
 )
 
@@ -98,6 +100,8 @@ class TestRun(MypycDataSuite):
             with open('interpreted.py', 'w', encoding='utf-8') as f:
                 f.write(text)
 
+            shutil.copyfile(TESTUTIL_PATH, 'testutil.py')
+
             source = build.BuildSource(source_path, 'native', text)
             sources = [source]
             module_names = ['native']
@@ -114,6 +118,9 @@ class TestRun(MypycDataSuite):
                     sources.append(build.BuildSource(fn, name, text))
                     to_delete.append(fn)
                     module_paths.append(os.path.abspath(fn))
+
+                    shutil.copyfile(fn,
+                                    os.path.join(os.path.dirname(fn), name + '_interpreted.py'))
 
             for source in sources:
                 options.per_module_options.setdefault(source.module, {})['mypyc'] = True

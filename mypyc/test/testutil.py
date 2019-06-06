@@ -20,6 +20,8 @@ from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.
 ICODE_GEN_BUILTINS = os.path.join(test_data_prefix, 'fixtures/ir.py')
+# The testutil support library
+TESTUTIL_PATH = os.path.join(test_data_prefix, 'fixtures/testutil.py')
 
 
 class MypycDataSuite(DataSuite):

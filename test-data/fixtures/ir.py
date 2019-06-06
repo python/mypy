@@ -19,6 +19,7 @@ class object:
 
 class type:
     def __init__(self, o: object) -> None: ...
+    __name__ : str
 
 class ellipsis: pass
 
@@ -49,7 +50,9 @@ class str:
     def __le__(self, x: str) -> bool: ...
     def __gt__(self, x: str) -> bool: ...
     def __ge__(self, x: str) -> bool: ...
+    def __contains__(self, item: str) -> bool: pass
     def join(self, x: Iterable[str]) -> str: pass
+    def format(self, *args: Any, **kwargs: Any) -> str: ...
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -76,7 +79,7 @@ class bool:
     def __init__(self, o: object = ...) -> None: ...
 
 
-class tuple(Generic[T_co]):
+class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __init__(self, i: Iterable[T_co]) -> None: pass
     def __getitem__(self, i: int) -> T_co: pass
     def __len__(self) -> int: pass
@@ -173,6 +176,8 @@ class RuntimeError(Exception): pass
 
 class NotImplementedError(RuntimeError): pass
 
+class StopIteration(Exception):
+    value: Any
 
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass

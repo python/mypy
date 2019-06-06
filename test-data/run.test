@@ -399,26 +399,17 @@ def asdf(x: Tuple[int, str]) -> None:
     pass
 
 [file driver.py]
+from testutil import assertRaises
 from native import f, lurr, asdf
-print(f((1,2)))
-print(lurr([(1, '2')]))
-try:
+
+assert f((1,2)) == (1, 2)
+assert lurr([(1, '2')]) == (1, '2')
+
+with assertRaises(TypeError):
     print(lurr([(1, 2)]))
-except TypeError:
-    pass
-else:
-    assert False
 
-try:
+with assertRaises(TypeError):
     asdf((1, 2))
-except TypeError:
-    pass
-else:
-    assert False
-
-[out]
-(1, 2)
-(1, '2')
 
 [case testEmptyTupleFunctionWithTupleType]
 from typing import Tuple
@@ -543,20 +534,16 @@ def g() -> None:
 
 [file driver.py]
 from native import f, g
+from testutil import assertRaises
+
 f(True, True)
 f(False, False)
-try:
+with assertRaises(NameError):
     f(False, True)
-except Exception as e:
-    print(e)
-try:
+with assertRaises(NameError):
     g()
-except Exception as e:
-    print(e)
 [out]
 lol
-local variable 'x' referenced before assignment
-local variable 'y' referenced before assignment
 
 [case testFunctionCallWithDefaultArgs]
 from typing import Tuple, List, Optional
@@ -766,6 +753,8 @@ def update(s: Set[int], x: List[int]) -> None:
 
 [file driver.py]
 from native import instantiateLiteral
+from testutil import assertRaises
+
 val = instantiateLiteral()
 assert 1 in val
 assert 2 in val
@@ -803,10 +792,8 @@ import traceback
 s = {1, 4, 6}
 remove1(s)
 assert s == {4, 6}
-try:
+with assertRaises(KeyError, '1'):
     remove1(s)
-except KeyError as e:
-    print(e)
 
 from native import discard1
 s = {1, 4, 6}
@@ -829,19 +816,13 @@ assert len(s) == 0
 assert z in [1, 2, 3]
 assert x != z
 assert y != z
-try:
-    w = pop(s)
-except KeyError as e:
-    print(e)
+with assertRaises(KeyError, 'pop from an empty set'):
+    pop(s)
 
 from native import update
 s = {1, 2, 3}
 update(s, [5, 4, 3])
 assert s == {1, 2, 3, 4, 5}
-
-[out]
-1
-'pop from an empty set'
 
 [case testDictStuff]
 from typing import Dict, Any
@@ -2379,22 +2360,6 @@ def unpack2(l : List[int]) -> None:
 def unpack3(l : List[int]) -> None:
     v1, v2, *v3 = l
 
-[file testutil.py]
-# TODO: This should go into some general mypyc test support lib (along
-# with other things)
-from contextlib import contextmanager
-from typing import Iterator
-
-@contextmanager
-def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
-    try:
-        yield
-    except Exception as e:
-        assert isinstance(e, typ), "{} is not a {}".format(e, typ.__name__)
-        assert msg in str(e), 'Message "{}" does not match "{}"'.format(e, msg)
-    else:
-        assert False, "Expected {} but got no exception".format(typ.__name__)
-
 [file driver.py]
 from native import a, b, c, d, e, f, j, k, l, m, n, o, p, q, r, s, t, y, z
 from native import unpack1, unpack2, unpack3
@@ -2607,6 +2572,8 @@ for a in l2 + l3:
 
 [case testDel]
 from typing import List
+from testutil import assertRaises
+
 def printDict(dict) -> None:
     l = list(dict.keys()) # type: List[str]
     l.sort()
@@ -2646,31 +2613,22 @@ class Dummy():
 def delAttribute() -> None:
     dummy = Dummy(1, 2)
     del dummy.x
-    try:
-        print(dummy.x)
-    except AttributeError:
-        print("dummy.x successfully deleted")
+    with assertRaises(AttributeError):
+        dummy.x
 
 def delAttributeMultiple() -> None:
     dummy = Dummy(1, 2)
     del dummy.x, dummy.y
-    try:
-        print(dummy.x)
-    except AttributeError:
-        print("dummy.x successfully deleted")
-    try:
-        print(dummy.y)
-    except AttributeError:
-        print("dummy.y successfully deleted")
+    with assertRaises(AttributeError):
+        dummy.x
+    with assertRaises(AttributeError):
+        dummy.y
 
-def delLocal(b: bool) -> None:
+def delLocal(b: bool) -> int:
     dummy = 10
     if b:
         del dummy
-    try:
-        print(dummy)
-    except Exception as e:
-        print(e)
+    return dummy
 
 def delLocalLoop() -> None:
     # Try deleting a local in a loop to make sure the control flow analysis works
@@ -2690,22 +2648,21 @@ from native import (
     delAttributeMultiple, delLocal, delLocalLoop,
 )
 import native
+from testutil import assertRaises
+
 delList()
 delDict()
 delListMultiple()
 delDictMultiple()
 delAttribute()
 delAttributeMultiple()
-try:
-    print(native.global_var)
-except AttributeError:
-    print("native.global_var successfully deleted")
-delLocal(True)
-delLocal(False)
-try:
+with assertRaises(AttributeError):
+    native.global_var
+with assertRaises(NameError, "local variable 'dummy' referenced before assignment"):
+    delLocal(True)
+assert delLocal(False) == 10
+with assertRaises(NameError, "local variable 'dummy' referenced before assignment"):
     delLocalLoop()
-except Exception as e:
-    print(e)
 [out]
 (1, 2, 3)
 (1, 3)
@@ -2724,18 +2681,11 @@ two 2
 one 1
 three 3
 #########
-dummy.x successfully deleted
-dummy.x successfully deleted
-dummy.y successfully deleted
-native.global_var successfully deleted
-local variable 'dummy' referenced before assignment
-10
 1
 2
 4
 8
 16
-local variable 'dummy' referenced before assignment
 
 [case testProperty]
 from typing import Callable
@@ -2940,36 +2890,6 @@ class A:
     def foo(self, val : Foo) -> None:
         self._foo = val
 
-def test():
-    a = A()
-    assert a.x == 0
-    assert a._x == 0
-    a.x = 1
-    assert a.x == 1
-    assert a._x == 1
-    a._x = 0
-    assert a.x == 0
-    assert a._x == 0
-    b = B()
-    assert b.x == 11
-    assert b._x == 10
-    b.x = 11
-    assert b.x == 13
-    b._x = 11
-    assert b.x == 12
-    c = C()
-    assert c.x == 0
-    c.x = 1000
-    assert c.x == 1000
-    e = E()
-    assert e.x == 0
-    e.x = 1000
-    assert e.x == 1000
-    f = F()
-    assert f.x == 20
-    f.x = 30
-    assert f.x == 50
-
 # Overrides base property setters and getters
 class B(A):
     def __init__(self) -> None:
@@ -3018,7 +2938,7 @@ class F(D):
     @x.setter
     def x(self, val : int) -> None:
         self._x = val + 10
-    
+
 # # Property setter and getter are subtypes of base property setters and getters
 # # class G(A):
 # #   def __init__(self) -> None:
@@ -3032,9 +2952,11 @@ class F(D):
 # #   def y(self, val : object) -> None:
 # #       self._y = val
 
-[file driver.py]
-from native import A, B, C, D, E, F, test
-test()
+[file other.py]
+# Run in both interpreted and compiled mode
+
+from native import A, B, C, D, E, F
+
 a = A()
 assert a.x == 0
 assert a._x == 0
@@ -3063,6 +2985,11 @@ f = F()
 assert f.x == 20
 f.x = 30
 assert f.x == 50
+
+[file driver.py]
+# Run the tests in both interpreted and compiled mode
+import other
+import other_interpreted
 
 [out]
 
@@ -3363,20 +3290,8 @@ class A(object):
         yield self.x
 
 [file driver.py]
-from typing import Generator, Tuple, TypeVar, Sequence
 from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, yield_with_default, A
-
-T = TypeVar('T')
-U = TypeVar('U')
-
-def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], U]:
-    res = []
-    while True:
-        try:
-            val = next(gen)
-        except StopIteration as e:
-            return (tuple(res), e.value)
-        res.append(val)
+from testutil import run_generator
 
 assert run_generator(yield_three_times()) == ((1, 2, 3), None)
 assert run_generator(yield_twice_and_return()) == ((1, 2), 4)
@@ -3436,29 +3351,12 @@ def yield_with(i: int) -> Generator[int, None, int]:
     return -1
 
 [file driver.py]
-from typing import Generator, Tuple, TypeVar, Sequence, Union
 from native import yield_try_finally, yield_with
+from testutil import run_generator
 
-T = TypeVar('T')
-U = TypeVar('U')
-
-def run_generator(gen: Generator[T, None, U],
-                  p: bool = False) -> Tuple[Sequence[T], Union[U, str]]:
-    res = []
-    while True:
-        try:
-            val = next(gen)
-        except StopIteration as e:
-            return (tuple(res), e.value)
-        except BaseException as e:
-            return (tuple(res), str(e))
-        if p:
-            print(val)
-        res.append(val)
-
-print(run_generator(yield_try_finally(), True))
-print(run_generator(yield_with(0), True))
-print(run_generator(yield_with(1), True))
+print(run_generator(yield_try_finally(), p=True))
+print(run_generator(yield_with(0), p=True))
+print(run_generator(yield_with(1), p=True))
 [out]
 1
 2
@@ -3523,20 +3421,8 @@ def outer() -> Generator:
     return recursive(10)
 
 [file driver.py]
-from typing import Generator, Tuple, TypeVar, Sequence
 from native import normal, generator, triple, another_triple, outer
-
-T = TypeVar('T')
-U = TypeVar('U')
-
-def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], U]:
-    res = []
-    while True:
-        try:
-            val = next(gen)
-        except StopIteration as e:
-            return (tuple(res), e.value)
-        res.append(val)
+from testutil import run_generator
 
 assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
 assert run_generator(generator(1)) == ((1, 2, 3), None)
@@ -3680,27 +3566,8 @@ def use_from() -> Generator[int, int, int]:
     return (yield from basic())
 
 [file driver.py]
-from typing import Generator, Tuple, TypeVar, Sequence, Optional, List
 from native import basic, use_from
-
-T = TypeVar('T')
-U = TypeVar('U')
-V = TypeVar('V')
-
-def run_generator(gen: Generator[T, V, U],
-                  inputs: Optional[List[V]] = None) -> Tuple[Sequence[T], U]:
-    res = []
-    i = -1
-    while True:
-        try:
-            if i >= 0 and inputs:
-                val = gen.send(inputs[i])
-            else:
-                val = next(gen)
-        except StopIteration as e:
-            return (tuple(res), e.value)
-        res.append(val)
-        i += 1
+from testutil import run_generator
 
 assert run_generator(basic(), [5, 50]) == ((1, 6), 50)
 assert run_generator(use_from(), [5, 50]) == ((1, 6), 50)
@@ -3712,27 +3579,8 @@ def basic() -> Iterator[int]:
     yield from [1, 2, 3]
 
 [file driver.py]
-from typing import Generator, Tuple, TypeVar, Sequence, Optional, List
 from native import basic
-
-T = TypeVar('T')
-U = TypeVar('U')
-V = TypeVar('V')
-
-def run_generator(gen: Generator[T, V, U],
-                  inputs: Optional[List[V]] = None) -> Tuple[Sequence[T], U]:
-    res = []
-    i = -1
-    while True:
-        try:
-            if i >= 0 and inputs:
-                val = gen.send(inputs[i])
-            else:
-                val = next(gen)
-        except StopIteration as e:
-            return (tuple(res), e.value)
-        res.append(val)
-        i += 1
+from testutil import run_generator
 
 assert run_generator(basic()) == ((1, 2, 3), None)
 
@@ -3967,6 +3815,7 @@ def call_next_default_list(l: Iterable[int], val: int) -> int:
     return next((i*2 for i in l if i == val), -1)
 [file driver.py]
 from native import call_next_loud, call_next_default, call_next_default_list
+from testutil import assertRaises
 
 assert call_next_default([0, 1, 2], 0) == 0
 assert call_next_default([0, 1, 2], 1) == 2
@@ -3982,14 +3831,10 @@ assert call_next_default_list([], 0) == -1
 assert call_next_loud([0, 1, 2], 0) == 0
 assert call_next_loud([0, 1, 2], 1) == 1
 assert call_next_loud([0, 1, 2], 2) == 2
-try:
+with assertRaises(StopIteration):
     call_next_loud([42], 3)
-except StopIteration:
-    print("got here")
-try:
+with assertRaises(StopIteration):
     call_next_loud([], 3)
-except StopIteration:
-    print("got here")
 
 [out]
 0
@@ -3999,8 +3844,6 @@ except StopIteration:
 1
 2
 42
-got here
-got here
 
 [case testAssignModule]
 import a
@@ -4283,39 +4126,6 @@ def varargs4(a: int, b: int = 0,
              **kwargs: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
     return (a, b, *args), {'x': x, 'y': y, **kwargs}
 
-def varargs_tests() -> None:
-    assert varargs1() == ()
-    assert varargs1(1, 2, 3) == (1, 2, 3)
-    assert varargs2(1, 2, 3) == ((1, 2, 3), {})
-    assert varargs2(1, 2, 3, x=4) == ((1, 2, 3), {'x': 4})
-    assert varargs2(x=4) == ((), {'x': 4})
-    assert varargs3() == {}
-    assert varargs3(x=4) == {'x': 4}
-    assert varargs3(x=4, y=5) == {'x': 4, 'y': 5}
-
-    assert varargs4(-1, y=2) == ((-1, 0), {'x': 1, 'y': 2})
-    assert varargs4(-1, 2, y=2) == ((-1, 2), {'x': 1, 'y': 2})
-    assert varargs4(-1, 2, 3, y=2) == ((-1, 2, 3), {'x': 1, 'y': 2})
-    assert varargs4(-1, 2, 3, x=10, y=2) == ((-1, 2, 3), {'x': 10, 'y': 2})
-    assert varargs4(-1, x=10, y=2) == ((-1, 0), {'x': 10, 'y': 2})
-    assert varargs4(-1, y=2, z=20) == ((-1, 0), {'x': 1, 'y': 2, 'z': 20})
-    assert varargs4(-1, 2, y=2, z=20) == ((-1, 2), {'x': 1, 'y': 2, 'z': 20})
-    assert varargs4(-1, 2, 3, y=2, z=20) == ((-1, 2, 3), {'x': 1, 'y': 2, 'z': 20})
-    assert varargs4(-1, 2, 3, x=10, y=2, z=20) == ((-1, 2, 3), {'x': 10, 'y': 2, 'z': 20})
-    assert varargs4(-1, x=10, y=2, z=20) == ((-1, 0), {'x': 10, 'y': 2, 'z': 20})
-
-    x: A = B()
-    assert x.f(1) == (1,)
-    assert x.g(1) == ((1,), {})
-    # This one is really funny! When we make native calls we lose
-    # track of which arguments are positional or keyword, so the glue
-    # calls them all positional unless they are keyword only...
-    # It would be possible to fix this by dynamically tracking which
-    # arguments were passed by keyword (for example, by passing a bitmask
-    # to functions indicating this), but paying a speed, size, and complexity
-    # cost for something so deeply marginal seems like a bad choice.
-    # assert x.g(x=1) == ((), {'x': 1})
-
 class A:
     def f(self, x: int) -> Tuple[int, ...]:
         return (x,)
@@ -4328,45 +4138,22 @@ class B(A):
     def g(self, *args: int, **kwargs: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
         return args, kwargs
 
-[file testutil.py]
-# TODO: This should go into some general mypyc test support lib (along
-# with other things)
-from contextlib import contextmanager
-from typing import Iterator
+[file other.py]
+# This file is imported in both compiled and interpreted mode in order to
+# test both native calls and calls via the C API.
 
-@contextmanager
-def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
-    try:
-        yield
-    except Exception as e:
-        assert isinstance(e, typ), "{} is not a {}".format(e, typ.__name__)
-        assert msg in str(e), 'Message "{}" does not match "{}"'.format(e, msg)
-    else:
-        assert False, "Expected {} but got no exception".format(typ.__name__)
-
-[file driver.py]
 from native import (
     kwonly1, kwonly2, kwonly3, kwonly4,
-    varargs1, varargs2, varargs3, varargs4, varargs_tests,
+    varargs1, varargs2, varargs3, varargs4,
+    A, B
 )
-
-from testutil import assertRaises
 
 # kwonly arg tests
 assert kwonly1(10, y=20) == (10, 20)
 assert kwonly1(y=20) == (0, 20)
-with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
-    kwonly1()
-with assertRaises(TypeError, "takes at most 1 positional argument (2 given)"):
-    kwonly1(10, 20)
 
 assert kwonly2(x=10, y=20) == (10, 20)
 assert kwonly2(y=20) == (0, 20)
-
-with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
-    kwonly2()
-with assertRaises(TypeError, "takes no positional arguments"):
-    kwonly2(10, 20)
 
 assert kwonly3(10, y=20) == (10, 0, 1, 20)
 assert kwonly3(a=10, y=20) == (10, 0, 1, 20)
@@ -4380,20 +4167,8 @@ assert kwonly3(10, 30, x=40, y=20) == (10, 30, 40, 20)
 assert kwonly3(10, b=30, x=40, y=20) == (10, 30, 40, 20)
 assert kwonly3(a=10, b=30, x=40, y=20) == (10, 30, 40, 20)
 
-with assertRaises(TypeError, "missing required argument 'a'"):
-    kwonly3(b=30, x=40, y=20)
-with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
-    kwonly3(10)
-
 assert kwonly4(x=1, y=2) == (1, 2)
 assert kwonly4(y=2, x=1) == (1, 2)
-
-with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
-    kwonly4(x=1)
-with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
-    kwonly4(y=1)
-with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
-    kwonly4()
 
 # varargs tests
 assert varargs1() == ()
@@ -4404,15 +4179,6 @@ assert varargs2(x=4) == ((), {'x': 4})
 assert varargs3() == {}
 assert varargs3(x=4) == {'x': 4}
 assert varargs3(x=4, y=5) == {'x': 4, 'y': 5}
-
-with assertRaises(TypeError, "'x' is an invalid keyword argument for varargs1()"):
-    varargs1(x=10)
-with assertRaises(TypeError, "'x' is an invalid keyword argument for varargs1()"):
-    varargs1(1, x=10)
-with assertRaises(TypeError, "varargs3() takes no positional arguments"):
-    varargs3(10)
-with assertRaises(TypeError, "varargs3() takes no positional arguments"):
-    varargs3(10, x=10)
 
 assert varargs4(-1, y=2) == ((-1, 0), {'x': 1, 'y': 2})
 assert varargs4(-1, 2, y=2) == ((-1, 2), {'x': 1, 'y': 2})
@@ -4425,6 +4191,62 @@ assert varargs4(-1, 2, 3, y=2, z=20) == ((-1, 2, 3), {'x': 1, 'y': 2, 'z': 20})
 assert varargs4(-1, 2, 3, x=10, y=2, z=20) == ((-1, 2, 3), {'x': 10, 'y': 2, 'z': 20})
 assert varargs4(-1, x=10, y=2, z=20) == ((-1, 0), {'x': 10, 'y': 2, 'z': 20})
 
+x = B()  # type: A
+assert x.f(1) == (1,)
+assert x.g(1) == ((1,), {})
+# This one is really funny! When we make native calls we lose
+# track of which arguments are positional or keyword, so the glue
+# calls them all positional unless they are keyword only...
+# It would be possible to fix this by dynamically tracking which
+# arguments were passed by keyword (for example, by passing a bitmask
+# to functions indicating this), but paying a speed, size, and complexity
+# cost for something so deeply marginal seems like a bad choice.
+# assert x.g(x=1) == ((), {'x': 1})
+
+[file driver.py]
+from testutil import assertRaises
+from native import (
+    kwonly1, kwonly2, kwonly3, kwonly4,
+    varargs1, varargs2, varargs3, varargs4,
+)
+
+# Run the non-exceptional tests in both interpreted and compiled mode
+import other
+import other_interpreted
+
+
+# And the tests for errors at the interfaces in interpreted only
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly1()
+with assertRaises(TypeError, "takes at most 1 positional argument (2 given)"):
+    kwonly1(10, 20)
+
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly2()
+with assertRaises(TypeError, "takes no positional arguments"):
+    kwonly2(10, 20)
+
+with assertRaises(TypeError, "missing required argument 'a'"):
+    kwonly3(b=30, x=40, y=20)
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly3(10)
+
+with assertRaises(TypeError, "missing required keyword-only argument 'y'"):
+    kwonly4(x=1)
+with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
+    kwonly4(y=1)
+with assertRaises(TypeError, "missing required keyword-only argument 'x'"):
+    kwonly4()
+
+with assertRaises(TypeError, "'x' is an invalid keyword argument for varargs1()"):
+    varargs1(x=10)
+with assertRaises(TypeError, "'x' is an invalid keyword argument for varargs1()"):
+    varargs1(1, x=10)
+with assertRaises(TypeError, "varargs3() takes no positional arguments"):
+    varargs3(10)
+with assertRaises(TypeError, "varargs3() takes no positional arguments"):
+    varargs3(10, x=10)
+
 with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
     varargs4()
 with assertRaises(TypeError, "varargs4() missing required keyword-only argument 'y'"):
@@ -4435,8 +4257,6 @@ with assertRaises(TypeError, "varargs4() missing required keyword-only argument 
     varargs4(1, 2, 3)
 with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
     varargs4(y=20)
-
-varargs_tests()
 
 [case testIterTypeTrickiness]
 # Test inferring the type of a for loop body doesn't cause us grief
