@@ -38,7 +38,7 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
-from mypy.server.target import module_prefix, split_target
+from mypy.util import module_prefix, split_target
 from mypy.plugin import Plugin, FunctionContext, MethodContext
 from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type

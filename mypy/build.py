@@ -42,7 +42,9 @@ from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments
+from mypy.util import (
+    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
+)
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
@@ -875,7 +877,7 @@ def invert_deps(deps: Dict[str, Set[str]],
     fake module FAKE_ROOT_MODULE if none are.
     """
     # Lazy import to speed up startup
-    from mypy.server.target import module_prefix, trigger_to_target
+    from mypy.server.target import trigger_to_target
 
     # Prepopulate the map for all the modules that have been processed,
     # so that we always generate files for processed modules (even if

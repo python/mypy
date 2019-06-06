@@ -99,7 +99,9 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import get_prefix, correct_relative_import, unmangle, split_module_names
+from mypy.util import (
+    get_prefix, correct_relative_import, unmangle, split_module_names, module_prefix
+)
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -3754,20 +3756,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
-                # Only allow access to class attributes textually after
-                # the definition, so that it's possible to fall back to the
-                # outer scope. Example:
-                #
-                #     class X: ...
-                #
-                #     class C:
-                #         X = X  # Initializer refers to outer scope
-                #
-                # Nested classes are an exception, since we want to support
-                # arbitrary forward references in type annotations.
-                if (node.node is None
-                        or node.node.line < self.statement.line
-                        or isinstance(node.node, TypeInfo)):
+                if self.is_active_symbol_in_class_body(node.node):
                     return node
             else:
                 # Defined through self.x assignment
@@ -3799,6 +3788,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if implicit_name:
                 return implicit_node
         return None
+
+    def is_active_symbol_in_class_body(self, node: Optional[SymbolNode]) -> bool:
+        # Only allow access to class attributes textually after
+        # the definition, so that it's possible to fall back to the
+        # outer scope. Example:
+        #
+        #     class X: ...
+        #
+        #     class C:
+        #         X = X  # Initializer refers to outer scope
+        #
+        # Nested classes are an exception, since we want to support
+        # arbitrary forward references in type annotations.
+        return (node is None
+                or node.line < self.statement.line
+                or not self.is_defined_in_current_module(node)
+                or isinstance(node, TypeInfo))
+
+    def is_defined_in_current_module(self, node: SymbolNode) -> bool:
+        if node.fullname() is None:
+            return False
+        return module_prefix(self.modules, node.fullname()) == self.cur_mod_id
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:

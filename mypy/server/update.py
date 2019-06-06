@@ -140,8 +140,9 @@ from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.aststripnew import strip_target_new, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target
-from mypy.server.target import module_prefix, split_target, trigger_to_target
+from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
+from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
 
 MYPY = False
