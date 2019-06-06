@@ -168,10 +168,12 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
         worklist += list(reversed(core_modules)) * CORE_WARMUP
     final_iteration = False
     iteration = 0
+    analyzer = state.manager.new_semantic_analyzer
+    analyzer.deferral_debug_context.clear()
+
     while worklist:
         iteration += 1
         if iteration > MAX_ITERATIONS:
-            analyzer = state.manager.new_semantic_analyzer
             # Just pick some module inside the current SCC for error context.
             assert state.tree is not None
             with analyzer.file_context(state.tree, state.options):
@@ -243,6 +245,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
     # Start in the incomplete state (no missing names will be reported on first pass).
     # Note that we use module name, since functions don't create qualified names.
     deferred = [module]
+    analyzer.deferral_debug_context.clear()
     analyzer.incomplete_namespaces.add(module)
     iteration = 0
     while deferred:
