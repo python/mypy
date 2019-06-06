@@ -3790,17 +3790,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return None
 
     def is_active_symbol_in_class_body(self, node: Optional[SymbolNode]) -> bool:
-        # Only allow access to class attributes textually after
-        # the definition, so that it's possible to fall back to the
-        # outer scope. Example:
-        #
-        #     class X: ...
-        #
-        #     class C:
-        #         X = X  # Initializer refers to outer scope
-        #
-        # Nested classes are an exception, since we want to support
-        # arbitrary forward references in type annotations.
+        """Can a symbol defined in class body accessed at current statement?
+
+        Only allow access to class attributes textually after
+        the definition, so that it's possible to fall back to the
+        outer scope. Example:
+
+            class X: ...
+
+            class C:
+                X = X  # Initializer refers to outer scope
+
+        Nested classes are an exception, since we want to support
+        arbitrary forward references in type annotations.
+        """
         return (node is None
                 or node.line < self.statement.line
                 or not self.is_defined_in_current_module(node)
