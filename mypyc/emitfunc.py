@@ -234,7 +234,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         rtype = op.class_type
         cl = rtype.class_ir
         version = '_TRAIT' if cl.is_trait else ''
-        if cl.is_trait:
+        if cl.is_trait or cl.get_method(op.attr):
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,
                 version,

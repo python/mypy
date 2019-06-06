@@ -2911,6 +2911,161 @@ Represents a sequence of values. Updates itself by next, which is a new value.
 3
 3
 
+[case testPropertySetters]
+
+from mypy_extensions import trait
+
+class Foo():
+    def __init__(self) -> None:
+        self.attr = "unmodified"
+
+class A:
+    def __init__(self) -> None:
+        self._x = 0
+        self._foo = Foo()
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val
+
+    @property
+    def foo(self) -> Foo:
+        return self._foo
+
+    @foo.setter
+    def foo(self, val : Foo) -> None:
+        self._foo = val
+
+def test():
+    a = A()
+    assert a.x == 0
+    assert a._x == 0
+    a.x = 1
+    assert a.x == 1
+    assert a._x == 1
+    a._x = 0
+    assert a.x == 0
+    assert a._x == 0
+    b = B()
+    assert b.x == 11
+    assert b._x == 10
+    b.x = 11
+    assert b.x == 13
+    b._x = 11
+    assert b.x == 12
+    c = C()
+    assert c.x == 0
+    c.x = 1000
+    assert c.x == 1000
+    e = E()
+    assert e.x == 0
+    e.x = 1000
+    assert e.x == 1000
+    f = F()
+    assert f.x == 20
+    f.x = 30
+    assert f.x == 50
+
+# Overrides base property setters and getters
+class B(A):
+    def __init__(self) -> None:
+        self._x = 10
+
+    @property
+    def x(self) -> int:
+        return self._x + 1
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val + 1
+
+#Inerits base property setters and getters
+class C(A):
+    def __init__(self) -> None:
+        A.__init__(self)
+
+@trait
+class D():
+    def __init__(self) -> None:
+        self._x = 0
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val
+
+#Inherits trait property setters and getters
+class E(D):
+    def __init__(self) -> None:
+        D.__init__(self)
+
+#Overrides trait property setters and getters
+class F(D):
+    def __init__(self) -> None:
+        self._x = 10
+
+    @property
+    def x(self) -> int:
+        return self._x + 10
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val + 10
+    
+# # Property setter and getter are subtypes of base property setters and getters
+# # class G(A):
+# #   def __init__(self) -> None:
+# #       A.__init__(self)
+
+# #   @property
+# #   def y(self) -> int:
+# #       return self._y
+
+# #   @y.setter
+# #   def y(self, val : object) -> None:
+# #       self._y = val
+
+[file driver.py]
+from native import A, B, C, D, E, F, test
+test()
+a = A()
+assert a.x == 0
+assert a._x == 0
+a.x = 1
+assert a.x == 1
+assert a._x == 1
+a._x = 0
+assert a.x == 0
+assert a._x == 0
+b = B()
+assert b.x == 11
+assert b._x == 10
+b.x = 11
+assert b.x == 13
+b._x = 11
+assert b.x == 12
+c = C()
+assert c.x == 0
+c.x = 1000
+assert c.x == 1000
+e = E()
+assert e.x == 0
+e.x = 1000
+assert e.x == 1000
+f = F()
+assert f.x == 20
+f.x = 30
+assert f.x == 50
+
+[out]
+
 [case testDunders]
 from typing import Any
 class Item:

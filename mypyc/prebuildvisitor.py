@@ -1,7 +1,7 @@
 from typing import Dict, List, Set
 
 from mypy.nodes import (
-    Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var
+    Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr
 )
 from mypy.traverser import TraverserVisitor
 
@@ -23,7 +23,8 @@ class PreBuildVisitor(TraverserVisitor):
         self.symbols_to_funcs = {}  # type: Dict[SymbolNode, FuncItem]
         # Stack representing the function call stack.
         self.funcs = []  # type: List[FuncItem]
-
+        # The set of property setters
+        self.prop_setters = set()  # type: Set[FuncDef]
         self.encapsulating_funcs = set()  # type: Set[FuncItem]
         self.nested_funcs = set()  # type: Set[FuncItem]
         self.funcs_to_decorators = {}  # type: Dict[FuncDef, List[Expression]]
@@ -38,10 +39,13 @@ class PreBuildVisitor(TraverserVisitor):
         if dec.decorators:
             # Only add the function being decorated if there exist decorators in the decorator
             # list. Note that meaningful decorators (@property, @abstractmethod) are removed from
-            # this list by mypy, but functions decorated by those decorators do not need to be
-            # added to the set of decorated functions for the IRBuilder, because they are handled
-            # in a special way.
-            self.funcs_to_decorators[dec.func] = dec.decorators
+            # this list by mypy, but functions decorated by those decorators (in addition to
+            # property setters) do not need to be added to the set of decorated functions for
+            # the IRBuilder, because they are handled in a special way.
+            if isinstance(dec.decorators[0], MemberExpr) and dec.decorators[0].name == 'setter':
+                self.prop_setters.add(dec.func)
+            else:
+                self.funcs_to_decorators[dec.func] = dec.decorators
         super().visit_decorator(dec)
 
     def visit_func(self, func: FuncItem) -> None:

@@ -529,6 +529,8 @@ def generate_methods_table(cl: ClassIR,
                            emitter: Emitter) -> None:
     emitter.emit_line('static PyMethodDef {}[] = {{'.format(name))
     for fn in cl.methods.values():
+        if fn.decl.is_prop_setter or fn.decl.is_prop_getter:
+            continue
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
         flags = ['METH_VARARGS', 'METH_KEYWORDS']
@@ -566,11 +568,20 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
             emitter.emit_line('{}({} *self, PyObject *value, void *closure);'.format(
                 setter_name(cl, attr, emitter.names),
                 cl.struct_name(emitter.names)))
+
     for prop in cl.properties:
+        # Generate getter declaration
         emitter.emit_line('static PyObject *')
         emitter.emit_line('{}({} *self, void *closure);'.format(
             getter_name(cl, prop, emitter.names),
             cl.struct_name(emitter.names)))
+
+        # Generate property setter declaration if a setter exists
+        if cl.properties[prop][1]:
+            emitter.emit_line('static int')
+            emitter.emit_line('{}({} *self, PyObject *value, void *closure);'.format(
+                setter_name(cl, prop, emitter.names),
+                cl.struct_name(emitter.names)))
 
 
 def generate_getseters_table(cl: ClassIR,
@@ -586,7 +597,14 @@ def generate_getseters_table(cl: ClassIR,
     for prop in cl.properties:
         emitter.emit_line('{{"{}",'.format(prop))
         emitter.emit_line(' (getter){},'.format(getter_name(cl, prop, emitter.names)))
-        emitter.emit_line('NULL, NULL, NULL},')
+
+        setter = cl.properties[prop][1]
+        if setter:
+            emitter.emit_line(' (setter){},'.format(setter_name(cl, prop, emitter.names)))
+            emitter.emit_line('NULL, NULL},')
+        else:
+            emitter.emit_line('NULL, NULL, NULL},')
+
     emitter.emit_line('{NULL}  /* Sentinel */')
     emitter.emit_line('};')
 
@@ -599,10 +617,14 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
             generate_setter(cl, attr, rtype, emitter)
             if i < len(cl.attributes) - 1:
                 emitter.emit_line('')
-    for prop, func_ir in cl.properties.items():
-        rtype = func_ir.sig.ret_type
+    for prop, (getter, setter) in cl.properties.items():
+        rtype = getter.sig.ret_type
         emitter.emit_line('')
-        generate_readonly_getter(cl, prop, rtype, func_ir, emitter)
+        generate_readonly_getter(cl, prop, rtype, getter, emitter)
+        if setter:
+            arg_type = setter.sig.args[1].type
+            emitter.emit_line('')
+            generate_property_setter(cl, prop, arg_type, setter, emitter)
 
 
 def generate_getter(cl: ClassIR,
@@ -674,6 +696,31 @@ def generate_readonly_getter(cl: ClassIR,
     else:
         emitter.emit_line('return {}{}((PyObject *) self);'.format(NATIVE_PREFIX,
                                                                    func_ir.cname(emitter.names)))
+    emitter.emit_line('}')
+
+
+def generate_property_setter(cl: ClassIR,
+                             attr: str,
+                             arg_type: RType,
+                             func_ir: FuncIR,
+                             emitter: Emitter) -> None:
+
+    emitter.emit_line('static int')
+    emitter.emit_line('{}({} *self, PyObject *value, void *closure)'.format(
+        setter_name(cl, attr, emitter.names),
+        cl.struct_name(emitter.names)))
+    emitter.emit_line('{')
+    if arg_type.is_unboxed:
+        emitter.emit_unbox('value', 'tmp', arg_type, custom_failure='return -1;',
+                           declare_dest=True)
+        emitter.emit_line('{}{}((PyObject *) self, tmp);'.format(
+                          NATIVE_PREFIX,
+                          func_ir.cname(emitter.names)))
+    else:
+        emitter.emit_line('{}{}((PyObject *) self, value);'.format(
+                          NATIVE_PREFIX,
+                          func_ir.cname(emitter.names)))
+    emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
 

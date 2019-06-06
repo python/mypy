@@ -54,7 +54,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.common import (
     ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, TEMP_ATTR_NAME, LAMBDA_NAME,
     MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME, SELF_NAME, decorator_helper_name,
-    FAST_ISINSTANCE_MAX_SUBCLASSES
+    FAST_ISINSTANCE_MAX_SUBCLASSES, PROPSET_PREFIX
 )
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
@@ -284,7 +284,7 @@ def compute_vtable(cls: ClassIR) -> None:
     all_traits = [t for t in cls.mro if t.is_trait]
 
     for t in [cls] + cls.traits:
-        for fn in itertools.chain(t.properties.values(), t.methods.values()):
+        for fn in itertools.chain(t.methods.values()):
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name):
                 cls.vtable[fn.name] = len(entries)
@@ -435,9 +435,31 @@ def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Ma
         decl = prepare_func_def(module_name, cdef.name, node.func, mapper)
         if not node.decorators:
             ir.method_decls[node.name()] = decl
+        elif isinstance(node.decorators[0], MemberExpr) and node.decorators[0].name == 'setter':
+            # Make property setter name different than getter name so there are no
+            # name clashes when generating C code, and property lookup at the IR level
+            # works correctly.
+            decl.name = PROPSET_PREFIX + decl.name
+            decl.is_prop_setter = True
+            ir.method_decls[PROPSET_PREFIX + node.name()] = decl
+
         if node.func.is_property:
             assert node.func.type
+            decl.is_prop_getter = True
             ir.property_types[node.name()] = decl.sig.ret_type
+
+
+def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
+    # Checks to ensure supported property decorator semantics
+    if len(prop.items) == 2:
+        getter = prop.items[0]
+        setter = prop.items[1]
+        if isinstance(getter, Decorator) and isinstance(setter, Decorator):
+            if getter.func.is_property and len(setter.decorators) == 1:
+                if isinstance(setter.decorators[0], MemberExpr):
+                    if setter.decorators[0].name == "setter":
+                        return True
+    return False
 
 
 def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
@@ -460,8 +482,18 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
         elif isinstance(node.node, OverloadedFuncDef):
-            assert node.node.impl
-            prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
+            # Handle case for property with both a getter and a setter
+            if node.node.is_property:
+                if is_valid_multipart_property_def(node.node):
+                    for item in node.node.items:
+                        prepare_method_def(ir, module_name, cdef, mapper, item)
+                else:
+                    errors.error("Unsupported property decorator semantics", path, cdef.line)
+
+            # Handle case for regular function overload
+            else:
+                assert node.node.impl
+                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -823,6 +855,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # These variables are populated from the first-pass PreBuildVisitor.
         self.free_variables = pbv.free_variables
+        self.prop_setters = pbv.prop_setters
         self.encapsulating_fitems = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs
         self.fdefs_to_decorators = pbv.funcs_to_decorators
@@ -901,7 +934,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                               [typ, self.load_static_unicode(name), decorated_func], fdef.line)
 
         if fdef.is_property:
-            class_ir.properties[name] = func_ir
+            # If there is a property setter, it will be processed after the getter,
+            # We populate the optional setter field with none for now.
+            assert name not in class_ir.properties
+            class_ir.properties[name] = (func_ir, None)
+
+        elif fdef in self.prop_setters:
+            # The respective property getter must have been processed already
+            assert name in class_ir.properties
+            getter_ir, _ = class_ir.properties[name]
+            class_ir.properties[name] = (getter_ir, func_ir)
+
+        if func_ir.decl.is_prop_setter:
+            class_ir.methods[PROPSET_PREFIX + name] = func_ir
         else:
             class_ir.methods[name] = func_ir
 
@@ -911,12 +956,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if (name in cls.method_decls and name != '__init__'
                     and not is_same_method_signature(class_ir.method_decls[name].sig,
                                                      cls.method_decls[name].sig)):
+
+                # TODO: Support contravariant subtyping in the input argument for
+                # property setters. Need to make a special glue method for handling this,
+                # similar to gen_glue_property.
+
                 if fdef.is_property:
                     f = self.gen_glue_property(cls.method_decls[name].sig, func_ir, class_ir,
                                                cls, fdef.line)
                 else:
                     f = self.gen_glue_method(cls.method_decls[name].sig, func_ir, class_ir,
                                              cls, fdef.line)
+
                 class_ir.glue_methods[(cls, name)] = f
                 self.functions.append(f)
 
@@ -1001,7 +1052,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.allocate_class(cdef)
 
         for stmt in cdef.defs.body:
-            if isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
+            if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
+                for item in stmt.items:
+                    with self.catch_errors(stmt.line):
+                        self.visit_method(cdef, get_func_def(item))
+            elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
                 with self.catch_errors(stmt.line):
                     self.visit_method(cdef, get_func_def(stmt))
             elif isinstance(stmt, PassStmt):
@@ -1455,6 +1510,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.functions.append(func_ir)
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
+        # Handle regular overload case
         assert o.impl
         self.accept(o.impl)
 
