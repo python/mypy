@@ -74,8 +74,7 @@ from mypy.nodes import (
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
-    EnumCallExpr, RUNTIME_PROTOCOL_DECOS,
-    FakeExpression,
+    EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -213,7 +212,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # not be found in phase 1, for example due to * imports.
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
-    statement = None  # type: Node    # Statement/definition being analyzed
+    statement = None  # type: Optional[Statement]  # Statement/definition being analyzed
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
@@ -3767,6 +3766,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
+        assert self.statement  # we are at class scope
         return (node is None
                 or node.line < self.statement.line
                 or not self.is_defined_in_current_module(node.fullname())
@@ -4234,6 +4234,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
+            assert self.statement
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
                                           becomes_typeinfo=becomes_typeinfo)
             self.add_symbol(name, placeholder, context=dummy_context())
