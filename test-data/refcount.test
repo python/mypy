@@ -740,26 +740,24 @@ def g(x):
     r1 :: object
     r2 :: str
     r3 :: tuple
-    r4 :: dict
-    r5 :: object
-    r6 :: bool
-    r7 :: object
-    r8 :: int
+    r4 :: object
+    r5 :: dict
+    r6 :: object
+    r7 :: int
 L0:
     r0 = 2
     r1 = int
     r2 = unicode_1 :: static  ('base')
     r3 = (x) :: tuple
-    r4 = {}
-    r5 = box(short_int, r0)
-    r6 = r4.__setitem__(r2, r5) :: dict
-    dec_ref r5
-    r7 = py_call_with_kwargs(r1, r3, r4)
-    dec_ref r3
+    r4 = box(short_int, r0)
+    r5 = {r2: r4}
     dec_ref r4
-    r8 = unbox(int, r7)
-    dec_ref r7
-    return r8
+    r6 = py_call_with_kwargs(r1, r3, r5)
+    dec_ref r3
+    dec_ref r5
+    r7 = unbox(int, r6)
+    dec_ref r6
+    return r7
 
 [case testListAppend]
 from typing import List

@@ -58,23 +58,19 @@ def f(x):
     x :: object
     r0, r1 :: short_int
     r2 :: str
-    r3 :: dict
-    r4, r5 :: object
-    r6, r7 :: bool
-    d :: dict
-    r8 :: None
+    r3, r4 :: object
+    r5, d :: dict
+    r6 :: None
 L0:
     r0 = 1
     r1 = 2
     r2 = unicode_1 :: static
-    r3 = {}
-    r4 = box(short_int, r0)
-    r5 = box(short_int, r1)
-    r6 = r3.__setitem__(r4, r5) :: dict
-    r7 = r3.__setitem__(r2, x) :: dict
-    d = r3
-    r8 = None
-    return r8
+    r3 = box(short_int, r0)
+    r4 = box(short_int, r1)
+    r5 = {r3: r4, r2: x}
+    d = r5
+    r6 = None
+    return r6
 
 [case testInDict]
 from typing import Dict
@@ -192,20 +188,19 @@ def f(x, y):
     r0 :: short_int
     r1 :: str
     r2 :: short_int
-    r3 :: dict
-    r4 :: object
-    r5, r6 :: bool
-    r7 :: object
-    r8 :: bool
+    r3 :: object
+    r4 :: dict
+    r5 :: bool
+    r6 :: object
+    r7 :: bool
 L0:
     r0 = 2
     r1 = unicode_3 :: static  ('z')
     r2 = 3
-    r3 = {}
-    r4 = box(short_int, r0)
-    r5 = r3.__setitem__(x, r4) :: dict
-    r6 = r3.update(y) (display) :: dict
-    r7 = box(short_int, r2)
-    r8 = r3.__setitem__(r1, r7) :: dict
-    return r3
+    r3 = box(short_int, r0)
+    r4 = {x: r3}
+    r5 = r4.update(y) (display) :: dict
+    r6 = box(short_int, r2)
+    r7 = r4.__setitem__(r1, r6) :: dict
+    return r4
 

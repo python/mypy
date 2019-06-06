@@ -648,30 +648,24 @@ def delDict():
     r1 :: short_int
     r2 :: str
     r3 :: short_int
-    r4 :: dict
-    r5 :: object
-    r6 :: bool
-    r7 :: object
+    r4, r5 :: object
+    r6, d :: dict
+    r7 :: str
     r8 :: bool
-    d :: dict
-    r9 :: str
-    r10 :: bool
-    r11 :: None
+    r9 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
     r1 = 1
     r2 = unicode_2 :: static  ('two')
     r3 = 2
-    r4 = {}
-    r5 = box(short_int, r1)
-    r6 = r4.__setitem__(r0, r5) :: dict
-    r7 = box(short_int, r3)
-    r8 = r4.__setitem__(r2, r7) :: dict
-    d = r4
-    r9 = unicode_1 :: static  ('one')
-    r10 = d.__delitem__(r9) :: object
-    r11 = None
-    return r11
+    r4 = box(short_int, r1)
+    r5 = box(short_int, r3)
+    r6 = {r0: r4, r2: r5}
+    d = r6
+    r7 = unicode_1 :: static  ('one')
+    r8 = d.__delitem__(r7) :: object
+    r9 = None
+    return r9
 def delListMultiple():
     r0, r1, r2, r3, r4, r5, r6 :: short_int
     r7, r8, r9, r10, r11, r12, r13 :: object
@@ -721,19 +715,11 @@ def delDictMultiple():
     r5 :: short_int
     r6 :: str
     r7 :: short_int
-    r8 :: dict
-    r9 :: object
-    r10 :: bool
-    r11 :: object
-    r12 :: bool
-    r13 :: object
-    r14 :: bool
-    r15 :: object
-    r16 :: bool
-    d :: dict
-    r17, r18 :: str
-    r19, r20 :: bool
-    r21 :: None
+    r8, r9, r10, r11 :: object
+    r12, d :: dict
+    r13, r14 :: str
+    r15, r16 :: bool
+    r17 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
     r1 = 1
@@ -743,22 +729,18 @@ L0:
     r5 = 3
     r6 = unicode_4 :: static  ('four')
     r7 = 4
-    r8 = {}
-    r9 = box(short_int, r1)
-    r10 = r8.__setitem__(r0, r9) :: dict
-    r11 = box(short_int, r3)
-    r12 = r8.__setitem__(r2, r11) :: dict
-    r13 = box(short_int, r5)
-    r14 = r8.__setitem__(r4, r13) :: dict
-    r15 = box(short_int, r7)
-    r16 = r8.__setitem__(r6, r15) :: dict
-    d = r8
-    r17 = unicode_1 :: static  ('one')
-    r18 = unicode_4 :: static  ('four')
-    r19 = d.__delitem__(r17) :: object
-    r20 = d.__delitem__(r18) :: object
-    r21 = None
-    return r21
+    r8 = box(short_int, r1)
+    r9 = box(short_int, r3)
+    r10 = box(short_int, r5)
+    r11 = box(short_int, r7)
+    r12 = {r0: r8, r2: r9, r4: r10, r6: r11}
+    d = r12
+    r13 = unicode_1 :: static  ('one')
+    r14 = unicode_4 :: static  ('four')
+    r15 = d.__delitem__(r13) :: object
+    r16 = d.__delitem__(r14) :: object
+    r17 = None
+    return r17
 def Dummy.__init__(self, x, y):
     self :: Dummy
     x, y :: int

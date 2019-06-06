@@ -802,6 +802,30 @@ static PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     }
 }
 
+static PyObject *CPyDict_Build(Py_ssize_t size, ...) {
+    Py_ssize_t i;
+
+    PyObject *res = _PyDict_NewPresized(size);
+    if (res == NULL) {
+        return NULL;
+    }
+
+    va_list args;
+    va_start(args, size);
+
+    for (i = 0; i < size; i++) {
+        PyObject *key = va_arg(args, PyObject *);
+        PyObject *value = va_arg(args, PyObject *);
+        if (PyDict_SetItem(res, key, value)) {
+            Py_DECREF(res);
+            return NULL;
+        }
+    }
+
+    va_end(args);
+    return res;
+}
+
 static PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
     // We are dodgily assuming that get on a subclass doesn't have
     // different behavior.

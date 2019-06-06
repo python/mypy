@@ -79,13 +79,23 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
 
-new_dict_op = func_op(
+
+def emit_new_dict(emitter: EmitterInterface, args: List[str], dest: str) -> None:
+    if not args:
+        emitter.emit_line('%s = PyDict_New();' % (dest,))
+        return
+
+    emitter.emit_line('%s = CPyDict_Build(%s, %s);' % (dest, len(args) // 2, ', '.join(args)))
+
+
+new_dict_op = custom_op(
     name='builtins.dict',
-    arg_types=[],
+    arg_types=[object_rprimitive],
+    is_var_arg=True,
     result_type=dict_rprimitive,
+    format_str='{dest} = {{{colon_args}}}',
     error_kind=ERR_MAGIC,
-    format_str='{dest} = {{}}',
-    emit=call_emit('PyDict_New'))
+    emit=emit_new_dict)
 
 func_op(
     name='builtins.dict',

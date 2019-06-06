@@ -4042,24 +4042,36 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.box(self.accept(expr))
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        dict_reg = self.add(PrimitiveOp([], new_dict_op, line))
+        result = None
+        initial_items = []  # type: List[Value]
         for key, value in key_value_pairs:
             if key is not None:
                 # key:value
+                if result is None:
+                    initial_items.extend((key, value))
+                    continue
+
                 self.translate_special_method_call(
-                    dict_reg,
+                    result,
                     '__setitem__',
                     [key, value],
                     result_type=None,
                     line=line)
             else:
                 # **value
+                if result is None:
+                    result = self.primitive_op(new_dict_op, initial_items, line)
+
                 self.primitive_op(
                     dict_update_in_display_op,
-                    [dict_reg, value],
+                    [result, value],
                     line=line
                 )
-        return dict_reg
+
+        if result is None:
+            result = self.primitive_op(new_dict_op, initial_items, line)
+
+        return result
 
     def none(self) -> Value:
         return self.add(PrimitiveOp([], none_op, line=-1))
