@@ -2352,6 +2352,85 @@ def f(x: List[Tuple[int, int]]) -> int:
 from native import f
 assert f([(5, 6)]) == 11
 
+[case testUnpack]
+from typing import List
+
+a, *b = [1, 2, 3, 4, 5]
+
+*c, d = [1, 2, 3, 4, 5]
+
+e, *f = [1,2]
+
+j, *k, l = [1, 2, 3]
+
+m, *n, o = [1, 2, 3, 4, 5, 6]
+
+p, q, r, *s, t = [1,2,3,4,5,6,7,8,9,10]
+
+tup = (1,2,3)
+y, *z = tup
+
+def unpack1(l : List[int]) -> None:
+    *v1, v2, v3 = l
+
+def unpack2(l : List[int]) -> None:
+    v1, *v2, v3 = l
+
+def unpack3(l : List[int]) -> None:
+    v1, v2, *v3 = l
+
+[file testutil.py]
+# TODO: This should go into some general mypyc test support lib (along
+# with other things)
+from contextlib import contextmanager
+from typing import Iterator
+
+@contextmanager
+def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
+    try:
+        yield
+    except Exception as e:
+        assert isinstance(e, typ), "{} is not a {}".format(e, typ.__name__)
+        assert msg in str(e), 'Message "{}" does not match "{}"'.format(e, msg)
+    else:
+        assert False, "Expected {} but got no exception".format(typ.__name__)
+
+[file driver.py]
+from native import a, b, c, d, e, f, j, k, l, m, n, o, p, q, r, s, t, y, z
+from native import unpack1, unpack2, unpack3
+from testutil import assertRaises
+
+assert a == 1
+assert b == [2,3,4,5]
+assert c == [1,2,3,4]
+assert d == 5
+assert e == 1
+assert f == [2]
+assert j == 1
+assert k == [2]
+assert l == 3
+assert m == 1
+assert n == [2,3,4,5]
+assert o == 6
+assert p == 1
+assert q == 2
+assert r == 3
+assert s == [4,5,6,7,8,9]
+assert t == 10
+assert y == 1
+assert z == [2,3]
+
+with assertRaises(ValueError, "not enough values to unpack"):
+    unpack1([1])
+
+with assertRaises(ValueError, "not enough values to unpack"):
+    unpack2([1])
+
+with assertRaises(ValueError, "not enough values to unpack"):
+    unpack3([1])
+
+[out]
+
 [case testModuleTopLevel]
 x = 1
 print(x)

@@ -170,5 +170,3 @@ d1 = {1: 2}
 
 async def aio(x: Any) -> Any:  # E: async functions are unimplemented
     await x  # E: await is unimplemented
-
-a, *b, c = [1, 2, 3, 4]  # E: Unpacking with * is unimplemented

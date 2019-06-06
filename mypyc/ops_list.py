@@ -19,7 +19,7 @@ name_ref_op('builtins.list',
             emit=simple_emit('{dest} = (PyObject *)&PyList_Type;'),
             is_borrowed=True)
 
-func_op(
+to_list = func_op(
     name='builtins.list',
     arg_types=[object_rprimitive],
     result_type=list_rprimitive,
@@ -96,14 +96,14 @@ list_extend_op = method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = _PyList_Extend((PyListObject *) {args[0]}, {args[1]});'))
 
-method_op(
+list_pop_last = method_op(
     name='pop',
     arg_types=[list_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyList_PopLast'))
 
-method_op(
+list_pop = method_op(
     name='pop',
     arg_types=[list_rprimitive, int_rprimitive],
     result_type=object_rprimitive,

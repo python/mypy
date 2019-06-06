@@ -75,7 +75,7 @@ from mypyc.ops import (
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_int import unsafe_short_add
 from mypyc.ops_list import (
-    list_append_op, list_extend_op, list_len_op, new_list_op,
+    list_append_op, list_extend_op, list_len_op, new_list_op, to_list, list_pop_last
 )
 from mypyc.ops_tuple import list_tuple_op, new_tuple_op
 from mypyc.ops_dict import (
@@ -1571,7 +1571,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # This is actually a variable annotation without initializer. Don't generate
             # an assignment but we need to call get_assignment_target since it adds a
             # name binding as a side effect.
-            self.get_assignment_target(lvalue)
+            self.get_assignment_target(lvalue, stmt.line)
             return
 
         line = stmt.rvalue.line
@@ -1595,7 +1595,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # but when target doesn't support that we need to manually assign
         self.assign(target, res, res.line)
 
-    def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:
+    def get_assignment_target(self, lvalue: Lvalue,
+                              line: Optional[int] = None) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # If we are visiting a decorator, then the SymbolNode we really want to be looking at
             # is the function that is decorated, not the entire Decorator node itself.
@@ -1642,12 +1643,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
-            lvalues = [self.get_assignment_target(item)
-                       for item in lvalue.items]
-            return AssignmentTargetTuple(lvalues)
+            star_idx = None
+            lvalues = []
+            for idx, item in enumerate(lvalue.items):
+                targ = self.get_assignment_target(item)
+                lvalues.append(targ)
+                if isinstance(item, StarExpr):
+                    if star_idx is not None:
+                        self.error("Two starred expressions in assignment", line)
+                    star_idx = idx
+
+            return AssignmentTargetTuple(lvalues, star_idx)
+
         elif isinstance(lvalue, StarExpr):
-            self.error("Unpacking with * is unimplemented", lvalue.line)
-            # Well, we have to return *something*
             return self.get_assignment_target(lvalue.expr)
 
         assert False, 'Unsupported lvalue: %r' % lvalue
@@ -1691,7 +1699,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 target.base, '__setitem__', [target.index, rvalue_reg], None, line)
             assert target_reg2 is not None, target.base.type
         elif isinstance(target, AssignmentTargetTuple):
-            if isinstance(rvalue_reg.type, RTuple):
+            if isinstance(rvalue_reg.type, RTuple) and target.star_idx is None:
                 rtypes = rvalue_reg.type.types
                 assert len(rtypes) == len(target.items)
                 for i in range(len(rtypes)):
@@ -1702,14 +1710,34 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             assert False, 'Unsupported assignment target'
 
+    def process_iterator_tuple_assignment_helper(self,
+                                                 litem: AssignmentTarget,
+                                                 ritem: Value, line: int) -> None:
+        error_block, ok_block = BasicBlock(), BasicBlock()
+        self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
+
+        self.activate_block(error_block)
+        self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
+                                    'not enough values to unpack', line))
+        self.add(Unreachable())
+
+        self.activate_block(ok_block)
+        self.assign(litem, ritem, line)
+
     def process_iterator_tuple_assignment(self,
                                           target: AssignmentTargetTuple,
                                           rvalue_reg: Value,
                                           line: int) -> None:
+
         iterator = self.primitive_op(iter_op, [rvalue_reg], line)
-        for litem in target.items:
-            error_block, ok_block = BasicBlock(), BasicBlock()
+
+        # This may be the whole lvalue list if there is no starred value
+        split_idx = target.star_idx if target.star_idx is not None else len(target.items)
+
+        # Assign values before the first starred value
+        for litem in target.items[:split_idx]:
             ritem = self.primitive_op(next_op, [iterator], line)
+            error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
 
             self.activate_block(error_block)
@@ -1718,17 +1746,47 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Unreachable())
 
             self.activate_block(ok_block)
+
             self.assign(litem, ritem, line)
-        extra = self.primitive_op(next_op, [iterator], line)
-        error_block, ok_block = BasicBlock(), BasicBlock()
-        self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
 
-        self.activate_block(error_block)
-        self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
-                                    'too many values to unpack', line))
-        self.add(Unreachable())
+        # Assign the starred value and all values after it
+        if target.star_idx is not None:
+            post_star_vals = target.items[split_idx + 1:]
+            iter_list = self.primitive_op(to_list, [iterator], line)
+            iter_list_len = self.primitive_op(list_len_op, [iter_list], line)
+            post_star_len = self.add(LoadInt(len(post_star_vals)))
+            condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 
-        self.activate_block(ok_block)
+            error_block, ok_block = BasicBlock(), BasicBlock()
+            self.add(Branch(condition, ok_block, error_block, Branch.BOOL_EXPR))
+
+            self.activate_block(error_block)
+            self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
+                                        'not enough values to unpack', line))
+            self.add(Unreachable())
+
+            self.activate_block(ok_block)
+
+            for litem in reversed(post_star_vals):
+                ritem = self.primitive_op(list_pop_last, [iter_list], line)
+                self.assign(litem, ritem, line)
+
+            # Assign the starred value
+            self.assign(target.items[target.star_idx], iter_list, line)
+
+        # There is no starred value, so check if there are extra values in rhs that
+        # have not been assigned.
+        else:
+            extra = self.primitive_op(next_op, [iterator], line)
+            error_block, ok_block = BasicBlock(), BasicBlock()
+            self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
+
+            self.activate_block(error_block)
+            self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
+                                        'too many values to unpack', line))
+            self.add(Unreachable())
+
+            self.activate_block(ok_block)
 
     def visit_if_stmt(self, stmt: IfStmt) -> None:
         if_body, next = BasicBlock(), BasicBlock()
