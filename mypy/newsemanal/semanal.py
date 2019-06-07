@@ -100,7 +100,7 @@ from mypy.plugin import (
     DynamicClassDefContext
 )
 from mypy.util import (
-    get_prefix, correct_relative_import, unmangle, split_module_names, module_prefix
+    get_prefix, correct_relative_import, unmangle, module_prefix
 )
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import (
@@ -3804,15 +3804,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         Nested classes are an exception, since we want to support
         arbitrary forward references in type annotations.
         """
+        # TODO: Forward reference to name imported in class body is not
+        #       caught.
         return (node is None
                 or node.line < self.statement.line
-                or not self.is_defined_in_current_module(node)
+                or not self.is_defined_in_current_module(node.fullname())
                 or isinstance(node, TypeInfo))
 
-    def is_defined_in_current_module(self, node: SymbolNode) -> bool:
-        if node.fullname() is None:
+    def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
+        if fullname is None:
             return False
-        return module_prefix(self.modules, node.fullname()) == self.cur_mod_id
+        return module_prefix(self.modules, fullname) == self.cur_mod_id
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
@@ -4471,7 +4473,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def is_local_name(self, name: str) -> bool:
         """Does name look like reference to a definition in the current module?"""
-        return self.cur_mod_id in split_module_names(name) or '.' not in name
+        return self.is_defined_in_current_module(name) or '.' not in name
 
     def fail(self,
              msg: str,
