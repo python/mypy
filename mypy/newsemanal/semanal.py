@@ -2302,6 +2302,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Return True if it is a type alias (even if the target is not ready),
         or False otherwise.
+
         Note: the resulting types for subscripted (including generic) aliases
         are also stored in rvalue.analyzed.
         """
@@ -2320,11 +2321,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         #     B = int
         #     B = float  # Error!
         # Don't create an alias in these cases:
-        if existing and (isinstance(existing.node, Var) or  # existing variable
-                isinstance(existing.node, TypeAlias) and not s.is_alias_def or  # existing alias
-                (isinstance(existing.node, PlaceholderNode) and
-                # TODO: find a more robust way to track the order of definitions.
-                 existing.node.node.line < s.line)):  # or previous incomplete definition
+        if (existing
+                and (isinstance(existing.node, Var)  # existing variable
+                     or (isinstance(existing.node, TypeAlias)
+                         and not s.is_alias_def)  # existing alias
+                     or (isinstance(existing.node, PlaceholderNode)
+                         and existing.node.node.line < s.line))):  # previous incomplete definition
+            # TODO: find a more robust way to track the order of definitions.
             # Note: if is_alias_def=True, this is just a node from previous iteration.
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail('Cannot assign multiple types to name "{}"'
