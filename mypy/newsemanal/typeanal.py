@@ -178,9 +178,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.api.record_incomplete_ref()
                     return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
                 else:
-                    # Reference to an unknown placeholder node.
-                    self.api.record_incomplete_ref()
-                    return AnyType(TypeOfAny.special_form)
+                    if self.api.final_iteration:
+                        # TODO: Move error message generation to messages.py. We'd first
+                        #       need access to MessageBuilder here. Also move the similar
+                        #       message generation logic in semanal.py.
+                        self.api.fail(
+                            'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
+                            t)
+                        return AnyType(TypeOfAny.from_error)
+                    else:
+                        # Reference to an unknown placeholder node.
+                        self.api.record_incomplete_ref()
+                        return AnyType(TypeOfAny.special_form)
             if node is None:
                 self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType(TypeOfAny.special_form)

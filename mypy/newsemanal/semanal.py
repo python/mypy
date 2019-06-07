@@ -2395,7 +2395,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if existing:
             # Did alias get updated?
             if (isinstance(existing.node, PlaceholderNode) or
-                    isinstance(existing.node, TypeAlias) and existing.node.target != res):
+                    (isinstance(existing.node, TypeAlias) and existing.node.target != res)):
+                if self.final_iteration:
+                    # Error will be reported elsewhere, but we can't make progress during
+                    # final iteration.
+                    return True
                 self.progress = True
                 # We need to defer so that this change can get propagated to base classes.
                 self.defer()
