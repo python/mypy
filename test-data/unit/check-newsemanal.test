@@ -2407,3 +2407,42 @@ class C:
     def g(self) -> None: pass
 
 reveal_type(C.X)  # E: Revealed type is 'Any'
+
+[case testNewAnalyzerImportedNameUsedInClassBody]
+import m
+
+[file m.py]
+class C:
+    from mm import f
+    @dec(f)
+    def m(self): pass
+
+def dec(f): pass
+[file mm.py]
+# 1 padding to increase line number of 'f'
+# 2 padding
+# 3 padding
+# 4 padding
+# 5 padding
+# 6 padding
+def f(): pass
+
+
+[case testNewAnalyzerImportedNameUsedInClassBody2]
+import m
+
+[file m/__init__.py]
+class C:
+    from m.m import f
+    @dec(f)
+    def m(self): pass
+
+def dec(f): pass
+[file m/m.py]
+# 1 padding to increase line number of 'f'
+# 2 padding
+# 3 padding
+# 4 padding
+# 5 padding
+# 6 padding
+def f(): pass

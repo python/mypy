@@ -4,7 +4,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable
 
 MYPY = False
 if MYPY:
@@ -31,6 +31,25 @@ def split_module_names(mod_name: str) -> List[str]:
         mod_name = mod_name.rsplit('.', 1)[0]
         out.append(mod_name)
     return out
+
+
+def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
+    result = split_target(modules, target)
+    if result is None:
+        return None
+    return result[0]
+
+
+def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
+    remaining = []  # type: List[str]
+    while True:
+        if target in modules:
+            return target, '.'.join(remaining)
+        components = target.rsplit('.', 1)
+        if len(components) == 1:
+            return None
+        target = components[0]
+        remaining.insert(0, components[1])
 
 
 def short_type(obj: object) -> str:
