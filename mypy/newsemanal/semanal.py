@@ -2352,6 +2352,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not self.can_be_type_alias(rvalue):
             return False
 
+        if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
+            # Cannot redefine existing node as type alias.
+            return False
+
         res = None  # type: Optional[Type]
         if self.is_none_alias(rvalue):
             res = NoneType()
@@ -2393,25 +2397,28 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
                                alias_tvars=alias_tvars, no_args=no_args)
         if existing:
-            # Did alias get updated?
-            if (isinstance(existing.node, PlaceholderNode) or
-                    (isinstance(existing.node, TypeAlias) and existing.node.target != res)):
-                if self.final_iteration:
-                    # Error will be reported elsewhere, but we can't make progress during
-                    # final iteration.
-                    return True
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer()
+            # An alias gets updated.
+            if self.final_iteration:
+                # Error will be reported elsewhere, but we can't make progress during
+                # final iteration.
+                return True
+            updated = False
             if isinstance(existing.node, TypeAlias):
-                # Copy expansion to the existing alias, this matches how we update base classes
-                # for a TypeInfo _in place_ if there are nested placeholders.
-                existing.node.target = res
-                existing.node.alias_tvars = alias_tvars
-                existing.node.no_args = no_args
+                if existing.node.target != res:
+                    # Copy expansion to the existing alias, this matches how we update base classes
+                    # for a TypeInfo _in place_ if there are nested placeholders.
+                    existing.node.target = res
+                    existing.node.alias_tvars = alias_tvars
+                    existing.node.no_args = no_args
+                    updated = True
             else:
                 # Otherwise just replace existing placeholder with type alias.
                 existing.node = alias_node
+                updated = True
+            if updated:
+                self.progress = True
+                # We need to defer so that this change can get propagated to base classes.
+                self.defer()
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
