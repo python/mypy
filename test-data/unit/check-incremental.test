@@ -2481,6 +2481,7 @@ C()[0]
 [out]
 
 [case testSerializeRecursiveAliases1]
+# flags: --no-new-semantic-analyzer
 from typing import Type, Callable, Union
 
 A = Union[A, int]  # type: ignore
@@ -2489,6 +2490,7 @@ C = Type[C] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases2]
+# flags: --no-new-semantic-analyzer
 from typing import Type, Callable, Union
 
 A = Union[B, int]  # type: ignore
@@ -2566,6 +2568,7 @@ M = NamedTuple('M', [('x', int)])
 [out]
 
 [case testSelfRefNTIncremental1]
+# flags: --no-new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
 Node = NamedTuple('Node', [ # type: ignore
@@ -2576,6 +2579,7 @@ n: Node
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental2]
+# flags: --no-new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [ # type: ignore
@@ -2590,6 +2594,7 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental3]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple): # type: ignore
@@ -2605,6 +2610,7 @@ lst = [m, n]
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental4]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 class B(NamedTuple): # type: ignore
@@ -2618,6 +2624,7 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental5]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 B = NamedTuple('B', [ # type: ignore
@@ -4576,6 +4583,8 @@ def f(x: str) -> None: pass
 tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
 [case testOverrideByIdemAlias]
+# https://github.com/python/mypy/issues/6404
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 import lib

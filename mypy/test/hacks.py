@@ -7,5 +7,4 @@ if MYPY:
 
 # Files to not run with new semantic analyzer.
 new_semanal_blacklist = [
-    'check-incremental.test',
 ]  # type: Final
