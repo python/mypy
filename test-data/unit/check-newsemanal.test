@@ -2446,3 +2446,14 @@ def dec(f): pass
 # 5 padding
 # 6 padding
 def f(): pass
+
+[case testNewAnalyzerFinalLiteralInferredAsLiteralWithDeferral]
+from typing_extensions import Final, Literal
+
+defer: Yes
+
+var: Final = 42
+def force(x: Literal[42]) -> None: pass
+force(reveal_type(var))  # E: Revealed type is 'Literal[42]'
+
+class Yes: ...
