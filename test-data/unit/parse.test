@@ -3342,7 +3342,7 @@ MypyFile:1(
           StrExpr(Hello )       
           CallExpr:2(           
             MemberExpr:2(       
-              StrExpr({})       
+              StrExpr({:{}})    
               format)           
             Args(               
               NameExpr(x))))))))
@@ -3365,72 +3365,55 @@ MypyFile:1(
           StrExpr(Hello )       
           CallExpr:2(           
             MemberExpr:2(       
-              StrExpr({!r})     
+              StrExpr({!r:{}})  
               format)           
             Args(               
               NameExpr(x))))))))
 
-[case testFStringWithFormatSpecifier]
+[case testFStringWithOnlyFormatSpecifier]
 x = 'mypy'
 f'Hello {x:<30}'
 [out]
-MypyFile:1(                      
-  AssignmentStmt:1(              
-    NameExpr(x)                  
-    StrExpr(mypy))               
-  ExpressionStmt:2(              
-    CallExpr:2(                  
-      MemberExpr:2(              
-        StrExpr()                
-        join)                    
-      Args(                      
-        ListExpr:2(              
-          StrExpr(Hello )        
-          CallExpr:2(            
-            MemberExpr:2(        
-              CallExpr:2(        
-                MemberExpr:2(    
-                  StrExpr()      
-                  join)          
-                Args(            
-                  ListExpr:2(    
-                    StrExpr({:)  
-                    StrExpr(<30) 
-                    StrExpr(}))))
-              format)            
-            Args(                
-              NameExpr(x)))))))) 
-
+MypyFile:1(                     
+  AssignmentStmt:1(             
+    NameExpr(x)                 
+    StrExpr(mypy))              
+  ExpressionStmt:2(             
+    CallExpr:2(                 
+      MemberExpr:2(             
+        StrExpr()               
+        join)                   
+      Args(                     
+        ListExpr:2(             
+          StrExpr(Hello )       
+          CallExpr:2(           
+            MemberExpr:2(       
+              StrExpr({:{}})    
+              format)           
+            Args(               
+              NameExpr(x))))))))
 
 [case testFStringWithFormatSpecifierAndConversion]
 x = 'mypy'
 f'Hello {x!s:<30}'
 [out]
-MypyFile:1(                      
-  AssignmentStmt:1(              
-    NameExpr(x)                  
-    StrExpr(mypy))               
-  ExpressionStmt:2(              
-    CallExpr:2(                  
-      MemberExpr:2(              
-        StrExpr()                
-        join)                    
-      Args(                      
-        ListExpr:2(              
-          StrExpr(Hello )        
-          CallExpr:2(            
-            MemberExpr:2(        
-              CallExpr:2(        
-                MemberExpr:2(    
-                  StrExpr()      
-                  join)          
-                Args(            
-                  ListExpr:2(    
-                    StrExpr({!s:)
-                    StrExpr(<30) 
-                    StrExpr(}))))
-              format)            
-            Args(                
+MypyFile:1(                     
+  AssignmentStmt:1(             
+    NameExpr(x)                 
+    StrExpr(mypy))              
+  ExpressionStmt:2(             
+    CallExpr:2(                 
+      MemberExpr:2(             
+        StrExpr()               
+        join)                   
+      Args(                     
+        ListExpr:2(             
+          StrExpr(Hello )       
+          CallExpr:2(           
+            MemberExpr:2(       
+              StrExpr({!s:{}})  
+              format)           
+            Args(               
               NameExpr(x))))))))
 
 [case testFStringWithFormatSpecifierExpression]
@@ -3438,47 +3421,24 @@ x = 'mypy'
 y = 30
 f'Hello {x!s:<{y+y}}'
 [out]
-MypyFile:1(                                  
-  AssignmentStmt:1(                          
-    NameExpr(x)                              
-    StrExpr(mypy))                           
-  AssignmentStmt:2(                          
-    NameExpr(y)                              
-    IntExpr(30))                             
-  ExpressionStmt:3(                          
-    CallExpr:3(                              
-      MemberExpr:3(                          
-        StrExpr()                            
-        join)                                
-      Args(                                  
-        ListExpr:3(                          
-          StrExpr(Hello )                    
-          CallExpr:3(                        
-            MemberExpr:3(                    
-              CallExpr:3(                    
-                MemberExpr:3(                
-                  StrExpr()                  
-                  join)                      
-                Args(                        
-                  ListExpr:3(                
-                    StrExpr({!s:)            
-                    CallExpr:3(              
-                      MemberExpr:3(          
-                        StrExpr()            
-                        join)                
-                      Args(                  
-                        ListExpr:3(          
-                          StrExpr(<)         
-                          CallExpr:3(        
-                            MemberExpr:3(    
-                              StrExpr({})    
-                              format)        
-                            Args(            
-                              OpExpr:3(      
-                                +            
-                                NameExpr(y)  
-                                NameExpr(y)))))))
-                    StrExpr(}))))            
-              format)                        
-            Args(                            
+MypyFile:1(                     
+  AssignmentStmt:1(             
+    NameExpr(x)                 
+    StrExpr(mypy))              
+  AssignmentStmt:2(             
+    NameExpr(y)                 
+    IntExpr(30))                
+  ExpressionStmt:3(             
+    CallExpr:3(                 
+      MemberExpr:3(             
+        StrExpr()               
+        join)                   
+      Args(                     
+        ListExpr:3(             
+          StrExpr(Hello )       
+          CallExpr:3(           
+            MemberExpr:3(       
+              StrExpr({!s:{}})  
+              format)           
+            Args(               
               NameExpr(x))))))))

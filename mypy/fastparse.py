@@ -1118,28 +1118,13 @@ class ASTConverter:
         val_exp = self.visit(n.value)
         val_exp.set_line(n.lineno, n.col_offset)
         conversion_str = '' if n.conversion is None or n.conversion < 0 else '!' + chr(n.conversion)
-        format_string = None
-        if n.format_spec is None:
-            format_string = StrExpr('{' + conversion_str + '}')
-        else:
-            # Note that format specifiers may contain expressions that need to be
-            # evaluated at runtime as well.
-            format_spec_exp = self.visit(n.format_spec)
-            empty_string = StrExpr('')
-            empty_string.set_line(n.lineno, n.col_offset)
-            join_method = MemberExpr(empty_string, 'join')
-            join_method.set_line(empty_string)
-            args = ListExpr([StrExpr('{' + conversion_str + ':'), format_spec_exp, StrExpr('}')])
-            args.set_line(join_method)
-            format_string = CallExpr(join_method,
-                                     [args],
-                                     [ARG_POS],
-                                     [None])
+        format_string = StrExpr('{' + conversion_str + ':{}}')
+        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr('')           
         format_string.set_line(n.lineno, n.col_offset)
         format_method = MemberExpr(format_string, 'format')
         format_method.set_line(format_string)
         result_expression = CallExpr(format_method,
-                                     [val_exp],
+                                     [val_exp, format_spec_exp],
                                      [ARG_POS],
                                      [None])
         return self.set_line(result_expression, n)
