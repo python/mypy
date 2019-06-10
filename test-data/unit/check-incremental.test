@@ -2465,6 +2465,7 @@ x: int = C()[0][0]
 [out]
 
 [case testForwardTypeAliasInBase2]
+# flags: --new-semantic-analyzer
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
@@ -2475,8 +2476,8 @@ A = G[C]
 class B(NamedTuple):
     x: int
 
-C().x
-C()[0]
+C(1).x
+C(1)[0]
 [builtins fixtures/list.pyi]
 [out]
 
