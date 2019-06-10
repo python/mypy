@@ -24,6 +24,10 @@ matrix:
     - os: linux
       dist: xenial
       python: "3.7"
+    - os: linux
+      dist: xenial
+      python: "3.7"
+      env: NEWSEMANAL=1
     # - os: linux
     #   dist: xenial
     #   python: "3.8-dev"

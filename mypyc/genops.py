@@ -1659,7 +1659,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             symbol = lvalue.node
             if isinstance(symbol, Decorator):
                 symbol = symbol.func
-            assert isinstance(symbol, SymbolNode)  # TODO: Can this fail?
+            if symbol is None:
+                # New semantic analyzer doesn't create ad-hoc Vars for special forms.
+                assert lvalue.is_special_form
+                symbol = Var(lvalue.name)
             if lvalue.kind == LDEF:
                 if symbol not in self.environment.symtable:
                     # If the function contains a nested function and the symbol is a free symbol,
@@ -2352,7 +2355,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # If the expression is locally defined, then read the result from the corresponding
         # assignment target and return it. Otherwise if the expression is a global, load it from
         # the globals dictionary.
-        if expr.kind == LDEF:
+        # Except for imports, that currently always happens in the global namespace.
+        if expr.kind == LDEF and not (isinstance(expr.node, Var)
+                                      and expr.node.is_suppressed_import):
             # TODO: Behavior currently only defined for Var and FuncDef node types.
             return self.read(self.get_assignment_target(expr), expr.line)
 
