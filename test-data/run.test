@@ -718,6 +718,55 @@ assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
 
+[case testfstring]
+
+var = 'mypyc'
+
+num = 20
+
+f1 = f'Hello {var}, this is a test'
+
+f2 = f'Hello {var!r}'
+
+f3 = f'Hello {var!a}'
+
+f4 = f'Hello {var!s}'
+
+f5 = f'Hello {var:>20}'
+
+f6 = f'Hello {var!r:>20}'
+
+f7 = f'Hello {var:>{num}}'
+
+f8 = f'Hello {var!r:>{num}}' 
+
+[file driver.py]
+from native import f1, f2, f3, f4, f5, f6, f7, f8
+assert f1 == "Hello mypyc, this is a test"                   
+assert f2 == "Hello 'mypyc'"                                 
+assert f3 == "Hello 'mypyc'"                                 
+assert f4 == "Hello mypyc"                                   
+assert f5 == "Hello                mypyc"                    
+assert f6 == "Hello              'mypyc'"                    
+assert f7 == "Hello                mypyc"                   
+assert f8 == "Hello              'mypyc'"                    
+
+[out]
+
+[file driver.py]
+from native import f1, f2, f3, f4, f5, f6, f7, f8
+
+print(f1)
+print(f2)
+print(f3)
+print(f4)
+print(f5)
+print(f6)
+print(f7)
+print(f8)
+
+[out]
+
 [case testSets]
 from typing import Set, List
 def instantiateLiteral() -> Set[int]:
