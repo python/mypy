@@ -1117,9 +1117,9 @@ class ASTConverter:
         # calls, passing along specified format specifiers and conversions.
         val_exp = self.visit(n.value)
         val_exp.set_line(n.lineno, n.col_offset)
-        conversion_str = '' if n.conversion is None or n.conversion < 0 else '!' + chr(n.conversion)
-        format_string = StrExpr('{' + conversion_str + ':{}}')
-        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr('')           
+        conv_str = '' if n.conversion is None or n.conversion < 0 else '!' + chr(n.conversion)
+        format_string = StrExpr('{' + conv_str + ':{}}')
+        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr('')
         format_string.set_line(n.lineno, n.col_offset)
         format_method = MemberExpr(format_string, 'format')
         format_method.set_line(format_string)
