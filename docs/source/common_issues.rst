@@ -655,8 +655,8 @@ renaming the method, a work-around is to use an alias:
        def register(self, path: bytes_):
            ...
 
-I need a mypy bug fix that hasn't been released yet
----------------------------------------------------
+Using a development mypy build
+------------------------------
 
 You can install the latest development version of mypy from source. Clone the
 `mypy repository on GitHub <https://github.com/python/mypy>`_, and then run
