@@ -4521,6 +4521,7 @@ tmp/a.py:2: error: Cannot resolve name "lib.A" (possible cyclic definition)
 tmp/a.py:3: error: Revealed type is 'Any'
 
 [case testRecursiveNamedTupleTypedDict]
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 import lib
