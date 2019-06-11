@@ -1114,7 +1114,8 @@ class ASTConverter:
     def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
         # A FormattedValue is a component of a JoinedStr, or it can exist
         # on its own. We translate them to individual '{}'.format(value)
-        # calls, passing along specified format specifiers and conversions.
+        # calls. Format specifier and conversion information is passed along
+        # to allow mypyc to support f-strings with format specifiers and converisons.
         val_exp = self.visit(n.value)
         val_exp.set_line(n.lineno, n.col_offset)
         conv_str = '' if n.conversion is None or n.conversion < 0 else '!' + chr(n.conversion)
