@@ -132,13 +132,17 @@ class ModuleGenerator:
         self.use_shared_lib = shared_lib_name is not None
         self.multi_file = multi_file
 
+    @property
+    def lib_suffix(self) -> str:
+        return '' if self.shared_lib_name is None else self.shared_lib_name[5:]
+
     def generate_c_for_modules(self) -> List[Tuple[str, str]]:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
 
         base_emitter = Emitter(self.context)
-        base_emitter.emit_line('#include "__native.h"')
-        base_emitter.emit_line('#include "__native_internal.h"')
+        base_emitter.emit_line('#include "__native{}.h"'.format(self.lib_suffix))
+        base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.lib_suffix))
         emitter = base_emitter
 
         for (_, literal), identifier in self.literals.items():
@@ -151,8 +155,8 @@ class ModuleGenerator:
         for module_name, module in self.modules:
             if multi_file:
                 emitter = Emitter(self.context)
-                emitter.emit_line('#include "__native.h"')
-                emitter.emit_line('#include "__native_internal.h"')
+                emitter.emit_line('#include "__native{}.h"'.format(self.lib_suffix))
+                emitter.emit_line('#include "__native_internal{}.h"'.format(self.lib_suffix))
 
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
@@ -194,7 +198,7 @@ class ModuleGenerator:
         declarations.emit_line('#define MYPYC_NATIVE_INTERNAL_H')
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
-        declarations.emit_line('#include "__native.h"')
+        declarations.emit_line('#include "__native{}.h"'.format(self.lib_suffix))
         declarations.emit_line()
         declarations.emit_line('int CPyGlobalsInit(void);')
         declarations.emit_line()
@@ -233,9 +237,12 @@ class ModuleGenerator:
         ext_declarations.emit_line('#endif')
         declarations.emit_line('#endif')
 
-        return file_contents + [('__native.c', ''.join(emitter.fragments)),
-                                ('__native_internal.h', ''.join(declarations.fragments)),
-                                ('__native.h', ''.join(ext_declarations.fragments)),
+        return file_contents + [('__native{}.c'.format(self.lib_suffix),
+                                 ''.join(emitter.fragments)),
+                                ('__native_internal{}.h'.format(self.lib_suffix),
+                                 ''.join(declarations.fragments)),
+                                ('__native{}.h'.format(self.lib_suffix),
+                                 ''.join(ext_declarations.fragments)),
                                 ]
 
     def generate_linking_struct(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
@@ -243,7 +250,7 @@ class ModuleGenerator:
 
         decl_emitter.emit_lines(
             '',
-            'struct linking_table {',
+            'struct linking_table{} {{'.format(self.lib_suffix),
         )
         for name, decl in decls.items():
             if decl.needs_export:
@@ -253,7 +260,7 @@ class ModuleGenerator:
 
         code_emitter.emit_lines(
             '',
-            'static struct linking_table exports = {',
+            'static struct linking_table{} exports = {{'.format(self.lib_suffix),
         )
         for name, decl in decls.items():
             if decl.needs_export:
