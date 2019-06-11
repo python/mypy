@@ -2446,3 +2446,18 @@ def dec(f): pass
 # 5 padding
 # 6 padding
 def f(): pass
+
+[case testNewAnalyzerOverrideClassWithTypeAlias]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    pass
+# TODO: Error message is confusing
+C = C[int]  # E: Cannot assign to a type \
+            # E: Incompatible types in assignment (expression has type "Type[__main__.C[Any]]", variable has type "Type[__main__.C[Any]]")
+x: C
+reveal_type(x) # E: Revealed type is '__main__.C[Any]'
+[out]
+[out2]

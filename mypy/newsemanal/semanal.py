@@ -2302,6 +2302,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Return True if it is a type alias (even if the target is not ready),
         or False otherwise.
+
         Note: the resulting types for subscripted (including generic) aliases
         are also stored in rvalue.analyzed.
         """
@@ -2320,11 +2321,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         #     B = int
         #     B = float  # Error!
         # Don't create an alias in these cases:
-        if existing and (isinstance(existing.node, Var) or  # existing variable
-                isinstance(existing.node, TypeAlias) and not s.is_alias_def or  # existing alias
-                (isinstance(existing.node, PlaceholderNode) and
-                # TODO: find a more robust way to track the order of definitions.
-                 existing.node.node.line < s.line)):  # or previous incomplete definition
+        if (existing
+                and (isinstance(existing.node, Var)  # existing variable
+                     or (isinstance(existing.node, TypeAlias)
+                         and not s.is_alias_def)  # existing alias
+                     or (isinstance(existing.node, PlaceholderNode)
+                         and existing.node.node.line < s.line))):  # previous incomplete definition
+            # TODO: find a more robust way to track the order of definitions.
             # Note: if is_alias_def=True, this is just a node from previous iteration.
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail('Cannot assign multiple types to name "{}"'
@@ -2347,6 +2350,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
         rvalue = s.rvalue
         if not self.can_be_type_alias(rvalue):
+            return False
+
+        if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
+            # Cannot redefine existing node as type alias.
             return False
 
         res = None  # type: Optional[Type]
@@ -2390,21 +2397,27 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
                                alias_tvars=alias_tvars, no_args=no_args)
         if existing:
-            # Did alias get updated?
-            if (isinstance(existing.node, PlaceholderNode) or
-                    isinstance(existing.node, TypeAlias) and existing.node.target != res):
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer()
+            # An alias gets updated.
+            if self.final_iteration:
+                self.cannot_resolve_name(lvalue.name, 'name', s)
+                return True
+            updated = False
             if isinstance(existing.node, TypeAlias):
-                # Copy expansion to the existing alias, this matches how we update base classes
-                # for a TypeInfo _in place_ if there are nested placeholders.
-                existing.node.target = res
-                existing.node.alias_tvars = alias_tvars
-                existing.node.no_args = no_args
+                if existing.node.target != res:
+                    # Copy expansion to the existing alias, this matches how we update base classes
+                    # for a TypeInfo _in place_ if there are nested placeholders.
+                    existing.node.target = res
+                    existing.node.alias_tvars = alias_tvars
+                    existing.node.no_args = no_args
+                    updated = True
             else:
                 # Otherwise just replace existing placeholder with type alias.
                 existing.node = alias_node
+                updated = True
+            if updated:
+                self.progress = True
+                # We need to defer so that this change can get propagated to base classes.
+                self.defer()
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
