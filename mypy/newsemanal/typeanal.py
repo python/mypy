@@ -165,12 +165,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if node.becomes_typeinfo:
                     # Reference to placeholder type.
                     if self.api.final_iteration:
-                        # TODO: Move error message generation to messages.py. We'd first
-                        #       need access to MessageBuilder here. Also move the similar
-                        #       message generation logic in semanal.py.
-                        self.api.fail(
-                            'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
-                            t)
+                        self.cannot_resolve_type(t)
                         return AnyType(TypeOfAny.from_error)
                     elif self.allow_placeholder:
                         self.api.defer()
@@ -179,12 +174,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
                 else:
                     if self.api.final_iteration:
-                        # TODO: Move error message generation to messages.py. We'd first
-                        #       need access to MessageBuilder here. Also move the similar
-                        #       message generation logic in semanal.py.
-                        self.api.fail(
-                            'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
-                            t)
+                        self.cannot_resolve_type(t)
                         return AnyType(TypeOfAny.from_error)
                     else:
                         # Reference to an unknown placeholder node.
@@ -232,6 +222,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
+
+    def cannot_resolve_type(self, t: UnboundType) -> None:
+        # TODO: Move error message generation to messages.py. We'd first
+        #       need access to MessageBuilder here. Also move the similar
+        #       message generation logic in semanal.py.
+        self.api.fail(
+            'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
+            t)
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
         """Bind special type that is recognized through magic name such as 'typing.Any'.
