@@ -128,15 +128,32 @@ reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.EmptyDict', {})'
 [builtins fixtures/dict.pyi]
 
 
--- Define TypedDict (Class syntax errors)
-
 [case testCanCreateTypedDictWithClassOldVersion]
 # flags: --python-version 3.5
+
+# Test that we can use class-syntax to merge TypedDicts even in
+# versions without type annotations
+
 from mypy_extensions import TypedDict
 
-class Point(TypedDict): # E: TypedDict class syntax is only supported in Python 3.6
+MovieBase1 = TypedDict(
+    'MovieBase1', {'name': str, 'year': int})
+MovieBase2 = TypedDict(
+    'MovieBase2', {'based_on': str}, total=False)
+
+class Movie(MovieBase1, MovieBase2):
     pass
+
+def foo(x):
+    # type: (Movie) -> None
+    pass
+
+foo({})  # E: Keys ('name', 'year') missing for TypedDict "Movie"
+foo({'name': 'lol', 'year': 2009, 'based_on': 0})  # E: Incompatible types (expression has type "int", TypedDict item "based_on" has type "str")
+
 [builtins fixtures/dict.pyi]
+
+-- Define TypedDict (Class syntax errors)
 
 [case testCannotCreateTypedDictWithClassOtherBases]
 # flags: --python-version 3.6
