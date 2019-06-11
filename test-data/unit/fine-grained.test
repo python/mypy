@@ -8300,9 +8300,8 @@ x = 'no way'
 ==
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
--- Depends on #6412
 [case testNamedTupleForwardFunctionDirect]
-# flags: --ignore-missing-imports --no-new-semantic-analyzer
+# flags: --ignore-missing-imports
 from typing import NamedTuple
 from b import B
 
@@ -8314,9 +8313,8 @@ B = func
 ==
 main:5: error: Invalid type "b.B"
 
--- Depends on #6412
 [case testNamedTupleForwardFunctionIndirect]
-# flags: --ignore-missing-imports --no-new-semantic-analyzer
+# flags: --ignore-missing-imports
 from typing import NamedTuple
 from a import A
 
@@ -8331,9 +8329,8 @@ B = func
 ==
 main:5: error: Invalid type "a.A"
 
--- Depends on #6412
 [case testNamedTupleForwardFunctionIndirectReveal]
-# flags: --ignore-missing-imports --no-new-semantic-analyzer
+# flags: --ignore-missing-imports
 import m
 [file m.py]
 from typing import NamedTuple

@@ -756,14 +756,23 @@ class D(str): pass # ok
 [out]
 
 [case testCyclicInheritance1]
-# flags: --no-new-semantic-analyzer
-# Crashes with new semantic analyzer: https://github.com/python/mypy/issues/6495
-class A(A): pass # E: Cycle in inheritance hierarchy
+# flags: --new-semantic-analyzer
+class A(A): pass # E: Cannot resolve name "A" (possible cyclic definition)
 [out]
 
 [case testCyclicInheritance2]
+# flags: --new-semantic-analyzer
+class A(B): pass # E: Cannot resolve name "B" (possible cyclic definition)
+class B(A): pass
+[out]
+
+[case testCyclicInheritance1Old]
 # flags: --no-new-semantic-analyzer
-# Crashes with new semantic analyzer: https://github.com/python/mypy/issues/6495
+class A(A): pass # E: Cycle in inheritance hierarchy
+[out]
+
+[case testCyclicInheritance2Old]
+# flags: --no-new-semantic-analyzer
 class A(B): pass
 class B(A): pass # E: Cycle in inheritance hierarchy
 [out]
