@@ -8,6 +8,7 @@ from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
 from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance
 from mypy.typevars import fill_typevars
+from mypy.util import get_unique_redefinition_name
 
 
 def _get_decorator_bool_argument(
@@ -116,6 +117,13 @@ def add_method(
     func.type = set_callable_name(signature, func)
     func._fullname = info.fullname() + '.' + name
     func.line = info.line
+
+    # NOTE: we would like the plugin generated node to dominate, but we still
+    # need to keep any existing definitions so they get semantically analyzed.
+    if name in info.names:
+        # Get a nice unique name instead.
+        r_name = get_unique_redefinition_name(name, info.names)
+        info.names[r_name] = info.names[name]
 
     info.names[name] = SymbolTableNode(MDEF, func, plugin_generated=True)
     info.defn.defs.body.append(func)
