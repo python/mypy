@@ -485,12 +485,12 @@ class C:
 
 [case testFinalReassignInstanceVarClassVsInit]
 # flags: --new-semantic-analyzer
-# Methods are processed after top-level in new analyzer.
 from typing import Final
 
 class C:
     y: Final = 1
     def __init__(self) -> None:
+        # Methods are processed after top-level in new analyzer.
         self.x: Final = 1  # E: Cannot redefine an existing name as final
         self.y = 2  # E: Cannot assign to final attribute "y"
     x = 2
