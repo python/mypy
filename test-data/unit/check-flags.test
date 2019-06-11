@@ -56,8 +56,8 @@ main:2: error: Function is missing a return type annotation
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
 async def f():  # E: Function is missing a return type annotation \
-                # N: Use "-> None" if function does not return a value                
-    pass        
+                # N: Use "-> None" if function does not return a value
+    pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
