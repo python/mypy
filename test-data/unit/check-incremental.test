@@ -4515,9 +4515,11 @@ B = List[A]
 [builtins fixtures/list.pyi]
 [out]
 tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
+tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
 [out2]
 tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
+tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
 tmp/a.py:2: error: Cannot resolve name "lib.A" (possible cyclic definition)
 tmp/a.py:3: error: Revealed type is 'Any'

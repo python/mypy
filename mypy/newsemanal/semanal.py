@@ -2399,8 +2399,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if existing:
             # An alias gets updated.
             if self.final_iteration:
-                # Error will be reported elsewhere, but we can't make progress during
-                # final iteration.
+                self.cannot_resolve_name(lvalue.name, 'name', s)
                 return True
             updated = False
             if isinstance(existing.node, TypeAlias):
