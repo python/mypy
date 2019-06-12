@@ -1677,9 +1677,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                          reassign=False)
 
                     if self.fn_info.contains_nested and self.is_free_variable(symbol):
-                        env = self.fn_info.callable_class \
-                            if self.fn_info.is_nested \
-                            else self.fn_info  # type: Union[FuncInfo, ImplicitClass]
+                        env = (self.fn_info.callable_class
+                               if self.fn_info.is_nested
+                               else self.fn_info)  # type: Union[FuncInfo, ImplicitClass]
 
                         return self.add_var_to_env_class(symbol,
                                                          self.node_type(lvalue),
