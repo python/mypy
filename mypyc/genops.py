@@ -775,6 +775,17 @@ class NonlocalControl:
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None: pass
 
 
+class BaseNonlocalControl(NonlocalControl):
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+        assert False, "break outside of loop"
+
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+        assert False, "continue outside of loop"
+
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+        builder.add(Return(value))
+
+
 class LoopNonlocalControl(NonlocalControl):
     def __init__(self, outer: NonlocalControl,
                  continue_block: BasicBlock, break_block: BasicBlock) -> None:
@@ -790,36 +801,6 @@ class LoopNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         self.outer.gen_return(builder, value, line)
-
-
-class TryFinallyNonlocalControl(NonlocalControl):
-    def __init__(self, target: BasicBlock) -> None:
-        self.target = target
-        self.ret_reg = None  # type: Optional[Register]
-
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
-        builder.error("break inside try/finally block is unimplemented", line)
-
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
-        builder.error("continue inside try/finally block is unimplemented", line)
-
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
-        if self.ret_reg is None:
-            self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
-
-        builder.add(Assign(self.ret_reg, value))
-        builder.add(Goto(self.target))
-
-
-class BaseNonlocalControl(NonlocalControl):
-    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
-        assert False, "break outside of loop"
-
-    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
-        assert False, "continue outside of loop"
-
-    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
-        builder.add(Return(value))
 
 
 class GeneratorNonlocalControl(BaseNonlocalControl):
@@ -859,6 +840,25 @@ class CleanupNonlocalControl(NonlocalControl):
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         self.gen_cleanup(builder, line)
         self.outer.gen_return(builder, value, line)
+
+
+class TryFinallyNonlocalControl(NonlocalControl):
+    def __init__(self, target: BasicBlock) -> None:
+        self.target = target
+        self.ret_reg = None  # type: Optional[Register]
+
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+        builder.error("break inside try/finally block is unimplemented", line)
+
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+        builder.error("continue inside try/finally block is unimplemented", line)
+
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+        if self.ret_reg is None:
+            self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
+
+        builder.add(Assign(self.ret_reg, value))
+        builder.add(Goto(self.target))
 
 
 class ExceptNonlocalControl(CleanupNonlocalControl):
