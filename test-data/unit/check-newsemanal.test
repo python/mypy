@@ -67,9 +67,9 @@ tmp/a.py:4: error: "B" not callable
 [case testNewAnalyzerTypeAnnotationCycle3]
 import b
 [file a.py]
-from b import bad # E: Module 'b' has no attribute 'bad'
+from b import bad # E: Module 'b' has no attribute 'bad'; maybe "bad2"?
 [file b.py]
-from a import bad2 # E: Module 'a' has no attribute 'bad2'
+from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
 
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
@@ -993,6 +993,31 @@ class C: pass
 import a
 from b import C
 
+[case testNewAnalyzerImportOverExistingInCycle]
+import a
+[file a.py]
+C = 1
+from b import C  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+
+[file b.py]
+import a
+
+class C(B): ...
+class B: ...
+
+[case testNewAnalyzerImportOverExistingInCycleStar]
+import a
+[file a.py]
+C = 1
+from b import *  # E: Name 'C' already defined on line 1 \
+                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+
+[file b.py]
+import a
+
+class C(B): ...
+class B: ...
+
 [case testNewAnalyzerIncompleteFixture]
 from typing import Tuple
 
@@ -1405,6 +1430,23 @@ class C(List[A]): pass
 
 reveal_type(x)  # E: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x[0])  # E: Revealed type is 'Union[__main__.B, __main__.C]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerTrickyAliasInFuncDef]
+import a
+[file a.py]
+from b import B
+def func() -> B: ...
+reveal_type(func())  # E: Revealed type is 'builtins.list[Tuple[b.C, b.C]]'
+
+[file b.py]
+from typing import List, Tuple
+from a import func
+
+B = List[Tuple[C, C]]
+
+class C(A): ...
+class A: ...
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerListComprehension]
@@ -2111,3 +2153,311 @@ config = Config()
 [out2]
 tmp/a.py:4: error: Revealed type is 'builtins.int'
 tmp/a.py:5: error: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerRedefineAsClass]
+from typing import Any
+from other import C  # type: ignore
+
+y = 'bad'
+
+class C:  # E: Name 'C' already defined (possibly by an import)
+    def meth(self, other: int) -> None:
+        y()  # E: "str" not callable
+
+[case testNewAnalyzerRedefineAsOverload]
+from typing import overload
+
+y = 'bad'
+
+if int():
+    def f(x: int) -> None:
+        pass
+else:
+    @overload  # E: Name 'f' already defined on line 6
+    def f(x: int) -> None: ...
+    @overload
+    def f(x: str) -> None: ...
+    def f(x) -> None:
+        y()  # E: "str" not callable
+
+[case testNewAnalyzerFirstAliasTargetWins]
+if int():
+    Alias = DesiredTarget
+else:
+    class DummyTarget:
+        pass
+    Alias = DummyTarget  # type: ignore
+
+x: Alias
+reveal_type(x.attr)  # E: Revealed type is 'builtins.int'
+
+class DesiredTarget:
+    attr: int
+
+[case testNewAnalyzerFirstVarDefinitionWins]
+x = y
+x = 1
+
+# We want to check that the first definition creates the variable.
+def x() -> None: ...  # E: Name 'x' already defined on line 1
+y = 2
+
+[case testNewAnalyzerImportStarSpecialCase]
+import unittest
+[file unittest/__init__.pyi]
+from unittest.suite import *
+
+def load_tests() -> TestSuite: ...
+[file unittest/suite.pyi]
+from typing import Union # Iterable not imported
+import unittest.case
+
+_TestType = Union[unittest.case.TestCase]
+
+class BaseTestSuite(Iterable[_TestType]):
+    ...
+
+class TestSuite(BaseTestSuite):
+    ...
+
+[file unittest/case.pyi]
+class TestCase: ...
+
+[out]
+tmp/unittest/suite.pyi:6: error: Name 'Iterable' is not defined
+tmp/unittest/suite.pyi:6: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Iterable")
+
+[case testNewAnalyzerNewTypeSpecialCase]
+from typing import NewType
+from typing_extensions import Final, Literal
+
+X = NewType('X', int)
+
+var1: Final = 1
+
+def force1(x: Literal[1]) -> None: pass
+
+force1(reveal_type(var1))            # E: Revealed type is 'Literal[1]'
+
+[case testNewAnalyzerReportLoopInMRO]
+class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
+[out]
+
+[case testNewSemanticAnalyzerUnimportedSpecialCase]
+# flags: --ignore-missing-imports
+import other
+import p.u
+
+[file p/__init__.py]
+
+[file p/u.pyi]
+from . import c
+x: c.C
+
+[file other.py]
+from p.c import B
+
+[out]
+
+[case testNewSemanticAnalyzerQualifiedFunctionAsType]
+import m
+
+x: m.C.a.b # E: Name 'm.C.a.b' is not defined
+
+[file m.py]
+def C(): pass
+
+[case testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified]
+import m
+
+x: m.n.C # E: Name 'm.n.C' is not defined
+reveal_type(x) # E: Revealed type is 'Any'
+
+[file m.pyi]
+import n
+
+[file n.pyi]
+class C: pass
+
+[case testNewAnalyzerModuleGetAttrInPython36]
+# flags: --python-version 3.6
+import m
+import n
+
+x: m.n.C # E: Name 'm.n.C' is not defined
+y: n.D # E: Name 'n.D' is not defined
+[file m.py]
+import n
+[file n.py]
+def __getattr__(x): pass
+
+[case testNewAnalyzerModuleGetAttrInPython37]
+# flags: --python-version 3.7
+import m
+import n
+
+x: m.n.C
+y: n.D
+[file m.py]
+import n
+[file n.py]
+def __getattr__(x): pass
+
+[case testNewAnalyzerReportLoopInMRO2]
+def f() -> None:
+    class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
+
+[case testNewAnalyzerUnsupportedBaseClassInsideFunction]
+class C:
+    class E: pass
+
+    def f(self) -> None:
+        # TODO: Error message could be better
+        class D(self.E): # E: Name 'self.E' is not defined
+            pass
+
+[case testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass]
+# Only one semantic analysis pass
+class X: pass
+class C:
+    X = X
+    reveal_type(X)  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(C.X)  # E: Revealed type is 'def () -> __main__.X'
+
+[case testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses]
+c: C  # Force second semantic analysis pass
+class X: pass
+class C:
+    X = X
+    reveal_type(X)  # E: Revealed type is 'def () -> __main__.X'
+
+reveal_type(C.X)  # E: Revealed type is 'def () -> __main__.X'
+
+[case testNewAnalyzerAnnotationConflictsWithAttributeSinglePass]
+class C:
+    def x(self) -> int:
+        return 0
+
+    def __init__(self) -> None:
+        self.int = ''
+
+    def y(self) -> int:
+        return 0
+
+    z: str
+
+    def str(self) -> str:
+        return 0 # E: Incompatible return value type (got "int", expected "str")
+
+    zz: str # E: Invalid type "__main__.C.str"
+
+reveal_type(C().x()) # E: Revealed type is 'builtins.int'
+reveal_type(C().y()) # E: Revealed type is 'builtins.int'
+reveal_type(C().z) # E: Revealed type is 'builtins.str'
+reveal_type(C().str()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses]
+c: C  # Force second semantic analysis pass
+
+class C:
+    def x(self) -> int:
+        return 0
+
+    def __init__(self) -> None:
+        self.int = ''
+
+    def y(self) -> int:
+        return 0
+
+    z: str
+
+    def str(self) -> str:
+        return 0 # E: Incompatible return value type (got "int", expected "str")
+
+    zz: str # E: Invalid type "__main__.C.str"
+
+reveal_type(C().x()) # E: Revealed type is 'builtins.int'
+reveal_type(C().y()) # E: Revealed type is 'builtins.int'
+reveal_type(C().z) # E: Revealed type is 'builtins.str'
+reveal_type(C().str()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerNameConflictsAndMultiLineDefinition]
+c: C  # Force second semantic analysis pass
+
+class X: pass
+
+class C:
+    X = (
+        X)
+
+    def str(self
+            ) -> str:
+        return 0 # E: Incompatible return value type (got "int", expected "str")
+
+reveal_type(C.X) # E:  # E: Revealed type is 'def () -> __main__.X'
+reveal_type(C().str()) # E: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerNameNotDefinedYetInClassBody]
+class C:
+    X = Y  # E: Name 'Y' is not defined
+    Y = 1
+
+    f = g  # E: Name 'g' is not defined
+
+    def g(self) -> None: pass
+
+reveal_type(C.X)  # E: Revealed type is 'Any'
+
+[case testNewAnalyzerImportedNameUsedInClassBody]
+import m
+
+[file m.py]
+class C:
+    from mm import f
+    @dec(f)
+    def m(self): pass
+
+def dec(f): pass
+[file mm.py]
+# 1 padding to increase line number of 'f'
+# 2 padding
+# 3 padding
+# 4 padding
+# 5 padding
+# 6 padding
+def f(): pass
+
+
+[case testNewAnalyzerImportedNameUsedInClassBody2]
+import m
+
+[file m/__init__.py]
+class C:
+    from m.m import f
+    @dec(f)
+    def m(self): pass
+
+def dec(f): pass
+[file m/m.py]
+# 1 padding to increase line number of 'f'
+# 2 padding
+# 3 padding
+# 4 padding
+# 5 padding
+# 6 padding
+def f(): pass
+
+[case testNewAnalyzerOverrideClassWithTypeAlias]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    pass
+# TODO: Error message is confusing
+C = C[int]  # E: Cannot assign to a type \
+            # E: Incompatible types in assignment (expression has type "Type[__main__.C[Any]]", variable has type "Type[__main__.C[Any]]")
+x: C
+reveal_type(x) # E: Revealed type is '__main__.C[Any]'
+[out]
+[out2]

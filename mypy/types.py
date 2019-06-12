@@ -69,6 +69,15 @@ if MYPY:
         SyntheticTypeVisitor as SyntheticTypeVisitor,
     )
 
+# Supported names of TypedDict type constructors.
+TPDICT_NAMES = ('mypy_extensions.TypedDict', 'typing_extensions.TypedDict')  # type: Final
+
+# Supported fallback instance type names for TypedDict types.
+TPDICT_FB_NAMES = ('mypy_extensions._TypedDict', 'typing_extensions._TypedDict')  # type: Final
+
+# A placeholder used for Bogus[...] parameters
+_dummy = object()  # type: Final[Any]
+
 
 class TypeOfAny:
     """
@@ -294,6 +303,22 @@ class UnboundType(Type):
         self.original_str_expr = original_str_expr
         self.original_str_fallback = original_str_fallback
 
+    def copy_modified(self,
+                      args: Bogus[Optional[List[Type]]] = _dummy,
+                      ) -> 'UnboundType':
+        if args is _dummy:
+            args = self.args
+        return UnboundType(
+            name=self.name,
+            args=args,
+            line=self.line,
+            column=self.column,
+            optional=self.optional,
+            empty_tuple_index=self.empty_tuple_index,
+            original_str_expr=self.original_str_expr,
+            original_str_fallback=self.original_str_fallback,
+        )
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
@@ -370,9 +395,6 @@ class TypeList(Type):
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
-
-
-_dummy = object()  # type: Final[Any]
 
 
 class AnyType(Type):
@@ -453,7 +475,7 @@ class UninhabitedType(Type):
     This type is the bottom type.
     With strict Optional checking, it is the only common subtype between all
     other types, which allows `meet` to be well defined.  Without strict
-    Optional checking, NoneTyp fills this role.
+    Optional checking, NoneType fills this role.
 
     In general, for any type T:
         join(UninhabitedType, T) = T
@@ -496,7 +518,7 @@ class UninhabitedType(Type):
         return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
-class NoneTyp(Type):
+class NoneType(Type):
     """The type of 'None'.
 
     This type can be written by users as 'None'.
@@ -511,21 +533,26 @@ class NoneTyp(Type):
         return False
 
     def __hash__(self) -> int:
-        return hash(NoneTyp)
+        return hash(NoneType)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, NoneTyp)
+        return isinstance(other, NoneType)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'NoneTyp'}
+        return {'.class': 'NoneType'}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'NoneTyp':
-        assert data['.class'] == 'NoneTyp'
-        return NoneTyp()
+    def deserialize(cls, data: JsonDict) -> 'NoneType':
+        assert data['.class'] == 'NoneType'
+        return NoneType()
+
+
+# NoneType used to be called NoneTyp so to avoid needlessly breaking
+# external plugins we keep that alias here.
+NoneTyp = NoneType
 
 
 class ErasedType(Type):
@@ -574,11 +601,11 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'final_value')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False,
-                 final_value: Optional['LiteralType'] = None) -> None:
+                 last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = args
@@ -590,15 +617,31 @@ class Instance(Type):
         # True if recovered after incorrect number of type arguments error
         self.invalid = False
 
-        # This field keeps track of the underlying Literal[...] value if this instance
-        # was created via a Final declaration. For example, if we did `x: Final = 3`, x
-        # would have an instance with a `final_value` of `LiteralType(3, int_fallback)`.
+        # This field keeps track of the underlying Literal[...] value associated with
+        # this instance, if one is known.
         #
-        # Or more broadly, this field lets this Instance "remember" its original declaration.
-        # We want this behavior because we want implicit Final declarations to act pretty
-        # much identically with constants: we should be able to replace any places where we
-        # use some Final variable with the original value and get the same type-checking
-        # behavior. For example, we want this program:
+        # This field is set whenever possible within expressions, but is erased upon
+        # variable assignment (see erasetype.remove_instance_last_known_values) unless
+        # the variable is declared to be final.
+        #
+        # For example, consider the following program:
+        #
+        #     a = 1
+        #     b: Final[int] = 2
+        #     c: Final = 3
+        #     print(a + b + c + 4)
+        #
+        # The 'Instance' objects associated with the expressions '1', '2', '3', and '4' will
+        # have last_known_values of type Literal[1], Literal[2], Literal[3], and Literal[4]
+        # respectively. However, the Instance object assigned to 'a' and 'b' will have their
+        # last_known_value erased: variable 'a' is mutable; variable 'b' was declared to be
+        # specifically an int.
+        #
+        # Or more broadly, this field lets this Instance "remember" its original declaration
+        # when applicable. We want this behavior because we want implicit Final declarations
+        # to act pretty much identically with constants: we should be able to replace any
+        # places where we use some Final variable with the original value and get the same
+        # type-checking behavior. For example, we want this program:
         #
         #    def expects_literal(x: Literal[3]) -> None: pass
         #    var: Final = 3
@@ -612,39 +655,37 @@ class Instance(Type):
         # In order to make this work (especially with literal types), we need var's type
         # (an Instance) to remember the "original" value.
         #
-        # This field is currently set only when we encounter an *implicit* final declaration
-        # like `x: Final = 3` where the RHS is some literal expression. This field remains 'None'
-        # when we do things like `x: Final[int] = 3` or `x: Final = foo + bar`.
+        # Preserving this value within expressions is useful for similar reasons.
         #
         # Currently most of mypy will ignore this field and will continue to treat this type like
         # a regular Instance. We end up using this field only when we are explicitly within a
         # Literal context.
-        self.final_value = final_value
+        self.last_known_value = last_known_value
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args), self.final_value))
+        return hash((self.type, tuple(self.args), self.last_known_value))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
             return NotImplemented
         return (self.type == other.type
                 and self.args == other.args
-                and self.final_value == other.final_value)
+                and self.last_known_value == other.last_known_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
         type_ref = self.type.fullname()
-        if not self.args and not self.final_value:
+        if not self.args and not self.last_known_value:
             return type_ref
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         data['type_ref'] = type_ref
         data['args'] = [arg.serialize() for arg in self.args]
-        if self.final_value is not None:
-            data['final_value'] = self.final_value.serialize()
+        if self.last_known_value is not None:
+            data['last_known_value'] = self.last_known_value.serialize()
         return data
 
     @classmethod
@@ -661,20 +702,20 @@ class Instance(Type):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
-        if 'final_value' in data:
-            inst.final_value = LiteralType.deserialize(data['final_value'])
+        if 'last_known_value' in data:
+            inst.last_known_value = LiteralType.deserialize(data['last_known_value'])
         return inst
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
-                      final_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
+                      last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
             self.erased,
-            final_value if final_value is not _dummy else self.final_value,
+            last_known_value if last_known_value is not _dummy else self.last_known_value,
         )
 
     def has_readable_member(self, name: str) -> bool:
@@ -923,10 +964,10 @@ class CallableType(FunctionLike):
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
         ret = self.ret_type
-        if isinstance(ret, TupleType):
-            ret = ret.partial_fallback
         if isinstance(ret, TypeVarType):
             ret = ret.upper_bound
+        if isinstance(ret, TupleType):
+            ret = ret.partial_fallback
         assert isinstance(ret, Instance)
         return ret.type
 
@@ -1250,7 +1291,7 @@ class TypedDictType(Type):
     are normal dict objects at runtime.
 
     A TypedDictType can be either named or anonymous. If it's anonymous, its
-    fallback will mypy_extensions._TypedDict (Instance). _TypedDict is a subclass
+    fallback will be typing_extensions._TypedDict (Instance). _TypedDict is a subclass
     of Mapping[str, object] and defines all non-mapping dict methods that TypedDict
     supports. Some dict methods are unsafe and not supported. _TypedDict isn't defined
     at runtime.
@@ -1309,7 +1350,7 @@ class TypedDictType(Type):
                              Instance.deserialize(data['fallback']))
 
     def is_anonymous(self) -> bool:
-        return self.fallback.type.fullname() == 'mypy_extensions._TypedDict'
+        return self.fallback.type.fullname() in TPDICT_FB_NAMES
 
     def as_anonymous(self) -> 'TypedDictType':
         if self.is_anonymous():
@@ -1443,6 +1484,9 @@ class LiteralType(Type):
 
     For example, 'Literal[42]' is represented as
     'LiteralType(value=42, fallback=instance_of_int)'
+
+    As another example, `Literal[Color.RED]` (where Color is an enum) is
+    represented as `LiteralType(value="RED", fallback=instance_of_color)'.
     """
     __slots__ = ('value', 'fallback')
 
@@ -1464,15 +1508,23 @@ class LiteralType(Type):
         else:
             return NotImplemented
 
+    def is_enum_literal(self) -> bool:
+        return self.fallback.type.is_enum
+
     def value_repr(self) -> str:
         """Returns the string representation of the underlying type.
 
         This function is almost equivalent to running `repr(self.value)`,
         except it includes some additional logic to correctly handle cases
-        where the value is a string, byte string, or a unicode string.
+        where the value is a string, byte string, a unicode string, or an enum.
         """
         raw = repr(self.value)
         fallback_name = self.fallback.type.fullname()
+
+        # If this is backed by an enum,
+        if self.is_enum_literal():
+            return '{}.{}'.format(fallback_name, self.value)
+
         if fallback_name == 'builtins.bytes':
             # Note: 'builtins.bytes' only appears in Python 3, so we want to
             # explicitly prefix with a "b"
@@ -1622,7 +1674,7 @@ class UnionType(Type):
         if state.strict_optional:
             return self.items
         else:
-            return [i for i in self.items if not isinstance(i, NoneTyp)]
+            return [i for i in self.items if not isinstance(i, NoneType)]
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
@@ -1716,7 +1768,7 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,
                  line: int = -1, column: int = -1) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
@@ -1807,7 +1859,7 @@ class PlaceholderType(Type):
 
     This is needed when there's a reference to a type before the real symbol
     table entry of the target type is available (specifically, we use a
-    temporary PlaceholderTypeInfo symbol node). Consider this example:
+    temporary PlaceholderNode symbol node). Consider this example:
 
       class str(Sequence[str]): ...
 
@@ -1853,7 +1905,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     Notes:
      - Represent unbound types as Foo? or Foo?[...].
-     - Represent the NoneTyp type as None.
+     - Represent the NoneType type as None.
     """
 
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
@@ -1878,7 +1930,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
 
-    def visit_none_type(self, t: NoneTyp) -> str:
+    def visit_none_type(self, t: NoneType) -> str:
         return "None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
@@ -1939,7 +1991,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         s = '({})'.format(s)
 
-        if not isinstance(t.ret_type, NoneTyp):
+        if not isinstance(t.ret_type, NoneType):
             s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
@@ -1982,7 +2034,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                             for name, typ in t.items.items()) + '}'
         prefix = ''
         if t.fallback and t.fallback.type:
-            if t.fallback.type.fullname() != 'mypy_extensions._TypedDict':
+            if t.fallback.type.fullname() not in TPDICT_FB_NAMES:
                 prefix = repr(t.fallback.type.fullname()) + ', '
         return 'TypedDict({}{})'.format(prefix, s)
 
@@ -2091,8 +2143,13 @@ def false_only(t: Type) -> Type:
     Restricted version of t with only False-ish values
     """
     if not t.can_be_false:
-        # All values of t are True-ish, so there are no false values in it
-        return UninhabitedType(line=t.line)
+        if state.strict_optional:
+            # All values of t are True-ish, so there are no false values in it
+            return UninhabitedType(line=t.line)
+        else:
+            # When strict optional checking is disabled, everything can be
+            # False-ish since anything can be None
+            return NoneType(line=t.line)
     elif not t.can_be_true:
         # All values of t are already False-ish, so false_only is idempotent in this case
         return t
@@ -2221,12 +2278,12 @@ def is_generic_instance(tp: Type) -> bool:
 
 
 def is_optional(t: Type) -> bool:
-    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+    return isinstance(t, UnionType) and any(isinstance(e, NoneType) for e in t.items)
 
 
 def remove_optional(typ: Type) -> Type:
     if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
     else:
         return typ
 

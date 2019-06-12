@@ -1,5 +1,6 @@
 """Test cases for graph processing code in build.py."""
 
+import sys
 from typing import AbstractSet, Dict, Set, List
 
 from mypy.test.helpers import assert_equal, Suite
@@ -55,6 +56,8 @@ class GraphSuite(Suite):
             errors=errors,
             flush_errors=lambda msgs, serious: None,
             fscache=fscache,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
         return manager
 

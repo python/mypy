@@ -22,13 +22,17 @@ from mypy.bogus_type import Bogus
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column')
+    __slots__ = ('line', 'column', 'end_line')
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
+        self.end_line = None  # type: Optional[int]
 
-    def set_line(self, target: Union['Context', int], column: Optional[int] = None) -> None:
+    def set_line(self,
+                 target: Union['Context', int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -38,9 +42,13 @@ class Context:
         else:
             self.line = target.line
             self.column = target.column
+            self.end_line = target.end_line
 
         if column is not None:
             self.column = column
+
+        if end_line is not None:
+            self.end_line = end_line
 
     def get_line(self) -> int:
         """Don't use. Use x.line."""
@@ -532,13 +540,16 @@ class Argument(Node):
         self.initializer = initializer
         self.kind = kind  # must be an ARG_* constant
 
-    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
-        super().set_line(target, column)
+    def set_line(self,
+                 target: Union[Context, int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line)
 
         if self.initializer:
-            self.initializer.set_line(self.line, self.column)
+            self.initializer.set_line(self.line, self.column, self.end_line)
 
-        self.variable.set_line(self.line, self.column)
+        self.variable.set_line(self.line, self.column, self.end_line)
 
 
 FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
@@ -593,10 +604,13 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
-        super().set_line(target, column)
+    def set_line(self,
+                 target: Union[Context, int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line)
         for arg in self.arguments:
-            arg.set_line(self.line, self.column)
+            arg.set_line(self.line, self.column, self.end_line)
 
     def is_dynamic(self) -> bool:
         return self.type is None
@@ -2580,6 +2594,9 @@ class FakeInfo(TypeInfo):
         self.msg = msg
 
     def __getattribute__(self, attr: str) -> None:
+        # Handle __class__ so that isinstance still works...
+        if attr == '__class__':
+            return object.__getattribute__(self, attr)
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
@@ -2764,7 +2781,8 @@ class PlaceholderNode(SymbolNode):
 
       fullname: Full name of of the PlaceholderNode.
       node: AST node that contains the definition that caused this to
-          be created. This is only useful for debugging.
+          be created. This is useful for tracking order of incomplete definitions
+          and for debugging.
       becomes_typeinfo: If True, this refers something that will later
           become a TypeInfo. It can't be used with type variables, in
           particular, as this would cause issues with class type variable
@@ -2996,8 +3014,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return '\n'.join(a)
 
     def copy(self) -> 'SymbolTable':
-        return SymbolTable((key, node.copy())
-                           for key, node in self.items())
+        return SymbolTable([(key, node.copy())
+                            for key, node in self.items()])
 
     def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict

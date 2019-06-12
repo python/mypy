@@ -511,8 +511,8 @@ d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 [case testAssignmentToStarMissingAnnotation]
 from typing import List
 t = 1, 2
-a, b, *c = 1, 2  # E: Need type annotation for 'c'
-aa, bb, *cc = t  # E: Need type annotation for 'cc'
+a, b, *c = 1, 2  # E: Need type annotation for 'c' (hint: "c: List[<type>] = ...")
+aa, bb, *cc = t  # E: Need type annotation for 'cc' (hint: "cc: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAssignmentToStarAnnotation]

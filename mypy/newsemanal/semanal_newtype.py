@@ -6,7 +6,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 from typing import Tuple, Optional
 
 from mypy.types import (
-    Type, Instance, CallableType, NoneTyp, TupleType, AnyType, PlaceholderType,
+    Type, Instance, CallableType, NoneType, TupleType, AnyType, PlaceholderType,
     TypeOfAny
 )
 from mypy.nodes import (
@@ -50,7 +50,8 @@ class NewTypeAnalyzer:
         if (not call.analyzed or
                 isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info):
             # Start from labeling this as a future class, as we do for normal ClassDefs.
-            self.api.add_symbol(name, PlaceholderNode(fullname, s, becomes_typeinfo=True), s)
+            self.api.add_symbol(name, PlaceholderNode(fullname, s, becomes_typeinfo=True), s,
+                                can_defer=False)
 
         old_type, should_defer = self.check_newtype_args(name, call, s)
         if not call.analyzed:
@@ -176,13 +177,13 @@ class NewTypeAnalyzer:
         info.is_newtype = True
 
         # Add __init__ method
-        args = [Argument(Var('self'), NoneTyp(), None, ARG_POS),
+        args = [Argument(Var('self'), NoneType(), None, ARG_POS),
                 self.make_argument('item', old_type)]
         signature = CallableType(
             arg_types=[Instance(info, []), old_type],
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
-            ret_type=NoneTyp(),
+            ret_type=NoneType(),
             fallback=self.api.named_type('__builtins__.function'),
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)

@@ -230,11 +230,11 @@ class D(object):
 [out]
 
 [case testClassNamesDefinedOnSelUsedInClassBodyReveal]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 class A(object):
     def f(self) -> None:
         self.attr = 1
-    reveal_type(attr)  # E: Revealed type is 'builtins.int'
+    attr  # E: Name 'attr' is not defined
 
 class B(object):
     attr = 0
@@ -280,7 +280,7 @@ class B(A):
   def g(self, x: A, y: A) -> A: pass
   def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
-main:7: error: Argument 1 of "f" incompatible with supertype "A"
+main:7: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "A"
 main:9: error: Return type of "h" incompatible with supertype "A"
 
 [case testEqMethodsOverridingWithNonObjects]
@@ -288,7 +288,7 @@ class A:
   def __eq__(self, other: A) -> bool: pass  # Fail
 [builtins fixtures/attr.pyi]
 [out]
-main:2: error: Argument 1 of "__eq__" incompatible with supertype "object"
+main:2: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
 main:2: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
 main:2: note:     def __eq__(self, other: object) -> bool:
 main:2: note:         if not isinstance(other, A):
@@ -316,7 +316,7 @@ class C(B): # with gap in implementations
     def f(self, x: 'C') -> None:  # Fail
         pass
 [out]
-main:6: error: Argument 1 of "f" incompatible with supertype "A"
+main:6: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "B"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy2]
 import typing
@@ -458,7 +458,7 @@ class B(A):
     @staticmethod
     def f(x: int, y: str) -> None: pass
     @staticmethod
-    def g(x: str, y: str) -> None: pass # E: Argument 1 of "g" incompatible with supertype "A"
+    def g(x: str, y: str) -> None: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int"
 [builtins fixtures/classmethod.pyi]
 
 [case testOverrideClassMethodWithClassMethod]
@@ -472,7 +472,7 @@ class B(A):
     @classmethod
     def f(cls, x: int, y: str) -> None: pass
     @classmethod
-    def g(cls, x: str, y: str) -> None: pass # E: Argument 1 of "g" incompatible with supertype "A"
+    def g(cls, x: str, y: str) -> None: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int"
 [builtins fixtures/classmethod.pyi]
 
 [case testOverrideClassMethodWithStaticMethod]
@@ -488,7 +488,7 @@ class B(A):
     @staticmethod
     def f(x: int) -> None: pass
     @staticmethod
-    def g(x: str) -> int: pass # E: Argument 1 of "g" incompatible with supertype "A"
+    def g(x: str) -> int: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int"
     @staticmethod
     def h() -> int: pass
 [builtins fixtures/classmethod.pyi]
@@ -506,7 +506,7 @@ class B(A):
     @classmethod
     def f(cls, x: int) -> None: pass
     @classmethod
-    def g(cls, x: int) -> int: pass # E: Argument 1 of "g" incompatible with supertype "A"
+    def g(cls, x: int) -> int: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "str"
     @classmethod
     def h(cls) -> int: pass
 [builtins fixtures/classmethod.pyi]
@@ -912,7 +912,7 @@ class C:
 x = C.x
 [builtins fixtures/list.pyi]
 [out]
-main:2: error: Need type annotation for 'x'
+main:2: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
 
 [case testAccessingGenericClassAttribute]
 from typing import Generic, TypeVar
@@ -2452,7 +2452,7 @@ class D(A):
     def __iadd__(self, x: 'A') -> 'B': pass
 [out]
 main:6: error: Return type of "__iadd__" incompatible with "__add__" of supertype "A"
-main:8: error: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
+main:8: error: Argument 1 of "__iadd__" is incompatible with "__add__" of supertype "A"; supertype defines the argument type as "A"
 main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testGetattribute]
@@ -2493,6 +2493,22 @@ a = a.foo
 b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testGetattrWithGetitem]
+class A:
+    def __getattr__(self, x: str) -> 'A':
+        return A()
+
+a = A()
+a[0]  # E: Value of type "A" is not indexable
+
+[case testGetattrWithCall]
+class A:
+    def __getattr__(self, x: str) -> 'A':
+        return A()
+
+a = A()
+a.y()  # E: "A" not callable
 
 [case testNestedGetattr]
 def foo() -> object:
@@ -4009,13 +4025,22 @@ class B(A):
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
-[case testClassIgnoreType]
+[case testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored]
 class A:
     x = 0
 class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''
+[out]
+
+[case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
+class A:
+    x = 0
+class B(A):
+    x = ''  # type: ignore
+class C(B):
+    x = ''  # type: ignore
 [out]
 
 [case testInvalidMetaclassStructure]
@@ -4467,11 +4492,11 @@ x = NT(N(1))
 [out]
 
 [case testNewTypeFromForwardTypedDict]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NewType, Tuple
 from mypy_extensions import TypedDict
 
-NT = NewType('NT', N) # E: Argument 2 to NewType(...) must be subclassable (got TypedDict('__main__.N', {'x': builtins.int}))
+NT = NewType('NT', N) # E: Argument 2 to NewType(...) must be subclassable (got "N")
 class N(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]
@@ -4825,19 +4850,19 @@ class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'typ
                        # E: Metaclasses not inheriting from 'type' are not supported
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
-@six.add_metaclass(M)  # E: Multiple metaclass definitions
-class D4(metaclass=M): pass
+@six.add_metaclass(M)
+class D4(metaclass=M): pass  # E: Multiple metaclass definitions
 class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
 @six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
 class D5: pass
 
-@six.add_metaclass(M)  # E: Multiple metaclass definitions
-class CD(six.with_metaclass(M)): pass
+@six.add_metaclass(M)
+class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-@six.add_metaclass(M)  # E: Inconsistent metaclass structure for 'CQA'
-class CQA(Q1): pass
+@six.add_metaclass(M)
+class CQA(Q1): pass  # E: Inconsistent metaclass structure for 'CQA'
 class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
 
 [case testSixMetaclassErrors_python2]
@@ -4947,20 +4972,20 @@ def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
 @decorate(11)
 class A: pass
 
-@decorate  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
-class A2: pass
+@decorate
+class A2: pass  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...
-@not_a_class_decorator(7)  # E: "int" not callable
-class A3: pass
+@not_a_class_decorator(7)
+class A3: pass  # E: "int" not callable
 
 not_a_function = 17
 @not_a_function()  # E: "int" not callable
 class B: pass
 
-@not_a_function    # E: "int" not callable
-class B2: pass
+@not_a_function
+class B2: pass    # E: "int" not callable
 
 b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
@@ -5812,3 +5837,96 @@ def test() -> None:
         return
     reveal_type(x)  # E: Revealed type is 'Union[Type[__main__.One], Type[__main__.Other]]'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testMemberRedefinition]
+class C:
+    def __init__(self) -> None:
+        self.foo = 12
+        self.foo: int = 12  # E: Attribute 'foo' already defined on line 3
+
+[case testMemberRedefinitionDefinedInClass]
+class C:
+    foo = 12
+    def __init__(self) -> None:
+        self.foo: int = 12  # E: Attribute 'foo' already defined on line 2
+
+[case testAbstractInit]
+from abc import abstractmethod, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def __init__(self, a: int) -> None:
+        pass
+class B(A):
+    pass
+class C(B):
+    def __init__(self, a: int) -> None:
+        self.c = a
+a = A(1) # E: Cannot instantiate abstract class 'A' with abstract attribute '__init__'
+A.c # E: "Type[A]" has no attribute "c"
+b = B(2) # E: Cannot instantiate abstract class 'B' with abstract attribute '__init__'
+B.c # E: "Type[B]" has no attribute "c"
+c = C(3)
+c.c
+C.c
+
+[case testDecoratedConstructors]
+from typing import TypeVar, Callable, Any
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(f: F) -> F: ...
+
+class A:
+    @dec
+    def __init__(self, x: int) -> None: ...
+
+class B:
+    @dec
+    def __new__(cls, x: int) -> B: ...
+
+reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
+reveal_type(B)  # E: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testDecoratedConstructorsBad]
+from typing import Callable, Any
+
+def dec(f: Callable[[Any, int], Any]) -> int: ...
+
+class A:
+    @dec  # E: Unsupported decorated constructor type
+    def __init__(self, x: int) -> None: ...
+
+class B:
+    @dec  # E: Unsupported decorated constructor type
+    def __new__(cls, x: int) -> B: ...
+
+[case testIgnorePrivateAttributesTypeCheck]
+class B:
+    __foo_: int
+class C(B):
+    __foo_: str
+[out]
+
+[case testIgnorePrivateMethodsTypeCheck]
+class B:
+    def __foo_(self) -> int: ...
+class C(B):
+    def __foo_(self) -> str: ...
+[out]
+
+[case testCheckForPrivateMethodsWhenPublicCheck]
+class B:
+    __foo__: int
+class C(B):
+    __foo__: str
+[out]
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testIgnorePrivateMethodsTypeCheck]
+class A:
+    def __foo_(self) -> int: ...
+class B:
+    def __foo_(self) -> str: ...
+
+class C(A, B): pass
+[out]

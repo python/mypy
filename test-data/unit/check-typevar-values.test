@@ -19,7 +19,10 @@ o = [object()]
 if int():
     i = f(1)
     s = f('')
-    o = f(1) # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]")
+    o = f(1) \
+      # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]

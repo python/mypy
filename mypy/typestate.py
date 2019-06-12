@@ -12,6 +12,7 @@ if MYPY:
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.server.trigger import make_trigger
+from mypy import state
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship = Tuple[Instance, Instance]
@@ -36,8 +37,9 @@ class TypeState:
     not needed any more (e.g. during daemon shutdown).
     """
     # '_subtype_caches' keeps track of (subtype, supertype) pairs where supertypes are
-    # instances of the given TypeInfo. The cache also keeps track of the specific
-    # *kind* of subtyping relationship, which we represent as an arbitrary hashable tuple.
+    # instances of the given TypeInfo. The cache also keeps track of whether the check
+    # was done in strict optional mode and of the specific *kind* of subtyping relationship,
+    # which we represent as an arbitrary hashable tuple.
     # We need the caches, since subtype checks for structural types are very slow.
     _subtype_caches = {}  # type: Final[SubtypeCache]
 
@@ -104,15 +106,16 @@ class TypeState:
         if info not in TypeState._subtype_caches:
             return False
         cache = TypeState._subtype_caches[info]
-        if kind not in cache:
+        key = (state.strict_optional,) + kind
+        if key not in cache:
             return False
-        return (left, right) in cache[kind]
+        return (left, right) in cache[key]
 
     @staticmethod
     def record_subtype_cache_entry(kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
         cache = TypeState._subtype_caches.setdefault(right.type, dict())
-        cache.setdefault(kind, set()).add((left, right))
+        cache.setdefault((state.strict_optional,) + kind, set()).add((left, right))
 
     @staticmethod
     def reset_protocol_deps() -> None:

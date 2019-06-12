@@ -294,6 +294,19 @@ Miscellaneous strictness flags
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
+``implicit-reexport`` (bool, default True)
+    By default, imported values to a module are treated as exported and mypy allows
+    other modules to import them. When false, mypy will not re-export unless
+    the item is imported using from-as. Note that mypy treats stub files as if this
+    is always disabled. For example:
+
+    .. code-block:: python
+
+       # This won't re-export the value
+       from foo import bar
+       # This will re-export it as bar and allow other modules to import it
+       from foo import bar as bar
+
 ``strict_equality``  (bool, default False)
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
@@ -332,6 +345,13 @@ a list of import discovery options that may be used
 ``mypy_path`` (string)
     Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
     variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
+
+``files`` (string)
+    A comma-separated list of paths which should be checked by mypy if none are given on the command
+    line. Supports recursive file globbing using
+    [the glob library](https://docs.python.org/3/library/glob.html), where `*` (e.g. `*.py`) matches
+    files in the current directory and `**/` (e.g. `**/*.py`) matches files in any directories below
+    the current one.
 
 
 Platform configuration
@@ -432,6 +452,7 @@ Miscellaneous
 ``warn_unused_configs`` (bool, default False)
     Warns about per-module sections in the config file that do not
     match any files processed when invoking mypy.
+    (This requires turning off incremental mode using ``incremental = False``.)
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.

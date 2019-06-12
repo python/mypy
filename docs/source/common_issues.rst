@@ -149,6 +149,20 @@ generates spurious errors. Mypy will only look at the stub file
 and ignore the implementation, since stub files take precedence
 over ``.py`` files.
 
+Ignoring a whole file
+---------------------
+
+A ``# type: ignore`` comment at the top of a module (before any statements,
+including imports or docstrings) has the effect of ignoring the *entire* module.
+
+.. code-block:: python
+
+    # type: ignore
+
+    import foo
+
+    foo.bar()
+
 Unexpected errors about 'None' and/or 'Optional' types
 ------------------------------------------------------
 
@@ -641,8 +655,8 @@ renaming the method, a work-around is to use an alias:
        def register(self, path: bytes_):
            ...
 
-I need a mypy bug fix that hasn't been released yet
----------------------------------------------------
+Using a development mypy build
+------------------------------
 
 You can install the latest development version of mypy from source. Clone the
 `mypy repository on GitHub <https://github.com/python/mypy>`_, and then run

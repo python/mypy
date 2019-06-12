@@ -10,21 +10,21 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
-import binascii
 import contextlib
+import errno
 import gc
 import hashlib
 import json
 import os
+import pathlib
 import re
 import stat
 import sys
 import time
-import errno
 import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
-                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
+                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 MYPY = False
 if MYPY:
     from typing import ClassVar
@@ -41,8 +41,10 @@ from mypy.newsemanal.semanal import NewSemanticAnalyzer
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding, is_sub_path
+from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
+from mypy.util import (
+    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
+)
 if MYPY:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
@@ -60,8 +62,7 @@ from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
-
-from mypy.mypyc_hacks import BuildManagerBase
+from mypy.config_parser import parse_mypy_comments
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -127,6 +128,8 @@ def build(sources: List[BuildSource],
           alt_lib_path: Optional[str] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           fscache: Optional[FileSystemCache] = None,
+          stdout: Optional[TextIO] = None,
+          stderr: Optional[TextIO] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -158,9 +161,11 @@ def build(sources: List[BuildSource],
         messages.extend(new_messages)
 
     flush_errors = flush_errors or default_flush_errors
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
 
     try:
-        result = _build(sources, options, alt_lib_path, flush_errors, fscache)
+        result = _build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
         result.errors = messages
         return result
     except CompileError as e:
@@ -179,6 +184,8 @@ def _build(sources: List[BuildSource],
            alt_lib_path: Optional[str],
            flush_errors: Callable[[List[str], bool], None],
            fscache: Optional[FileSystemCache],
+           stdout: TextIO,
+           stderr: TextIO,
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(150 * 1000)
@@ -196,7 +203,7 @@ def _build(sources: List[BuildSource],
 
     source_set = BuildSourceSet(sources)
     errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin, snapshot = load_plugins(options, errors)
+    plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -211,11 +218,14 @@ def _build(sources: List[BuildSource],
                            plugins_snapshot=snapshot,
                            errors=errors,
                            flush_errors=flush_errors,
-                           fscache=fscache)
+                           fscache=fscache,
+                           stdout=stdout,
+                           stderr=stderr)
+    manager.trace(repr(options))
 
     reset_global_state()
     try:
-        graph = dispatch(sources, manager)
+        graph = dispatch(sources, manager, stdout)
         if not options.fine_grained_incremental:
             TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
@@ -317,7 +327,10 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins(options: Options,
+                 errors: Errors,
+                 stdout: TextIO,
+                 ) -> Tuple[Plugin, Dict[str, str]]:
     """Load all configured plugins.
 
     Return a plugin that encapsulates all plugins chained together. Always
@@ -381,7 +394,8 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
         try:
             plugin_type = getattr(module, func_name)(__version__)
         except Exception:
-            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path))
+            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path),
+                  file=stdout)
             raise  # Propagate to display traceback
 
         if not isinstance(plugin_type, type):
@@ -396,7 +410,8 @@ def load_plugins(options: Options, errors: Errors) -> Tuple[Plugin, Dict[str, st
             custom_plugins.append(plugin_type(options))
             snapshot[module_name] = take_module_snapshot(module)
         except Exception:
-            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
+            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
+                  file=stdout)
             raise  # Propagate to display traceback
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
@@ -440,7 +455,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class BuildManager(BuildManagerBase):
+class BuildManager:
     """This class holds shared state for building a mypy program.
 
     It is used to coordinate parsing, import processing, semantic
@@ -486,7 +501,7 @@ class BuildManager(BuildManagerBase):
                  search_paths: SearchPaths,
                  ignore_prefix: str,
                  source_set: BuildSourceSet,
-                 reports: Optional['Reports'],
+                 reports: 'Optional[Reports]',
                  options: Options,
                  version_id: str,
                  plugin: Plugin,
@@ -494,8 +509,12 @@ class BuildManager(BuildManagerBase):
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
+                 stdout: TextIO,
+                 stderr: TextIO,
                  ) -> None:
-        super().__init__()
+        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+        self.stdout = stdout
+        self.stderr = stderr
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -556,7 +575,7 @@ class BuildManager(BuildManagerBase):
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
-        self.quickstart_state = read_quickstart_file(options)
+        self.quickstart_state = read_quickstart_file(options, self.stdout)
 
     def dump_stats(self) -> None:
         self.log("Stats:")
@@ -698,7 +717,6 @@ class BuildManager(BuildManagerBase):
 
         Raise CompileError if there is a parse error.
         """
-        num_errs = self.errors.num_messages()
         t0 = time.time()
         tree = parse(source, path, id, self.errors, options=self.options)
         tree._fullname = id
@@ -707,7 +725,7 @@ class BuildManager(BuildManagerBase):
                        stubs_parsed=int(tree.is_stub),
                        parse_time=time.time() - t0)
 
-        if self.errors.num_messages() != num_errs:
+        if self.errors.is_blockers():
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
@@ -731,6 +749,41 @@ class BuildManager(BuildManagerBase):
                     options: Options) -> None:
         if self.reports is not None and self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
+
+    def verbosity(self) -> int:
+        return self.options.verbosity
+
+    def log(self, *message: str) -> None:
+        if self.verbosity() >= 1:
+            if message:
+                print('LOG: ', *message, file=self.stderr)
+            else:
+                print(file=self.stderr)
+            self.stderr.flush()
+
+    def log_fine_grained(self, *message: str) -> None:
+        import mypy.build
+        if self.verbosity() >= 1:
+            self.log('fine-grained:', *message)
+        elif mypy.build.DEBUG_FINE_GRAINED:
+            # Output log in a simplified format that is quick to browse.
+            if message:
+                print(*message, file=self.stderr)
+            else:
+                print(file=self.stderr)
+            self.stderr.flush()
+
+    def trace(self, *message: str) -> None:
+        if self.verbosity() >= 2:
+            print('TRACE:', *message, file=self.stderr)
+            self.stderr.flush()
+
+    def add_stats(self, **kwds: Any) -> None:
+        for key, value in kwds.items():
+            if key in self.stats:
+                self.stats[key] += value
+            else:
+                self.stats[key] = value
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
@@ -824,7 +877,7 @@ def invert_deps(deps: Dict[str, Set[str]],
     fake module FAKE_ROOT_MODULE if none are.
     """
     # Lazy import to speed up startup
-    from mypy.server.target import module_prefix, trigger_to_target
+    from mypy.server.target import trigger_to_target
 
     # Prepopulate the map for all the modules that have been processed,
     # so that we always generate files for processed modules (even if
@@ -903,7 +956,9 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     return snapshot
 
 
-def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, int, str]]]:
+def read_quickstart_file(options: Options,
+                         stdout: TextIO,
+                         ) -> Optional[Dict[str, Tuple[float, int, str]]]:
     quickstart = None  # type: Optional[Dict[str, Tuple[float, int, str]]]
     if options.quickstart_file:
         # This is very "best effort". If the file is missing or malformed,
@@ -917,7 +972,7 @@ def read_quickstart_file(options: Options) -> Optional[Dict[str, Tuple[float, in
             for file, (x, y, z) in raw_quickstart.items():
                 quickstart[file] = (x, y, z)
         except Exception as e:
-            print("Warning: Failed to load quickstart file: {}\n".format(str(e)))
+            print("Warning: Failed to load quickstart file: {}\n".format(str(e)), file=stdout)
     return quickstart
 
 
@@ -1346,6 +1401,11 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
+    # Note that the options we store in the cache are the options as
+    # specified by the command line/config file and *don't* reflect
+    # updates made by inline config directives in the file. This is
+    # important, or otherwise the options would never match when
+    # verifying the cache.
     options = manager.options.clone_for_module(id)
     assert source_hash is not None
     meta = {'id': id,
@@ -1595,6 +1655,10 @@ class State:
     # Whether the module has an error or any of its dependencies have one.
     transitive_error = False
 
+    # Errors reported before semantic analysis, to allow fine-grained
+    # mode to keep reporting them.
+    early_errors = None  # type: List[ErrorInfo]
+
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
@@ -1630,6 +1694,7 @@ class State:
             self.import_context = []
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
+        self.early_errors = []
         self._type_checker = None
         if not path and source is None:
             assert id is not None
@@ -1768,7 +1833,8 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0, self.manager.errors, self.options)
+            report_internal_error(err, self.path, 0, self.manager.errors,
+                                  self.options, self.manager.stdout, self.manager.stderr)
         self.manager.errors.set_import_context(save_import_context)
         # TODO: Move this away once we've removed the old semantic analyzer?
         if check_blockers:
@@ -1903,10 +1969,17 @@ class State:
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
+
+            self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
                                            self.ignore_all or self.options.ignore_errors)
 
         modules[self.id] = self.tree
+
+        # Make a copy of any errors produced during parse time so that
+        # fine-grained mode can repeat them when the module is
+        # reprocessed.
+        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
 
         self.semantic_analysis_pass1()
 
@@ -1917,6 +1990,16 @@ class State:
             self.tree.names = manager.semantic_analyzer.globals
 
         self.check_blockers()
+
+    def parse_inline_configuration(self, source: str) -> None:
+        """Check for inline mypy: options directive and parse them."""
+        flags = get_mypy_comments(source)
+        if flags:
+            changes, config_errors = parse_mypy_comments(flags, self.options)
+            self.options = self.options.apply_changes(changes)
+            self.manager.errors.set_file(self.xpath, self.id)
+            for lineno, error in config_errors:
+                self.manager.errors.report(lineno, 0, error)
 
     def semantic_analysis_pass1(self) -> None:
         """Perform pass 1 of semantic analysis, which happens immediately after parsing.
@@ -2180,7 +2263,7 @@ class State:
             # those errors to avoid spuriously flagging them as unused ignores.
             if self.meta:
                 self.verify_dependencies(suppressed_only=True)
-            self.manager.errors.generate_unused_ignore_notes(self.xpath)
+            self.manager.errors.generate_unused_ignore_errors(self.xpath)
 
 
 # Module import and diagnostic glue
@@ -2376,7 +2459,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
     manager.errors.set_file(caller_state.xpath, caller_state.id)
     manager.errors.report(line, 0,
                           "Import of '%s' ignored" % (id,),
-                          severity='note')
+                          severity='error')
     manager.errors.report(line, 0,
                           "(Using --follow-imports=error, module not passed on command line)",
                           severity='note', only_once=True)
@@ -2392,18 +2475,48 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
     manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
-                          severity='note', only_once=True)
+                          severity='error', only_once=True)
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
                           severity='note', only_once=True)
 
 
+def log_configuration(manager: BuildManager) -> None:
+    """Output useful configuration information to LOG and TRACE"""
+
+    manager.log()
+    configuration_vars = (
+        ("Mypy Version", __version__),
+        ("Config File", (manager.options.config_file or "Default")),
+        ("Configured Executable", manager.options.python_executable),
+        ("Current Executable", sys.executable),
+        ("Cache Dir", manager.options.cache_dir),
+    )
+
+    for conf_name, conf_value in configuration_vars:
+        manager.log("{:24}{}".format(conf_name + ":", conf_value))
+
+    # Complete list of searched paths can get very long, put them under TRACE
+    for path_type, paths in manager.search_paths._asdict().items():
+        if not paths:
+            manager.trace("No %s" % path_type)
+            continue
+
+        manager.trace("%s:" % path_type)
+
+        for pth in paths:
+            manager.trace("    %s" % pth)
+
+
 # The driver
 
 
-def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    manager.log()
-    manager.log("Mypy version %s" % __version__)
+def dispatch(sources: List[BuildSource],
+             manager: BuildManager,
+             stdout: TextIO,
+             ) -> Graph:
+    log_configuration(manager)
+
     t0 = time.time()
     graph = load_graph(sources, manager)
 
@@ -2426,11 +2539,11 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
                       fm_cache_size=len(manager.find_module_cache.results),
                       )
     if not graph:
-        print("Nothing to do?!")
+        print("Nothing to do?!", file=stdout)
         return graph
     manager.log("Loaded graph with %d nodes (%.3f sec)" % (len(graph), t1 - t0))
     if manager.options.dump_graph:
-        dump_graph(graph)
+        dump_graph(graph, stdout)
         return graph
 
     # Fine grained dependencies that didn't have an associated module in the build
@@ -2452,7 +2565,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
             manager.cache_enabled = False
             manager.log("Falling back to full run -- reloading graph...")
-            return dispatch(sources, manager)
+            return dispatch(sources, manager, stdout)
 
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the
@@ -2500,12 +2613,13 @@ class NodeInfo:
                                                      json.dumps(self.deps))
 
 
-def dump_graph(graph: Graph) -> None:
+def dump_graph(graph: Graph, stdout: Optional[TextIO] = None) -> None:
     """Dump the graph as a JSON string to stdout.
 
     This copies some of the work by process_graph()
     (sorted_components() and order_ascc()).
     """
+    stdout = stdout or sys.stdout
     nodes = []
     sccs = sorted_components(graph)
     for i, ascc in enumerate(sccs):
@@ -2534,7 +2648,7 @@ def dump_graph(graph: Graph) -> None:
                         if (dep_id != node.node_id and
                                 (dep_id not in node.deps or pri < node.deps[dep_id])):
                             node.deps[dep_id] = pri
-    print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
+    print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]", file=stdout)
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager,
@@ -2569,7 +2683,19 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath, st.id)
-            manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
+            manager.errors.report(
+                -1, -1,
+                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath)
+            )
+            p1 = len(pathlib.PurePath(st.xpath).parents)
+            p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
+
+            if p1 != p2:
+                manager.errors.report(
+                    -1, -1,
+                    "Are you missing an __init__.py?"
+                )
+
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)

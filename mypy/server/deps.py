@@ -97,7 +97,7 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
+    Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, ForwardRef, Overloaded, TypeOfAny, LiteralType,
 )
@@ -318,10 +318,6 @@ class DependencyVisitor(TraverserVisitor):
                 # If the set of abstract attributes change, this may invalidate class
                 # instantiation, or change the generated error message, since Python checks
                 # class abstract status when creating an instance.
-                #
-                # TODO: We should probably add this dependency only from the __init__ of the
-                #     current class, and independent of bases (to trigger changes in message
-                #     wording, as errors may enumerate all abstract attributes).
                 self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'),
                                     target=make_trigger(info.fullname() + '.__init__'))
                 # If the base class abstract attributes change, subclass abstract
@@ -393,7 +389,6 @@ class DependencyVisitor(TraverserVisitor):
             assert len(o.lvalues) == 1
             lvalue = o.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            # TODO: get rid of this extra dependency from __init__ to alias definition scope
             typ = self.type_map.get(lvalue)
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
                 class_name = typ.type_object().fullname()
@@ -415,8 +410,7 @@ class DependencyVisitor(TraverserVisitor):
                 if isinstance(lvalue, TupleExpr):
                     self.add_attribute_dependency_for_expr(rvalue, '__iter__')
             if o.type:
-                for trigger in self.get_type_triggers(o.type):
-                    self.add_dependency(trigger)
+                self.add_type_dependencies(o.type)
         if self.use_logical_deps() and o.unanalyzed_type is None:
             # Special case: for definitions without an explicit type like this:
             #     x = func(...)
@@ -790,7 +784,8 @@ class DependencyVisitor(TraverserVisitor):
 
         If the target is not given explicitly, use the current target.
         """
-        if trigger.startswith(('<builtins.', '<typing.', '<mypy_extensions.')):
+        if trigger.startswith(('<builtins.', '<typing.',
+                               '<mypy_extensions.', '<typing_extensions.')):
             # Don't track dependencies to certain library modules to keep the size of
             # the dependencies manageable. These dependencies should only
             # change on mypy version updates, which will require a full rebuild
@@ -807,8 +802,6 @@ class DependencyVisitor(TraverserVisitor):
             target: If not None, override the default (current) target of the
                 generated dependency.
         """
-        # TODO: Use this method in more places where get_type_triggers() + add_dependency()
-        #       are called together.
         for trigger in self.get_type_triggers(typ):
             self.add_dependency(trigger, target)
 
@@ -882,8 +875,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
-        if typ.final_value:
-            triggers.extend(self.get_type_triggers(typ.final_value))
+        if typ.last_known_value:
+            triggers.extend(self.get_type_triggers(typ.last_known_value))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:
@@ -891,7 +884,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             return [make_trigger(typ.missing_import_name)]
         return []
 
-    def visit_none_type(self, typ: NoneTyp) -> List[str]:
+    def visit_none_type(self, typ: NoneType) -> List[str]:
         return []
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:
@@ -973,7 +966,6 @@ def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
 
 
 def has_user_bases(info: TypeInfo) -> bool:
-    # TODO: skip everything from typeshed?
     return any(base.module_name not in ('builtins', 'typing', 'enum') for base in info.mro[1:])
 
 

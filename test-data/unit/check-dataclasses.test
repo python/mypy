@@ -387,15 +387,14 @@ app1 >= app3
 # flags: --python-version 3.6
 from dataclasses import dataclass
 
-@dataclass(eq=False, order=True)  # E: eq must be True if order is True
-class Application:
+@dataclass(eq=False, order=True)
+class Application:  # E: eq must be True if order is True
    ...
 
 [builtins fixtures/list.pyi]
 
--- Blocked by #6454
 [case testDataclassOrderingWithCustomMethods]
-# flags: --python-version 3.6  --no-new-semantic-analyzer
+# flags: --python-version 3.6
 from dataclasses import dataclass
 
 @dataclass(order=True)
@@ -587,3 +586,48 @@ c.a = 10
 c.a = "foo"  # E: Incompatible types in assignment (expression has type "str", variable has type "Optional[int]")
 
 [builtins fixtures/list.pyi]
+[case testDisallowUntypedWorksForward]
+# flags: --disallow-untyped-defs
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class B:
+    x: C
+
+class C(List[C]):
+    pass
+
+reveal_type(B)  # E: Revealed type is 'def (x: __main__.C) -> __main__.B'
+[builtins fixtures/list.pyi]
+
+[case testDisallowUntypedWorksForwardBad]
+# flags: --disallow-untyped-defs
+from dataclasses import dataclass
+
+@dataclass
+class B:
+    x: Undefined  # E: Name 'Undefined' is not defined
+    y = undefined()  # E: Name 'undefined' is not defined
+
+reveal_type(B)  # E: Revealed type is 'def (x: Any) -> __main__.B'
+[builtins fixtures/list.pyi]
+
+[case testMemberExprWorksAsField]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    x: int = dataclasses.field(metadata={"doc": "foo"})
+    y: str
+
+@dataclasses.dataclass
+class B:
+    x: int = dataclasses.field(init=False, default=1)
+    y: str
+
+@dataclasses.dataclass
+class C:
+    x: int = dataclasses.field(default=1)
+    y: str = dataclasses.field(metadata={"doc": "foo"})  # E: Attributes without a default cannot follow attributes with one
+[builtins fixtures/dict.pyi]

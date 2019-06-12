@@ -756,14 +756,23 @@ class D(str): pass # ok
 [out]
 
 [case testCyclicInheritance1]
-# flags: --no-new-semantic-analyzer
-# Crashes with new semantic analyzer: https://github.com/python/mypy/issues/6495
-class A(A): pass # E: Cycle in inheritance hierarchy
+# flags: --new-semantic-analyzer
+class A(A): pass # E: Cannot resolve name "A" (possible cyclic definition)
 [out]
 
 [case testCyclicInheritance2]
+# flags: --new-semantic-analyzer
+class A(B): pass # E: Cannot resolve name "B" (possible cyclic definition)
+class B(A): pass
+[out]
+
+[case testCyclicInheritance1Old]
 # flags: --no-new-semantic-analyzer
-# Crashes with new semantic analyzer: https://github.com/python/mypy/issues/6495
+class A(A): pass # E: Cycle in inheritance hierarchy
+[out]
+
+[case testCyclicInheritance2Old]
+# flags: --no-new-semantic-analyzer
 class A(B): pass
 class B(A): pass # E: Cycle in inheritance hierarchy
 [out]
@@ -1220,6 +1229,7 @@ def f() -> List[int]: pass
 [builtins fixtures/list.pyi]
 [out]
 main:2: error: Name 'List' is not defined
+main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testImportObsoleteTypingFunction]
 from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
@@ -1260,7 +1270,7 @@ main:1: error: Module 'typing' has no attribute 'typevar' (it's now called 'typi
 t = typevar('t')
 [out]
 main:1: error: Name 'typevar' is not defined
-main:1: note: (Did you mean 'typing.TypeVar'?)
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 
 [case testUseObsoleteNameForTypeVar3]
 import typing

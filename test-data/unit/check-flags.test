@@ -37,11 +37,26 @@ lambda x: x
 def f():
     1 + "str"
 [out]
-main:2: error: Function is missing a type annotation
+main:2: error: Function is missing a return type annotation
+main:2: note: Use "-> None" if function does not return a value
+
+[case testUnannotatedReturnWithOnlySelfArgument]
+# flags: --disallow-untyped-defs
+def f(self): pass
+[out]
+main:2: error: Function is missing a return type annotation
+main:2: note: Use "-> None" if function does not return a value
+
+[case testUnannotatedReturnWithNontrivialReturn]
+# flags: --disallow-untyped-defs
+def f(): return 1
+[out]
+main:2: error: Function is missing a return type annotation
 
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
-async def f():  # E: Function is missing a type annotation
+async def f():  # E: Function is missing a return type annotation \
+                # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -286,7 +301,7 @@ def f() -> NoReturn:
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
 
-def f() -> NoReturn:  # N: Implicit return in function which does not return
+def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
 [builtins fixtures/dict.pyi]
 
@@ -432,7 +447,7 @@ x + ""
 [file mod.py]
 deliberate syntax error
 [out]
-main:2: note: Import of 'mod' ignored
+main:2: error: Import of 'mod' ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIgnoreMissingImportsFalse]
@@ -1122,3 +1137,31 @@ strict_equality = True
 [[mypy-b]
 strict_equality = False
 [builtins fixtures/bool.pyi]
+
+[case testNoImplicitReexport]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+[file other_module_1.py]
+a = 5
+[file other_module_2.py]
+from other_module_1 import a
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportMypyIni]
+# flags: --config-file tmp/mypy.ini
+from other_module_2 import a
+
+[file other_module_1.py]
+a = 5
+
+[file other_module_2.py]
+from other_module_1 import a
+
+[file mypy.ini]
+[[mypy]
+implicit_reexport = True
+[[mypy-other_module_2]
+implicit_reexport = False
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'

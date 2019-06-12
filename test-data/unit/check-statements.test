@@ -1037,6 +1037,13 @@ del (a, b)
 b + 1 # E: Trying to read deleted variable 'b'
 [builtins fixtures/ops.pyi]
 
+[case testDelStatementWithAssignmentList]
+a = 1
+b = 1
+del [a, b]
+b + 1 # E: Trying to read deleted variable 'b'
+[builtins fixtures/list.pyi]
+
 [case testDelStatementWithAssignmentClass]
 class C:
     a = 1
@@ -1242,6 +1249,15 @@ def g() -> Generator[int, str, float]:
     r = yield from f('')
     reveal_type(r)  # E: Revealed type is 'builtins.str*'
     return 3.14
+
+[case testYieldFromTupleStatement]
+from typing import Generator
+def g() -> Generator[int, None, None]:
+    yield from ()
+    yield from (0, 1, 2)
+    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int")
+    yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int")
+[builtins fixtures/tuple.pyi]
 
 -- With statement
 -- --------------

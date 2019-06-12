@@ -1521,8 +1521,7 @@ f(0)  # E: No overload variant of "f" matches argument type "int" \
       # N:     def f(a: str) -> None
 
 [case testCustomRedefinitionDecorator]
-# https://github.com/python/mypy/issues/6432
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Any, Callable, Type
 
 class Chain(object):
@@ -1532,11 +1531,11 @@ class Chain(object):
 class Test(object):
     do_chain = Chain()
 
-    @do_chain.chain
+    @do_chain.chain  # E: Name 'do_chain' already defined on line 9
     def do_chain(self) -> int:
         return 2
 
-    @do_chain.chain  # E: Name 'do_chain' already defined on line 12
+    @do_chain.chain  # E: Name 'do_chain' already defined on line 11
     def do_chain(self) -> int:
         return 3
 
@@ -5002,3 +5001,29 @@ def f(x):
 
 reveal_type(f(g([])))  # E: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
+
+[case testOverloadDeferredNode]
+from typing import Callable, TypeVar, Generic, Any, overload
+
+_S = TypeVar('_S')
+_T = TypeVar('_T')
+_R = TypeVar('_R')
+
+@overload
+def partial(__func: Callable[[_T], _S], __arg: _T) -> Callable[[], _S]: ...
+@overload
+def partial(__func: Callable[[_T, _S], _S], __arg: _T) -> Callable[[_S], _R]: ...
+def partial(*args: Any) -> Any:
+    pass
+
+def f(f: Callable[[int], int]) -> None:
+    pass
+
+def dec(f: Callable[[_S, _T], _R]) -> Callable[[_S, _T], _R]: pass
+
+def asdf() -> None:
+    f(partial(lol, 0))
+
+@dec
+def lol(x: int, y: int) -> int:
+    pass

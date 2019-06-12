@@ -72,7 +72,10 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                 # check arbitrarily the first overload item. If the
                 # different items have a different abstract status, there
                 # should be an error reported elsewhere.
-                func = node.items[0]  # type: Optional[Node]
+                if node.items:  # can be empty for invalid overloads
+                    func = node.items[0]  # type: Optional[Node]
+                else:
+                    func = None
             else:
                 func = node
             if isinstance(func, Decorator):

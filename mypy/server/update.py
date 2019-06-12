@@ -114,8 +114,7 @@ test cases (test-data/unit/fine-grained*.test).
 
 import time
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, NamedTuple, Callable,
-    Sequence
+    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Callable, Sequence
 )
 
 from mypy.build import (
@@ -136,13 +135,14 @@ from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, process_selected_targets
+from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.aststripnew import strip_target_new
+from mypy.server.aststripnew import strip_target_new, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target
-from mypy.server.target import module_prefix, split_target, trigger_to_target
+from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
+from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
 
 MYPY = False
@@ -943,18 +943,25 @@ def reprocess_nodes(manager: BuildManager,
             targets.add(target)
     manager.errors.clear_errors_in_targets(file_node.path, targets)
 
+    # If one of the nodes is the module itself, emit any errors that
+    # happened before semantic analysis.
+    for target in targets:
+        if target == module_id:
+            for info in graph[module_id].early_errors:
+                manager.errors.add_error_info(info)
+
     # Strip semantic analysis information.
-    patches = []  # type: List[Callable[[], None]]
+    saved_attrs = {}  # type: SavedAttributes
     for deferred in nodes:
         processed_targets.append(deferred.node.fullname())
         if not manager.options.new_semantic_analyzer:
             strip_target(deferred.node)
         else:
-            patches = strip_target_new(deferred.node)
+            strip_target_new(deferred.node, saved_attrs)
     if not options.new_semantic_analyzer:
         re_analyze_nodes(file_node, nodes, manager, options)
     else:
-        process_selected_targets(graph[module_id], nodes, graph, patches)
+        semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.

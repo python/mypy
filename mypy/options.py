@@ -44,6 +44,7 @@ PER_MODULE_OPTIONS = {
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
+    "implicit_reexport",
     "show_none_errors",
     "strict_optional",
     "strict_optional_whitelist",
@@ -151,6 +152,9 @@ class Options:
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
 
+        # Don't re-export names unless they are imported with `from ... as ...`
+        self.implicit_reexport = True
+
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
 
@@ -178,6 +182,10 @@ class Options:
         # mtime/size/hash arrays, used to avoid having to recalculate
         # source hashes as often.
         self.quickstart_file = None  # type: Optional[str]
+
+        # A comma-separated list of files/directories for mypy to type check;
+        # supports globbing
+        self.files = None  # type: Optional[List[str]]
 
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]

@@ -1,7 +1,7 @@
 from typing import Optional, Container, Callable
 
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId, Instance, TypeVarType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType,
 )
@@ -33,7 +33,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
@@ -118,4 +118,18 @@ class TypeVarEraser(TypeTranslator):
     def visit_type_var(self, t: TypeVarType) -> Type:
         if self.erase_id(t.id):
             return self.replacement
+        return t
+
+
+def remove_instance_last_known_values(t: Type) -> Type:
+    return t.accept(LastKnownValueEraser())
+
+
+class LastKnownValueEraser(TypeTranslator):
+    """Removes the Literal[...] type that may be associated with any
+    Instance types."""
+
+    def visit_instance(self, t: Instance) -> Type:
+        if t.last_known_value:
+            return t.copy_modified(last_known_value=None)
         return t

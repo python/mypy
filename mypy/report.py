@@ -32,7 +32,7 @@ if MYPY:
 try:
     # mypyc doesn't properly handle import from of submodules that we
     # don't have stubs for, hence the hacky double import
-    import lxml.etree  # type: ignore
+    import lxml.etree  # type: ignore  # noqa: F401
     from lxml import etree  # type: ignore
     LXML_INSTALLED = True
 except ImportError:
@@ -235,6 +235,7 @@ class AnyExpressionsReporter(AbstractReporter):
             coverage = (float(num_total - num_any) / float(num_total)) * 100
             coverage_str = '{:.2f}%'.format(coverage)
             rows.append([filename, str(num_any), str(num_total), coverage_str])
+        rows.sort(key=lambda x: x[0])
         total_row = ["Total", str(total_any), str(total_expr), '{:.2f}%'.format(total_coverage)]
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
@@ -249,6 +250,7 @@ class AnyExpressionsReporter(AbstractReporter):
         rows = []  # type: List[List[str]]
         for filename, counter in self.any_types_counter.items():
             rows.append([filename] + [str(counter[typ]) for typ in type_of_any_name_map])
+        rows.sort(key=lambda x: x[0])
         total_row = [total_row_name] + [str(total_counter[typ])
                                         for typ in type_of_any_name_map]
         self._write_out_report('types-of-anys.txt', column_names, rows, total_row)
@@ -419,7 +421,8 @@ class MemoryXmlReporter(AbstractReporter):
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
     # Tabs (#x09) are allowed in XML content.
-    control_fixer = str.maketrans(''.join(chr(i) for i in range(32) if i != 9), '?' * 31)
+    control_fixer = str.maketrans(
+        ''.join(chr(i) for i in range(32) if i != 9), '?' * 31)  # type: Final
 
     def on_file(self,
                 tree: MypyFile,

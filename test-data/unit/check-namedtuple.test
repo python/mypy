@@ -828,3 +828,37 @@ class Child(Base):
 
 Base(param=10)
 Child(param=10)
+
+[case testNamedTupleClassMethodWithGenericReturnValue]
+from typing import TypeVar, Type, NamedTuple
+
+T = TypeVar('T', bound='Parent')
+
+class Parent(NamedTuple):
+    x: str
+
+    @classmethod
+    def class_method(cls: Type[T]) -> T:
+        return cls(x='text')
+
+class Child(Parent):
+    pass
+
+reveal_type(Child.class_method())  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.Child]'
+[builtins fixtures/classmethod.pyi]
+
+[case testNamedTupleAsConditionalStrictOptionalDisabled]
+# flags: --no-strict-optional
+from typing import NamedTuple
+
+class C(NamedTuple):
+    a: int
+    b: str
+
+a: C
+if not a:
+    1()  # E: "int" not callable
+b = (1, 2)
+if not b:
+    ''()  # E: "str" not callable
+[builtins fixtures/tuple.pyi]
