@@ -1677,8 +1677,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                          reassign=False)
 
                     if self.fn_info.contains_nested and self.is_free_variable(symbol):
-                        return self.add_var_to_env_class(symbol, self.node_type(lvalue),
-                                                         self.fn_info, reassign=False)
+                        if self.fn_info.is_nested:
+                            return self.add_var_to_env_class(symbol,
+                                                             self.node_type(lvalue),
+                                                             self.fn_info.callable_class,
+                                                             reassign=False)
+                        else:
+                            return self.add_var_to_env_class(symbol, self.node_type(lvalue),
+                                                             self.fn_info, reassign=False)
 
                     # Otherwise define a new local variable.
                     return self.environment.add_local_reg(symbol, self.node_type(lvalue))
