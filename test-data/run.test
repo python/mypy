@@ -2133,6 +2133,16 @@ def first() -> Callable[[], Callable[[], str]]:
         return third
     return second
 
+def f1() -> int:
+        x = 1
+        def f2() -> int:
+                y = 2
+                def f3() -> int:
+                        z = 3
+                        return y
+                return f3()
+        return f2()
+
 def uno(num: float) -> Callable[[str], str]:
     def dos(s: str) -> str:
         return s + '!'
@@ -2169,7 +2179,7 @@ def third() -> str:
     return 'third: normal function'
 
 [file driver.py]
-from native import outer, inner, first, uno, eins, call_other_inner_func, second, third
+from native import outer, inner, first, uno, eins, call_other_inner_func, second, third, f1
 
 assert outer()() == None
 assert inner() == 'inner: normal function'
@@ -2179,6 +2189,7 @@ assert eins(4.0) == 'eins?'
 assert call_other_inner_func(5) == 21
 assert second() == 'second: normal function'
 assert third() == 'third: normal function'
+assert f1() == 2
 
 [case testOverloads]
 from typing import overload, Union, Tuple
