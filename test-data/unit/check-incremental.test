@@ -2465,6 +2465,7 @@ x: int = C()[0][0]
 [out]
 
 [case testForwardTypeAliasInBase2]
+# flags: --new-semantic-analyzer
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
@@ -2475,12 +2476,13 @@ A = G[C]
 class B(NamedTuple):
     x: int
 
-C().x
-C()[0]
+C(1).x
+C(1)[0]
 [builtins fixtures/list.pyi]
 [out]
 
 [case testSerializeRecursiveAliases1]
+# flags: --no-new-semantic-analyzer
 from typing import Type, Callable, Union
 
 A = Union[A, int]  # type: ignore
@@ -2489,6 +2491,7 @@ C = Type[C] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases2]
+# flags: --no-new-semantic-analyzer
 from typing import Type, Callable, Union
 
 A = Union[B, int]  # type: ignore
@@ -2497,6 +2500,7 @@ C = Type[A] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases3]
+# flags: --no-new-semantic-analyzer
 from typing import Type, Callable, Union, NamedTuple
 
 A = Union[B, int]  # type: ignore
@@ -2566,6 +2570,7 @@ M = NamedTuple('M', [('x', int)])
 [out]
 
 [case testSelfRefNTIncremental1]
+# flags: --no-new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
 Node = NamedTuple('Node', [ # type: ignore
@@ -2576,6 +2581,7 @@ n: Node
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental2]
+# flags: --no-new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [ # type: ignore
@@ -2590,6 +2596,7 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental3]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple): # type: ignore
@@ -2605,6 +2612,7 @@ lst = [m, n]
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental4]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 class B(NamedTuple): # type: ignore
@@ -2618,6 +2626,7 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental5]
+# flags: --no-new-semantic-analyzer
 from typing import NamedTuple
 
 B = NamedTuple('B', [ # type: ignore
@@ -3272,6 +3281,7 @@ main:8: error: Revealed type is 'def (x: builtins.str) -> __main__.A@6'
 main:8: error: Revealed type is 'def (x: builtins.str) -> __main__.A@6'
 
 [case testAttrsIncrementalConverterInSubmoduleForwardRef]
+# flags: --no-new-semantic-analyzer
 from a.a import A
 reveal_type(A)
 [file a/__init__.py]
@@ -3289,11 +3299,12 @@ F = List[int]
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
+main:3: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 [out2]
-main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
+main:3: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 
 [case testAttrsIncrementalConverterType]
+# flags: --no-new-semantic-analyzer
 from a import C
 import attr
 o = C("1", "2", "3", "4")
@@ -3324,11 +3335,11 @@ class C:
     d: int = attr.ib(converter=parse)
 [builtins fixtures/attr.pyi]
 [out1]
-main:5: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
-main:9: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
+main:6: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:10: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 [out2]
-main:5: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
-main:9: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
+main:6: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:10: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 
 [case testAttrsIncrementalThreeRuns]
 from a import A
@@ -4461,6 +4472,7 @@ def outer() -> None:
 [out2]
 
 [case testRecursiveAliasImported]
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 import lib
@@ -4482,7 +4494,38 @@ B = List[A]
 [out2]
 tmp/a.py:3: error: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
 
+[case testRecursiveAliasImported2]
+# flags: --new-semantic-analyzer
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x)
+[file lib.pyi]
+from typing import List
+from other import B
+A = List[B]  # type: ignore
+[file other.pyi]
+from typing import List
+from lib import A
+B = List[A]
+[builtins fixtures/list.pyi]
+[out]
+tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
+tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
+tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
+[out2]
+tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
+tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
+tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
+tmp/a.py:2: error: Cannot resolve name "lib.A" (possible cyclic definition)
+tmp/a.py:3: error: Revealed type is 'Any'
+
 [case testRecursiveNamedTupleTypedDict]
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 import lib
@@ -4576,6 +4619,8 @@ def f(x: str) -> None: pass
 tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
 [case testOverrideByIdemAlias]
+# https://github.com/python/mypy/issues/6404
+# flags: --no-new-semantic-analyzer
 import a
 [file a.py]
 import lib

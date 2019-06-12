@@ -59,14 +59,14 @@ reveal_type(C().x)  # E: Revealed type is 'builtins.float'
 [out]
 
 [case testFinalInvalidDefinitions]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 # Errors are shown in a different order with the new analyzer.
 from typing import Final, Any
 
 x = y = 1  # type: Final[float]  # E: Invalid final declaration
 z: Any
-z[0]: Final[int]  # E: Unexpected type declaration \
-                  # E: Invalid final declaration
+z[0]: Final[int]  # E: Invalid final declaration \
+                  # E: Unexpected type declaration
 [out]
 
 [case testFinalDefiningInstanceVarStubs]
@@ -382,7 +382,7 @@ y
 y: Final = 3  # E: Cannot redefine an existing name as final
 
 [case testFinalReassignModuleVar3]
-# flags: --disallow-redefinition --no-new-semantic-analyzer
+# flags: --disallow-redefinition --new-semantic-analyzer
 # Error formatting is subtly different with new analyzer.
 from typing import Final
 
@@ -402,17 +402,15 @@ def f2() -> None:
 
 y = 1 # E: Cannot assign to final name "y"
 y
-y: Final = 2  # E: Name 'y' already defined on line 19 \
-              # E: Cannot redefine an existing name as final
+y: Final = 2  # E: Cannot redefine an existing name as final
 y = 3  # E: Cannot assign to final name "y"
 
 z: Final = 1
-z: Final = 2  # E: Name 'z' already defined on line 24 \
-              # E: Cannot redefine an existing name as final
+z: Final = 2  # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleReexport]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 # Error formatting is subtly different with the new analyzer.
 from typing import Final
 
@@ -436,7 +434,6 @@ X: Final[int]
 [out]
 tmp/lib/const.pyi:3: error: Type in Final[...] can only be omitted if there is an initializer
 main:8: error: Cannot assign to final name "X"
-main:9: error: Name 'ID' already defined (possibly by an import)
 main:9: error: Cannot redefine an existing name as final
 main:10: error: Cannot assign to final name "ID"
 
@@ -487,16 +484,16 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
-# flags: --no-new-semantic-analyzer
-# Methods are processed after top-level in new analyzer.
+# flags: --new-semantic-analyzer
 from typing import Final
 
 class C:
     y: Final = 1
     def __init__(self) -> None:
-        self.x: Final = 1
+        # Methods are processed after top-level in new analyzer.
+        self.x: Final = 1  # E: Cannot redefine an existing name as final
         self.y = 2  # E: Cannot assign to final attribute "y"
-    x = 2  # E: Cannot assign to final name "x"
+    x = 2
 [out]
 
 [case testFinalReassignInstanceVarMethod]

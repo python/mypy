@@ -393,9 +393,8 @@ class Application:  # E: eq must be True if order is True
 
 [builtins fixtures/list.pyi]
 
--- Blocked by #6454
 [case testDataclassOrderingWithCustomMethods]
-# flags: --python-version 3.6  --no-new-semantic-analyzer
+# flags: --python-version 3.6
 from dataclasses import dataclass
 
 @dataclass(order=True)

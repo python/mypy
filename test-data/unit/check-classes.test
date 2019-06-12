@@ -230,11 +230,11 @@ class D(object):
 [out]
 
 [case testClassNamesDefinedOnSelUsedInClassBodyReveal]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 class A(object):
     def f(self) -> None:
         self.attr = 1
-    reveal_type(attr)  # E: Revealed type is 'builtins.int'
+    attr  # E: Name 'attr' is not defined
 
 class B(object):
     attr = 0
@@ -4492,11 +4492,11 @@ x = NT(N(1))
 [out]
 
 [case testNewTypeFromForwardTypedDict]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NewType, Tuple
 from mypy_extensions import TypedDict
 
-NT = NewType('NT', N) # E: Argument 2 to NewType(...) must be subclassable (got TypedDict('__main__.N', {'x': builtins.int}))
+NT = NewType('NT', N) # E: Argument 2 to NewType(...) must be subclassable (got "N")
 class N(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]

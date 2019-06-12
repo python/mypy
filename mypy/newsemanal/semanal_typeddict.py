@@ -120,9 +120,6 @@ class TypedDictAnalyzer:
          * List of types for each key
          * Set of required keys
         """
-        if self.options.python_version < (3, 6):
-            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
-            return [], [], set()
         fields = []  # type: List[str]
         types = []  # type: List[Type]
         for stmt in defn.defs.body:
