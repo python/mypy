@@ -1099,6 +1099,9 @@ class ASTConverter:
         empty_string.set_line(n.lineno, n.col_offset)
         strs_to_join = ListExpr(self.translate_expr_list(n.values))
         strs_to_join.set_line(empty_string)
+        # Don't make unecessary join call if there is only one str to join
+        if len(strs_to_join.items) == 1:
+            return self.set_line(strs_to_join.items[0], n)
         join_method = MemberExpr(empty_string, 'join')
         join_method.set_line(empty_string)
         result_expression = CallExpr(join_method,
@@ -1111,15 +1114,18 @@ class ASTConverter:
     def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
         # A FormattedValue is a component of a JoinedStr, or it can exist
         # on its own. We translate them to individual '{}'.format(value)
-        # calls -- we don't bother with the conversion/format_spec fields.
-        exp = self.visit(n.value)
-        exp.set_line(n.lineno, n.col_offset)
-        format_string = StrExpr('{}')
+        # calls. Format specifier and conversion information is passed along
+        # to allow mypyc to support f-strings with format specifiers and conversions.
+        val_exp = self.visit(n.value)
+        val_exp.set_line(n.lineno, n.col_offset)
+        conv_str = '' if n.conversion is None or n.conversion < 0 else '!' + chr(n.conversion)
+        format_string = StrExpr('{' + conv_str + ':{}}')
+        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr('')
         format_string.set_line(n.lineno, n.col_offset)
         format_method = MemberExpr(format_string, 'format')
         format_method.set_line(format_string)
         result_expression = CallExpr(format_method,
-                                     [exp],
+                                     [val_exp, format_spec_exp],
                                      [ARG_POS],
                                      [None])
         return self.set_line(result_expression, n)
