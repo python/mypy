@@ -22,8 +22,13 @@ from mypyc.common import PROPSET_PREFIX
 
 from mypy.nodes import Block, SymbolNode, Var, FuncDef, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
+from mypy_extensions import trait
+
 from mypyc.namegen import NameGenerator
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
@@ -74,7 +79,7 @@ class RVoid(RType):
         return visitor.visit_rvoid(self)
 
 
-void_rtype = RVoid()
+void_rtype = RVoid()  # type: Final
 
 
 class RPrimitive(RType):
@@ -109,31 +114,36 @@ class RPrimitive(RType):
 
 
 # Used to represent arbitrary objects and dynamically typed values
-object_rprimitive = RPrimitive('builtins.object', is_unboxed=False, is_refcounted=True)
+object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
+                               is_refcounted=True)  # type: Final
 
-int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True, ctype='CPyTagged')
+int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
+                            ctype='CPyTagged')  # type: Final
 
 short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
-                                  ctype='CPyTagged')
+                                  ctype='CPyTagged')  # type: Final
 
-float_rprimitive = RPrimitive('builtins.float', is_unboxed=False, is_refcounted=True)
+float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
+                              is_refcounted=True)  # type: Final
 
-bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False, ctype='char')
+bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
+                             ctype='char')  # type: Final
 
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
-                             ctype='char')
+                             ctype='char')  # type: Final
 
-list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)
+list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)  # type: Final
 
-dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)
+dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)  # type: Final
 
-set_rprimitive = RPrimitive('builtins.set', is_unboxed=False, is_refcounted=True)
+set_rprimitive = RPrimitive('builtins.set', is_unboxed=False, is_refcounted=True)  # type: Final
 
 # At the C layer, str is refered to as unicode (PyUnicode)
-str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)
+str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)  # type: Final
 
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with explicit '...')
-tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False, is_refcounted=True)
+tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
+                              is_refcounted=True)  # type: Final
 
 
 def is_int_rprimitive(rtype: RType) -> bool:
@@ -487,9 +497,12 @@ class BasicBlock:
         self.error_handler = None  # type: Optional[BasicBlock]
 
 
-ERR_NEVER = 0  # Never generates an exception
-ERR_MAGIC = 1  # Generates magic value (c_error_value) based on target RType on exception
-ERR_FALSE = 2  # Generates false (bool) on exception
+# Never generates an exception
+ERR_NEVER = 0  # type: Final
+# Generates magic value (c_error_value) based on target RType on exception
+ERR_MAGIC = 1  # type: Final
+# Generates false (bool) on exception
+ERR_FALSE = 2  # type: Final
 
 # Hack: using this line number for an op will supress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -600,7 +613,7 @@ class Branch(ControlOp):
     op_names = {
         BOOL_EXPR: ('%r', 'bool'),
         IS_ERROR: ('is_error(%r)', ''),
-    }
+    }  # type: Final
 
     def __init__(self, left: Value, true_label: BasicBlock,
                  false_label: BasicBlock, op: int, line: int = -1, *, rare: bool = False) -> None:
@@ -823,7 +836,8 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
-class EmitterInterface:
+@trait
+class EmitterInterface():
     @abstractmethod
     def reg(self, name: Value) -> str:
         raise NotImplementedError
@@ -1049,10 +1063,8 @@ class SetAttr(RegisterOp):
         return visitor.visit_set_attr(self)
 
 
-# Default name space for statics, variables
-NAMESPACE_STATIC = 'static'
-# Static namespace for pointers to native type objects
-NAMESPACE_TYPE = 'type'
+NAMESPACE_STATIC = 'static'  # type: Final # Default name space for statics, variables
+NAMESPACE_TYPE = 'type'  # type: Final # Static namespace for pointers to native type objects
 
 
 class LoadStatic(RegisterOp):
@@ -1326,9 +1338,9 @@ class FuncSignature:
         return 'FuncSignature(args=%r, ret=%r)' % (self.args, self.ret_type)
 
 
-FUNC_NORMAL = 0
-FUNC_STATICMETHOD = 1
-FUNC_CLASSMETHOD = 2
+FUNC_NORMAL = 0  # type: Final
+FUNC_STATICMETHOD = 1  # type: Final
+FUNC_CLASSMETHOD = 2  # type: Final
 
 
 class FuncDecl:
@@ -1398,7 +1410,7 @@ class FuncIR:
         return '\n'.join(format_func(self))
 
 
-INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
+INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
 
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -1630,6 +1642,7 @@ class ModuleIR:
         self.final_names = final_names
 
 
+@trait
 class OpVisitor(Generic[T]):
     @abstractmethod
     def visit_goto(self, op: Goto) -> T:

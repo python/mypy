@@ -786,6 +786,41 @@ class BaseNonlocalControl(NonlocalControl):
         builder.add(Return(value))
 
 
+class LoopNonlocalControl(NonlocalControl):
+    def __init__(self, outer: NonlocalControl,
+                 continue_block: BasicBlock, break_block: BasicBlock) -> None:
+        self.outer = outer
+        self.continue_block = continue_block
+        self.break_block = break_block
+
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+        builder.add(Goto(self.break_block))
+
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+        builder.add(Goto(self.continue_block))
+
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+        self.outer.gen_return(builder, value, line)
+
+
+class GeneratorNonlocalControl(BaseNonlocalControl):
+    def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
+        # Assign an invalid next label number so that the next time __next__ is called, we jump to
+        # the case in which StopIteration is raised.
+        builder.assign(builder.fn_info.generator_class.next_label_target,
+                       builder.add(LoadInt(-1)),
+                       line)
+        # Raise a StopIteration containing a field for the value that should be returned. Before
+        # doing so, create a new block without an error handler set so that the implicitly thrown
+        # StopIteration isn't caught by except blocks inside of the generator function.
+        builder.error_handlers.append(None)
+        builder.goto_new_block()
+        builder.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, value,
+                                       line))
+        builder.add(Unreachable())
+        builder.error_handlers.pop()
+
+
 class CleanupNonlocalControl(NonlocalControl):
     """Abstract nonlocal control that runs some cleanup code. """
     def __init__(self, outer: NonlocalControl) -> None:
@@ -807,22 +842,65 @@ class CleanupNonlocalControl(NonlocalControl):
         self.outer.gen_return(builder, value, line)
 
 
-class GeneratorNonlocalControl(BaseNonlocalControl):
+class TryFinallyNonlocalControl(NonlocalControl):
+    def __init__(self, target: BasicBlock) -> None:
+        self.target = target
+        self.ret_reg = None  # type: Optional[Register]
+
+    def gen_break(self, builder: 'IRBuilder', line: int) -> None:
+        builder.error("break inside try/finally block is unimplemented", line)
+
+    def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
+        builder.error("continue inside try/finally block is unimplemented", line)
+
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
-        # Assign an invalid next label number so that the next time __next__ is called, we jump to
-        # the case in which StopIteration is raised.
-        builder.assign(builder.fn_info.generator_class.next_label_target,
-                       builder.add(LoadInt(-1)),
-                       line)
-        # Raise a StopIteration containing a field for the value that should be returned. Before
-        # doing so, create a new block without an error handler set so that the implicitly thrown
-        # StopIteration isn't caught by except blocks inside of the generator function.
-        builder.error_handlers.append(None)
-        builder.goto_new_block()
-        builder.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, value,
-                                       line))
-        builder.add(Unreachable())
-        builder.error_handlers.pop()
+        if self.ret_reg is None:
+            self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
+
+        builder.add(Assign(self.ret_reg, value))
+        builder.add(Goto(self.target))
+
+
+class ExceptNonlocalControl(CleanupNonlocalControl):
+    """Nonlocal control for except blocks.
+
+    Just makes sure that sys.exc_info always gets restored when we leave.
+    This is super annoying.
+    """
+    def __init__(self, outer: NonlocalControl, saved: Value) -> None:
+        super().__init__(outer)
+        self.saved = saved
+
+    def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
+        builder.primitive_op(restore_exc_info_op, [self.saved], line)
+
+
+class FinallyNonlocalControl(CleanupNonlocalControl):
+    """Nonlocal control for finally blocks.
+
+    Just makes sure that sys.exc_info always gets restored when we
+    leave and the return register is decrefed if it isn't null.
+    """
+    def __init__(self, outer: NonlocalControl, ret_reg: Optional[Value], saved: Value) -> None:
+        super().__init__(outer)
+        self.ret_reg = ret_reg
+        self.saved = saved
+
+    def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
+        # Do an error branch on the return value register, which
+        # may be undefined. This will allow it to be properly
+        # decrefed if it is not null. This is kind of a hack.
+        if self.ret_reg:
+            target = BasicBlock()
+            builder.add(Branch(self.ret_reg, target, target, Branch.IS_ERROR))
+            builder.activate_block(target)
+
+        # Restore the old exc_info
+        target, cleanup = BasicBlock(), BasicBlock()
+        builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))
+        builder.activate_block(cleanup)
+        builder.primitive_op(restore_exc_info_op, [self.saved], line)
+        builder.goto_and_activate(target)
 
 
 class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -1870,25 +1948,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.goto(next)
         self.activate_block(next)
 
-    class LoopNonlocalControl(NonlocalControl):
-        def __init__(self, outer: NonlocalControl,
-                     continue_block: BasicBlock, break_block: BasicBlock) -> None:
-            self.outer = outer
-            self.continue_block = continue_block
-            self.break_block = break_block
-
-        def gen_break(self, builder: 'IRBuilder', line: int) -> None:
-            builder.add(Goto(self.break_block))
-
-        def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
-            builder.add(Goto(self.continue_block))
-
-        def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
-            self.outer.gen_return(builder, value, line)
-
     def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
         self.nonlocal_control.append(
-            IRBuilder.LoopNonlocalControl(self.nonlocal_control[-1], continue_block, break_block))
+            LoopNonlocalControl(self.nonlocal_control[-1], continue_block, break_block))
 
     def pop_loop_stack(self) -> None:
         self.nonlocal_control.pop()
@@ -3078,19 +3140,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.primitive_op(raise_exception_op, [exc], s.line)
         self.add(Unreachable())
 
-    class ExceptNonlocalControl(CleanupNonlocalControl):
-        """Nonlocal control for except blocks.
-
-        Just makes sure that sys.exc_info always gets restored when we leave.
-        This is super annoying.
-        """
-        def __init__(self, outer: NonlocalControl, saved: Value) -> None:
-            super().__init__(outer)
-            self.saved = saved
-
-        def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
-            builder.primitive_op(restore_exc_info_op, [self.saved], line)
-
     def visit_try_except(self,
                          body: GenFunc,
                          handlers: Sequence[
@@ -3125,7 +3174,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         old_exc = self.primitive_op(error_catch_op, [], line)
         # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
         self.nonlocal_control.append(
-            IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
+            ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
 
         # Process the bodies
         for type, var, handler_body in handlers:
@@ -3187,55 +3236,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else_body = (lambda: self.accept(t.else_body)) if t.else_body else None
         self.visit_try_except(body, handlers, else_body, t.line)
 
-    class TryFinallyNonlocalControl(NonlocalControl):
-        def __init__(self, target: BasicBlock) -> None:
-            self.target = target
-            self.ret_reg = None  # type: Optional[Register]
-
-        def gen_break(self, builder: 'IRBuilder', line: int) -> None:
-            builder.error("break inside try/finally block is unimplemented", line)
-
-        def gen_continue(self, builder: 'IRBuilder', line: int) -> None:
-            builder.error("continue inside try/finally block is unimplemented", line)
-
-        def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
-            if self.ret_reg is None:
-                self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
-
-            builder.add(Assign(self.ret_reg, value))
-            builder.add(Goto(self.target))
-
-    class FinallyNonlocalControl(CleanupNonlocalControl):
-        """Nonlocal control for finally blocks.
-
-        Just makes sure that sys.exc_info always gets restored when we
-        leave and the return register is decrefed if it isn't null.
-        """
-        def __init__(self, outer: NonlocalControl, ret_reg: Optional[Value], saved: Value) -> None:
-            super().__init__(outer)
-            self.ret_reg = ret_reg
-            self.saved = saved
-
-        def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
-            # Do an error branch on the return value register, which
-            # may be undefined. This will allow it to be properly
-            # decrefed if it is not null. This is kind of a hack.
-            if self.ret_reg:
-                target = BasicBlock()
-                builder.add(Branch(self.ret_reg, target, target, Branch.IS_ERROR))
-                builder.activate_block(target)
-
-            # Restore the old exc_info
-            target, cleanup = BasicBlock(), BasicBlock()
-            builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))
-            builder.activate_block(cleanup)
-            builder.primitive_op(restore_exc_info_op, [self.saved], line)
-            builder.goto_and_activate(target)
-
     def try_finally_try(self, err_handler: BasicBlock, return_entry: BasicBlock,
                         main_entry: BasicBlock, try_body: GenFunc) -> Optional[Register]:
         # Compile the try block with an error handler
-        control = IRBuilder.TryFinallyNonlocalControl(return_entry)
+        control = TryFinallyNonlocalControl(return_entry)
         self.error_handlers.append(err_handler)
 
         self.nonlocal_control.append(control)
@@ -3279,7 +3283,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         cleanup_block = BasicBlock()
         # Compile the finally block with the nonlocal control flow overridden to restore exc_info
         self.error_handlers.append(cleanup_block)
-        finally_control = IRBuilder.FinallyNonlocalControl(
+        finally_control = FinallyNonlocalControl(
             self.nonlocal_control[-1], ret_reg, old_exc)
         self.nonlocal_control.append(finally_control)
         self.activate_block(finally_block)

@@ -14,6 +14,10 @@ from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG
 
 from typing import List, Optional
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
     return 'PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
@@ -198,7 +202,7 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 
 def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
-                          optional_args: List[RuntimeArg] = [],
+                          optional_args: Optional[List[RuntimeArg]] = None,
                           arg_names: Optional[List[str]] = None,
                           cleanups: Optional[List[str]] = None) -> None:
     """Generates the core part of a wrapper function for a native function.
@@ -206,6 +210,8 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
     makes the call, then boxes the result if necessary and returns it.
     """
+
+    optional_args = optional_args or []
     cleanups = cleanups or []
     error_code = 'return NULL;' if not cleanups else 'goto fail;'
 
