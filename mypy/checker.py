@@ -1556,7 +1556,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not is_subtype(erase_override(override.ret_type),
                                   original.ret_type):
                     self.msg.return_type_incompatible_with_supertype(
-                        name, name_in_super, supertype, node)
+                        name, name_in_super, supertype, original.ret_type, override.ret_type, node)
                     emitted_msg = True
             elif isinstance(override, Overloaded) and isinstance(original, Overloaded):
                 # Give a more detailed message in the case where the user is trying to
