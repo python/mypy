@@ -14,6 +14,9 @@ from mypyc.ops import (
 )
 from mypyc.namegen import NameGenerator
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -258,7 +261,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
-    }
+    }  # type: Final
 
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
