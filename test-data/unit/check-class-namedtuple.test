@@ -587,9 +587,7 @@ reveal_type(takes_base(Base(1)))  # E: Revealed type is 'builtins.int'
 reveal_type(takes_base(Child(1)))  # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
 
--- Depends on collecting functions via AST, not symbol tables.
 [case testNewNamedTupleIllegalNames]
-# flags: --no-new-semantic-analyzer
 from typing import Callable, NamedTuple
 
 class XMethBad(NamedTuple):
@@ -614,16 +612,16 @@ class AnnotationsAsAMethod(NamedTuple):
 
 class ReuseNames(NamedTuple):
     x: int
-    def x(self) -> str:  # E: Name 'x' already defined on line 23
+    def x(self) -> str:  # E: Name 'x' already defined on line 22
         return ''
 
     def y(self) -> int:
         return 0
-    y: str  # E: Name 'y' already defined on line 27
+    y: str  # E: Name 'y' already defined on line 26
 
 class ReuseCallableNamed(NamedTuple):
     z: Callable[[ReuseNames], int]
-    def z(self) -> int:  # E: Name 'z' already defined on line 32
+    def z(self) -> int:  # E: Name 'z' already defined on line 31
         return 0
 
 [builtins fixtures/dict.pyi]

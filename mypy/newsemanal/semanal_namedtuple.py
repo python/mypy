@@ -20,6 +20,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.util import get_unique_redefinition_name
 
 MYPY = False
 if MYPY:
@@ -493,10 +494,15 @@ class NamedTupleAnalyzer:
         # Restore the names in the original symbol table. This ensures that the symbol
         # table contains the field objects created by build_namedtuple_typeinfo. Exclude
         # __doc__, which can legally be overwritten by the class.
-        named_tuple_info.names.update({
-            key: value for key, value in nt_names.items()
-            if key not in named_tuple_info.names or key != '__doc__'
-        })
+        for key, value in nt_names.items():
+            if key in named_tuple_info.names:
+                if key == '__doc__':
+                    continue
+                # Keep existing (user-provided) definitions under mangled names, so they
+                # get semantically analyzed.
+                r_key = get_unique_redefinition_name(key, named_tuple_info.names)
+                named_tuple_info.names[r_key] = named_tuple_info.names[key]
+            named_tuple_info.names[key] = value
 
     # Helpers
 
