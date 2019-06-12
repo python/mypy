@@ -753,20 +753,6 @@ assert f8 == "Hello              'mypyc'"
 
 [out]
 
-[file driver.py]
-from native import f1, f2, f3, f4, f5, f6, f7, f8
-
-print(f1)
-print(f2)
-print(f3)
-print(f4)
-print(f5)
-print(f6)
-print(f7)
-print(f8)
-
-[out]
-
 [case testSets]
 from typing import Set, List
 def instantiateLiteral() -> Set[int]:
