@@ -8969,3 +8969,26 @@ class B: ...
 [builtins fixtures/list.pyi]
 [out]
 ==
+
+[case testClassVariableOrderingRefresh]
+# flags: --new-semantic-analyzer
+from b import bar
+
+def foo(x: str) -> None: pass
+
+class Something:
+    def run(self) -> None:
+        bar()
+        foo(self.IDS[0])
+
+    IDS = [87]
+
+[file b.py]
+def bar() -> int: return 0
+[file b.py.2]
+def bar() -> str: return '0'
+[builtins fixtures/list.pyi]
+[out]
+main:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+==
+main:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"

@@ -2461,3 +2461,13 @@ x: C
 reveal_type(x) # E: Revealed type is '__main__.C[Any]'
 [out]
 [out2]
+
+[case testNewAnalyzerClassVariableOrdering]
+def foo(x: str) -> None: pass
+
+class Something:
+    def run(self) -> None:
+        foo(self.IDS[0])  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
+    IDS = [87]
+[builtins fixtures/list.pyi]
