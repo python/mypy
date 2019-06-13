@@ -2,7 +2,7 @@
 
 import textwrap
 
-from typing import Optional, List, Tuple, Dict, Callable, Mapping
+from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 from collections import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
@@ -238,10 +238,14 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     emitter.emit_lines('typedef struct {',
                        'PyObject_HEAD',
                        'CPyVTableItem *vtable;')
+    seen_attrs = set()  # type: Set[Tuple[str, RType]]
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
-                emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype), emitter.attr(attr)))
+                if (attr, rtype) not in seen_attrs:
+                    emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype),
+                                                     emitter.attr(attr)))
+                    seen_attrs.add((attr, rtype))
     emitter.emit_line('}} {};'.format(cl.struct_name(emitter.names)))
 
 
