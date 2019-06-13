@@ -3459,6 +3459,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 expr.kind = GDEF
                 expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
                 expr.node = Var(expr.name, type=typ)
+            elif self.is_missing_module(file.fullname() + '.' + expr.name):
+                expr.kind = GDEF
+                v = Var(expr.name)
+                v._fullname = file.fullname() + '.' + expr.name
+                expr.fullname = v._fullname
+                expr.node = v
             else:
                 if self.is_incomplete_namespace(file.fullname()):
                     self.record_incomplete_ref()
@@ -3867,7 +3873,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                parts[0], fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
+            elif self.is_missing_module(submodule):
+                var_type = AnyType(TypeOfAny.from_unimported_type)
+                v = Var(part, type=var_type)
+                v._fullname = submodule
+                sym = SymbolTableNode(GDEF, v)
         return sym
+
+    def is_missing_module(self, module: str) -> bool:
+        return self.options.ignore_missing_imports or module in self.missing_modules
 
     def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
                         source_type: AnyType) -> SymbolTableNode:

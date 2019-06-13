@@ -2557,6 +2557,10 @@ import whatever.works
 import a.b
 x = whatever.works.f()
 y = a.b.f()
+xx: whatever.works.C
+yy: a.b.C
+xx2: whatever.works.C.D
+yy2: a.b.C.D
 [file a/__init__.pyi]
 # empty
 [out]
