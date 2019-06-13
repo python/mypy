@@ -830,8 +830,8 @@ reveal_type(o.x.t)  # E: Revealed type is '__main__.C.Other'
 reveal_type(i.t)  # E: Revealed type is '__main__.C.Other'
 
 class C:
-    Out = NamedTuple('Out', [('x', In), ('y', Other)])
     In = NamedTuple('In', [('s', str), ('t', Other)])
+    Out = NamedTuple('Out', [('x', In), ('y', Other)])
     class Other: pass
 
 
@@ -2482,3 +2482,18 @@ def force(x: Literal[42]) -> None: pass
 force(reveal_type(var))  # E: Revealed type is 'Literal[42]'
 
 class Yes: ...
+
+[case testNewAnalyzerPlaceholderFromOuterScope]
+import b
+[file a.py]
+import b
+class A(B): ...
+class B: ...
+
+[file b.py]
+from a import A
+
+class C:
+    A = A  # Initially rvalue will be a placeholder
+
+reveal_type(C.A)  # E: Revealed type is 'def () -> a.A'
