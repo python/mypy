@@ -410,7 +410,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(name, var, dummy_context())
             else:
                 self.add_symbol(name,
-                                PlaceholderNode(self.qualified_name(name), file_node),
+                                PlaceholderNode(self.qualified_name(name), file_node, -1),
                                 dummy_context())
 
     def add_builtin_aliases(self, tree: MypyFile) -> None:
@@ -994,8 +994,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # resolved.  We don't want this to cause a deferral, since if there
             # are no incomplete references, we'll replace this with a TypeInfo
             # before returning.
-            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn,
-                            can_defer=False)
+            placeholder = PlaceholderNode(fullname, defn, defn.line, becomes_typeinfo=True)
+            self.add_symbol(defn.name, placeholder, defn, can_defer=False)
 
         tag = self.track_incomplete_refs()
 
@@ -1607,6 +1607,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     #
 
     def visit_import(self, i: Import) -> None:
+        self.statement = i
         for id, as_id in i.ids:
             if as_id is not None:
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
@@ -1668,6 +1669,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def visit_import_from(self, imp: ImportFrom) -> None:
+        self.statement = imp
         import_id = self.correct_relative_import(imp)
         self.add_submodules_to_parent_modules(import_id, True)
         module = self.modules.get(import_id)
@@ -2370,8 +2372,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.found_incomplete_ref(tag) or isinstance(res, PlaceholderType):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
-                self.add_symbol(lvalue.name, PlaceholderNode(self.qualified_name(lvalue.name),
-                                                             rvalue, becomes_typeinfo=True), s)
+                placeholder = PlaceholderNode(self.qualified_name(lvalue.name),
+                                              rvalue,
+                                              s.line,
+                                              becomes_typeinfo=True)
+                self.add_symbol(lvalue.name, placeholder, s)
                 return True
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
@@ -3820,7 +3825,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return (node is None
                 or node.line < self.statement.line
                 or not self.is_defined_in_current_module(node.fullname())
-                or isinstance(node, TypeInfo))
+                or isinstance(node, TypeInfo)
+                or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo))
 
     def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
         if fullname is None:
@@ -4265,9 +4271,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
-            self.add_symbol(name,
-                            PlaceholderNode(fullname, node, becomes_typeinfo),
-                            context=dummy_context())
+            placeholder = PlaceholderNode(fullname, node, self.statement.line,
+                                          becomes_typeinfo=becomes_typeinfo)
+            self.add_symbol(name, placeholder, context=dummy_context())
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:

@@ -2792,11 +2792,12 @@ class PlaceholderNode(SymbolNode):
     something that can support general recursive types.
     """
 
-    def __init__(self, fullname: str, node: Node, becomes_typeinfo: bool = False) -> None:
+    def __init__(self, fullname: str, node: Node, line: int, *,
+                 becomes_typeinfo: bool = False) -> None:
         self._fullname = fullname
         self.node = node
         self.becomes_typeinfo = becomes_typeinfo
-        self.line = -1
+        self.line = line
 
     def name(self) -> str:
         return self._fullname.split('.')[-1]
