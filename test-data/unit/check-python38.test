@@ -246,7 +246,8 @@ def check_final() -> None:
     if x := 4:  # E: Cannot assign to final name "x"
         pass
 
-def check_binder(x: Optional[int], y: Optional[int]) -> None:
+def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Optional[int],
+                 b: Optional[int]) -> None:
     reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
 
     (x := 1)
@@ -258,6 +259,15 @@ def check_binder(x: Optional[int], y: Optional[int]) -> None:
     if x and (y := 1):
         # TODO should just be int
         reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
+
+    if (a := 1) and x:
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    if (b := 1) or x:
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    if z := 1:
+        reveal_type(z)  # E: Revealed type is 'builtins.int'
 
 def check_partial() -> None:
     x = None
