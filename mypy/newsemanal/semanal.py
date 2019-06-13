@@ -3438,6 +3438,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
+            elif file.fullname() + '.' + expr.name in self.modules:
+                expr.kind = GDEF
+                expr.fullname = file.fullname() + '.' + expr.name
+                expr.node = self.modules[expr.fullname]
             elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
@@ -3849,16 +3853,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # fine-grained incremental mode.
         if module == self.cur_mod_id:
             names = self.globals
-        sym = names.get(parts[0], None)
-        if (not sym
-                and '__getattr__' in names
-                and not self.is_incomplete_namespace(module)
-                and (node.is_stub or self.options.python_version >= (3, 7))):
-            fullname = module + '.' + '.'.join(parts)
-            gvar = self.create_getattr_var(names['__getattr__'],
-                                           parts[0], fullname)
-            if gvar:
-                sym = SymbolTableNode(GDEF, gvar)
+        part = parts[0]
+        sym = names.get(part, None)
+        if not sym:
+            submodule = module + '.' + part
+            if submodule in self.modules:
+                sym = SymbolTableNode(GDEF, self.modules[submodule])
+            elif ('__getattr__' in names
+                    and not self.is_incomplete_namespace(module)
+                    and (node.is_stub or self.options.python_version >= (3, 7))):
+                fullname = module + '.' + '.'.join(parts)
+                gvar = self.create_getattr_var(names['__getattr__'],
+                                               parts[0], fullname)
+                if gvar:
+                    sym = SymbolTableNode(GDEF, gvar)
         return sym
 
     def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
