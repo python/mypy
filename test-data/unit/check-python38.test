@@ -255,11 +255,21 @@ def check_binder(x: Optional[int], y: Optional[int]) -> None:
     if x or (y := 1):
         reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 
+    if x and (y := 1):
+        # TODO should just be int
+        reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
+
 def check_partial() -> None:
     x = None
     if bool() and (x := 2):
         pass
 
     reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+
+def check_partial_list() -> None:
+    if (x := []):
+        x.append(3)
+
+    reveal_type(x)  # E: Revealed type is 'builtins.list[builtins.int]'
 
 [builtins fixtures/f_string.pyi]
