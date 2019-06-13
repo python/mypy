@@ -258,6 +258,9 @@ def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Option
 
     if x and (y := 1):
         # TODO should just be int
+        # This is because in check_boolean_op in checkexpr.py we accept the right conditional
+        # within a binder frame context, so the types assigned in it are lost later. Perhaps
+        # we need to make find_isinstance_check() walrus-aware.
         reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 
     if (a := 1) and x:
