@@ -1076,7 +1076,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Pull out all assignments in classes in the mro so we can initialize them
         # TODO: Support nested statements
         default_assignments = []
-        for info in cdef.info.mro:
+        for info in reversed(cdef.info.mro):
             if info not in self.mapper.type_to_ir:
                 continue
             for stmt in info.defn.defs.body:

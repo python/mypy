@@ -986,53 +986,53 @@ class B(A):
     b = True
     bogus = None  # type: int
 [out]
-def A.lol(self):
-    self :: A
-    r0 :: short_int
-    r1 :: bool
-    r2 :: None
-L0:
-    r0 = 100
-    self.x = r0; r1 = is_error
-    r2 = None
-    return r2
+def A.lol(self):                             
+    self :: A                                
+    r0 :: short_int                          
+    r1 :: bool                               
+    r2 :: None                               
+L0:                                          
+    r0 = 100                                 
+    self.x = r0; r1 = is_error               
+    r2 = None                                
+    return r2                                
 def A.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: A
-    r0 :: short_int
-    r1, r2 :: bool
-L0:
-    r0 = 10
-    __mypyc_self__.x = r0; r1 = is_error
-    r2 = True
-    return r2
+    __mypyc_self__ :: A                      
+    r0 :: short_int                          
+    r1, r2 :: bool                           
+L0:                                          
+    r0 = 10                                  
+    __mypyc_self__.x = r0; r1 = is_error     
+    r2 = True                                
+    return r2                                
 def B.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: B
-    r0 :: dict
-    r1 :: str
-    r2 :: object
-    r3 :: str
-    r4 :: bool
-    r5 :: None
-    r6 :: object
-    r7, r8, r9 :: bool
-    r10 :: short_int
-    r11, r12 :: bool
-L0:
-    r0 = __main__.globals :: static
-    r1 = unicode_7 :: static  ('LOL')
-    r2 = r0[r1] :: dict
-    r3 = cast(str, r2)
-    __mypyc_self__.y = r3; r4 = is_error
-    r5 = None
-    r6 = box(None, r5)
-    __mypyc_self__.z = r6; r7 = is_error
-    r8 = True
-    __mypyc_self__.b = r8; r9 = is_error
-    r10 = 10
-    __mypyc_self__.x = r10; r11 = is_error
-    r12 = True
+    __mypyc_self__ :: B                      
+    r0 :: short_int                          
+    r1 :: bool                               
+    r2 :: dict                               
+    r3 :: str                                
+    r4 :: object                             
+    r5 :: str                                
+    r6 :: bool                               
+    r7 :: None                               
+    r8 :: object                             
+    r9, r10, r11, r12 :: bool                
+L0:                                          
+    r0 = 10                                  
+    __mypyc_self__.x = r0; r1 = is_error     
+    r2 = __main__.globals :: static          
+    r3 = unicode_7 :: static  ('LOL')        
+    r4 = r2[r3] :: dict                      
+    r5 = cast(str, r4)                       
+    __mypyc_self__.y = r5; r6 = is_error     
+    r7 = None                                
+    r8 = box(None, r7)                       
+    __mypyc_self__.z = r8; r9 = is_error     
+    r10 = True                               
+    __mypyc_self__.b = r10; r11 = is_error   
+    r12 = True                               
     return r12
-
+                     
 [case testSubclassDictSpecalized]
 from typing import Dict
 class WelpDict(Dict[str, int]):
