@@ -2118,6 +2118,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
+
+        # Reset inferred status if it was set due to simple literal rvalue on previous iteration.
+        # TODO: this is a best-effort quick fix, we should avoid the need to manually sync this,
+        # see https://github.com/python/mypy/issues/6458.
+        if lval.is_new_def:
+            lval.is_inferred_def = s.type is None
+
         if self.loop_depth > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:

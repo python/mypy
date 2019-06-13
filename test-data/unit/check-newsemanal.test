@@ -2472,6 +2472,17 @@ class Something:
     IDS = [87]
 [builtins fixtures/list.pyi]
 
+[case testNewAnalyzerFinalLiteralInferredAsLiteralWithDeferral]
+from typing_extensions import Final, Literal
+
+defer: Yes
+
+var: Final = 42
+def force(x: Literal[42]) -> None: pass
+force(reveal_type(var))  # E: Revealed type is 'Literal[42]'
+
+class Yes: ...
+
 [case testNewAnalyzerPlaceholderFromOuterScope]
 import b
 [file a.py]
