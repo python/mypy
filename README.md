@@ -238,8 +238,8 @@ For more on the tests, see [Test README.md](test-data/unit/README.md)
 Development status
 ------------------
 
-Mypy is alpha software, but it has already been used in production
-for well over a year at Dropbox, and it has an extensive test suite.
+Mypy is beta software, but it has already been used in production
+for several years at Dropbox, and it has an extensive test suite.
 
 See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.

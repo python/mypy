@@ -1,7 +1,7 @@
-from typing import Dict, List, Set
+from typing import Dict, List
 
 from mypy.nodes import (
-    Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr, TempNode,
+    Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr,
     WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, StarExpr, ImportFrom,
     MemberExpr, IndexExpr, Import, ClassDef
 )

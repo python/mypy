@@ -237,7 +237,6 @@ a = __file__ # type: int  # E: Incompatible types in assignment (expression has 
 
 
 [case testLocalVariableShadowing]
-
 a = None # type: A
 if int():
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -254,7 +253,6 @@ class A: pass
 class B: pass
 
 [case testGlobalDefinedInBlockWithType]
-
 class A: pass
 while A:
     a = None # type: A

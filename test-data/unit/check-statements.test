@@ -1250,6 +1250,15 @@ def g() -> Generator[int, str, float]:
     reveal_type(r)  # E: Revealed type is 'builtins.str*'
     return 3.14
 
+[case testYieldFromTupleStatement]
+from typing import Generator
+def g() -> Generator[int, None, None]:
+    yield from ()
+    yield from (0, 1, 2)
+    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int")
+    yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int")
+[builtins fixtures/tuple.pyi]
+
 -- With statement
 -- --------------
 

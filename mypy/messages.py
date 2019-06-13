@@ -294,7 +294,7 @@ class MessageBuilder:
                         arg_strings.append(
                             self.format_bare(
                                 arg_type,
-                                verbosity = max(verbosity - 1, 0)))
+                                verbosity=max(verbosity - 1, 0)))
                     else:
                         constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
                         if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:

@@ -4,7 +4,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container
 
 MYPY = False
 if MYPY:
@@ -31,6 +31,25 @@ def split_module_names(mod_name: str) -> List[str]:
         mod_name = mod_name.rsplit('.', 1)[0]
         out.append(mod_name)
     return out
+
+
+def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
+    result = split_target(modules, target)
+    if result is None:
+        return None
+    return result[0]
+
+
+def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
+    remaining = []  # type: List[str]
+    while True:
+        if target in modules:
+            return target, '.'.join(remaining)
+        components = target.rsplit('.', 1)
+        if len(components) == 1:
+            return None
+        target = components[0]
+        remaining.insert(0, components[1])
 
 
 def short_type(obj: object) -> str:
@@ -269,6 +288,22 @@ def hard_exit(status: int = 0) -> None:
 def unmangle(name: str) -> str:
     """Remove internal suffixes from a short name."""
     return name.rstrip("'")
+
+
+def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
+    """Get a simple redefinition name not present among existing.
+
+    For example, for name 'foo' we try 'foo-redefinition', 'foo-redefinition2',
+    'foo-redefinition3', etc. until we find one that is not in existing.
+    """
+    r_name = name + '-redefinition'
+    if r_name not in existing:
+        return r_name
+
+    i = 2
+    while r_name + str(i) in existing:
+        i += 1
+    return r_name + str(i)
 
 
 def check_python_version(program: str) -> None:

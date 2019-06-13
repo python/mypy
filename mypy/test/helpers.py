@@ -8,14 +8,13 @@ import contextlib
 from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
 
 from mypy import defaults
-from mypy.test.config import test_temp_dir
 import mypy.api as api
 
 import pytest  # type: ignore  # no pytest in typeshed
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
-from unittest import TestCase as Suite
+from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options

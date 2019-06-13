@@ -102,9 +102,6 @@ class TypedDictAnalyzer:
                                  oldfields: Optional[List[str]] = None) -> Tuple[List[str],
                                                                                  List[Type],
                                                                                  Set[str]]:
-        if self.options.python_version < (3, 6):
-            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
-            return [], [], set()
         fields = []  # type: List[str]
         types = []  # type: List[Type]
         for stmt in defn.defs.body:

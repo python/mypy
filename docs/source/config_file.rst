@@ -294,6 +294,19 @@ Miscellaneous strictness flags
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
+``implicit-reexport`` (bool, default True)
+    By default, imported values to a module are treated as exported and mypy allows
+    other modules to import them. When false, mypy will not re-export unless
+    the item is imported using from-as. Note that mypy treats stub files as if this
+    is always disabled. For example:
+
+    .. code-block:: python
+
+       # This won't re-export the value
+       from foo import bar
+       # This will re-export it as bar and allow other modules to import it
+       from foo import bar as bar
+
 ``strict_equality``  (bool, default False)
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.

@@ -14,7 +14,6 @@ import pytest  # type: ignore  # no pytest in typeshed
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
-from mypy.test.hacks import new_semanal_blacklist
 
 root_dir = os.path.normpath(PREFIX)
 
@@ -204,8 +203,6 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.only_when = only_when
         if ((platform == 'windows' and sys.platform != 'win32')
                 or (platform == 'posix' and sys.platform == 'win32')):
-            skip = True
-        if os.getenv('NEWSEMANAL') and os.path.split(file)[-1] in new_semanal_blacklist:
             skip = True
         self.skip = skip
         self.data = data

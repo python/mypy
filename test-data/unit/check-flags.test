@@ -56,8 +56,8 @@ main:2: error: Function is missing a return type annotation
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
 async def f():  # E: Function is missing a return type annotation \
-                # N: Use "-> None" if function does not return a value                
-    pass        
+                # N: Use "-> None" if function does not return a value
+    pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1137,3 +1137,31 @@ strict_equality = True
 [[mypy-b]
 strict_equality = False
 [builtins fixtures/bool.pyi]
+
+[case testNoImplicitReexport]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+[file other_module_1.py]
+a = 5
+[file other_module_2.py]
+from other_module_1 import a
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportMypyIni]
+# flags: --config-file tmp/mypy.ini
+from other_module_2 import a
+
+[file other_module_1.py]
+a = 5
+
+[file other_module_2.py]
+from other_module_1 import a
+
+[file mypy.ini]
+[[mypy]
+implicit_reexport = True
+[[mypy-other_module_2]
+implicit_reexport = False
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'

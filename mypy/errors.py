@@ -618,8 +618,17 @@ def report_internal_error(err: Exception,
 
     # Print "INTERNAL ERROR" message.
     print('{}error: INTERNAL ERROR --'.format(prefix),
-          'please report a bug at https://github.com/python/mypy/issues',
-          'version: {}'.format(mypy_version),
+          'Please try using mypy master on Github:\n'
+          'https://mypy.rtfd.io/en/latest/common_issues.html#using-development-mypy-build',
+          file=stderr)
+    if options.show_traceback:
+        print('Please report a bug at https://github.com/python/mypy/issues',
+            file=stderr)
+    else:
+        print('If this issue continues with mypy master, '
+              'please report a bug at https://github.com/python/mypy/issues',
+            file=stderr)
+    print('version: {}'.format(mypy_version),
           file=stderr)
 
     # If requested, drop into pdb. This overrides show_tb.

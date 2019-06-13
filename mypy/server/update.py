@@ -114,8 +114,7 @@ test cases (test-data/unit/fine-grained*.test).
 
 import time
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, NamedTuple, Callable,
-    Sequence
+    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Callable, Sequence
 )
 
 from mypy.build import (
@@ -141,8 +140,9 @@ from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.aststripnew import strip_target_new, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target
-from mypy.server.target import module_prefix, split_target, trigger_to_target
+from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
+from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
 
 MYPY = False
@@ -942,6 +942,13 @@ def reprocess_nodes(manager: BuildManager,
         if target is not None:
             targets.add(target)
     manager.errors.clear_errors_in_targets(file_node.path, targets)
+
+    # If one of the nodes is the module itself, emit any errors that
+    # happened before semantic analysis.
+    for target in targets:
+        if target == module_id:
+            for info in graph[module_id].early_errors:
+                manager.errors.add_error_info(info)
 
     # Strip semantic analysis information.
     saved_attrs = {}  # type: SavedAttributes

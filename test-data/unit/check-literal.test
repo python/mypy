@@ -683,6 +683,16 @@ reveal_type(x)  # E: Revealed type is 'Literal['Foo']'
 y: Foo[Foo]     # E: Literal[...] must have at least one parameter
 [out]
 
+[case testLiteralBadRawExpressionWithBadType]
+NotAType = 3
+def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Invalid type "__main__.NotAType" \
+                                                        # E: Invalid type comment or annotation
+
+# Note: this makes us re-inspect the type (e.g. via '_patch_indirect_dependencies'
+# in build.py) so we can confirm the RawExpressionType did not leak out.
+indirect = f()                                          # E: Need type annotation for 'indirect'
+[out]
+
 --
 -- Check to make sure we can construct the correct range of literal
 -- types (and correctly reject invalid literal types)

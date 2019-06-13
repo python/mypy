@@ -2534,7 +2534,7 @@ def foo() -> None:
     _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [builtins fixtures/module.pyi]
 
-[case testUnusedTargetNotClass2]
+[case testUnderscoreClass]
 def foo() -> None:
     class _:
         pass

@@ -55,7 +55,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, nongen_builtins,
     get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
 )
 from mypy.tvar_scope import TypeVarScope
@@ -65,7 +65,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy import message_registry
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    FunctionLike, UnboundType, TypeVarDef, TupleType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType,
 )
@@ -1457,7 +1457,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
             else:
                 # Modules imported in a stub file without using 'as x' won't get exported
-                module_public = not self.is_stub_file
+                # Modules with implicit reexport disabled have the same behavior as stubs.
+                module_public = (
+                    not self.is_stub_file
+                    and self.options.implicit_reexport
+                )
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
@@ -1566,8 +1570,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue
-                # 'from m import x as x' exports x in a stub file.
-                module_public = not self.is_stub_file or as_id is not None
+                # 'from m import x as x' exports x in a stub file, or when implicit reexport
+                # is disabled.
+                module_public = (
+                    not self.is_stub_file
+                    and self.options.implicit_reexport
+                    or as_id is not None
+                )
                 module_hidden = not module_public and possible_module_id not in self.modules
                 # NOTE: we take the original node even for final `Var`s. This is to support
                 # a common pattern when constants are re-exported (same applies to import *).
@@ -2667,9 +2676,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
-            # TODO: use 'for rv, *lvs in' once mypyc supports it
-            for part in elementwise_assignments:
-                rv, lvs = part[0], list(part[1:])
+            for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
             rnode = self.lookup_type_node(rval)

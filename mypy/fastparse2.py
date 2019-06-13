@@ -62,7 +62,7 @@ try:
     from mypy.fastparse import ast3, ast3_parse
 except ImportError:
     try:
-        from typed_ast import ast35  # type: ignore
+        from typed_ast import ast35  # type: ignore  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
               'You can install it with `python3 -m pip install typed-ast`.',
@@ -167,8 +167,6 @@ class ASTConverter:
         self.type_ignores = set()  # type: Set[int]
 
     def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
-        # Fine-grained mode doesn't support non-blocking parse errors yet.
-        blocker = blocker or self.options.fine_grained_incremental
         if blocker or not self.options.ignore_errors:
             self.errors.report(line, column, msg, blocker=blocker)
 
