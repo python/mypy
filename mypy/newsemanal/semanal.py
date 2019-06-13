@@ -1621,44 +1621,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
-                self.add_submodules_to_parent_modules(id, module_public)
-
-    def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
-        """Recursively adds a reference to a newly loaded submodule to its parent.
-
-        When you import a submodule in any way, Python will add a reference to that
-        submodule to its parent. So, if you do something like `import A.B` or
-        `from A import B` or `from A.B import Foo`, Python will add a reference to
-        module A.B to A's namespace.
-
-        Note that this "parent patching" process is completely independent from any
-        changes made to the *importer's* namespace. For example, if you have a file
-        named `foo.py` where you do `from A.B import Bar`, then foo's namespace will
-        be modified to contain a reference to only Bar. Independently, A's namespace
-        will be modified to contain a reference to `A.B`.
-        """
-        while '.' in id:
-            parent, child = id.rsplit('.', 1)
-            parent_mod = self.modules.get(parent)
-            if parent_mod and self.allow_patching(parent_mod, child):
-                child_mod = self.modules.get(id)
-                if child_mod:
-                    sym = SymbolTableNode(GDEF, child_mod,
-                                          module_public=module_public,
-                                          no_serialize=True)
-                else:
-                    # Construct a dummy Var with Any type.
-                    any_type = AnyType(TypeOfAny.from_unimported_type,
-                                       missing_import_name=id)
-                    var = Var(child, any_type)
-                    var._fullname = child
-                    var.is_ready = True
-                    var.is_suppressed_import = True
-                    sym = SymbolTableNode(GDEF, var,
-                                          module_public=module_public,
-                                          no_serialize=True)
-                parent_mod.names[child] = sym
-            id = parent
 
     def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
         if child not in parent_mod.names:
@@ -1671,7 +1633,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
         import_id = self.correct_relative_import(imp)
-        self.add_submodules_to_parent_modules(import_id, True)
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
@@ -1687,7 +1648,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if mod is not None:
                     kind = self.current_symbol_kind()
                     node = SymbolTableNode(kind, mod)
-                    self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
             # If it is still not resolved, check for a module level __getattr__
@@ -1823,7 +1783,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Any names could be missing from the current namespace if the target module
                 # namespace is incomplete.
                 self.mark_incomplete('*', i)
-            self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
                 if node is None:
                     continue
