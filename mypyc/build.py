@@ -133,10 +133,11 @@ def generate_c_extension_shim(
     cname = '%s.c' % full_module_name.replace('.', '___')  # XXX
     cpath = os.path.join(dirname, cname)
 
-    with open(cpath, 'w') as f:
-        f.write(shim_template.format(modname=module_name,
-                                     libname=libname,
-                                     full_modname=exported_name(full_module_name)))
+    write_file(
+        cpath,
+        shim_template.format(modname=module_name,
+                             libname=libname,
+                             full_modname=exported_name(full_module_name)))
 
     return cpath
 
@@ -247,6 +248,23 @@ def build_single_module(sources: List[BuildSource],
     )]
 
 
+def write_file(path: str, contents: str) -> None:
+    """Write data into a file.
+
+    If the file already exists and has the same contents we
+    want to write, skip writing so as to preserve the mtime
+    and avoid triggering recompilation.
+    """
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            old_contents = f.read()  # type: Optional[str]
+    except IOError:
+        old_contents = None
+    if old_contents != contents:
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(contents)
+
+
 def mypycify(paths: List[str],
              mypy_options: Optional[List[str]] = None,
              opt_level: str = '3',
@@ -306,8 +324,7 @@ def mypycify(paths: List[str],
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(build_dir, cfile)
-            with open(cfile, 'w', encoding='utf-8') as f:
-                f.write(ctext)
+            write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == '.c':
                 cfilenames.append(cfile)
     else:
@@ -344,7 +361,8 @@ def mypycify(paths: List[str],
     # Copy the runtime library in
     for name in ['CPy.c', 'getargs.c']:
         rt_file = os.path.join(build_dir, name)
-        shutil.copyfile(os.path.join(include_dir(), name), rt_file)
+        with open(os.path.join(include_dir(), name), encoding='utf-8') as f:
+            write_file(rt_file, f.read())
         cfilenames.append(rt_file)
 
     if use_shared_lib:
