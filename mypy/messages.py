@@ -829,7 +829,7 @@ class MessageBuilder:
             original: Type, override: Type,
             context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
-        self.fail('Return type {} of "{}" incompatible with return type {} of {}'
+        self.fail('Return type {} of "{}" incompatible with return type {} in {}'
                   .format(self.format(override), name, self.format(original), target), context)
 
     def override_target(self, name: str, name_in_super: str,
