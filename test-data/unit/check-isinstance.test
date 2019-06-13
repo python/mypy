@@ -1830,6 +1830,18 @@ if isinstance(x): # E: Too few arguments for "isinstance"
     reveal_type(x) # E: Revealed type is 'builtins.int'
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIsSubclassTooFewArgs]
+from typing import Type
+
+issubclass() # E: Too few arguments for "issubclass"
+y: Type[object]
+if issubclass(): # E: Too few arguments for "issubclass"
+    reveal_type(y) # E: Revealed type is 'Type[builtins.object]'
+if issubclass(y): # E: Too few arguments for "issubclass"
+    reveal_type(y) # E: Revealed type is 'Type[builtins.object]'
+
+[builtins fixtures/isinstancelist.pyi]
+
 [case testIsInstanceTooManyArgs]
 isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
          # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, Tuple[Any, ...]]"
