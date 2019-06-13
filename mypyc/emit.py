@@ -9,8 +9,9 @@ from mypyc.common import (
 )
 from mypyc.ops import (
     Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
-    RUnion, RPrimitive, is_int_rprimitive, is_short_int_rprimitive,
-    is_float_rprimitive, is_bool_rprimitive,
+    RUnion, RPrimitive, RVoid,
+    RTypeVisitor,
+    is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
     FuncIR, FuncDecl, int_rprimitive, is_optional_type, optional_value_type, all_concrete_classes
@@ -35,9 +36,6 @@ class EmitterContext:
     def __init__(self, module_names: List[str]) -> None:
         self.temp_counter = 0
         self.names = NameGenerator(module_names)
-
-        # Map from tuple types to unique ids for them
-        self.tuple_ids = {}  # type: Dict[RTuple, str]
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -129,8 +127,6 @@ class Emitter:
         return self.static_name(cl.name, cl.module_name, prefix=TYPE_PREFIX)
 
     def ctype(self, rtype: RType) -> str:
-        if isinstance(rtype, RTuple):
-            return 'struct {}'.format(self.tuple_struct_name(rtype))
         return rtype._ctype
 
     def ctype_spaced(self, rtype: RType) -> str:
@@ -156,33 +152,16 @@ class Emitter:
     def native_function_name(self, fn: FuncDecl) -> str:
         return '{}{}'.format(NATIVE_PREFIX, fn.cname(self.names))
 
-    def tuple_ctype(self, rtuple: RTuple) -> str:
-        return 'struct {}'.format(self.tuple_struct_name(rtuple))
-
-    def tuple_unique_id(self, rtuple: RTuple) -> str:
-        """Generate a unique id which is used in naming corresponding C identifiers.
-
-        This is necessary since C does not have anonymous structural type equivalence
-        in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
-        """
-        if rtuple not in self.context.tuple_ids:
-            self.context.tuple_ids[rtuple] = str(len(self.context.tuple_ids))
-        return self.context.tuple_ids[rtuple]
-
-    def tuple_struct_name(self, rtuple: RTuple) -> str:
-        # max c length is 31 chars, this should be enough entropy to be unique.
-        return 'tuple_def_' + self.tuple_unique_id(rtuple)
-
     def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
-        result = ['struct {} {{'.format(self.tuple_struct_name(rtuple))]
+        result = ['struct {} {{'.format(rtuple.struct_name)]
         if len(rtuple.types) == 0:  # empty tuple
-            # The behavior of empty structs in C is compiler dependent so we add a dummy variable
-            # to avoid empty tuples being defined as empty structs.
+            # Empty tuples contain a flag so that they can still indicate
+            # error values.
             result.append('int empty_struct_error_flag;')
         else:
             i = 0
             for typ in rtuple.types:
-                result.append('    {}f{};'.format(self.ctype_spaced(typ), i))
+                result.append('{}f{};'.format(self.ctype_spaced(typ), i))
                 i += 1
         result.append('};')
         result.append('')
@@ -206,15 +185,15 @@ class Emitter:
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         context = self.context
-        id = self.tuple_unique_id(rtuple)
+        id = rtuple.unique_id
         name = 'tuple_undefined_' + id
         if name not in context.declarations:
-            struct_name = self.tuple_struct_name(rtuple)
             values = self.tuple_undefined_value_helper(rtuple)
-            var = 'struct {} {}'.format(struct_name, name)
+            var = 'struct {} {}'.format(rtuple.struct_name, name)
             decl = '{};'.format(var)
             init = '{} = {{ {} }};'.format(var, ''.join(values))
-            context.declarations[name] = HeaderDeclaration(set([struct_name]), [decl], [init])
+            context.declarations[name] = HeaderDeclaration(
+                set([rtuple.struct_name]), [decl], [init])
         return name
 
     def tuple_undefined_value_helper(self, rtuple: RTuple) -> List[str]:
@@ -236,15 +215,14 @@ class Emitter:
     # Higher-level operations
 
     def declare_tuple_struct(self, tuple_type: RTuple) -> None:
-        struct_name = self.tuple_struct_name(tuple_type)
-        if struct_name not in self.context.declarations:
+        if tuple_type.struct_name not in self.context.declarations:
             dependencies = set()
             for typ in tuple_type.types:
                 # XXX other types might eventually need similar behavior
                 if isinstance(typ, RTuple):
-                    dependencies.add(self.tuple_struct_name(typ))
+                    dependencies.add(typ.struct_name)
 
-            self.context.declarations[struct_name] = HeaderDeclaration(
+            self.context.declarations[tuple_type.struct_name] = HeaderDeclaration(
                 dependencies,
                 self.tuple_c_declaration(tuple_type),
                 None,

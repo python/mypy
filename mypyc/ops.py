@@ -68,6 +68,28 @@ class RType:
         return hash(self.name)
 
 
+class RTypeVisitor(Generic[T]):
+    @abstractmethod
+    def visit_rprimitive(self, typ: 'RPrimitive') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_rinstance(self, typ: 'RInstance') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_runion(self, typ: 'RUnion') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_rtuple(self, typ: 'RTuple') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_rvoid(self, typ: 'RVoid') -> T:
+        raise NotImplementedError
+
+
 class RVoid(RType):
     """void"""
 
@@ -190,6 +212,31 @@ def is_tuple_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.tuple'
 
 
+class TupleNameVisitor(RTypeVisitor[str]):
+    """Produce a tuple name based on the concrete representations of types."""
+
+    def visit_rinstance(self, t: 'RInstance') -> str:
+        return "O"
+
+    def visit_runion(self, t: 'RUnion') -> str:
+        return "O"
+
+    def visit_rprimitive(self, t: 'RPrimitive') -> str:
+        if t._ctype == 'CPyTagged':
+            return 'I'
+        elif t._ctype == 'char':
+            return 'C'
+        assert not t.is_unboxed, "{} unexpected unboxed type".format(t)
+        return 'O'
+
+    def visit_rtuple(self, t: 'RTuple') -> str:
+        parts = [elem.accept(self) for elem in t.types]
+        return 'T{}{}'.format(len(parts), ''.join(parts))
+
+    def visit_rvoid(self, t: 'RVoid') -> str:
+        assert False, "rvoid in tuple?"
+
+
 class RTuple(RType):
     """Fixed-length unboxed tuple (represented as a C struct)."""
 
@@ -198,9 +245,14 @@ class RTuple(RType):
     def __init__(self, types: List[RType]) -> None:
         self.name = 'tuple'
         self.types = tuple(types)
-        # Emitter has logic for generating a C type for RTuple.
-        self._ctype = ''
         self.is_refcounted = any(t.is_refcounted for t in self.types)
+        # Generate a unique id which is used in naming corresponding C identifiers.
+        # This is necessary since C does not have anonymous structural type equivalence
+        # in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
+        self.unique_id = self.accept(TupleNameVisitor())
+        # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
+        self.struct_name = 'tuple_{}'.format(self.unique_id)
+        self._ctype = 'struct {}'.format(self.struct_name)
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rtuple(self)
@@ -1784,28 +1836,6 @@ def all_concrete_classes(class_ir: ClassIR) -> List[ClassIR]:
     if not (class_ir.is_abstract or class_ir.is_trait):
         concrete.append(class_ir)
     return concrete
-
-
-class RTypeVisitor(Generic[T]):
-    @abstractmethod
-    def visit_rprimitive(self, typ: RPrimitive) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_rinstance(self, typ: RInstance) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_runion(self, typ: RUnion) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_rtuple(self, typ: RTuple) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_rvoid(self, typ: RVoid) -> T:
-        raise NotImplementedError
 
 
 # Import various modules that set up global state.

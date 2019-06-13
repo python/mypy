@@ -49,10 +49,10 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
         return left is self.right
 
     def visit_rtuple(self, left: RTuple) -> bool:
-        # We might want to implement runtime subtyping for tuples. The
-        # obstacle is that we generate different (but equivalent)
-        # tuple structs.
-        return is_same_type(left, self.right)
+        if isinstance(self.right, RTuple):
+            return len(self.right.types) == len(left.types) and all(
+                is_runtime_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types))
+        return False
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)
