@@ -326,7 +326,7 @@ class A(I, J):
     def f(self, x: str) -> int: pass \
         # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int"
     def g(self, x: str) -> int: pass \
-        # E: Return type of "g" incompatible with supertype "J"
+        # E: Return type "int" of "g" incompatible with return type "str" in supertype "J"
     def h(self) -> int: pass # Not related to any base class
 [out]
 
@@ -372,7 +372,7 @@ class A(I):
         pass
 [out]
 main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
-main:11: error: Return type of "h" incompatible with supertype "I"
+main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 
 
 -- Accessing abstract members
@@ -770,7 +770,7 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> str: pass # E: Return type of "x" incompatible with supertype "A"
+    def x(self) -> str: pass # E: Return type "str" of "x" incompatible with return type "int" in supertype "A"
 b = B()
 b.x() # E: "str" not callable
 [builtins fixtures/property.pyi]

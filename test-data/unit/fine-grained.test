@@ -1063,9 +1063,9 @@ class A:
 [file n.py.3]
 [out]
 ==
-main:3: error: Return type of "f" incompatible with supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
 ==
-main:3: error: Return type of "f" incompatible with supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
 
 [case testModifyBaseClassMethodCausingInvalidOverride]
 import m
@@ -1079,7 +1079,7 @@ class A:
     def f(self) -> int: pass
 [out]
 ==
-main:3: error: Return type of "f" incompatible with supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
 
 [case testAddBaseClassAttributeCausingErrorInSubclass]
 import m
@@ -1985,11 +1985,11 @@ class B:
 class B:
     def foo(self) -> int: return 12
 [out]
-a.py:9: error: Return type of "foo" incompatible with supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
 ==
-a.py:9: error: Return type of "foo" incompatible with supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
 ==
-a.py:9: error: Return type of "foo" incompatible with supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
 ==
 
 [case testPreviousErrorInMethodSemanal1]
@@ -7449,7 +7449,7 @@ def deco(f: F) -> F:
 [out]
 main:7: error: Unsupported operand types for + ("str" and "int")
 ==
-main:5: error: Return type of "m" incompatible with supertype "B"
+main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "B"
 
 [case testLiskovFineVariableClean-only_when_nocache]
 import b
@@ -7553,7 +7553,7 @@ def deco(f: F) -> F:
     pass
 [out]
 ==
-main:5: error: Return type of "m" incompatible with supertype "B"
+main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "B"
 
 [case testAddAbstractMethod]
 from b import D

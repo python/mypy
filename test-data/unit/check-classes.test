@@ -281,7 +281,7 @@ class B(A):
   def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
 main:7: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "A"
-main:9: error: Return type of "h" incompatible with supertype "A"
+main:9: error: Return type "object" of "h" incompatible with return type "A" in supertype "A"
 
 [case testEqMethodsOverridingWithNonObjects]
 class A:
@@ -328,7 +328,7 @@ class C(B): # with multiple implementations
     def f(self) -> B:  # Fail
         pass
 [out]
-main:7: error: Return type of "f" incompatible with supertype "B"
+main:7: error: Return type "B" of "f" incompatible with return type "C" in supertype "B"
 
 [case testMethodOverridingWithVoidReturnValue]
 import typing
@@ -339,7 +339,7 @@ class B(A):
     def f(self) -> A: pass  # Fail
     def g(self) -> None: pass
 [out]
-main:6: error: Return type of "f" incompatible with supertype "A"
+main:6: error: Return type "A" of "f" incompatible with return type "None" in supertype "A"
 
 [case testOverride__new__WithDifferentSignature]
 class A:
@@ -2451,7 +2451,7 @@ class C(A):
 class D(A):
     def __iadd__(self, x: 'A') -> 'B': pass
 [out]
-main:6: error: Return type of "__iadd__" incompatible with "__add__" of supertype "A"
+main:6: error: Return type "A" of "__iadd__" incompatible with return type "B" in "__add__" of supertype "A"
 main:8: error: Argument 1 of "__iadd__" is incompatible with "__add__" of supertype "A"; supertype defines the argument type as "A"
 main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 

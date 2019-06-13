@@ -185,7 +185,7 @@ class C(A):
         pass
 
 class D(A):
-   def copy(self: A) -> A:  # E: Return type of "copy" incompatible with supertype "A"
+   def copy(self: A) -> A:  # E: Return type "A" of "copy" incompatible with return type "D" in supertype "A"
        pass
 
 TB = TypeVar('TB', bound='B', covariant=True)
