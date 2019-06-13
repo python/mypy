@@ -624,3 +624,21 @@ class C:
     x: int = dataclasses.field(default=1)
     y: str = dataclasses.field(metadata={"doc": "foo"})  # E: Attributes without a default cannot follow attributes with one
 [builtins fixtures/dict.pyi]
+
+[case testDataclassOrderingDeferred]
+# flags: --python-version 3.6 --new-semantic-analyzer
+from dataclasses import dataclass
+
+defer: Yes
+
+@dataclass(order=True)
+class Application:
+  name: str
+  rating: int
+
+a = Application('', 0)
+b = Application('', 0)
+a < b
+
+class Yes: ...
+[builtins fixtures/list.pyi]
