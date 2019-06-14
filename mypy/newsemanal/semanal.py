@@ -3418,69 +3418,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         base.accept(self)
         # Bind references to module attributes.
         if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
-            # This branch handles the case foo.bar where foo is a module.
-            # In this case base.node is the module's MypyFile and we look up
-            # bar in its namespace.  This must be done for all types of bar.
-            file = base.node
-            # TODO: Should we actually use this? Not sure if this makes a difference.
-            # if file.fullname() == self.cur_mod_id:
-            #     names = self.globals
-            # else:
-            #     names = file.names
-            n = file.names.get(expr.name, None)
-            if n and not n.module_hidden:
-                n = self.rebind_symbol_table_node(n)
-                if n:
-                    if isinstance(n.node, PlaceholderNode):
-                        self.process_placeholder(expr.name, 'attribute', expr)
-                        return
-                    # TODO: What if None?
-                    expr.kind = n.kind
-                    expr.fullname = n.fullname
-                    expr.node = n.node
-            elif file.fullname() + '.' + expr.name in self.modules:
-                expr.kind = GDEF
-                expr.fullname = file.fullname() + '.' + expr.name
-                expr.node = self.modules[expr.fullname]
-            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
-                    and '__getattr__' in file.names):
-                # If there is a module-level __getattr__, then any attribute on the module is valid
-                # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if not getattr_defn:
-                    typ = AnyType(TypeOfAny.from_error)  # type: Type
-                elif isinstance(getattr_defn.node, (FuncDef, Var)):
-                    if isinstance(getattr_defn.node.type, CallableType):
-                        typ = getattr_defn.node.type.ret_type
-                    else:
-                        typ = AnyType(TypeOfAny.from_error)
-                else:
-                    typ = AnyType(TypeOfAny.from_error)
-                expr.kind = GDEF
-                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                expr.node = Var(expr.name, type=typ)
-            elif self.is_missing_module(file.fullname() + '.' + expr.name):
-                expr.kind = GDEF
-                v = Var(expr.name)
-                v._fullname = file.fullname() + '.' + expr.name
-                expr.fullname = v._fullname
-                expr.node = v
-            else:
-                if self.is_incomplete_namespace(file.fullname()):
-                    self.record_incomplete_ref()
+            # Handle 'module.foo'.
+            sym = self.get_module_symbol(base.node, [expr.name])
+            if sym:
+                if isinstance(sym.node, PlaceholderNode):
+                    self.process_placeholder(expr.name, 'attribute', expr)
                     return
-                # We only catch some errors here; the rest will be
-                # caught during type checking.
-                #
-                # This way we can report a larger number of errors in
-                # one type checker run. If we reported errors here,
-                # the build would terminate after semantic analysis
-                # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
-                mod_name = " '%s'" % file.fullname() if file is not None else ''
-                if full_name in obsolete_name_mapping:
-                    self.fail("Module%s has no attribute %r (it's now called %r)" % (
-                        mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
+                expr.kind = sym.kind
+                expr.fullname = sym.fullname
+                expr.node = sym.node
         elif isinstance(base, RefExpr):
             # This branch handles the case C.bar (or cls.bar or self.bar inside
             # a classmethod/method), where C is a class and bar is a type
@@ -3851,8 +3797,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return None
 
     def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
-        """Look up a symbol from the module symbol table."""
-        # TODO: Use this logic in more places?
+        """Look up a symbol from a module.
+
+        Return None if no matching symbol could be bound.
+        """
         module = node.fullname()
         names = node.names
         # Rebind potential references to old version of current module in
@@ -3878,6 +3826,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 v = Var(part, type=var_type)
                 v._fullname = submodule
                 sym = SymbolTableNode(GDEF, v)
+            elif self.is_incomplete_namespace(node.fullname()):
+                self.record_incomplete_ref()
+        elif sym.module_hidden:
+            sym = None
         return sym
 
     def is_missing_module(self, module: str) -> bool:
