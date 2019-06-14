@@ -826,10 +826,11 @@ class MessageBuilder:
 
     def return_type_incompatible_with_supertype(
             self, name: str, name_in_supertype: str, supertype: str,
+            original: Type, override: Type,
             context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
-        self.fail('Return type of "{}" incompatible with {}'
-                  .format(name, target), context)
+        self.fail('Return type {} of "{}" incompatible with return type {} in {}'
+                  .format(self.format(override), name, self.format(original), target), context)
 
     def override_target(self, name: str, name_in_super: str,
                         supertype: str) -> str:

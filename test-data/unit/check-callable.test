@@ -442,3 +442,10 @@ def g(o: Thing) -> None:
         o(1,2,3)
 
 [builtins fixtures/callable.pyi]
+
+[case testCallableNoArgs]
+
+if callable():  # E: Too few arguments for "callable"
+    pass
+
+[builtins fixtures/callable.pyi]

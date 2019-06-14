@@ -1556,7 +1556,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not is_subtype(erase_override(override.ret_type),
                                   original.ret_type):
                     self.msg.return_type_incompatible_with_supertype(
-                        name, name_in_super, supertype, node)
+                        name, name_in_super, supertype, original.ret_type, override.ret_type, node)
                     emitted_msg = True
             elif isinstance(override, Overloaded) and isinstance(original, Overloaded):
                 # Give a more detailed message in the case where the user is trying to
@@ -3443,7 +3443,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None, {}
         elif isinstance(node, CallExpr):
             if refers_to_fullname(node.callee, 'builtins.isinstance'):
-                if len(node.args) != 2:  # the error will be reported later
+                if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
@@ -3451,6 +3451,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     type = get_isinstance_type(node.args[1], type_map)
                     return conditional_type_map(expr, vartype, type)
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
+                if len(node.args) != 2:  # the error will be reported elsewhere
+                    return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]
@@ -3478,6 +3480,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
                     return yes_map, no_map
             elif refers_to_fullname(node.callee, 'builtins.callable'):
+                if len(node.args) != 1:  # the error will be reported elsewhere
+                    return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]

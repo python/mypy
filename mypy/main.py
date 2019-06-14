@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-from typing import Dict, List, Optional, Tuple, TextIO
+from typing import Any, Dict, List, Optional, Tuple, TextIO
 
 from mypy import build
 from mypy import defaults
@@ -124,7 +124,9 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    def _fill_text(self, text: str, width: int, indent: int) -> str:
+    # FIXME: typeshed incorrectly has the type of indent as int when
+    # it should be str. Make it Any to avoid rusing mypyc.
+    def _fill_text(self, text: str, width: int, indent: Any) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)

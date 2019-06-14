@@ -572,7 +572,7 @@ class Child(Base):
         return self.x
     def good_override(self) -> int:
         return 0
-    def bad_override(self) -> str:  # E: Return type of "bad_override" incompatible with supertype "Base"
+    def bad_override(self) -> str:  # E: Return type "str" of "bad_override" incompatible with return type "int" in supertype "Base"
         return 'incompatible'
 
 def takes_base(base: Base) -> int:
