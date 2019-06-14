@@ -30,7 +30,7 @@ from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike,
-    TypeStrVisitor,
+    TypeStrVisitor, TypeTranslator,
     is_optional,
 )
 from mypy.build import State, Graph
