@@ -29,13 +29,14 @@ from typing import (
 from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType, is_optional,
+    TypeVarType, FunctionLike,
     TypeStrVisitor,
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
-    ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
+    ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
     Decorator, RefExpr,
-    SymbolNode, TypeInfo, Node, Expression, ReturnStmt, CallExpr,
+    SymbolNode, TypeInfo, Expression, ReturnStmt, CallExpr,
     reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
@@ -413,16 +414,15 @@ class SuggestionEngine:
             elif (isinstance(dec, CallExpr)
                     and isinstance(dec.callee, RefExpr)
                     and isinstance(dec.callee.node, FuncDef)
-                    and isinstance(dec.callee.node.type, CallableType)
-            ):
+                    and isinstance(dec.callee.node.type, CallableType)):
                 typ = dec.callee.node.type.ret_type
 
             if not isinstance(typ, FunctionLike):
                 return None
             for ct in typ.items():
                 if not (len(ct.arg_types) == 1
-                            and isinstance(ct.arg_types[0], TypeVarType)
-                            and ct.arg_types[0] == ct.ret_type):
+                        and isinstance(ct.arg_types[0], TypeVarType)
+                        and ct.arg_types[0] == ct.ret_type):
                     return None
 
         return node.func
