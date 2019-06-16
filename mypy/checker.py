@@ -2,6 +2,7 @@
 
 import itertools
 import fnmatch
+import sys
 from contextlib import contextmanager
 
 from typing import (
@@ -4497,6 +4498,14 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> Type:
             if not isinstance(symbol.node, Var):
                 continue
             new_items.append(LiteralType(name, typ))
+        # SymbolTables are really just dicts, and dicts are guaranteed to preserve
+        # insertion order only starting with Python 3.7. So, we sort these for older
+        # versions of Python to help make tests deterministic.
+        #
+        # We could probably skip the sort for Python 3.6 since people probably run mypy
+        # only using CPython, but we might as well for the sake of full correctness.
+        if sys.version_info < (3, 7):
+            new_items.sort(key=lambda lit: lit.value)
         return UnionType.make_simplified_union(new_items)
     else:
         return typ
