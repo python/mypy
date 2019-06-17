@@ -406,7 +406,6 @@ class SuggestionEngine:
 
     def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
         for dec in node.decorators:
-            print(dec)
             typ = None
             if (isinstance(dec, RefExpr)
                     and isinstance(dec.node, FuncDef)):
