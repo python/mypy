@@ -1277,7 +1277,7 @@ main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typi
 import typing
 t = typing.typevar('t')
 [out]
-main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main:3: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 
 [case testInvalidTypeAnnotation]
 import typing
