@@ -1653,7 +1653,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                # We use the fullname of the orignal definition so that we can
+                # We use the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
                 fullname = import_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
@@ -3416,9 +3416,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_member_expr(self, expr: MemberExpr) -> None:
         base = expr.expr
         base.accept(self)
-        # Bind references to module attributes.
         if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
-            # Handle 'module.foo'.
+            # Handle module attribute.
             sym = self.get_module_symbol(base.node, expr.name)
             if sym:
                 if isinstance(sym.node, PlaceholderNode):
@@ -3822,6 +3821,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
             elif self.is_missing_module(fullname):
+                # We use the fullname of the original definition so that we can
+                # detect whether two names refer to the same thing.
                 var_type = AnyType(TypeOfAny.from_unimported_type)
                 v = Var(name, type=var_type)
                 v._fullname = fullname
