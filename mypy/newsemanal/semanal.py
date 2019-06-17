@@ -3766,11 +3766,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym:
             for i in range(1, len(parts)):
                 node = sym.node
-                name = parts[i]
+                part = parts[i]
                 if isinstance(node, TypeInfo):
-                    nextsym = node.get(name)
+                    nextsym = node.get(part)
                 elif isinstance(node, MypyFile):
-                    nextsym = self.get_module_symbol(node, name)
+                    nextsym = self.get_module_symbol(node, part)
                     namespace = node.fullname()
                 elif isinstance(node, PlaceholderNode):
                     return sym
