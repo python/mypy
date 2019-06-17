@@ -3813,16 +3813,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             submodule = module + '.' + part
             if submodule in self.modules:
                 sym = SymbolTableNode(GDEF, self.modules[submodule])
+            elif self.is_incomplete_namespace(module):
+                self.record_incomplete_ref()
             elif ('__getattr__' in names
-                    and not self.is_incomplete_namespace(module)
-                    and (node.is_stub or self.options.python_version >= (3, 7))):
+                    and (node.is_stub
+                         or self.options.python_version >= (3, 7))):
                 fullname = module + '.' + '.'.join(parts)
                 gvar = self.create_getattr_var(names['__getattr__'],
                                                parts[0], fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
-            elif self.is_incomplete_namespace(node.fullname()):
-                self.record_incomplete_ref()
             elif self.is_missing_module(submodule):
                 var_type = AnyType(TypeOfAny.from_unimported_type)
                 v = Var(part, type=var_type)
