@@ -2511,3 +2511,8 @@ get = api.get
 import p
 
 def get() -> int: ...
+
+[case testUseObsoleteNameForTypeVar3]
+import typing
+t = typing.typevar('t') # E: Module has no attribute "typevar"
+[builtins fixtures/module.pyi]
