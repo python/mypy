@@ -3803,10 +3803,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         module = node.fullname()
         names = node.names
-        # Rebind potential references to old version of current module in
-        # fine-grained incremental mode.
-        if module == self.cur_mod_id:
-            names = self.globals
         sym = names.get(name)
         if not sym:
             fullname = module + '.' + name
@@ -4239,24 +4235,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
         self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
-
-    def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
-        """If node refers to old version of module, return reference to new version.
-
-        If the reference is removed in the new version, return None.
-        """
-        # TODO: Handle type variables and other sorts of references
-        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var, TypeAlias)):
-            # TODO: Why is it possible for fullname() to be None, even though it's not
-            #   annotated as Optional[str]?
-            # TODO: Do this for all modules in the set of modified files
-            # TODO: This doesn't work for things nested within classes
-            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
-                # This is an indirect reference to a name defined in the current module.
-                # Rebind it.
-                return self.globals.get(n.node.name())
-        # No need to rebind.
-        return n
 
     def qualified_name(self, name: str) -> str:
         if self.type is not None:
