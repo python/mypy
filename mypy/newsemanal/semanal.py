@@ -99,9 +99,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import (
-    get_prefix, correct_relative_import, unmangle, module_prefix
-)
+from mypy.util import correct_relative_import, unmangle, module_prefix
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
