@@ -3419,7 +3419,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # Bind references to module attributes.
         if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
             # Handle 'module.foo'.
-            sym = self.get_module_symbol(base.node, [expr.name])
+            sym = self.get_module_symbol(base.node, expr.name)
             if sym:
                 if isinstance(sym.node, PlaceholderNode):
                     self.process_placeholder(expr.name, 'attribute', expr)
@@ -3766,10 +3766,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym:
             for i in range(1, len(parts)):
                 node = sym.node
+                name = parts[i]
                 if isinstance(node, TypeInfo):
-                    nextsym = node.get(parts[i])
+                    nextsym = node.get(name)
                 elif isinstance(node, MypyFile):
-                    nextsym = self.get_module_symbol(node, parts[i:])
+                    nextsym = self.get_module_symbol(node, name)
                     namespace = node.fullname()
                 elif isinstance(node, PlaceholderNode):
                     return sym
@@ -3796,7 +3797,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return n
         return None
 
-    def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
+    def get_module_symbol(self, node: MypyFile, name: str) -> Optional[SymbolTableNode]:
         """Look up a symbol from a module.
 
         Return None if no matching symbol could be bound.
@@ -3807,26 +3808,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # fine-grained incremental mode.
         if module == self.cur_mod_id:
             names = self.globals
-        part = parts[0]
-        sym = names.get(part, None)
+        sym = names.get(name)
         if not sym:
-            submodule = module + '.' + part
-            if submodule in self.modules:
-                sym = SymbolTableNode(GDEF, self.modules[submodule])
+            fullname = module + '.' + name
+            if fullname in self.modules:
+                sym = SymbolTableNode(GDEF, self.modules[fullname])
             elif self.is_incomplete_namespace(module):
                 self.record_incomplete_ref()
             elif ('__getattr__' in names
                     and (node.is_stub
                          or self.options.python_version >= (3, 7))):
-                fullname = module + '.' + '.'.join(parts)
-                gvar = self.create_getattr_var(names['__getattr__'],
-                                               parts[0], fullname)
+                gvar = self.create_getattr_var(names['__getattr__'], name, fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
-            elif self.is_missing_module(submodule):
+            elif self.is_missing_module(fullname):
                 var_type = AnyType(TypeOfAny.from_unimported_type)
-                v = Var(part, type=var_type)
-                v._fullname = submodule
+                v = Var(name, type=var_type)
+                v._fullname = fullname
                 sym = SymbolTableNode(GDEF, v)
         elif sym.module_hidden:
             sym = None
