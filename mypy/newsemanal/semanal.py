@@ -3803,6 +3803,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         module = node.fullname()
         names = node.names
+        # Rebind potential references to old version of current module in
+        # fine-grained incremental mode.
+        if module == self.cur_mod_id:
+            names = self.globals
         part = parts[0]
         sym = names.get(part, None)
         if not sym:
@@ -3826,8 +3830,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 sym = SymbolTableNode(GDEF, v)
         elif sym.module_hidden:
             sym = None
-        else:
-            sym = self.rebind_symbol_table_node(sym)
         return sym
 
     def is_missing_module(self, module: str) -> bool:
