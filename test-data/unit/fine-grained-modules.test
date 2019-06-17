@@ -812,6 +812,7 @@ class Baz:
 ==
 
 [case testDeleteFileWithinPackage]
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 import m.x
@@ -826,6 +827,7 @@ a.py:2: error: Too many arguments for "g"
 ==
 a.py:1: error: Cannot find module named 'm.x'
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+a.py:2: error: Module has no attribute "x"
 
 [case testDeletePackage1]
 import p.a
@@ -859,6 +861,7 @@ main:1: error: Cannot find module named 'p'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeletePackage3]
+# flags: --new-semantic-analyzer
 import p.a
 p.a.f(1)
 [file p/__init__.py]
@@ -868,14 +871,15 @@ def f(x: str) -> None: pass
 [delete p/__init__.py.3]
 [builtins fixtures/module.pyi]
 [out]
-main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find module named 'p.a'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find module named 'p.a'
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:3: error: Module has no attribute "a"
 ==
-main:1: error: Cannot find module named 'p.a'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find module named 'p'
+main:2: error: Cannot find module named 'p.a'
+main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find module named 'p'
 
 [case testDeletePackage4]
 import p.a

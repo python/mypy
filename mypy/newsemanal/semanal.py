@@ -99,9 +99,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import (
-    get_prefix, correct_relative_import, unmangle, module_prefix
-)
+from mypy.util import correct_relative_import, unmangle, module_prefix
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -1621,44 +1619,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
-                self.add_submodules_to_parent_modules(id, module_public)
-
-    def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
-        """Recursively adds a reference to a newly loaded submodule to its parent.
-
-        When you import a submodule in any way, Python will add a reference to that
-        submodule to its parent. So, if you do something like `import A.B` or
-        `from A import B` or `from A.B import Foo`, Python will add a reference to
-        module A.B to A's namespace.
-
-        Note that this "parent patching" process is completely independent from any
-        changes made to the *importer's* namespace. For example, if you have a file
-        named `foo.py` where you do `from A.B import Bar`, then foo's namespace will
-        be modified to contain a reference to only Bar. Independently, A's namespace
-        will be modified to contain a reference to `A.B`.
-        """
-        while '.' in id:
-            parent, child = id.rsplit('.', 1)
-            parent_mod = self.modules.get(parent)
-            if parent_mod and self.allow_patching(parent_mod, child):
-                child_mod = self.modules.get(id)
-                if child_mod:
-                    sym = SymbolTableNode(GDEF, child_mod,
-                                          module_public=module_public,
-                                          no_serialize=True)
-                else:
-                    # Construct a dummy Var with Any type.
-                    any_type = AnyType(TypeOfAny.from_unimported_type,
-                                       missing_import_name=id)
-                    var = Var(child, any_type)
-                    var._fullname = child
-                    var.is_ready = True
-                    var.is_suppressed_import = True
-                    sym = SymbolTableNode(GDEF, var,
-                                          module_public=module_public,
-                                          no_serialize=True)
-                parent_mod.names[child] = sym
-            id = parent
 
     def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
         if child not in parent_mod.names:
@@ -1671,7 +1631,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
         import_id = self.correct_relative_import(imp)
-        self.add_submodules_to_parent_modules(import_id, True)
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
@@ -1687,13 +1646,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 if mod is not None:
                     kind = self.current_symbol_kind()
                     node = SymbolTableNode(kind, mod)
-                    self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                # We use the fullname of the orignal definition so that we can
+                # We use the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
                 fullname = import_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
@@ -1823,7 +1781,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Any names could be missing from the current namespace if the target module
                 # namespace is incomplete.
                 self.mark_incomplete('*', i)
-            self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
                 if node is None:
                     continue
@@ -3457,61 +3414,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_member_expr(self, expr: MemberExpr) -> None:
         base = expr.expr
         base.accept(self)
-        # Bind references to module attributes.
         if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
-            # This branch handles the case foo.bar where foo is a module.
-            # In this case base.node is the module's MypyFile and we look up
-            # bar in its namespace.  This must be done for all types of bar.
-            file = base.node
-            # TODO: Should we actually use this? Not sure if this makes a difference.
-            # if file.fullname() == self.cur_mod_id:
-            #     names = self.globals
-            # else:
-            #     names = file.names
-            n = file.names.get(expr.name, None)
-            if n and not n.module_hidden:
-                n = self.rebind_symbol_table_node(n)
-                if n:
-                    if isinstance(n.node, PlaceholderNode):
-                        self.process_placeholder(expr.name, 'attribute', expr)
-                        return
-                    # TODO: What if None?
-                    expr.kind = n.kind
-                    expr.fullname = n.fullname
-                    expr.node = n.node
-            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
-                    and '__getattr__' in file.names):
-                # If there is a module-level __getattr__, then any attribute on the module is valid
-                # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if not getattr_defn:
-                    typ = AnyType(TypeOfAny.from_error)  # type: Type
-                elif isinstance(getattr_defn.node, (FuncDef, Var)):
-                    if isinstance(getattr_defn.node.type, CallableType):
-                        typ = getattr_defn.node.type.ret_type
-                    else:
-                        typ = AnyType(TypeOfAny.from_error)
-                else:
-                    typ = AnyType(TypeOfAny.from_error)
-                expr.kind = GDEF
-                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                expr.node = Var(expr.name, type=typ)
-            else:
-                if self.is_incomplete_namespace(file.fullname()):
-                    self.record_incomplete_ref()
+            # Handle module attribute.
+            sym = self.get_module_symbol(base.node, expr.name)
+            if sym:
+                if isinstance(sym.node, PlaceholderNode):
+                    self.process_placeholder(expr.name, 'attribute', expr)
                     return
-                # We only catch some errors here; the rest will be
-                # caught during type checking.
-                #
-                # This way we can report a larger number of errors in
-                # one type checker run. If we reported errors here,
-                # the build would terminate after semantic analysis
-                # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
-                mod_name = " '%s'" % file.fullname() if file is not None else ''
-                if full_name in obsolete_name_mapping:
-                    self.fail("Module%s has no attribute %r (it's now called %r)" % (
-                        mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
+                expr.kind = sym.kind
+                expr.fullname = sym.fullname
+                expr.node = sym.node
         elif isinstance(base, RefExpr):
             # This branch handles the case C.bar (or cls.bar or self.bar inside
             # a classmethod/method), where C is a class and bar is a type
@@ -3851,10 +3763,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym:
             for i in range(1, len(parts)):
                 node = sym.node
+                part = parts[i]
                 if isinstance(node, TypeInfo):
-                    nextsym = node.get(parts[i])
+                    nextsym = node.get(part)
                 elif isinstance(node, MypyFile):
-                    nextsym = self.get_module_symbol(node, parts[i:])
+                    nextsym = self.get_module_symbol(node, part)
                     namespace = node.fullname()
                 elif isinstance(node, PlaceholderNode):
                     return sym
@@ -3881,26 +3794,39 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return n
         return None
 
-    def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
-        """Look up a symbol from the module symbol table."""
-        # TODO: Use this logic in more places?
+    def get_module_symbol(self, node: MypyFile, name: str) -> Optional[SymbolTableNode]:
+        """Look up a symbol from a module.
+
+        Return None if no matching symbol could be bound.
+        """
         module = node.fullname()
         names = node.names
-        # Rebind potential references to old version of current module in
-        # fine-grained incremental mode.
-        if module == self.cur_mod_id:
-            names = self.globals
-        sym = names.get(parts[0], None)
-        if (not sym
-                and '__getattr__' in names
-                and not self.is_incomplete_namespace(module)
-                and (node.is_stub or self.options.python_version >= (3, 7))):
-            fullname = module + '.' + '.'.join(parts)
-            gvar = self.create_getattr_var(names['__getattr__'],
-                                           parts[0], fullname)
-            if gvar:
-                sym = SymbolTableNode(GDEF, gvar)
+        sym = names.get(name)
+        if not sym:
+            fullname = module + '.' + name
+            if fullname in self.modules:
+                sym = SymbolTableNode(GDEF, self.modules[fullname])
+            elif self.is_incomplete_namespace(module):
+                self.record_incomplete_ref()
+            elif ('__getattr__' in names
+                    and (node.is_stub
+                         or self.options.python_version >= (3, 7))):
+                gvar = self.create_getattr_var(names['__getattr__'], name, fullname)
+                if gvar:
+                    sym = SymbolTableNode(GDEF, gvar)
+            elif self.is_missing_module(fullname):
+                # We use the fullname of the original definition so that we can
+                # detect whether two names refer to the same thing.
+                var_type = AnyType(TypeOfAny.from_unimported_type)
+                v = Var(name, type=var_type)
+                v._fullname = fullname
+                sym = SymbolTableNode(GDEF, v)
+        elif sym.module_hidden:
+            sym = None
         return sym
+
+    def is_missing_module(self, module: str) -> bool:
+        return self.options.ignore_missing_imports or module in self.missing_modules
 
     def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
                         source_type: AnyType) -> SymbolTableNode:
@@ -4307,24 +4233,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
         self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
-
-    def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
-        """If node refers to old version of module, return reference to new version.
-
-        If the reference is removed in the new version, return None.
-        """
-        # TODO: Handle type variables and other sorts of references
-        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var, TypeAlias)):
-            # TODO: Why is it possible for fullname() to be None, even though it's not
-            #   annotated as Optional[str]?
-            # TODO: Do this for all modules in the set of modified files
-            # TODO: This doesn't work for things nested within classes
-            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
-                # This is an indirect reference to a name defined in the current module.
-                # Rebind it.
-                return self.globals.get(n.node.name())
-        # No need to rebind.
-        return n
 
     def qualified_name(self, name: str) -> str:
         if self.type is not None:

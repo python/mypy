@@ -2497,3 +2497,22 @@ def force(x: Literal[42]) -> None: pass
 force(reveal_type(var))  # E: Revealed type is 'Literal[42]'
 
 class Yes: ...
+
+[case testNewAnalyzerImportCycleWithIgnoreMissingImports]
+# flags: --ignore-missing-imports
+import p
+reveal_type(p.get)  # E: Revealed type is 'def () -> builtins.int'
+
+[file p/__init__.pyi]
+from . import api
+get = api.get
+
+[file p/api.pyi]
+import p
+
+def get() -> int: ...
+
+[case testUseObsoleteNameForTypeVar3]
+import typing
+t = typing.typevar('t') # E: Module has no attribute "typevar"
+[builtins fixtures/module.pyi]
