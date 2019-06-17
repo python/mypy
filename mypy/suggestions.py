@@ -29,12 +29,14 @@ from typing import (
 from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType, is_optional,
+    TypeVarType, FunctionLike,
     TypeStrVisitor,
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
     ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
-    SymbolNode, TypeInfo, Expression, ReturnStmt,
+    Decorator, RefExpr,
+    SymbolNode, TypeInfo, Expression, ReturnStmt, CallExpr,
     reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
@@ -220,8 +222,9 @@ class SuggestionEngine:
         types = []  # type: List[List[Type]]
         for i in range(len(base.arg_kinds)):
             # Make self args Any but this will get overriden somewhere in the checker
+            # We call this a special form so that has_any_type doesn't consider it to be a real any
             if i == 0 and is_method:
-                types.append([AnyType(TypeOfAny.explicit)])
+                types.append([AnyType(TypeOfAny.special_form)])
                 continue
 
             all_arg_types = []
@@ -307,6 +310,9 @@ class SuggestionEngine:
         # FIXME: what about static and class methods?
         is_method = bool(node.info)
 
+        if len(node.arg_names) >= 10:
+            raise SuggestionFailure("Too many arguments")
+
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
@@ -388,10 +394,37 @@ class SuggestionEngine:
             raise SuggestionFailure("Unknown %s %s" %
                                     ("method" if len(components) > 1 else "function", key))
         node = names[funcname].node
+        if isinstance(node, Decorator):
+            node = self.extract_from_decorator(node)
+            if not node:
+                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+
         if not isinstance(node, FuncDef):
             raise SuggestionFailure("Object %s is not a function" % key)
 
         return (modname, tail, node)
+
+    def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
+        for dec in node.decorators:
+            typ = None
+            if (isinstance(dec, RefExpr)
+                    and isinstance(dec.node, FuncDef)):
+                typ = dec.node.type
+            elif (isinstance(dec, CallExpr)
+                    and isinstance(dec.callee, RefExpr)
+                    and isinstance(dec.callee.node, FuncDef)
+                    and isinstance(dec.callee.node.type, CallableType)):
+                typ = dec.callee.node.type.ret_type
+
+            if not isinstance(typ, FunctionLike):
+                return None
+            for ct in typ.items():
+                if not (len(ct.arg_types) == 1
+                        and isinstance(ct.arg_types[0], TypeVarType)
+                        and ct.arg_types[0] == ct.ret_type):
+                    return None
+
+        return node.func
 
     def try_type(self, func: FuncDef, typ: Type) -> List[str]:
         """Recheck a function while assuming it has type typ.
