@@ -3821,13 +3821,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                parts[0], fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
+            elif self.is_incomplete_namespace(node.fullname()):
+                self.record_incomplete_ref()
             elif self.is_missing_module(submodule):
                 var_type = AnyType(TypeOfAny.from_unimported_type)
                 v = Var(part, type=var_type)
                 v._fullname = submodule
                 sym = SymbolTableNode(GDEF, v)
-            elif self.is_incomplete_namespace(node.fullname()):
-                self.record_incomplete_ref()
         elif sym.module_hidden:
             sym = None
         return sym
