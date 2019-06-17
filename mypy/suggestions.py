@@ -28,9 +28,10 @@ from typing import (
 
 from mypy.state import strict_optional_set
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType, is_optional,
+    Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike,
-    TypeStrVisitor,
+    TypeStrVisitor, TypeTranslator,
+    is_optional,
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -145,7 +146,8 @@ class SuggestionEngine:
     def __init__(self, fgmanager: FineGrainedBuildManager,
                  json: bool,
                  no_errors: bool = False,
-                 no_any: bool = False) -> None:
+                 no_any: bool = False,
+                 try_text: bool = False) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
@@ -154,6 +156,7 @@ class SuggestionEngine:
         self.give_json = json
         self.no_errors = no_errors
         self.no_any = no_any
+        self.try_text = try_text
 
         self.max_guesses = 16
 
@@ -251,6 +254,12 @@ class SuggestionEngine:
         return [self.manager.all_types[arg.initializer] if arg.initializer else None
                 for arg in fdef.arguments]
 
+    def add_adjustments(self, typs: List[Type]) -> List[Type]:
+        if not self.try_text or self.manager.options.python_version[0] != 2:
+            return typs
+        translator = StrToText(self.builtin_type)
+        return dedup(typs + [tp.accept(translator) for tp in typs])
+
     def get_guesses(self, is_method: bool, base: CallableType, defaults: List[Optional[Type]],
                     callsites: List[Callsite]) -> List[CallableType]:
         """Compute a list of guesses for a function's type.
@@ -258,6 +267,7 @@ class SuggestionEngine:
         This focuses just on the argument types, and doesn't change the provided return type.
         """
         options = self.get_args(is_method, base, defaults, callsites)
+        options = [self.add_adjustments(tps) for tps in options]
         return [base.copy_modified(arg_types=list(x)) for x in itertools.product(*options)]
 
     def get_callsites(self, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
@@ -292,7 +302,7 @@ class SuggestionEngine:
             raise SuggestionFailure("No guesses that match criteria!")
         errors = {guess: self.try_type(func, guess) for guess in guesses}
         best = min(guesses,
-                   key=lambda s: (count_errors(errors[s]), score_callable(s)))
+                   key=lambda s: (count_errors(errors[s]), self.score_callable(s)))
         return best, count_errors(errors[best])
 
     def get_suggestion(self, function: str) -> str:
@@ -501,6 +511,25 @@ class SuggestionEngine:
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
         return typ.accept(TypeFormatter(cur_module, self.graph))
 
+    def score_type(self, t: Type) -> int:
+        """Generate a score for a type that we use to pick which type to use.
+
+        Lower is better, prefer non-union/non-any types. Don't penalize optionals.
+        """
+        if isinstance(t, AnyType):
+            return 20
+        if isinstance(t, UnionType):
+            if any(isinstance(x, AnyType) for x in t.items):
+                return 20
+            if not is_optional(t):
+                return 10
+        if self.try_text and isinstance(t, Instance) and t.type.fullname() == 'builtins.str':
+            return 1
+        return 0
+
+    def score_callable(self, t: CallableType) -> int:
+        return sum([self.score_type(x) for x in t.arg_types])
+
 
 class TypeFormatter(TypeStrVisitor):
     """Visitor used to format types
@@ -555,6 +584,17 @@ class TypeFormatter(TypeStrVisitor):
         return 'Tuple[{}]'.format(s)
 
 
+class StrToText(TypeTranslator):
+    def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
+        self.text_type = builtin_type('builtins.unicode')
+
+    def visit_instance(self, t: Instance) -> Type:
+        if t.type.fullname() == 'builtins.str':
+            return self.text_type
+        else:
+            return super().visit_instance(t)
+
+
 def generate_type_combinations(types: List[Type]) -> List[Type]:
     """Generate possible combinations of a list of types.
 
@@ -571,25 +611,6 @@ def generate_type_combinations(types: List[Type]) -> List[Type]:
 
 def count_errors(msgs: List[str]) -> int:
     return len([x for x in msgs if ' error: ' in x])
-
-
-def score_type(t: Type) -> int:
-    """Generate a score for a type that we use to pick which type to use.
-
-    Lower is better, prefer non-union/non-any types. Don't penalize optionals.
-    """
-    if isinstance(t, AnyType):
-        return 2
-    if isinstance(t, UnionType):
-        if any(isinstance(x, AnyType) for x in t.items):
-            return 2
-        if not is_optional(t):
-            return 1
-    return 0
-
-
-def score_callable(t: CallableType) -> int:
-    return sum([score_type(x) for x in t.arg_types])
 
 
 def callable_has_any(t: CallableType) -> int:
