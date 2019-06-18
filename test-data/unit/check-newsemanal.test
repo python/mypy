@@ -2516,3 +2516,72 @@ def get() -> int: ...
 import typing
 t = typing.typevar('t') # E: Module has no attribute "typevar"
 [builtins fixtures/module.pyi]
+
+[case testNewAnalyzerImportFromTopLevelFunction]
+import a.b  # This works at runtime
+reveal_type(a.b)  # N
+[file a/__init__.py]
+from .b import B
+from . import b as c
+def b() -> None: pass
+reveal_type(b)  # N
+reveal_type(c.B())  # N
+x: Forward
+class Forward:
+    ...
+
+[file a/b.py]
+class B: ...
+[builtins fixtures/module.pyi]
+
+[out]
+tmp/a/__init__.py:4: note: Revealed type is 'def ()'
+tmp/a/__init__.py:5: note: Revealed type is 'a.b.B'
+main:2: note: Revealed type is 'def ()'
+
+[case testNewAnalyzerImportFromTopLevelAlias]
+import a.b  # This works at runtime
+reveal_type(a.b)  # N
+[file a/__init__.py]
+from .b import B
+from . import b as c
+b = int
+y: b
+reveal_type(y)  # N
+reveal_type(c.B)  # N
+x: Forward
+class Forward:
+    ...
+
+[file a/b.py]
+class B: ...
+[builtins fixtures/module.pyi]
+
+[out]
+tmp/a/__init__.py:5: note: Revealed type is 'builtins.int'
+tmp/a/__init__.py:6: note: Revealed type is 'def () -> a.b.B'
+main:2: note: Revealed type is 'def () -> builtins.int'
+
+[case testNewAnalyzerImportAmbiguousWithTopLevelFunction]
+import a.b  # This works at runtime
+x: a.b.B  # E
+reveal_type(a.b)  # N
+[file a/__init__.py]
+import a.b
+import a.b as c
+def b() -> None: pass
+reveal_type(b)  # N
+reveal_type(c.B())  # N
+x: Forward
+class Forward:
+    ...
+
+[file a/b.py]
+class B: ...
+[builtins fixtures/module.pyi]
+
+[out]
+tmp/a/__init__.py:4: note: Revealed type is 'def ()'
+tmp/a/__init__.py:5: note: Revealed type is 'a.b.B'
+main:2: error: Name 'a.b.B' is not defined
+main:3: note: Revealed type is 'def ()'

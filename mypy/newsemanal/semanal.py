@@ -1628,10 +1628,20 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         import_id = self.correct_relative_import(imp)
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
-            node = module.names.get(id) if module else None
+            possible_module_id = import_id + '.' + id
+            if module is None:
+                node = None
+            elif import_id == self.cur_mod_id and possible_module_id in self.modules:
+                # Submodule takes precedence over definition in surround package, for
+                # compatibility with runtime semantics in typical use cases. This
+                # could more precisely model runtime semantics by taking into account
+                # the line number beyond which the local definition should take
+                # precedence, but doesn't seem to be important in most use cases.
+                node = SymbolTableNode(GDEF, self.modules[possible_module_id])
+            else:
+                node = module.names.get(id)
 
             missing = False
-            possible_module_id = import_id + '.' + id
             imported_id = as_id or id
 
             # If the module does not contain a symbol with the name 'id',
