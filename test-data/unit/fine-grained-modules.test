@@ -996,11 +996,11 @@ reveal_type(b.A)
 class A: pass
 [out]
 ==
-a.py:2: error: Revealed type is 'Any'
-a.py:3: error: Revealed type is 'Any'
+a.py:2: note: Revealed type is 'Any'
+a.py:3: note: Revealed type is 'Any'
 ==
-a.py:2: error: Revealed type is 'Any'
-a.py:3: error: Revealed type is 'Any'
+a.py:2: note: Revealed type is 'Any'
+a.py:3: note: Revealed type is 'Any'
 
 [case testSkipImportsWithinPackage]
 # cmd: mypy a/b.py
@@ -1019,7 +1019,7 @@ import x
 1 + ''
 [out]
 ==
-a/b.py:3: error: Revealed type is 'Any'
+a/b.py:3: note: Revealed type is 'Any'
 ==
 a/b.py:3: error: Unsupported operand types for + ("int" and "str")
 
@@ -1905,7 +1905,7 @@ reveal_type(b.x)
 [out]
 ==
 ==
-a.py:2: error: Revealed type is 'builtins.str'
+a.py:2: note: Revealed type is 'builtins.str'
 
 [case testModuleToPackage]
 [file a.py]
@@ -1923,7 +1923,7 @@ reveal_type(b.x)
 [out]
 ==
 ==
-a.py:2: error: Revealed type is 'builtins.int'
+a.py:2: note: Revealed type is 'builtins.int'
 
 [case testQualifiedSubpackage1]
 [file c/__init__.py]
