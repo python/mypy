@@ -1676,11 +1676,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue
-                if (existing_symbol and isinstance(existing_symbol.node, MypyFile) and
-                        existing_symbol.no_serialize):  # submodule added to parent module
-                    # Special case: allow replacing submodules with variables. This pattern
-                    # is used by some libraries.
-                    del self.globals[imported_id]
                 if existing_symbol and isinstance(node.node, PlaceholderNode):
                     # Imports are special, some redefinitions are allowed, so wait until
                     # we know what is the new symbol node.
