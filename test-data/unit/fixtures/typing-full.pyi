@@ -25,6 +25,8 @@ NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
+Final = 0
+Literal = 0
 NoReturn = 0
 NewType = 0
 
