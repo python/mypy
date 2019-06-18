@@ -391,8 +391,8 @@ follow_imports = skip
 [file a.py]
 /  # No error reported
 [out]
-main.py:2: error: Revealed type is 'Any'
-main.py:4: error: Revealed type is 'Any'
+main.py:2: note: Revealed type is 'Any'
+main.py:4: note: Revealed type is 'Any'
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -409,8 +409,8 @@ follow_imports = error
 [out]
 main.py:1: error: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-main.py:2: error: Revealed type is 'Any'
-main.py:4: error: Revealed type is 'Any'
+main.py:2: note: Revealed type is 'Any'
+main.py:4: note: Revealed type is 'Any'
 
 [case testConfigFollowImportsSelective]
 # cmd: mypy main.py
@@ -447,10 +447,10 @@ bla bla
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:5: error: Revealed type is 'builtins.int'
-main.py:6: error: Revealed type is 'builtins.int'
-main.py:7: error: Revealed type is 'Any'
-main.py:8: error: Revealed type is 'Any'
+main.py:5: note: Revealed type is 'builtins.int'
+main.py:6: note: Revealed type is 'builtins.int'
+main.py:7: note: Revealed type is 'Any'
+main.py:8: note: Revealed type is 'Any'
 
 [case testConfigSilentMissingImportsOff]
 # cmd: mypy main.py
@@ -463,7 +463,7 @@ ignore_missing_imports = False
 [out]
 main.py:1: error: Cannot find module named 'missing'
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:2: error: Revealed type is 'Any'
+main.py:2: note: Revealed type is 'Any'
 
 [case testConfigSilentMissingImportsOn]
 # cmd: mypy main.py
@@ -474,7 +474,7 @@ reveal_type(missing.x)  # Expect Any
 [[mypy]
 ignore_missing_imports = True
 [out]
-main.py:2: error: Revealed type is 'Any'
+main.py:2: note: Revealed type is 'Any'
 
 [case testConfigNoErrorForUnknownXFlagInSubsection]
 # cmd: mypy -c pass

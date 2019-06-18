@@ -54,8 +54,8 @@ import typedpkg_ns.ns.bbb; bf = typedpkg_ns.ns.bbb.bf"""
 
 class SimpleMsg(Enum):
     msg_dne = "{tempfile}:3: error: Module 'typedpkg' has no attribute 'dne'"
-    msg_list = "{tempfile}:5: error: Revealed type is 'builtins.list[builtins.str]'"
-    msg_tuple = "{tempfile}:5: error: Revealed type is 'builtins.tuple[builtins.str]'"
+    msg_list = "{tempfile}:5: note: Revealed type is 'builtins.list[builtins.str]'"
+    msg_tuple = "{tempfile}:5: note: Revealed type is 'builtins.tuple[builtins.str]'"
 
 
 class NamespaceMsg(Enum):
