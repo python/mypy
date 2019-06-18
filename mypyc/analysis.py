@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 
-from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional, Iterable
+from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional, Iterable, Union
 
 from mypyc.ops import (
     Value, Register,
@@ -450,7 +450,7 @@ def run_analysis(blocks: List[BasicBlock],
         label = worklist.pop()
         workset.remove(label)
         if pred_map[label]:
-            new_before = None
+            new_before = None  # type: Union[Set[T], None]
             for pred in pred_map[label]:
                 if new_before is None:
                     new_before = set(after[pred])

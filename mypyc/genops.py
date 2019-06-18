@@ -934,8 +934,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # These variables are populated from the first-pass PreBuildVisitor.
         self.free_variables = pbv.free_variables
         self.prop_setters = pbv.prop_setters
-        self.encapsulating_fitems = pbv.encapsulating_funcs
-        self.nested_fitems = pbv.nested_funcs
+        self.encapsulating_funcs = pbv.encapsulating_funcs
+        self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
 
         # This list operates similarly to a function call stack for nested functions. Whenever a
@@ -1466,12 +1466,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         func_reg = None  # type: Optional[Value]
 
-        # We treat lambdas as always being nested because we we always generate
+        # We treat lambdas as always being nested because we always generate
         # a class for lambdas, no matter where they are. (It would probably also
         # work to special case toplevel lambdas and generate a non-class function.)
         is_nested = fitem in self.nested_fitems or isinstance(fitem, LambdaExpr)
 
-        contains_nested = fitem in self.encapsulating_fitems
+        contains_nested = fitem in self.encapsulating_funcs.keys()
         is_decorated = fitem in self.fdefs_to_decorators
         self.enter(FuncInfo(fitem, name, class_name, self.gen_func_ns(),
                             is_nested, contains_nested, is_decorated))
@@ -1508,6 +1508,35 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.finalize_env_class()
 
         self.ret_types[-1] = sig.ret_type
+
+        # Add all variables and functions that are declared/defined within this
+        # function and are referenced in functions nested within this one to this
+        # function's environment class so the nested functions can reference
+        # them even if they are declared after the nested function's definition.
+        # Note that this is done before visiting the body of this function.
+
+        env_for_func = self.fn_info  # type: Union[FuncInfo, ImplicitClass]
+        if self.fn_info.is_generator:
+            env_for_func = self.fn_info.generator_class
+        elif self.fn_info.is_nested:
+            env_for_func = self.fn_info.callable_class
+
+        if self.fn_info.fitem in self.free_variables:
+            for var in self.free_variables[self.fn_info.fitem]:
+                if isinstance(var, Var):
+                    rtype = self.type_to_rtype(var.type)
+                    self.add_var_to_env_class(var, rtype, env_for_func, reassign=False)
+
+        if self.fn_info.fitem in self.encapsulating_funcs:
+            for nested_fn in self.encapsulating_funcs[self.fn_info.fitem]:
+                if isinstance(nested_fn, FuncDef):
+                    # The return type is 'object' instead of an RInstance of the
+                    # callable class because differently defined functions with
+                    # the same name and signature across conditional blocks
+                    # will generate different callable classes, so the callable
+                    # class that gets instantiated must be generic.
+                    self.add_var_to_env_class(nested_fn, object_rprimitive,
+                                              env_for_func, reassign=False)
 
         self.accept(fitem.body)
         self.maybe_add_implicit_return()
@@ -1743,8 +1772,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 symbol = Var(lvalue.name)
             if lvalue.kind == LDEF:
                 if symbol not in self.environment.symtable:
-                    # If the function contains a nested function and the symbol is a free symbol,
-                    # or if the function is a generator function, then first define a new variable
+                    # If the function is a generator function, then first define a new variable
                     # in the current function's environment class. Next, define a target that
                     # refers to the newly defined variable in that environment class. Add the
                     # target to the table containing class environment variables, as well as the
@@ -1752,16 +1780,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(symbol, self.node_type(lvalue),
                                                          self.fn_info.generator_class,
-                                                         reassign=False)
-
-                    if self.fn_info.contains_nested and self.is_free_variable(symbol):
-                        env = (self.fn_info.callable_class
-                               if self.fn_info.is_nested
-                               else self.fn_info)  # type: Union[FuncInfo, ImplicitClass]
-
-                        return self.add_var_to_env_class(symbol,
-                                                         self.node_type(lvalue),
-                                                         env,
                                                          reassign=False)
 
                     # Otherwise define a new local variable.
@@ -2956,7 +2974,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             else:
                 accepted_items.append((False, self.accept(item)))
 
-        result = None
+        result = None  # type: Union[Value, None]
         initial_items = []
         for starred, value in accepted_items:
             if result is None and not starred and constructor_op.is_var_arg:
@@ -4113,7 +4131,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.box(self.accept(expr))
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        result = None
+        result = None  # type: Union[Value, None]
         initial_items = []  # type: List[Value]
         for key, value in key_value_pairs:
             if key is not None:
@@ -4413,7 +4431,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function encapsulating the function being turned into a callable class.
         """
         fitem = fn_info.fitem
-
         func_reg = self.add(Call(fn_info.callable_class.ir.ctor, [], fitem.line))
 
         # Set the callable class' environment attribute to point at the environment class
@@ -4842,21 +4859,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Get the target associated with the previously defined FuncDef.
             return self.environment.lookup(fdef.original_def)
 
-        # The return type is 'object' instead of an RInstance of the callable class because
-        # differently defined functions with the same name and signature across conditional blocks
-        # will generate different callable classes, so the callable class that gets instantiated
-        # must be generic.
-        if self.fn_info.is_generator:
-            return self.add_var_to_env_class(fdef, object_rprimitive, self.fn_info.generator_class,
-                                             reassign=False)
-
-        # If the given FuncDef is nested (i.e. if the parent function contains nested functions),
-        # then add the FuncDef to the parent function's environment class.
-        if self.fn_info.contains_nested:
-            if self.fn_info.is_nested:
-                return self.add_var_to_env_class(fdef, object_rprimitive,
-                                                 self.fn_info.callable_class, reassign=False)
-            return self.add_var_to_env_class(fdef, object_rprimitive, self.fn_info, reassign=False)
+        if self.fn_info.is_generator or self.fn_info.contains_nested:
+            return self.environment.lookup(fdef)
 
         return self.environment.add_local_reg(fdef, object_rprimitive)
 

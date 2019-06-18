@@ -1,4 +1,4 @@
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple, Optional
 
 from mypy.nodes import (
     Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr
@@ -25,8 +25,11 @@ class PreBuildVisitor(TraverserVisitor):
         self.funcs = []  # type: List[FuncItem]
         # The set of property setters
         self.prop_setters = set()  # type: Set[FuncDef]
-        self.encapsulating_funcs = set()  # type: Set[FuncItem]
-        self.nested_funcs = set()  # type: Set[FuncItem]
+        # A map from any function that contains nested functions to
+        # a set of all the functions that are nested within it.
+        self.encapsulating_funcs = dict()  # type: Dict[FuncItem, Set[FuncItem]]
+        # A map from a nested func to it's parent/encapsulating func.
+        self.nested_funcs = dict()  # type: Dict[FuncItem, FuncItem]
         self.funcs_to_decorators = {}  # type: Dict[FuncDef, List[Expression]]
 
     def add_free_variable(self, symbol: SymbolNode) -> None:
@@ -50,16 +53,19 @@ class PreBuildVisitor(TraverserVisitor):
 
     def visit_func(self, func: FuncItem) -> None:
         # If there were already functions or lambda expressions defined in the function stack, then
-        # note the previous FuncItem has containing a nested function and the current FuncItem as
+        # note the previous FuncItem as containing a nested function and the current FuncItem as
         # being a nested function.
         if self.funcs:
-            self.encapsulating_funcs.add(self.funcs[-1])
-            self.nested_funcs.add(func)
+            # Add the new func to the set of nested funcs within the func at top of the func stack.
+            self.encapsulating_funcs.setdefault(self.funcs[-1], set()).add(func)
+            # Add the func at top of the func stack as the parent of new func.
+            self.nested_funcs[func] = self.funcs[-1]
+
         self.funcs.append(func)
         super().visit_func(func)
         self.funcs.pop()
 
-    def visit_func_def(self, fdef: FuncDef) -> None:
+    def visit_func_def(self, fdef: FuncItem) -> None:
         self.visit_func(fdef)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> None:
@@ -69,17 +75,38 @@ class PreBuildVisitor(TraverserVisitor):
         if isinstance(expr.node, (Var, FuncDef)):
             self.visit_symbol_node(expr.node)
 
+    # Check if child is contained within fdef (possibly indirectly within
+    # multiple nested functions).
+    def is_parent(self, fitem: FuncItem, child: FuncItem) -> bool:
+        if child in self.nested_funcs:
+            parent = self.nested_funcs[child]
+            if parent == fitem:
+                return True
+            return self.is_parent(fitem, parent)
+        return False
+
     def visit_symbol_node(self, symbol: SymbolNode) -> None:
         if not self.funcs:
             # If the list of FuncDefs is empty, then we are not inside of a function and hence do
             # not need to do anything regarding free variables.
             return
 
-        if symbol in self.symbols_to_funcs and self.symbols_to_funcs[symbol] != self.funcs[-1]:
-            # If the SymbolNode instance has already been visited before, and it was declared in a
-            # FuncDef outside of the current FuncDef that is being visted, then it is a free symbol
-            # because it is being visited again.
-            self.add_free_variable(symbol)
+        if symbol in self.symbols_to_funcs:
+            orig_func = self.symbols_to_funcs[symbol]
+            if self.is_parent(self.funcs[-1], orig_func):
+                # If the function in which the symbol was originally seen is nested
+                # within the function currently being visited, fix the free_variable
+                # and symbol_to_funcs dictionaries.
+                self.symbols_to_funcs[symbol] = self.funcs[-1]
+                self.free_variables.setdefault(self.funcs[-1], set()).add(symbol)
+
+            elif self.is_parent(orig_func, self.funcs[-1]):
+                # If the SymbolNode instance has already been visited before,
+                # and it was declared in a FuncDef not nested within the current
+                # FuncDef being visited, then it is a free symbol because it is
+                # being visited again.
+                self.add_free_variable(symbol)
+
         else:
             # Otherwise, this is the first time the SymbolNode is being visited. We map the
             # SymbolNode to the current FuncDef being visited to note where it was first visited.

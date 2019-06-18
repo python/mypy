@@ -659,8 +659,8 @@ class Branch(ControlOp):
     # exception, it needs to split into two opcodes and only the first one may fail.
     error_kind = ERR_NEVER
 
-    BOOL_EXPR = 100
-    IS_ERROR = 101  # Check for magic c_error_value (works for arbitary types)
+    BOOL_EXPR = 100  # type: Final
+    IS_ERROR = 101  # type: Final
 
     op_names = {
         BOOL_EXPR: ('%r', 'bool'),
@@ -907,7 +907,7 @@ class EmitterInterface():
         raise NotImplementedError
 
     @abstractmethod
-    def emit_lines(self, *line: str) -> None:
+    def emit_lines(self, *lines: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -1336,11 +1336,11 @@ class RaiseStandardError(RegisterOp):
 
     error_kind = ERR_FALSE
 
-    VALUE_ERROR = 'ValueError'
-    ASSERTION_ERROR = 'AssertionError'
-    STOP_ITERATION = 'StopIteration'
-    UNBOUND_LOCAL_ERROR = 'UnboundLocalError'
-    RUNTIME_ERROR = 'RuntimeError'
+    VALUE_ERROR = 'ValueError'  # type: Final
+    ASSERTION_ERROR = 'AssertionError'  # type: Final
+    STOP_ITERATION = 'StopIteration'  # type: Final
+    UNBOUND_LOCAL_ERROR = 'UnboundLocalError'  # type: Final
+    RUNTIME_ERROR = 'RuntimeError'  # type: Final
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)
