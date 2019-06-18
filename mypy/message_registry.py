@@ -141,5 +141,5 @@ CANNOT_OVERRIDE_CLASS_VAR = \
 
 # Protocol
 RUNTIME_PROTOCOL_EXPECTED = \
-    'Only @runtime protocols can be used with instance and class checks'  # type: Final
+    'Only @runtime_checkable protocols can be used with instance and class checks'  # type: Final
 CANNOT_INSTANTIATE_PROTOCOL = 'Cannot instantiate protocol class "{}"'  # type: Final

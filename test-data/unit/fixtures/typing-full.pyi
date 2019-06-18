@@ -38,23 +38,23 @@ S = TypeVar('S')
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
 
-@runtime
+@runtime_checkable
 class Container(Protocol[T_co]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins
     def __contains__(self, arg: object) -> int: pass
 
-@runtime
+@runtime_checkable
 class Sized(Protocol):
     @abstractmethod
     def __len__(self) -> int: pass
 
-@runtime
+@runtime_checkable
 class Iterable(Protocol[T_co]):
     @abstractmethod
     def __iter__(self) -> 'Iterator[T_co]': pass
 
-@runtime
+@runtime_checkable
 class Iterator(Iterable[T_co], Protocol):
     @abstractmethod
     def __next__(self) -> T_co: pass
@@ -88,7 +88,7 @@ class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
     @abstractmethod
     def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
 
-@runtime
+@runtime_checkable
 class Awaitable(Protocol[T]):
     @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
@@ -106,12 +106,12 @@ class Coroutine(Awaitable[V], Generic[T, U, V]):
     @abstractmethod
     def close(self) -> None: pass
 
-@runtime
+@runtime_checkable
 class AsyncIterable(Protocol[T]):
     @abstractmethod
     def __aiter__(self) -> 'AsyncIterator[T]': pass
 
-@runtime
+@runtime_checkable
 class AsyncIterator(AsyncIterable[T], Protocol):
     def __aiter__(self) -> 'AsyncIterator[T]': return self
     @abstractmethod
@@ -137,7 +137,7 @@ class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
 
-def runtime(cls: T) -> T:
+def runtime_checkable(cls: T) -> T:
     return cls
 
 class ContextManager(Generic[T]):
