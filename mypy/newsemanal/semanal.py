@@ -1629,31 +1629,31 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         module_id = self.correct_relative_import(imp)
         module = self.modules.get(module_id)
         for id, as_id in imp.names:
-            possible_module_id = module_id + '.' + id
+            fullname = module_id + '.' + id
             if module is None:
                 node = None
-            elif module_id == self.cur_mod_id and possible_module_id in self.modules:
+            elif module_id == self.cur_mod_id and fullname in self.modules:
                 # Submodule takes precedence over definition in surround package, for
                 # compatibility with runtime semantics in typical use cases. This
                 # could more precisely model runtime semantics by taking into account
                 # the line number beyond which the local definition should take
                 # precedence, but doesn't seem to be important in most use cases.
-                node = SymbolTableNode(GDEF, self.modules[possible_module_id])
+                node = SymbolTableNode(GDEF, self.modules[fullname])
             else:
                 node = module.names.get(id)
 
-            missing = False
+            missing_submodule = False
             imported_id = as_id or id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
             if not node:
-                mod = self.modules.get(possible_module_id)
+                mod = self.modules.get(fullname)
                 if mod is not None:
                     kind = self.current_symbol_kind()
                     node = SymbolTableNode(kind, mod)
-                elif possible_module_id in self.missing_modules:
-                    missing = True
+                elif fullname in self.missing_modules:
+                    missing_submodule = True
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
@@ -1665,20 +1665,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and not node.module_hidden:
-                self.process_imported_symbol(node, module_id, id, as_id, possible_module_id, imp)
-            elif module and not missing:
+                self.process_imported_symbol(node, module_id, id, as_id, fullname, imp)
+            elif module and not missing_submodule:
                 self.report_missing_module_attribute(module_id, id, imported_id, imp)
             else:
                 # Missing module.
-                missing_name = module_id + '.' + id
-                self.add_unknown_imported_symbol(imported_id, imp, target_name=missing_name)
+                self.add_unknown_imported_symbol(imported_id, imp, target_name=fullname)
 
     def process_imported_symbol(self,
                                 node: SymbolTableNode,
                                 module_id: str,
                                 id: str,
                                 as_id: Optional[str],
-                                possible_module_id: str,
+                                fullname: str,
                                 context: ImportBase) -> None:
         imported_id = as_id or id
         if isinstance(node.node, PlaceholderNode):
@@ -1704,7 +1703,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             and self.options.implicit_reexport
             or as_id is not None
         )
-        module_hidden = not module_public and possible_module_id not in self.modules
+        module_hidden = not module_public and fullname not in self.modules
         # NOTE: we take the original node even for final `Var`s. This is to support
         # a common pattern when constants are re-exported (same applies to import *).
         self.add_imported_symbol(imported_id, node, context,
