@@ -1626,13 +1626,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
-        import_id = self.correct_relative_import(imp)
-        module = self.modules.get(import_id)
+        module_id = self.correct_relative_import(imp)
+        module = self.modules.get(module_id)
         for id, as_id in imp.names:
-            possible_module_id = import_id + '.' + id
+            possible_module_id = module_id + '.' + id
             if module is None:
                 node = None
-            elif import_id == self.cur_mod_id and possible_module_id in self.modules:
+            elif module_id == self.cur_mod_id and possible_module_id in self.modules:
                 # Submodule takes precedence over definition in surround package, for
                 # compatibility with runtime semantics in typical use cases. This
                 # could more precisely model runtime semantics by taking into account
@@ -1659,23 +1659,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     and '__getattr__' in module.names):
                 # We use the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
-                fullname = import_id + '.' + id
+                fullname = module_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and not node.module_hidden:
-                self.process_imported_symbol(node, import_id, id, as_id, possible_module_id, imp)
+                self.process_imported_symbol(node, module_id, id, as_id, possible_module_id, imp)
             elif module and not missing:
-                self.report_missing_module_attribute(import_id, id, imported_id, imp)
+                self.report_missing_module_attribute(module_id, id, imported_id, imp)
             else:
                 # Missing module.
-                missing_name = import_id + '.' + id
+                missing_name = module_id + '.' + id
                 self.add_unknown_imported_symbol(imported_id, imp, target_name=missing_name)
 
     def process_imported_symbol(self,
                                 node: SymbolTableNode,
-                                import_id: str,
+                                module_id: str,
                                 id: str,
                                 as_id: Optional[str],
                                 possible_module_id: str,
@@ -1683,7 +1683,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         imported_id = as_id or id
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
-                self.report_missing_module_attribute(import_id, id, imported_id, context)
+                self.report_missing_module_attribute(module_id, id, imported_id, context)
                 return
             self.record_incomplete_ref()
         existing_symbol = self.globals.get(imported_id)
