@@ -1876,20 +1876,17 @@ class State:
         details.
 
         However, this patching process can occur after `a` has been parsed and
-        serialized during increment mode. Consequently, we need to repeat this
+        serialized during incremental mode. Consequently, we need to repeat this
         patch when deserializing a cached file.
 
         This function should be called only when processing fresh SCCs -- the
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
-        Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]  # noqa
-        if self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.new_semantic_analyzer  # type: Analyzer
-        else:
+        if not self.manager.options.new_semantic_analyzer:
             analyzer = self.manager.semantic_analyzer
-        for dep in self.dependencies:
-            analyzer.add_submodules_to_parent_modules(dep, True)
+            for dep in self.dependencies:
+                analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.

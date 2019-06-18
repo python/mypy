@@ -108,6 +108,8 @@ p.add_argument('--no-errors', action='store_true',
                help="Only produce suggestions that cause no errors")
 p.add_argument('--no-any', action='store_true',
                help="Only produce suggestions that don't contain Any")
+p.add_argument('--try-text', action='store_true',
+               help="Try using unicode wherever str is inferred")
 p.add_argument('--callsites', action='store_true',
                help="Find callsites instead of suggesting a type")
 
@@ -363,7 +365,7 @@ def do_suggest(args: argparse.Namespace) -> None:
     """
     response = request(args.status_file, 'suggest', function=args.function,
                        json=args.json, callsites=args.callsites, no_errors=args.no_errors,
-                       no_any=args.no_any)
+                       no_any=args.no_any, try_text=args.try_text)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

@@ -1273,11 +1273,11 @@ main:1: error: Name 'typevar' is not defined
 main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 
 [case testUseObsoleteNameForTypeVar3]
+# flags: --no-new-semantic-analyzer
 import typing
 t = typing.typevar('t')
 [out]
-main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
---' (work around syntax highlighting :-/)
+main:3: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 
 [case testInvalidTypeAnnotation]
 import typing

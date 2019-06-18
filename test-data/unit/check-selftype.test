@@ -9,10 +9,10 @@ class A:
 class B(A):
     pass
 
-reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A*'
-reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B*'
-reveal_type(A().copy())  # E: Revealed type is '__main__.A*'
-reveal_type(B().copy())  # E: Revealed type is '__main__.B*'
+reveal_type(A().copy)  # N: Revealed type is 'def () -> __main__.A*'
+reveal_type(B().copy)  # N: Revealed type is 'def () -> __main__.B*'
+reveal_type(A().copy())  # N: Revealed type is '__main__.A*'
+reveal_type(B().copy())  # N: Revealed type is '__main__.B*'
 
 [builtins fixtures/bool.pyi]
 
@@ -55,8 +55,8 @@ class A:
             return A()  # E: Incompatible return value type (got "A", expected "T")
         elif A():
             return B()  # E: Incompatible return value type (got "B", expected "T")
-        reveal_type(_type(self))  # E: Revealed type is 'Type[T`-1]'
-        return reveal_type(_type(self)())  # E: Revealed type is 'T`-1'
+        reveal_type(_type(self))  # N: Revealed type is 'Type[T`-1]'
+        return reveal_type(_type(self)())  # N: Revealed type is 'T`-1'
 
 class B(A):
     pass
@@ -67,7 +67,7 @@ class C:
 
     def copy(self: Q) -> Q:
         if self:
-            return reveal_type(_type(self)(1))  # E: Revealed type is 'Q`-1'
+            return reveal_type(_type(self)(1))  # N: Revealed type is 'Q`-1'
         else:
             return _type(self)()  # E: Too few arguments for "C"
 
@@ -82,7 +82,7 @@ T = TypeVar('T', bound='A')
 class A:
     @classmethod
     def new(cls: Type[T]) -> T:
-        return reveal_type(cls())  # E: Revealed type is 'T`-1'
+        return reveal_type(cls())  # N: Revealed type is 'T`-1'
 
 class B(A):
     pass
@@ -99,10 +99,10 @@ class C:
             return cls()  # E: Too few arguments for "C"
 
 
-reveal_type(A.new)  # E: Revealed type is 'def () -> __main__.A*'
-reveal_type(B.new)  # E: Revealed type is 'def () -> __main__.B*'
-reveal_type(A.new())  # E: Revealed type is '__main__.A*'
-reveal_type(B.new())  # E: Revealed type is '__main__.B*'
+reveal_type(A.new)  # N: Revealed type is 'def () -> __main__.A*'
+reveal_type(B.new)  # N: Revealed type is 'def () -> __main__.B*'
+reveal_type(A.new())  # N: Revealed type is '__main__.A*'
+reveal_type(B.new())  # N: Revealed type is '__main__.B*'
 
 [builtins fixtures/classmethod.pyi]
 
@@ -121,10 +121,10 @@ Q = TypeVar('Q', bound='C', covariant=True)
 class C(A):
     def copy(self: Q) -> Q: pass
 
-reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C*'
-reveal_type(C().copy())  # E: Revealed type is '__main__.C*'
-reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A*'
-reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*'
+reveal_type(C().copy)  # N: Revealed type is 'def () -> __main__.C*'
+reveal_type(C().copy())  # N: Revealed type is '__main__.C*'
+reveal_type(cast(A, C()).copy)  # N: Revealed type is 'def () -> __main__.A*'
+reveal_type(cast(A, C()).copy())  # N: Revealed type is '__main__.A*'
 
 [builtins fixtures/bool.pyi]
 
@@ -139,8 +139,8 @@ class A:
 Q = TypeVar('Q', bound='B', covariant=True)
 class B(A):
     def copy(self: Q) -> Q:
-        reveal_type(self)  # E: Revealed type is 'Q`-1'
-        reveal_type(super().copy)  # E: Revealed type is 'def () -> Q`-1'
+        reveal_type(self)  # N: Revealed type is 'Q`-1'
+        reveal_type(super().copy)  # N: Revealed type is 'def () -> Q`-1'
         return super().copy()
 
 [builtins fixtures/bool.pyi]
@@ -156,18 +156,18 @@ class A:
 
     @classmethod
     def new(cls: Type[T], factory: Callable[[T], T]) -> T:
-        reveal_type(cls)   # E: Revealed type is 'Type[T`-1]'
-        reveal_type(cls())   # E: Revealed type is 'T`-1'
+        reveal_type(cls)   # N: Revealed type is 'Type[T`-1]'
+        reveal_type(cls())   # N: Revealed type is 'T`-1'
         cls(2)  # E: Too many arguments for "A"
         return cls()
 
 class B(A):
     pass
 
-reveal_type(A().copy)  # E: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
-reveal_type(B().copy)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
-reveal_type(A.new)  # E: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
-reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
+reveal_type(A().copy)  # N: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
+reveal_type(B().copy)  # N: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
+reveal_type(A.new)  # N: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
+reveal_type(B.new)  # N: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
 
 [builtins fixtures/classmethod.pyi]
 
@@ -192,7 +192,7 @@ TB = TypeVar('TB', bound='B', covariant=True)
 class B(A):
     x = 1
     def copy(self: TB) -> TB:
-        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        reveal_type(self.x)  # N: Revealed type is 'builtins.int'
         return cast(TB, None)
 
 [builtins fixtures/bool.pyi]
@@ -220,24 +220,24 @@ class C:
 
 class D(C): pass
 
-reveal_type(D.new)  # E: Revealed type is 'def () -> __main__.D*'
-reveal_type(D().new)  # E: Revealed type is 'def () -> __main__.D*'
-reveal_type(D.new())  # E: Revealed type is '__main__.D*'
-reveal_type(D().new())  # E: Revealed type is '__main__.D*'
+reveal_type(D.new)  # N: Revealed type is 'def () -> __main__.D*'
+reveal_type(D().new)  # N: Revealed type is 'def () -> __main__.D*'
+reveal_type(D.new())  # N: Revealed type is '__main__.D*'
+reveal_type(D().new())  # N: Revealed type is '__main__.D*'
 
 Q = TypeVar('Q', bound=C)
 
 def clone(arg: Q) -> Q:
-    reveal_type(arg.copy)  # E: Revealed type is 'def () -> Q`-1'
-    reveal_type(arg.copy())  # E: Revealed type is 'Q`-1'
-    reveal_type(arg.new)  # E: Revealed type is 'def () -> Q`-1'
-    reveal_type(arg.new())  # E: Revealed type is 'Q`-1'
+    reveal_type(arg.copy)  # N: Revealed type is 'def () -> Q`-1'
+    reveal_type(arg.copy())  # N: Revealed type is 'Q`-1'
+    reveal_type(arg.new)  # N: Revealed type is 'def () -> Q`-1'
+    reveal_type(arg.new())  # N: Revealed type is 'Q`-1'
     return arg.copy()
 
 def make(cls: Type[Q]) -> Q:
-    reveal_type(cls.new)  # E: Revealed type is 'def () -> Q`-1'
-    reveal_type(cls().new)  # E: Revealed type is 'def () -> Q`-1'
-    reveal_type(cls().new())  # E: Revealed type is 'Q`-1'
+    reveal_type(cls.new)  # N: Revealed type is 'def () -> Q`-1'
+    reveal_type(cls().new)  # N: Revealed type is 'def () -> Q`-1'
+    reveal_type(cls().new())  # N: Revealed type is 'Q`-1'
     return cls.new()
 
 [builtins fixtures/classmethod.pyi]
@@ -345,11 +345,11 @@ class D:
 
 class E:
     def __new__(cls) -> E:
-        reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
+        reveal_type(cls)  # N: Revealed type is 'Type[__main__.E]'
         return cls()
 
     def __init_subclass__(cls) -> None:
-        reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
+        reveal_type(cls)  # N: Revealed type is 'Type[__main__.E]'
 
 [case testSelfTypePropertyUnion]
 from typing import Union
@@ -361,7 +361,7 @@ class B:
     @property
     def f(self: B) -> int: pass
 x: Union[A, B]
-reveal_type(x.f)  # E: Revealed type is 'builtins.int'
+reveal_type(x.f)  # N: Revealed type is 'builtins.int'
 
 [builtins fixtures/property.pyi]
 
@@ -380,14 +380,14 @@ class A(K):
 class B(A):
     pass
 
-reveal_type(A().g)  # E: Revealed type is 'builtins.int'
-reveal_type(A().gt)  # E: Revealed type is '__main__.A*'
-reveal_type(A().f())  # E: Revealed type is 'builtins.int'
-reveal_type(A().ft())  # E: Revealed type is '__main__.A*'
-reveal_type(B().g)  # E: Revealed type is 'builtins.int'
-reveal_type(B().gt)  # E: Revealed type is '__main__.B*'
-reveal_type(B().f())  # E: Revealed type is 'builtins.int'
-reveal_type(B().ft())  # E: Revealed type is '__main__.B*'
+reveal_type(A().g)  # N: Revealed type is 'builtins.int'
+reveal_type(A().gt)  # N: Revealed type is '__main__.A*'
+reveal_type(A().f())  # N: Revealed type is 'builtins.int'
+reveal_type(A().ft())  # N: Revealed type is '__main__.A*'
+reveal_type(B().g)  # N: Revealed type is 'builtins.int'
+reveal_type(B().gt)  # N: Revealed type is '__main__.B*'
+reveal_type(B().f())  # N: Revealed type is 'builtins.int'
+reveal_type(B().ft())  # N: Revealed type is '__main__.B*'
 
 [builtins fixtures/property.pyi]
 
@@ -405,14 +405,14 @@ class A(Tuple[int, int]):
 class B(A):
     pass
 
-reveal_type(A().g)  # E: Revealed type is 'builtins.int'
-reveal_type(A().gt)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.A]'
-reveal_type(A().f())  # E: Revealed type is 'builtins.int'
-reveal_type(A().ft())  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.A]'
-reveal_type(B().g)  # E: Revealed type is 'builtins.int'
-reveal_type(B().gt)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.B]'
-reveal_type(B().f())  # E: Revealed type is 'builtins.int'
-reveal_type(B().ft())  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.B]'
+reveal_type(A().g)  # N: Revealed type is 'builtins.int'
+reveal_type(A().gt)  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.A]'
+reveal_type(A().f())  # N: Revealed type is 'builtins.int'
+reveal_type(A().ft())  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.A]'
+reveal_type(B().g)  # N: Revealed type is 'builtins.int'
+reveal_type(B().gt)  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.B]'
+reveal_type(B().f())  # N: Revealed type is 'builtins.int'
+reveal_type(B().ft())  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.B]'
 
 [builtins fixtures/property.pyi]
 
@@ -434,18 +434,18 @@ class X(metaclass=B):
     def __init__(self, x: int) -> None: pass
 class Y(X): pass
 X1: Type[X]
-reveal_type(X.g)  # E: Revealed type is 'builtins.int'
-reveal_type(X.gt)  # E: Revealed type is 'def (x: builtins.int) -> __main__.X'
-reveal_type(X.f())  # E: Revealed type is 'builtins.int'
-reveal_type(X.ft())  # E: Revealed type is 'def (x: builtins.int) -> __main__.X'
-reveal_type(Y.g)  # E: Revealed type is 'builtins.int'
-reveal_type(Y.gt)  # E: Revealed type is 'def (x: builtins.int) -> __main__.Y'
-reveal_type(Y.f())  # E: Revealed type is 'builtins.int'
-reveal_type(Y.ft())  # E: Revealed type is 'def (x: builtins.int) -> __main__.Y'
-reveal_type(X1.g)  # E: Revealed type is 'builtins.int'
-reveal_type(X1.gt)  # E: Revealed type is 'Type[__main__.X]'
-reveal_type(X1.f())  # E: Revealed type is 'builtins.int'
-reveal_type(X1.ft())  # E: Revealed type is 'Type[__main__.X]'
+reveal_type(X.g)  # N: Revealed type is 'builtins.int'
+reveal_type(X.gt)  # N: Revealed type is 'def (x: builtins.int) -> __main__.X'
+reveal_type(X.f())  # N: Revealed type is 'builtins.int'
+reveal_type(X.ft())  # N: Revealed type is 'def (x: builtins.int) -> __main__.X'
+reveal_type(Y.g)  # N: Revealed type is 'builtins.int'
+reveal_type(Y.gt)  # N: Revealed type is 'def (x: builtins.int) -> __main__.Y'
+reveal_type(Y.f())  # N: Revealed type is 'builtins.int'
+reveal_type(Y.ft())  # N: Revealed type is 'def (x: builtins.int) -> __main__.Y'
+reveal_type(X1.g)  # N: Revealed type is 'builtins.int'
+reveal_type(X1.gt)  # N: Revealed type is 'Type[__main__.X]'
+reveal_type(X1.f())  # N: Revealed type is 'builtins.int'
+reveal_type(X1.ft())  # N: Revealed type is 'Type[__main__.X]'
 
 [builtins fixtures/property.pyi]
 
@@ -467,14 +467,14 @@ class B(A[Q]):
     pass
 a: A[int]
 b: B[str]
-reveal_type(a.g)  # E: Revealed type is 'builtins.int'
---reveal_type(a.gt)  # E: Revealed type is 'builtins.int'
-reveal_type(a.f())  # E: Revealed type is 'builtins.int'
-reveal_type(a.ft())  # E: Revealed type is '__main__.A*[builtins.int]'
-reveal_type(b.g)  # E: Revealed type is 'builtins.int'
---reveal_type(b.gt)  # E: Revealed type is '__main__.B*[builtins.str]'
-reveal_type(b.f())  # E: Revealed type is 'builtins.int'
-reveal_type(b.ft())  # E: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(a.g)  # N: Revealed type is 'builtins.int'
+--reveal_type(a.gt)  # N: Revealed type is 'builtins.int'
+reveal_type(a.f())  # N: Revealed type is 'builtins.int'
+reveal_type(a.ft())  # N: Revealed type is '__main__.A*[builtins.int]'
+reveal_type(b.g)  # N: Revealed type is 'builtins.int'
+--reveal_type(b.gt)  # N: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(b.f())  # N: Revealed type is 'builtins.int'
+reveal_type(b.ft())  # N: Revealed type is '__main__.B*[builtins.str]'
 
 [builtins fixtures/property.pyi]
 
@@ -501,5 +501,5 @@ class C:
     def x(self) -> int: return 1
 
 ab: Union[A, B, C]
-reveal_type(ab.x)  # E: Revealed type is 'builtins.int'
+reveal_type(ab.x)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
