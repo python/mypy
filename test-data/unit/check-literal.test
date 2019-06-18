@@ -36,6 +36,16 @@ reveal_type(f)  # N: Revealed type is 'def (x: Any)'
 reveal_type(g)  # N: Revealed type is 'def (x: Literal['A['])'
 [out]
 
+[case testLiteralFromTypingWorks]
+from typing import Literal
+
+x: Literal[42]
+x = 43  # E: Incompatible types in assignment (expression has type "Literal[43]", variable has type "Literal[42]")
+
+y: Literal[43]
+y = 43
+[typing fixtures/typing-full.pyi]
+
 [case testLiteralParsingPython2]
 # flags: --python-version 2.7
 from typing import Optional

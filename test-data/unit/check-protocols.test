@@ -359,9 +359,9 @@ class B2(P2):
 x2: P2 = B2()  # OK
 
 [case testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions]
-from typing_extensions import Protocol, runtime
+from typing_extensions import Protocol, runtime_checkable
 
-@runtime
+@runtime_checkable
 class P(Protocol):
     def meth(self) -> int:
         pass
@@ -1296,9 +1296,9 @@ reveal_type(last(L[int]())) # N: Revealed type is '__main__.Box*[builtins.int*]'
 reveal_type(last(L[str]()).content) # N: Revealed type is 'builtins.str*'
 
 [case testOverloadOnProtocol]
-from typing import overload, Protocol, runtime
+from typing import overload, Protocol, runtime_checkable
 
-@runtime
+@runtime_checkable
 class P1(Protocol):
     attr1: int
 class P2(Protocol):
@@ -1317,7 +1317,7 @@ def f(x: P2) -> str: ...
 def f(x):
     if isinstance(x, P1):
         return P1.attr1
-    if isinstance(x, P2): # E: Only @runtime protocols can be used with instance and class checks
+    if isinstance(x, P2): # E: Only @runtime_checkable protocols can be used with instance and class checks
         return P1.attr2
 
 reveal_type(f(C1())) # N: Revealed type is 'builtins.int'
@@ -1480,28 +1480,28 @@ class C(Protocol):
         Logger.log(cls)  #OK for classmethods
 [builtins fixtures/classmethod.pyi]
 
--- isinstance() with @runtime protocols
--- ------------------------------------
+-- isinstance() with @runtime_checkable protocols
+-- ----------------------------------------------
 
 [case testSimpleRuntimeProtocolCheck]
-from typing import Protocol, runtime
+from typing import Protocol, runtime_checkable
 
-@runtime
-class C:  # E: @runtime can only be used with protocol classes
+@runtime_checkable
+class C:  # E: @runtime_checkable can only be used with protocol classes
     pass
 
 class P(Protocol):
     def meth(self) -> None:
         pass
 
-@runtime
+@runtime_checkable
 class R(Protocol):
     def meth(self) -> int:
         pass
 
 x: object
 
-if isinstance(x, P):  # E: Only @runtime protocols can be used with instance and class checks
+if isinstance(x, P):  # E: Only @runtime_checkable protocols can be used with instance and class checks
     reveal_type(x)  # N: Revealed type is '__main__.P'
 
 if isinstance(x, R):
@@ -1521,19 +1521,19 @@ if isinstance(x, Iterable):
 [typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
-from typing import Protocol, runtime, TypeVar, Generic
+from typing import Protocol, runtime_checkable, TypeVar, Generic
 
 T = TypeVar('T')
 
-@runtime
+@runtime_checkable
 class P1(Protocol):
     def meth1(self) -> int:
         pass
-@runtime
+@runtime_checkable
 class P2(Protocol):
     def meth2(self) -> int:
         pass
-@runtime
+@runtime_checkable
 class P(P1, P2, Protocol):
     pass
 
@@ -1581,15 +1581,15 @@ else:
 [typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesUnionInProtocolsIsInstance]
-from typing import Protocol, runtime, TypeVar, Generic, Union
+from typing import Protocol, runtime_checkable, TypeVar, Generic, Union
 
 T = TypeVar('T')
 
-@runtime
+@runtime_checkable
 class P1(Protocol):
     def meth1(self) -> int:
         pass
-@runtime
+@runtime_checkable
 class P2(Protocol):
     def meth2(self) -> int:
         pass
@@ -2193,12 +2193,12 @@ y: PBad = None  # E: Incompatible types in assignment (expression has type "None
 [out]
 
 [case testOnlyMethodProtocolUsableWithIsSubclass]
-from typing import Protocol, runtime, Union, Type
-@runtime
+from typing import Protocol, runtime_checkable, Union, Type
+@runtime_checkable
 class P(Protocol):
     def meth(self) -> int:
         pass
-@runtime
+@runtime_checkable
 class PBad(Protocol):
     x: str
 

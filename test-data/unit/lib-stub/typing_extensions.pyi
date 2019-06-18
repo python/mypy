@@ -8,7 +8,8 @@ class _SpecialForm:
         pass
 
 Protocol: _SpecialForm = ...
-def runtime(x: _T) -> _T: pass
+def runtime_checkable(x: _T) -> _T: pass
+runtime = runtime_checkable
 
 Final: _SpecialForm = ...
 def final(x: _T) -> _T: pass

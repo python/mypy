@@ -143,6 +143,10 @@ nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
+RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
+                          'typing_extensions.runtime',
+                          'typing_extensions.runtime_checkable')  # type: Final
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""

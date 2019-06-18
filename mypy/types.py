@@ -70,10 +70,14 @@ if MYPY:
     )
 
 # Supported names of TypedDict type constructors.
-TPDICT_NAMES = ('mypy_extensions.TypedDict', 'typing_extensions.TypedDict')  # type: Final
+TPDICT_NAMES = ('typing.TypedDict',
+                'typing_extensions.TypedDict',
+                'mypy_extensions.TypedDict')  # type: Final
 
 # Supported fallback instance type names for TypedDict types.
-TPDICT_FB_NAMES = ('mypy_extensions._TypedDict', 'typing_extensions._TypedDict')  # type: Final
+TPDICT_FB_NAMES = ('typing._TypedDict',
+                   'typing_extensions._TypedDict',
+                   'mypy_extensions._TypedDict')  # type: Final
 
 # A placeholder used for Bogus[...] parameters
 _dummy = object()  # type: Final[Any]
