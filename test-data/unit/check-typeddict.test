@@ -1610,6 +1610,6 @@ class Point(TypedDict):
     y: int
 
 p = Point(x=42, y=1337)
-reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
+reveal_type(p)  # N: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
