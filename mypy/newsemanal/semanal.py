@@ -230,6 +230,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Args:
             modules: Global modules dictionary
+            missing_modules: Modules that could not be imported encountered so far
             incomplete_namespaces: Namespaces that are being populated during semantic analysis
                 (can contain modules and classes within the current SCC; mutated by the caller)
             errors: Report analysis errors using this instance
@@ -1664,41 +1665,51 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and not node.module_hidden:
-                if isinstance(node.node, PlaceholderNode):
-                    if self.final_iteration:
-                        self.report_missing_module_attribute(import_id, id, imported_id, imp)
-                        return
-                    self.record_incomplete_ref()
-                existing_symbol = self.globals.get(imported_id)
-                if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
-                        not isinstance(node.node, PlaceholderNode)):
-                    # Import can redefine a variable. They get special treatment.
-                    if self.process_import_over_existing_name(
-                            imported_id, existing_symbol, node, imp):
-                        continue
-                if existing_symbol and isinstance(node.node, PlaceholderNode):
-                    # Imports are special, some redefinitions are allowed, so wait until
-                    # we know what is the new symbol node.
-                    continue
-                # 'from m import x as x' exports x in a stub file or when implicit
-                # re-exports are disabled.
-                module_public = (
-                    not self.is_stub_file
-                    and self.options.implicit_reexport
-                    or as_id is not None
-                )
-                module_hidden = not module_public and possible_module_id not in self.modules
-                # NOTE: we take the original node even for final `Var`s. This is to support
-                # a common pattern when constants are re-exported (same applies to import *).
-                self.add_imported_symbol(imported_id, node, imp,
-                                         module_public=module_public,
-                                         module_hidden=module_hidden)
+                self.process_imported_symbol(node, import_id, id, as_id, possible_module_id, imp)
             elif module and not missing:
                 self.report_missing_module_attribute(import_id, id, imported_id, imp)
             else:
                 # Missing module.
                 missing_name = import_id + '.' + id
                 self.add_unknown_imported_symbol(imported_id, imp, target_name=missing_name)
+
+    def process_imported_symbol(self,
+                                node: SymbolTableNode,
+                                import_id: str,
+                                id: str,
+                                as_id: Optional[str],
+                                possible_module_id: str,
+                                context: ImportBase) -> None:
+        imported_id = as_id or id
+        if isinstance(node.node, PlaceholderNode):
+            if self.final_iteration:
+                self.report_missing_module_attribute(import_id, id, imported_id, context)
+                return
+            self.record_incomplete_ref()
+        existing_symbol = self.globals.get(imported_id)
+        if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
+                not isinstance(node.node, PlaceholderNode)):
+            # Import can redefine a variable. They get special treatment.
+            if self.process_import_over_existing_name(
+                    imported_id, existing_symbol, node, context):
+                return
+        if existing_symbol and isinstance(node.node, PlaceholderNode):
+            # Imports are special, some redefinitions are allowed, so wait until
+            # we know what is the new symbol node.
+            return
+        # 'from m import x as x' exports x in a stub file or when implicit
+        # re-exports are disabled.
+        module_public = (
+            not self.is_stub_file
+            and self.options.implicit_reexport
+            or as_id is not None
+        )
+        module_hidden = not module_public and possible_module_id not in self.modules
+        # NOTE: we take the original node even for final `Var`s. This is to support
+        # a common pattern when constants are re-exported (same applies to import *).
+        self.add_imported_symbol(imported_id, node, context,
+                                 module_public=module_public,
+                                 module_hidden=module_hidden)
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
