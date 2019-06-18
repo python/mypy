@@ -121,12 +121,6 @@ if MYPY:
 T = TypeVar('T')
 
 
-# Map from obsolete name to the current spelling.
-obsolete_name_mapping = {
-    'typing.Function': 'typing.Callable',
-    'typing.typevar': 'typing.TypeVar',
-}  # type: Final
-
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
@@ -1709,9 +1703,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.mark_incomplete(imported_id, context)
             return
         message = "Module '{}' has no attribute '{}'".format(import_id, source_id)
-        extra = self.undefined_name_extra_info('{}.{}'.format(import_id, source_id))
-        if extra:
-            message += " {}".format(extra)
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
@@ -4320,11 +4311,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
             return
         message = "Name '{}' is not defined".format(name)
-        extra = self.undefined_name_extra_info(name)
-        if extra:
-            message += ' {}'.format(extra)
         self.fail(message, ctx)
-        self.check_for_obsolete_short_name(name, ctx)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -4351,18 +4338,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 ' (Suggestion: "from {module} import {name}")'
             ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
             self.note(hint, ctx)
-
-    def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        lowercased_names_handled_by_unimported_hints = {
-            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
-        }
-        matches = [
-            obsolete_name for obsolete_name in obsolete_name_mapping
-            if obsolete_name.rsplit('.', 1)[-1] == name
-            and obsolete_name not in lowercased_names_handled_by_unimported_hints
-        ]
-        if len(matches) == 1:
-            self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def already_defined(self,
                         name: str,
@@ -4430,12 +4405,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.function_stack[-1].is_dynamic()):
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note')
-
-    def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
-        if fullname in obsolete_name_mapping:
-            return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
-        else:
-            return None
 
     def accept(self, node: Node) -> None:
         try:

@@ -1232,27 +1232,30 @@ main:2: error: Name 'List' is not defined
 main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testImportObsoleteTypingFunction]
+# flags: --no-new-semantic-analyzer
 from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
 from _m import Function # E: Module '_m' has no attribute 'Function'
 [file _m.py]
 [out]
 
 [case testTypeRefresToObsoleteTypingFunction]
+# flags: --no-new-semantic-analyzer
 import typing
 import _m
 def f(x: typing.Function[[], None]) -> None: pass
 def g(x: _m.Function[[], None]) -> None: pass
 [file _m.py]
 [out]
-main:3: error: Name 'typing.Function' is not defined (it's now called 'typing.Callable')
+main:4: error: Name 'typing.Function' is not defined (it's now called 'typing.Callable')
 --'
-main:4: error: Name '_m.Function' is not defined
+main:5: error: Name '_m.Function' is not defined
 
 [case testUnqualifiedNameRefersToObsoleteTypingFunction]
+# flags: --no-new-semantic-analyzer
 x = None # type: Function[[], None]
 [out]
-main:1: error: Name 'Function' is not defined
-main:1: note: (Did you mean 'typing.Callable'?)
+main:2: error: Name 'Function' is not defined
+main:2: note: (Did you mean 'typing.Callable'?)
 
 [case testInvalidWithTarget]
 def f(): pass
@@ -1260,17 +1263,19 @@ with f() as 1: pass  # E: can't assign to literal
 [out]
 
 [case testUseObsoleteNameForTypeVar]
+# flags: --no-new-semantic-analyzer
 from typing import typevar
 t = typevar('t')
 [out]
-main:1: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 --' (this fixes syntax highlighting)
 
 [case testUseObsoleteNameForTypeVar2]
+# flags: --no-new-semantic-analyzer
 t = typevar('t')
 [out]
-main:1: error: Name 'typevar' is not defined
-main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
+main:2: error: Name 'typevar' is not defined
+main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 
 [case testUseObsoleteNameForTypeVar3]
 # flags: --no-new-semantic-analyzer
