@@ -1657,7 +1657,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                # We use the fullname of the original definition so that we can
+                # We store the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
                 fullname = module_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
@@ -1667,9 +1667,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if node and not node.module_hidden:
                 self.process_imported_symbol(node, module_id, id, as_id, fullname, imp)
             elif module and not missing_submodule:
+                # Target module exists but the imported name is missing or hidden.
                 self.report_missing_module_attribute(module_id, id, imported_id, imp)
             else:
-                # Missing module.
+                # Import of a missing (sub)module.
                 self.add_unknown_imported_symbol(imported_id, imp, target_name=fullname)
 
     def process_imported_symbol(self,
