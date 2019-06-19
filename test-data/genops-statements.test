@@ -7,32 +7,34 @@ def f() -> None:
 def f():
     r0 :: short_int
     x :: int
-    r1, r2 :: short_int
+    r1, r2, r3 :: short_int
     i :: int
-    r3 :: bool
-    r4 :: int
-    r5, r6 :: short_int
-    r7 :: None
+    r4 :: bool
+    r5 :: int
+    r6, r7 :: short_int
+    r8 :: None
 L0:
     r0 = 0
     x = r0
     r1 = 0
     r2 = 5
-    i = r1
+    r3 = r1
+    i = r3
 L1:
-    r3 = i < r2 :: int
-    if r3 goto L2 else goto L4 :: bool
+    r4 = i < r2 :: int
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r4 = x + i :: int
-    x = r4
+    r5 = x + i :: int
+    x = r5
 L3:
-    r5 = 1
-    r6 = i + r5 :: short_int
-    i = r6
+    r6 = 1
+    r7 = r3 + r6 :: short_int
+    r3 = r7
+    i = r7
     goto L1
 L4:
-    r7 = None
-    return r7
+    r8 = None
+    return r8
 
 [case testForInNegativeRange]
 def f() -> None:
@@ -40,27 +42,29 @@ def f() -> None:
         pass
 [out]
 def f():
-    r0, r1 :: short_int
+    r0, r1, r2 :: short_int
     i :: int
-    r2 :: bool
-    r3, r4 :: short_int
-    r5 :: None
+    r3 :: bool
+    r4, r5 :: short_int
+    r6 :: None
 L0:
     r0 = 10
     r1 = 0
-    i = r0
+    r2 = r0
+    i = r2
 L1:
-    r2 = i > r1 :: int
-    if r2 goto L2 else goto L4 :: bool
+    r3 = i > r1 :: int
+    if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r3 = -1
-    r4 = i + r3 :: short_int
-    i = r4
+    r4 = -1
+    r5 = r2 + r4 :: short_int
+    r2 = r5
+    i = r5
     goto L1
 L4:
-    r5 = None
-    return r5
+    r6 = None
+    return r6
 
 [case testBreak]
 def f() -> None:
@@ -92,28 +96,30 @@ def f() -> None:
         break
 [out]
 def f():
-    r0, r1 :: short_int
+    r0, r1, r2 :: short_int
     n :: int
-    r2 :: bool
-    r3, r4 :: short_int
-    r5 :: None
+    r3 :: bool
+    r4, r5 :: short_int
+    r6 :: None
 L0:
     r0 = 0
     r1 = 5
-    n = r0
+    r2 = r0
+    n = r2
 L1:
-    r2 = n < r1 :: int
-    if r2 goto L2 else goto L4 :: bool
+    r3 = n < r1 :: int
+    if r3 goto L2 else goto L4 :: bool
 L2:
     goto L4
 L3:
-    r3 = 1
-    r4 = n + r3 :: short_int
-    n = r4
+    r4 = 1
+    r5 = r2 + r4 :: short_int
+    r2 = r5
+    n = r5
     goto L1
 L4:
-    r5 = None
-    return r5
+    r6 = None
+    return r6
 
 [case testBreakNested]
 def f() -> None:
@@ -180,27 +186,29 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0, r1 :: short_int
+    r0, r1, r2 :: short_int
     n :: int
-    r2 :: bool
-    r3, r4 :: short_int
-    r5 :: None
+    r3 :: bool
+    r4, r5 :: short_int
+    r6 :: None
 L0:
     r0 = 0
     r1 = 5
-    n = r0
+    r2 = r0
+    n = r2
 L1:
-    r2 = n < r1 :: int
-    if r2 goto L2 else goto L4 :: bool
+    r3 = n < r1 :: int
+    if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r3 = 1
-    r4 = n + r3 :: short_int
-    n = r4
+    r4 = 1
+    r5 = r2 + r4 :: short_int
+    r2 = r5
+    n = r5
     goto L1
 L4:
-    r5 = None
-    return r5
+    r6 = None
+    return r6
 
 [case testContinueNested]
 def f() -> None:
@@ -798,68 +806,73 @@ def g(x: Iterable[int]) -> None:
 [out]
 def f(a):
     a :: list
+    r0, r1 :: short_int
     i :: int
-    r0, r1, r2, r3 :: short_int
-    r4 :: bool
-    r5 :: object
-    x, r6, r7 :: int
-    r8, r9, r10, r11 :: short_int
-    r12 :: None
+    r2, r3, r4 :: short_int
+    r5 :: bool
+    r6 :: object
+    x, r7, r8 :: int
+    r9, r10, r11, r12 :: short_int
+    r13 :: None
 L0:
     r0 = 0
+    r1 = r0
     i = r0
-    r1 = 0
-    r2 = r1
+    r2 = 0
+    r3 = r2
 L1:
-    r3 = len a :: list
-    r4 = r2 < r3 :: short_int
-    if r4 goto L2 else goto L4 :: bool
+    r4 = len a :: list
+    r5 = r3 < r4 :: short_int
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r5 = a[r2] :: unsafe list
-    r6 = unbox(int, r5)
-    x = r6
-    r7 = i + x :: int
+    r6 = a[r3] :: unsafe list
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = i + x :: int
 L3:
-    r8 = 1
-    r9 = i + r8 :: short_int
-    i = r9
-    r10 = 1
-    r11 = r2 + r10 :: short_int
-    r2 = r11
+    r9 = 1
+    r10 = r1 + r9 :: short_int
+    r1 = r10
+    i = r10
+    r11 = 1
+    r12 = r3 + r11 :: short_int
+    r3 = r12
     goto L1
 L4:
 L5:
-    r12 = None
-    return r12
+    r13 = None
+    return r13
 def g(x):
     x :: object
+    r0, r1 :: short_int
     i :: int
-    r0 :: short_int
-    r1, r2 :: object
-    r3, n :: int
-    r4, r5 :: short_int
-    r6 :: bool
-    r7 :: None
+    r2, r3 :: object
+    r4, n :: int
+    r5, r6 :: short_int
+    r7 :: bool
+    r8 :: None
 L0:
     r0 = 0
+    r1 = r0
     i = r0
-    r1 = iter x :: object
+    r2 = iter x :: object
 L1:
-    r2 = next r1 :: object
-    if is_error(r2) goto L4 else goto L2
+    r3 = next r2 :: object
+    if is_error(r3) goto L4 else goto L2
 L2:
-    r3 = unbox(int, r2)
-    n = r3
+    r4 = unbox(int, r3)
+    n = r4
 L3:
-    r4 = 1
-    r5 = i + r4 :: short_int
-    i = r5
+    r5 = 1
+    r6 = r1 + r5 :: short_int
+    r1 = r6
+    i = r6
     goto L1
 L4:
-    r6 = no_err_occurred
+    r7 = no_err_occurred
 L5:
-    r7 = None
-    return r7
+    r8 = None
+    return r8
 
 [case testForZip]
 from typing import List, Iterable
@@ -923,53 +936,55 @@ def g(a, b):
     a :: object
     b :: list
     r0 :: object
-    r1, r2, r3, r4 :: short_int
+    r1, r2, r3, r4, r5 :: short_int
     z :: int
-    r5 :: object
-    r6 :: short_int
-    r7, r8, r9, x :: bool
-    r10 :: object
-    y, r11 :: int
-    r12 :: bool
-    r13, r14, r15, r16 :: short_int
-    r17 :: bool
-    r18 :: None
+    r6 :: object
+    r7 :: short_int
+    r8, r9, r10, x :: bool
+    r11 :: object
+    y, r12 :: int
+    r13 :: bool
+    r14, r15, r16, r17 :: short_int
+    r18 :: bool
+    r19 :: None
 L0:
     r0 = iter a :: object
     r1 = 0
     r2 = r1
     r3 = 0
     r4 = 5
-    z = r3
+    r5 = r3
+    z = r5
 L1:
-    r5 = next r0 :: object
-    if is_error(r5) goto L6 else goto L2
+    r6 = next r0 :: object
+    if is_error(r6) goto L6 else goto L2
 L2:
-    r6 = len b :: list
-    r7 = r2 < r6 :: short_int
-    if r7 goto L3 else goto L6 :: bool
+    r7 = len b :: list
+    r8 = r2 < r7 :: short_int
+    if r8 goto L3 else goto L6 :: bool
 L3:
-    r8 = z < r4 :: int
-    if r8 goto L4 else goto L6 :: bool
+    r9 = z < r4 :: int
+    if r9 goto L4 else goto L6 :: bool
 L4:
-    r9 = unbox(bool, r5)
-    x = r9
-    r10 = b[r2] :: unsafe list
-    r11 = unbox(int, r10)
-    y = r11
-    r12 = False
-    x = r12
+    r10 = unbox(bool, r6)
+    x = r10
+    r11 = b[r2] :: unsafe list
+    r12 = unbox(int, r11)
+    y = r12
+    r13 = False
+    x = r13
 L5:
-    r13 = 1
-    r14 = r2 + r13 :: short_int
-    r2 = r14
-    r15 = 1
-    r16 = z + r15 :: short_int
-    z = r16
+    r14 = 1
+    r15 = r2 + r14 :: short_int
+    r2 = r15
+    r16 = 1
+    r17 = r5 + r16 :: short_int
+    r5 = r17
+    z = r17
     goto L1
 L6:
-    r17 = no_err_occurred
+    r18 = no_err_occurred
 L7:
-    r18 = None
-    return r18
+    r19 = None
+    return r19
 

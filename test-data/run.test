@@ -238,6 +238,69 @@ run_for_iter(5)
 1
 2
 
+[case testNestedLoopSameIdx]
+from typing import List, Generator
+
+def nested_enumerate() -> None:
+    l1 = [0,1,2]
+    l2 = [0,1,2]
+    outer_seen = []
+    outer = 0
+    for i, j in enumerate(l1):
+        assert i == outer
+        outer_seen.append(i)
+        inner = 0
+        for i, k in enumerate(l2):
+            assert i == inner
+            inner += 1
+        outer += 1
+    assert outer_seen == l1
+
+def nested_range() -> None:
+    outer = 0
+    outer_seen = []
+    for i in range(3):
+        assert i == outer
+        outer_seen.append(i)
+        inner = 0
+        for i in range(3):
+            assert i == inner
+            inner += 1
+        outer += 1
+    assert outer_seen == [0,1,2]
+
+def nested_list() -> None:
+    l1 = [0,1,2]
+    l2 = [0,1,2]
+    outer_seen = []
+    outer = 0
+    for i in l1:
+        assert i == outer
+        outer_seen.append(i)
+        inner = 0
+        for i in l2:
+            assert i == inner
+            inner += 1
+        outer += 1
+    assert outer_seen == l1
+
+def nested_yield() -> Generator:
+    for i in range(3):
+        for i in range(3):
+            yield i
+        yield i
+
+
+[file driver.py]
+from native import nested_enumerate, nested_range, nested_list, nested_yield
+nested_enumerate()
+nested_range()
+nested_list()
+gen = nested_yield()
+for k in range(12):
+    assert next(gen) == k % 4
+[out]
+
 [case testRecursiveFibonacci]
 def fib(n: int) -> int:
     if n <= 1:
@@ -2218,7 +2281,6 @@ def mutual_recursion(start : int) -> int:
             return 0
         k -= 1
         return f1(k)
-
     return f1(start)
 
 def topLayer() -> int:
@@ -2229,7 +2291,6 @@ def topLayer() -> int:
         return bottomLayer()
 
     x = 1
-
     return middleLayer()
 
 def nest1() -> str:
