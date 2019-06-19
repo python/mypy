@@ -624,14 +624,14 @@ Miscellaneous
 
 ``--new-semantic-analyzer``
     This flag switches to an improved, experimental implementation of
-    the *semantic analyzer*, which mypy uses internally to bind Python
-    names to definitions. The old and the new semantic analyzers
-    mostly behave identically.  The new semantic analyzer is better at
+    the *semantic analyzer* (the part of mypy that binds Python
+    names to definitions). The old and the new semantic analyzers
+    mostly behave identically. The new semantic analyzer is better at
     handling import cycles and forward references to definitions. It
     also fixes inconsistencies between the daemon and non-daemon modes,
     and it detects additional error conditions.
 
-    The next mypy release will use the new semantic analyzer by
+    Likely, the next mypy release will use the new semantic analyzer by
     default, and the old semantic analyzer will be removed in the next
     release after that.
 
