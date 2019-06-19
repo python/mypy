@@ -46,6 +46,7 @@ def split_and_match_files(paths: str) -> List[str]:
 
     for path in paths.split(','):
         path = path.strip()
+        path = os.path.expandvars(os.path.expanduser(path))
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
             expanded_paths.extend(globbed_files)
@@ -63,8 +64,9 @@ config_types = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
-    'custom_typeshed_dir': str,
-    'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'custom_typeshed_dir': lambda s: os.path.expandvars(os.path.expanduser(s)),
+    'mypy_path': lambda s: [os.path.expandvars(os.path.expanduser(p.strip()))
+                            for p in re.split('[,:]', s)],
     'files': split_and_match_files,
     'quickstart_file': str,
     'junit_xml': str,
@@ -75,6 +77,8 @@ config_types = {
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
+    'cache_dir': lambda s: os.path.expandvars(os.path.expanduser(s)),
+    'python_executable': lambda s: os.path.expandvars(os.path.expanduser(s)),
 }  # type: Final
 
 
@@ -223,8 +227,6 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s%s: %s" % (prefix, key, err), file=stderr)
             continue
-        if key == 'cache_dir':
-            v = os.path.expandvars(os.path.expanduser(v))
         if key == 'silent_imports':
             print("%ssilent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=stderr)
