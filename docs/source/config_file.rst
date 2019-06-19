@@ -459,3 +459,4 @@ Miscellaneous
 
 ``new_semantic_analyzer`` (bool, default False)
     Enables the experimental new semantic analyzer.
+    (See :ref:`The mypy command line <command-line>` for more information.)
