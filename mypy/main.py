@@ -7,6 +7,7 @@ import sys
 import time
 
 from typing import Any, Dict, List, Optional, Tuple, TextIO
+from typing_extensions import Final
 
 from mypy import build
 from mypy import defaults
@@ -22,13 +23,7 @@ from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-
 orig_stat = os.stat  # type: Final
-
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile
 
 

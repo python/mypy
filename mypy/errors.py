@@ -4,14 +4,11 @@ import traceback
 from collections import OrderedDict, defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO
+from typing_extensions import Final
 
 from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final

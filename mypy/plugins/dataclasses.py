@@ -1,7 +1,9 @@
 """Plugin that provides support for dataclasses."""
 
 from collections import OrderedDict
+
 from typing import Dict, List, Set, Tuple
+from typing_extensions import Final
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
@@ -12,10 +14,6 @@ from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
 from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType
 from mypy.server.trigger import make_wildcard_trigger
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {

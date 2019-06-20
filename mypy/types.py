@@ -3,15 +3,12 @@
 import sys
 from abc import abstractmethod
 from collections import OrderedDict
+
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
     Sequence, Iterator,
 )
-
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
+from typing_extensions import ClassVar, Final, TYPE_CHECKING
 
 import mypy.nodes
 from mypy import state
@@ -63,7 +60,7 @@ LiteralValue = Union[int, str, bool]
 # then again in the middle at runtime.
 # We should be able to remove this once we are switched to the new
 # semantic analyzer!
-if MYPY:
+if TYPE_CHECKING:
     from mypy.type_visitor import (
         TypeVisitor as TypeVisitor,
         SyntheticTypeVisitor as SyntheticTypeVisitor,
@@ -795,7 +792,7 @@ class FunctionLike(Type):
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        if MYPY:  # Use MYPY to declare, we don't want a runtime None value
+        if TYPE_CHECKING:  # we don't want a runtime None value
             # Corresponding instance type (e.g. builtins.type)
             self.fallback = cast(Instance, None)
 

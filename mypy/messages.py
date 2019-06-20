@@ -15,6 +15,7 @@ import difflib
 from textwrap import dedent
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
+from typing_extensions import Final
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -31,11 +32,6 @@ from mypy.nodes import (
 )
 from mypy.util import unmangle
 from mypy import message_registry
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",

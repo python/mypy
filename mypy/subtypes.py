@@ -1,5 +1,7 @@
-from typing import List, Optional, Callable, Tuple, Iterator, Set, Union, cast
 from contextlib import contextmanager
+
+from typing import List, Optional, Callable, Tuple, Iterator, Set, Union, cast
+from typing_extensions import Final
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType, function_type,
@@ -24,16 +26,10 @@ from mypy.expandtype import expand_type_by_instance
 from mypy.typestate import TypeState, SubtypeKind
 from mypy import state
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-
 # Flags for detected protocol members
 IS_SETTABLE = 1  # type: Final
 IS_CLASSVAR = 2  # type: Final
 IS_CLASS_OR_STATIC = 3  # type: Final
-
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
 

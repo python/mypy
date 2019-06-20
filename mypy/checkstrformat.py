@@ -3,6 +3,7 @@
 import re
 
 from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern
+from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny
@@ -11,12 +12,10 @@ from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
 )
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.checker
     import mypy.checkexpr
-    from typing_extensions import Final
 from mypy import message_registry
 from mypy.messages import MessageBuilder
 

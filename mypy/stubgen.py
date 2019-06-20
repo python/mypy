@@ -55,6 +55,7 @@ from collections import defaultdict
 from typing import (
     List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
 )
+from typing_extensions import Final
 
 import mypy.build
 import mypy.parse
@@ -87,10 +88,6 @@ from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.traverser import has_return_statement
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 
 class Options:

@@ -1,7 +1,9 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod, abstractproperty
+
 from typing import Optional, List, Callable
+from typing_extensions import Final
 from mypy_extensions import trait
 
 from mypy.nodes import (
@@ -12,10 +14,6 @@ from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES
 from mypy.tvar_scope import TypeVarScope
 from mypy import join
-
-MYPY = False
-if False:
-    from typing_extensions import Final
 
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):

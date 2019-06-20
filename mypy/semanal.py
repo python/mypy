@@ -37,6 +37,7 @@ from contextlib import contextmanager
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
 )
+from typing_extensions import Final
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -100,12 +101,7 @@ from mypy.reachability import (
 )
 from mypy.mro import calculate_mro, MroError
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 T = TypeVar('T')
-
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {

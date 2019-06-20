@@ -1,6 +1,7 @@
 """Type inference constraints."""
 
 from typing import Iterable, List, Optional, Sequence
+from typing_extensions import Final
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
@@ -14,11 +15,6 @@ import mypy.typeops
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 SUBTYPE_OF = 0  # type: Final[int]
 SUPERTYPE_OF = 1  # type: Final[int]
