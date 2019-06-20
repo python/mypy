@@ -755,7 +755,7 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache)
