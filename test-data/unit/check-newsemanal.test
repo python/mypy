@@ -2585,3 +2585,17 @@ tmp/a/__init__.py:4: note: Revealed type is 'def ()'
 tmp/a/__init__.py:5: note: Revealed type is 'a.b.B'
 main:2: error: Name 'a.b.B' is not defined
 main:3: note: Revealed type is 'def ()'
+
+[case testNewAnalyzerConfusingImportConflictingNames]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m other a.b a
+[file a/__init__.py]
+[file a/b/__init__.py]
+import other
+import a.b.a
+import a.b.c
+
+[file other.py]
+from a.b.a import foo
+[builtins fixtures/module.pyi]
+[out]
