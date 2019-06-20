@@ -179,6 +179,7 @@ setup(name='mypy',
       cmdclass=cmdclass,
       # When changing this, also update test-requirements.txt.
       install_requires=['typed_ast >= 1.4.0, < 1.5.0',
+                        'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.0, < 0.5.0',
                         ],
       # Same here.

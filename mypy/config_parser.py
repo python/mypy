@@ -6,15 +6,11 @@ import os
 import re
 import sys
 
+from typing import Any, Dict, List, Mapping, Optional, Tuple, TextIO
+from typing_extensions import Final
+
 from mypy import defaults
 from mypy.options import Options, PER_MODULE_OPTIONS
-
-from typing import Any, Dict, List, Mapping, Optional, Tuple, TextIO
-
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 
 def parse_version(v: str) -> Tuple[int, int]:

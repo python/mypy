@@ -25,11 +25,7 @@ import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
-
+from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
@@ -45,7 +41,7 @@ from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
 )
-if MYPY:
+if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
 from mypy.fixup import fixup_module

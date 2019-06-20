@@ -1,13 +1,12 @@
 """Semantic analysis of types"""
 
-from collections import OrderedDict
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
-
-from itertools import chain
-
-from contextlib import contextmanager
-
 import itertools
+from itertools import chain
+from contextlib import contextmanager
+from collections import OrderedDict
+
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
+from typing_extensions import Final
 
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -32,12 +31,7 @@ from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, message_registry
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 T = TypeVar('T')
-
 
 type_constructors = {
     'typing.Callable',

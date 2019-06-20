@@ -1,14 +1,11 @@
 """Find all objects reachable from a root object."""
 
 from collections.abc import Iterable
-from typing import List, Dict, Iterator, Tuple, Mapping
 import weakref
 import types
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
+from typing import List, Dict, Iterator, Tuple, Mapping
+from typing_extensions import Final
 
 method_descriptor_type = type(object.__dir__)  # type: Final
 method_wrapper_type = type(object().__ne__)  # type: Final

@@ -80,10 +80,7 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
 from typing import Dict, List, Set, Optional, Tuple
-
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
+from typing_extensions import DefaultDict
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (

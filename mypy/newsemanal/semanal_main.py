@@ -26,6 +26,7 @@ will be incomplete.
 
 import contextlib
 from typing import List, Tuple, Optional, Union, Callable, Iterator
+from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
@@ -45,8 +46,7 @@ from mypy.checker import FineGrainedDeferredNode
 from mypy.server.aststripnew import SavedAttributes
 import mypy.build
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 

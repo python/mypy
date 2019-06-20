@@ -1,6 +1,8 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 from collections import OrderedDict
+
 from typing import Optional, Dict, List, cast, Tuple, Iterable
+from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -22,10 +24,6 @@ from mypy.types import (
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 

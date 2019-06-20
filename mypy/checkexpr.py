@@ -5,10 +5,7 @@ from contextlib import contextmanager
 from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
+from typing_extensions import ClassVar, Final
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (

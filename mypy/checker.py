@@ -8,6 +8,7 @@ from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
     Sequence
 )
+from typing_extensions import Final
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
@@ -67,11 +68,6 @@ from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state
 from mypy.traverser import has_return_statement
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 T = TypeVar('T')
 

@@ -6,18 +6,12 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
+from typing_extensions import Final
 
 # Invalid types
-
 INVALID_TYPE_RAW_ENUM_VALUE = "Invalid type: try using Literal[{}.{}] instead?"  # type: Final
 
-
-# Type checker error message constants --
-
+# Type checker error message constants
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final
 MISSING_RETURN_STATEMENT = 'Missing return statement'  # type: Final
 INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'  # type: Final

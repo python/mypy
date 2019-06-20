@@ -4,12 +4,9 @@ import pathlib
 import re
 import subprocess
 import sys
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container
 
-MYPY = False
-if MYPY:
-    from typing import Type
-    from typing_extensions import Final
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container
+from typing_extensions import Final, Type
 
 T = TypeVar('T')
 

@@ -1,4 +1,5 @@
 from typing import Dict, List
+from typing_extensions import Final
 
 from mypy.nodes import (
     Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr,
@@ -6,11 +7,6 @@ from mypy.nodes import (
     MemberExpr, IndexExpr, Import, ClassDef
 )
 from mypy.traverser import TraverserVisitor
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 # Scope kinds
 FILE = 0  # type: Final
