@@ -64,6 +64,74 @@ package_data += find_package_data(
 package_data += find_package_data(
     os.path.join('mypyc', 'lib-rt'), ['*.c', '*.h'])
 
+USE_MYPYC = False
+# To compile with mypyc, a mypyc checkout must be present on the PYTHONPATH
+if len(sys.argv) > 1 and sys.argv[1] == '--use-mypyc':
+    sys.argv.pop(1)
+    USE_MYPYC = True
+if os.getenv('MYPYC_USE_MYPYC', None) == '1':
+    USE_MYPYC = True
+
+if USE_MYPYC:
+    MYPYC_BLACKLIST = ('__init__.py',)
+    MYPY_BLACKLIST = (
+        # Need to be runnable as scripts
+        '__main__.py',
+        'sitepkgs.py',
+        'dmypy/__main__.py',
+
+        # Needs to be interpreted to provide a hook to interpreted plugins
+        'interpreted_plugin.py',
+
+        # Uses __getattr__/__setattr__
+        'split_namespace.py',
+
+        # Lies to mypy about code reachability
+        'bogus_type.py',
+
+        # We don't populate __file__ properly at the top level or something?
+        # Also I think there would be problems with how we generate version.py.
+        'version.py',
+    )
+
+    # Start with all the .py files
+    mypyc_targets = find_package_data('mypyc', ['*.py'])
+    # Strip out blacklist files
+    mypyc_targets = [x for x in mypyc_targets if x not in MYPYC_BLACKLIST]
+    # Strip out any mypyc test code
+    mypyc_targets = [x for x in mypyc_targets if not x.startswith('test' + os.sep)]
+    # Figure out which mypy files we want to keep
+    mypy_dir = 'external' + os.sep + 'mypy' + os.sep + 'mypy' + os.sep
+    mypy_targets = [x for x in mypyc_targets if x.startswith(mypy_dir)]
+    # Temprorarily remove mypy stuff from mypyc targets
+    mypyc_targets = [x for x in mypyc_targets if not x.startswith('external' + os.sep)]
+    # Remove typeshed stuff
+    mypy_targets = [x for x in mypy_targets if not x.startswith(mypy_dir + 'typeshed' + os.sep)]
+    # Strip out anything in mypy blacklist
+    mypy_targets = [x for x in mypy_targets if os.path.join(mypy_dir, x) not in MYPY_BLACKLIST]
+    # Strip out any mypy test code
+    mypy_targets = [x for x in mypy_targets if not x.startswith(mypy_dir + 'test')]
+    # ... and add back in the one test module we need
+    mypy_targets.append(os.path.join(mypy_dir + 'test', 'visitors.py'))
+    # Add refined mypy targets to mypyc targets
+    mypyc_targets.extend(mypy_targets)
+    # Fix the paths to be full
+    mypyc_targets = [os.path.join('mypyc', x) for x in mypyc_targets]
+    # The targets come out of file system apis in an unspecified
+    # order. Sort them so that the mypyc output is deterministic.
+    mypyc_targets.sort()
+
+    opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+
+    from mypyc.build import mypycify
+
+    ext_modules = mypycify(mypyc_targets,
+                  ['--config-file=mypyc_bootstrap.ini'],
+                  opt_level=opt_level, 
+                  multi_file=sys.platform == 'win32')
+else:
+  ext_modules = []
+
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Environment :: Console',
@@ -84,6 +152,7 @@ setup(name='mypyc',
       author_email='jukka.lehtosalo@iki.fi',
       url='https://github.com/mypyc/mypyc',
       license='MIT License',
+      ext_modules= ext_modules,
       py_modules=[],
       packages=['mypyc', 'mypyc.test'],
       package_data={'mypyc': package_data},
