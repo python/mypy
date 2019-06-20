@@ -1777,12 +1777,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
+            # This block was marked as being unreachable during semantic analysis.
+            # It turns out any blocks marked in this way are *intentionally* marked
+            # as unreachable -- so we don't display an error.
             self.binder.unreachable()
             return
         for s in b.body:
             if self.binder.is_unreachable():
+                if self.options.disallow_inferred_unreachable and not self.is_raising_or_empty(s):
+                    self.msg.unreachable_branch(s)
                 break
             self.accept(s)
+
+    def is_raising_or_empty(self, s: Statement) -> bool:
+        if isinstance(s, AssertStmt) and is_false_literal(s.expr):
+            return True
+        elif isinstance(s, (RaiseStmt, PassStmt)):
+            return True
+        elif isinstance(s, ExpressionStmt):
+            if isinstance(s.expr, EllipsisExpr):
+                return True
+            elif isinstance(s.expr, CallExpr):
+                self.expr_checker.msg.disable_errors()
+                typ = self.expr_checker.accept(
+                    s.expr, allow_none_return=True, always_allow_any=True)
+                self.expr_checker.msg.enable_errors()
+
+                if isinstance(typ, UninhabitedType):
+                    return True
+        return False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
@@ -2956,7 +2979,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # type checks in both contexts, but only the resulting types
             # from the latter context affect the type state in the code
             # that follows the try statement.)
-            self.accept(s.finally_body)
+            if not self.binder.is_unreachable():
+                self.accept(s.finally_body)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.

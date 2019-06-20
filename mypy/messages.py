@@ -1228,6 +1228,30 @@ class MessageBuilder:
         self.note('"{}.__call__" has type {}'.format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)
 
+    def unreachable_branch(self, context: Context) -> None:
+        self.fail("This branch is inferred to be unreachable", context)
+
+    def always_same_truth_value_left_operand(self, op_name: str, context: Context) -> None:
+        value = 'true' if op_name == 'and' else 'false'
+        self.fail(
+            "The left operand of this '{}' expression is always {}".format(op_name, value),
+            context,
+        )
+
+    def unreachable_right_operand(self, op_name: str, context: Context) -> None:
+        self.fail(
+            "The right operand of this '{}' expression is never evaluated".format(op_name),
+            context,
+        )
+
+    def comprehension_cond_always_same(self, simplified_result: bool, context: Context) -> None:
+        template = "The conditional check in this comprehension is always {}"
+        self.fail(template.format(str(simplified_result).lower()), context)
+
+    def unreachable_branch_in_inline_if(self, sub_expr_name: str, context: Context) -> None:
+        template = "The '{}' expression in this inline if expression is never evaluated"
+        self.fail(template.format(sub_expr_name), context)
+
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:
         """Report possible protocol conflicts between 'subtype' and 'supertype'.
