@@ -89,7 +89,7 @@ if USE_MYPYC:
         # Need to be runnable as scripts
         '__main__.py',
         'sitepkgs.py',
-        'dmypy/__main__.py',
+        os.path.join('dmypy', '__main__.py'),
 
         # Needs to be interpreted to provide a hook to interpreted plugins
         'interpreted_plugin.py',
