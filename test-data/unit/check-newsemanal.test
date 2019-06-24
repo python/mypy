@@ -2003,7 +2003,7 @@ class C: ...
 
 x: B[int]  # E: Type argument "builtins.int" of "B" must be a subtype of "__main__.B[Any]"
 y: B[B[Any]]
-reveal_type(y.x)  # E: Revealed type is '__main__.B*[Any]'
+reveal_type(y.x)  # N: Revealed type is '__main__.B*[Any]'
 
 [case testNewAnalyzerCastForward1]
 from typing import cast
