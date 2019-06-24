@@ -12,10 +12,7 @@ import tokenize
 from typing import (
     Optional, MutableMapping, MutableSequence, List, Sequence, Tuple, NamedTuple, Any
 )
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
 Sig = Tuple[str, str]
@@ -24,7 +21,7 @@ Sig = Tuple[str, str]
 class ArgSig:
     """Signature info for a single argument."""
 
-    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')
+    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
 
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name

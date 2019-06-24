@@ -27,7 +27,7 @@ from mypy.nodes import (
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
     implicit_module_attrs, AssertStmt,
 )
-from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
+from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneType, CallableType
 from mypy.semanal import SemanticAnalyzerPass2
 from mypy.reachability import infer_reachability_of_if_statement, assert_will_always_fail
 from mypy.semanal_shared import create_indirect_imported_name
@@ -111,7 +111,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             # cannot define a variable with them explicitly.
             if mod_id == 'builtins':
                 literal_types = [
-                    ('None', NoneTyp()),
+                    ('None', NoneType()),
                     # reveal_type is a mypy-only function that gives an error with
                     # the type of its arg.
                     ('reveal_type', AnyType(TypeOfAny.special_form)),
@@ -320,7 +320,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if self.sem.is_module_scope():
             for n in s.target:
                 if n:
-                    self.analyze_lvalue(n, explicit_type=s.target_type is not None)
+                    self.analyze_lvalue(n, explicit_type=s.unanalyzed_type is not None)
             s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:

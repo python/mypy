@@ -6,13 +6,12 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
+# Invalid types
+INVALID_TYPE_RAW_ENUM_VALUE = "Invalid type: try using Literal[{}.{}] instead?"  # type: Final
 
-# Type checker error message constants --
-
+# Type checker error message constants
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final
 MISSING_RETURN_STATEMENT = 'Missing return statement'  # type: Final
 INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'  # type: Final
@@ -52,6 +51,7 @@ TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
 CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
+BAD_CONSTRUCTOR_TYPE = 'Unsupported decorated constructor type'  # type: Final
 CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
 INCONSISTENT_ABSTRACT_OVERLOAD = \
@@ -135,5 +135,5 @@ CANNOT_OVERRIDE_CLASS_VAR = \
 
 # Protocol
 RUNTIME_PROTOCOL_EXPECTED = \
-    'Only @runtime protocols can be used with instance and class checks'  # type: Final
+    'Only @runtime_checkable protocols can be used with instance and class checks'  # type: Final
 CANNOT_INSTANTIATE_PROTOCOL = 'Cannot instantiate protocol class "{}"'  # type: Final

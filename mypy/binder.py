@@ -1,12 +1,10 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
 from collections import defaultdict
 
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
+from typing_extensions import DefaultDict
 
-from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneTyp
+from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
@@ -35,10 +33,7 @@ class Frame:
         self.unreachable = False
 
 
-if MYPY:
-    # This is the type of stored assignments for union type rvalues.
-    # We use 'if MYPY: ...' since typing-3.5.1 does not have 'DefaultDict'
-    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
@@ -276,10 +271,10 @@ class ConditionalTypeBinder:
         # (See discussion in #3526)
         elif (isinstance(type, AnyType)
               and isinstance(declared_type, UnionType)
-              and any(isinstance(item, NoneTyp) for item in declared_type.items)
-              and isinstance(self.most_recent_enclosing_type(expr, NoneTyp()), NoneTyp)):
+              and any(isinstance(item, NoneType) for item in declared_type.items)
+              and isinstance(self.most_recent_enclosing_type(expr, NoneType()), NoneType)):
             # Replace any Nones in the union type with Any
-            new_items = [type if isinstance(item, NoneTyp) else item
+            new_items = [type if isinstance(item, NoneType) else item
                          for item in declared_type.items]
             self.put(expr, UnionType(new_items))
         elif (isinstance(type, AnyType)

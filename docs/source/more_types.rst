@@ -496,7 +496,7 @@ overlapping when both of the following are true:
    subtype of) the second.
 
 So in this example, the ``int`` argument in the first variant is a subtype of
-the ``object`` argument in the second, yet the ``int`` return type not is a subtype of
+the ``object`` argument in the second, yet the ``int`` return type is not a subtype of
 ``str``. Both conditions are true, so mypy will correctly flag ``unsafe_func`` as
 being unsafe.
 
@@ -739,11 +739,6 @@ and one
 
 TypedDict
 *********
-
-.. note::
-
-   TypedDict is an officially supported feature, but it is still experimental.
-
 
 Python programs often use dictionaries with string keys to represent objects.
 Here is a typical example:

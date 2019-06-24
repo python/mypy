@@ -7,12 +7,9 @@ object it creates.
 import argparse
 import sys
 
-import pytest  # type: ignore
-
 from mypy.test.helpers import Suite, assert_equal
 from mypy.options import Options
-from mypy.main import (process_options, PythonExecutableInferenceError,
-                       infer_python_executable)
+from mypy.main import process_options, infer_python_executable
 
 
 class ArgSuite(Suite):

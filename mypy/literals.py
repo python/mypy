@@ -1,4 +1,5 @@
 from typing import Optional, Union, Any, Tuple, Iterable
+from typing_extensions import Final
 
 from mypy.nodes import (
     Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
@@ -10,10 +11,6 @@ from mypy.nodes import (
     TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode,
 )
 from mypy.visitor import ExpressionVisitor
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # [Note Literals and literal_hash]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

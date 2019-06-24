@@ -1,13 +1,14 @@
-from typing import List, Optional, Any
+from typing import List, Optional
 
 from mypy.nodes import (
-    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, FuncBase, SYMBOL_FUNCBASE_TYPES,
+    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, SYMBOL_FUNCBASE_TYPES,
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, StrExpr,
 )
 from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
 from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance
 from mypy.typevars import fill_typevars
+from mypy.util import get_unique_redefinition_name
 
 
 def _get_decorator_bool_argument(
@@ -88,6 +89,14 @@ def add_method(
     """Adds a new method to a class.
     """
     info = ctx.cls.info
+
+    # First remove any previously generated methods with the same name
+    # to avoid clashes and problems in new semantic analyzer.
+    if name in info.names:
+        sym = info.names[name]
+        if sym.plugin_generated and isinstance(sym.node, FuncDef):
+            ctx.cls.defs.body.remove(sym.node)
+
     self_type = self_type or fill_typevars(info)
     function_type = ctx.api.named_type('__builtins__.function')
 
@@ -109,6 +118,13 @@ def add_method(
     func._fullname = info.fullname() + '.' + name
     func.line = info.line
 
+    # NOTE: we would like the plugin generated node to dominate, but we still
+    # need to keep any existing definitions so they get semantically analyzed.
+    if name in info.names:
+        # Get a nice unique name instead.
+        r_name = get_unique_redefinition_name(name, info.names)
+        info.names[r_name] = info.names[name]
+
     info.names[name] = SymbolTableNode(MDEF, func, plugin_generated=True)
     info.defn.defs.body.append(func)
 
@@ -117,8 +133,8 @@ def try_getting_str_literal(expr: Expression, typ: Type) -> Optional[str]:
     """If this expression is a string literal, or if the corresponding type
     is something like 'Literal["some string here"]', returns the underlying
     string value. Otherwise, returns None."""
-    if isinstance(typ, Instance) and typ.final_value is not None:
-        typ = typ.final_value
+    if isinstance(typ, Instance) and typ.last_known_value is not None:
+        typ = typ.last_known_value
 
     if isinstance(typ, LiteralType) and typ.fallback.type.fullname() == 'builtins.str':
         val = typ.value

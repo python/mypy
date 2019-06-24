@@ -17,6 +17,7 @@ import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing_extensions import Final
 
 import mypy.build
 import mypy.errors
@@ -32,11 +33,6 @@ from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
-
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
@@ -308,7 +304,9 @@ class Server:
             if self.fine_grained_manager:
                 manager = self.fine_grained_manager.manager
                 start_plugins_snapshot = manager.plugins_snapshot
-                _, current_plugins_snapshot = mypy.build.load_plugins(options, manager.errors)
+                _, current_plugins_snapshot = mypy.build.load_plugins(options,
+                                                                      manager.errors,
+                                                                      sys.stdout)
                 if current_plugins_snapshot != start_plugins_snapshot:
                     return {'restart': 'plugins changed'}
         except InvalidSourceList as err:
@@ -514,16 +512,19 @@ class Server:
 
         return changed, removed
 
-    def cmd_suggest(self, function: str, json: bool, callsites: bool) -> Dict[str, object]:
+    def cmd_suggest(self,
+                    function: str,
+                    callsites: bool,
+                    **kwargs: bool) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}
-        engine = SuggestionEngine(self.fine_grained_manager)
+        engine = SuggestionEngine(self.fine_grained_manager, **kwargs)
         try:
             if callsites:
                 out = engine.suggest_callsites(function)
             else:
-                out = engine.suggest(function, json)
+                out = engine.suggest(function)
         except SuggestionFailure as err:
             return {'error': str(err)}
         else:
@@ -532,6 +533,8 @@ class Server:
             elif not out.endswith("\n"):
                 out += "\n"
             return {'out': out, 'err': "", 'status': 0}
+        finally:
+            self.fscache.flush()
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
@@ -550,13 +553,12 @@ def get_meminfo() -> Dict[str, Any]:
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:
-        if sys.platform != 'win32':
-            res['memory_psutil_missing'] = (
-                'psutil not found, run pip install mypy[dmypy] '
-                'to install the needed components for dmypy'
-            )
+        res['memory_psutil_missing'] = (
+            'psutil not found, run pip install mypy[dmypy] '
+            'to install the needed components for dmypy'
+        )
     else:
-        process = psutil.Process(os.getpid())
+        process = psutil.Process()
         meminfo = process.memory_info()
         res['memory_rss_mib'] = meminfo.rss / MiB
         res['memory_vms_mib'] = meminfo.vms / MiB

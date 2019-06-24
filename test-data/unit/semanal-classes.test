@@ -524,7 +524,7 @@ class A: pass
 [out]
 MypyFile:1(
   Import:1(typing)
-  ClassDef:2(
+  ClassDef:3(
     A
     Decorators(
       NameExpr(object [builtins.object]))

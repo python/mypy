@@ -45,7 +45,7 @@ class A(object):
     def f(self, a: int, b: str) -> None: pass
 
 class B(A):
-    def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" incompatible with supertype "A" # E: Argument 2 of "f" incompatible with supertype "A"
+    def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
 
 class C(A):
     def f(self, foo: int, bar: str) -> None: pass
@@ -737,6 +737,35 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
+[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        def g(x):  # E: Type signature has too few arguments
+            # type: () -> None
+            pass
+
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        class B:
+            def g(self):
+                # type: () -> None
+                def h(x):  # E: Type signature has too few arguments
+                    # type: () -> None
+                    pass
+
+[case testDeepNestedMethodInTypeComment]
+class A:
+    def f(self):
+        # type: () -> None
+        class B:
+            class C:
+                def g(self):
+                    # type: () -> None
+                    pass
+
 [case testMutuallyRecursiveNestedFunctions]
 def f() -> None:
     def g() -> None:
@@ -1394,6 +1423,7 @@ else:
     def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type "Callable[[str], None]", original type "Callable[[int], None]")
 
 [case testConditionalFunctionDefinitionUsingDecorator3]
+# flags: --new-semantic-analyzer
 from typing import Callable
 
 def dec(f) -> Callable[[int], None]: pass
@@ -1402,11 +1432,11 @@ x = int()
 if x:
     def f(x: int) -> None: pass
 else:
-    # TODO: This should be okay.
-    @dec # E: Name 'f' already defined on line 7
+    @dec
     def f(): pass
 
 [case testConditionalFunctionDefinitionUsingDecorator4]
+# flags: --new-semantic-analyzer
 from typing import Callable
 
 def dec(f) -> Callable[[int], None]: pass
@@ -1415,8 +1445,8 @@ x = int()
 if x:
     def f(x: str) -> None: pass
 else:
-    # TODO: We should report an incompatible redefinition.
-    @dec # E: Name 'f' already defined on line 7
+    # TODO: Complain about incompatible redefinition
+    @dec
     def f(): pass
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
@@ -1484,7 +1514,7 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for 'f'
+f = [] # E: Need type annotation for 'f' (hint: "f: List[<type>] = ...")
 if object():
     def f(): pass # E: Incompatible redefinition
 f()  # E: "List[Any]" not callable
@@ -2161,7 +2191,7 @@ def f() -> None:
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # E: Revealed type is 'builtins.function'
+reveal_type(h) # N: Revealed type is 'builtins.function'
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
 
@@ -2224,23 +2254,23 @@ from typing import Callable, TypeVar
 T = TypeVar('T')
 
 f: Callable[[T], T]
-reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
 def g(__x: T) -> T: pass
 f = g
-reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
 i = f(3)
-reveal_type(i)  # E: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is 'builtins.int*'
 
 [case testFunctionReturningGenericFunction]
 from typing import Callable, TypeVar
 
 T = TypeVar('T')
 def deco() -> Callable[[T], T]: pass
-reveal_type(deco)  # E: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
+reveal_type(deco)  # N: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
 f = deco()
-reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
 i = f(3)
-reveal_type(i)  # E: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is 'builtins.int*'
 
 [case testFunctionReturningGenericFunctionPartialBinding]
 from typing import Callable, TypeVar
@@ -2249,11 +2279,11 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 def deco(x: U) -> Callable[[T, U], T]: pass
-reveal_type(deco)  # E: Revealed type is 'def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2'
+reveal_type(deco)  # N: Revealed type is 'def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2'
 f = deco("foo")
-reveal_type(f)  # E: Revealed type is 'def [T] (T`-2, builtins.str*) -> T`-2'
+reveal_type(f)  # N: Revealed type is 'def [T] (T`-2, builtins.str*) -> T`-2'
 i = f(3, "eggs")
-reveal_type(i)  # E: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is 'builtins.int*'
 
 [case testFunctionReturningGenericFunctionTwoLevelBinding]
 from typing import Callable, TypeVar
@@ -2262,11 +2292,11 @@ T = TypeVar('T')
 R = TypeVar('R')
 def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
-reveal_type(f)  # E: Revealed type is 'def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2'
+reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2'
 g = f(3)
-reveal_type(g)  # E: Revealed type is 'def [R] (builtins.int*, R`-2) -> R`-2'
+reveal_type(g)  # N: Revealed type is 'def [R] (builtins.int*, R`-2) -> R`-2'
 s = g(4, "foo")
-reveal_type(s)  # E: Revealed type is 'builtins.str*'
+reveal_type(s)  # N: Revealed type is 'builtins.str*'
 
 [case testGenericFunctionReturnAsDecorator]
 from typing import Callable, TypeVar
@@ -2277,9 +2307,9 @@ def deco(__i: int) -> Callable[[T], T]: pass
 @deco(3)
 def lol(x: int) -> str: ...
 
-reveal_type(lol)  # E: Revealed type is 'def (x: builtins.int) -> builtins.str'
+reveal_type(lol)  # N: Revealed type is 'def (x: builtins.int) -> builtins.str'
 s = lol(4)
-reveal_type(s)  # E: Revealed type is 'builtins.str'
+reveal_type(s)  # N: Revealed type is 'builtins.str'
 
 [case testGenericFunctionOnReturnTypeOnly]
 from typing import TypeVar, List
@@ -2290,13 +2320,21 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for 'bad'
+bad = make_list()  # E: Need type annotation for 'bad' (hint: "bad: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
 foo(x=2, y=2)  # E: Missing positional argument
 foo(y=2)  # E: Missing positional arguments
+
+[case testMissingArgumentError]
+def f(a, b, c, d=None) -> None: pass
+f(1, 2, d=3) # E: Missing positional argument "c" in call to "f"
+
+[case testMissingArgumentsError]
+def f(a, b, c, d=None) -> None: pass
+f(1, d=3) # E: Missing positional arguments "b", "c" in call to "f"
 
 [case testReturnTypeLineNumberWithDecorator]
 def dec(f): pass
@@ -2326,12 +2364,16 @@ from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
     return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant \
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
     return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
+      # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Mapping" instead, which is covariant in the value type \
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
 
 def h() -> Dict[Union[str, int], str]:
     x = {'a': 'a'}
@@ -2340,7 +2382,9 @@ def h() -> Dict[Union[str, int], str]:
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]")
+    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
 
 [builtins fixtures/dict.pyi]
 
@@ -2390,7 +2434,7 @@ main:1: error: Unsupported operand types for + ("int" and "str")
 f = lambda: 5
 reveal_type(f)
 [out]
-main:2: error: Revealed type is 'def () -> builtins.int'
+main:2: note: Revealed type is 'def () -> builtins.int'
 
 [case testRevealLocalsFunction]
 a = 1.0
@@ -2406,15 +2450,15 @@ def f(a: int, b: int) -> int:
 
 reveal_locals()
 [out]
-main:6: error: Revealed local types are:
-main:6: error: a: builtins.int
-main:6: error: b: builtins.int
-main:9: error: Revealed local types are:
-main:9: error: a: builtins.int
-main:9: error: b: builtins.int
-main:9: error: c: builtins.int
-main:12: error: Revealed local types are:
-main:12: error: a: builtins.float
+main:6: note: Revealed local types are:
+main:6: note:     a: builtins.int
+main:6: note:     b: builtins.int
+main:9: note: Revealed local types are:
+main:9: note:     a: builtins.int
+main:9: note:     b: builtins.int
+main:9: note:     c: builtins.int
+main:12: note: Revealed local types are:
+main:12: note:     a: builtins.float
 
 [case testNoComplainOverloadNone]
 # flags: --no-strict-optional
@@ -2430,7 +2474,7 @@ def bar(x: Optional[int]) -> Optional[str]:
         return None
     return "number"
 
-reveal_type(bar(None))  # E: Revealed type is 'None'
+reveal_type(bar(None))  # N: Revealed type is 'None'
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -2448,7 +2492,7 @@ def bar(x: Optional[int]) -> Optional[str]:
         return None
     return "number"
 
-reveal_type(bar(None))  # E: Revealed type is 'None'
+reveal_type(bar(None))  # N: Revealed type is 'None'
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -2480,3 +2524,27 @@ def foo() -> None:
 
 def lol():
     x = foo()
+
+[case testConditionalImportFunction]
+import p
+[file p/__init__.py]
+
+if int():
+    from p.a import f
+elif int():
+    from p.b import f
+else:
+    from p.c import f
+
+[file p/a.py]
+def f() -> int: ...
+
+[file p/b.py]
+from p.d import f
+
+[file p/c.py]
+def f() -> int: ...
+
+[file p/d.py]
+import p
+def f() -> int: ...

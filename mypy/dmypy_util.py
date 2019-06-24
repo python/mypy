@@ -6,12 +6,9 @@ This should be pretty lightweight and not depend on other mypy code (other than 
 import json
 
 from typing import Any
+from typing_extensions import Final
 
 from mypy.ipc import IPCBase
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 DEFAULT_STATUS_FILE = '.dmypy.json'  # type: Final
 

@@ -223,9 +223,10 @@ class TransformVisitor(NodeVisitor[Node]):
     def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
         new = AssignmentStmt(self.expressions(node.lvalues),
                              self.expr(node.rvalue),
-                             self.optional_type(node.type))
+                             self.optional_type(node.unanalyzed_type))
         new.line = node.line
         new.is_final_def = node.is_final_def
+        new.type = self.optional_type(node.type)
         return new
 
     def visit_operator_assignment_stmt(self,
@@ -240,11 +241,13 @@ class TransformVisitor(NodeVisitor[Node]):
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> ForStmt:
-        return ForStmt(self.expr(node.index),
-                       self.expr(node.expr),
-                       self.block(node.body),
-                       self.optional_block(node.else_body),
-                       self.optional_type(node.index_type))
+        new = ForStmt(self.expr(node.index),
+                      self.expr(node.expr),
+                      self.block(node.body),
+                      self.optional_block(node.else_body),
+                      self.optional_type(node.unanalyzed_index_type))
+        new.index_type = self.optional_type(node.index_type)
+        return new
 
     def visit_return_stmt(self, node: ReturnStmt) -> ReturnStmt:
         return ReturnStmt(self.optional_expr(node.expr))
@@ -282,10 +285,12 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.optional_block(node.finally_body))
 
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
-        return WithStmt(self.expressions(node.expr),
-                        self.optional_expressions(node.target),
-                        self.block(node.body),
-                        self.optional_type(node.target_type))
+        new = WithStmt(self.expressions(node.expr),
+                       self.optional_expressions(node.target),
+                       self.block(node.body),
+                       self.optional_type(node.unanalyzed_type))
+        new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
+        return new
 
     def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
         return PrintStmt(self.expressions(node.args),

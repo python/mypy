@@ -1,6 +1,8 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 from collections import OrderedDict
+
 from typing import Optional, Dict, List, cast, Tuple, Iterable
+from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -16,16 +18,12 @@ from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
 )
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
+    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
     Overloaded, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
@@ -115,7 +113,7 @@ class Attribute:
             if self.converter.is_attr_converters_optional and init_type:
                 # If the converter was attr.converter.optional(type) then add None to
                 # the allowed init_type.
-                init_type = UnionType.make_union([init_type, NoneTyp()])
+                init_type = UnionType.make_union([init_type, NoneType()])
 
             if not init_type:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
@@ -209,6 +207,13 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             return
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
+
+    if ctx.api.options.new_semantic_analyzer:
+        # Check if attribute types are ready.
+        for attr in attributes:
+            if info[attr.name].type is None and not ctx.api.final_iteration:
+                ctx.api.defer()
+                return
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -551,7 +556,7 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
     adder.add_method(
         '__init__',
         [attribute.argument(ctx) for attribute in attributes if attribute.init],
-        NoneTyp()
+        NoneType()
     )
 
 

@@ -1,7 +1,9 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod, abstractproperty
+
 from typing import Optional, List, Callable
+from typing_extensions import Final
 from mypy_extensions import trait
 
 from mypy.nodes import (
@@ -9,13 +11,9 @@ from mypy.nodes import (
     SymbolNode, SymbolTable
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance, TupleType
+from mypy.types import Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES
 from mypy.tvar_scope import TypeVarScope
 from mypy import join
-
-MYPY = False
-if False:
-    from typing_extensions import Final
 
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):
@@ -106,8 +104,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
-                  report_invalid_types: bool = True,
-                  third_pass: bool = False) -> Optional[Type]:
+                  report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 
     @abstractmethod
@@ -132,8 +129,9 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol(self, name: str, node: SymbolNode, context: Optional[Context],
-                   module_public: bool = True, module_hidden: bool = False) -> bool:
+    def add_symbol(self, name: str, node: SymbolNode, context: Context,
+                   module_public: bool = True, module_hidden: bool = False,
+                   can_defer: bool = True) -> bool:
         """Add symbol to the current symbol table."""
         raise NotImplementedError
 
@@ -184,7 +182,7 @@ def create_indirect_imported_name(file_node: MypyFile,
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
-            if fdef.info.fullname() == 'mypy_extensions._TypedDict':
+            if fdef.info.fullname() in TPDICT_FB_NAMES:
                 # Avoid exposing the internal _TypedDict name.
                 class_name = 'TypedDict'
             else:

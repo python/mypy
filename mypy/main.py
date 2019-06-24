@@ -1,15 +1,13 @@
 """Mypy type checker command line tool."""
 
 import argparse
-import ast
-import configparser
 import os
-import re
 import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TextIO
+from typing_extensions import Final
 
 from mypy import build
 from mypy import defaults
@@ -19,17 +17,13 @@ from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPat
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
-from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
+from mypy.options import Options, BuildType
+from mypy.config_parser import parse_version, parse_config_file
+from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-
 orig_stat = os.stat  # type: Final
-
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile
 
 
@@ -45,7 +39,11 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
+def main(script_path: Optional[str],
+         stdout: TextIO,
+         stderr: TextIO,
+         args: Optional[List[str]] = None,
+         ) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -61,13 +59,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args = sys.argv[1:]
 
     fscache = FileSystemCache()
-    sources, options = process_options(args, fscache=fscache)
+    sources, options = process_options(args, stdout=stdout, stderr=stderr,
+                                       fscache=fscache)
 
     messages = []
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         messages.extend(new_messages)
-        f = sys.stderr if serious else sys.stdout
+        f = stderr if serious else stdout
         try:
             for msg in new_messages:
                 f.write(msg + '\n')
@@ -81,17 +80,17 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache)
+        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
             serious = True
-    if options.warn_unused_configs and options.unused_configs:
+    if options.warn_unused_configs and options.unused_configs and not options.incremental:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
                          if glob in options.unused_configs)),
-              file=sys.stderr)
+              file=stderr)
     if options.junit_xml:
         t1 = time.time()
         py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
@@ -115,55 +114,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit(code)
 
 
-class SplitNamespace(argparse.Namespace):
-    def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
-        self.__dict__['_standard_namespace'] = standard_namespace
-        self.__dict__['_alt_namespace'] = alt_namespace
-        self.__dict__['_alt_prefix'] = alt_prefix
-
-    def _get(self) -> Tuple[Any, Any]:
-        return (self._standard_namespace, self._alt_namespace)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name.startswith(self._alt_prefix):
-            setattr(self._alt_namespace, name[len(self._alt_prefix):], value)
-        else:
-            setattr(self._standard_namespace, name, value)
-
-    def __getattr__(self, name: str) -> Any:
-        if name.startswith(self._alt_prefix):
-            return getattr(self._alt_namespace, name[len(self._alt_prefix):])
-        else:
-            return getattr(self._standard_namespace, name)
-
-
-def parse_version(v: str) -> Tuple[int, int]:
-    m = re.match(r'\A(\d)\.(\d+)\Z', v)
-    if not m:
-        raise argparse.ArgumentTypeError(
-            "Invalid python version '{}' (expected format: 'x.y')".format(v))
-    major, minor = int(m.group(1)), int(m.group(2))
-    if major == 2:
-        if minor != 7:
-            raise argparse.ArgumentTypeError(
-                "Python 2.{} is not supported (must be 2.7)".format(minor))
-    elif major == 3:
-        if minor < defaults.PYTHON3_VERSION_MIN[1]:
-            raise argparse.ArgumentTypeError(
-                "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(minor,
-                                                                    *defaults.PYTHON3_VERSION_MIN))
-    else:
-        raise argparse.ArgumentTypeError(
-            "Python major version '{}' out of range (must be 2 or 3)".format(major))
-    return major, minor
-
-
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    def _fill_text(self, text: str, width: int, indent: int) -> str:
+    # FIXME: typeshed incorrectly has the type of indent as int when
+    # it should be str. Make it Any to avoid rusing mypyc.
+    def _fill_text(self, text: str, width: int, indent: Any) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
@@ -279,6 +237,8 @@ FOOTER = """Environment variables:
 
 
 def process_options(args: List[str],
+                    stdout: Optional[TextIO] = None,
+                    stderr: Optional[TextIO] = None,
                     require_targets: bool = True,
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
@@ -290,6 +250,8 @@ def process_options(args: List[str],
     If a FileSystemCache is passed in, and package_root options are given,
     call fscache.set_package_root() to set the cache's package root.
     """
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
 
     parser = argparse.ArgumentParser(prog=program,
                                      usage=header,
@@ -525,6 +487,11 @@ def process_options(args: List[str],
                              " non-overlapping types",
                         group=strictness_group)
 
+    add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
+                        dest='implicit_reexport',
+                        help="Treat imports as private unless aliased",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -700,16 +667,18 @@ def process_options(args: List[str],
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
     config_file = dummy.config_file
-    if config_file is not None and not os.path.exists(config_file):
+    # Don't explicitly test if "config_file is not None" for this check.
+    # This lets `--config-file=` (an empty string) be used to disable all config files.
+    if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
-    parse_config_file(options, config_file)
+    parse_config_file(options, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
-    if getattr(dummy, 'special-opts:strict'):
+    if getattr(dummy, 'special-opts:strict'):  # noqa
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
 
@@ -727,6 +696,11 @@ def process_options(args: List[str],
 
     if special_opts.no_executable:
         options.python_executable = None
+
+    # Paths listed in the config file will be ignored if any paths are passed on
+    # the command line.
+    if options.files and not special_opts.files:
+        special_opts.files = options.files
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -781,16 +755,17 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
-                fail("Package name '{}' cannot have a slash in it.".format(p))
+                fail("Package name '{}' cannot have a slash in it.".format(p),
+                     stderr)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p))
+                fail("Can't find package '{}'".format(p), stderr)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -802,8 +777,11 @@ def process_options(args: List[str],
     else:
         try:
             targets = create_source_list(special_opts.files, options, fscache)
-        except InvalidSourceList as e:
-            fail(str(e))
+        # Variable named e2 instead of e to work around mypyc bug #620
+        # which causes issues when using the same variable to catch
+        # exceptions of different types.
+        except InvalidSourceList as e2:
+            fail(str(e2), stderr)
         return targets, options
 
 
@@ -864,164 +842,6 @@ def process_cache_map(parser: argparse.ArgumentParser,
         options.cache_map[source] = (meta_file, data_file)
 
 
-# For most options, the type of the default value set in options.py is
-# sufficient, and we don't have to do anything here.  This table
-# exists to specify types for values initialized to None or container
-# types.
-config_types = {
-    'python_version': parse_version,
-    'strict_optional_whitelist': lambda s: s.split(),
-    'custom_typing_module': str,
-    'custom_typeshed_dir': str,
-    'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
-    'quickstart_file': str,
-    'junit_xml': str,
-    # These two are for backwards compatibility
-    'silent_imports': bool,
-    'almost_silent': bool,
-    'plugins': lambda s: [p.strip() for p in s.split(',')],
-    'always_true': lambda s: [p.strip() for p in s.split(',')],
-    'always_false': lambda s: [p.strip() for p in s.split(',')],
-    'package_root': lambda s: [p.strip() for p in s.split(',')],
-}  # type: Final
-
-
-def parse_config_file(options: Options, filename: Optional[str]) -> None:
-    """Parse a config file into an Options object.
-
-    Errors are written to stderr but are not fatal.
-
-    If filename is None, fall back to default config files.
-    """
-    if filename is not None:
-        config_files = (filename,)  # type: Tuple[str, ...]
-    else:
-        config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
-
-    parser = configparser.RawConfigParser()
-
-    for config_file in config_files:
-        if not os.path.exists(config_file):
-            continue
-        try:
-            parser.read(config_file)
-        except configparser.Error as err:
-            print("%s: %s" % (config_file, err), file=sys.stderr)
-        else:
-            file_read = config_file
-            options.config_file = file_read
-            break
-    else:
-        return
-
-    if 'mypy' not in parser:
-        if filename or file_read not in defaults.SHARED_CONFIG_FILES:
-            print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
-    else:
-        section = parser['mypy']
-        prefix = '%s: [%s]' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, section)
-        for k, v in updates.items():
-            setattr(options, k, v)
-        options.report_dirs.update(report_dirs)
-
-    for name, section in parser.items():
-        if name.startswith('mypy-'):
-            prefix = '%s: [%s]' % (file_read, name)
-            updates, report_dirs = parse_section(prefix, options, section)
-            if report_dirs:
-                print("%s: Per-module sections should not specify reports (%s)" %
-                      (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
-                      file=sys.stderr)
-            if set(updates) - PER_MODULE_OPTIONS:
-                print("%s: Per-module sections should only specify per-module flags (%s)" %
-                      (prefix, ', '.join(sorted(set(updates) - PER_MODULE_OPTIONS))),
-                      file=sys.stderr)
-                updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
-            globs = name[5:]
-            for glob in globs.split(','):
-                # For backwards compatibility, replace (back)slashes with dots.
-                glob = glob.replace(os.sep, '.')
-                if os.altsep:
-                    glob = glob.replace(os.altsep, '.')
-
-                if (any(c in glob for c in '?[]!') or
-                        any('*' in x and x != '*' for x in glob.split('.'))):
-                    print("%s: Patterns must be fully-qualified module names, optionally "
-                          "with '*' in some components (e.g spam.*.eggs.*)"
-                          % prefix,
-                          file=sys.stderr)
-                else:
-                    options.per_module_options[glob] = updates
-
-
-def parse_section(prefix: str, template: Options,
-                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
-    """Parse one section of a config file.
-
-    Returns a dict of option values encountered, and a dict of report directories.
-    """
-    results = {}  # type: Dict[str, object]
-    report_dirs = {}  # type: Dict[str, str]
-    for key in section:
-        if key in config_types:
-            ct = config_types[key]
-        else:
-            dv = getattr(template, key, None)
-            if dv is None:
-                if key.endswith('_report'):
-                    report_type = key[:-7].replace('_', '-')
-                    if report_type in defaults.REPORTER_NAMES:
-                        report_dirs[report_type] = section[key]
-                    else:
-                        print("%s: Unrecognized report type: %s" % (prefix, key),
-                              file=sys.stderr)
-                    continue
-                if key.startswith('x_'):
-                    continue  # Don't complain about `x_blah` flags
-                elif key == 'strict':
-                    print("%s: Strict mode is not supported in configuration files: specify "
-                          "individual flags instead (see 'mypy -h' for the list of flags enabled "
-                          "in strict mode)" % prefix, file=sys.stderr)
-                else:
-                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
-                          file=sys.stderr)
-                continue
-            ct = type(dv)
-        v = None  # type: Any
-        try:
-            if ct is bool:
-                v = section.getboolean(key)  # type: ignore  # Until better stub
-            elif callable(ct):
-                try:
-                    v = ct(section.get(key))
-                except argparse.ArgumentTypeError as err:
-                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
-                    continue
-            else:
-                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
-                continue
-        except ValueError as err:
-            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
-            continue
-        if key == 'silent_imports':
-            print("%s: silent_imports has been replaced by "
-                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
-            if v:
-                if 'ignore_missing_imports' not in results:
-                    results['ignore_missing_imports'] = True
-                if 'follow_imports' not in results:
-                    results['follow_imports'] = 'skip'
-        if key == 'almost_silent':
-            print("%s: almost_silent has been replaced by "
-                  "follow_imports=error" % prefix, file=sys.stderr)
-            if v:
-                if 'follow_imports' not in results:
-                    results['follow_imports'] = 'error'
-        results[key] = v
-    return results, report_dirs
-
-
-def fail(msg: str) -> None:
-    sys.stderr.write('%s\n' % msg)
-    sys.exit(1)
+def fail(msg: str, stderr: TextIO) -> None:
+    stderr.write('%s\n' % msg)
+    sys.exit(2)

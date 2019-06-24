@@ -44,7 +44,7 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr, ForStmt, Block, SymbolNode, StarExpr
+    ListExpr, ForStmt, Block, SymbolNode, StarExpr, WithStmt
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -260,6 +260,10 @@ class NodeStripVisitor(TraverserVisitor):
         node.inferred_item_type = None
         node.inferred_iterator_type = None
         super().visit_for_stmt(node)
+
+    def visit_with_stmt(self, node: WithStmt) -> None:
+        super().visit_with_stmt(node)
+        node.analyzed_types = []
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1 [*], and we

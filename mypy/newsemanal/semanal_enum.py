@@ -7,7 +7,7 @@ from typing import List, Tuple, Optional, Union, cast
 
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
-    UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, GDEF, MDEF, ARG_POS,
+    UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS,
     EnumCallExpr
 )
 from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
@@ -89,7 +89,7 @@ class EnumCallAnalyzer:
             var = Var(item)
             var.info = info
             var.is_property = True
-            var._fullname = '{}.{}'.format(self.api.qualified_name(name), item)
+            var._fullname = '{}.{}'.format(info.fullname(), item)
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 

@@ -12,6 +12,8 @@ class type:
     def __init__(self, x) -> None: pass
 
 class int:
+    # Note: this is a simplification of the actual signature
+    def __init__(self, x: object = ..., base: int = ...) -> None: pass
     def __add__(self, i: int) -> int: pass
 class float:
     def __float__(self) -> float: pass
@@ -23,7 +25,10 @@ class str(Sequence[str]):
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> str: pass
     def format(self, *args) -> str: pass
-class bytes: pass
+class bytes(Sequence[int]):
+    def __iter__(self) -> Iterator[int]: pass
+    def __contains__(self, other: object) -> bool: pass
+    def __getitem__(self, item: int) -> int: pass
 class bytearray: pass
 class tuple(Generic[T]): pass
 class function: pass

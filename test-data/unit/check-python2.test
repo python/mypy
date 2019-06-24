@@ -201,6 +201,26 @@ main:1: error: Ellipses cannot accompany other argument types in function type s
 [case testLambdaTupleArgInPython2]
 f = lambda (x, y): x + y
 f((0, 0))
+
+def g(): # type: () -> None
+    pass
+reveal_type(lambda (x,): g()) # N: Revealed type is 'def (Any)'
+[out]
+
+[case testLambdaTupleArgInferenceInPython2]
+from typing import Callable, Tuple
+
+def f(c):
+    # type: (Callable[[Tuple[int, int]], int]) -> None
+    pass
+def g(c):
+    # type: (Callable[[Tuple[int, int]], str]) -> None
+    pass
+
+f(lambda (x, y): y)
+f(lambda (x, y): x()) # E: "int" not callable
+g(lambda (x, y): y) # E: Argument 1 to "g" has incompatible type "Callable[[Tuple[int, int]], int]"; expected "Callable[[Tuple[int, int]], str]" \
+    # E: Incompatible return value type (got "int", expected "str")
 [out]
 
 [case testLambdaSingletonTupleArgInPython2]
@@ -264,8 +284,8 @@ class M(type):
 class A(object):
     __metaclass__ = M
 
-reveal_type(A.x) # E: Revealed type is 'builtins.int'
-reveal_type(A.test()) # E: Revealed type is 'builtins.str'
+reveal_type(A.x) # N: Revealed type is 'builtins.int'
+reveal_type(A.test()) # N: Revealed type is 'builtins.str'
 
 [case testImportedMetaclass]
 import m
@@ -273,8 +293,8 @@ import m
 class A(object):
     __metaclass__ = m.M
 
-reveal_type(A.x) # E: Revealed type is 'builtins.int'
-reveal_type(A.test()) # E: Revealed type is 'builtins.str'
+reveal_type(A.x) # N: Revealed type is 'builtins.int'
+reveal_type(A.test()) # N: Revealed type is 'builtins.str'
 [file m.py]
 class M(type):
     x = 0
@@ -303,7 +323,7 @@ from missing import M
 class A(object):
     __metaclass__ = M
     y = 0
-reveal_type(A.y) # E: Revealed type is 'builtins.int'
+reveal_type(A.y) # N: Revealed type is 'builtins.int'
 A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
@@ -343,3 +363,8 @@ def foo(
 [case testNoneHasNoBoolInPython2]
 none = None
 b = none.__bool__() # E: "None" has no attribute "__bool__"
+
+[case testDictWithoutTypeCommentInPython2]
+# flags: --py2
+d = dict() # E: Need type annotation for 'd' (hint: "d = ...  \# type: Dict[<type>, <type>]")
+[builtins_py2 fixtures/floatdict_python2.pyi]

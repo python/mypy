@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
 )
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType, LiteralType,
 )
@@ -268,7 +268,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_any(self, typ: AnyType) -> SnapshotItem:
         return snapshot_simple_type(typ)
 
-    def visit_none_type(self, typ: NoneTyp) -> SnapshotItem:
+    def visit_none_type(self, typ: NoneType) -> SnapshotItem:
         return snapshot_simple_type(typ)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> SnapshotItem:
@@ -284,7 +284,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('Instance',
                 typ.type.fullname(),
                 snapshot_types(typ.args),
-                None if typ.final_value is None else snapshot_type(typ.final_value))
+                None if typ.last_known_value is None else snapshot_type(typ.last_known_value))
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
         return ('TypeVar',

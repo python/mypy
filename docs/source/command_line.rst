@@ -57,11 +57,15 @@ Config file
     Settings override mypy's built-in defaults and command line flags
     can override settings.
 
+    Specifying ``--config-file=`` (with no filename) will ignore *all*
+    config files.
+
     See :ref:`config-file` for the syntax of configuration files.
 
 ``--warn-unused-configs``
     This flag makes mypy warn about unused ``[mypy-<pattern>]`` config
     file sections.
+    (This requires turning off incremental mode using ``--no-incremental``.)
 
 
 .. _import-discovery:
@@ -129,7 +133,6 @@ imports.
     the Python executable running mypy.
 
     See :ref:`installed-packages` for more on making PEP 561 compliant packages.
-    This flag will attempt to set ``--python-version`` if not already set.
 
 ``--no-site-packages``
     This flag will disable searching for `PEP 561`_ compliant packages. This
@@ -386,6 +389,20 @@ of the above sections.
            # 'items' now has type List[List[str]]
            ...
 
+``--no-implicit-reexport``
+    By default, imported values to a module are treated as exported and mypy allows
+    other modules to import them. This flag changes the behavior to not re-export unless
+    the item is imported using from-as. Note this is always treated as enabled for
+    stub files. For example:
+
+    .. code-block:: python
+
+       # This won't re-export the value
+       from foo import bar
+       # This will re-export it as bar and allow other modules to import it
+       from foo import bar as bar
+
+
 ``--strict-equality``
     By default, mypy allows always-false comparisons like ``42 == 'no'``.
     Use this flag to prohibit such comparisons of non-overlapping types, and
@@ -393,15 +410,17 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import Text
+       from typing import List, Text
+
+       items: List[int]
+       if 'some string' in items:  # Error: non-overlapping container check!
+           ...
 
        text: Text
-       if b'some bytes' in text:  # Error: non-overlapping check!
-           ...
-       if text != b'other bytes':  # Error: non-overlapping check!
+       if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
-       assert text is not None  # OK, this special case is allowed.
+       assert text is not None  # OK, check against None is allowed as a special case.
 
 ``--strict``
     This flag mode enables all optional error checking flags.  You can see the
@@ -602,6 +621,19 @@ Miscellaneous
     (The default ``__main__`` is technically more correct, but if you
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
+
+``--new-semantic-analyzer``
+    This flag switches to an improved, experimental implementation of
+    the *semantic analyzer* (the part of mypy that binds Python
+    names to definitions). The old and the new semantic analyzers
+    mostly behave identically. The new semantic analyzer is better at
+    handling import cycles and forward references to definitions. It
+    also fixes inconsistencies between the daemon and non-daemon modes,
+    and it detects additional error conditions.
+
+    Likely, the next mypy release will use the new semantic analyzer by
+    default, and the old semantic analyzer will be removed in the next
+    release after that.
 
 .. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 

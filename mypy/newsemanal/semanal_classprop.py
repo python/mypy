@@ -4,10 +4,44 @@ These happen after semantic analysis and before type checking.
 """
 
 from typing import List, Set, Optional
+from typing_extensions import Final
 
-from mypy.nodes import Node, TypeInfo, Var, Decorator, OverloadedFuncDef
-from mypy.types import Instance
+from mypy.nodes import (
+    Node, TypeInfo, Var, Decorator, OverloadedFuncDef, SymbolTable, CallExpr, PromoteExpr,
+)
+from mypy.types import Instance, Type
 from mypy.errors import Errors
+from mypy.options import Options
+
+# Hard coded type promotions (shared between all Python versions).
+# These add extra ad-hoc edges to the subtyping relation. For example,
+# int is considered a subtype of float, even though there is no
+# subclass relationship.
+TYPE_PROMOTIONS = {
+    'builtins.int': 'float',
+    'builtins.float': 'complex',
+}  # type: Final
+
+# Hard coded type promotions for Python 3.
+#
+# Note that the bytearray -> bytes promotion is a little unsafe
+# as some functions only accept bytes objects. Here convenience
+# trumps safety.
+TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()  # type: Final
+TYPE_PROMOTIONS_PYTHON3.update({
+    'builtins.bytearray': 'bytes',
+})
+
+# Hard coded type promotions for Python 2.
+#
+# These promotions are unsafe, but we are doing them anyway
+# for convenience and also for Python 3 compatibility
+# (bytearray -> str).
+TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()  # type: Final
+TYPE_PROMOTIONS_PYTHON2.update({
+    'builtins.str': 'unicode',
+    'builtins.bytearray': 'str',
+})
 
 
 def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:
@@ -20,6 +54,12 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     concrete = set()  # type: Set[str]
     abstract = []  # type: List[str]
     abstract_in_this_class = []  # type: List[str]
+    if typ.is_newtype:
+        # Special case: NewTypes are considered as always non-abstract, so they can be used as:
+        #     Config = NewType('Config', Mapping[str, str])
+        #     default = Config({'cannot': 'modify'})  # OK
+        typ.abstract_attributes = []
+        return
     for base in typ.mro:
         for name, symnode in base.names.items():
             node = symnode.node
@@ -28,7 +68,10 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                 # check arbitrarily the first overload item. If the
                 # different items have a different abstract status, there
                 # should be an error reported elsewhere.
-                func = node.items[0]  # type: Optional[Node]
+                if node.items:  # can be empty for invalid overloads
+                    func = node.items[0]  # type: Optional[Node]
+                else:
+                    func = None
             else:
                 func = node
             if isinstance(func, Decorator):
@@ -94,3 +137,29 @@ def calculate_class_vars(info: TypeInfo) -> None:
                         and isinstance(member.node, Var)
                         and member.node.is_classvar):
                     node.is_classvar = True
+
+
+def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Options) -> None:
+    """Setup extra, ad-hoc subtyping relationships between classes (promotion).
+
+    This includes things like 'int' being compatible with 'float'.
+    """
+    defn = info.defn
+    promote_target = None  # type: Optional[Type]
+    for decorator in defn.decorators:
+        if isinstance(decorator, CallExpr):
+            analyzed = decorator.analyzed
+            if isinstance(analyzed, PromoteExpr):
+                # _promote class decorator (undocumented feature).
+                promote_target = analyzed.type
+    if not promote_target:
+        promotions = (TYPE_PROMOTIONS_PYTHON3 if options.python_version[0] >= 3
+                      else TYPE_PROMOTIONS_PYTHON2)
+        if defn.fullname in promotions:
+            target_sym = module_names.get(promotions[defn.fullname])
+            # With test stubs, the target may not exist.
+            if target_sym:
+                target_info = target_sym.node
+                assert isinstance(target_info, TypeInfo)
+                promote_target = Instance(target_info, [])
+    defn.info._promote = promote_target

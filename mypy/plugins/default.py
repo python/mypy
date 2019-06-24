@@ -8,8 +8,8 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literal
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneTyp, UnionType, TypedDictType,
-    TypeVarType
+    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
+    TypeVarType, TPDICT_FB_NAMES
 )
 
 
@@ -34,13 +34,13 @@ class DefaultPlugin(Plugin):
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.setdefault':
+        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.pop':
+        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
             return typed_dict_pop_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.update':
+        elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
             return typed_dict_update_signature_callback
-        elif fullname == 'mypy_extensions._TypedDict.__delitem__':
+        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
             return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
@@ -54,11 +54,11 @@ class DefaultPlugin(Plugin):
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
-        elif fullname == 'mypy_extensions._TypedDict.setdefault':
+        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_callback
-        elif fullname == 'mypy_extensions._TypedDict.pop':
+        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
             return typed_dict_pop_callback
-        elif fullname == 'mypy_extensions._TypedDict.__delitem__':
+        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
             return typed_dict_delitem_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
@@ -69,11 +69,16 @@ class DefaultPlugin(Plugin):
     def get_attribute_hook(self, fullname: str
                            ) -> Optional[Callable[[AttributeContext], Type]]:
         from mypy.plugins import ctypes
+        from mypy.plugins import enums
 
         if fullname == 'ctypes.Array.value':
             return ctypes.array_value_callback
         elif fullname == 'ctypes.Array.raw':
             return ctypes.array_raw_callback
+        elif fullname in enums.ENUM_NAME_ACCESS:
+            return enums.enum_name_callback
+        elif fullname in enums.ENUM_VALUE_ACCESS:
+            return enums.enum_value_callback
         return None
 
     def get_class_decorator_hook(self, fullname: str
@@ -178,7 +183,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         value_type = ctx.type.items.get(key)
         if value_type:
             if len(ctx.arg_types) == 1:
-                return UnionType.make_simplified_union([value_type, NoneTyp()])
+                return UnionType.make_simplified_union([value_type, NoneType()])
             elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
                   and len(ctx.args[1]) == 1):
                 default_arg = ctx.args[1][0]

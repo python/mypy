@@ -1,16 +1,12 @@
-from typing import Dict, List, Set
+from typing import Dict, List
+from typing_extensions import Final
 
 from mypy.nodes import (
-    Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr, TempNode,
+    Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr,
     WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, StarExpr, ImportFrom,
     MemberExpr, IndexExpr, Import, ClassDef
 )
 from mypy.traverser import TraverserVisitor
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 # Scope kinds
 FILE = 0  # type: Final
@@ -146,9 +142,9 @@ class VariableRenameVisitor(TraverserVisitor):
         # Variables defined by a try statement get special treatment in the
         # type checker which allows them to be always redefined, so no need to
         # do renaming here.
-        self.enter_with_or_try()
+        self.enter_try()
         super().visit_try_stmt(stmt)
-        self.leave_with_or_try()
+        self.leave_try()
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:
@@ -156,9 +152,13 @@ class VariableRenameVisitor(TraverserVisitor):
         for target in stmt.target:
             if target is not None:
                 self.analyze_lvalue(target)
-        self.enter_with_or_try()
+        # We allow redefinitions in the body of a with statement for
+        # convenience.  This is unsafe since with statements can affect control
+        # flow by catching exceptions, but this is rare except for
+        # assertRaises() and other similar functions, where the exception is
+        # raised by the last statement in the body, which usuaully isn't a
+        # problem.
         stmt.body.accept(self)
-        self.leave_with_or_try()
 
     def visit_import(self, imp: Import) -> None:
         for id, as_id in imp.ids:
@@ -283,10 +283,10 @@ class VariableRenameVisitor(TraverserVisitor):
     def leave_block(self) -> None:
         self.blocks.pop()
 
-    def enter_with_or_try(self) -> None:
+    def enter_try(self) -> None:
         self.disallow_redef_depth += 1
 
-    def leave_with_or_try(self) -> None:
+    def leave_try(self) -> None:
         self.disallow_redef_depth -= 1
 
     def enter_loop(self) -> None:
