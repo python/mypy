@@ -6,12 +6,8 @@ from collections import OrderedDict, defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
 )
+from typing_extensions import DefaultDict, Final, TYPE_CHECKING
 from mypy_extensions import trait
-
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
-    from typing_extensions import Final
 
 import mypy.strconv
 from mypy.util import short_type
@@ -59,7 +55,7 @@ class Context:
         return self.column
 
 
-if MYPY:
+if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.types
 
@@ -142,6 +138,10 @@ reverse_builtin_aliases = {
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+
+RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
+                          'typing_extensions.runtime',
+                          'typing_extensions.runtime_checkable')  # type: Final
 
 
 class Node(Context):

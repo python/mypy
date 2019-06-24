@@ -5,6 +5,7 @@ This is conceptually part of mypy.newsemanal.semanal.
 
 from contextlib import contextmanager
 from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
+from typing_extensions import Final
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
@@ -21,10 +22,6 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.util import get_unique_redefinition_name
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.

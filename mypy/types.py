@@ -3,15 +3,12 @@
 import sys
 from abc import abstractmethod
 from collections import OrderedDict
+
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
     Sequence, Iterator,
 )
-
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
+from typing_extensions import ClassVar, Final, TYPE_CHECKING
 
 import mypy.nodes
 from mypy import state
@@ -63,17 +60,21 @@ LiteralValue = Union[int, str, bool]
 # then again in the middle at runtime.
 # We should be able to remove this once we are switched to the new
 # semantic analyzer!
-if MYPY:
+if TYPE_CHECKING:
     from mypy.type_visitor import (
         TypeVisitor as TypeVisitor,
         SyntheticTypeVisitor as SyntheticTypeVisitor,
     )
 
 # Supported names of TypedDict type constructors.
-TPDICT_NAMES = ('mypy_extensions.TypedDict', 'typing_extensions.TypedDict')  # type: Final
+TPDICT_NAMES = ('typing.TypedDict',
+                'typing_extensions.TypedDict',
+                'mypy_extensions.TypedDict')  # type: Final
 
 # Supported fallback instance type names for TypedDict types.
-TPDICT_FB_NAMES = ('mypy_extensions._TypedDict', 'typing_extensions._TypedDict')  # type: Final
+TPDICT_FB_NAMES = ('typing._TypedDict',
+                   'typing_extensions._TypedDict',
+                   'mypy_extensions._TypedDict')  # type: Final
 
 # A placeholder used for Bogus[...] parameters
 _dummy = object()  # type: Final[Any]
@@ -791,7 +792,7 @@ class FunctionLike(Type):
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        if MYPY:  # Use MYPY to declare, we don't want a runtime None value
+        if TYPE_CHECKING:  # we don't want a runtime None value
             # Corresponding instance type (e.g. builtins.type)
             self.fallback = cast(Instance, None)
 

@@ -1,11 +1,10 @@
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
 
 import os
-from typing import List, Tuple, Dict, Optional, Set
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
 from collections import defaultdict
+
+from typing import List, Tuple, Dict, Optional, Set
+from typing_extensions import DefaultDict
 
 from mypy import build, defaults
 from mypy.modulefinder import BuildSource
@@ -18,7 +17,6 @@ from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.types import Type
 from mypy.typestate import TypeState
-
 
 # Only dependencies in these modules are dumped
 dumped_modules = ['__main__', 'pkg', 'pkg.mod']

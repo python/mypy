@@ -270,9 +270,11 @@ class FineGrainedSuite(DataSuite):
             callsites = '--callsites' in flags
             no_any = '--no-any' in flags
             no_errors = '--no-errors' in flags
+            try_text = '--try-text' in flags
             res = cast(Dict[str, Any],
                        server.cmd_suggest(
                            target.strip(), json=json, no_any=no_any, no_errors=no_errors,
+                           try_text=try_text,
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             output.extend(val.strip().split('\n'))

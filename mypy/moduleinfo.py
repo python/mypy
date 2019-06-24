@@ -13,11 +13,7 @@ no stub for a module.
 """
 
 from typing import Set
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
+from typing_extensions import Final
 
 third_party_modules = {
     # From https://hugovk.github.io/top-pypi-packages/

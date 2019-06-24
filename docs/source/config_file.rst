@@ -294,7 +294,7 @@ Miscellaneous strictness flags
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
-``implicit-reexport`` (bool, default True)
+``implicit_reexport`` (bool, default True)
     By default, imported values to a module are treated as exported and mypy allows
     other modules to import them. When false, mypy will not re-export unless
     the item is imported using from-as. Note that mypy treats stub files as if this
@@ -456,3 +456,7 @@ Miscellaneous
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
+
+``new_semantic_analyzer`` (bool, default False)
+    Enables the experimental new semantic analyzer.
+    (See :ref:`The mypy command line <command-line>` for more information.)

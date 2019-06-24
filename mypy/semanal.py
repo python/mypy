@@ -37,6 +37,7 @@ from contextlib import contextmanager
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
 )
+from typing_extensions import Final
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -56,7 +57,8 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, nongen_builtins,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node,
+    RUNTIME_PROTOCOL_DECOS,
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -99,12 +101,7 @@ from mypy.reachability import (
 )
 from mypy.mro import calculate_mro, MroError
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 T = TypeVar('T')
-
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -945,11 +942,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
         if isinstance(decorator, RefExpr):
-            if decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'):
+            if decorator.fullname in RUNTIME_PROTOCOL_DECOS:
                 if defn.info.is_protocol:
                     defn.info.runtime_protocol = True
                 else:
-                    self.fail('@runtime can only be used with protocol classes', defn)
+                    self.fail('@runtime_checkable can only be used with protocol classes',
+                              defn)
             elif decorator.fullname in ('typing.final',
                                         'typing_extensions.final'):
                 defn.info.is_final = True

@@ -1776,7 +1776,7 @@ class B:
 [out]
 ==
 ==
-a.py:4: error: Revealed type is 'builtins.int'
+a.py:4: note: Revealed type is 'builtins.int'
 
 [case testStripRevealType]
 import a
@@ -1786,9 +1786,9 @@ def f() -> int: pass
 [file a.py.2]
 def f() -> str: pass
 [out]
-main:2: error: Revealed type is 'builtins.int'
+main:2: note: Revealed type is 'builtins.int'
 ==
-main:2: error: Revealed type is 'builtins.str'
+main:2: note: Revealed type is 'builtins.str'
 
 [case testDecoratorTypeAfterReprocessing]
 import a
@@ -1809,13 +1809,13 @@ def f() -> Iterator[None]:
 2: <b>, __main__
 3: <b>, __main__, a
 [out]
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
+main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
 a.py:3: error: Cannot find module named 'b'
 a.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
+main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
+main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 
 [case testDecoratorSpecialCase1]
 import a
@@ -2567,9 +2567,9 @@ class Wrapper:
     def foo(cls, x: str) -> str: ...
 [builtins fixtures/classmethod.pyi]
 [out]
-main:3: error: Revealed type is 'builtins.int'
+main:3: note: Revealed type is 'builtins.int'
 ==
-main:3: error: Revealed type is 'Any'
+main:3: note: Revealed type is 'Any'
 main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
 main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
@@ -3814,9 +3814,9 @@ def f(x: a.A):
 reveal_type(f)
 [builtins fixtures/dict.pyi]
 [out]
-b.py:4: error: Revealed type is 'def (x: builtins.str) -> Any'
+b.py:4: note: Revealed type is 'def (x: builtins.str) -> Any'
 ==
-b.py:4: error: Revealed type is 'def (x: builtins.dict[Any, builtins.int]) -> Any'
+b.py:4: note: Revealed type is 'def (x: builtins.dict[Any, builtins.int]) -> Any'
 
 [case testAliasFineChangedNumberOfTypeVars]
 import b
@@ -7743,7 +7743,7 @@ A = NamedTuple('A', F)  # type: ignore
 [builtins fixtures/list.pyi]
 [out]
 ==
-b.py:3: error: Revealed type is 'Tuple[, fallback=a.A]'
+b.py:3: note: Revealed type is 'Tuple[, fallback=a.A]'
 
 [case testImportOnTopOfAlias1]
 from a import A
@@ -8356,8 +8356,8 @@ B = func
 m.py:4: error: Invalid type "a.A"
 ==
 m.py:4: error: Invalid type "a.A"
-m.py:5: error: Revealed type is 'A?'
-m.py:7: error: Revealed type is 'A?'
+m.py:5: note: Revealed type is 'A?'
+m.py:7: note: Revealed type is 'A?'
 
 [case testAliasForwardFunctionDirect]
 # flags: --ignore-missing-imports
@@ -8400,12 +8400,12 @@ x: Literal[1] = 1
 from typing_extensions import Literal
 x: Literal[1] = 2
 [out]
-main:2: error: Revealed type is 'builtins.int'
+main:2: note: Revealed type is 'builtins.int'
 ==
-main:2: error: Revealed type is 'Literal[1]'
+main:2: note: Revealed type is 'Literal[1]'
 ==
 mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
-main:2: error: Revealed type is 'Literal[1]'
+main:2: note: Revealed type is 'Literal[1]'
 
 [case testLiteralFineGrainedFunctionConversion]
 from mod import foo
@@ -8461,9 +8461,9 @@ def foo(x: int) -> str: ...
 def foo(x: Literal['bar']) -> int: ...
 def foo(x): pass
 [out]
-main:2: error: Revealed type is 'builtins.str'
+main:2: note: Revealed type is 'builtins.str'
 ==
-main:2: error: Revealed type is 'Literal['foo']'
+main:2: note: Revealed type is 'Literal['foo']'
 
 [case testLiteralFineGrainedChainedDefinitions]
 from mod1 import foo
@@ -8542,9 +8542,9 @@ bar = 3
 from typing_extensions import Literal
 bar: Literal[3] = 3
 [out]
-main:2: error: Revealed type is 'builtins.int*'
+main:2: note: Revealed type is 'builtins.int*'
 ==
-main:2: error: Revealed type is 'Literal[3]'
+main:2: note: Revealed type is 'Literal[3]'
 
 [case testLiteralFineGrainedChainedViaFinal]
 from mod1 import foo
@@ -8588,11 +8588,11 @@ def bar() -> Literal[u"foo"]: pass
 from typing_extensions import Literal
 def bar() -> Literal[b"foo"]: pass
 [out]
-main:2: error: Revealed type is 'Literal['foo']'
+main:2: note: Revealed type is 'Literal['foo']'
 ==
-main:2: error: Revealed type is 'Literal['foo']'
+main:2: note: Revealed type is 'Literal['foo']'
 ==
-main:2: error: Revealed type is 'Literal[b'foo']'
+main:2: note: Revealed type is 'Literal[b'foo']'
 
 [case testLiteralFineGrainedStringConversionPython2]
 # flags: --python-version 2.7
@@ -8629,15 +8629,15 @@ def bar():
     # type: () -> Literal[u"foo"]
     pass
 [out]
-main:3: error: Revealed type is 'Literal['foo']'
+main:3: note: Revealed type is 'Literal['foo']'
 ==
-main:3: error: Revealed type is 'Literal['foo']'
+main:3: note: Revealed type is 'Literal['foo']'
 ==
-main:3: error: Revealed type is 'Literal[u'foo']'
+main:3: note: Revealed type is 'Literal[u'foo']'
 ==
-main:3: error: Revealed type is 'Literal['foo']'
+main:3: note: Revealed type is 'Literal['foo']'
 ==
-main:3: error: Revealed type is 'Literal[u'foo']'
+main:3: note: Revealed type is 'Literal[u'foo']'
 
 [case testReprocessModuleTopLevelWhileMethodDefinesAttr]
 import a

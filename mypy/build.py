@@ -25,11 +25,7 @@ import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
-
+from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
@@ -45,7 +41,7 @@ from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
 )
-if MYPY:
+if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -1876,20 +1872,17 @@ class State:
         details.
 
         However, this patching process can occur after `a` has been parsed and
-        serialized during increment mode. Consequently, we need to repeat this
+        serialized during incremental mode. Consequently, we need to repeat this
         patch when deserializing a cached file.
 
         This function should be called only when processing fresh SCCs -- the
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
-        Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]  # noqa
-        if self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.new_semantic_analyzer  # type: Analyzer
-        else:
+        if not self.manager.options.new_semantic_analyzer:
             analyzer = self.manager.semantic_analyzer
-        for dep in self.dependencies:
-            analyzer.add_submodules_to_parent_modules(dep, True)
+            for dep in self.dependencies:
+                analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.

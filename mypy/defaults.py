@@ -1,8 +1,6 @@
 import os
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 PYTHON2_VERSION = (2, 7)  # type: Final
 PYTHON3_VERSION = (3, 6)  # type: Final

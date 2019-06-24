@@ -4,14 +4,11 @@ import traceback
 from collections import OrderedDict, defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO
+from typing_extensions import Final
 
 from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -619,7 +616,7 @@ def report_internal_error(err: Exception,
     # Print "INTERNAL ERROR" message.
     print('{}error: INTERNAL ERROR --'.format(prefix),
           'Please try using mypy master on Github:\n'
-          'https://mypy.rtfd.io/en/latest/common_issues.html#using-development-mypy-build',
+          'https://mypy.rtfd.io/en/latest/common_issues.html#using-a-development-mypy-build',
           file=stderr)
     if options.show_traceback:
         print('Please report a bug at https://github.com/python/mypy/issues',

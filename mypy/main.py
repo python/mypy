@@ -7,6 +7,7 @@ import sys
 import time
 
 from typing import Any, Dict, List, Optional, Tuple, TextIO
+from typing_extensions import Final
 
 from mypy import build
 from mypy import defaults
@@ -22,13 +23,7 @@ from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-
 orig_stat = os.stat  # type: Final
-
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile
 
 
@@ -760,7 +755,7 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache)

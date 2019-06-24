@@ -11,10 +11,7 @@ import subprocess
 import sys
 
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.fscache import FileSystemCache

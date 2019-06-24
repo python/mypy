@@ -15,6 +15,7 @@ import difflib
 from textwrap import dedent
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
+from typing_extensions import Final
 
 from mypy.erasetype import erase_type
 from mypy.errors import Errors
@@ -31,11 +32,6 @@ from mypy.nodes import (
 )
 from mypy.util import unmangle
 from mypy import message_registry
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -1068,15 +1064,15 @@ class MessageBuilder:
         self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
-        self.fail('Revealed type is \'{}\''.format(typ), context)
+        self.note('Revealed type is \'{}\''.format(typ), context)
 
     def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
-        self.fail("Revealed local types are:", context)
-        for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
-            self.fail(line, context)
+        self.note("Revealed local types are:", context)
+        for line in ['    {}: {}'.format(k, v) for k, v in sorted_locals.items()]:
+            self.note(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)

@@ -1,10 +1,8 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
 from collections import defaultdict
 
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
+from typing_extensions import DefaultDict
 
 from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType
 from mypy.subtypes import is_subtype
@@ -35,10 +33,7 @@ class Frame:
         self.unreachable = False
 
 
-if MYPY:
-    # This is the type of stored assignments for union type rvalues.
-    # We use 'if MYPY: ...' since typing-3.5.1 does not have 'DefaultDict'
-    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
