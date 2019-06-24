@@ -163,6 +163,8 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
+        invert = False
+        options_key = key
         if key in config_types:
             ct = config_types[key]
         else:
@@ -177,7 +179,16 @@ def parse_section(prefix: str, template: Options,
                               file=stderr)
                     continue
                 if key.startswith('x_'):
-                    continue  # Don't complain about `x_blah` flags
+                    pass  # Don't complain about `x_blah` flags
+                elif key.startswith('no_') and hasattr(template, key[3:]):
+                    options_key = key[3:]
+                    invert = True
+                elif key.startswith('allow') and hasattr(template, 'dis' + key):
+                    options_key = 'dis' + key
+                    invert = True
+                elif key.startswith('disallow') and hasattr(template, key[3:]):
+                    options_key = key[3:]
+                    invert = True
                 elif key == 'strict':
                     print("%sStrict mode is not supported in configuration files: specify "
                           "individual flags instead (see 'mypy -h' for the list of flags enabled "
@@ -185,13 +196,22 @@ def parse_section(prefix: str, template: Options,
                 else:
                     print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=stderr)
-                continue
+                if invert:
+                    dv = getattr(template, options_key, None)
+                else:
+                    continue
             ct = type(dv)
         v = None  # type: Any
         try:
             if ct is bool:
                 v = section.getboolean(key)  # type: ignore  # Until better stub
+                if invert:
+                    v = not v
             elif callable(ct):
+                if invert:
+                    print("%sCan not invert non-boolean key %s" % (prefix, options_key),
+                          file=stderr)
+                    continue
                 try:
                     v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
@@ -219,7 +239,7 @@ def parse_section(prefix: str, template: Options,
             if v:
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'
-        results[key] = v
+        results[options_key] = v
     return results, report_dirs
 
 
@@ -269,11 +289,7 @@ def mypy_comments_to_config_map(line: str,
 
         name = name.replace('-', '_')
         if value is None:
-            if name.startswith('no_') and not hasattr(template, name):
-                name = name[3:]
-                value = 'False'
-            else:
-                value = 'True'
+            value = 'True'
         options[name] = value
 
     return options, errors
