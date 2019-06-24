@@ -50,7 +50,7 @@ from mypy.subtypes import (
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
+from mypy.argmap import ArgTypeExpander, expand_formal_type, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
@@ -775,7 +775,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.check_argument_count(callee, arg_types, arg_kinds,
                                   arg_names, formal_to_actual, context, self.msg)
 
-        self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual, context,
+        self.check_argument_types(arg_types, arg_kinds, arg_names, callee, formal_to_actual, context,
                                   messages=arg_messages)
 
         if (callee.is_type_obj() and (len(arg_types) == 1)
@@ -1203,6 +1203,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_argument_types(self,
                              arg_types: List[Type],
                              arg_kinds: List[int],
+                             arg_names: Optional[Sequence[Optional[str]]],
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
@@ -1233,8 +1234,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 expanded_actual = mapper.expand_actual_type(
                     actual_type, actual_kind,
                     callee.arg_names[i], callee.arg_kinds[i])
+                expanded_formal = expand_formal_type(
+                    callee.arg_types[i],
+                    arg_names[i] if arg_names is not None else None,
+                    actual - i,
+                )
                 check_arg(expanded_actual, actual_type, arg_kinds[actual],
-                          callee.arg_types[i],
+                          expanded_formal,
                           actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
@@ -1713,7 +1719,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 raise Finished
 
         try:
-            self.check_argument_types(arg_types, arg_kinds, callee,
+            self.check_argument_types(arg_types, arg_kinds, None, callee,
                                       formal_to_actual, context=context, check_arg=check_arg)
             return True
         except Finished:

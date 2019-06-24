@@ -193,3 +193,21 @@ class ArgTypeExpander:
         else:
             # No translation for other kinds -- 1:1 mapping.
             return actual_type
+
+
+def expand_formal_type(formal_type: Type, actual_name: Optional[str], tuple_idx: int) -> Type:
+    if isinstance(formal_type, Instance) and formal_type.type.fullname() == 'mypy_extensions.Expand':
+
+        formal_type_inner = formal_type.args[0]
+        if isinstance(formal_type_inner, Instance) and formal_type_inner.type.fullname() == 'builtins.dict':
+            return formal_type_inner.args[1]
+        elif isinstance(formal_type_inner, TypedDictType):
+            if actual_name is None or actual_name not in formal_type_inner.items:
+                return AnyType(TypeOfAny.from_error)
+            return formal_type_inner.items[actual_name]
+        elif isinstance(formal_type_inner, TupleType):
+            if len(formal_type_inner.items) <= tuple_idx:
+                return AnyType(TypeOfAny.from_error)
+            return formal_type_inner.items[tuple_idx]
+
+    return formal_type
