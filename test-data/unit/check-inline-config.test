@@ -50,6 +50,20 @@ def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic
 
 [builtins fixtures/list.pyi]
 
+[case testInlineAllow]
+# flags: --disallow-any-generics --allow-untyped-globals
+import a
+[file a.py]
+# mypy: allow-any-generics, disallow-untyped-globals
+
+x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+
+from typing import List
+def foo() -> List:
+    ...
+
+[builtins fixtures/list.pyi]
+
 [case testInlineIncremental1]
 import a
 [file a.py]

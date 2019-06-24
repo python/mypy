@@ -272,6 +272,14 @@ def mypy_comments_to_config_map(line: str,
             if name.startswith('no_') and not hasattr(template, name):
                 name = name[3:]
                 value = 'False'
+            elif (name.startswith('allow')
+                  and not hasattr(template, name) and hasattr(template, 'dis' + name)):
+                name = 'dis' + name
+                value = 'False'
+            elif (name.startswith('disallow')
+                  and not hasattr(template, name) and hasattr(template, name[3:])):
+                name = name[3:]
+                value = 'False'
             else:
                 value = 'True'
         options[name] = value
