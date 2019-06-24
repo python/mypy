@@ -1047,7 +1047,7 @@ def g(x: List) -> None: pass
 g(None)
 [file mypy.ini]
 [[mypy]
-disallow_any_generics = False
+allow_any_generics = True
 [[mypy-a.*]
 ignore_errors = True
 [[mypy-a.b.*]
