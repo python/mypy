@@ -209,7 +209,8 @@ def parse_section(prefix: str, template: Options,
                     v = not v
             elif callable(ct):
                 if invert:
-                    print("%sCan not invert non-boolean key %s" % (prefix, options_key), file=stderr)
+                    print("%sCan not invert non-boolean key %s" % (prefix, options_key),
+                          file=stderr)
                     continue
                 try:
                     v = ct(section.get(key))
