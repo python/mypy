@@ -1236,7 +1236,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee.arg_names[i], callee.arg_kinds[i])
                 expanded_formal = expand_formal_type(
                     callee.arg_types[i],
-                    arg_names[i] if arg_names is not None else None,
+                    arg_names[actual] if arg_names is not None else None,
                     actual - i,
                 )
                 check_arg(expanded_actual, actual_type, arg_kinds[actual],
