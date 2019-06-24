@@ -2101,11 +2101,16 @@ def f(x: Union[A, str]) -> None:
         x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
 
-[case testIsinstanceIgnoredImport2]
+[case testIsinstanceIgnoredImportDualAny]
 from typing import Any
-from foo import Bad  # type: ignore
+from foo import Bad, OtherBad  # type: ignore
 x: Any
 if isinstance(x, Bad):
+    reveal_type(x)  # N: Revealed type is 'Any'
+else:
+    reveal_type(x)  # N: Revealed type is 'Any'
+
+if isinstance(x, (Bad, OtherBad)):
     reveal_type(x)  # N: Revealed type is 'Any'
 else:
     reveal_type(x)  # N: Revealed type is 'Any'

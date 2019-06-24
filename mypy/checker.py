@@ -3895,10 +3895,8 @@ def conditional_type_map(expr: Expression,
     second element is a map from the expression to the type it would hold
     if it was not the proposed type, if any. None means bot, {} means top"""
     if proposed_type_ranges:
-        if len(proposed_type_ranges) == 1:
-            proposed_type = proposed_type_ranges[0].item  # Union with a single type breaks tests
-        else:
-            proposed_type = UnionType([type_range.item for type_range in proposed_type_ranges])
+        proposed_items = [type_range.item for type_range in proposed_type_ranges]
+        proposed_type = UnionType.make_simplified_union(proposed_items)
         if current_type:
             if isinstance(proposed_type, AnyType):
                 # We don't really know much about the proposed type, so we shouldn't
