@@ -2599,3 +2599,17 @@ import a.b.c
 from a.b.a import foo
 [builtins fixtures/module.pyi]
 [out]
+
+[case testNewAnalyzerNamedTupleMethod]
+from typing import NamedTuple
+
+g: N
+
+class N(NamedTuple):
+    def f(self) -> None:
+        b = (
+            a
+            for a in [1]
+        )
+        b
+[builtins fixtures/tuple.pyi]
