@@ -2520,7 +2520,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       'actual type', 'expected type'):
             return AnyType(TypeOfAny.from_error)
         else:
-            return UnionType.make_simplified_union(left_type.items)
+            if isinstance(index, SliceExpr):
+                # if we index (1,2,3)[:name], we don't know what the return type is,
+                # beyond that it is a tuple of some sort.
+                anys = (AnyType(TypeOfAny.implementation_artifact),)
+                return self.chk.named_generic_type('builtins.tuple', anys)
+            else:
+                return UnionType.make_simplified_union(left_type.items)
 
     def _get_value(self, index: Expression) -> Optional[int]:
         if isinstance(index, IntExpr):
