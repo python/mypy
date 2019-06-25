@@ -566,7 +566,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     arg.initializer.accept(self)
 
         self.analyze_function_body(defn)
-        if defn.is_coroutine and isinstance(defn.type, CallableType):
+        if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
             if defn.is_async_generator:
                 # Async generator types are handled elsewhere
                 pass
