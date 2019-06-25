@@ -51,6 +51,8 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     abstract attribute.  Also compute a list of abstract attributes.
     Report error is required ABCMeta metaclass is missing.
     """
+    if typ.typeddict_type:
+        return  # TypedDict can't be abstract
     concrete = set()  # type: Set[str]
     abstract = []  # type: List[str]
     abstract_in_this_class = []  # type: List[str]
@@ -95,7 +97,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     if is_stub_file:
         if typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta':
             return
-        if typ.is_protocol or typ.typeddict_type:
+        if typ.is_protocol:
             return
         if abstract and not abstract_in_this_class:
             def report(message: str, severity: str) -> None:
