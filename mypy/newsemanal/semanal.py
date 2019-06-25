@@ -2737,6 +2737,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             type_var.line = call.line
             call.analyzed = type_var
         else:
+            assert isinstance(call.analyzed, TypeVarExpr)
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
             self.progress = True
