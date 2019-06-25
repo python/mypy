@@ -5069,3 +5069,41 @@ def test() -> None:
 [builtins fixtures/list.pyi]
 [out]
 [out2]
+
+[case testCannotDetermineTypeFromOtherModule]
+# flags: --new-semantic-analyzer
+import aa
+
+[file aa.py]
+import a
+
+[file aa.py.2]
+import a  # dummy
+
+[file a.py]
+from b import Sub
+
+Sub().foo
+Sub().foo
+
+[file b.py]
+from typing import Any
+
+class desc:
+    def __get__(self, _: Any, __: Any = None) -> int:
+        return 42
+
+class Base:
+    @property
+    def foo(self) -> int: ...
+
+class Sub(Base):
+    foo = desc(42)  # type: ignore
+
+[builtins fixtures/property.pyi]
+[out]
+tmp/a.py:3: error: Cannot determine type of 'foo'
+tmp/a.py:4: error: Cannot determine type of 'foo'
+[out2]
+tmp/a.py:3: error: Cannot determine type of 'foo'
+tmp/a.py:4: error: Cannot determine type of 'foo'

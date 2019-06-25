@@ -763,7 +763,7 @@ VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
-    'explicit_self_type',
+    'explicit_self_type', 'is_ready',
 ]  # type: Final
 
 
@@ -867,6 +867,7 @@ class Var(SymbolNode):
         name = data['name']
         type = None if data['type'] is None else mypy.types.deserialize_type(data['type'])
         v = Var(name, type)
+        v.is_ready = False  # Override True default set in __init__
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
         v.final_value = data.get('final_value')
