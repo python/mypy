@@ -695,8 +695,40 @@ async def h() -> Any:
     yield 0
 
 async def g():  # E: Function is missing a return type annotation \
-                # N: Use "-> None" if function does not return a value   
+                # N: Use "-> None" if function does not return a value
     yield 0
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
+
+[case testAsyncOverloadedFunction]
+from typing import overload
+
+@overload
+async def f(x: int) -> int: ...
+@overload
+async def f(x: str) -> str: ...
+async def f(x):
+    pass
+
+reveal_type(f) # N: Revealed type is 'Overload(def (x: builtins.int) -> typing.Coroutine[Any, Any, builtins.int], def (x: builtins.str) -> typing.Coroutine[Any, Any, builtins.str])'
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testAsyncForwardRefInBody]
+# flags: --new-semantic-analyzer
+async def f() -> None:
+    forwardref: C
+    class C: pass
+
+def dec(x): pass
+
+@dec
+async def g() -> None:
+    forwardref: C
+    class C: pass
+
+reveal_type(f) # N: Revealed type is 'def () -> typing.Coroutine[Any, Any, None]'
+reveal_type(g) # N: Revealed type is 'Any'
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
