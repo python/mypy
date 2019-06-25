@@ -2811,12 +2811,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     analyzed = self.expr_to_analyzed_type(param_value,
                                                           allow_placeholder=True,
                                                           report_invalid_types=False)
-                    assert analyzed is not None
-                    # NOTE: It is safe to not call self.defer() here, because the only way
-                    # we can get None from self.anal_type() is if self.found_incomplete_refs()
-                    # returned True. In turn, the only way it can happen is if someone called
-                    # self.record_incomplete_ref(), and the latter unconditionally calls
-                    # self.defer().
+                    if analyzed is None:
+                        self.defer()
+                        analyzed = PlaceholderType('<unknown>', [], context.line)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2877,7 +2874,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             try:
                 analyzed = self.anal_type(expr_to_unanalyzed_type(node),
                                           allow_placeholder=True)
-                assert analyzed is not None
+                if analyzed is None:
+                    analyzed = PlaceholderType('<unknown>', [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
                 self.fail('Type expected', node)
