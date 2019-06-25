@@ -156,24 +156,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if sym is not None:
             node = sym.node
             if isinstance(node, PlaceholderNode):
-                if node.becomes_typeinfo:
-                    # Reference to placeholder type.
-                    if self.api.final_iteration:
-                        self.cannot_resolve_type(t)
-                        return AnyType(TypeOfAny.from_error)
-                    elif self.allow_placeholder:
-                        self.api.defer()
-                    else:
-                        self.api.record_incomplete_ref()
-                    return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
+                # Reference to placeholder type.
+                if self.api.final_iteration:
+                    self.cannot_resolve_type(t)
+                    return AnyType(TypeOfAny.from_error)
+                elif self.allow_placeholder:
+                      self.api.defer()
                 else:
-                    if self.api.final_iteration:
-                        self.cannot_resolve_type(t)
-                        return AnyType(TypeOfAny.from_error)
-                    else:
-                        # Reference to an unknown placeholder node.
-                        self.api.record_incomplete_ref()
-                        return AnyType(TypeOfAny.special_form)
+                    self.api.record_incomplete_ref()
+                return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
+
             if node is None:
                 self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType(TypeOfAny.special_form)

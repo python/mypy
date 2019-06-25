@@ -2682,8 +2682,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
         if existing and not (isinstance(existing.node, PlaceholderNode) or
                              # Also give error for another type variable with the same name.
-                             isinstance(existing.node, TypeVarExpr) and
-                             existing.node is s.rvalue.analyzed):
+                             (isinstance(existing.node, TypeVarExpr) and
+                              existing.node is s.rvalue.analyzed)):
             self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return False
 
@@ -2692,7 +2692,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         # Constraining types
         n_values = call.arg_kinds[1:].count(ARG_POS)
-        values = self.analyze_types(call.args[1:1 + n_values])
+        values = self.analyze_value_types(call.args[1:1 + n_values])
 
         res = self.process_typevar_parameters(call.args[1 + n_values:],
                                               call.arg_names[1 + n_values:],
@@ -2724,27 +2724,17 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             upper_bound = AnyType(TypeOfAny.implementation_artifact)
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
-        if existing and isinstance(existing.node, TypeVarExpr):
-            # Existing definition from previous semanal iteration, use it.
-            # Note that unlike in most other cases, we patch an existing symbol, instead of
-            # adding the type variable symbol only when the types it depends on are ready.
-            # This is necessary to avoid a "deadlock" in this typical situation:
-            #     T = TypeVar('T', bound=C[Any])
-            #     class C(Generic[T]):
-            #         ...
-            # We can use allow_placeholder=True for upper bound and values to avoid this,
-            # but placeholder types will get deeply into class definition and it will be
-            # hard to get rid of them.
-            type_var = existing.node
-            type_var.values = values
-            type_var.upper_bound = upper_bound
-            type_var.variance = variance
-        else:
+        if not call.analyzed:
             type_var = TypeVarExpr(name, self.qualified_name(name),
                                    values, upper_bound, variance)
             type_var.line = call.line
             call.analyzed = type_var
-            self.add_symbol(name, type_var, s)
+        else:
+            call.analyzed.upper_bound = upper_bound
+            call.analyzed.values = values
+            self.progress = True
+
+        self.add_symbol(name, call.analyzed, s)
         return True
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
@@ -2819,18 +2809,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # We want to use our custom error message below, so we suppress
                     # the default error message for invalid types here.
                     analyzed = self.expr_to_analyzed_type(param_value,
+                                                          allow_placeholder=True,
                                                           report_invalid_types=False)
-                    if analyzed is None:
-                        # It is fine to simply use a temporary Any because we don't need the bound
-                        # for anything before main pass of semantic analysis is finished. We will
-                        # incrementally populate `TypeVarExpr` if some part is missing during main
-                        # pass iterations.
-                        # NOTE: It is safe to not call self.defer() here, because the only way
-                        # we can get None from self.anal_type() is if self.found_incomplete_refs()
-                        # returned True. In turn, the only way it can happen is if someone called
-                        # self.record_incomplete_ref(), and the latter unconditionally calls
-                        # self.defer().
-                        analyzed = AnyType(TypeOfAny.special_form)
+                    assert analyzed is not None
+                    # NOTE: It is safe to not call self.defer() here, because the only way
+                    # we can get None from self.anal_type() is if self.found_incomplete_refs()
+                    # returned True. In turn, the only way it can happen is if someone called
+                    # self.record_incomplete_ref(), and the latter unconditionally calls
+                    # self.defer().
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2861,7 +2847,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             variance = CONTRAVARIANT
         else:
             variance = INVARIANT
-        return (variance, upper_bound)
+        return variance, upper_bound
 
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
@@ -2884,18 +2870,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         info.bases = [basetype_or_fallback]
         return info
 
-    def analyze_types(self, items: List[Expression]) -> List[Type]:
+    def analyze_value_types(self, items: List[Expression]) -> List[Type]:
         """Analyze types from values expressions in type variable definition."""
         result = []  # type: List[Type]
         for node in items:
             try:
-                analyzed = self.anal_type(expr_to_unanalyzed_type(node))
-                if analyzed is not None:
-                    result.append(analyzed)
-                else:
-                    # It is fine to simply use temporary Anys because we don't need values
-                    # for anything before main pass of semantic analysis is finished.
-                    result.append(AnyType(TypeOfAny.special_form))
+                analyzed = self.anal_type(expr_to_unanalyzed_type(node),
+                                          allow_placeholder=True)
+                assert analyzed is not None
+                result.append(analyzed)
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))

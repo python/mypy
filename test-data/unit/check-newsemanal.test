@@ -2005,6 +2005,50 @@ x: B[int]  # E: Type argument "builtins.int" of "B" must be a subtype of "__main
 y: B[B[Any]]
 reveal_type(y.x)  # N: Revealed type is '__main__.B*[Any]'
 
+[case testNewAnalyzerDuplicateTypeVarImportCycle]
+import a
+[file a.py]
+from typing import TypeVar, Any
+from b import B, C
+
+T = TypeVar('T', bound=B[Any])
+T = TypeVar('T', bound=C)
+
+[file b.py]
+from typing import Generic, Any
+from a import T
+
+class B(Generic[T]):
+    x: T
+class C: ...
+
+x: B[int]
+y: B[B[Any]]
+reveal_type(y.x)
+
+[case testNewAnalyzerDuplicateTypeVarImportCycleWithAliases]
+import a
+[file a.py]
+from typing import TypeVar, Any
+from b import BA, C
+
+T = TypeVar('T', bound=BAA[Any])
+T = TypeVar('T', bound=C)
+BAA = BA
+
+[file b.py]
+from typing import Generic, Any
+from a import T
+
+BA = B
+class B(Generic[T]):
+    x: T
+class C: ...
+
+x: B[int]
+y: B[B[Any]]
+reveal_type(y.x)
+
 [case testNewAnalyzerCastForward1]
 from typing import cast
 
