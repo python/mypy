@@ -1000,6 +1000,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         for tvd in tvar_defs:
             if any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values):
+                # Some type variable bounds or values are not ready, we need
+                # to re-analyze this class.
                 self.defer()
 
         self.analyze_class_keywords(defn)
@@ -2817,6 +2819,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                           allow_placeholder=True,
                                                           report_invalid_types=False)
                     if analyzed is None:
+                        # Type variables are special: we need to place them in the symbol table
+                        # soon, even if upper bound is not ready yet.
                         self.defer()
                         analyzed = PlaceholderType('<unknown>', [], context.line)
                     upper_bound = analyzed
@@ -2880,6 +2884,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 analyzed = self.anal_type(expr_to_unanalyzed_type(node),
                                           allow_placeholder=True)
                 if analyzed is None:
+                    # Type variables are special: we need to place them in the symbol table
+                    # soon, even if some value is not ready yet.
+                    self.defer()
                     analyzed = PlaceholderType('<unknown>', [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
