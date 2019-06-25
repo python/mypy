@@ -1367,3 +1367,19 @@ x: Dict[str, List[int]]
 reveal_type(x['test'][0])
 [out]
 _testNewAnalyzerBasicTypeshed_newsemanal.py:4: note: Revealed type is 'builtins.int*'
+
+[case testNewAnalyzerTypedDictInStub_newsemanal]
+import stub
+reveal_type(stub.thing)
+
+[file stub.pyi]
+from typing_extensions import TypedDict
+
+class StuffDict(TypedDict):
+    foo: str
+    bar: int
+
+def thing(stuff: StuffDict) -> int: ...
+
+[out]
+_testNewAnalyzerTypedDictInStub_newsemanal.py:2: note: Revealed type is 'def (stuff: TypedDict('stub.StuffDict', {'foo': builtins.str, 'bar': builtins.int})) -> builtins.int'

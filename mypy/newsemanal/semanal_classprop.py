@@ -95,7 +95,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     if is_stub_file:
         if typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta':
             return
-        if typ.is_protocol:
+        if typ.is_protocol or typ.typeddict_type:
             return
         if abstract and not abstract_in_this_class:
             def report(message: str, severity: str) -> None:
