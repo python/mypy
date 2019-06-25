@@ -437,9 +437,11 @@ class NamedTupleAnalyzer:
                 v._fullname = func._fullname
                 func.is_decorated = True
                 dec = Decorator(func, [NameExpr('classmethod')], v)
-                info.names[funcname] = SymbolTableNode(MDEF, dec)
+                sym = SymbolTableNode(MDEF, dec)
             else:
-                info.names[funcname] = SymbolTableNode(MDEF, func)
+                sym = SymbolTableNode(MDEF, func)
+            sym.plugin_generated = True
+            info.names[funcname] = sym
 
         add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
@@ -495,10 +497,14 @@ class NamedTupleAnalyzer:
             if key in named_tuple_info.names:
                 if key == '__doc__':
                     continue
+                sym = named_tuple_info.names[key]
+                if isinstance(sym.node, (FuncBase, Decorator)) and not sym.plugin_generated:
+                    # Keep user-defined methods as is.
+                    continue
                 # Keep existing (user-provided) definitions under mangled names, so they
                 # get semantically analyzed.
                 r_key = get_unique_redefinition_name(key, named_tuple_info.names)
-                named_tuple_info.names[r_key] = named_tuple_info.names[key]
+                named_tuple_info.names[r_key] = sym
             named_tuple_info.names[key] = value
 
     # Helpers
