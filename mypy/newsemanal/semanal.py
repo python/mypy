@@ -997,6 +997,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bases = defn.base_type_exprs
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
+
+        for tvd in tvar_defs:
+            if any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values):
+                self.defer()
+
         self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
 
