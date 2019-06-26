@@ -1,61 +1,41 @@
+# Test column numbers in messages. --show-column-numbers is enabled implicitly by test runner.
+
 [case testColumnsSyntaxError]
-# flags: --show-column-numbers
+f()
 1 +
 [out]
 main:2:5: error: invalid syntax
 
-
 [case testColumnsNestedFunctions]
-# flags: --show-column-numbers
 import typing
 def f() -> 'A':
     def g() -> 'B':
-        return A() # fail
-    return B() # fail
+        return A() # E:9: Incompatible return value type (got "A", expected "B")
+    return B() # E:5: Incompatible return value type (got "B", expected "A")
 class A: pass
 class B: pass
-[out]
-main:5:9: error: Incompatible return value type (got "A", expected "B")
-main:6:5: error: Incompatible return value type (got "B", expected "A")
-
-[case testColumnsNestedFunctionsWithFastParse]
-# flags: --show-column-numbers
-import typing
-def f() -> 'A':
-    def g() -> 'B':
-        return A() # fail
-    return B() # fail
-class A: pass
-class B: pass
-[out]
-main:5:9: error: Incompatible return value type (got "A", expected "B")
-main:6:5: error: Incompatible return value type (got "B", expected "A")
-
 
 [case testColumnsMethodDefaultArgumentsAndSignatureAsComment]
-# flags: --show-column-numbers
 import typing
 class A:
     def f(self, x = 1, y = 'hello'): # type: (int, str) -> str
         pass
 A().f()
 A().f(1)
-A().f('') # E:1: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-A().f(1, 1) # E:1: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
-A().f(1, 'hello', 'hi') # E:1: Too many arguments for "f" of "A"
+(A().f('')) # E:2: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+( A().f(1, 1)) # E:3: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+(A().f(1, 'hello', 'hi')) # E:2: Too many arguments for "f" of "A"
 
 [case testColumnsMultipleStatementsPerLine]
-# flags: --show-column-numbers
 x = 15
 y = 'hello'
 if int():
     x = 2; y = x; y += 1
 [out]
-main:5:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:5:19: error: Unsupported operand types for + ("str" and "int")
+main:4:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4:19: error: Unsupported operand types for + ("str" and "int")
 
 [case testColumnsSimpleIsinstance]
-# flags: --show-column-numbers
 import typing
 def f(x: object, n: int, s: str) -> None:
     if int():
@@ -65,4 +45,176 @@ def f(x: object, n: int, s: str) -> None:
             s = x # E:13: Incompatible types in assignment (expression has type "int", variable has type "str")
         n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
+
+[case testColumnHasNoAttribute]
+import m
+if int():
+    from m import foobaz # E:5: Module 'm' has no attribute 'foobaz'; maybe "foobar"?
+(1).x # E:2: "int" has no attribute "x"
+(m.foobaz()) # E:2: Module has no attribute "foobaz"
+
+[file m.py]
+def foobar(): pass
+
+[builtins fixtures/module.pyi]
+
+[case testColumnUnexpectedKeywordArg]
+def f(): pass
+(f(x=1)) # E:2: Unexpected keyword argument "x" for "f"
+
+[case testColumnDefinedHere]
+class A: pass
+if int():
+    def f(a: 'A') -> None: pass # N:5: "f" defined here
+    (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
+
+[case testColumnInvalidType]
+# TODO: Add column numbers
+from typing import Iterable
+
+bad = 0
+
+def f(x: bad): # E: Invalid type "__main__.bad"
+    y: bad # E:8: Invalid type "__main__.bad"
+
+def g(x): # E: Invalid type "__main__.bad"
+    # type: (bad) -> None
+    y = 0  # type: bad  # E: Invalid type "__main__.bad"
+
+z: Iterable[bad] # E: Invalid type "__main__.bad"
+
+[case testColumnFunctionMissingTypeAnnotation]
+# flags: --disallow-untyped-defs
+if int():
+    def f(x: int): # E:5: Function is missing a return type annotation
+        pass
+
+    def g(x): # E:5: Function is missing a type annotation
+        pass
+
+[case testColumnNameIsNotDefined]
+((x)) # E:3: Name 'x' is not defined
+
+[case testColumnNeedTypeAnnotation]
+if 1:
+    x = [] # E:5: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+[builtins fixtures/list.pyi]
+
+[case testColumnCallToUntypedFunction]
+# flags: --disallow-untyped-calls
+def f() -> None:
+    (g(1))  # E:6: Call to untyped function "g" in typed context
+
+def g(x):
+    pass
+
+[case testColumnInvalidArguments]
+def f(x, y): pass
+(f()) # E:2: Too few arguments for "f"
+(f(y=1)) # E:2: Missing positional argument "x" in call to "f"
+
+[case testColumnListOrDictItemHasIncompatibleType]
+from typing import List, Dict
+# TODO: Point to the actual item since a list/dict literal can span many lines
+x: List[int] = [  # E:16: List item 0 has incompatible type "str"; expected "int"
+    'x']
+y: Dict[int, int] = {  # E:21: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
+    'x': 1
+}
+[builtins fixtures/dict.pyi]
+
+[case testColumnCannotDetermineType]
+(x)  # E:2: Cannot determine type of 'x'
+x = None
+
+[case testColumnInvalidIndexing]
+from typing import List
+([1]['']) # E:2: Invalid index type "str" for "List[int]"; expected type "int"
+(1[1]) # E:2: Value of type "int" is not indexable
+def f() -> None:
+    1[1] = 1 # E:5: Unsupported target for indexed assignment
+[builtins fixtures/list.pyi]
+
+[case testColumnIncompatibleTypedDictValue]
+from typing import TypedDict
+class D(TypedDict):
+    x: int
+t: D = {'x':
+    'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testColumnSignatureIncompatibleWithSuperType]
+class A:
+    def f(self, x: int) -> None: pass
+class B(A):
+    def f(self, x: str) -> None: pass # E:5: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
+class C(A):
+    def f(self, x: int) -> int: pass # E:5: Return type "int" of "f" incompatible with return type "None" in supertype "A"
+class D(A):
+    def f(self) -> None: pass # E:5: Signature of "f" incompatible with supertype "A"
+
+[case testColumnMissingTypeParameters]
+# flags: --disallow-any-generics
+from typing import List, Callable
+# TODO: Missing column numbers
+def f(x: List) -> None: pass # E: Missing type parameters for generic type
+def g(x: list) -> None: pass # E: Implicit generic "Any". Use "typing.List" and specify generic parameters
+if int():
+    c: Callable # E:8: Missing type parameters for generic type
+[builtins fixtures/list.pyi]
+
+[case testColumnIncompatibleDefault]
+if int():
+    def f(x: int = '') -> None: # E:5: Incompatible default for argument "x" (default has type "str", argument has type "int")
+        pass
+
+[case testColumnMissingProtocolMember]
+from typing import Protocol
+
+class P(Protocol):
+    x: int
+    y: int
+
+class C:
+    x: int
+
+p: P
+if int():
+    p = C() # E:5: Incompatible types in assignment (expression has type "C", variable has type "P") \
+      # N:5: 'C' is missing following 'P' protocol member: \
+      # N:5:     y
+
+[case testColumnRedundantCast]
+# flags: --warn-redundant-casts
+from typing import cast
+y = 1
+# TODO: Missing column number
+x = cast(int, y) # E: Redundant cast to "int"
+
+[case testColumnTypeSignatureHasTooFewArguments]
+if int():
+    def f(x, y): # E:1: Type signature has too few arguments
+        # type: (int) -> None
+        pass
+
+[case testColumnRevealedType]
+if int():
+    reveal_type(1) # N:5: Revealed type is 'builtins.int'
+
+[case testColumnNonOverlappingEqualityCheck]
+# flags: --strict-equality
+if 1 == '': # E:4: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testColumnValueOfTypeVariableCannotBe]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', int, str)
+
+class C(Generic[T]):
+    pass
+
+# TODO: Column number missing
+def f(c: C[object]) -> None: pass # E: Value of type variable "T" of "C" cannot be "object"
