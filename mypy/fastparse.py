@@ -517,11 +517,13 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature.", lineno, 0)
+                          "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, 0, blocker=False)
+                self.fail('Type signature has too many arguments', lineno, n.col_offset,
+                          blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, 0, blocker=False)
+                self.fail('Type signature has too few arguments', lineno, n.col_offset,
+                          blocker=False)
             else:
                 func_type = CallableType([a if a is not None else
                                           AnyType(TypeOfAny.unannotated) for a in arg_types],

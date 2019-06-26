@@ -204,7 +204,13 @@ x = cast(int, y) # E:5: Redundant cast to "int"
 
 [case testColumnTypeSignatureHasTooFewArguments]
 if int():
-    def f(x, y): # E:1: Type signature has too few arguments
+    def f(x, y): # E:5: Type signature has too few arguments
+        # type: (int) -> None
+        pass
+
+[case testColumnTypeSignatureHasTooFewArguments_python2]
+if int():
+    def f(x, y): # E:5: Type signature has too few arguments
         # type: (int) -> None
         pass
 
