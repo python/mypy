@@ -3206,9 +3206,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
         if self.chk.options.warn_unreachable:
             if if_map is None:
-                self.msg.unreachable_branch_in_inline_if('if', e.cond)
+                self.msg.unreachable_branch_in_inline_if(
+                    condition_result=False, context=e.cond)
             elif else_map is None:
-                self.msg.unreachable_branch_in_inline_if('else', e.cond)
+                self.msg.unreachable_branch_in_inline_if(
+                    condition_result=True,
+                    context=e.cond)
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 

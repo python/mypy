@@ -1234,23 +1234,23 @@ class MessageBuilder:
     def always_same_truth_value_left_operand(self, op_name: str, context: Context) -> None:
         value = 'true' if op_name == 'and' else 'false'
         self.fail(
-            "The left operand of this '{}' expression is always {}".format(op_name, value),
+            "Left operand of '{}' is always {}".format(op_name, value),
             context,
         )
 
     def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         self.fail(
-            "The right operand of this '{}' expression is never evaluated".format(op_name),
+            "Right operand of '{}' is never evaluated".format(op_name),
             context,
         )
 
     def comprehension_cond_always_same(self, simplified_result: bool, context: Context) -> None:
-        template = "The conditional check in this comprehension is always {}"
+        template = "If condition in comprehension is always {}"
         self.fail(template.format(str(simplified_result).lower()), context)
 
-    def unreachable_branch_in_inline_if(self, sub_expr_name: str, context: Context) -> None:
-        template = "The '{}' expression in this inline if expression is never evaluated"
-        self.fail(template.format(sub_expr_name), context)
+    def unreachable_branch_in_inline_if(self, condition_result: bool, context: Context) -> None:
+        template = "If condition is always {}"
+        self.fail(template.format(str(condition_result).lower()), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:

@@ -863,19 +863,19 @@ def foo() -> bool: ...
 
 lst = [1, 2, 3, 4]
 
-a = True or foo()                        # E: The right operand of this 'or' expression is never evaluated
-b = False or foo()                       # E: The left operand of this 'or' expression is always false
-c = True and foo()                       # E: The left operand of this 'and' expression is always true
-d = False and foo()                      # E: The right operand of this 'and' expression is never evaluated
-e = True or (True or (True or foo()))    # E: The right operand of this 'or' expression is never evaluated
-f = (True or foo()) or (True or foo())   # E: The right operand of this 'or' expression is never evaluated
-g = 3 if True else 4                     # E: The 'else' expression in this inline if expression is never evaluated
-h = 3 if False else 4                    # E: The 'if' expression in this inline if expression is never evaluated
-i = [x for x in lst if True]             # E: The conditional check in this comprehension is always true
-j = [x for x in lst if False]            # E: The conditional check in this comprehension is always false
+a = True or foo()                        # E: Right operand of 'or' is never evaluated
+b = False or foo()                       # E: Left operand of 'or' is always false
+c = True and foo()                       # E: Left operand of 'and' is always true
+d = False and foo()                      # E: Right operand of 'and' is never evaluated
+e = True or (True or (True or foo()))    # E: Right operand of 'or' is never evaluated
+f = (True or foo()) or (True or foo())   # E: Right operand of 'or' is never evaluated
+g = 3 if True else 4                     # E: If condition is always true
+h = 3 if False else 4                    # E: If condition is always false
+i = [x for x in lst if True]             # E: If condition in comprehension is always true
+j = [x for x in lst if False]            # E: If condition in comprehension is always false
 
-k = [x for x in lst if isinstance(x, int) or foo()]  # E: The conditional check in this comprehension is always true \
-                                                     # E: The right operand of this 'or' expression is never evaluated
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true \
+                                                     # E: Right operand of 'or' is never evaluated
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagMiscTestCaseMissingMethod]
@@ -883,10 +883,10 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: The conditional check 
 
 class Case1:
     def test1(self) -> bool:
-        return False and self.missing()  # E: The right operand of this 'and' expression is never evaluated
+        return False and self.missing()  # E: Right operand of 'and' is never evaluated
 
     def test2(self) -> bool:
-        return not self.property_decorator_missing and self.missing()  # E: The right operand of this 'and' expression is never evaluated
+        return not self.property_decorator_missing and self.missing()  # E: Right operand of 'and' is never evaluated
 
     def property_decorator_missing(self) -> bool:
         return True
