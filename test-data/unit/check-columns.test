@@ -115,6 +115,7 @@ def f(x, y): pass
 
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict
+# TODO: Point to the actual item since a list/dict literal can span many lines
 x: List[int] = [  # E:16: List item 0 has incompatible type "str"; expected "int"
     'x']
 y: Dict[int, int] = {  # E:21: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
@@ -215,5 +216,5 @@ T = TypeVar('T', int, str)
 class C(Generic[T]):
     pass
 
-# TOOD: Column number missing
+# TODO: Column number missing
 def f(c: C[object]) -> None: pass # E: Value of type variable "T" of "C" cannot be "object"
