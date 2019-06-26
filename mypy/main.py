@@ -464,7 +464,8 @@ def process_options(args: List[str],
                              " from non-Any typed functions",
                         group=lint_group)
     add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
-                        help="Disallow branches inferred to be unreachable after type analysis",
+                        help="Warn about statements or expressions inferred to be"
+                             " unreachable or redundant",
                         group=lint_group)
 
     # Note: this group is intentionally added here even though we don't add
