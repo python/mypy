@@ -2822,8 +2822,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                           report_invalid_types=False)
                     if analyzed is None:
                         # Type variables are special: we need to place them in the symbol table
-                        # soon, even if upper bound is not ready yet. Otherwise avoiding a "deadlock"
-                        # in this common pattern would be tricky:
+                        # soon, even if upper bound is not ready yet. Otherwise avoiding
+                        # a "deadlock" in this common pattern would be tricky:
                         #     T = TypeVar('T', bound=Custom[Any])
                         #     class Custom(Generic[T]):
                         #         ...
