@@ -2738,9 +2738,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             call.analyzed = type_var
         else:
             assert isinstance(call.analyzed, TypeVarExpr)
+            if call.analyzed.values != values or call.analyzed.upper_bound != upper_bound:
+                self.progress = True
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
-            self.progress = True
 
         self.add_symbol(name, call.analyzed, s)
         return True
@@ -2821,8 +2822,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                                           report_invalid_types=False)
                     if analyzed is None:
                         # Type variables are special: we need to place them in the symbol table
-                        # soon, even if upper bound is not ready yet.
-                        self.defer()
+                        # soon, even if upper bound is not ready yet. Otherwise avoiding a "deadlock"
+                        # in this common pattern would be tricky:
+                        #     T = TypeVar('T', bound=Custom[Any])
+                        #     class Custom(Generic[T]):
+                        #         ...
                         analyzed = PlaceholderType('<unknown>', [], context.line)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
@@ -2886,8 +2890,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                           allow_placeholder=True)
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
-                    # soon, even if some value is not ready yet.
-                    self.defer()
+                    # soon, even if some value is not ready yet, see process_typevar_parameters()
+                    # for an example.
                     analyzed = PlaceholderType('<unknown>', [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
