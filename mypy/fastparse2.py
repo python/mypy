@@ -335,7 +335,7 @@ class ASTConverter:
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
         self.class_and_function_stack.append('F')
         lineno = n.lineno
-        converter = TypeConverter(self.errors, line=lineno,
+        converter = TypeConverter(self.errors, line=lineno, override_column=n.col_offset,
                                   assume_str_is_unicode=self.unicode_literals)
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
@@ -569,7 +569,10 @@ class ASTConverter:
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
         typ = None
         if n.type_comment:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment,
+                                                   n.lineno,
+                                                   n.col_offset,
+                                                   self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
                 self.type_ignores.add(n.lineno)
@@ -589,7 +592,10 @@ class ASTConverter:
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast27.For) -> ForStmt:
         if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment,
+                                                   n.lineno,
+                                                   n.col_offset,
+                                                   self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
                 self.type_ignores.add(n.lineno)
@@ -619,7 +625,10 @@ class ASTConverter:
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast27.With) -> WithStmt:
         if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment,
+                                                   n.lineno,
+                                                   n.col_offset,
+                                                   self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
                 self.type_ignores.add(n.lineno)

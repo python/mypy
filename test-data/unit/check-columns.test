@@ -69,19 +69,31 @@ if int():
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
 [case testColumnInvalidType]
-# TODO: Add column numbers
 from typing import Iterable
 
 bad = 0
 
-def f(x: bad): # E: Invalid type "__main__.bad"
+def f(x: bad): # E:10: Invalid type "__main__.bad"
     y: bad # E:8: Invalid type "__main__.bad"
 
-def g(x): # E: Invalid type "__main__.bad"
-    # type: (bad) -> None
-    y = 0  # type: bad  # E: Invalid type "__main__.bad"
+if int():
+    def g(x): # E:5: Invalid type "__main__.bad"
+        # type: (bad) -> None
+        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
 
-z: Iterable[bad] # E: Invalid type "__main__.bad"
+z: Iterable[bad] # E:13: Invalid type "__main__.bad"
+
+[case testColumnInvalidType_python2]
+from typing import Iterable
+
+bad = 0
+
+if int():
+    def g(x): # E:5: Invalid type "__main__.bad"
+        # type: (bad) -> None
+        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
+
+    z = ()  # type: Iterable[bad] # E:5: Invalid type "__main__.bad"
 
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs
@@ -157,9 +169,8 @@ class D(A):
 [case testColumnMissingTypeParameters]
 # flags: --disallow-any-generics
 from typing import List, Callable
-# TODO: Missing column numbers
-def f(x: List) -> None: pass # E: Missing type parameters for generic type
-def g(x: list) -> None: pass # E: Implicit generic "Any". Use "typing.List" and specify generic parameters
+def f(x: List) -> None: pass # E:10: Missing type parameters for generic type
+def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
 if int():
     c: Callable # E:8: Missing type parameters for generic type
 [builtins fixtures/list.pyi]
@@ -216,5 +227,4 @@ T = TypeVar('T', int, str)
 class C(Generic[T]):
     pass
 
-# TODO: Column number missing
-def f(c: C[object]) -> None: pass # E: Value of type variable "T" of "C" cannot be "object"
+def f(c: C[object]) -> None: pass # E:10: Value of type variable "T" of "C" cannot be "object"
