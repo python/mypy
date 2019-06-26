@@ -1485,7 +1485,7 @@ class TypeConverter:
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
-                         implicit=True, line=self.line)
+                         implicit=True, line=self.line, column=self.convert_column(n.col_offset))
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> Type:

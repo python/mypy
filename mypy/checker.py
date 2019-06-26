@@ -3130,8 +3130,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             e = s.expr
             m = MemberExpr(e.base, '__delitem__')
             m.line = s.line
+            m.column = s.column
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
+            c.column = s.column
             self.expr_checker.accept(c, allow_none_return=True)
         else:
             s.expr.accept(self.expr_checker)
