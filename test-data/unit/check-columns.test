@@ -197,11 +197,10 @@ if int():
       # N:5:     y
 
 [case testColumnRedundantCast]
-# flags: --warn-redundant-casts
+# flags: --warn-redundant-casts --new-semantic-analyzer
 from typing import cast
 y = 1
-# TODO: Missing column number
-x = cast(int, y) # E: Redundant cast to "int"
+x = cast(int, y) # E:5: Redundant cast to "int"
 
 [case testColumnTypeSignatureHasTooFewArguments]
 if int():

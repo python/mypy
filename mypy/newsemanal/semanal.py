@@ -3309,6 +3309,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
