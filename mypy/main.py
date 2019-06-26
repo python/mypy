@@ -463,6 +463,9 @@ def process_options(args: List[str],
                         help="Warn about returning values of type Any"
                              " from non-Any typed functions",
                         group=lint_group)
+    add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
+                        help="Disallow branches inferred to be unreachable after type analysis",
+                        group=lint_group)
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -490,10 +493,6 @@ def process_options(args: List[str],
     add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
                         dest='implicit_reexport',
                         help="Treat imports as private unless aliased",
-                        group=strictness_group)
-
-    add_invertible_flag('--disallow-inferred-unreachable', default=False, strict_flag=False,
-                        help="Disallow branches inferred to be unreachable after type analysis",
                         group=strictness_group)
 
     incremental_group = parser.add_argument_group(

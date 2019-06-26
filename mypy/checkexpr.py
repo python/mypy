@@ -2375,7 +2375,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # the analysis from the semanal phase below. We assume that nodes
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
-        if self.chk.options.disallow_inferred_unreachable:
+        if self.chk.options.warn_unreachable:
             if left_map is None:
                 self.msg.always_same_truth_value_left_operand(e.op, e.left)
             if right_map is None:
@@ -3191,7 +3191,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     for var, type in true_map.items():
                         self.chk.binder.put(var, type)
 
-                if self.chk.options.disallow_inferred_unreachable:
+                if self.chk.options.warn_unreachable:
                     if true_map is None:
                         self.msg.comprehension_cond_always_same(False, condition)
                     elif false_map is None:
@@ -3204,7 +3204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Gain type information from isinstance if it is there
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
-        if self.chk.options.disallow_inferred_unreachable:
+        if self.chk.options.warn_unreachable:
             if if_map is None:
                 self.msg.unreachable_branch_in_inline_if('if', e.cond)
             elif else_map is None:

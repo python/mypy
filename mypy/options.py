@@ -31,7 +31,6 @@ PER_MODULE_OPTIONS = {
     "disallow_any_generics",
     "disallow_any_unimported",
     "disallow_incomplete_defs",
-    "disallow_inferred_unreachable",
     "disallow_subclassing_any",
     "disallow_untyped_calls",
     "disallow_untyped_decorators",
@@ -49,6 +48,7 @@ PER_MODULE_OPTIONS = {
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
+    "warn_unreachable",
     "warn_unused_ignores",
 }  # type: Final
 
@@ -167,7 +167,7 @@ class Options:
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
-        self.disallow_inferred_unreachable = False
+        self.warn_unreachable = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

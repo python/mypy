@@ -717,7 +717,7 @@ reveal_type('')  # N: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagWithBadControlFlow]
-# flags: --disallow-inferred-unreachable
+# flags: --warn-unreachable
 a: int
 if isinstance(a, int):
     reveal_type(a)  # N: Revealed type is 'builtins.int'
@@ -748,7 +748,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagTryBlocks]
-# flags: --disallow-inferred-unreachable
+# flags: --warn-unreachable
 
 def foo(x: int) -> int:
     try:
@@ -786,7 +786,7 @@ def baz(x: int) -> int:
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
-# flags: --disallow-inferred-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
+# flags: --warn-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
 import sys
 from typing import TYPE_CHECKING
 
@@ -808,7 +808,7 @@ else:
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisExprUnreachable]
-# flags: --disallow-inferred-unreachable --always-false FOOBAR
+# flags: --warn-unreachable --always-false FOOBAR
 import sys
 from typing import TYPE_CHECKING
 
@@ -825,7 +825,7 @@ d = [x for x in lst if FOOBAR]
 [builtins fixtures/list.pyi]
 
 [case testUnreachableFlagOkWithDeadStatements]
-# flags: --disallow-inferred-unreachable
+# flags: --warn-unreachable
 from typing import NoReturn
 def assert_never(x: NoReturn) -> NoReturn:
     assert False
@@ -858,7 +858,7 @@ if False:
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagExpressions]
-# flags: --disallow-inferred-unreachable
+# flags: --warn-unreachable
 def foo() -> bool: ...
 
 lst = [1, 2, 3, 4]
@@ -879,7 +879,7 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: The conditional check 
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagMiscTestCaseMissingMethod]
-# flags: --disallow-inferred-unreachable
+# flags: --warn-unreachable
 
 class Case1:
     def test1(self) -> bool:

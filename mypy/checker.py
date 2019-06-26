@@ -1784,7 +1784,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         for s in b.body:
             if self.binder.is_unreachable():
-                if self.options.disallow_inferred_unreachable and not self.is_raising_or_empty(s):
+                if self.options.warn_unreachable and not self.is_raising_or_empty(s):
                     self.msg.unreachable_branch(s)
                 break
             self.accept(s)
