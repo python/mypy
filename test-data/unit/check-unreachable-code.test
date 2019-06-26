@@ -747,6 +747,13 @@ else:
 
 [builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagStatementAfterReturn]
+# flags: --warn-unreachable
+def foo(x: int) -> None:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    return
+    reveal_type(x)  # E: Statement is unreachable
+
 [case testUnreachableFlagTryBlocks]
 # flags: --warn-unreachable
 
