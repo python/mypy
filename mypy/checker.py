@@ -783,7 +783,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: Optional[str]) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
-        for item, typ in self.expand_typevars(defn, typ):
+        expanded = self.expand_typevars(defn, typ)
+        for item, typ in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
@@ -932,6 +933,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Type check body in a new scope.
             with self.binder.top_frame_context():
                 with self.scope.push_function(defn):
+                    # We suppress reachability warnings when we use TypeVars with value
+                    # restrictions: we only want to report a warning if a certain statement is
+                    # marked as being suppressed in *all* of the expansions, but we currently
+                    # have no good way of doing this.
+                    #
+                    # TODO: Find a way of working around this limitation
+                    if len(expanded) >= 2:
+                        self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
@@ -1784,12 +1793,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         for s in b.body:
             if self.binder.is_unreachable():
-                if self.options.warn_unreachable and not self.is_raising_or_empty(s):
-                    self.msg.unreachable_branch(s)
+                if (self.options.warn_unreachable
+                        and not self.binder.is_unreachable_warning_suppressed()
+                        and not self.is_raising_or_empty(s)):
+                    self.msg.unreachable_statement(s)
                 break
             self.accept(s)
 
     def is_raising_or_empty(self, s: Statement) -> bool:
+        """Returns 'true' if the given statement either throws an error of some kind
+        or is a no-op.
+
+        We use this function mostly while handling the '--warn-unreachable' flag. When
+        that flag is present, we normally report an error on any unreachable statement.
+        But if that statement is just something like a 'pass' or a just-in-case 'assert False',
+        reporting an error would be annoying.
+        """
         if isinstance(s, AssertStmt) and is_false_literal(s.expr):
             return True
         elif isinstance(s, (RaiseStmt, PassStmt)):

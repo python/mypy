@@ -722,28 +722,28 @@ a: int
 if isinstance(a, int):
     reveal_type(a)  # N: Revealed type is 'builtins.int'
 else:
-    reveal_type(a)  # E: This branch is inferred to be unreachable
+    reveal_type(a)  # E: Statement is unreachable
 
 b: int
 while isinstance(b, int):
     reveal_type(b)  # N: Revealed type is 'builtins.int'
 else:
-    reveal_type(b)  # E: This branch is inferred to be unreachable
+    reveal_type(b)  # E: Statement is unreachable
 
 def foo(c: int) -> None:
     reveal_type(c)  # N: Revealed type is 'builtins.int'
     assert not isinstance(c, int)
-    reveal_type(c)  # E: This branch is inferred to be unreachable
+    reveal_type(c)  # E: Statement is unreachable
 
 d: int
 if False:
-    reveal_type(d)  # E: This branch is inferred to be unreachable
+    reveal_type(d)  # E: Statement is unreachable
 
 e: int
 if True:
     reveal_type(e)  # N: Revealed type is 'builtins.int'
 else:
-    reveal_type(e)  # E: This branch is inferred to be unreachable
+    reveal_type(e)  # E: Statement is unreachable
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -754,24 +754,24 @@ def foo(x: int) -> int:
     try:
         reveal_type(x)      # N: Revealed type is 'builtins.int'
         return x
-        reveal_type(x)      # E: This branch is inferred to be unreachable
+        reveal_type(x)      # E: Statement is unreachable
     finally:
         reveal_type(x)      # N: Revealed type is 'builtins.int'
         if True:
             reveal_type(x)  # N: Revealed type is 'builtins.int'
         else:
-            reveal_type(x)  # E: This branch is inferred to be unreachable
+            reveal_type(x)  # E: Statement is unreachable
 
 def bar(x: int) -> int:
     try:
         if True:
             raise Exception()
-        reveal_type(x)      # E: This branch is inferred to be unreachable
+        reveal_type(x)      # E: Statement is unreachable
     except:
         reveal_type(x)      # N: Revealed type is 'builtins.int'
         return x
     else:
-        reveal_type(x)      # E: This branch is inferred to be unreachable
+        reveal_type(x)      # E: Statement is unreachable
 
 def baz(x: int) -> int:
     try:
@@ -848,7 +848,7 @@ if False:
     reveal_type(x)
 
 if False:
-    nonthrowing_assert_never(x)  # E: This branch is inferred to be unreachable
+    nonthrowing_assert_never(x)  # E: Statement is unreachable
     reveal_type(x)
 
 if False:
@@ -891,3 +891,47 @@ class Case1:
     def property_decorator_missing(self) -> bool:
         return True
 [builtins fixtures/bool.pyi]
+
+[case testUnreachableFlagWithGenerics]
+# flags: --warn-unreachable
+from typing import TypeVar, Generic
+
+T1 = TypeVar('T1', bound=int)
+T2 = TypeVar('T2', int, str)
+
+def test1(x: T1) -> T1:
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is 'T1`-1'
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+    return x
+
+def test2(x: T2) -> T2:
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is 'builtins.int*'
+    else:
+        reveal_type(x)  # N: Revealed type is 'builtins.str*'
+
+    if False:
+        # This is unreachable, but we don't report an error, unfortunately.
+        # The presence of the TypeVar with values unfortunately currently shuts
+        # down type-checking for this entire function.
+        # TODO: Find a way of removing this limitation
+        reveal_type(x)
+
+    return x
+
+class Test3(Generic[T2]):
+    x: T2
+
+    def func(self) -> None:
+        if isinstance(self.x, int):
+            reveal_type(self.x)  # N: Revealed type is 'builtins.int*'
+        else:
+            reveal_type(self.x)  # N: Revealed type is 'builtins.str*'
+
+        if False:
+            # Same issue as above
+            reveal_type(self.x)
+
+[builtins fixtures/isinstancelist.pyi]

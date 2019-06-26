@@ -1228,29 +1228,34 @@ class MessageBuilder:
         self.note('"{}.__call__" has type {}'.format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)
 
-    def unreachable_branch(self, context: Context) -> None:
-        self.fail("This branch is inferred to be unreachable", context)
+    def unreachable_statement(self, context: Context) -> None:
+        self.fail("Statement is unreachable", context)
 
-    def always_same_truth_value_left_operand(self, op_name: str, context: Context) -> None:
-        value = 'true' if op_name == 'and' else 'false'
-        self.fail(
-            "Left operand of '{}' is always {}".format(op_name, value),
-            context,
-        )
+    def redundant_left_operand(self, op_name: str, context: Context) -> None:
+        """Indicates that the left operand of a boolean expression is redundant:
+        it does not change the truth value of the entire condition as a whole.
+        'op_name' should either be the string "and" or the string "or".
+        """
+        self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
 
-    def unreachable_right_operand(self, op_name: str, context: Context) -> None:
-        self.fail(
-            "Right operand of '{}' is never evaluated".format(op_name),
-            context,
-        )
+    def redundant_right_operand(self, op_name: str, context: Context) -> None:
+        """Indicates that the right operand of a boolean expression is redundant:
+        it does not change the truth value of the entire condition as a whole.
+        'op_name' should either be the string "and" or the string "or".
+        """
+        self.fail("Right operand of '{}' is never evaluated".format(op_name), context)
 
-    def comprehension_cond_always_same(self, simplified_result: bool, context: Context) -> None:
-        template = "If condition in comprehension is always {}"
-        self.fail(template.format(str(simplified_result).lower()), context)
+    def redundant_condition_in_comprehension(self, truthiness: bool, context: Context) -> None:
+        self.redundant_expr("If condition in comprehension", truthiness, context)
 
-    def unreachable_branch_in_inline_if(self, condition_result: bool, context: Context) -> None:
-        template = "If condition is always {}"
-        self.fail(template.format(str(condition_result).lower()), context)
+    def redundant_condition_in_if(self, truthiness: bool, context: Context) -> None:
+        self.redundant_expr("If condition", truthiness, context)
+
+    def redundant_condition_in_assert(self, truthiness: bool, context: Context) -> None:
+        self.redundant_expr("Condition in assert", truthiness, context)
+
+    def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
+        self.fail("{} is always {}".format(description, str(truthiness).lower()), context)
 
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:

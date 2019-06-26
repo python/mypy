@@ -2377,9 +2377,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # So, we shouldn't report an error.
         if self.chk.options.warn_unreachable:
             if left_map is None:
-                self.msg.always_same_truth_value_left_operand(e.op, e.left)
+                self.msg.redundant_left_operand(e.op, e.left)
             if right_map is None:
-                self.msg.unreachable_right_operand(e.op, e.right)
+                self.msg.redundant_right_operand(e.op, e.right)
 
         if e.right_unreachable:
             right_map = None
@@ -3193,9 +3193,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
                 if self.chk.options.warn_unreachable:
                     if true_map is None:
-                        self.msg.comprehension_cond_always_same(False, condition)
+                        self.msg.redundant_condition_in_comprehension(False, condition)
                     elif false_map is None:
-                        self.msg.comprehension_cond_always_same(True, condition)
+                        self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         self.accept(e.cond)
@@ -3206,12 +3206,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
         if self.chk.options.warn_unreachable:
             if if_map is None:
-                self.msg.unreachable_branch_in_inline_if(
-                    condition_result=False, context=e.cond)
+                self.msg.redundant_condition_in_if(False, e.cond)
             elif else_map is None:
-                self.msg.unreachable_branch_in_inline_if(
-                    condition_result=True,
-                    context=e.cond)
+                self.msg.redundant_condition_in_if(True, e.cond)
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
