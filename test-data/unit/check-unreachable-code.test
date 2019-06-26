@@ -793,11 +793,32 @@ from typing import TYPE_CHECKING
 x: int
 if TYPE_CHECKING:
     reveal_type(x)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x)
+
+if not TYPE_CHECKING:
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
 
 if sys.platform == 'darwin':
     reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+if sys.platform == 'win32':
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x)
 
 if sys.version_info == (2, 7):
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+if sys.version_info == (3, 7):
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+else:
     reveal_type(x)
 
 FOOBAR = ""
