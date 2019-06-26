@@ -1988,6 +1988,109 @@ x: A
 reveal_type(x)  # N: Revealed type is '__main__.G[Tuple[builtins.int, fallback=__main__.C]]'
 [builtins fixtures/list.pyi]
 
+[case testNewAnalyzerDuplicateTypeVar]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar('T', bound=B[Any])
+# The "int" error is because of typing fixture.
+T = TypeVar('T', bound=C)  # E: Cannot redefine 'T' as a type variable \
+                           # E: Invalid assignment target \
+                           # E: "int" not callable
+
+class B(Generic[T]):
+    x: T
+class C: ...
+
+x: B[int]  # E: Type argument "builtins.int" of "B" must be a subtype of "__main__.B[Any]"
+y: B[B[Any]]
+reveal_type(y.x)  # N: Revealed type is '__main__.B*[Any]'
+
+[case testNewAnalyzerDuplicateTypeVarImportCycle]
+import a
+[file a.py]
+from typing import TypeVar, Any
+from b import B, C
+
+T = TypeVar('T', bound=B[Any])
+T = TypeVar('T', bound=C)
+
+[file b.py]
+from typing import Generic, Any
+from a import T
+
+class B(Generic[T]):
+    x: T
+class C: ...
+
+x: B[int]
+y: B[B[Any]]
+reveal_type(y.x)
+[out]
+tmp/b.py:8: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
+tmp/b.py:10: note: Revealed type is 'b.B*[Any]'
+tmp/a.py:5: error: Cannot redefine 'T' as a type variable
+tmp/a.py:5: error: Invalid assignment target
+tmp/a.py:5: error: "int" not callable
+
+[case testNewAnalyzerDuplicateTypeVarImportCycleWithAliases]
+import a
+[file a.py]
+from typing import TypeVar, Any
+from b import BA, C
+
+T = TypeVar('T', bound=BAA[Any])
+T = TypeVar('T', bound=C)
+BAA = BA
+
+[file b.py]
+from typing import Generic, Any
+from a import T
+
+BA = B
+class B(Generic[T]):
+    x: T
+class C: ...
+
+x: B[int]
+y: B[B[Any]]
+reveal_type(y.x)
+[out]
+tmp/b.py:9: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
+tmp/b.py:11: note: Revealed type is 'b.B*[Any]'
+tmp/a.py:5: error: Cannot redefine 'T' as a type variable
+tmp/a.py:5: error: Invalid assignment target
+
+[case testNewAnalyzerTypeVarBoundInCycle]
+import factory, box
+
+[file factory.py]
+from typing import Generic, Type
+
+from box import BoxT
+
+class Factory(Generic[BoxT]):
+    value: int
+
+    def create(self, boxClass: Type[BoxT]) -> BoxT:
+        reveal_type(boxClass.create(self))  # N: Revealed type is 'BoxT`1'
+        return boxClass.create(self)
+
+[file box.py]
+from typing import TYPE_CHECKING, Type, TypeVar
+
+if TYPE_CHECKING:
+    from factory import Factory
+
+BoxT = TypeVar('BoxT', bound='Box')
+
+class Box:
+    @classmethod
+    def create(cls: Type[BoxT], f: Factory) -> BoxT:
+        return cls(f.value)
+
+    def __init__(self, value: int) -> None: ...
+[builtins fixtures/classmethod.pyi]
+
 [case testNewAnalyzerCastForward1]
 from typing import cast
 
