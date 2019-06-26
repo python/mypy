@@ -2101,6 +2101,34 @@ def f(x: Union[A, str]) -> None:
         x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceIgnoredImportDualAny]
+from typing import Any
+from foo import Bad, OtherBad  # type: ignore
+x: Any
+if isinstance(x, Bad):
+    reveal_type(x)  # N: Revealed type is 'Any'
+else:
+    reveal_type(x)  # N: Revealed type is 'Any'
+
+if isinstance(x, (Bad, OtherBad)):
+    reveal_type(x)  # N: Revealed type is 'Any'
+else:
+    reveal_type(x)  # N: Revealed type is 'Any'
+
+y: object
+if isinstance(y, Bad):
+    reveal_type(y)  # N: Revealed type is 'Any'
+else:
+    reveal_type(y)  # N: Revealed type is 'builtins.object'
+
+class Ok: pass
+z: Any
+if isinstance(z, Ok):
+    reveal_type(z)  # N: Revealed type is '__main__.Ok'
+else:
+    reveal_type(z)  # N: Revealed type is 'Any'
+[builtins fixtures/isinstance.pyi]
+
 [case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
 # flags: --strict-optional
 from typing import Optional, Union
