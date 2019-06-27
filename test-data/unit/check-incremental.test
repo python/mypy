@@ -2570,25 +2570,25 @@ M = NamedTuple('M', [('x', int)])
 [out]
 
 [case testSelfRefNTIncremental1]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple('Node', [ # type: ignore
+Node = NamedTuple('Node', [
         ('name', str),
-        ('children', Tuple['Node', ...]),
+        ('children', Tuple['Node', ...]), # type: ignore
     ])
 n: Node
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental2]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
-A = NamedTuple('A', [ # type: ignore
+A = NamedTuple('A', [
         ('x', str),
-        ('y', Tuple['B', ...]),
+        ('y', Tuple['B', ...]), # type: ignore
     ])
-class B(NamedTuple): # type: ignore
+class B(NamedTuple):
     x: A
     y: int
 
@@ -2596,13 +2596,13 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental3]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple, Tuple
 
-class B(NamedTuple): # type: ignore
-    x: Tuple[A, int]
+class B(NamedTuple):
+    x: Tuple[A, int] # type: ignore
     y: int
-A = NamedTuple('A', [ # type: ignore
+A = NamedTuple('A', [
         ('x', str),
         ('y', 'B'),
     ])
@@ -2612,13 +2612,13 @@ lst = [m, n]
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental4]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 
-class B(NamedTuple): # type: ignore
-    x: A
+class B(NamedTuple):
+    x: A # type: ignore
     y: int
-class A(NamedTuple): # type: ignore
+class A(NamedTuple):
     x: str
     y: B
 
@@ -2626,14 +2626,14 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental5]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 
-B = NamedTuple('B', [ # type: ignore
-        ('x', A),
+B = NamedTuple('B', [
+        ('x', A), # type: ignore
         ('y', int),
     ])
-A = NamedTuple('A', [ # type: ignore
+A = NamedTuple('A', [
         ('x', str),
         ('y', 'B'),
     ])
@@ -4620,7 +4620,7 @@ tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "s
 
 [case testOverrideByIdemAlias]
 # https://github.com/python/mypy/issues/6404
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 import lib
@@ -4629,7 +4629,7 @@ x = 1
 import lib
 x = 2
 [file lib.py]
-C = C
+C = C  # type: ignore
 class C:  # type: ignore
     pass
 [out]
