@@ -113,7 +113,7 @@ class BuildSourceSet:
             return True
         elif file._fullname in self.source_modules:
             return True
-        elif file.path is None and self.source_text_present:
+        elif self.source_text_present:
             return True
         else:
             return False
