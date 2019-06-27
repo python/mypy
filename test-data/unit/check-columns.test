@@ -229,6 +229,7 @@ if 1 == '': # E:4: Non-overlapping equality check (left operand type: "int", rig
 [builtins fixtures/bool.pyi]
 
 [case testColumnValueOfTypeVariableCannotBe]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 
 T = TypeVar('T', int, str)
@@ -237,6 +238,7 @@ class C(Generic[T]):
     pass
 
 def f(c: C[object]) -> None: pass # E:10: Value of type variable "T" of "C" cannot be "object"
+(C[object]()) # E:2: Value of type variable "T" of "C" cannot be "object"
 
 [case testColumnSyntaxErrorInTypeAnnotation]
 if int():

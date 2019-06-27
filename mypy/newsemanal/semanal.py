@@ -3517,6 +3517,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         base = expr.base
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
+        expr.analyzed.column = expr.column
         # Types list, dict, set are not subscriptable, prohibit this if
         # subscripted either via type alias...
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
