@@ -62,7 +62,11 @@ class NodeStripVisitor(TraverserVisitor):
         self.recurse_into_functions = False
         file_node.plugin_deps.clear()
         file_node.accept(self)
-        file_node.names.clear()
+        for name in file_node.names.copy():
+            # TODO: this is a hot fix, we should delete all names,
+            # see https://github.com/python/mypy/issues/6422.
+            if '@' not in name:
+                del file_node.names[name]
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
