@@ -406,7 +406,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages
-        # are more detailed, on the other hand, some of them may be bogus.
+        # are more detailed, on the other hand, some of them may be bogus,
+        # see https://github.com/python/mypy/issues/4987.
         return t
 
     def visit_any(self, t: AnyType) -> Type:

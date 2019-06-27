@@ -2731,6 +2731,15 @@ def g() -> None:
     x = f()  # E: Need type annotation for 'x'
     y = x
 
+[case testNewAnalyzerLessErrorsNeedAnnotationList]
+x = []  # type: ignore
+reveal_type(x)  # N: Revealed type is 'builtins.list[Any]'
+
+def g() -> None:
+    x = []  # type: ignore
+    reveal_type(x)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]
+
 [case testNewAnalyzerLessErrorsNeedAnnotationNested]
 from typing import TypeVar, Optional, Generic
 

@@ -4303,6 +4303,7 @@ def is_valid_inferred_type(typ: Type) -> bool:
 
 class NothingSeeker(TypeQuery[bool]):
     """Find any <nothing> types resulting from failed (ambiguous) type inference."""
+
     def __init__(self) -> None:
         super().__init__(any)
 
@@ -4312,6 +4313,7 @@ class NothingSeeker(TypeQuery[bool]):
 
 class SetNothingToAny(TypeTranslator):
     """Replace all ambiguous <nothing> types with Any (to avoid spurious extra errors)."""
+
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         if t.ambiguous:
             return AnyType(TypeOfAny.from_error)
