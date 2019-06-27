@@ -163,7 +163,7 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if 'newsemanal' in testcase.file:
             options.new_semantic_analyzer = True
-        if 'columns' in testcase.file or True:
+        if 'columns' in testcase.file:
             options.show_column_numbers = True
 
         if incremental_step and options.incremental:
