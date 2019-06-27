@@ -74,7 +74,8 @@ from mypy.nodes import (
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
-    EnumCallExpr, RUNTIME_PROTOCOL_DECOS
+    EnumCallExpr, RUNTIME_PROTOCOL_DECOS,
+    FakeExpression,
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1459,7 +1460,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if defn.fullname:
             hook = self.plugin.get_customize_class_mro_hook(defn.fullname)
             if hook:
-                hook(ClassDefContext(defn, Expression(), self))
+                hook(ClassDefContext(defn, FakeExpression(), self))
 
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.

@@ -179,6 +179,15 @@ class Expression(Node):
         raise RuntimeError('Not implemented')
 
 
+class FakeExpression(Expression):
+    """A dummy expression.
+
+    We need a dummy expression in one place, and can't instantiate Expression
+    because it is a trait and mypyc barfs.
+    """
+    pass
+
+
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
 #                'TupleExpr']; see #1783.

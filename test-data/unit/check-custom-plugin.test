@@ -597,3 +597,10 @@ plugins=<ROOT>/test-data/unit/plugins/callable_instance.py
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/depshook.py
+
+[case testCustomizeMroTrivial]
+# flags: --config-file tmp/mypy.ini
+class A: pass
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/customize_mro.py
