@@ -1801,9 +1801,9 @@ S = TypeVar('S', bound=Tuple[G[A], ...])
 class GG(Generic[S]): pass
 
 g: GG[Tuple[G[B], G[C]]] \
+  # E: Type argument "Tuple[__main__.G[__main__.B], __main__.G[__main__.C]]" of "GG" must be a subtype of "builtins.tuple[__main__.G[__main__.A]]" \
   # E: Type argument "__main__.B" of "G" must be a subtype of "__main__.A" \
-  # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A" \
-  # E: Type argument "Tuple[__main__.G[__main__.B], __main__.G[__main__.C]]" of "GG" must be a subtype of "builtins.tuple[__main__.G[__main__.A]]"
+  # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A"
 
 T = TypeVar('T', bound=A, covariant=True)
 

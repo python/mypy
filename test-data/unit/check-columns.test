@@ -69,19 +69,32 @@ if int():
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
 [case testColumnInvalidType]
-# TODO: Add column numbers
 from typing import Iterable
 
 bad = 0
 
-def f(x: bad): # E: Invalid type "__main__.bad"
+def f(x: bad): # E:10: Invalid type "__main__.bad"
     y: bad # E:8: Invalid type "__main__.bad"
 
-def g(x): # E: Invalid type "__main__.bad"
-    # type: (bad) -> None
-    y = 0  # type: bad  # E: Invalid type "__main__.bad"
+if int():
+    def g(x): # E:5: Invalid type "__main__.bad"
+        # type: (bad) -> None
+        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
 
-z: Iterable[bad] # E: Invalid type "__main__.bad"
+z: Iterable[bad] # E:13: Invalid type "__main__.bad"
+h: bad[int] # E:4: Invalid type "__main__.bad"
+
+[case testColumnInvalidType_python2]
+from typing import Iterable
+
+bad = 0
+
+if int():
+    def g(x): # E:5: Invalid type "__main__.bad"
+        # type: (bad) -> None
+        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
+
+    z = ()  # type: Iterable[bad] # E:5: Invalid type "__main__.bad"
 
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs
@@ -135,12 +148,15 @@ def f() -> None:
     1[1] = 1 # E:5: Unsupported target for indexed assignment
 [builtins fixtures/list.pyi]
 
-[case testColumnIncompatibleTypedDictValue]
+[case testColumnTypedDict]
 from typing import TypedDict
 class D(TypedDict):
     x: int
 t: D = {'x':
     'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+if int():
+    del t['y'] # E:5: TypedDict "D" has no key 'y'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -157,9 +173,8 @@ class D(A):
 [case testColumnMissingTypeParameters]
 # flags: --disallow-any-generics
 from typing import List, Callable
-# TODO: Missing column numbers
-def f(x: List) -> None: pass # E: Missing type parameters for generic type
-def g(x: list) -> None: pass # E: Implicit generic "Any". Use "typing.List" and specify generic parameters
+def f(x: List) -> None: pass # E:10: Missing type parameters for generic type
+def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
 if int():
     c: Callable # E:8: Missing type parameters for generic type
 [builtins fixtures/list.pyi]
@@ -186,15 +201,20 @@ if int():
       # N:5:     y
 
 [case testColumnRedundantCast]
-# flags: --warn-redundant-casts
+# flags: --warn-redundant-casts --new-semantic-analyzer
 from typing import cast
 y = 1
-# TODO: Missing column number
-x = cast(int, y) # E: Redundant cast to "int"
+x = cast(int, y) # E:5: Redundant cast to "int"
 
 [case testColumnTypeSignatureHasTooFewArguments]
 if int():
-    def f(x, y): # E:1: Type signature has too few arguments
+    def f(x, y): # E:5: Type signature has too few arguments
+        # type: (int) -> None
+        pass
+
+[case testColumnTypeSignatureHasTooFewArguments_python2]
+if int():
+    def f(x, y): # E:5: Type signature has too few arguments
         # type: (int) -> None
         pass
 
@@ -209,6 +229,7 @@ if 1 == '': # E:4: Non-overlapping equality check (left operand type: "int", rig
 [builtins fixtures/bool.pyi]
 
 [case testColumnValueOfTypeVariableCannotBe]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 
 T = TypeVar('T', int, str)
@@ -216,5 +237,51 @@ T = TypeVar('T', int, str)
 class C(Generic[T]):
     pass
 
-# TODO: Column number missing
-def f(c: C[object]) -> None: pass # E: Value of type variable "T" of "C" cannot be "object"
+def f(c: C[object]) -> None: pass # E:10: Value of type variable "T" of "C" cannot be "object"
+(C[object]()) # E:2: Value of type variable "T" of "C" cannot be "object"
+
+[case testColumnSyntaxErrorInTypeAnnotation]
+if int():
+    def f(x # type: int,
+          ):
+        pass
+[out]
+main:2:11: error: Syntax error in type annotation
+main:2:11: note: Suggestion: Is there a spurious trailing comma?
+
+[case testColumnProperty]
+class A:
+    @property
+    def x(self) -> int: pass
+
+    @x.setter
+    def x(self, x: int) -> None: pass
+
+class B(A):
+    @property  # E:6: Read-only property cannot override read-write property
+    def x(self) -> int: pass
+[builtins fixtures/property.pyi]
+
+[case testColumnProperty_python2]
+class A:
+    @property
+    def x(self): # type: () -> int
+        pass
+
+    @x.setter
+    def x(self, x): # type: (int) -> None
+        pass
+
+class B(A):
+    @property  # E:5: Read-only property cannot override read-write property
+    def x(self): # type: () -> int
+        pass
+[builtins_py2 fixtures/property_py2.pyi]
+
+[case testColumnOverloaded]
+from typing import overload, Any
+class A:
+    @overload # E:6: An overloaded function outside a stub file must have an implementation
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass

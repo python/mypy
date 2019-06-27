@@ -14,7 +14,7 @@ property = object()  # Dummy definition
 
 class int: pass
 class str: pass
-class bytes: pass
+class unicode: pass
 class bool: pass
 class ellipsis: pass
 

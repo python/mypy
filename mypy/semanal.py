@@ -2448,6 +2448,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node.kind = self.current_symbol_kind()
         type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
         type_var.line = call.line
+        type_var.column = call.column
         call.analyzed = type_var
         node.node = type_var
 

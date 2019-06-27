@@ -335,7 +335,7 @@ class ASTConverter:
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
         self.class_and_function_stack.append('F')
         lineno = n.lineno
-        converter = TypeConverter(self.errors, line=lineno,
+        converter = TypeConverter(self.errors, line=lineno, override_column=n.col_offset,
                                   assume_str_is_unicode=self.unicode_literals)
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
@@ -389,11 +389,13 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature.", lineno, 0)
+                          "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, 0, blocker=False)
+                self.fail('Type signature has too many arguments', lineno, n.col_offset,
+                          blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, 0, blocker=False)
+                self.fail('Type signature has too few arguments', lineno, n.col_offset,
+                          blocker=False)
             else:
                 any_type = AnyType(TypeOfAny.unannotated)
                 func_type = CallableType([a if a is not None else any_type for a in arg_types],
@@ -569,7 +571,10 @@ class ASTConverter:
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
         typ = None
         if n.type_comment:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment,
+                                                   n.lineno,
+                                                   n.col_offset,
+                                                   self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
                 self.type_ignores.add(n.lineno)
@@ -589,7 +594,10 @@ class ASTConverter:
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast27.For) -> ForStmt:
         if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment,
+                                                   n.lineno,
+                                                   n.col_offset,
+                                                   self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
                 self.type_ignores.add(n.lineno)
@@ -619,7 +627,10 @@ class ASTConverter:
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast27.With) -> WithStmt:
         if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, self.errors,
+            extra_ignore, typ = parse_type_comment(n.type_comment,
+                                                   n.lineno,
+                                                   n.col_offset,
+                                                   self.errors,
                                                    assume_str_is_unicode=self.unicode_literals)
             if extra_ignore:
                 self.type_ignores.add(n.lineno)

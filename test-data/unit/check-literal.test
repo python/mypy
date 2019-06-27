@@ -2661,14 +2661,14 @@ d: Literal[3]
 # However, according to final semantics, we ought to be able to substitute "b" with
 # "3" wherever it's used and get the same behavior -- so maybe we do need to support
 # at least case "b" for consistency?
-a_wrap: Literal[4, a]  # E: Invalid type "__main__.a" \
-                       # E: Parameter 2 of Literal[...] is invalid
-b_wrap: Literal[4, b]  # E: Invalid type "__main__.b" \
-                       # E: Parameter 2 of Literal[...] is invalid
-c_wrap: Literal[4, c]  # E: Invalid type "__main__.c" \
-                       # E: Parameter 2 of Literal[...] is invalid
-d_wrap: Literal[4, d]  # E: Invalid type "__main__.d" \
-                       # E: Parameter 2 of Literal[...] is invalid
+a_wrap: Literal[4, a]  # E: Parameter 2 of Literal[...] is invalid \
+                       # E: Invalid type "__main__.a"
+b_wrap: Literal[4, b]  # E: Parameter 2 of Literal[...] is invalid \
+                       # E: Invalid type "__main__.b"
+c_wrap: Literal[4, c]  # E: Parameter 2 of Literal[...] is invalid \
+                       # E: Invalid type "__main__.c"
+d_wrap: Literal[4, d]  # E: Parameter 2 of Literal[...] is invalid \
+                       # E: Invalid type "__main__.d"
 [out]
 
 [case testLiteralWithFinalPropagation]

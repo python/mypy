@@ -92,7 +92,7 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
 
 
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
-    """Semantic analyzer for types (semantic analysis pass 2).
+    """Semantic analyzer for types.
 
     Converts unbound types into bound types.
     """
