@@ -2520,7 +2520,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       'actual type', 'expected type'):
             return AnyType(TypeOfAny.from_error)
         else:
-            return UnionType.make_simplified_union(left_type.items)
+            union = UnionType.make_simplified_union(left_type.items)
+            if isinstance(index, SliceExpr):
+                return self.chk.named_generic_type('builtins.tuple', [union])
+            else:
+                return union
 
     def _get_value(self, index: Expression) -> Optional[int]:
         if isinstance(index, IntExpr):

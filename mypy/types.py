@@ -84,7 +84,7 @@ class TypeOfAny:
     """
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
     """
-    # Was this Any type was inferred without a type annotation?
+    # Was this Any type inferred without a type annotation?
     unannotated = 1  # type: Final
     # Does this Any come from an explicit type annotation?
     explicit = 2  # type: Final
