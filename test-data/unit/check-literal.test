@@ -700,7 +700,7 @@ def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Invalid type "__mai
 
 # Note: this makes us re-inspect the type (e.g. via '_patch_indirect_dependencies'
 # in build.py) so we can confirm the RawExpressionType did not leak out.
-indirect = f()                                          # E: Need type annotation for 'indirect'
+indirect = f()
 [out]
 
 --

@@ -996,7 +996,8 @@ IntNode[int](1, 1)
 IntNode[int](1, 'a')  # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
 
 SameNode = Node[T, T]
-ff = SameNode[T](1, 1)  # E: Need type annotation for 'ff'
+# TODO: fix https://github.com/python/mypy/issues/7084.
+ff = SameNode[T](1, 1)
 a = SameNode(1, 'x')
 reveal_type(a) # N: Revealed type is '__main__.Node[Any, Any]'
 b = SameNode[int](1, 1)

@@ -440,8 +440,7 @@ a = None # type: A
 
 def ff() -> None:
     x = f() # E: Need type annotation for 'x'
-    reveal_type(x) # N: Revealed type is 'Any' \
-                   # E: Cannot determine type of 'x'
+    reveal_type(x) # N: Revealed type is 'Any'
 
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
@@ -969,9 +968,8 @@ for x in [A()]:
     a = x
 
 for y in []: # E: Need type annotation for 'y'
-    a = y # E: Cannot determine type of 'y'
-    reveal_type(y)  # N: Revealed type is 'Any' \
-                    # E: Cannot determine type of 'y'
+    a = y
+    reveal_type(y)  # N: Revealed type is 'Any'
 
 class A: pass
 class B: pass
@@ -1017,10 +1015,8 @@ for x, y in [[A()]]:
 
 for e, f in [[]]:  # E: Need type annotation for 'e' \
                    # E: Need type annotation for 'f'
-    reveal_type(e)  # N: Revealed type is 'Any' \
-                    # E: Cannot determine type of 'e'
-    reveal_type(f)  # N: Revealed type is 'Any' \
-                    # E: Cannot determine type of 'f'
+    reveal_type(e)  # N: Revealed type is 'Any'
+    reveal_type(f)  # N: Revealed type is 'Any'
 
 class A: pass
 class B: pass
@@ -2724,3 +2720,23 @@ class A:
 class B(A):
     x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
     x = ''
+
+[case testNeedAnnotationForCallable]
+from typing import TypeVar, Optional, Callable
+
+T = TypeVar('T')
+
+def f(x: Optional[T] = None) -> Callable[..., T]: ...
+
+x = f()  # E: Need type annotation for 'x'
+y = x
+
+[case testDontNeedAnnotationForCallable]
+from typing import TypeVar, Optional, Callable, NoReturn
+
+T = TypeVar('T')
+
+def f() -> Callable[..., NoReturn]: ...
+
+x = f()
+reveal_type(x)  # N: Revealed type is 'def (*Any, **Any) -> <nothing>'

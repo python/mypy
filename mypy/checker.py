@@ -34,7 +34,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional
+    is_optional, remove_optional, TypeTranslator
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
@@ -2520,7 +2520,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # gets generated in assignment like 'x = []' where item type is not known.
             if not self.infer_partial_type(name, lvalue, init_type):
                 self.msg.need_annotation_for_var(name, context, self.options.python_version)
-                self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+                self.set_inference_error_fallback_type(name, lvalue, init_type)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
               and lvalue.def_var and lvalue.def_var in self.inferred_attribute_types
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
@@ -2569,9 +2569,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
-    def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
-                                          context: Context) -> None:
-        """If errors on context line are ignored, store dummy type for variable.
+    def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
+        """Store best known type for variable if type inference failed.
 
         If a program ignores error on type inference error, the variable should get some
         inferred type so that if can used later on in the program. Example:
@@ -2579,10 +2578,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
           x = []  # type: ignore
           x.append(1)   # Should be ok!
 
-        We implement this here by giving x a valid type (Any).
+        We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
         """
-        if context.get_line() in self.errors.ignored_lines[self.errors.file]:
-            self.set_inferred_type(var, lvalue, AnyType(TypeOfAny.from_error))
+        self.set_inferred_type(var, lvalue, type.accept(SetNothingToAny()))
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
@@ -4305,26 +4303,26 @@ def is_valid_inferred_type(typ: Type) -> bool:
         # specific Optional type.  This resolution happens in
         # leave_partial_types when we pop a partial types scope.
         return False
-    return is_valid_inferred_type_component(typ)
+    return not typ.accept(NothingSeeker())
 
 
-def is_valid_inferred_type_component(typ: Type) -> bool:
-    """Is this part of a type a valid inferred type?
+class NothingSeeker(TypeQuery[bool]):
+    """Find any <nothing> types resulting from failed (ambiguous) type inference."""
 
-    In strict Optional mode this excludes bare None types, as otherwise every
-    type containing None would be invalid.
-    """
-    if is_same_type(typ, UninhabitedType()):
-        return False
-    elif isinstance(typ, Instance):
-        for arg in typ.args:
-            if not is_valid_inferred_type_component(arg):
-                return False
-    elif isinstance(typ, TupleType):
-        for item in typ.items:
-            if not is_valid_inferred_type_component(item):
-                return False
-    return True
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return t.ambiguous
+
+
+class SetNothingToAny(TypeTranslator):
+    """Replace all ambiguous <nothing> types with Any (to avoid spurious extra errors)."""
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+        if t.ambiguous:
+            return AnyType(TypeOfAny.from_error)
+        return t
 
 
 def is_node_static(node: Optional[Node]) -> Optional[bool]:

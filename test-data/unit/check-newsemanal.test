@@ -2716,3 +2716,43 @@ class N(NamedTuple):
         )
         b
 [builtins fixtures/tuple.pyi]
+
+[case testNewAnalyzerLessErrorsNeedAnnotation]
+from typing import TypeVar, Optional
+
+T = TypeVar('T')
+
+def f(x: Optional[T] = None) -> T: ...
+
+x = f()  # E: Need type annotation for 'x'
+y = x
+
+def g() -> None:
+    x = f()  # E: Need type annotation for 'x'
+    y = x
+
+[case testNewAnalyzerLessErrorsNeedAnnotationList]
+x = []  # type: ignore
+reveal_type(x)  # N: Revealed type is 'builtins.list[Any]'
+
+def g() -> None:
+    x = []  # type: ignore
+    reveal_type(x)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]
+
+[case testNewAnalyzerLessErrorsNeedAnnotationNested]
+from typing import TypeVar, Optional, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+def f(x: Optional[T] = None) -> G[T]: ...
+
+x = f()  # E: Need type annotation for 'x'
+y = x
+reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
+
+def g() -> None:
+    x = f()  # E: Need type annotation for 'x'
+    y = x
+    reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
