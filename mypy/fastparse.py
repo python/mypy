@@ -566,7 +566,8 @@ class ASTConverter:
             func_def.body.set_line(lineno)  # TODO: Why?
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
-            deco.set_line(n.decorator_list[0].lineno)
+            first = n.decorator_list[0]
+            deco.set_line(first.lineno, first.col_offset)
             retval = deco  # type: Union[FuncDef, Decorator]
         else:
             # FuncDef overrides set_line -- can't use self.set_line
