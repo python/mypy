@@ -52,15 +52,16 @@ characters.
 
   .. _config-precedence:
 
-  When options conflict, the precedence order for the configuration sections is:
-    1. Sections with concrete module names (``foo.bar``)
-    2. Sections with "unstructured" wildcard patterns (``foo.*.baz``),
+  When options conflict, the precedence order for configuration is:
+    1. :ref:`Inline configuration <inline-config>` in the source file
+    2. Sections with concrete module names (``foo.bar``)
+    3. Sections with "unstructured" wildcard patterns (``foo.*.baz``),
        with sections later in the configuration file overriding
        sections earlier.
-    3. Sections with "well-structured" wildcard patterns
+    4. Sections with "well-structured" wildcard patterns
        (``foo.bar.*``), with more specific overriding more general.
-    4. Command line options.
-    5. Top-level configuration file options.
+    5. Command line options.
+    6. Top-level configuration file options.
 
 The difference in precedence order between "structured" patterns (by
 specificity) and "unstructured" patterns (by order in the file) is
@@ -142,6 +143,10 @@ If you set an option both globally and for a specific module, the module configu
 options take precedence. This lets you set global defaults and override them on a
 module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
 most specific section are used where they disagree <config-precedence>`.
+
+Options that take a boolean value may be inverted by adding ``no_`` to
+their name or by (when applicable) swapping their prefix from
+``disallow`` to ``allow`` (and vice versa).
 
 .. _config-file-import-discovery-per-module:
 
@@ -311,6 +316,18 @@ Miscellaneous strictness flags
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+Platform configuration
+----------------------
+
+``always_true`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as
+    compile-time constants that are always true.
+
+``always_false`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as
+    compile-time constants that are always false.
+
+
 Global-only options
 *******************
 
@@ -371,14 +388,6 @@ section of the command line docs.
     ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
     The default is the current platform as revealed by Python's
     ``sys.platform`` variable.
-
-``always_true`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as
-    compile-time constants that are always true.
-
-``always_false`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as
-    compile-time constants that are always false.
 
 
 Incremental mode
