@@ -900,6 +900,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_decorator(self, dec: Decorator) -> None:
         self.statement = dec
+        # TODO: better don't modify them at all.
+        dec.decorators = dec.original_decorators.copy()
         dec.func.is_conditional = self.block_depth[-1] > 0
         if not dec.is_overload:
             self.add_symbol(dec.name(), dec, dec)

@@ -1049,3 +1049,35 @@ class B:  # E: Function is missing a type annotation for one or more arguments
 
 reveal_type(B)  # N: Revealed type is 'def (x: Any) -> __main__.B'
 [builtins fixtures/list.pyi]
+
+[case testAttrsDefaultDecoratorDeferred]
+defer: Yes
+
+import attr
+@attr.s
+class C(object):
+    x: int = attr.ib(default=1)
+    y: int = attr.ib()
+    @y.default
+    def inc(self):
+        return self.x + 1
+
+class Yes: ...
+[builtins fixtures/list.pyi]
+
+[case testAttrsValidatorDecoratorDeferred]
+defer: Yes
+
+import attr
+@attr.s
+class C(object):
+    x = attr.ib()
+    @x.validator
+    def check(self, attribute, value):
+        if value > 42:
+            raise ValueError("x must be smaller or equal to 42")
+C(42)
+C(43)
+
+class Yes: ...
+[builtins fixtures/exception.pyi]
