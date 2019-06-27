@@ -491,7 +491,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         if len(items) > 0:
-            self.set_line(items[0].line)
+            self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
     def name(self) -> str:

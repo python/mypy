@@ -274,3 +274,11 @@ class B(A):
     def x(self): # type: () -> int
         pass
 [builtins_py2 fixtures/property_py2.pyi]
+
+[case testColumnOverloaded]
+from typing import overload, Any
+class A:
+    @overload # E:6: An overloaded function outside a stub file must have an implementation
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
