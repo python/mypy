@@ -2168,11 +2168,13 @@ class NewTypeExpr(Expression):
     # The synthesized class representing the new type (inherits old_type)
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int) -> None:
+    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int,
+                 column: int) -> None:
         super().__init__()
         self.name = name
         self.old_type = old_type
         self.line = line
+        self.column = column
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)

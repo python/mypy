@@ -1232,6 +1232,11 @@ class TypeConverter:
         self.assume_str_is_unicode = assume_str_is_unicode
 
     def convert_column(self, column: int) -> int:
+        """Apply column override if defined; otherwise return column.
+
+        Column numbers are sometimes incorrect in the AST and the column
+        override can be used to work around that.
+        """
         if self.override_column < 0:
             return column
         else:
