@@ -1064,3 +1064,20 @@ class C(object):
 
 class Yes: ...
 [builtins fixtures/list.pyi]
+
+[case testAttrsValidatorDecoratorDeferred]
+defer: Yes
+
+import attr
+@attr.s
+class C(object):
+    x = attr.ib()
+    @x.validator
+    def check(self, attribute, value):
+        if value > 42:
+            raise ValueError("x must be smaller or equal to 42")
+C(42)
+C(43)
+
+class Yes: ...
+[builtins fixtures/exception.pyi]
