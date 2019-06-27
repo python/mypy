@@ -1049,3 +1049,18 @@ class B:  # E: Function is missing a type annotation for one or more arguments
 
 reveal_type(B)  # N: Revealed type is 'def (x: Any) -> __main__.B'
 [builtins fixtures/list.pyi]
+
+[case testAttrsDefaultDecoratorDeferred]
+defer: Yes
+
+import attr
+@attr.s
+class C(object):
+    x: int = attr.ib(default=1)
+    y: int = attr.ib()
+    @y.default
+    def inc(self):
+        return self.x + 1
+
+class Yes: ...
+[builtins fixtures/list.pyi]
