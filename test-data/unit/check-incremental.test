@@ -2469,10 +2469,10 @@ x: int = C()[0][0]
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
-class C(A, B): #type: ignore
+class C(A, B): # type: ignore
     pass
 class G(Generic[T]): pass
-A = G[C]
+A = G[C] # type: ignore
 class B(NamedTuple):
     x: int
 
@@ -2482,7 +2482,7 @@ C(1)[0]
 [out]
 
 [case testSerializeRecursiveAliases1]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Type, Callable, Union
 
 A = Union[A, int]  # type: ignore
@@ -2491,7 +2491,7 @@ C = Type[C] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases2]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Type, Callable, Union
 
 A = Union[B, int]  # type: ignore
@@ -2500,7 +2500,7 @@ C = Type[A] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases3]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Type, Callable, Union, NamedTuple
 
 A = Union[B, int]  # type: ignore
@@ -4514,15 +4514,12 @@ from lib import A
 B = List[A]
 [builtins fixtures/list.pyi]
 [out]
-tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
 [out2]
-tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
-tmp/a.py:2: error: Cannot resolve name "lib.A" (possible cyclic definition)
-tmp/a.py:3: note: Revealed type is 'Any'
+tmp/a.py:3: note: Revealed type is 'builtins.list[Any]'
 
 [case testRecursiveNamedTupleTypedDict]
 # flags: --no-new-semantic-analyzer
