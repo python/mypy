@@ -8992,3 +8992,61 @@ def bar() -> str: return '0'
 main:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 ==
 main:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
+[case testInfiniteLoop]
+# flags: --new-semantic-analyzer
+[file a.py]
+from b import f
+from typing import Callable, TypeVar
+
+F = TypeVar('F', bound=Callable)
+def dec(x: F) -> F: return x
+
+@dec
+def foo(self):
+    class A:
+        @classmethod
+        def asdf(cls, x: 'A') -> None: pass
+
+@dec
+def bar(self):
+    class B:
+        @classmethod
+        def asdf(cls, x: 'B') -> None: pass
+    f()
+
+[file b.py]
+def f() -> int: pass
+[file b.py.2]
+def f() -> str: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+==
+
+[case testInfiniteLoop2]
+# flags: --new-semantic-analyzer
+[file a.py]
+from b import f
+from typing import Callable, TypeVar, NamedTuple
+
+F = TypeVar('F', bound=Callable)
+def dec(x: F) -> F: return x
+
+@dec
+def foo(self):
+    N = NamedTuple('N', [('x', int)])
+    def g(x: N) -> None: pass
+
+@dec
+def bar(self):
+    N = NamedTuple('N', [('x', int)])
+    def g(x: N) -> None: pass
+    f()
+
+[file b.py]
+def f() -> int: pass
+[file b.py.2]
+def f() -> str: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+==
