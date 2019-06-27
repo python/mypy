@@ -5180,8 +5180,8 @@ A = G
 x: A[B[int]]
 B = G
 [out]
-main:7: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
 main:7: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
+main:7: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
 
 [case testExtremeForwardReferencing]
 from typing import TypeVar, Generic

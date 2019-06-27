@@ -1069,8 +1069,8 @@ y = None # type: SameA[str] # Two errors here, for both args of A
 [builtins fixtures/list.pyi]
 [out]
 main:9:8: error: Value of type variable "T" of "A" cannot be "str"
-main:13: error: Value of type variable "T" of "A" cannot be "str"
-main:13: error: Value of type variable "S" of "A" cannot be "str"
+main:13:1: error: Value of type variable "T" of "A" cannot be "str"
+main:13:1: error: Value of type variable "S" of "A" cannot be "str"
 
 [case testGenericTypeAliasesIgnoredPotentialAlias]
 class A: ...
