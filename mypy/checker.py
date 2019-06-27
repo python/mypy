@@ -3307,7 +3307,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig)
+            temp = self.temp_node(sig, context=e)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
@@ -4043,7 +4043,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Create a temporary node with the given, fixed type."""
         temp = TempNode(t)
         if context:
-            temp.set_line(context.get_line())
+            temp.set_line(context.get_line(), context.get_column())
         return temp
 
     def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
