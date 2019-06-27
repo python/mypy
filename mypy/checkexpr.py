@@ -842,7 +842,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.check_argument_count(callee, arg_types, arg_kinds,
                                   arg_names, formal_to_actual, context, self.msg)
 
-        self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual, context,
+        self.check_argument_types(arg_types, arg_kinds, args, callee, formal_to_actual, context,
                                   messages=arg_messages)
 
         if (callee.is_type_obj() and (len(arg_types) == 1)
@@ -1271,6 +1271,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_argument_types(self,
                              arg_types: List[Type],
                              arg_kinds: List[int],
+                             args: List[Expression],
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
@@ -1303,7 +1304,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee.arg_names[i], callee.arg_kinds[i])
                 check_arg(expanded_actual, actual_type, arg_kinds[actual],
                           callee.arg_types[i],
-                          actual + 1, i + 1, callee, context, messages)
+                          actual + 1, i + 1, callee, args[actual], messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
                   caller_kind: int,
@@ -1404,7 +1405,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #         Neither alternative matches, but we can guess the user probably wants the
         #         second one.
         erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
-                                                           arg_kinds, arg_names, context)
+                                                           arg_kinds, arg_names, args, context)
 
         # Step 5: We try and infer a second-best alternative if possible. If not, fall back
         #         to using 'Any'.
@@ -1569,6 +1570,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                      arg_types: List[Type],
                                      arg_kinds: List[int],
                                      arg_names: Optional[Sequence[Optional[str]]],
+                                     args: List[Expression],
                                      context: Context) -> List[CallableType]:
         """Returns a list of all targets that match the caller after erasing types.
 
@@ -1576,7 +1578,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         matches = []  # type: List[CallableType]
         for typ in plausible_targets:
-            if self.erased_signature_similarity(arg_types, arg_kinds, arg_names, typ, context):
+            if self.erased_signature_similarity(arg_types, arg_kinds, arg_names, args, typ,
+                                                context):
                 matches.append(typ)
         return matches
 
@@ -1755,8 +1758,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             variables=variables,
             implicit=True)
 
-    def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
+    def erased_signature_similarity(self,
+                                    arg_types: List[Type],
+                                    arg_kinds: List[int],
                                     arg_names: Optional[Sequence[Optional[str]]],
+                                    args: List[Expression],
                                     callee: CallableType,
                                     context: Context) -> bool:
         """Determine whether arguments could match the signature at runtime, after
@@ -1781,7 +1787,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 raise Finished
 
         try:
-            self.check_argument_types(arg_types, arg_kinds, callee,
+            self.check_argument_types(arg_types, arg_kinds, args, callee,
                                       formal_to_actual, context=context, check_arg=check_arg)
             return True
         except Finished:
@@ -3063,7 +3069,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if key is None:
                 stargs.append(value)
             else:
-                args.append(TupleExpr([key, value]))
+                tup = TupleExpr([key, value])
+                tup.line = key.line
+                tup.column = key.column
+                args.append(tup)
         # Define type variables (used in constructors below).
         ktdef = TypeVarDef('KT', 'KT', -1, [], self.object_type())
         vtdef = TypeVarDef('VT', 'VT', -2, [], self.object_type())
