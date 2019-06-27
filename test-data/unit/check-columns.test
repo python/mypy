@@ -82,6 +82,7 @@ if int():
         y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
 
 z: Iterable[bad] # E:13: Invalid type "__main__.bad"
+h: bad[int] # E:4: Invalid type "__main__.bad"
 
 [case testColumnInvalidType_python2]
 from typing import Iterable
