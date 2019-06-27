@@ -285,3 +285,23 @@ class A:
     def f(self, x: int) -> int: pass
     @overload
     def f(self, x: str) -> str: pass
+
+[case testColumnFunctionWithTypeVarValues]
+from typing import TypeVar, List
+
+T = TypeVar('T', int, str)
+
+def g(x): pass
+
+def f(x: T) -> T:
+    (x.bad) # E:6: "int" has no attribute "bad" \
+            # E:6: "str" has no attribute "bad"
+    g(y=x) # E:5: Unexpected keyword argument "y" for "g"
+    y: List[int, str] # E:8: "list" expects 1 type argument, but 2 given
+    del 1[0] # E:5: "int" has no attribute "__delitem__"
+    bb: List[int] = [''] # E:21: List item 0 has incompatible type "str"; expected "int"
+    aa: List[int] = ['' for x in [1]] # E:22: List comprehension has incompatible type List[str]; expected List[int]
+    cc = (1).bad # E:11: "int" has no attribute "bad"
+    n: int = '' # E:5: Incompatible types in assignment (expression has type "str", variable has type "int")
+    return x
+[builtins fixtures/list.pyi]

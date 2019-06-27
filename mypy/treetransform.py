@@ -443,12 +443,12 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_list_comprehension(self, node: ListComprehension) -> ListComprehension:
         generator = self.duplicate_generator(node.generator)
-        generator.set_line(node.generator.line)
+        generator.set_line(node.generator.line, node.generator.column)
         return ListComprehension(generator)
 
     def visit_set_comprehension(self, node: SetComprehension) -> SetComprehension:
         generator = self.duplicate_generator(node.generator)
-        generator.set_line(node.generator.line)
+        generator.set_line(node.generator.line, node.generator.column)
         return SetComprehension(generator)
 
     def visit_dictionary_comprehension(self, node: DictionaryComprehension
@@ -526,13 +526,13 @@ class TransformVisitor(NodeVisitor[Node]):
     def expr(self, expr: Expression) -> Expression:
         new = expr.accept(self)
         assert isinstance(new, Expression)
-        new.set_line(expr.line)
+        new.set_line(expr.line, expr.column)
         return new
 
     def stmt(self, stmt: Statement) -> Statement:
         new = stmt.accept(self)
         assert isinstance(new, Statement)
-        new.set_line(stmt.line)
+        new.set_line(stmt.line, stmt.column)
         return new
 
     # Helpers
