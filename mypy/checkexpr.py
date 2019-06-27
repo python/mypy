@@ -2521,15 +2521,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.from_error)
         else:
             union = UnionType.make_simplified_union(left_type.items)
-            # If we are indexing, we return the union of elements. In a slice,
-            # we return Tuple[Any, ...], unless it is homogeneous, where we return
-            # Tuple[T, ...]
             if isinstance(index, SliceExpr):
-                if union == left_type.items[0]:
-                    t = union
-                else:
-                    t = AnyType(TypeOfAny.implementation_artifact)
-                return self.chk.named_generic_type('builtins.tuple', [t])
+                return self.chk.named_generic_type('builtins.tuple', [union])
             else:
                 return union
 
