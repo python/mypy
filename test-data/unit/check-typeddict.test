@@ -1340,34 +1340,34 @@ reveal_type(x['a']['b']) # N: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testSelfRecursiveTypedDictInheriting]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from mypy_extensions import TypedDict
 
 class MovieBase(TypedDict):
     name: str
     year: int
 
-class Movie(MovieBase): # type: ignore # warning about recursive not fully supported
-    director: 'Movie'
+class Movie(MovieBase):
+    director: 'Movie' # E: Cannot resolve name "Movie" (possible cyclic definition)
 
 m: Movie
-reveal_type(m['director']['name']) # N: Revealed type is 'builtins.str'
+reveal_type(m['director']['name']) # N: Revealed type is 'Any'
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testSubclassOfRecursiveTypedDict]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import List
 from mypy_extensions import TypedDict
 
-class Command(TypedDict):  # type: ignore
-    subcommands: List['Command']
+class Command(TypedDict):
+    subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition)
 
 class HelpCommand(Command):
     pass
 
 hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is 'TypedDict('__main__.HelpCommand', {'subcommands': builtins.list[TypedDict('__main__.Command', {'subcommands': builtins.list[Any]})]})'
+reveal_type(hc)  # N: Revealed type is 'TypedDict('__main__.HelpCommand', {'subcommands': builtins.list[Any]})'
 [builtins fixtures/list.pyi]
 [out]
 

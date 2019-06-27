@@ -574,19 +574,16 @@ tmp/b.py:4: note: Revealed type is 'Tuple[Any, fallback=a.N]'
 tmp/b.py:7: note: Revealed type is 'Tuple[Any, fallback=a.N]'
 
 [case testSimpleSelfReferentialNamedTuple]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 class MyNamedTuple(NamedTuple):
-    parent: 'MyNamedTuple'
+    parent: 'MyNamedTuple' # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition)
 
 def bar(nt: MyNamedTuple) -> MyNamedTuple:
     return nt
 
 x: MyNamedTuple
-reveal_type(x.parent)
-[out]
-main:3: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:10: note: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
+reveal_type(x.parent) # N: Revealed type is 'Any'
 
 -- Some crazy self-referential named tuples and types dicts
 -- to be sure that everything works
@@ -613,94 +610,85 @@ class B:
 [out]
 
 [case testSelfRefNT1]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple('Node', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+Node = NamedTuple('Node', [
         ('name', str),
-        ('children', Tuple['Node', ...]),
+        ('children', Tuple['Node', ...]), # E: Cannot resolve name "Node" (possible cyclic definition)
     ])
 n: Node
-reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node]], fallback=__main__.Node]'
+reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node]'
 [builtins fixtures/tuple.pyi]
 
-
 [case testSelfRefNT2]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import Tuple, NamedTuple
 
-A = NamedTuple('A', [ # E
+A = NamedTuple('A', [
         ('x', str),
-        ('y', Tuple['B', ...]),
+        ('y', Tuple['B', ...]), # E: Cannot resolve name "B" (possible cyclic definition)
     ])
-class B(NamedTuple): # E
+class B(NamedTuple):
     x: A
     y: int
 
 n: A
-reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, builtins.tuple[Tuple[Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A], builtins.int, fallback=__main__.B]], fallback=__main__.A]'
+reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A]'
 [builtins fixtures/tuple.pyi]
-[out]
-main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:8: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT3]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple, Tuple
 
-class B(NamedTuple): # E
-    x: Tuple[A, int]
+class B(NamedTuple):
+    x: Tuple[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
     y: int
 
-A = NamedTuple('A', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+A = NamedTuple('A', [
         ('x', str),
         ('y', 'B'),
     ])
 n: B
 m: A
-reveal_type(n.x) # N: Revealed type is 'Tuple[Tuple[builtins.str, Tuple[Tuple[Any, builtins.int], builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int]'
+reveal_type(n.x) # N: Revealed type is 'Tuple[Any, builtins.int]'
 reveal_type(m[0]) # N: Revealed type is 'builtins.str'
 lst = [m, n]
 reveal_type(lst[0]) # N: Revealed type is 'Tuple[builtins.object, builtins.object]'
 [builtins fixtures/tuple.pyi]
-[out]
-main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT4]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 
-class B(NamedTuple): # E
-    x: A
+class B(NamedTuple):
+    x: A # E: Cannot resolve name "A" (possible cyclic definition)
     y: int
 
-class A(NamedTuple): # E
+class A(NamedTuple):
     x: str
     y: B
 
 n: A
-reveal_type(n.y[0]) # N: Revealed type is 'Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]'
+reveal_type(n.y[0]) # N: Revealed type is 'Any'
 [builtins fixtures/tuple.pyi]
-[out]
-main:4: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:8: error: Recursive types not fully supported yet, nested types replaced with "Any"
 
 [case testSelfRefNT5]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 
-B = NamedTuple('B', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
-        ('x', A),
+B = NamedTuple('B', [
+        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)
         ('y', int),
     ])
-A = NamedTuple('A', [ # E: Recursive types not fully supported yet, nested types replaced with "Any"
+A = NamedTuple('A', [
         ('x', str),
         ('y', 'B'),
     ])
 n: A
 def f(m: B) -> None: pass
-reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int, fallback=__main__.B], fallback=__main__.A]'
-reveal_type(f) # N: Revealed type is 'def (m: Tuple[Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A], builtins.int, fallback=__main__.B])'
+reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]'
+reveal_type(f) # N: Revealed type is 'def (m: Tuple[Any, builtins.int, fallback=__main__.B])'
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
@@ -745,17 +733,17 @@ tp = NamedTuple('tp', [('x', int)])
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import List, NamedTuple
 
-class Command(NamedTuple):  # type: ignore
-    subcommands: List['Command']
+class Command(NamedTuple):
+    subcommands: List['Command'] # E: Cannot resolve name "Command" (possible cyclic definition)
 
 class HelpCommand(Command):
     pass
 
 hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is 'Tuple[builtins.list[Tuple[builtins.list[Any], fallback=__main__.Command]], fallback=__main__.HelpCommand]'
+reveal_type(hc)  # N: Revealed type is 'Tuple[builtins.list[Any], fallback=__main__.HelpCommand]'
 [builtins fixtures/list.pyi]
 [out]
 

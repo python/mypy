@@ -4356,32 +4356,30 @@ class A(Tuple[int, str]): pass
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
 # FIXME: #6445
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)]) # E: Recursive types not fully supported yet, nested types replaced with "Any"
+N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
 n: N
-[out]
+reveal_type(n) # N: Revealed type is 'Tuple[Any, fallback=__main__.N]'
 
 [case testCrashOnSelfRecursiveTypedDictVar]
 # FIXME: #6445
-# flags: --no-new-semantic-analyzer
 from mypy_extensions import TypedDict
 
 A = TypedDict('A', {'a': 'A'})  # type: ignore
 a: A
 [builtins fixtures/isinstancelist.pyi]
-[out]
 
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
 # FIXME: #6445
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import NamedTuple
 
-class N(NamedTuple): # type: ignore
-    x: N
-class M(NamedTuple): # type: ignore
-    x: M
+class N(NamedTuple):
+    x: N # type: ignore
+class M(NamedTuple):
+    x: M # type: ignore
 
 n: N
 m: M
@@ -4390,18 +4388,18 @@ lst = [n, m]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
 # FIXME: #6445
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from mypy_extensions import TypedDict
 
-class N(TypedDict):  # E: Recursive types not fully supported yet, nested types replaced with "Any"
-    x: N
-class M(TypedDict):  # E: Recursive types not fully supported yet, nested types replaced with "Any"
-    x: M
+class N(TypedDict):
+    x: N # E: Cannot resolve name "N" (possible cyclic definition)
+class M(TypedDict):
+    x: M # E: Cannot resolve name "M" (possible cyclic definition)
 
 n: N
 m: M
 lst = [n, m]
-reveal_type(lst[0]['x'])  # N: Revealed type is 'TypedDict('__main__.N', {'x': Any})'
+reveal_type(lst[0]['x'])  # N: Revealed type is 'Any'
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
