@@ -2726,12 +2726,10 @@ def f(x: Optional[T] = None) -> T: ...
 
 x = f()  # E: Need type annotation for 'x'
 y = x
-reveal_type(y)
 
 def g() -> None:
     x = f()  # E: Need type annotation for 'x'
     y = x
-    reveal_type(y)
 
 [case testNewAnalyzerLessErrorsNeedAnnotationNested]
 from typing import TypeVar, Optional, Generic
@@ -2743,9 +2741,9 @@ def f(x: Optional[T] = None) -> G[T]: ...
 
 x = f()  # E: Need type annotation for 'x'
 y = x
-reveal_type(y)
+reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
 
 def g() -> None:
     x = f()  # E: Need type annotation for 'x'
     y = x
-    reveal_type(y)
+    reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
