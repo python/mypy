@@ -48,6 +48,7 @@ PER_MODULE_OPTIONS = {
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
+    "warn_unreachable",
     "warn_unused_ignores",
 }  # type: Final
 
@@ -163,6 +164,10 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Report an error for any branches inferred to be unreachable as a result of
+        # type analysis.
+        self.warn_unreachable = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

@@ -715,3 +715,251 @@ if sys.version_info[0] >= 2:
     reveal_type('')  # N: Revealed type is 'builtins.str'
 reveal_type('')  # N: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
+
+[case testUnreachableFlagWithBadControlFlow]
+# flags: --warn-unreachable
+a: int
+if isinstance(a, int):
+    reveal_type(a)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(a)  # E: Statement is unreachable
+
+b: int
+while isinstance(b, int):
+    reveal_type(b)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(b)  # E: Statement is unreachable
+
+def foo(c: int) -> None:
+    reveal_type(c)  # N: Revealed type is 'builtins.int'
+    assert not isinstance(c, int)
+    reveal_type(c)  # E: Statement is unreachable
+
+d: int
+if False:
+    reveal_type(d)  # E: Statement is unreachable
+
+e: int
+if True:
+    reveal_type(e)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(e)  # E: Statement is unreachable
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachableFlagStatementAfterReturn]
+# flags: --warn-unreachable
+def foo(x: int) -> None:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    return
+    reveal_type(x)  # E: Statement is unreachable
+
+[case testUnreachableFlagTryBlocks]
+# flags: --warn-unreachable
+
+def foo(x: int) -> int:
+    try:
+        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        return x
+        reveal_type(x)      # E: Statement is unreachable
+    finally:
+        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        if True:
+            reveal_type(x)  # N: Revealed type is 'builtins.int'
+        else:
+            reveal_type(x)  # E: Statement is unreachable
+
+def bar(x: int) -> int:
+    try:
+        if True:
+            raise Exception()
+        reveal_type(x)      # E: Statement is unreachable
+    except:
+        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        return x
+    else:
+        reveal_type(x)      # E: Statement is unreachable
+
+def baz(x: int) -> int:
+    try:
+        reveal_type(x)      # N: Revealed type is 'builtins.int'
+    except:
+        # Mypy assumes all lines could throw an exception
+        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        return x
+    else:
+        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        return x
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
+# flags: --warn-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
+import sys
+from typing import TYPE_CHECKING
+
+x: int
+if TYPE_CHECKING:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x)
+
+if not TYPE_CHECKING:
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+if sys.platform == 'darwin':
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+if sys.platform == 'win32':
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x)
+
+if sys.version_info == (2, 7):
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+if sys.version_info == (3, 7):
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x)
+
+FOOBAR = ""
+if FOOBAR:
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableFlagIgnoresSemanticAnalysisExprUnreachable]
+# flags: --warn-unreachable --always-false FOOBAR
+import sys
+from typing import TYPE_CHECKING
+
+FOOBAR = ""
+
+def foo() -> bool: ...
+
+lst = [1, 2, 3]
+
+a = FOOBAR and foo()
+b = (not FOOBAR) or foo()
+c = 1 if FOOBAR else 2
+d = [x for x in lst if FOOBAR]
+[builtins fixtures/list.pyi]
+
+[case testUnreachableFlagOkWithDeadStatements]
+# flags: --warn-unreachable
+from typing import NoReturn
+def assert_never(x: NoReturn) -> NoReturn:
+    assert False
+
+def nonthrowing_assert_never(x: NoReturn) -> None: ...
+
+def expect_str(x: str) -> str: pass
+
+x: int
+if False:
+    assert False
+    reveal_type(x)
+
+if False:
+    raise Exception()
+    reveal_type(x)
+
+if False:
+    assert_never(x)
+    reveal_type(x)
+
+if False:
+    nonthrowing_assert_never(x)  # E: Statement is unreachable
+    reveal_type(x)
+
+if False:
+    # Ignore obvious type errors
+    assert_never(expect_str(x))
+    reveal_type(x)
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagExpressions]
+# flags: --warn-unreachable
+def foo() -> bool: ...
+
+lst = [1, 2, 3, 4]
+
+a = True or foo()                        # E: Right operand of 'or' is never evaluated
+b = False or foo()                       # E: Left operand of 'or' is always false
+c = True and foo()                       # E: Left operand of 'and' is always true
+d = False and foo()                      # E: Right operand of 'and' is never evaluated
+e = True or (True or (True or foo()))    # E: Right operand of 'or' is never evaluated
+f = (True or foo()) or (True or foo())   # E: Right operand of 'or' is never evaluated
+g = 3 if True else 4                     # E: If condition is always true
+h = 3 if False else 4                    # E: If condition is always false
+i = [x for x in lst if True]             # E: If condition in comprehension is always true
+j = [x for x in lst if False]            # E: If condition in comprehension is always false
+
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true \
+                                                     # E: Right operand of 'or' is never evaluated
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachableFlagMiscTestCaseMissingMethod]
+# flags: --warn-unreachable
+
+class Case1:
+    def test1(self) -> bool:
+        return False and self.missing()  # E: Right operand of 'and' is never evaluated
+
+    def test2(self) -> bool:
+        return not self.property_decorator_missing and self.missing()  # E: Right operand of 'and' is never evaluated
+
+    def property_decorator_missing(self) -> bool:
+        return True
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableFlagWithGenerics]
+# flags: --warn-unreachable
+from typing import TypeVar, Generic
+
+T1 = TypeVar('T1', bound=int)
+T2 = TypeVar('T2', int, str)
+
+def test1(x: T1) -> T1:
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is 'T1`-1'
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+    return x
+
+def test2(x: T2) -> T2:
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is 'builtins.int*'
+    else:
+        reveal_type(x)  # N: Revealed type is 'builtins.str*'
+
+    if False:
+        # This is unreachable, but we don't report an error, unfortunately.
+        # The presence of the TypeVar with values unfortunately currently shuts
+        # down type-checking for this entire function.
+        # TODO: Find a way of removing this limitation
+        reveal_type(x)
+
+    return x
+
+class Test3(Generic[T2]):
+    x: T2
+
+    def func(self) -> None:
+        if isinstance(self.x, int):
+            reveal_type(self.x)  # N: Revealed type is 'builtins.int*'
+        else:
+            reveal_type(self.x)  # N: Revealed type is 'builtins.str*'
+
+        if False:
+            # Same issue as above
+            reveal_type(self.x)
+
+[builtins fixtures/isinstancelist.pyi]

@@ -783,7 +783,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: Optional[str]) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
-        for item, typ in self.expand_typevars(defn, typ):
+        expanded = self.expand_typevars(defn, typ)
+        for item, typ in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
@@ -932,6 +933,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Type check body in a new scope.
             with self.binder.top_frame_context():
                 with self.scope.push_function(defn):
+                    # We suppress reachability warnings when we use TypeVars with value
+                    # restrictions: we only want to report a warning if a certain statement is
+                    # marked as being suppressed in *all* of the expansions, but we currently
+                    # have no good way of doing this.
+                    #
+                    # TODO: Find a way of working around this limitation
+                    if len(expanded) >= 2:
+                        self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
@@ -1777,12 +1786,45 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
+            # This block was marked as being unreachable during semantic analysis.
+            # It turns out any blocks marked in this way are *intentionally* marked
+            # as unreachable -- so we don't display an error.
             self.binder.unreachable()
             return
         for s in b.body:
             if self.binder.is_unreachable():
+                if (self.options.warn_unreachable
+                        and not self.binder.is_unreachable_warning_suppressed()
+                        and not self.is_raising_or_empty(s)):
+                    self.msg.unreachable_statement(s)
                 break
             self.accept(s)
+
+    def is_raising_or_empty(self, s: Statement) -> bool:
+        """Returns 'true' if the given statement either throws an error of some kind
+        or is a no-op.
+
+        We use this function mostly while handling the '--warn-unreachable' flag. When
+        that flag is present, we normally report an error on any unreachable statement.
+        But if that statement is just something like a 'pass' or a just-in-case 'assert False',
+        reporting an error would be annoying.
+        """
+        if isinstance(s, AssertStmt) and is_false_literal(s.expr):
+            return True
+        elif isinstance(s, (RaiseStmt, PassStmt)):
+            return True
+        elif isinstance(s, ExpressionStmt):
+            if isinstance(s.expr, EllipsisExpr):
+                return True
+            elif isinstance(s.expr, CallExpr):
+                self.expr_checker.msg.disable_errors()
+                typ = self.expr_checker.accept(
+                    s.expr, allow_none_return=True, always_allow_any=True)
+                self.expr_checker.msg.enable_errors()
+
+                if isinstance(typ, UninhabitedType):
+                    return True
+        return False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
@@ -2954,7 +2996,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # type checks in both contexts, but only the resulting types
             # from the latter context affect the type state in the code
             # that follows the try statement.)
-            self.accept(s.finally_body)
+            if not self.binder.is_unreachable():
+                self.accept(s.finally_body)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.

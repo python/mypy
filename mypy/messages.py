@@ -1228,6 +1228,35 @@ class MessageBuilder:
         self.note('"{}.__call__" has type {}'.format(self.format_bare(subtype),
                                                      self.format(call, verbosity=1)), context)
 
+    def unreachable_statement(self, context: Context) -> None:
+        self.fail("Statement is unreachable", context)
+
+    def redundant_left_operand(self, op_name: str, context: Context) -> None:
+        """Indicates that the left operand of a boolean expression is redundant:
+        it does not change the truth value of the entire condition as a whole.
+        'op_name' should either be the string "and" or the string "or".
+        """
+        self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
+
+    def redundant_right_operand(self, op_name: str, context: Context) -> None:
+        """Indicates that the right operand of a boolean expression is redundant:
+        it does not change the truth value of the entire condition as a whole.
+        'op_name' should either be the string "and" or the string "or".
+        """
+        self.fail("Right operand of '{}' is never evaluated".format(op_name), context)
+
+    def redundant_condition_in_comprehension(self, truthiness: bool, context: Context) -> None:
+        self.redundant_expr("If condition in comprehension", truthiness, context)
+
+    def redundant_condition_in_if(self, truthiness: bool, context: Context) -> None:
+        self.redundant_expr("If condition", truthiness, context)
+
+    def redundant_condition_in_assert(self, truthiness: bool, context: Context) -> None:
+        self.redundant_expr("Condition in assert", truthiness, context)
+
+    def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
+        self.fail("{} is always {}".format(description, str(truthiness).lower()), context)
+
     def report_protocol_problems(self, subtype: Union[Instance, TupleType, TypedDictType],
                                  supertype: Instance, context: Context) -> None:
         """Report possible protocol conflicts between 'subtype' and 'supertype'.
