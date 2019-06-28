@@ -577,10 +577,8 @@ class C:
 
 [builtins fixtures/list.pyi]
 
--- This is tricky with new analyzer:
--- We need to know the analyzed type of a function while still processing top-level.
 [case testAttrsUsingBadConverter]
-# flags: --no-new-semantic-analyzer --no-strict-optional
+# flags: --no-strict-optional
 import attr
 from typing import overload
 @overload
@@ -604,6 +602,34 @@ main:16: error: Argument "converter" has incompatible type "Callable[[], str]"; 
 main:17: error: Cannot determine __init__ type from converter
 main:17: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
 main:18: note: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingBadConverterReprocess]
+# flags: --no-strict-optional
+import attr
+from typing import overload
+forward: 'A'
+@overload
+def bad_overloaded_converter(x: int, y: int) -> int:
+    ...
+@overload
+def bad_overloaded_converter(x: str, y: str) -> str:
+    ...
+def bad_overloaded_converter(x, y=7):
+    return x
+def bad_converter() -> str:
+    return ''
+@attr.dataclass
+class A:
+    bad: str = attr.ib(converter=bad_converter)
+    bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
+reveal_type(A)
+[out]
+main:17: error: Cannot determine __init__ type from converter
+main:17: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:18: error: Cannot determine __init__ type from converter
+main:18: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:19: note: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
 [builtins fixtures/list.pyi]
 
 [case testAttrsUsingUnsupportedConverter]
