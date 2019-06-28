@@ -321,7 +321,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail,
                          disallow_any=self.options.disallow_any_generics and
-                                      not self.is_typeshed_stub)
+                         not self.is_typeshed_stub)
 
         tup = info.tuple_type
         if tup is not None:
