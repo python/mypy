@@ -2774,3 +2774,14 @@ def g() -> None:
         nonlocal bar
         bar = []  # type: typing.List[int] # E: Name 'bar' already defined on line 11
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred]
+from typing import TypeVar, Generic
+
+defer: Yes
+
+S = TypeVar('S', covariant=True, contravariant=True)  # E: TypeVar cannot be both covariant and contravariant \
+                                                      # E: "int" not callable
+
+class Yes: ...
+[builtins fixtures/bool.pyi]
