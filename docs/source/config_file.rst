@@ -310,8 +310,8 @@ Miscellaneous strictness flags
 ``implicit_reexport`` (bool, default True)
     By default, imported values to a module are treated as exported and mypy allows
     other modules to import them. When false, mypy will not re-export unless
-    the item is imported using from-as. Note that mypy treats stub files as if this
-    is always disabled. For example:
+    the item is imported using from-as or is included in ``__all__``. Note that mypy
+    treats stub files as if this is always disabled. For example:
 
     .. code-block:: python
 
@@ -319,6 +319,9 @@ Miscellaneous strictness flags
        from foo import bar
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+       # This will also re-export bar
+       from foo import bar
+       __all__ = ['bar']
 
 ``strict_equality``  (bool, default False)
    Prohibit equality checks, identity checks, and container checks between
