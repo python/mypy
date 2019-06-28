@@ -2686,17 +2686,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.fail("Cannot declare the type of a type variable", s)
             return False
 
-        assert isinstance(s.rvalue, CallExpr)
         name = lvalue.name
-        names = self.current_symbol_table()
-        existing = names.get(name)
-        if existing and not (isinstance(existing.node, PlaceholderNode) or
-                             # Also give error for another type variable with the same name.
-                             (isinstance(existing.node, TypeVarExpr) and
-                              existing.node is s.rvalue.analyzed)):
-            self.fail("Cannot redefine '%s' as a type variable" % name, s)
-            return False
-
         if not self.check_typevar_name(call, name, s):
             return False
 
@@ -2712,6 +2702,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if res is None:
             return False
         variance, upper_bound = res
+
+        existing = self.current_symbol_table().get(name)
+        if existing and not (isinstance(existing.node, PlaceholderNode) or
+                             # Also give error for another type variable with the same name.
+                             (isinstance(existing.node, TypeVarExpr) and
+                              existing.node is call.analyzed)):
+            self.fail("Cannot redefine '%s' as a type variable" % name, s)
+            return False
 
         if self.options.disallow_any_unimported:
             for idx, constraint in enumerate(values, start=1):
