@@ -3131,7 +3131,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             elif isinstance(s.unanalyzed_type, TupleType):
                 # We have multiple targets and multiple types
                 if len(actual_targets) == len(s.unanalyzed_type.items):
-                    types = s.unanalyzed_type.items
+                    types = s.unanalyzed_type.items.copy()
                 else:
                     # But it's the wrong number of items
                     self.fail('Incompatible number of types for `with` targets', s)
