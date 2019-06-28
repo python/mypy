@@ -1,4 +1,5 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
+
 from collections import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
@@ -9,7 +10,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
-    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
+    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
     TypeVarExpr
@@ -463,9 +464,12 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
         if isinstance(converter, RefExpr) and converter.node:
-            if (isinstance(converter.node, FuncBase)
+            if (isinstance(converter.node, FuncDef)
                     and converter.node.type
                     and isinstance(converter.node.type, FunctionLike)):
+                return Converter(converter.node.fullname())
+            elif (isinstance(converter.node, OverloadedFuncDef)
+                    and is_valid_overloaded_converter(converter.node)):
                 return Converter(converter.node.fullname())
             elif isinstance(converter.node, TypeInfo):
                 return Converter(converter.node.fullname())
@@ -488,6 +492,11 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
         )
         return Converter('')
     return Converter(None)
+
+
+def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:
+    return all((not isinstance(item, Decorator) or isinstance(item.func.type, FunctionLike))
+               for item in defn.items)
 
 
 def _parse_assignments(
