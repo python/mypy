@@ -69,13 +69,6 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                               arg, info.name(), tvar.upper_bound), t)
         super().visit_instance(t)
 
-    def visit_any(self, t: AnyType) -> None:
-        if not self.options.disallow_any_generics or self.is_typeshed_file:
-            return
-
-        if t.type_of_any == TypeOfAny.from_omitted_generics:
-            self.fail(message_registry.BARE_GENERIC, t)
-
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in actuals:
