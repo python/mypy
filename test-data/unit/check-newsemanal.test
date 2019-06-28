@@ -2717,6 +2717,16 @@ class N(NamedTuple):
         b
 [builtins fixtures/tuple.pyi]
 
+[case testWithMultipleTargetsDeferred]
+a: A
+
+class A:
+    def __enter__(self) -> int: pass
+    def __exit__(self, x, y, z): pass
+
+with A() as x, A() as y:  # type: int, int
+    pass
+
 [case testNewAnalyzerLessErrorsNeedAnnotation]
 from typing import TypeVar, Optional
 
