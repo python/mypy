@@ -2756,3 +2756,21 @@ def g() -> None:
     x = f()  # E: Need type annotation for 'x'
     y = x
     reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
+
+[case testNewAnalyzerRedefinedNonlocal]
+import typing
+
+def f():
+    bar = []  # type: typing.List[int]
+
+    def foo():
+        nonlocal bar
+        bar = []  # type: typing.List[int]
+
+def g() -> None:
+    bar = []  # type: typing.List[int]
+
+    def foo() -> None:
+        nonlocal bar
+        bar = []  # type: typing.List[int] # E: Name 'bar' already defined on line 11
+[builtins fixtures/list.pyi]
