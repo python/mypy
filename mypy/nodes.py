@@ -232,7 +232,7 @@ class MypyFile(SymbolNode):
 
     # Fully qualified module name
     _fullname = None  # type: Bogus[str]
-    # Path to the file (None if not known)
+    # Path to the file (empty string if not known)
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]

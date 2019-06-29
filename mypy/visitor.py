@@ -1,7 +1,8 @@
 """Generic abstract syntax tree node visitor"""
 
 from abc import abstractmethod
-from typing import TypeVar, Generic, TYPE_CHECKING
+from typing import TypeVar, Generic
+from typing_extensions import TYPE_CHECKING
 from mypy_extensions import trait
 
 if TYPE_CHECKING:
