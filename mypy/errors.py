@@ -376,7 +376,7 @@ class Errors:
         for file, line, column, severity, message in errors:
             s = ''
             if file is not None:
-                if self.show_column_numbers and line >= 0  and column >= 0:
+                if self.show_column_numbers and line >= 0 and column >= 0:
                     srcloc = '{}:{}:{}'.format(file, line, 1 + column)
                 elif line >= 0:
                     srcloc = '{}:{}'.format(file, line)
