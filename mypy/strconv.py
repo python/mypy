@@ -92,7 +92,7 @@ class StrConv(NodeVisitor[str]):
         # Omit path to special file with name "main". This is used to simplify
         # test case descriptions; the file "main" is used by default in many
         # test cases.
-        if o.path is not None and o.path != 'main':
+        if o.path != 'main':
             # Insert path. Normalize directory separators to / to unify test
             # case# output in all platforms.
             a.insert(0, o.path.replace(os.sep, '/'))
