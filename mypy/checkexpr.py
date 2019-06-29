@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from contextlib import contextmanager
 from typing import (
-    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
+    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator, overload
 )
 from typing_extensions import ClassVar, Final
 
@@ -674,17 +674,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          self.msg, original_type=object_type, chk=self.chk,
                                          in_literal_context=self.is_literal_context())
             self.msg.enable_errors()
-            item = self.narrow_type_from_binder(e.callee, item)
-            # TODO: This check is not one-to-one with non-special-cased behavior.
-            #       Ideas for more precise checks:
-            #       * reverse-engineering of mypy.meet.narrow_declared_type()
-            #       * apply special-casing only if we know some hooks will be applied
-            if (isinstance(item, NoneType) and not state.strict_optional or
-                    isinstance(item, UninhabitedType) and state.strict_optional):
+            narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
+            if narrowed is None:
                 continue
             callable_name = self.method_fullname(typ, member)
             item_object_type = typ if callable_name else None
-            res.append(self.check_call_expr_with_callee_type(item, e, callable_name,
+            res.append(self.check_call_expr_with_callee_type(narrowed, e, callable_name,
                                                              item_object_type))
         return UnionType.make_simplified_union(res)
 
@@ -2078,7 +2073,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         args: List[Expression],
                                         arg_kinds: List[int],
                                         context: Context,
-                                        local_errors: Optional[MessageBuilder] = None,
+                                        local_errors: MessageBuilder,
                                         original_type: Optional[Type] = None
                                         ) -> Tuple[Type, Type]:
         """Type check a call to a named method on an object with union type.
@@ -3600,7 +3595,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Return instance type 'bool'."""
         return self.named_type('builtins.bool')
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
+    @overload
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
+    @overload
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,
+                                skip_non_overlapping: bool) -> Optional[Type]: ...
+
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,
+                                skip_non_overlapping: bool = False) -> Optional[Type]:
+        """Narrow down a known type of expression using information in conditional type binder.
+
+        If 'skip_non_overlapping' is True, return None if the type and restriction are
+        non-overlapping.
+        """
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             # If the current node is deferred, some variables may get Any types that they
@@ -3608,6 +3615,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # produce invalid inferred Optional[Any] types, at least.
             if restriction and not (isinstance(known_type, AnyType)
                                     and self.chk.current_node_deferred):
+                # Note: this call should match the one in narrow_declared_type().
+                if (skip_non_overlapping and
+                        not is_overlapping_types(known_type, restriction,
+                                                 prohibit_none_typevar_overlap=True)):
+                    return None
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type
