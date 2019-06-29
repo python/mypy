@@ -3,9 +3,9 @@
 from collections import OrderedDict
 from contextlib import contextmanager
 from typing import (
-    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator, overload
+    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final
+from typing_extensions import ClassVar, Final, overload
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
