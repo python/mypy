@@ -640,10 +640,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          member: Optional[str] = None) -> Type:
         """Type check call expression.
 
-        The given callee type overrides the type of the callee
-        expression.
+        The callee_type should be used as the type of callee expression. In particular,
+        in case of a union type this can be a particular item of the union, so that we can
+        apply plugin hooks to each item.
 
-        The 'callable_name' and 'object_type' are used to call plugin hooks.
+        The 'member', 'callable_name' and 'object_type' are only used to call plugin hooks.
         If 'callable_name' is None but 'member' is not None (member call), try constructing
         'callable_name' using 'object_type' (the base type on which the method is called),
         for example 'typing.Mapping.get'.
@@ -657,32 +658,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
         # Unions are special-cased to allow plugins to act on each item in the union.
         elif member is not None and isinstance(object_type, UnionType):
-            res = []  # type: List[Type]
-            for typ in object_type.items:
-                # Member access errors are already reported when visiting the member expression.
-                self.msg.disable_errors()
-                item = analyze_member_access(member, typ, e, False, False, False,
-                                             self.msg, original_type=object_type, chk=self.chk,
-                                             in_literal_context=self.is_literal_context())
-                self.msg.enable_errors()
-                item = self.narrow_type_from_binder(e.callee, item)
-                # TODO: This check is not one-to-one with non-special-cased behavior.
-                #       Ideas for more precise checks:
-                #       * reverse-engineering of mypy.meet.narrow_declared_type()
-                #       * apply special-casing only if we know some hooks will be applied
-                if (isinstance(item, NoneType) and not state.strict_optional or
-                        isinstance(item, UninhabitedType) and state.strict_optional):
-                    continue
-                callable_name = self.method_fullname(typ, member)
-                item_object_type = typ if callable_name else None
-                res.append(self.check_call_expr_with_callee_type(item, e, callable_name,
-                                                                 item_object_type))
-            return UnionType.make_simplified_union(res)
-
+            return self.check_union_call_expr(e, object_type, member)
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee,
                                callable_name=callable_name,
                                object_type=object_type)[0]
+
+    def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
+        """"Type check calling a member expression where the base type is a union."""
+        res = []  # type: List[Type]
+        for typ in object_type.relevant_items():
+            # Member access errors are already reported when visiting the member expression.
+            self.msg.disable_errors()
+            item = analyze_member_access(member, typ, e, False, False, False,
+                                         self.msg, original_type=object_type, chk=self.chk,
+                                         in_literal_context=self.is_literal_context())
+            self.msg.enable_errors()
+            item = self.narrow_type_from_binder(e.callee, item)
+            # TODO: This check is not one-to-one with non-special-cased behavior.
+            #       Ideas for more precise checks:
+            #       * reverse-engineering of mypy.meet.narrow_declared_type()
+            #       * apply special-casing only if we know some hooks will be applied
+            if (isinstance(item, NoneType) and not state.strict_optional or
+                    isinstance(item, UninhabitedType) and state.strict_optional):
+                continue
+            callable_name = self.method_fullname(typ, member)
+            item_object_type = typ if callable_name else None
+            res.append(self.check_call_expr_with_callee_type(item, e, callable_name,
+                                                             item_object_type))
+        return UnionType.make_simplified_union(res)
 
     def check_call(self,
                    callee: Type,
@@ -2057,19 +2061,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         original_type = original_type or base_type
         # Unions are special-cased to allow plugins to act on each element of the union.
         if isinstance(base_type, UnionType):
-            res = []  # type: List[Type]
-            meth_res = []  # type: List[Type]
-            for typ in base_type.relevant_items():
-                # Format error messages consistently with
-                # mypy.checkmember.analyze_union_member_access().
-                local_errors.disable_type_names += 1
-                item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
-                                                                 context, local_errors,
-                                                                 original_type)
-                local_errors.disable_type_names -= 1
-                res.append(item)
-                meth_res.append(meth_item)
-            return UnionType.make_simplified_union(res), UnionType.make_simplified_union(meth_res)
+            return self.check_union_method_call_by_name(method, base_type,
+                                                        args, arg_kinds,
+                                                        context, local_errors, original_type)
 
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             local_errors, original_type=original_type,
@@ -2077,6 +2071,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                             in_literal_context=self.is_literal_context())
         return self.check_method_call(
             method, base_type, method_type, args, arg_kinds, context, local_errors)
+
+    def check_union_method_call_by_name(self,
+                                        method: str,
+                                        base_type: UnionType,
+                                        args: List[Expression],
+                                        arg_kinds: List[int],
+                                        context: Context,
+                                        local_errors: Optional[MessageBuilder] = None,
+                                        original_type: Optional[Type] = None
+                                        ) -> Tuple[Type, Type]:
+        """Type check a call to a named method on an object with union type.
+
+        This essentially checks the call using check_method_call_by_name() for each
+        union item and unions the result. We do this to allow plugins to act on
+        individual union items.
+        """
+        res = []  # type: List[Type]
+        meth_res = []  # type: List[Type]
+        for typ in base_type.relevant_items():
+            # Format error messages consistently with
+            # mypy.checkmember.analyze_union_member_access().
+            local_errors.disable_type_names += 1
+            item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
+                                                             context, local_errors,
+                                                             original_type)
+            local_errors.disable_type_names -= 1
+            res.append(item)
+            meth_res.append(meth_item)
+        return UnionType.make_simplified_union(res), UnionType.make_simplified_union(meth_res)
 
     def check_method_call(self,
                           method_name: str,
