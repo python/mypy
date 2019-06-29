@@ -784,13 +784,13 @@ tmp/target.py:4: error: Invalid type "target.foo"
 TempNode:-1: Any
 TempNode:-1: Any
 NameExpr:3: builtins.int<0>
-NameExpr:4: foo?[A?]
+NameExpr:4: foo?[target.A<1>]
 ==>
 ## target
 TempNode:-1: Any
 TempNode:-1: Any
 NameExpr:3: builtins.int<0>
-NameExpr:4: foo?[A?]
+NameExpr:4: foo?[target.A<1>]
 
 [case testOverloaded_types]
 import target

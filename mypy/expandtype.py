@@ -2,7 +2,7 @@ from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
-    NoneTyp, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
+    NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarDef, LiteralType,
 )
@@ -66,7 +66,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:

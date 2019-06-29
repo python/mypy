@@ -11,10 +11,7 @@ import sys
 import tempfile
 
 from typing import Optional, Callable
-
-MYPY = False
-if MYPY:
-    from typing import Type
+from typing_extensions import Final, Type
 
 from types import TracebackType
 
@@ -179,7 +176,7 @@ class IPCClient(IPCBase):
 
 class IPCServer(IPCBase):
 
-    BUFFER_SIZE = 2**16
+    BUFFER_SIZE = 2**16  # type: Final
 
     def __init__(self, name: str, timeout: Optional[float] = None) -> None:
         if sys.platform == 'win32':
@@ -205,7 +202,7 @@ class IPCServer(IPCBase):
                                                       )
             if self.connection == -1:  # INVALID_HANDLE_VALUE
                 err = _winapi.GetLastError()
-                raise IPCException('Invalid handle to pipe: {err}'.format(err))
+                raise IPCException('Invalid handle to pipe: {}'.format(err))
         else:
             self.sock_directory = tempfile.mkdtemp()
             sockfile = os.path.join(self.sock_directory, self.name)

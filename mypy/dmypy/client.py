@@ -31,7 +31,8 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         super().__init__(prog=prog, max_help_position=30)
 
 
-parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
+parser = argparse.ArgumentParser(prog='dmypy',
+                                 description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
 parser.set_defaults(action=None)
 parser.add_argument('--status-file', default=DEFAULT_STATUS_FILE,
@@ -103,6 +104,12 @@ p.add_argument('function', metavar='FUNCTION', type=str,
                help="Function specified as '[package.]module.[class.]function'")
 p.add_argument('--json', action='store_true',
                help="Produce json that pyannotate can use to apply a suggestion")
+p.add_argument('--no-errors', action='store_true',
+               help="Only produce suggestions that cause no errors")
+p.add_argument('--no-any', action='store_true',
+               help="Only produce suggestions that don't contain Any")
+p.add_argument('--try-text', action='store_true',
+               help="Try using unicode wherever str is inferred")
 p.add_argument('--callsites', action='store_true',
                help="Find callsites instead of suggesting a type")
 
@@ -357,7 +364,8 @@ def do_suggest(args: argparse.Namespace) -> None:
     For now it may be closer to a list of call sites.
     """
     response = request(args.status_file, 'suggest', function=args.function,
-                       json=args.json, callsites=args.callsites)
+                       json=args.json, callsites=args.callsites, no_errors=args.no_errors,
+                       no_any=args.no_any, try_text=args.try_text)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
@@ -455,7 +463,7 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     """
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
-    args.update(command=command)
+    args['command'] = command
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:
@@ -532,7 +540,3 @@ def is_running(status_file: str) -> bool:
 # Run main().
 def console_entry() -> None:
     main(sys.argv[1:])
-
-
-if __name__ == '__main__':
-    console_entry()

@@ -9,8 +9,11 @@ from mypy.options import Options
 from mypy.reachability import infer_reachability_of_if_statement, assert_will_always_fail
 
 
-class ReachabilityAnalyzer(TraverserVisitor):
-    """Analyze reachability of blocks and imports.
+class SemanticAnalyzerPreAnalysis(TraverserVisitor):
+    """Analyze reachability of blocks and imports and other local things.
+
+    This runs before semantic analysis, so names have not been bound. Imports are
+    also not resolved yet, so we can only access the current module.
 
     This determines static reachability of blocks and imports due to version and
     platform checks, among others.
@@ -44,16 +47,34 @@ class ReachabilityAnalyzer(TraverserVisitor):
         self.is_global_scope = True
 
         for i, defn in enumerate(file.defs):
-            if isinstance(defn, (ClassDef, FuncDef)):
-                self.is_global_scope = False
             defn.accept(self)
-            self.is_global_scope = True
             if isinstance(defn, AssertStmt) and assert_will_always_fail(defn, options):
                 # We've encountered an assert that's always false,
                 # e.g. assert sys.platform == 'lol'.  Truncate the
                 # list of statements.  This mutates file.defs too.
                 del file.defs[i + 1:]
                 break
+
+    def visit_func_def(self, node: FuncDef) -> None:
+        old_global_scope = self.is_global_scope
+        self.is_global_scope = False
+        super().visit_func_def(node)
+        self.is_global_scope = old_global_scope
+        file_node = self.cur_mod_node
+        if (self.is_global_scope
+                and file_node.is_stub
+                and node.name() == '__getattr__'
+                and file_node.is_package_init_file()):
+            # __init__.pyi with __getattr__ means that any submodules are assumed
+            # to exist, even if there is no stub. Note that we can't verify that the
+            # return type is compatible, since we haven't bound types yet.
+            file_node.is_partial_stub_package = True
+
+    def visit_class_def(self, node: ClassDef) -> None:
+        old_global_scope = self.is_global_scope
+        self.is_global_scope = False
+        super().visit_class_def(node)
+        self.is_global_scope = old_global_scope
 
     def visit_import_from(self, node: ImportFrom) -> None:
         node.is_top_level = self.is_global_scope

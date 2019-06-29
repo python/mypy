@@ -37,6 +37,7 @@ from contextlib import contextmanager
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
 )
+from typing_extensions import Final
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -55,19 +56,21 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName, OverloadPart,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, nongen_builtins,
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node,
+    RUNTIME_PROTOCOL_DECOS,
+    FakeExpression,
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import MessageBuilder
+from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy import message_registry
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    FunctionLike, UnboundType, TypeVarDef, TupleType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
+    TypeTranslator, TypeOfAny, TypeType, NoneType,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -99,12 +102,7 @@ from mypy.reachability import (
 )
 from mypy.mro import calculate_mro, MroError
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 T = TypeVar('T')
-
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -164,6 +162,21 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.isinstance': 'isinstancelist.pyi',
     'builtins.property': 'property.pyi',
     'builtins.classmethod': 'classmethod.pyi',
+}  # type: Final
+
+TYPES_FOR_UNIMPORTED_HINTS = {
+    'typing.Any',
+    'typing.Callable',
+    'typing.Dict',
+    'typing.Iterable',
+    'typing.Iterator',
+    'typing.List',
+    'typing.Optional',
+    'typing.Set',
+    'typing.Tuple',
+    'typing.TypeVar',
+    'typing.Union',
+    'typing.cast',
 }  # type: Final
 
 
@@ -420,7 +433,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                     assert isinstance(defn.type, CallableType)
                     if isinstance(defn.type.ret_type, AnyType):
-                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
+                        defn.type = defn.type.copy_modified(ret_type=NoneType())
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
@@ -930,11 +943,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
         if isinstance(decorator, RefExpr):
-            if decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'):
+            if decorator.fullname in RUNTIME_PROTOCOL_DECOS:
                 if defn.info.is_protocol:
                     defn.info.runtime_protocol = True
                 else:
-                    self.fail('@runtime can only be used with protocol classes', defn)
+                    self.fail('@runtime_checkable can only be used with protocol classes',
+                              defn)
             elif decorator.fullname in ('typing.final',
                                         'typing_extensions.final'):
                 defn.info.is_final = True
@@ -1247,7 +1261,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if defn.fullname:
             hook = self.plugin.get_customize_class_mro_hook(defn.fullname)
             if hook:
-                hook(ClassDefContext(defn, Expression(), self))
+                hook(ClassDefContext(defn, FakeExpression(), self))
 
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
@@ -1438,7 +1452,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
             else:
                 # Modules imported in a stub file without using 'as x' won't get exported
-                module_public = not self.is_stub_file
+                # Modules with implicit reexport disabled have the same behavior as stubs.
+                module_public = (
+                    not self.is_stub_file
+                    and self.options.implicit_reexport
+                )
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
@@ -1547,8 +1565,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if self.process_import_over_existing_name(
                             imported_id, existing_symbol, node, imp):
                         continue
-                # 'from m import x as x' exports x in a stub file.
-                module_public = not self.is_stub_file or as_id is not None
+                # 'from m import x as x' exports x in a stub file, or when implicit reexport
+                # is disabled.
+                module_public = (
+                    not self.is_stub_file
+                    and self.options.implicit_reexport
+                    or as_id is not None
+                )
                 module_hidden = not module_public and possible_module_id not in self.modules
                 # NOTE: we take the original node even for final `Var`s. This is to support
                 # a common pattern when constants are re-exported (same applies to import *).
@@ -1562,6 +1585,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                 if extra:
                     message += " {}".format(extra)
+                # Suggest alternatives, if any match is found.
+                alternatives = set(module.names.keys()).difference({id})
+                matches = best_matches(id, alternatives)[:3]
+                if matches:
+                    suggestion = "; maybe {}?".format(pretty_or(matches))
+                    message += "{}".format(suggestion)
                 self.fail(message, imp)
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
 
@@ -1957,7 +1986,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert value is not None
             typ = self.named_type_or_none(type_name)
             if typ and is_final:
-                return typ.copy_modified(final_value=LiteralType(
+                return typ.copy_modified(last_known_value=LiteralType(
                     value=value,
                     fallback=typ,
                     line=typ.line,
@@ -2288,6 +2317,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if cur_node and is_final:
                 # Overrides will be checked in type checker.
                 self.fail("Cannot redefine an existing name as final", lval)
+            # If this attribute was defined before with an inferred type and it's marked
+            # with an explicit type now, give an error.
+            if (cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_inferred and
+                    explicit_type):
+                self.attribute_already_defined(lval.name, lval, cur_node)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
@@ -2414,6 +2448,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node.kind = self.current_symbol_kind()
         type_var = TypeVarExpr(name, node.fullname, values, upper_bound, variance)
         type_var.line = call.line
+        type_var.column = call.column
         call.analyzed = type_var
         node.node = type_var
 
@@ -2625,9 +2660,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
-            # TODO: use 'for rv, *lvs in' once mypyc supports it
-            for part in elementwise_assignments:
-                rv, lvs = part[0], list(part[1:])
+            for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
             rnode = self.lookup_type_node(rval)
@@ -2817,18 +2850,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_with_stmt(self, s: WithStmt) -> None:
         types = []  # type: List[Type]
 
-        if s.target_type:
+        if s.unanalyzed_type:
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
                 self.fail('Invalid type comment', s)
             elif len(actual_targets) == 1:
                 # We have one target and one type
-                types = [s.target_type]
-            elif isinstance(s.target_type, TupleType):
+                types = [s.unanalyzed_type]
+            elif isinstance(s.unanalyzed_type, TupleType):
                 # We have multiple targets and multiple types
-                if len(actual_targets) == len(s.target_type.items):
-                    types = s.target_type.items
+                if len(actual_targets) == len(s.unanalyzed_type.items):
+                    types = s.unanalyzed_type.items
                 else:
                     # But it's the wrong number of items
                     self.fail('Incompatible number of types for `with` targets', s)
@@ -2840,7 +2873,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         for e, n in zip(s.expr, s.target):
             e.accept(self)
             if n:
-                self.analyze_lvalue(n, explicit_type=s.target_type is not None)
+                self.analyze_lvalue(n, explicit_type=s.unanalyzed_type is not None)
 
                 # Since we have a target, pop the next type from types
                 if types:
@@ -2852,12 +2885,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     new_types.append(t)
                     self.store_declared_types(n, t)
 
-        # Reverse the logic above to correctly reassign target_type
-        if new_types:
-            if len(s.target) == 1:
-                s.target_type = new_types[0]
-            elif isinstance(s.target_type, TupleType):
-                s.target_type = s.target_type.copy_modified(items=new_types)
+        s.analyzed_types = new_types
 
         self.visit_block(s.body)
 
@@ -2869,7 +2897,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def is_valid_del_target(self, s: Expression) -> bool:
         if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
             return True
-        elif isinstance(s, TupleExpr):
+        elif isinstance(s, (TupleExpr, ListExpr)):
             return all(self.is_valid_del_target(item) for item in s.items)
         else:
             return False
@@ -3462,9 +3490,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        matches = [obsolete_name
-                   for obsolete_name in obsolete_name_mapping
-                   if obsolete_name.rsplit('.', 1)[-1] == name]
+        lowercased_names_handled_by_unimported_hints = {
+            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        matches = [
+            obsolete_name for obsolete_name in obsolete_name_mapping
+            if obsolete_name.rsplit('.', 1)[-1] == name
+            and obsolete_name not in lowercased_names_handled_by_unimported_hints
+        ]
         if len(matches) == 1:
             self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
@@ -3734,6 +3767,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if extra:
             message += ' {}'.format(extra)
         self.fail(message, ctx)
+
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(name)
@@ -3741,8 +3775,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Yes. Generate a helpful note.
                 self.add_fixture_note(fullname, ctx)
 
-    def name_already_defined(self, name: str, ctx: Context,
-                    original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
+        modules_with_unimported_hints = {
+            name.split('.', 1)[0]
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        lowercased = {
+            name.lower(): name
+            for name in TYPES_FOR_UNIMPORTED_HINTS
+        }
+        for module in modules_with_unimported_hints:
+            fullname = '{}.{}'.format(module, name).lower()
+            if fullname not in lowercased:
+                continue
+            # User probably forgot to import these types.
+            hint = (
+                'Did you forget to import it from "{module}"?'
+                ' (Suggestion: "from {module} import {name}")'
+            ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
+            self.note(hint, ctx)
+
+    def already_defined(self, name: str, ctx: Context,
+                        original_ctx: Optional[Union[SymbolTableNode, SymbolNode]],
+                        noun: str) -> None:
         if isinstance(original_ctx, SymbolTableNode):
             node = original_ctx.node
         elif isinstance(original_ctx, SymbolNode):
@@ -3757,7 +3811,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("Name '{}' already defined{}".format(unmangle(name), extra_msg), ctx)
+        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx)
+
+    def name_already_defined(self, name: str, ctx: Context,
+                             original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                             ) -> None:
+        self.already_defined(name, ctx, original_ctx, noun='Name')
+
+    def attribute_already_defined(self, name: str, ctx: Context,
+                                  original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None
+                                  ) -> None:
+        self.already_defined(name, ctx, original_ctx, noun='Attribute')
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
@@ -3825,6 +3889,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert not self.options.new_semantic_analyzer
         raise NotImplementedError('This is only available with --new-semantic-analyzer')
 
+    @property
+    def final_iteration(self) -> bool:
+        assert not self.options.new_semantic_analyzer
+        raise NotImplementedError('This is only available with --new-semantic-analyzer')
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
@@ -3880,7 +3949,7 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 
 def make_any_non_explicit(t: Type) -> Type:
-    """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    """Replace all Any types within in with Any that has attribute 'explicit' set to False."""
     return t.accept(MakeAnyNonExplicit())
 
 

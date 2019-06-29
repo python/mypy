@@ -1,9 +1,10 @@
 """Type inference constraints."""
 
 from typing import Iterable, List, Optional, Sequence
+from typing_extensions import Final
 
 from mypy.types import (
-    CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
+    CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
 )
@@ -14,11 +15,6 @@ import mypy.typeops
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 SUBTYPE_OF = 0  # type: Final[int]
 SUPERTYPE_OF = 1  # type: Final[int]
@@ -248,7 +244,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_any(self, template: AnyType) -> List[Constraint]:
         return []
 
-    def visit_none_type(self, template: NoneTyp) -> List[Constraint]:
+    def visit_none_type(self, template: NoneType) -> List[Constraint]:
         return []
 
     def visit_uninhabited_type(self, template: UninhabitedType) -> List[Constraint]:

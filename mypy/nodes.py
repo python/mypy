@@ -6,12 +6,8 @@ from collections import OrderedDict, defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
 )
+from typing_extensions import DefaultDict, Final, TYPE_CHECKING
 from mypy_extensions import trait
-
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
-    from typing_extensions import Final
 
 import mypy.strconv
 from mypy.util import short_type
@@ -22,13 +18,17 @@ from mypy.bogus_type import Bogus
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column')
+    __slots__ = ('line', 'column', 'end_line')
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
+        self.end_line = None  # type: Optional[int]
 
-    def set_line(self, target: Union['Context', int], column: Optional[int] = None) -> None:
+    def set_line(self,
+                 target: Union['Context', int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -38,9 +38,13 @@ class Context:
         else:
             self.line = target.line
             self.column = target.column
+            self.end_line = target.end_line
 
         if column is not None:
             self.column = column
+
+        if end_line is not None:
+            self.end_line = end_line
 
     def get_line(self) -> int:
         """Don't use. Use x.line."""
@@ -51,7 +55,7 @@ class Context:
         return self.column
 
 
-if MYPY:
+if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.types
 
@@ -135,6 +139,10 @@ nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
+RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
+                          'typing_extensions.runtime',
+                          'typing_extensions.runtime_checkable')  # type: Final
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
@@ -169,6 +177,15 @@ class Expression(Node):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
+
+
+class FakeExpression(Expression):
+    """A dummy expression.
+
+    We need a dummy expression in one place, and can't instantiate Expression
+    because it is a trait and mypyc barfs.
+    """
+    pass
 
 
 # TODO:
@@ -474,7 +491,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         if len(items) > 0:
-            self.set_line(items[0].line)
+            self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
     def name(self) -> str:
@@ -532,13 +549,16 @@ class Argument(Node):
         self.initializer = initializer
         self.kind = kind  # must be an ARG_* constant
 
-    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
-        super().set_line(target, column)
+    def set_line(self,
+                 target: Union[Context, int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line)
 
         if self.initializer:
-            self.initializer.set_line(self.line, self.column)
+            self.initializer.set_line(self.line, self.column, self.end_line)
 
-        self.variable.set_line(self.line, self.column)
+        self.variable.set_line(self.line, self.column, self.end_line)
 
 
 FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
@@ -593,10 +613,13 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Context, int], column: Optional[int] = None) -> None:
-        super().set_line(target, column)
+    def set_line(self,
+                 target: Union[Context, int],
+                 column: Optional[int] = None,
+                 end_line: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line)
         for arg in self.arguments:
-            arg.set_line(self.line, self.column)
+            arg.set_line(self.line, self.column, self.end_line)
 
     def is_dynamic(self) -> bool:
         return self.type is None
@@ -749,7 +772,7 @@ VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
-    'explicit_self_type',
+    'explicit_self_type', 'is_ready',
 ]  # type: Final
 
 
@@ -778,7 +801,8 @@ class Var(SymbolNode):
                  'final_unset_in_class',
                  'final_set_in_init',
                  'is_suppressed_import',
-                 'explicit_self_type'
+                 'explicit_self_type',
+                 'from_module_getattr',
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -821,6 +845,8 @@ class Var(SymbolNode):
         # present in a superclass (without explict type this doesn't create a new Var).
         # See SemanticAnalyzer.analyze_member_lvalue() for details.
         self.explicit_self_type = False
+        # If True, this is an implicit Var created due to module-level __getattr__.
+        self.from_module_getattr = False
 
     def name(self) -> str:
         return self._name
@@ -850,6 +876,7 @@ class Var(SymbolNode):
         name = data['name']
         type = None if data['type'] is None else mypy.types.deserialize_type(data['type'])
         v = Var(name, type)
+        v.is_ready = False  # Override True default set in __init__
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
         v.final_value = data.get('final_value')
@@ -1195,7 +1222,9 @@ class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
-    target_type = None  # type: Optional[mypy.types.Type]
+    unanalyzed_type = None  # type: Optional[mypy.types.Type]
+    # Semantically analyzed types from type comment (TypeList type expanded)
+    analyzed_types = None  # type: List[mypy.types.Type]
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
@@ -1204,7 +1233,8 @@ class WithStmt(Statement):
         super().__init__()
         self.expr = expr
         self.target = target
-        self.target_type = target_type
+        self.unanalyzed_type = target_type
+        self.analyzed_types = []
         self.body = body
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
@@ -2138,11 +2168,13 @@ class NewTypeExpr(Expression):
     # The synthesized class representing the new type (inherits old_type)
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int) -> None:
+    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int,
+                 column: int) -> None:
         super().__init__()
         self.name = name
         self.old_type = old_type
         self.line = line
+        self.column = column
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
@@ -2574,6 +2606,9 @@ class FakeInfo(TypeInfo):
         self.msg = msg
 
     def __getattribute__(self, attr: str) -> None:
+        # Handle __class__ so that isinstance still works...
+        if attr == '__class__':
+            return object.__getattribute__(self, attr)
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
@@ -2758,7 +2793,8 @@ class PlaceholderNode(SymbolNode):
 
       fullname: Full name of of the PlaceholderNode.
       node: AST node that contains the definition that caused this to
-          be created. This is only useful for debugging.
+          be created. This is useful for tracking order of incomplete definitions
+          and for debugging.
       becomes_typeinfo: If True, this refers something that will later
           become a TypeInfo. It can't be used with type variables, in
           particular, as this would cause issues with class type variable
@@ -2768,11 +2804,12 @@ class PlaceholderNode(SymbolNode):
     something that can support general recursive types.
     """
 
-    def __init__(self, fullname: str, node: Node, becomes_typeinfo: bool = False) -> None:
+    def __init__(self, fullname: str, node: Node, line: int, *,
+                 becomes_typeinfo: bool = False) -> None:
         self._fullname = fullname
         self.node = node
         self.becomes_typeinfo = becomes_typeinfo
-        self.line = -1
+        self.line = line
 
     def name(self) -> str:
         return self._fullname.split('.')[-1]
@@ -2935,7 +2972,9 @@ class SymbolTableNode:
                 if prefix is not None:
                     fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
-                            fullname != prefix + '.' + name):
+                            fullname != prefix + '.' + name
+                            and not (isinstance(self.node, Var)
+                                     and self.node.from_module_getattr)):
                         data['cross_ref'] = fullname
                         return data
                 data['node'] = self.node.serialize()
@@ -2988,8 +3027,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return '\n'.join(a)
 
     def copy(self) -> 'SymbolTable':
-        return SymbolTable((key, node.copy())
-                           for key, node in self.items())
+        return SymbolTable([(key, node.copy())
+                            for key, node in self.items()])
 
     def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict

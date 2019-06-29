@@ -53,8 +53,9 @@ import argparse
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
+    List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
 )
+from typing_extensions import Final
 
 import mypy.build
 import mypy.parse
@@ -67,7 +68,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
-    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
@@ -80,16 +81,13 @@ from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
     Type, TypeStrVisitor, CallableType,
-    UnboundType, NoneTyp, TupleType, TypeList,
+    UnboundType, NoneType, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
-from mypy.errors import CompileError
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from mypy.errors import CompileError, Errors
+from mypy.traverser import has_return_statement
 
 
 class Options:
@@ -171,7 +169,7 @@ class AnnotationPrinter(TypeStrVisitor):
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_none_type(self, t: NoneTyp) -> str:
+    def visit_none_type(self, t: NoneType) -> str:
         return "None"
 
     def visit_type_list(self, t: TypeList) -> str:
@@ -717,7 +715,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             typename = self.print_annotation(annotation)
             if (isinstance(annotation, UnboundType) and not annotation.args and
                     annotation.name == 'Final' and
-                    self.import_tracker.module_for.get('Final') in ('typing, typing_extensions')):
+                    self.import_tracker.module_for.get('Final') in ('typing',
+                                                                    'typing_extensions')):
                 # Final without type argument is invalid in stubs.
                 final_arg = self.get_str_type_of_node(rvalue)
                 typename += '[{}]'.format(final_arg)
@@ -852,26 +851,6 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
     return traverser.results
 
 
-class ReturnSeeker(mypy.traverser.TraverserVisitor):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None':
-            return
-        self.found = True
-
-
-def has_return_statement(fdef: FuncBase) -> bool:
-    """Find if a function has a non-trivial return statement.
-
-    Plain 'return' and 'return None' don't count.
-    """
-    seeker = ReturnSeeker()
-    fdef.accept(seeker)
-    return seeker.found
-
-
 def get_qualified_name(o: Expression) -> str:
     if isinstance(o, NameExpr):
         return o.name
@@ -930,10 +909,10 @@ def find_module_paths_using_imports(modules: List[str], packages: List[str],
                 result = find_module_path_and_all_py2(mod, interpreter)
             else:
                 result = find_module_path_and_all_py3(mod)
-        except CantImport:
+        except CantImport as e:
             if not quiet:
                 traceback.print_exc()
-            report_missing(mod)
+            report_missing(mod, e.message)
             continue
         if not result:
             c_modules.append(StubSource(mod))
@@ -991,12 +970,12 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, 'rb') as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
-    try:
-        mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
-                                   errors=None, options=mypy_options)
-    except mypy.errors.CompileError as e:
+    errors = Errors()
+    mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
+                               errors=errors, options=mypy_options)
+    if errors.is_blockers():
         # Syntax error!
-        for m in e.messages:
+        for m in errors.new_messages():
             sys.stderr.write('%s\n' % m)
         sys.exit(1)
 

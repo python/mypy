@@ -464,4 +464,3 @@ def g() -> Literal[1]:
 <m.Alias> -> m, m.f
 <m.a> -> m
 <m.b> -> m, m.g
-<typing_extensions.Literal> -> m

@@ -1,4 +1,4 @@
-import glob
+import io
 import os.path
 import shutil
 import sys
@@ -6,9 +6,11 @@ import tempfile
 import re
 from types import ModuleType
 
-from typing import List, Tuple
+from typing import Any, List, Tuple, Optional
 
-from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
+from mypy.test.helpers import (
+    Suite, assert_equal, assert_string_arrays_equal, local_sys_path_set
+)
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
@@ -64,10 +66,29 @@ class StubgenCmdLineSuite(Suite):
             finally:
                 os.chdir(current)
 
+    def test_module_not_found(self) -> None:
+        current = os.getcwd()
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                os.chdir(tmp)
+                self.make_file(tmp, 'mymodule.py', content='import a')
+                opts = parse_options(['-m', 'mymodule'])
+                py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
+                self.assertRegex(captured_output.getvalue(), "No module named 'a'")
+            finally:
+                sys.stdout = sys.__stdout__
+                os.chdir(current)
+
     def make_file(self, *path: str, content: str = '') -> None:
         file = os.path.join(*path)
         with open(file, 'w') as f:
             f.write(content)
+
+    def run(self, result: Optional[Any] = None) -> Optional[Any]:
+        with local_sys_path_set():
+            return super().run(result)
 
 
 class StubgenCliParseSuite(Suite):
@@ -256,6 +277,10 @@ class StubgenPythonSuite(DataSuite):
     files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        with local_sys_path_set():
+            self.run_case_inner(testcase)
+
+    def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
         extra = []
         mods = []
         source = '\n'.join(testcase.input)

@@ -86,20 +86,22 @@ if os.getenv('MYPY_USE_MYPYC', None) == '1':
 
 if USE_MYPYC:
     MYPYC_BLACKLIST = (
-        # Designed to collect things that can't be compiled
-        'mypyc_hacks.py',
-        'interpreted_plugin.py',
-
-        # Can't be compiled because they need to be runnable as scripts
+        # Need to be runnable as scripts
         '__main__.py',
         'sitepkgs.py',
+        os.path.join('dmypy', '__main__.py'),
 
-        # Can't be compiled because something goes wrong
+        # Needs to be interpreted to provide a hook to interpreted plugins
+        'interpreted_plugin.py',
+
+        # Uses __getattr__/__setattr__
+        'split_namespace.py',
+
+        # Lies to mypy about code reachability
         'bogus_type.py',
-        'dmypy.py',
-        'gclogger.py',
-        'main.py',
-        'memprofile.py',
+
+        # We don't populate __file__ properly at the top level or something?
+        # Also I think there would be problems with how we generate version.py.
         'version.py',
     )
 
@@ -139,13 +141,12 @@ if USE_MYPYC:
         multi_file=sys.platform == 'win32',
     )
     cmdclass['build_ext'] = MypycifyBuildExt
-    description += " (mypyc-compiled version)"
 else:
     ext_modules = []
 
 
 classifiers = [
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
@@ -166,19 +167,22 @@ setup(name='mypy',
       license='MIT License',
       py_modules=[],
       ext_modules=ext_modules,
-      packages=['mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.newsemanal'],
+      packages=[
+          'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.newsemanal', 'mypy.dmypy'
+      ],
       package_data={'mypy': package_data},
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
-                                        'dmypy=mypy.dmypy:console_entry',
+                                        'dmypy=mypy.dmypy.client:console_entry',
                                         ]},
       classifiers=classifiers,
       cmdclass=cmdclass,
-      install_requires = ['typed-ast >= 1.3.1, < 1.4.0',
-                          'mypy_extensions >= 0.4.0, < 0.5.0',
-                          ],
-      extras_require = {
-          'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',
-      },
+      # When changing this, also update test-requirements.txt.
+      install_requires=['typed_ast >= 1.4.0, < 1.5.0',
+                        'typing_extensions>=3.7.4',
+                        'mypy_extensions >= 0.4.0, < 0.5.0',
+                        ],
+      # Same here.
+      extras_require={'dmypy': 'psutil >= 4.0'},
       include_package_data=True,
       )

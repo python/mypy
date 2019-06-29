@@ -1,19 +1,17 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod, abstractproperty
+
 from typing import Optional, List, Callable
+from typing_extensions import Final
 from mypy_extensions import trait
 
 from mypy.nodes import (
     Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance
+from mypy.types import Type, FunctionLike, Instance, TPDICT_FB_NAMES
 from mypy.tvar_scope import TypeVarScope
-
-MYPY = False
-if False:
-    from typing_extensions import Final
 
 # Priorities for ordering of patches within the final "patch" phase of semantic analysis
 # (after pass 3):
@@ -145,7 +143,7 @@ def create_indirect_imported_name(file_node: MypyFile,
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
     if isinstance(sig, FunctionLike):
         if fdef.info:
-            if fdef.info.fullname() == 'mypy_extensions._TypedDict':
+            if fdef.info.fullname() in TPDICT_FB_NAMES:
                 # Avoid exposing the internal _TypedDict name.
                 class_name = 'TypedDict'
             else:

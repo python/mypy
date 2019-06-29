@@ -59,8 +59,11 @@ new first class kinds of types.
    The plugin system is experimental and prone to change. If you want to write
    a mypy plugin, we recommend you start by contacting the mypy core developers
    on `gitter <https://gitter.im/python/typing>`_. In particular, there are
-   no guarantees about backwards compatibility. Backwards incompatible changes
-   may be made without a deprecation period.
+   no guarantees about backwards compatibility.
+
+   Backwards incompatible changes may be made without a deprecation period,
+   but we will announce them in
+   `the plugin API changes announcement issue <https://github.com/python/mypy/issues/6617>`_.
 
 Configuring mypy to use plugins
 *******************************
@@ -227,3 +230,8 @@ method resolution order, etc.)
 
 **get_customize_class_mro_hook()** can be used to modify class MRO (for example
 insert some entries there) before the class body is analyzed.
+
+**get_additional_deps()** can be used to add new dependencies for a
+module. It is called before semantic analysis. For example, this can
+be used if a library has dependencies that are dynamically loaded
+based on configuration information.

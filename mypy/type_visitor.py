@@ -20,7 +20,7 @@ T = TypeVar('T')
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
-    RawExpressionType, Instance, NoneTyp, TypeType,
+    RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
     PlaceholderType,
@@ -49,7 +49,7 @@ class TypeVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_none_type(self, t: NoneTyp) -> T:
+    def visit_none_type(self, t: NoneType) -> T:
         pass
 
     @abstractmethod
@@ -150,7 +150,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
@@ -163,17 +163,17 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        final_value = None  # type: Optional[LiteralType]
-        if t.final_value is not None:
-            raw_final_value = t.final_value.accept(self)
-            assert isinstance(raw_final_value, LiteralType)
-            final_value = raw_final_value
+        last_known_value = None  # type: Optional[LiteralType]
+        if t.last_known_value is not None:
+            raw_last_known_value = t.last_known_value.accept(self)
+            assert isinstance(raw_last_known_value, LiteralType)
+            last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
             args=self.translate_types(t.args),
             line=t.line,
             column=t.column,
-            final_value=final_value,
+            last_known_value=last_known_value,
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
@@ -272,7 +272,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_uninhabited_type(self, t: UninhabitedType) -> T:
         return self.strategy([])
 
-    def visit_none_type(self, t: NoneTyp) -> T:
+    def visit_none_type(self, t: NoneType) -> T:
         return self.strategy([])
 
     def visit_erased_type(self, t: ErasedType) -> T:
@@ -282,7 +282,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([])
 
     def visit_type_var(self, t: TypeVarType) -> T:
-        return self.strategy([])
+        return self.query_types([t.upper_bound] + t.values)
 
     def visit_partial_type(self, t: PartialType) -> T:
         return self.query_types(t.inner_types)

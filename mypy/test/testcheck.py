@@ -83,7 +83,16 @@ typecheck_files = [
     'check-redefine.test',
     'check-literal.test',
     'check-newsemanal.test',
+    'check-inline-config.test',
 ]
+
+# Tests that use Python 3.8-only AST features (like expression-scoped ignores):
+if sys.version_info >= (3, 8):
+    typecheck_files.append('check-python38.test')
+
+# Special tests for platforms with case-insensitive filesystems.
+if sys.platform in ('darwin', 'win32'):
+    typecheck_files.append('check-modules-case.test')
 
 
 class TypeCheckSuite(DataSuite):
@@ -148,10 +157,15 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+
+        # Enable some options automatically based on test file name.
         if 'optional' in testcase.file:
             options.strict_optional = True
         if 'newsemanal' in testcase.file:
             options.new_semantic_analyzer = True
+        if 'columns' in testcase.file:
+            options.show_column_numbers = True
+
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True

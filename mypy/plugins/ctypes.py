@@ -8,7 +8,7 @@ from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype
 from mypy.types import (
-    AnyType, CallableType, Instance, NoneTyp, Type, TypeOfAny, UnionType, union_items
+    AnyType, CallableType, Instance, NoneType, Type, TypeOfAny, UnionType, union_items
 )
 
 
@@ -73,7 +73,7 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
                     # Pointer-like _SimpleCData subclasses can also be converted from
                     # an int or None.
                     allowed_types.append(api.named_generic_type('builtins.int', []))
-                    allowed_types.append(NoneTyp())
+                    allowed_types.append(NoneType())
 
     return UnionType.make_simplified_union(allowed_types)
 

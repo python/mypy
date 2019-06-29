@@ -1,6 +1,6 @@
 from mypy.plugin import Plugin
 from mypy.nodes import NameExpr
-from mypy.types import UnionType, NoneTyp, Instance
+from mypy.types import UnionType, NoneType, Instance
 
 class AttrPlugin(Plugin):
     def get_function_hook(self, fullname):
@@ -24,7 +24,7 @@ def attr_hook(ctx):
         return attr_base
     assert len(attr_base.args) == 1
     arg_type = attr_base.args[0]
-    return Instance(attr_base.type, [UnionType([arg_type, NoneTyp()])],
+    return Instance(attr_base.type, [UnionType([arg_type, NoneType()])],
                     line=ctx.default_return_type.line,
                     column=ctx.default_return_type.column)
 

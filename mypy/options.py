@@ -4,9 +4,7 @@ import pprint
 import sys
 
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
@@ -44,11 +42,13 @@ PER_MODULE_OPTIONS = {
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
+    "implicit_reexport",
     "show_none_errors",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
+    "warn_unreachable",
     "warn_unused_ignores",
 }  # type: Final
 
@@ -151,6 +151,9 @@ class Options:
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
 
+        # Don't re-export names unless they are imported with `from ... as ...`
+        self.implicit_reexport = True
+
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
 
@@ -161,6 +164,10 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Report an error for any branches inferred to be unreachable as a result of
+        # type analysis.
+        self.warn_unreachable = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]
@@ -178,6 +185,10 @@ class Options:
         # mtime/size/hash arrays, used to avoid having to recalculate
         # source hashes as often.
         self.quickstart_file = None  # type: Optional[str]
+
+        # A comma-separated list of files/directories for mypy to type check;
+        # supports globbing
+        self.files = None  # type: Optional[List[str]]
 
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]

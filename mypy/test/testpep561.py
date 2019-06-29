@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from enum import Enum
 import os
+import pytest  # type: ignore
 import subprocess
 from subprocess import PIPE
 import sys
@@ -53,8 +54,8 @@ import typedpkg_ns.ns.bbb; bf = typedpkg_ns.ns.bbb.bf"""
 
 class SimpleMsg(Enum):
     msg_dne = "{tempfile}:3: error: Module 'typedpkg' has no attribute 'dne'"
-    msg_list = "{tempfile}:5: error: Revealed type is 'builtins.list[builtins.str]'"
-    msg_tuple = "{tempfile}:5: error: Revealed type is 'builtins.tuple[builtins.str]'"
+    msg_list = "{tempfile}:5: note: Revealed type is 'builtins.list[builtins.str]'"
+    msg_tuple = "{tempfile}:5: note: Revealed type is 'builtins.tuple[builtins.str]'"
 
 
 class NamespaceMsg(Enum):
@@ -187,6 +188,9 @@ class TestPEP561(TestCase):
         dirs = get_site_packages_dirs(sys.executable)
         assert dirs
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_stub_package(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -198,6 +202,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -208,6 +215,40 @@ class TestPEP561(TestCase):
                 [SimpleMsg.msg_tuple],
                 venv_dir=venv_dir,
             )
+
+    def test_mypy_path_is_respected(self) -> None:
+        packages = 'packages'
+        pkg_name = 'a'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            old_dir = os.getcwd()
+            os.chdir(temp_dir)
+            try:
+                # Create the pkg for files to go into
+                full_pkg_name = os.path.join(temp_dir, packages, pkg_name)
+                os.makedirs(full_pkg_name)
+
+                # Create the empty __init__ file to declare a package
+                pkg_init_name = os.path.join(temp_dir, packages, pkg_name, '__init__.py')
+                open(pkg_init_name, 'w', encoding='utf8').close()
+
+                mypy_config_path = os.path.join(temp_dir, 'mypy.ini')
+                with open(mypy_config_path, 'w') as mypy_file:
+                    mypy_file.write('[mypy]\n')
+                    mypy_file.write('mypy_path = ./{}\n'.format(packages))
+
+                with self.virtualenv() as venv:
+                    venv_dir, python_executable = venv
+
+                    cmd_line_args = []
+                    if python_executable != sys.executable:
+                        cmd_line_args.append('--python-executable={}'.format(python_executable))
+                    cmd_line_args.extend(['--config-file', mypy_config_path,
+                                          '--package', pkg_name])
+
+                    out, err, returncode = mypy.api.run(cmd_line_args)
+                    assert returncode == 0
+            finally:
+                os.chdir(old_dir)
 
     def test_stub_and_typed_pkg(self) -> None:
         self.simple_prog.create()
@@ -221,6 +262,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_stubs_python2(self) -> None:
         self.simple_prog.create()
         python2 = try_find_python2_interpreter()
@@ -247,6 +291,9 @@ class TestPEP561(TestCase):
                     venv_dir=venv_dir,
                 )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_egg(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -258,6 +305,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_editable(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:
@@ -269,6 +319,9 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
+                        sys.base_prefix != sys.prefix,
+                        reason="Temporarily skip to avoid having a virtualenv within a venv.")
     def test_typedpkg_egg_editable(self) -> None:
         self.simple_prog.create()
         with self.virtualenv() as venv:

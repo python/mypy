@@ -86,7 +86,7 @@ Python 3 supports an annotation syntax for function declarations.
 
 .. code-block:: python
 
-   from typing import Callable, Iterable, Union, Optional, List
+   from typing import Callable, Iterator, Union, Optional, List
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -104,8 +104,8 @@ Python 3 supports an annotation syntax for function declarations.
    x: Callable[[int, float], float] = f
 
    # A generator function that yields ints is secretly just a function that
-   # returns an iterable (see below) of ints, so that's how we annotate it
-   def f(n: int) -> Iterable[int]:
+   # returns an iterator of ints, so that's how we annotate it
+   def g(n: int) -> Iterator[int]:
        i = 0
        while i < n:
            yield i
