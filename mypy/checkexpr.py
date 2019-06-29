@@ -56,7 +56,6 @@ from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
 from mypy.typeops import tuple_fallback
-from mypy import state
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -3597,11 +3596,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     @overload
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
-    @overload
+
+    @overload  # noqa
     def narrow_type_from_binder(self, expr: Expression, known_type: Type,
                                 skip_non_overlapping: bool) -> Optional[Type]: ...
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type,
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,  # noqa
                                 skip_non_overlapping: bool = False) -> Optional[Type]:
         """Narrow down a known type of expression using information in conditional type binder.
 
