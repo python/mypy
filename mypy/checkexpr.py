@@ -670,7 +670,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 #       Ideas for more precise checks:
                 #       * reverse-engineering of mypy.meet.narrow_declared_type()
                 #       * apply special-casing only if we know some hooks will be applied
-                if (isinstance(item, NoneTyp) and not state.strict_optional or
+                if (isinstance(item, NoneType) and not state.strict_optional or
                         isinstance(item, UninhabitedType) and state.strict_optional):
                     continue
                 callable_name = self.method_fullname(typ, member)
