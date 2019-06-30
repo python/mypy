@@ -212,6 +212,7 @@ class FindModuleCache:
         near_misses = []  # Collect near misses for namespace mode (see below).
         for base_dir, verify in candidate_base_dirs:
             base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+            has_init = False
             dir_prefix = base_dir
             for _ in range(len(components) - 1):
                 dir_prefix = os.path.dirname(dir_prefix)
@@ -220,6 +221,7 @@ class FindModuleCache:
                 path = base_path + sepinit + extension
                 path_stubs = base_path + '-stubs' + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
+                    has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
                         near_misses.append((path, dir_prefix))
                         continue
@@ -229,8 +231,12 @@ class FindModuleCache:
                         near_misses.append((path_stubs, dir_prefix))
                         continue
                     return path_stubs
-                elif self.options and self.options.namespace_packages and fscache.isdir(base_path):
+
+            # In namespace mode, register a potential namespace package
+            if self.options and self.options.namespace_packages:
+                if fscache.isdir(base_path) and not has_init:
                     near_misses.append((base_path, dir_prefix))
+
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
