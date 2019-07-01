@@ -2347,6 +2347,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
+            # TODO: Maybe we only need to reject top-level placeholders, similar
+            #       to base classes.
             if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
