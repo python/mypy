@@ -2830,7 +2830,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         #     T = TypeVar('T', bound=Custom[Any])
                         #     class Custom(Generic[T]):
                         #         ...
-                        analyzed = PlaceholderType('<unknown>', [], context.line)
+                        analyzed = PlaceholderType(None, [], context.line)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2895,7 +2895,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Type variables are special: we need to place them in the symbol table
                     # soon, even if some value is not ready yet, see process_typevar_parameters()
                     # for an example.
-                    analyzed = PlaceholderType('<unknown>', [], node.line)
+                    analyzed = PlaceholderType(None, [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
                 self.fail('Type expected', node)

@@ -1871,9 +1871,9 @@ class PlaceholderType(Type):
     exist.
     """
 
-    def __init__(self, fullname: str, args: List[Type], line: int) -> None:
+    def __init__(self, fullname: Optional[str], args: List[Type], line: int) -> None:
         super().__init__(line)
-        self.fullname = fullname  # Only used for debugging
+        self.fullname = fullname  # Must be a valid full name of an actual node (or None).
         self.args = args
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:

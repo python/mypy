@@ -2812,3 +2812,53 @@ S = TypeVar('S', covariant=True, contravariant=True)  # E: TypeVar cannot be bot
 
 class Yes: ...
 [builtins fixtures/bool.pyi]
+
+[case testNewAnalyzerVarTypeVarNoCrash]
+from typing import Callable, TypeVar
+
+FooT = TypeVar('FooT', bound='Foo')
+class Foo: ...
+
+f = lambda x: True  # type: Callable[[FooT], bool]
+reveal_type(f)  # N: Revealed type is 'def [FooT <: __main__.Foo] (FooT`-1) -> builtins.bool'
+[builtins fixtures/bool.pyi]
+
+[case testNewAnalyzerVarTypeVarNoCrashImportCycle]
+import a
+
+[file a.py]
+from b import B
+from typing import TypeVar
+
+FooT = TypeVar('FooT', bound='Foo')
+class Foo: ...
+
+[file b.py]
+from a import FooT
+from typing import Callable
+
+f = lambda x: True  # type: Callable[[FooT], bool]
+reveal_type(f)  # N: Revealed type is 'def [FooT <: a.Foo] (FooT`-1) -> builtins.bool'
+
+class B: ...
+[builtins fixtures/bool.pyi]
+
+[case testNewAnalyzerFuncTypeVarNoCrashImportCycle]
+import a
+
+[file a.py]
+from b import B
+from typing import TypeVar
+
+FooT = TypeVar('FooT', bound='Foo')
+class Foo: ...
+
+[file b.py]
+from a import FooT
+from typing import Callable
+
+def f(x: FooT) -> bool: ...
+reveal_type(f)  # N: Revealed type is 'def [FooT <: a.Foo] (x: FooT`-1) -> builtins.bool'
+
+class B: ...
+[builtins fixtures/bool.pyi]
