@@ -252,7 +252,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.special_form)
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'
-                any_type = self.get_omitted_any(t, 'builtins.tuple')
+                any_type = self.get_omitted_any(t)
                 return self.named_type('builtins.tuple', [any_type],
                                        line=t.line, column=t.column)
             if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
@@ -1147,4 +1147,4 @@ class InstanceFixer(TypeTraverserVisitor):
     def visit_instance(self, typ: Instance) -> None:
         super().visit_instance(typ)
         if len(typ.args) != len(typ.type.type_vars):
-            fix_instance(typ, self.fail, self.disallow_any)
+            fix_instance(typ, self.fail, self.disallow_any, use_generic_error=True)

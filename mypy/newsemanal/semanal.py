@@ -2375,7 +2375,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         no_args = isinstance(res, Instance) and not res.args
         fix_instance_types(res, self.fail,
                            disallow_any=self.options.disallow_any_generics and
-                           not self.is_typeshed_stub_file)
+                           not self.is_typeshed_stub_file and not no_args)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
