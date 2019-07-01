@@ -445,11 +445,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     del tree.names[name]
 
     def adjust_public_exports(self) -> None:
-        """Make variables not in __all__ not be public"""
+        """Make variables not in __all__ not be public.
+
+        Also record and erase value of __all__ for the current module.
+        """
         if '__all__' in self.globals:
             for name, g in self.globals.items():
                 if name not in self.all_exports:
                     g.module_public = False
+        self.export_map[self.cur_mod_id] = self.all_exports
+        self.all_exports = []
 
     @contextmanager
     def file_context(self,
