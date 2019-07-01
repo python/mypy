@@ -372,6 +372,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
         self.adjust_public_exports()
+        self.export_map[self.cur_mod_id] = self.all_exports
+        self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
@@ -2832,7 +2834,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         #     T = TypeVar('T', bound=Custom[Any])
                         #     class Custom(Generic[T]):
                         #         ...
-                        analyzed = PlaceholderType('<unknown>', [], context.line)
+                        analyzed = PlaceholderType(None, [], context.line)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2897,7 +2899,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Type variables are special: we need to place them in the symbol table
                     # soon, even if some value is not ready yet, see process_typevar_parameters()
                     # for an example.
-                    analyzed = PlaceholderType('<unknown>', [], node.line)
+                    analyzed = PlaceholderType(None, [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
                 self.fail('Type expected', node)

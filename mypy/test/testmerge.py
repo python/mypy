@@ -13,13 +13,12 @@ from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
     UNBOUND_IMPORTED
 )
-from mypy.options import Options
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
+from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages, parse_options
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
 
@@ -67,7 +66,7 @@ class ASTMergeSuite(DataSuite):
             kind = AST
 
         main_src = '\n'.join(testcase.input)
-        result = self.build(main_src)
+        result = self.build(main_src, testcase)
         assert result is not None, 'cases where CompileError occurred should not be run'
         result.manager.fscache.flush()
         fine_grained_manager = FineGrainedBuildManager(result)
@@ -102,8 +101,8 @@ class ASTMergeSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Optional[BuildResult]:
-        options = Options()
+    def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
+        options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True

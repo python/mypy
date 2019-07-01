@@ -246,7 +246,7 @@ def bar(x):
 Total      1      13     92.31%
 
 [case testAnyExprReportHigherKindedTypesAreNotAny]
-# cmd: mypy --any-exprs-report report i.py
+# cmd: mypy --no-new-semantic-analyzer --any-exprs-report report i.py
 
 [file i.py]
 from enum import Enum
@@ -382,7 +382,7 @@ empty = False
       1       1      0      0 a
 
 [case testAnyExprReportIgnoresSpecialForms]
-# cmd: mypy --any-exprs-report report i.py j.py k.py l.py
+# cmd: mypy --no-new-semantic-analyzer --any-exprs-report report i.py j.py k.py l.py
 
 [file i.py]
 async def some_function() -> None:

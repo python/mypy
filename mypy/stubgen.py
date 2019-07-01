@@ -53,7 +53,7 @@ import argparse
 from collections import defaultdict
 
 from typing import (
-    List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast
+    List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast, Union
 )
 from typing_extensions import Final
 
@@ -88,6 +88,10 @@ from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.traverser import has_return_statement
+from mypy.semanal import SemanticAnalyzerPass2
+from mypy.newsemanal.semanal import NewSemanticAnalyzer
+
+Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]
 
 
 class Options:
@@ -997,7 +1001,11 @@ def generate_asts_for_modules(py_modules: List[StubSource],
         mod.ast = res.graph[mod.module].tree
         # Use statically inferred __all__ if there is no runtime one.
         if mod.runtime_all is None:
-            mod.runtime_all = res.manager.semantic_analyzer.export_map[mod.module]
+            if mypy_options.new_semantic_analyzer:
+                analyzer = res.manager.new_semantic_analyzer  # type: Analyzer
+            else:
+                analyzer = res.manager.semantic_analyzer
+            mod.runtime_all = analyzer.export_map[mod.module]
 
 
 def generate_stub_from_ast(mod: StubSource,
