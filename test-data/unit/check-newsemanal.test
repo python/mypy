@@ -1383,9 +1383,15 @@ x: B
 B = List[C]
 class C(B): pass
 
-reveal_type(x)  # N: Revealed type is 'builtins.list[__main__.C]'
-reveal_type(x[0][0])  # N: Revealed type is '__main__.C*'
+reveal_type(x)
+reveal_type(x[0][0])
 [builtins fixtures/list.pyi]
+[out]
+main:3: error: Cannot resolve name "B" (possible cyclic definition)
+main:4: error: Cannot resolve name "B" (possible cyclic definition)
+main:4: error: Cannot resolve name "C" (possible cyclic definition)
+main:7: note: Revealed type is 'Any'
+main:8: note: Revealed type is 'Any'
 
 [case testNewAnalyzerAliasToNotReadyTwoDeferralsFunction]
 import a
@@ -1410,14 +1416,18 @@ from typing import List
 from b import D
 
 def f(x: B) -> List[B]: ...
-B = List[C]
+B = List[C] # E
 class C(B): pass
 
 [file b.py]
 from a import f
 class D: ...
-reveal_type(f)  # N: Revealed type is 'def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]'
+reveal_type(f)  # N
 [builtins fixtures/list.pyi]
+[out]
+tmp/b.py:3: note: Revealed type is 'def (x: builtins.list[Any]) -> builtins.list[builtins.list[Any]]'
+tmp/a.py:5: error: Cannot resolve name "B" (possible cyclic definition)
+tmp/a.py:5: error: Cannot resolve name "C" (possible cyclic definition)
 
 [case testNewAnalyzerAliasToNotReadyMixed]
 from typing import List, Union
@@ -1947,7 +1957,7 @@ class B(List[C]):
 from typing import NewType, List
 
 x: D
-reveal_type(x[0][0])  # N: Revealed type is '__main__.C*'
+reveal_type(x[0][0])
 
 D = List[C]
 C = NewType('C', B)
@@ -1955,6 +1965,13 @@ C = NewType('C', B)
 class B(D):
     pass
 [builtins fixtures/list.pyi]
+[out]
+main:3: error: Cannot resolve name "D" (possible cyclic definition)
+main:4: note: Revealed type is 'Any'
+main:6: error: Cannot resolve name "D" (possible cyclic definition)
+main:6: error: Cannot resolve name "C" (possible cyclic definition)
+main:7: error: Argument 2 to NewType(...) must be a valid type
+main:7: error: Cannot resolve name "B" (possible cyclic definition)
 
 -- Copied from check-classes.test (tricky corner cases).
 [case testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass]
@@ -1974,10 +1991,10 @@ class C:
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
-class C(A, B):
+class C(A, B): # E: Cannot resolve name "A" (possible cyclic definition)
     pass
 class G(Generic[T]): pass
-A = G[C]
+A = G[C] # E: Cannot resolve name "A" (possible cyclic definition)
 class B(NamedTuple):
     x: int
 
