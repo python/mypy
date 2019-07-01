@@ -372,6 +372,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
         self.adjust_public_exports()
+        self.export_map[self.cur_mod_id] = self.all_exports
+        self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
