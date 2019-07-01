@@ -372,6 +372,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
         self.adjust_public_exports()
+        self.export_map[self.cur_mod_id] = self.all_exports
+        self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
@@ -445,16 +447,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     del tree.names[name]
 
     def adjust_public_exports(self) -> None:
-        """Make variables not in __all__ not be public.
-
-        Also record and erase value of __all__ for the current module.
-        """
+        """Make variables not in __all__ not be public"""
         if '__all__' in self.globals:
             for name, g in self.globals.items():
                 if name not in self.all_exports:
                     g.module_public = False
-        self.export_map[self.cur_mod_id] = self.all_exports
-        self.all_exports = []
 
     @contextmanager
     def file_context(self,
