@@ -2622,7 +2622,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
         """
-        self.set_inferred_type(var, lvalue, type.accept(SetNothingToAny()))
+        fallback = type.accept(SetNothingToAny())
+        # Type variables may leak from inference, see https://github.com/python/mypy/issues/5738,
+        # we therefore need to erase them.
+        self.set_inferred_type(var, lvalue, erase_typevars(fallback))
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
