@@ -34,7 +34,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional, TypeTranslator
+    is_optional, remove_optional, TypeTranslator, StarType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
@@ -2529,6 +2529,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                      # we put Uninhabited if there is no information available from lvalue.
                      UninhabitedType() for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
+        elif isinstance(lvalue, StarExpr):
+            typ, _, _ = self.check_lvalue(lvalue.expr)
+            lvalue_type = StarType(typ) if typ else None
         else:
             lvalue_type = self.expr_checker.accept(lvalue)
 
