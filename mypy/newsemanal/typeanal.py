@@ -540,8 +540,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        n = self.api.lookup_fully_qualified(t.fullname)
-        if isinstance(n.node, PlaceholderNode):
+        n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)
+        if not n or isinstance(n.node, PlaceholderNode):
             self.api.defer()  # Still incomplete
             return t
         else:
