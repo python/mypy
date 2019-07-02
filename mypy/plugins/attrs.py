@@ -212,7 +212,10 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     if ctx.api.options.new_semantic_analyzer:
         # Check if attribute types are ready.
         for attr in attributes:
-            if info[attr.name].type is None and not ctx.api.final_iteration:
+            node = info.get(attr.name)
+            if node is None:
+                return
+            if node.type is None and not ctx.api.final_iteration:
                 ctx.api.defer()
                 return
 
