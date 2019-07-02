@@ -4513,9 +4513,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 analyzer
 
         Return None only if some part of the type couldn't be bound *and* it
-        referred to an incomplete namespace or definition. In this also defer
-        as needed. During a final iteration this won't return None; instead
-        report an error if the type can't be analyzed and return AnyType.
+        referred to an incomplete namespace or definition. In this case also
+        defer as needed. During a final iteration this won't return None;
+        instead report an error if the type can't be analyzed and return
+        AnyType.
 
         In case of other errors, report an error message and return AnyType.
 
