@@ -13,7 +13,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
-    TypeVarExpr
+    TypeVarExpr, PlaceholderNode
 )
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
@@ -270,6 +270,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         # instance level assignments.
         if attribute.name in ctx.cls.info.names:
             node = ctx.cls.info.names[attribute.name].node
+            if isinstance(node, PlaceholderNode):
+                # This node is not ready yet.
+                continue
             assert isinstance(node, Var)
             node.is_initialized_in_class = False
 

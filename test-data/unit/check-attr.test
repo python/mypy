@@ -1107,3 +1107,47 @@ C(43)
 
 class Yes: ...
 [builtins fixtures/exception.pyi]
+
+[case testTypeInAttrUndefined]
+import attr
+
+@attr.s
+class C:
+    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+[builtins fixtures/bool.pyi]
+
+[case testTypeInAttrForwardInRuntime]
+import attr
+
+@attr.s
+class C:
+    total = attr.ib(type=Forward)
+
+reveal_type(C.total)  # N: Revealed type is '__main__.Forward'
+C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "Forward"
+class Forward: ...
+[builtins fixtures/bool.pyi]
+
+[case testDefaultInAttrForward]
+import attr
+
+@attr.s
+class C:
+    total = attr.ib(default=func())
+
+def func() -> int: ...
+
+C()
+C(1)
+C(1, 2)  # E: Too many arguments for "C"
+[builtins fixtures/bool.pyi]
+
+[case testTypeInAttrUndefinedFrozen]
+import attr
+
+@attr.s(frozen=True)
+class C:
+    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+
+C(0).total = 1  # E: Property "total" defined in "C" is read-only
+[builtins fixtures/bool.pyi]

@@ -642,3 +642,26 @@ a < b
 
 class Yes: ...
 [builtins fixtures/list.pyi]
+
+[case testDataclassFieldDeferred]
+from dataclasses import field, dataclass
+
+@dataclass
+class C:
+    x: int = field(default=func())
+
+def func() -> int: ...
+C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+[builtins fixtures/bool.pyi]
+
+[case testDataclassFieldDeferredFrozen]
+from dataclasses import field, dataclass
+
+@dataclass(frozen=True)
+class C:
+    x: int = field(default=func())
+
+def func() -> int: ...
+c: C
+c.x = 1  # E: Property "x" defined in "C" is read-only
+[builtins fixtures/bool.pyi]
