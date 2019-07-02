@@ -957,13 +957,10 @@ def takes_int(arg: int) -> None: pass
 takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type <union: 6 items>; expected "int"
 
 [case testRecursiveForwardReferenceInUnion]
-# https://github.com/python/mypy/issues/6445
 # flags: --new-semantic-analyzer
 from typing import List, Union
-MYTYPE = List[Union[str, "MYTYPE"]]
+MYTYPE = List[Union[str, "MYTYPE"]] # E: Cannot resolve name "MYTYPE" (possible cyclic definition)
 [builtins fixtures/list.pyi]
-[out]
-main:4: error: Cannot resolve name "MYTYPE" (possible cyclic definition)
 
 [case testNonStrictOptional]
 from typing import Optional, List

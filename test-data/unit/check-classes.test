@@ -4355,7 +4355,6 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# FIXME: #6445
 # flags: --new-semantic-analyzer
 from typing import NamedTuple
 
@@ -4364,7 +4363,6 @@ n: N
 reveal_type(n) # N: Revealed type is 'Tuple[Any, fallback=__main__.N]'
 
 [case testCrashOnSelfRecursiveTypedDictVar]
-# FIXME: #6445
 from mypy_extensions import TypedDict
 
 A = TypedDict('A', {'a': 'A'})  # type: ignore
@@ -4372,7 +4370,6 @@ a: A
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
-# FIXME: #6445
 # flags: --new-semantic-analyzer
 from typing import NamedTuple
 
@@ -4387,7 +4384,6 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# FIXME: #6445
 # flags: --new-semantic-analyzer
 from mypy_extensions import TypedDict
 

@@ -2398,13 +2398,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Otherwise just replace existing placeholder with type alias.
                 existing.node = alias_node
                 updated = True
-            if self.final_iteration:
-                self.cannot_resolve_name(lvalue.name, 'name', s)
-                return True
-            elif updated:
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer()
+            if updated:
+                if self.final_iteration:
+                    self.cannot_resolve_name(lvalue.name, 'name', s)
+                    return True
+                else:
+                    self.progress = True
+                    # We need to defer so that this change can get propagated to base classes.
+                    self.defer()
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
