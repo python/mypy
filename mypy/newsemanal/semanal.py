@@ -4192,6 +4192,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         This must not be called during the final analysis iteration!
         Instead, an error should be generated.
         """
+        assert not self.final_iteration, 'Must not defer during final iteration'
         self.deferred = True
 
     def track_incomplete_refs(self) -> Tag:
