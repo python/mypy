@@ -652,6 +652,7 @@ class C:
 
 def func() -> int: ...
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+[builtins fixtures/bool.pyi]
 
 [case testDataclassFieldDeferredFrozen]
 from dataclasses import field, dataclass
