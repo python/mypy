@@ -1114,7 +1114,6 @@ import attr
 @attr.s
 class C:
     total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
-
 [builtins fixtures/bool.pyi]
 
 [case testTypeInAttrBad2]
@@ -1141,4 +1140,14 @@ def func() -> int: ...
 C()
 C(1)
 C(1, 2)  # E: Too many arguments for "C"
+[builtins fixtures/bool.pyi]
+
+[case testTypeInAttrBad4]
+import attr
+
+@attr.s(frozen=True)
+class C:
+    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+
+C(0).total = 1  # E: Property "total" defined in "C" is read-only.
 [builtins fixtures/bool.pyi]
