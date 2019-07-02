@@ -2740,3 +2740,12 @@ def f() -> Callable[..., NoReturn]: ...
 
 x = f()
 reveal_type(x)  # N: Revealed type is 'def (*Any, **Any) -> <nothing>'
+
+[case testDeferralInNestedScopes]
+# flags: --new-semantic-analyzer
+
+def g() -> None:
+    def f() -> None:
+        x + 'no way'  # E: Unsupported operand types for + ("int" and "str")
+    x = int()
+    f()
