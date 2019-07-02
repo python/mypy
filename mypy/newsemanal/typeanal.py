@@ -94,7 +94,11 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """Semantic analyzer for types.
 
-    Converts unbound types into bound types.
+    Converts unbound types into bound types. This is a no-op for already
+    bound types.
+
+    If an incomplete reference is encountered, this does a defer. The
+    caller never needs to defer.
     """
 
     # Is this called from an untyped function definition?
