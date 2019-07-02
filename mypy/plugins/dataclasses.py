@@ -214,7 +214,9 @@ class DataclassTransformer:
                 continue
 
             node = cls.info.names[lhs.name].node
-            assert isinstance(node, Var)
+            if not isinstance(node, Var):
+                # This node may be not ready yet (i.e. a PlaceholderNode).
+                continue
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
