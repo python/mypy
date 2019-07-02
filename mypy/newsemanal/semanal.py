@@ -2182,7 +2182,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
-                self.defer()
                 return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
@@ -3565,7 +3564,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
                                       allow_placeholder=True)
             if analyzed is None:
-                self.defer()
                 return None
             types.append(analyzed)
         return types
@@ -4507,9 +4505,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                   third_pass: bool = False) -> Optional[Type]:
         """Semantically analyze a type.
 
-        Return None only if some part of the type couldn't be bound *and* it referred
-        to an incomplete namespace. In case of other errors, report an error message
-        and return AnyType.
+        Args:
+            typ: Type to analyze (if already analyzed, this is a no-op)
+            allow_placeholder: If True, may return PlaceholderType if
+                encountering an incomplete definition
+            third_pass: Unused; only for compatibility with old semantic
+                analyzer
+
+        Return None only if some part of the type couldn't be bound *and* it
+        referred to an incomplete namespace or definition. In this case also
+        defer as needed. During a final iteration this won't return None;
+        instead report an error if the type can't be analyzed and return
+        AnyType.
+
+        In case of other errors, report an error message and return AnyType.
+
+        NOTE: The caller shouldn't defer even if this returns None or a
+              placeholder type.
         """
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
