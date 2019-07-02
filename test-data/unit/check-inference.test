@@ -2749,3 +2749,15 @@ def g() -> None:
         x + 'no way'  # E: Unsupported operand types for + ("int" and "str")
     x = int()
     f()
+
+[case testDeferralOfMemberNested]
+from typing import Tuple
+
+def f() -> None:
+    c: C
+    t: Tuple[str, Tuple[str, str]]
+    x, (y, c.a) = t  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+class C:
+    def __init__(self, a: int) -> None:
+        self.a = a
