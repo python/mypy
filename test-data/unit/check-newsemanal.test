@@ -2869,4 +2869,5 @@ from typing import Tuple
 def f() -> None:
     t: Tuple[str, Tuple[str, str, str]]
     x, (y, *z) = t
+    reveal_type(z)  # N: Revealed type is 'builtins.list[builtins.str*]'
 [builtins fixtures/list.pyi]
