@@ -2410,6 +2410,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                            reinferred_rvalue_type, context,
                                                            infer_lvalue_type)
                     return
+                if isinstance(reinferred_rvalue_type, AnyType) and self.current_node_deferred:
+                    # Doing more inference in deferred nodes can be hard, so give up for now.
+                    return
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
 
