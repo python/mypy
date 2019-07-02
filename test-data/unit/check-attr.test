@@ -1108,7 +1108,7 @@ C(43)
 class Yes: ...
 [builtins fixtures/exception.pyi]
 
-[case testTypeInAttrBad]
+[case testTypeInAttrUndefined]
 import attr
 
 @attr.s
@@ -1116,7 +1116,7 @@ class C:
     total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
 [builtins fixtures/bool.pyi]
 
-[case testTypeInAttrBad2]
+[case testTypeInAttrForwardInRuntime]
 import attr
 
 @attr.s
@@ -1128,7 +1128,7 @@ C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "Forward"
 class Forward: ...
 [builtins fixtures/bool.pyi]
 
-[case testTypeInAttrBad3]
+[case testDefaultInAttrForward]
 import attr
 
 @attr.s
@@ -1142,7 +1142,7 @@ C(1)
 C(1, 2)  # E: Too many arguments for "C"
 [builtins fixtures/bool.pyi]
 
-[case testTypeInAttrBad4]
+[case testTypeInAttrUndefinedFrozen]
 import attr
 
 @attr.s(frozen=True)
