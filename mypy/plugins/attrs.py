@@ -270,7 +270,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         # instance level assignments.
         if attribute.name in ctx.cls.info.names:
             node = ctx.cls.info.names[attribute.name].node
-            assert isinstance(node, Var)
+            if not isinstance(node, Var):
+                # This node may be not ready yet (i.e. a PlaceholderNode).
+                continue
             node.is_initialized_in_class = False
 
     # Traverse the MRO and collect attributes from the parents.
