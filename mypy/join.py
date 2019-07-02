@@ -48,14 +48,6 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
         s, t = t, s
 
     value = t.accept(TypeJoinVisitor(s))
-
-    if value is None:
-        # XXX this code path probably should be avoided.
-        # It seems to happen when a line (x = y) is a type error, and
-        # it's not clear that assuming that x is arbitrary afterward
-        # is a good idea.
-        return declaration
-
     if declaration is None or is_subtype(value, declaration):
         return value
 
