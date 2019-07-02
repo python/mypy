@@ -1065,8 +1065,8 @@ n: N
 from typing import Dict, Any, Optional
 from mypy_extensions import TypedDict
 
-VarsDict = Dict[str, Any]  # type: ignore
-HostsDict = Dict[str, Optional[VarsDict]]  # type: ignore
+VarsDict = Dict[str, Any]
+HostsDict = Dict[str, Optional[VarsDict]]
 
 GroupDataDict = TypedDict(
     "GroupDataDict", {"children": "GroupsDict",  # type: ignore
@@ -1076,7 +1076,6 @@ GroupDataDict = TypedDict(
 
 GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCheckDefaultAllowAnyGeneric]
 from typing import TypeVar, Callable
