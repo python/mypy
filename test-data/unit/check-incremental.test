@@ -4522,6 +4522,7 @@ tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
 tmp/a.py:3: note: Revealed type is 'builtins.list[Any]'
 
 [case testRecursiveNamedTupleTypedDict]
+# https://github.com/python/mypy/issues/7125
 # flags: --no-new-semantic-analyzer
 import a
 [file a.py]
