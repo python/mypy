@@ -959,10 +959,8 @@ takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type <union: 6 ite
 [case testRecursiveForwardReferenceInUnion]
 # flags: --new-semantic-analyzer
 from typing import List, Union
-MYTYPE = List[Union[str, "MYTYPE"]]
+MYTYPE = List[Union[str, "MYTYPE"]] # E: Cannot resolve name "MYTYPE" (possible cyclic definition)
 [builtins fixtures/list.pyi]
-[out]
-main:4: error: Cannot resolve name "MYTYPE" (possible cyclic definition)
 
 [case testNonStrictOptional]
 from typing import Optional, List
