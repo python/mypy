@@ -692,20 +692,22 @@ reveal_type(f) # N: Revealed type is 'def (m: Tuple[Any, builtins.int, fallback=
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 from typing import List, NamedTuple, Union
 
-Exp = Union['A', 'B']  # E: Recursive types not fully supported yet, nested types replaced with "Any"
+Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
+                       # E: Cannot resolve name "A" (possible cyclic definition)
 class A(NamedTuple('A', [('attr', List[Exp])])): pass
 class B(NamedTuple('B', [('val', object)])): pass
 
 def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # N: Revealed type is 'Union[Tuple[builtins.list[Any], fallback=__main__.A], Tuple[builtins.object, fallback=__main__.B]]'
+    reveal_type(exp) # N: Revealed type is 'Union[Any, Tuple[builtins.object, fallback=__main__.B]]'
     if isinstance(exp, A):
         my_eval(exp[0][0])
         return my_eval(exp.attr[0])
     if isinstance(exp, B):
         return exp.val  # E: Incompatible return value type (got "object", expected "int")
+    return 0
 
 my_eval(A([B(1), B(2)])) # OK
 [builtins fixtures/isinstancelist.pyi]
