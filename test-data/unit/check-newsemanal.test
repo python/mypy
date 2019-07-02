@@ -2862,3 +2862,12 @@ reveal_type(f)  # N: Revealed type is 'def [FooT <: a.Foo] (x: FooT`-1) -> built
 
 class B: ...
 [builtins fixtures/bool.pyi]
+
+[case testNewAnalyzerNoCrashOnStarInference]
+from typing import Tuple
+
+def f() -> None:
+    t: Tuple[str, Tuple[str, str, str]]
+    x, (y, *z) = t
+    reveal_type(z)  # N: Revealed type is 'builtins.list[builtins.str*]'
+[builtins fixtures/list.pyi]
