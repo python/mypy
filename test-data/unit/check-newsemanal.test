@@ -2813,6 +2813,21 @@ S = TypeVar('S', covariant=True, contravariant=True)  # E: TypeVar cannot be bot
 class Yes: ...
 [builtins fixtures/bool.pyi]
 
+[case testNewAnalyzerDisallowAnyGenericsMessages]
+# mypy: disallow-any-generics
+from a import B
+x: B
+
+[file a.py]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+
+A = List[T]
+B = A
+
+[builtins fixtures/list.pyi]
+
 [case testNewAnalyzerVarTypeVarNoCrash]
 from typing import Callable, TypeVar
 
