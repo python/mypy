@@ -215,7 +215,8 @@ class DataclassTransformer:
 
             sym = cls.info.names.get(lhs.name)
             if sym is None:
-                # This name is likely blocked by a star import.
+                # This name is likely blocked by a star import. We don't need to defer because
+                # defer() is already called by mark_incomplete().
                 assert ctx.api.options.new_semantic_analyzer
                 continue
 

@@ -214,6 +214,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         for attr in attributes:
             node = info.get(attr.name)
             if node is None:
+                # This name is likely blocked by a star import. We don't need to defer because
+                # defer() is already called by mark_incomplete().
                 return
             if node.type is None and not ctx.api.final_iteration:
                 ctx.api.defer()

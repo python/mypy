@@ -205,6 +205,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # a missing name at global scope will block adding same name at a class scope.
     # This should not affect correctness and is purely a performance issue,
     # since it can cause unnecessary deferrals.
+    # Note that a star import adds a special name '*' to the set, this blocks
+    # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
