@@ -232,7 +232,7 @@ class MypyFile(SymbolNode):
 
     # Fully qualified module name
     _fullname = None  # type: Bogus[str]
-    # Path to the file (None if not known)
+    # Path to the file (empty string if not known)
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
@@ -290,8 +290,7 @@ class MypyFile(SymbolNode):
         return visitor.visit_mypy_file(self)
 
     def is_package_init_file(self) -> bool:
-        return not (self.path is None) and len(self.path) != 0 \
-            and os.path.basename(self.path).startswith('__init__.')
+        return len(self.path) != 0 and os.path.basename(self.path).startswith('__init__.')
 
     def serialize(self) -> JsonDict:
         return {'.class': 'MypyFile',

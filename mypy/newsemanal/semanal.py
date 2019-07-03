@@ -201,6 +201,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # unbound names due to cyclic definitions and should not defer)?
     _final_iteration = False
     # These names couldn't be added to the symbol table due to incomplete deps.
+    # Note that missing names are per module, _not_ per namespace. This means that e.g.
+    # a missing name at global scope will block adding same name at a class scope.
+    # This should not affect correctness and is purely a performance issue,
+    # since it can cause unnecessary deferrals.
+    # Note that a star import adds a special name '*' to the set, this blocks
+    # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
@@ -372,6 +378,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
         self.adjust_public_exports()
+        self.export_map[self.cur_mod_id] = self.all_exports
+        self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
@@ -429,7 +437,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail)
+                    fix_instance_types(target, self.fail, disallow_any=False)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -2180,7 +2188,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
-                self.defer()
                 return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
@@ -2347,7 +2354,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
-            if self.found_incomplete_ref(tag) or isinstance(res, PlaceholderType):
+            # TODO: Maybe we only need to reject top-level placeholders, similar
+            #       to base classes.
+            if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 placeholder = PlaceholderNode(self.qualified_name(lvalue.name),
@@ -2369,7 +2378,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
-        fix_instance_types(res, self.fail)
+        fix_instance_types(res, self.fail,
+                           disallow_any=self.options.disallow_any_generics and
+                           not self.is_typeshed_stub_file and not no_args)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
@@ -2381,9 +2392,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                alias_tvars=alias_tvars, no_args=no_args)
         if existing:
             # An alias gets updated.
-            if self.final_iteration:
-                self.cannot_resolve_name(lvalue.name, 'name', s)
-                return True
             updated = False
             if isinstance(existing.node, TypeAlias):
                 if existing.node.target != res:
@@ -2398,9 +2406,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 existing.node = alias_node
                 updated = True
             if updated:
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer()
+                if self.final_iteration:
+                    self.cannot_resolve_name(lvalue.name, 'name', s)
+                    return True
+                else:
+                    self.progress = True
+                    # We need to defer so that this change can get propagated to base classes.
+                    self.defer()
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -2828,7 +2840,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                         #     T = TypeVar('T', bound=Custom[Any])
                         #     class Custom(Generic[T]):
                         #         ...
-                        analyzed = PlaceholderType('<unknown>', [], context.line)
+                        analyzed = PlaceholderType(None, [], context.line)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2893,7 +2905,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # Type variables are special: we need to place them in the symbol table
                     # soon, even if some value is not ready yet, see process_typevar_parameters()
                     # for an example.
-                    analyzed = PlaceholderType('<unknown>', [], node.line)
+                    analyzed = PlaceholderType(None, [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
                 self.fail('Type expected', node)
@@ -3560,7 +3572,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
                                       allow_placeholder=True)
             if analyzed is None:
-                self.defer()
                 return None
             types.append(analyzed)
         return types
@@ -4189,6 +4200,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         This must not be called during the final analysis iteration!
         Instead, an error should be generated.
         """
+        assert not self.final_iteration, 'Must not defer during final iteration'
         self.deferred = True
 
     def track_incomplete_refs(self) -> Tag:
@@ -4502,9 +4514,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                   third_pass: bool = False) -> Optional[Type]:
         """Semantically analyze a type.
 
-        Return None only if some part of the type couldn't be bound *and* it referred
-        to an incomplete namespace. In case of other errors, report an error message
-        and return AnyType.
+        Args:
+            typ: Type to analyze (if already analyzed, this is a no-op)
+            allow_placeholder: If True, may return PlaceholderType if
+                encountering an incomplete definition
+            third_pass: Unused; only for compatibility with old semantic
+                analyzer
+
+        Return None only if some part of the type couldn't be bound *and* it
+        referred to an incomplete namespace or definition. In this case also
+        defer as needed. During a final iteration this won't return None;
+        instead report an error if the type can't be analyzed and return
+        AnyType.
+
+        In case of other errors, report an error message and return AnyType.
+
+        NOTE: The caller shouldn't defer even if this returns None or a
+              placeholder type.
         """
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,

@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import os
 import re
 import pprint
 import sys
@@ -86,7 +87,7 @@ class Options:
         self.namespace_packages = False
 
         # Use the new semantic analyzer
-        self.new_semantic_analyzer = False
+        self.new_semantic_analyzer = bool(os.getenv('NEWSEMANAL'))
 
         # disallow_any options
         self.disallow_any_generics = False

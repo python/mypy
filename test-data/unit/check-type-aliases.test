@@ -178,30 +178,31 @@ Alias = Tuple[int, T]
 [out]
 
 [case testRecursiveAliasesErrors1]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
-A = Union[A, int]
-B = Callable[[B], int]
-C = Type[C]
-[out]
-main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:6: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
+A = Union[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
+B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
+C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
 A = Union[B, int]
 B = Callable[[C], int]
 C = Type[A]
+x: A
+reveal_type(x)
 [out]
-main:5: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:6: error: Recursive types not fully supported yet, nested types replaced with "Any"
-main:7: error: Recursive types not fully supported yet, nested types replaced with "Any"
+main:5: error: Cannot resolve name "A" (possible cyclic definition)
+main:5: error: Cannot resolve name "B" (possible cyclic definition)
+main:6: error: Cannot resolve name "B" (possible cyclic definition)
+main:6: error: Cannot resolve name "C" (possible cyclic definition)
+main:7: error: Cannot resolve name "C" (possible cyclic definition)
+main:9: note: Revealed type is 'Union[Any, builtins.int]'
 
 [case testDoubleForwardAlias]
 from typing import List
@@ -223,12 +224,12 @@ reveal_type(x[0].x) # N: Revealed type is 'builtins.str'
 [out]
 
 [case testJSONAliasApproximation]
-# flags: --no-new-semantic-analyzer
+# flags: --new-semantic-analyzer
 # Recursive aliases are not supported yet.
 from typing import List, Union, Dict
-x: JSON
-JSON = Union[int, str, List[JSON], Dict[str, JSON]] # type: ignore
-reveal_type(x) # N: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any], builtins.dict[builtins.str, Any]]'
+x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
+JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition)
+reveal_type(x) # N: Revealed type is 'Any'
 if isinstance(x, list):
     reveal_type(x) # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/isinstancelist.pyi]

@@ -542,10 +542,7 @@ class TypeFormatter(TypeStrVisitor):
         self.graph = graph
 
     def visit_instance(self, t: Instance) -> str:
-        if t.type is not None:
-            s = t.type.fullname() or t.type.name() or None
-        else:
-            s = None
+        s = t.type.fullname() or t.type.name() or None
         if s is None:
             return '<???>'
         if s in reverse_builtin_aliases:

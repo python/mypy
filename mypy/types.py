@@ -1871,9 +1871,9 @@ class PlaceholderType(Type):
     exist.
     """
 
-    def __init__(self, fullname: str, args: List[Type], line: int) -> None:
+    def __init__(self, fullname: Optional[str], args: List[Type], line: int) -> None:
         super().__init__(line)
-        self.fullname = fullname  # Only used for debugging
+        self.fullname = fullname  # Must be a valid full name of an actual node (or None).
         self.args = args
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -1947,10 +1947,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t: Instance) -> str:
-        if t.type is not None:
-            s = t.type.fullname() or t.type.name() or '<???>'
-        else:
-            s = '<?>'
+        s = t.type.fullname() or t.type.name() or '<???>'
         if t.erased:
             s += '*'
         if t.args != []:
@@ -2081,10 +2078,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         """
         res = []
         for t in a:
-            if isinstance(t, Type):
-                res.append(t.accept(self))
-            else:
-                res.append(str(t))
+            res.append(t.accept(self))
         return ', '.join(res)
 
 
@@ -2101,9 +2095,7 @@ def strip_type(typ: Type) -> Type:
 
 
 def is_named_instance(t: Type, fullname: str) -> bool:
-    return (isinstance(t, Instance) and
-            t.type is not None and
-            t.type.fullname() == fullname)
+    return isinstance(t, Instance) and t.type.fullname() == fullname
 
 
 def copy_type(t: Type) -> Type:
