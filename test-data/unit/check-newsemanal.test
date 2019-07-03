@@ -2886,3 +2886,85 @@ def f() -> None:
     x, (y, *z) = t
     reveal_type(z)  # N: Revealed type is 'builtins.list[builtins.str*]'
 [builtins fixtures/list.pyi]
+
+[case testNewAnalyzerIdentityAssignment1]
+from foo import *
+
+try:
+    X = X
+except:
+    class X: # E: Name 'X' already defined (possibly by an import)
+        pass
+
+reveal_type(X()) # N: Revealed type is 'foo.X'
+
+[file foo.py]
+class X: pass
+
+[case testNewAnalyzerIdentityAssignment2]
+try:
+    int = int
+    reveal_type(int()) # N: Revealed type is 'builtins.int'
+except:
+    class int: # E: Name 'int' already defined (possibly by an import)
+        pass
+
+reveal_type(int()) # N: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerIdentityAssignment3]
+forwardref: C
+
+try:
+    int = int
+    reveal_type(int()) # N: Revealed type is 'builtins.int'
+except:
+    class int: # E: Name 'int' already defined (possibly by an import)
+        pass
+
+reveal_type(int()) # N: Revealed type is 'builtins.int'
+
+class C: pass
+
+[case testNewAnalyzerIdentityAssignment4]
+try:
+    C = C
+    C
+except:
+    class C:
+        pass
+
+reveal_type(C()) # N: Revealed type is '__main__.C'
+
+[case testNewAnalyzerIdentityAssignment5]
+forwardref: D
+
+try:
+    C = C
+    C
+except:
+    class C:
+        pass
+
+class D: pass
+
+reveal_type(C()) # N: Revealed type is '__main__.C'
+
+[case testNewAnalyzerIdentityAssignment6]
+x: C
+class C:
+    pass
+C = C
+
+reveal_type(C()) # N: Revealed type is '__main__.C'
+reveal_type(x) # N: Revealed type is '__main__.C'
+
+[case testNewAnalyzerIdentityAssignment7]
+C = C # E: Name 'C' is not defined
+
+reveal_type(C) # N: Revealed type is 'Any' \
+               # E: Name 'C' is not defined
+
+[case testNewAnalyzerIdentityAssignment8]
+from typing import Final
+x: Final = 0
+x = x # E: Cannot assign to final name "x"
