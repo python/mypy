@@ -53,19 +53,20 @@ JSON-serializable.
 The new semantic analyzer (enabled through the --new-semantic-analyzer flag)
 changes how plugins are expected to work in several notable ways:
 
-1. The order of processing modules is different. The old semantic analyzer
-   processed modules in textual order, one module at a time. The new semantic
-   analyzer first processes the module top levels, including bodies of any
-   top-level classes. Functions and methods are processed only after module
-   top levels have been finished. If there is an import cycle, all module
-   top levels in the cycle are processed before processing any functions or
-   methods. Each unit of processing (a module top level or a function/method)
-   is called a *target*.
+1. The order of processing AST nodes in modules is different. The old semantic
+   analyzer processes modules in textual order, one module at a time. The new
+   semantic analyzer first processes the module top levels, including bodies of
+   any top-level classes and classes nested within classes. ("Top-level" here
+   means "not nested within a function/method".) Functions and methods are
+   processed only after module top levels have been finished. If there is an
+   import cycle, all module top levels in the cycle are processed before
+   processing any functions or methods. Each unit of processing (a module top
+   level or a function/method) is called a *target*.
 
    This also means that function signatures in the same module have not been
    analyzed yet when analyzing the module top level. If you need access to
    a function signature, you'll need to explicitly analyze the signature first
-   using `type_anal()`.
+   using `anal_type()`.
 
 2. Each target can be processed multiple times. This may happen if some forward
    references are not ready yet, for example. This means that semantic analyzer
@@ -88,8 +89,9 @@ changes how plugins are expected to work in several notable ways:
    the current target to be reprocessed one more time. You don't need this
    to call this if `anal_type` returns None, however.
 
-5. There is a new API property `final_iteration`, which is true once the
-   maximum semantic analysis iteration count has been reached. You must never
+5. There is a new API property `final_iteration`, which is true once mypy
+   detected no progress during the previous iteration or if the maximum
+   semantic analysis iteration count has been reached. You must never
    defer during the final iteration, as it will cause a crash.
 
 6. The `node` attribute of SymbolTableNode objects may contain a reference to
