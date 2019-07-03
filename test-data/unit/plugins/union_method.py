@@ -25,6 +25,15 @@ def _str_to_int(api: CheckerPluginInterface, typ: Type) -> Type:
     return typ
 
 
+def _float_to_int(api: CheckerPluginInterface, typ: Type) -> Type:
+    if isinstance(typ, Instance):
+        if typ.type.fullname() == 'builtins.float':
+            return api.named_generic_type('builtins.int', [])
+        elif typ.args:
+            return typ.copy_modified(args=[_float_to_int(api, t) for t in typ.args])
+    return typ
+
+
 def my_meth_sig_hook(ctx: MethodSigContext) -> CallableType:
     return ctx.default_signature.copy_modified(
         arg_types=[_str_to_int(ctx.api, t) for t in ctx.default_signature.arg_types],
@@ -33,7 +42,7 @@ def my_meth_sig_hook(ctx: MethodSigContext) -> CallableType:
 
 
 def my_meth_hook(ctx: MethodContext) -> Type:
-    return _str_to_int(ctx.api, ctx.default_return_type)
+    return _float_to_int(ctx.api, ctx.default_return_type)
 
 
 def plugin(version):
