@@ -1023,6 +1023,7 @@ def _load_json_file(file: str, manager: BuildManager,
         manager.log(log_error + file)
         return None
     manager.add_stats(metastore_read_time=time.time() - t0)
+    # Only bother to compute the log message if we are logging it, since it could be big
     if manager.verbosity() >= 2:
         manager.trace(log_sucess + data.rstrip())
     try:
