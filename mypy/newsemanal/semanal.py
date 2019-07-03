@@ -201,6 +201,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # unbound names due to cyclic definitions and should not defer)?
     _final_iteration = False
     # These names couldn't be added to the symbol table due to incomplete deps.
+    # Note that missing names are per module, _not_ per namespace. This means that e.g.
+    # a missing name at global scope will block adding same name at a class scope.
+    # This should not affect correctness and is purely a performance issue,
+    # since it can cause unnecessary deferrals.
+    # Note that a star import adds a special name '*' to the set, this blocks
+    # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]

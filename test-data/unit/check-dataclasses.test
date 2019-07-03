@@ -665,3 +665,19 @@ def func() -> int: ...
 c: C
 c.x = 1  # E: Property "x" defined in "C" is read-only
 [builtins fixtures/bool.pyi]
+
+[case testTypeInDataclassDeferredStar]
+import lib
+[file lib.py]
+from dataclasses import dataclass
+from other import *
+
+@dataclass
+class C:
+    total: int
+
+C()  # E: Too few arguments for "C"
+C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+[file other.py]
+import lib
+[builtins fixtures/bool.pyi]
