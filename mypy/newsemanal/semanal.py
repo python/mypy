@@ -74,8 +74,7 @@ from mypy.nodes import (
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
-    EnumCallExpr, RUNTIME_PROTOCOL_DECOS,
-    FakeExpression,
+    EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -219,7 +218,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # not be found in phase 1, for example due to * imports.
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
-    statement = None  # type: Node    # Statement/definition being analyzed
+    statement = None  # type: Optional[Statement]  # Statement/definition being analyzed
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
@@ -268,6 +267,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
+
+        # Trace line numbers for every file where deferral happened during analysis of
+        # current SCC or top-level function.
+        self.deferral_debug_context = []  # type: List[Tuple[str, int]]
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -562,7 +565,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
-                    self.defer()
+                    self.defer(defn)
                     return
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
@@ -1578,7 +1581,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 #       attributes, similar to an 'Any' base class.
                 return
             if isinstance(sym.node, PlaceholderNode):
-                self.defer()
+                self.defer(defn)
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
@@ -2458,7 +2461,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 else:
                     self.progress = True
                     # We need to defer so that this change can get propagated to base classes.
-                    self.defer()
+                    self.defer(s)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -3823,6 +3826,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
+        assert self.statement  # we are at class scope
         return (node is None
                 or node.line < self.statement.line
                 or not self.is_defined_in_current_module(node.fullname())
@@ -4125,7 +4129,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         names = self.current_symbol_table()
         existing = names.get(name)
         if isinstance(symbol.node, PlaceholderNode) and can_defer:
-            self.defer()
+            self.defer(context)
         if (existing is not None
                 and context is not None
                 and not is_valid_replacement(existing, symbol)):
@@ -4254,7 +4258,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         yield
         self.tvar_scope = old_scope
 
-    def defer(self) -> None:
+    def defer(self, debug_context: Optional[Context] = None) -> None:
         """Defer current analysis target to be analyzed again.
 
         This must be called if something in the current target is
@@ -4265,6 +4269,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         assert not self.final_iteration, 'Must not defer during final iteration'
         self.deferred = True
+        # Store debug info for this deferral.
+        line = (debug_context.line if debug_context else
+                self.statement.line if self.statement else -1)
+        self.deferral_debug_context.append((self.cur_mod_id, line))
 
     def track_incomplete_refs(self) -> Tag:
         """Return tag that can be used for tracking references to incomplete names."""
@@ -4291,11 +4299,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
                 named tuples that will create TypeInfos).
         """
-        self.defer()
+        self.defer(node)
         if name == '*':
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
+            assert self.statement
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
                                           becomes_typeinfo=becomes_typeinfo)
             self.add_symbol(name, placeholder, context=dummy_context())
@@ -4321,7 +4330,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.final_iteration:
             self.cannot_resolve_name(name, kind, ctx)
         else:
-            self.defer()
+            self.defer(ctx)
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
         self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
@@ -4526,7 +4535,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
             elif not info:
-                self.defer()
+                self.defer(expr)
                 return None
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
@@ -4615,8 +4624,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.patches.append((priority, patch))
 
     def report_hang(self) -> None:
+        print('Deferral trace:')
+        for mod, line in self.deferral_debug_context:
+            print('    {}:{}'.format(mod, line))
         self.errors.report(-1, -1,
-                           'Internal error: maximum semantic analysis iteration count reached',
+                           'INTERNAL ERROR: maximum semantic analysis iteration count reached',
                            blocker=True)
 
     def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
