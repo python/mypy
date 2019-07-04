@@ -1830,6 +1830,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.statement = s
+
+        # Special case assignment like X = X.
+        if self.analyze_identity_global_assignment(s):
+            return
+
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
@@ -1873,6 +1878,47 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
+        """Special case 'X = X' in global scope.
+
+        This allows supporting some important use cases.
+
+        Return true if special casing was applied.
+        """
+        if not isinstance(s.rvalue, NameExpr) or len(s.lvalues) != 1:
+            # Not of form 'X = X'
+            return False
+        lvalue = s.lvalues[0]
+        if not isinstance(lvalue, NameExpr) or s.rvalue.name != lvalue.name:
+            # Not of form 'X = X'
+            return False
+        if self.type is not None or self.is_func_scope():
+            # Not in global scope
+            return False
+        # It's an assignment like 'X = X' in the global scope.
+        name = lvalue.name
+        sym = self.lookup(name, s)
+        if sym is None:
+            if self.final_iteration:
+                # Fall back to normal assignment analysis.
+                return False
+            else:
+                self.defer()
+                return True
+        else:
+            if sym.node is None:
+                # Something special -- fall back to normal assignment analysis.
+                return False
+            if name not in self.globals:
+                # The name is from builtins. Add an alias to the current module.
+                self.add_symbol(name, sym.node, s)
+            if not isinstance(sym.node, PlaceholderNode):
+                for node in s.rvalue, lvalue:
+                    node.node = sym.node
+                    node.kind = GDEF
+                    node.fullname = sym.node.fullname()
+            return True
 
     def should_wait_rhs(self, rv: Expression) -> bool:
         """Can we already classify this r.h.s. of an assignment or should we wait?
