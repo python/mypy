@@ -517,7 +517,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.statement = defn
         defn.is_conditional = self.block_depth[-1] > 0
 
-        # Set full names even for those definitionss that aren't added
+        # Set full names even for those definitions that aren't added
         # to a symbol table. For example, for overload items.
         defn._fullname = self.qualified_name(defn.name())
 

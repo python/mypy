@@ -2968,3 +2968,27 @@ reveal_type(C) # N: Revealed type is 'Any' \
 from typing import Final
 x: Final = 0
 x = x # E: Cannot assign to final name "x"
+
+[case testNewAnalyzerClassPropertiesInAllScopes]
+from abc import abstractmethod, ABCMeta
+
+class TopLevel(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+
+TopLevel()  # E: Cannot instantiate abstract class 'TopLevel' with abstract attribute 'f'
+
+def func() -> None:
+    class Function(metaclass=ABCMeta):
+        @abstractmethod
+        def f(self) -> None: pass
+
+    Function()  # E: Cannot instantiate abstract class 'Function' with abstract attribute 'f'
+
+class C:
+    def meth(self) -> None:
+        class Method(metaclass=ABCMeta):
+            @abstractmethod
+            def f(self) -> None: pass
+
+        Method()  # E: Cannot instantiate abstract class 'Method' with abstract attribute 'f'

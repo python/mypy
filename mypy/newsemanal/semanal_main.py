@@ -367,7 +367,6 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
     for module in scc:
         tree = graph[module].tree
         assert tree
-        # TODO: calculate properties also for classes nested in functions.
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 saved = (module, node.node, None)  # module, class, function
