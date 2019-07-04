@@ -3743,7 +3743,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def lookup(self, name: str, ctx: Context,
                suppress_errors: bool = False) -> Optional[SymbolTableNode]:
-        """Look up an unqualified (no dots) name in all active namespaces."""
+        """Look up an unqualified (no dots) name in all active namespaces.
+
+        Note that the result may contain a PlaceholderNode. The caller may
+        want to defer in that case.
+
+        Generate an error if the name is not defined unless suppress_errors
+        is true or the current namespace is incomplete. In the latter case
+        defer.
+        """
         implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
@@ -3828,6 +3836,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        """Lookup a qualified name in all activate namespaces.
+
+        Note that the result may contain a PlaceholderNode. The caller may
+        want to defer in that case.
+
+        Generate an error if the name is not defined unless suppress_errors
+        is true or the current namespace is incomplete. In the latter case
+        defer.
+        """
         if '.' not in name:
             # Simple case: look up a short name.
             return self.lookup(name, ctx, suppress_errors=suppress_errors)
