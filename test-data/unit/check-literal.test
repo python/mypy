@@ -2351,6 +2351,43 @@ UnicodeDict = TypedDict(b'UnicodeDict', {'key': int})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testLiteralIntelligentIndexingMultiTypedDict]
+from typing import Union
+from typing_extensions import Literal
+from mypy_extensions import TypedDict
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+
+class D1(TypedDict):
+    a: A
+    b: B
+    c: C
+
+class D2(TypedDict):
+    b: B
+    c: C
+    d: D
+
+x: Union[D1, D2]
+bad_keys: Literal['a', 'b', 'c', 'd']
+good_keys: Literal['b', 'c']
+
+x[bad_keys]         # E: TypedDict "D1" has no key 'd' \
+                    # E: TypedDict "D2" has no key 'a'
+x.get(bad_keys)     # E: TypedDict "D1" has no key 'd' \
+                    # E: TypedDict "D2" has no key 'a'
+x.get(bad_keys, 3)  # E: TypedDict "D1" has no key 'd' \
+                    # E: TypedDict "D2" has no key 'a'
+
+reveal_type(x[good_keys])           # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, builtins.int, __main__.C]'
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 --
 -- Interactions with 'Final'
