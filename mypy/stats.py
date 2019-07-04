@@ -1,10 +1,11 @@
 """Utilities for calculating and reporting statistics about types."""
 
 import os
-import typing
-
 from collections import Counter
+
+import typing
 from typing import Dict, List, cast, Optional
+from typing_extensions import Final
 
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types
@@ -18,11 +19,6 @@ from mypy.nodes import (
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
     AssignmentExpr,
 )
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 TYPE_EMPTY = 0  # type: Final
 TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code

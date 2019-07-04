@@ -1,10 +1,8 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
 from collections import defaultdict
 
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
+from typing_extensions import DefaultDict
 
 from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType
 from mypy.subtypes import is_subtype
@@ -34,11 +32,16 @@ class Frame:
         self.types = {}  # type: Dict[Key, Type]
         self.unreachable = False
 
+        # Should be set only if we're entering a frame where it's not
+        # possible to accurately determine whether or not contained
+        # statements will be unreachable or not.
+        #
+        # Long-term, we should improve mypy to the point where we no longer
+        # need this field.
+        self.suppress_unreachable_warnings = False
 
-if MYPY:
-    # This is the type of stored assignments for union type rvalues.
-    # We use 'if MYPY: ...' since typing-3.5.1 does not have 'DefaultDict'
-    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+
+Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
@@ -136,6 +139,9 @@ class ConditionalTypeBinder:
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
+    def suppress_unreachable_warnings(self) -> None:
+        self.frames[-1].suppress_unreachable_warnings = True
+
     def get(self, expr: Expression) -> Optional[Type]:
         key = literal_hash(expr)
         assert key is not None, 'Internal error: binder tried to get non-literal'
@@ -145,6 +151,10 @@ class ConditionalTypeBinder:
         # TODO: Copy the value of unreachable into new frames to avoid
         # this traversal on every statement?
         return any(f.unreachable for f in self.frames)
+
+    def is_unreachable_warning_suppressed(self) -> bool:
+        # TODO: See todo in 'is_unreachable'
+        return any(f.suppress_unreachable_warnings for f in self.frames)
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""

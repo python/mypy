@@ -6,7 +6,7 @@ from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, as
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
-from mypy.meet import meet_types
+from mypy.meet import meet_types, narrow_declared_type
 from mypy.sametypes import is_same_type
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
@@ -875,6 +875,9 @@ class MeetSuite(Suite):
         self.assert_meet(UnionType([lit1, lit2]), UnionType([lit1, lit2]), UnionType([lit1, lit2]))
         self.assert_meet(lit1, self.fx.anyt, lit1)
         self.assert_meet(lit1, self.fx.o, lit1)
+
+        assert_true(is_same_type(lit1, narrow_declared_type(lit1, a)))
+        assert_true(is_same_type(lit2, narrow_declared_type(lit2, a)))
 
     # FIX generic interfaces + ranges
 

@@ -6,7 +6,8 @@ import subprocess
 import sys
 import time
 
-from typing import Dict, List, Optional, Tuple, TextIO
+from typing import Any, Dict, List, Optional, Tuple, TextIO
+from typing_extensions import Final
 
 from mypy import build
 from mypy import defaults
@@ -22,13 +23,7 @@ from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-
 orig_stat = os.stat  # type: Final
-
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile
 
 
@@ -124,7 +119,9 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    def _fill_text(self, text: str, width: int, indent: int) -> str:
+    # FIXME: typeshed incorrectly has the type of indent as int when
+    # it should be str. Make it Any to avoid rusing mypyc.
+    def _fill_text(self, text: str, width: int, indent: Any) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
@@ -466,6 +463,10 @@ def process_options(args: List[str],
                         help="Warn about returning values of type Any"
                              " from non-Any typed functions",
                         group=lint_group)
+    add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
+                        help="Warn about statements or expressions inferred to be"
+                             " unreachable or redundant",
+                        group=lint_group)
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -758,7 +759,7 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache)

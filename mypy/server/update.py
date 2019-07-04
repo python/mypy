@@ -116,6 +116,7 @@ import time
 from typing import (
     Dict, List, Set, Tuple, Union, Optional, NamedTuple, Callable, Sequence
 )
+from typing_extensions import Final
 
 from mypy.build import (
     BuildManager, State, BuildResult, Graph, load_graph,
@@ -144,11 +145,6 @@ from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 MAX_ITER = 1000  # type: Final
 

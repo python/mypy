@@ -1,19 +1,19 @@
+"""Plugin that provides support for dataclasses."""
+
 from collections import OrderedDict
+
 from typing import Dict, List, Set, Tuple
+from typing_extensions import Final
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Expression, FuncDef, JsonDict, NameExpr, RefExpr,
-    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr
+    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
 from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType
 from mypy.server.trigger import make_wildcard_trigger
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -147,7 +147,7 @@ class DataclassTransformer:
                 ]
 
                 existing_method = info.get(method_name)
-                if existing_method is not None:
+                if existing_method is not None and not existing_method.plugin_generated:
                     assert existing_method.node
                     ctx.api.fail(
                         'You may not have a custom %s method when order=True' % method_name,
@@ -166,15 +166,25 @@ class DataclassTransformer:
         if decorator_arguments['frozen']:
             self._freeze(attributes)
 
-        # Remove init-only vars from the class.
-        for attr in attributes:
-            if attr.is_init_var:
-                del info.names[attr.name]
+        self.reset_init_only_vars(info, attributes)
 
         info.metadata['dataclass'] = {
             'attributes': OrderedDict((attr.name, attr.serialize()) for attr in attributes),
             'frozen': decorator_arguments['frozen'],
         }
+
+    def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
+        """Remove init-only vars from the class and reset init var declarations."""
+        for attr in attributes:
+            if attr.is_init_var:
+                del info.names[attr.name]
+                for stmt in info.defn.defs.body:
+                    if isinstance(stmt, AssignmentStmt) and stmt.unanalyzed_type:
+                        lvalue = stmt.lvalues[0]
+                        if isinstance(lvalue, NameExpr) and lvalue.name == attr.name:
+                            # Reset node so that another semantic analysis pass will
+                            # recreate a symbol node for this attribute.
+                            lvalue.node = None
 
     def collect_attributes(self) -> List[DataclassAttribute]:
         """Collect all attributes declared in the dataclass and its parents.
@@ -203,7 +213,17 @@ class DataclassTransformer:
             if not isinstance(lhs, NameExpr):
                 continue
 
-            node = cls.info.names[lhs.name].node
+            sym = cls.info.names.get(lhs.name)
+            if sym is None:
+                # This name is likely blocked by a star import. We don't need to defer because
+                # defer() is already called by mark_incomplete().
+                assert ctx.api.options.new_semantic_analyzer
+                continue
+
+            node = sym.node
+            if isinstance(node, PlaceholderNode):
+                # This node is not ready yet.
+                continue
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.

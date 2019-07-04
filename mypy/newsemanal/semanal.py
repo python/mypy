@@ -52,6 +52,7 @@ from contextlib import contextmanager
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
 )
+from typing_extensions import Final
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -73,7 +74,7 @@ from mypy.nodes import (
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
-    EnumCallExpr, AssignmentExpr,
+    EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -99,9 +100,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import (
-    get_prefix, correct_relative_import, unmangle, module_prefix
-)
+from mypy.util import correct_relative_import, unmangle, module_prefix
 from mypy.scope import Scope
 from mypy.newsemanal.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -116,18 +115,7 @@ from mypy.reachability import (
 )
 from mypy.mro import calculate_mro, MroError
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 T = TypeVar('T')
-
-
-# Map from obsolete name to the current spelling.
-obsolete_name_mapping = {
-    'typing.Function': 'typing.Callable',
-    'typing.typevar': 'typing.TypeVar',
-}  # type: Final
 
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
@@ -214,6 +202,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # unbound names due to cyclic definitions and should not defer)?
     _final_iteration = False
     # These names couldn't be added to the symbol table due to incomplete deps.
+    # Note that missing names are per module, _not_ per namespace. This means that e.g.
+    # a missing name at global scope will block adding same name at a class scope.
+    # This should not affect correctness and is purely a performance issue,
+    # since it can cause unnecessary deferrals.
+    # Note that a star import adds a special name '*' to the set, this blocks
+    # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
@@ -226,7 +220,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # not be found in phase 1, for example due to * imports.
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
-    statement = None  # type: Node    # Statement/definition being analyzed
+    statement = None  # type: Optional[Statement]  # Statement/definition being analyzed
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
@@ -240,6 +234,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
         Args:
             modules: Global modules dictionary
+            missing_modules: Modules that could not be imported encountered so far
             incomplete_namespaces: Namespaces that are being populated during semantic analysis
                 (can contain modules and classes within the current SCC; mutated by the caller)
             errors: Report analysis errors using this instance
@@ -275,6 +270,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
+
+        # Trace line numbers for every file where deferral happened during analysis of
+        # current SCC or top-level function.
+        self.deferral_debug_context = []  # type: List[Tuple[str, int]]
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -385,6 +384,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname() == 'typing':
             self.add_builtin_aliases(file_node)
         self.adjust_public_exports()
+        self.export_map[self.cur_mod_id] = self.all_exports
+        self.all_exports = []
 
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
@@ -413,7 +414,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_symbol(name, var, dummy_context())
             else:
                 self.add_symbol(name,
-                                PlaceholderNode(self.qualified_name(name), file_node),
+                                PlaceholderNode(self.qualified_name(name), file_node, -1),
                                 dummy_context())
 
     def add_builtin_aliases(self, tree: MypyFile) -> None:
@@ -442,7 +443,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail)
+                    fix_instance_types(target, self.fail, disallow_any=False)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -572,7 +573,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
-                    self.defer()
+                    self.defer(defn)
                     return
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
@@ -585,7 +586,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     arg.initializer.accept(self)
 
         self.analyze_function_body(defn)
-        if defn.is_coroutine and isinstance(defn.type, CallableType):
+        if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
             if defn.is_async_generator:
                 # Async generator types are handled elsewhere
                 pass
@@ -918,6 +919,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_decorator(self, dec: Decorator) -> None:
         self.statement = dec
+        # TODO: better don't modify them at all.
+        dec.decorators = dec.original_decorators.copy()
         dec.func.is_conditional = self.block_depth[-1] > 0
         if not dec.is_overload:
             self.add_symbol(dec.name(), dec, dec)
@@ -1002,8 +1005,8 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # resolved.  We don't want this to cause a deferral, since if there
             # are no incomplete references, we'll replace this with a TypeInfo
             # before returning.
-            self.add_symbol(defn.name, PlaceholderNode(fullname, defn, True), defn,
-                            can_defer=False)
+            placeholder = PlaceholderNode(fullname, defn, defn.line, becomes_typeinfo=True)
+            self.add_symbol(defn.name, placeholder, defn, can_defer=False)
 
         tag = self.track_incomplete_refs()
 
@@ -1016,6 +1019,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         bases = defn.base_type_exprs
         bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
                                                                                      context=defn)
+
+        for tvd in tvar_defs:
+            if any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values):
+                # Some type variable bounds or values are not ready, we need
+                # to re-analyze this class.
+                self.defer()
+
         self.analyze_class_keywords(defn)
         result = self.analyze_base_classes(bases)
 
@@ -1149,11 +1159,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
         if isinstance(decorator, RefExpr):
-            if decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'):
+            if decorator.fullname in RUNTIME_PROTOCOL_DECOS:
                 if defn.info.is_protocol:
                     defn.info.runtime_protocol = True
                 else:
-                    self.fail('@runtime can only be used with protocol classes', defn)
+                    self.fail('@runtime_checkable can only be used with protocol classes',
+                              defn)
             elif decorator.fullname in ('typing.final',
                                         'typing_extensions.final'):
                 defn.info.is_final = True
@@ -1472,7 +1483,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if defn.fullname:
             hook = self.plugin.get_customize_class_mro_hook(defn.fullname)
             if hook:
-                hook(ClassDefContext(defn, Expression(), self))
+                hook(ClassDefContext(defn, FakeExpression(), self))
 
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
@@ -1580,7 +1591,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 #       attributes, similar to an 'Any' base class.
                 return
             if isinstance(sym.node, PlaceholderNode):
-                self.defer()
+                self.defer(defn)
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
@@ -1617,6 +1628,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     #
 
     def visit_import(self, i: Import) -> None:
+        self.statement = i
         for id, as_id in i.ids:
             if as_id is not None:
                 self.add_module_symbol(id, as_id, module_public=True, context=i)
@@ -1630,44 +1642,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
-                self.add_submodules_to_parent_modules(id, module_public)
-
-    def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
-        """Recursively adds a reference to a newly loaded submodule to its parent.
-
-        When you import a submodule in any way, Python will add a reference to that
-        submodule to its parent. So, if you do something like `import A.B` or
-        `from A import B` or `from A.B import Foo`, Python will add a reference to
-        module A.B to A's namespace.
-
-        Note that this "parent patching" process is completely independent from any
-        changes made to the *importer's* namespace. For example, if you have a file
-        named `foo.py` where you do `from A.B import Bar`, then foo's namespace will
-        be modified to contain a reference to only Bar. Independently, A's namespace
-        will be modified to contain a reference to `A.B`.
-        """
-        while '.' in id:
-            parent, child = id.rsplit('.', 1)
-            parent_mod = self.modules.get(parent)
-            if parent_mod and self.allow_patching(parent_mod, child):
-                child_mod = self.modules.get(id)
-                if child_mod:
-                    sym = SymbolTableNode(GDEF, child_mod,
-                                          module_public=module_public,
-                                          no_serialize=True)
-                else:
-                    # Construct a dummy Var with Any type.
-                    any_type = AnyType(TypeOfAny.from_unimported_type,
-                                       missing_import_name=id)
-                    var = Var(child, any_type)
-                    var._fullname = child
-                    var.is_ready = True
-                    var.is_suppressed_import = True
-                    sym = SymbolTableNode(GDEF, var,
-                                          module_public=module_public,
-                                          no_serialize=True)
-                parent_mod.names[child] = sym
-            id = parent
 
     def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
         if child not in parent_mod.names:
@@ -1678,77 +1652,91 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         return False
 
     def visit_import_from(self, imp: ImportFrom) -> None:
-        import_id = self.correct_relative_import(imp)
-        self.add_submodules_to_parent_modules(import_id, True)
-        module = self.modules.get(import_id)
+        self.statement = imp
+        module_id = self.correct_relative_import(imp)
+        module = self.modules.get(module_id)
         for id, as_id in imp.names:
-            node = module.names.get(id) if module else None
+            fullname = module_id + '.' + id
+            if module is None:
+                node = None
+            elif module_id == self.cur_mod_id and fullname in self.modules:
+                # Submodule takes precedence over definition in surround package, for
+                # compatibility with runtime semantics in typical use cases. This
+                # could more precisely model runtime semantics by taking into account
+                # the line number beyond which the local definition should take
+                # precedence, but doesn't seem to be important in most use cases.
+                node = SymbolTableNode(GDEF, self.modules[fullname])
+            else:
+                node = module.names.get(id)
 
-            missing = False
-            possible_module_id = import_id + '.' + id
+            missing_submodule = False
             imported_id = as_id or id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
             if not node:
-                mod = self.modules.get(possible_module_id)
+                mod = self.modules.get(fullname)
                 if mod is not None:
                     kind = self.current_symbol_kind()
                     node = SymbolTableNode(kind, mod)
-                    self.add_submodules_to_parent_modules(possible_module_id, True)
-                elif possible_module_id in self.missing_modules:
-                    missing = True
+                elif fullname in self.missing_modules:
+                    missing_submodule = True
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                # We use the fullname of the orignal definition so that we can
+                # We store the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
-                fullname = import_id + '.' + id
+                fullname = module_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
                     continue
             if node and not node.module_hidden:
-                if isinstance(node.node, PlaceholderNode):
-                    if self.final_iteration:
-                        self.report_missing_module_attribute(import_id, id, imported_id, imp)
-                        return
-                    self.record_incomplete_ref()
-                existing_symbol = self.globals.get(imported_id)
-                if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
-                        not isinstance(node.node, PlaceholderNode)):
-                    # Import can redefine a variable. They get special treatment.
-                    if self.process_import_over_existing_name(
-                            imported_id, existing_symbol, node, imp):
-                        continue
-                if (existing_symbol and isinstance(existing_symbol.node, MypyFile) and
-                        existing_symbol.no_serialize):  # submodule added to parent module
-                    # Special case: allow replacing submodules with variables. This pattern
-                    # is used by some libraries.
-                    del self.globals[imported_id]
-                if existing_symbol and isinstance(node.node, PlaceholderNode):
-                    # Imports are special, some redefinitions are allowed, so wait until
-                    # we know what is the new symbol node.
-                    continue
-                # 'from m import x as x' exports x in a stub file or when implicit
-                # re-exports are disabled.
-                module_public = (
-                    not self.is_stub_file
-                    and self.options.implicit_reexport
-                    or as_id is not None
-                )
-                module_hidden = not module_public and possible_module_id not in self.modules
-                # NOTE: we take the original node even for final `Var`s. This is to support
-                # a common pattern when constants are re-exported (same applies to import *).
-                self.add_imported_symbol(imported_id, node, imp,
-                                         module_public=module_public,
-                                         module_hidden=module_hidden)
-            elif module and not missing:
-                self.report_missing_module_attribute(import_id, id, imported_id, imp)
+                self.process_imported_symbol(node, module_id, id, as_id, fullname, imp)
+            elif module and not missing_submodule:
+                # Target module exists but the imported name is missing or hidden.
+                self.report_missing_module_attribute(module_id, id, imported_id, imp)
             else:
-                # Missing module.
-                missing_name = import_id + '.' + id
-                self.add_unknown_imported_symbol(imported_id, imp, target_name=missing_name)
+                # Import of a missing (sub)module.
+                self.add_unknown_imported_symbol(imported_id, imp, target_name=fullname)
+
+    def process_imported_symbol(self,
+                                node: SymbolTableNode,
+                                module_id: str,
+                                id: str,
+                                as_id: Optional[str],
+                                fullname: str,
+                                context: ImportBase) -> None:
+        imported_id = as_id or id
+        if isinstance(node.node, PlaceholderNode):
+            if self.final_iteration:
+                self.report_missing_module_attribute(module_id, id, imported_id, context)
+                return
+            self.record_incomplete_ref()
+        existing_symbol = self.globals.get(imported_id)
+        if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
+                not isinstance(node.node, PlaceholderNode)):
+            # Import can redefine a variable. They get special treatment.
+            if self.process_import_over_existing_name(
+                    imported_id, existing_symbol, node, context):
+                return
+        if existing_symbol and isinstance(node.node, PlaceholderNode):
+            # Imports are special, some redefinitions are allowed, so wait until
+            # we know what is the new symbol node.
+            return
+        # 'from m import x as x' exports x in a stub file or when implicit
+        # re-exports are disabled.
+        module_public = (
+            not self.is_stub_file
+            and self.options.implicit_reexport
+            or as_id is not None
+        )
+        module_hidden = not module_public and fullname not in self.modules
+        # NOTE: we take the original node even for final `Var`s. This is to support
+        # a common pattern when constants are re-exported (same applies to import *).
+        self.add_imported_symbol(imported_id, node, context,
+                                 module_public=module_public,
+                                 module_hidden=module_hidden)
 
     def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
                                         context: Node) -> None:
@@ -1759,9 +1747,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.mark_incomplete(imported_id, context)
             return
         message = "Module '{}' has no attribute '{}'".format(import_id, source_id)
-        extra = self.undefined_name_extra_info('{}.{}'.format(import_id, source_id))
-        if extra:
-            message += " {}".format(extra)
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
@@ -1831,7 +1816,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # Any names could be missing from the current namespace if the target module
                 # namespace is incomplete.
                 self.mark_incomplete('*', i)
-            self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
                 if node is None:
                     continue
@@ -1863,6 +1847,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.statement = s
+
+        # Special case assignment like X = X.
+        if self.analyze_identity_global_assignment(s):
+            return
+
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
@@ -1906,6 +1895,47 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
+        """Special case 'X = X' in global scope.
+
+        This allows supporting some important use cases.
+
+        Return true if special casing was applied.
+        """
+        if not isinstance(s.rvalue, NameExpr) or len(s.lvalues) != 1:
+            # Not of form 'X = X'
+            return False
+        lvalue = s.lvalues[0]
+        if not isinstance(lvalue, NameExpr) or s.rvalue.name != lvalue.name:
+            # Not of form 'X = X'
+            return False
+        if self.type is not None or self.is_func_scope():
+            # Not in global scope
+            return False
+        # It's an assignment like 'X = X' in the global scope.
+        name = lvalue.name
+        sym = self.lookup(name, s)
+        if sym is None:
+            if self.final_iteration:
+                # Fall back to normal assignment analysis.
+                return False
+            else:
+                self.defer()
+                return True
+        else:
+            if sym.node is None:
+                # Something special -- fall back to normal assignment analysis.
+                return False
+            if name not in self.globals:
+                # The name is from builtins. Add an alias to the current module.
+                self.add_symbol(name, sym.node, s)
+            if not isinstance(sym.node, PlaceholderNode):
+                for node in s.rvalue, lvalue:
+                    node.node = sym.node
+                    node.kind = GDEF
+                    node.fullname = sym.node.fullname()
+            return True
 
     def should_wait_rhs(self, rv: Expression) -> bool:
         """Can we already classify this r.h.s. of an assignment or should we wait?
@@ -2130,6 +2160,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return False
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
+
+        # Reset inferred status if it was set due to simple literal rvalue on previous iteration.
+        # TODO: this is a best-effort quick fix, we should avoid the need to manually sync this,
+        # see https://github.com/python/mypy/issues/6458.
+        if lval.is_new_def:
+            lval.is_inferred_def = s.type is None
+
         if self.loop_depth > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
@@ -2214,7 +2251,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
-                self.defer()
                 return
             s.type = analyzed
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
@@ -2381,11 +2417,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
-            if self.found_incomplete_ref(tag) or isinstance(res, PlaceholderType):
+            # TODO: Maybe we only need to reject top-level placeholders, similar
+            #       to base classes.
+            if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
-                self.add_symbol(lvalue.name, PlaceholderNode(self.qualified_name(lvalue.name),
-                                                             rvalue, becomes_typeinfo=True), s)
+                placeholder = PlaceholderNode(self.qualified_name(lvalue.name),
+                                              rvalue,
+                                              s.line,
+                                              becomes_typeinfo=True)
+                self.add_symbol(lvalue.name, placeholder, s)
                 return True
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
@@ -2400,7 +2441,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
-        fix_instance_types(res, self.fail)
+        fix_instance_types(res, self.fail,
+                           disallow_any=self.options.disallow_any_generics and
+                           not self.is_typeshed_stub_file and not no_args)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
@@ -2412,9 +2455,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                alias_tvars=alias_tvars, no_args=no_args)
         if existing:
             # An alias gets updated.
-            if self.final_iteration:
-                self.cannot_resolve_name(lvalue.name, 'name', s)
-                return True
             updated = False
             if isinstance(existing.node, TypeAlias):
                 if existing.node.target != res:
@@ -2429,9 +2469,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 existing.node = alias_node
                 updated = True
             if updated:
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer()
+                if self.final_iteration:
+                    self.cannot_resolve_name(lvalue.name, 'name', s)
+                    return True
+                else:
+                    self.progress = True
+                    # We need to defer so that this change can get propagated to base classes.
+                    self.defer(s)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -2723,19 +2767,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if s.type:
             self.fail("Cannot declare the type of a type variable", s)
             return False
-        name = lvalue.name
-        names = self.current_symbol_table()
-        existing = names.get(name)
-        if existing and not isinstance(existing.node, (TypeVarExpr, PlaceholderNode)):
-            self.fail("Cannot redefine '%s' as a type variable" % name, s)
-            return False
 
+        name = lvalue.name
         if not self.check_typevar_name(call, name, s):
             return False
 
         # Constraining types
         n_values = call.arg_kinds[1:].count(ARG_POS)
-        values = self.analyze_types(call.args[1:1 + n_values])
+        values = self.analyze_value_types(call.args[1:1 + n_values])
 
         res = self.process_typevar_parameters(call.args[1 + n_values:],
                                               call.arg_names[1 + n_values:],
@@ -2745,6 +2784,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if res is None:
             return False
         variance, upper_bound = res
+
+        existing = self.current_symbol_table().get(name)
+        if existing and not (isinstance(existing.node, PlaceholderNode) or
+                             # Also give error for another type variable with the same name.
+                             (isinstance(existing.node, TypeVarExpr) and
+                              existing.node is call.analyzed)):
+            self.fail("Cannot redefine '%s' as a type variable" % name, s)
+            return False
 
         if self.options.disallow_any_unimported:
             for idx, constraint in enumerate(values, start=1):
@@ -2767,20 +2814,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             upper_bound = AnyType(TypeOfAny.implementation_artifact)
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
-        if existing and isinstance(existing.node, TypeVarExpr):
-            # Existing definition from previous semanal iteration, use it.
-            # TODO: This may be confused with a duplicate TypeVar definition.
-            #       Fix this and add corresponding tests.
-            type_var = existing.node
-            type_var.values = values
-            type_var.upper_bound = upper_bound
-            type_var.variance = variance
-        else:
+        if not call.analyzed:
             type_var = TypeVarExpr(name, self.qualified_name(name),
                                    values, upper_bound, variance)
             type_var.line = call.line
             call.analyzed = type_var
-            self.add_symbol(name, type_var, s)
+        else:
+            assert isinstance(call.analyzed, TypeVarExpr)
+            if call.analyzed.values != values or call.analyzed.upper_bound != upper_bound:
+                self.progress = True
+            call.analyzed.upper_bound = upper_bound
+            call.analyzed.values = values
+
+        self.add_symbol(name, call.analyzed, s)
         return True
 
     def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
@@ -2855,18 +2901,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     # We want to use our custom error message below, so we suppress
                     # the default error message for invalid types here.
                     analyzed = self.expr_to_analyzed_type(param_value,
+                                                          allow_placeholder=True,
                                                           report_invalid_types=False)
                     if analyzed is None:
-                        # It is fine to simply use a temporary Any because we don't need the bound
-                        # for anything before main pass of semantic analysis is finished. We will
-                        # incrementally populate `TypeVarExpr` if some part is missing during main
-                        # pass iterations.
-                        # NOTE: It is safe to not call self.defer() here, because the only way
-                        # we can get None from self.anal_type() is if self.found_incomplete_refs()
-                        # returned True. In turn, the only way it can happen is if someone called
-                        # self.record_incomplete_ref(), and the latter unconditionally calls
-                        # self.defer().
-                        analyzed = AnyType(TypeOfAny.special_form)
+                        # Type variables are special: we need to place them in the symbol table
+                        # soon, even if upper bound is not ready yet. Otherwise avoiding
+                        # a "deadlock" in this common pattern would be tricky:
+                        #     T = TypeVar('T', bound=Custom[Any])
+                        #     class Custom(Generic[T]):
+                        #         ...
+                        analyzed = PlaceholderType(None, [], context.line)
                     upper_bound = analyzed
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
@@ -2897,7 +2941,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             variance = CONTRAVARIANT
         else:
             variance = INVARIANT
-        return (variance, upper_bound)
+        return variance, upper_bound
 
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
@@ -2920,18 +2964,19 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         info.bases = [basetype_or_fallback]
         return info
 
-    def analyze_types(self, items: List[Expression]) -> List[Type]:
+    def analyze_value_types(self, items: List[Expression]) -> List[Type]:
         """Analyze types from values expressions in type variable definition."""
         result = []  # type: List[Type]
         for node in items:
             try:
-                analyzed = self.anal_type(expr_to_unanalyzed_type(node))
-                if analyzed is not None:
-                    result.append(analyzed)
-                else:
-                    # It is fine to simply use temporary Anys because we don't need values
-                    # for anything before main pass of semantic analysis is finished.
-                    result.append(AnyType(TypeOfAny.special_form))
+                analyzed = self.anal_type(expr_to_unanalyzed_type(node),
+                                          allow_placeholder=True)
+                if analyzed is None:
+                    # Type variables are special: we need to place them in the symbol table
+                    # soon, even if some value is not ready yet, see process_typevar_parameters()
+                    # for an example.
+                    analyzed = PlaceholderType(None, [], node.line)
+                result.append(analyzed)
             except TypeTranslationError:
                 self.fail('Type expected', node)
                 result.append(AnyType(TypeOfAny.from_error))
@@ -3168,7 +3213,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             elif isinstance(s.unanalyzed_type, TupleType):
                 # We have multiple targets and multiple types
                 if len(actual_targets) == len(s.unanalyzed_type.items):
-                    types = s.unanalyzed_type.items
+                    types = s.unanalyzed_type.items.copy()
                 else:
                     # But it's the wrong number of items
                     self.fail('Incompatible number of types for `with` targets', s)
@@ -3346,6 +3391,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # precedence over the CallExpr semantics.
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
@@ -3466,61 +3512,16 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_member_expr(self, expr: MemberExpr) -> None:
         base = expr.expr
         base.accept(self)
-        # Bind references to module attributes.
         if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
-            # This branch handles the case foo.bar where foo is a module.
-            # In this case base.node is the module's MypyFile and we look up
-            # bar in its namespace.  This must be done for all types of bar.
-            file = base.node
-            # TODO: Should we actually use this? Not sure if this makes a difference.
-            # if file.fullname() == self.cur_mod_id:
-            #     names = self.globals
-            # else:
-            #     names = file.names
-            n = file.names.get(expr.name, None)
-            if n and not n.module_hidden:
-                n = self.rebind_symbol_table_node(n)
-                if n:
-                    if isinstance(n.node, PlaceholderNode):
-                        self.process_placeholder(expr.name, 'attribute', expr)
-                        return
-                    # TODO: What if None?
-                    expr.kind = n.kind
-                    expr.fullname = n.fullname
-                    expr.node = n.node
-            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
-                    and '__getattr__' in file.names):
-                # If there is a module-level __getattr__, then any attribute on the module is valid
-                # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if not getattr_defn:
-                    typ = AnyType(TypeOfAny.from_error)  # type: Type
-                elif isinstance(getattr_defn.node, (FuncDef, Var)):
-                    if isinstance(getattr_defn.node.type, CallableType):
-                        typ = getattr_defn.node.type.ret_type
-                    else:
-                        typ = AnyType(TypeOfAny.from_error)
-                else:
-                    typ = AnyType(TypeOfAny.from_error)
-                expr.kind = GDEF
-                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                expr.node = Var(expr.name, type=typ)
-            else:
-                if self.is_incomplete_namespace(file.fullname()):
-                    self.record_incomplete_ref()
+            # Handle module attribute.
+            sym = self.get_module_symbol(base.node, expr.name)
+            if sym:
+                if isinstance(sym.node, PlaceholderNode):
+                    self.process_placeholder(expr.name, 'attribute', expr)
                     return
-                # We only catch some errors here; the rest will be
-                # caught during type checking.
-                #
-                # This way we can report a larger number of errors in
-                # one type checker run. If we reported errors here,
-                # the build would terminate after semantic analysis
-                # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
-                mod_name = " '%s'" % file.fullname() if file is not None else ''
-                if full_name in obsolete_name_mapping:
-                    self.fail("Module%s has no attribute %r (it's now called %r)" % (
-                        mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
+                expr.kind = sym.kind
+                expr.fullname = sym.fullname
+                expr.node = sym.node
         elif isinstance(base, RefExpr):
             # This branch handles the case C.bar (or cls.bar or self.bar inside
             # a classmethod/method), where C is a class and bar is a type
@@ -3598,6 +3599,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         base = expr.base
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
+        expr.analyzed.column = expr.column
         # Types list, dict, set are not subscriptable, prohibit this if
         # subscripted either via type alias...
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
@@ -3640,7 +3642,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
                                       allow_placeholder=True)
             if analyzed is None:
-                self.defer()
                 return None
             types.append(analyzed)
         return types
@@ -3766,7 +3767,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def lookup(self, name: str, ctx: Context,
                suppress_errors: bool = False) -> Optional[SymbolTableNode]:
-        """Look up an unqualified (no dots) name in all active namespaces."""
+        """Look up an unqualified (no dots) name in all active namespaces.
+
+        Note that the result may contain a PlaceholderNode. The caller may
+        want to defer in that case.
+
+        Generate an error if the name is not defined unless suppress_errors
+        is true or the current namespace is incomplete. In the latter case
+        defer.
+        """
         implicit_name = False
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
@@ -3838,10 +3847,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
+        assert self.statement  # we are at class scope
         return (node is None
                 or node.line < self.statement.line
                 or not self.is_defined_in_current_module(node.fullname())
-                or isinstance(node, TypeInfo))
+                or isinstance(node, TypeInfo)
+                or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo))
 
     def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
         if fullname is None:
@@ -3850,6 +3861,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        """Lookup a qualified name in all activate namespaces.
+
+        Note that the result may contain a PlaceholderNode. The caller may
+        want to defer in that case.
+
+        Generate an error if the name is not defined unless suppress_errors
+        is true or the current namespace is incomplete. In the latter case
+        defer.
+        """
         if '.' not in name:
             # Simple case: look up a short name.
             return self.lookup(name, ctx, suppress_errors=suppress_errors)
@@ -3859,10 +3879,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if sym:
             for i in range(1, len(parts)):
                 node = sym.node
+                part = parts[i]
                 if isinstance(node, TypeInfo):
-                    nextsym = node.get(parts[i])
+                    nextsym = node.get(part)
                 elif isinstance(node, MypyFile):
-                    nextsym = self.get_module_symbol(node, parts[i:])
+                    nextsym = self.get_module_symbol(node, part)
                     namespace = node.fullname()
                 elif isinstance(node, PlaceholderNode):
                     return sym
@@ -3889,26 +3910,39 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return n
         return None
 
-    def get_module_symbol(self, node: MypyFile, parts: List[str]) -> Optional[SymbolTableNode]:
-        """Look up a symbol from the module symbol table."""
-        # TODO: Use this logic in more places?
+    def get_module_symbol(self, node: MypyFile, name: str) -> Optional[SymbolTableNode]:
+        """Look up a symbol from a module.
+
+        Return None if no matching symbol could be bound.
+        """
         module = node.fullname()
         names = node.names
-        # Rebind potential references to old version of current module in
-        # fine-grained incremental mode.
-        if module == self.cur_mod_id:
-            names = self.globals
-        sym = names.get(parts[0], None)
-        if (not sym
-                and '__getattr__' in names
-                and not self.is_incomplete_namespace(module)
-                and (node.is_stub or self.options.python_version >= (3, 7))):
-            fullname = module + '.' + '.'.join(parts)
-            gvar = self.create_getattr_var(names['__getattr__'],
-                                           parts[0], fullname)
-            if gvar:
-                sym = SymbolTableNode(GDEF, gvar)
+        sym = names.get(name)
+        if not sym:
+            fullname = module + '.' + name
+            if fullname in self.modules:
+                sym = SymbolTableNode(GDEF, self.modules[fullname])
+            elif self.is_incomplete_namespace(module):
+                self.record_incomplete_ref()
+            elif ('__getattr__' in names
+                    and (node.is_stub
+                         or self.options.python_version >= (3, 7))):
+                gvar = self.create_getattr_var(names['__getattr__'], name, fullname)
+                if gvar:
+                    sym = SymbolTableNode(GDEF, gvar)
+            elif self.is_missing_module(fullname):
+                # We use the fullname of the original definition so that we can
+                # detect whether two names refer to the same thing.
+                var_type = AnyType(TypeOfAny.from_unimported_type)
+                v = Var(name, type=var_type)
+                v._fullname = fullname
+                sym = SymbolTableNode(GDEF, v)
+        elif sym.module_hidden:
+            sym = None
         return sym
+
+    def is_missing_module(self, module: str) -> bool:
+        return self.options.ignore_missing_imports or module in self.missing_modules
 
     def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
                         source_type: AnyType) -> SymbolTableNode:
@@ -4118,7 +4152,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
         existing = names.get(name)
         if isinstance(symbol.node, PlaceholderNode) and can_defer:
-            self.defer()
+            self.defer(context)
         if (existing is not None
                 and context is not None
                 and not is_valid_replacement(existing, symbol)):
@@ -4247,7 +4281,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         yield
         self.tvar_scope = old_scope
 
-    def defer(self) -> None:
+    def defer(self, debug_context: Optional[Context] = None) -> None:
         """Defer current analysis target to be analyzed again.
 
         This must be called if something in the current target is
@@ -4256,7 +4290,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         This must not be called during the final analysis iteration!
         Instead, an error should be generated.
         """
+        assert not self.final_iteration, 'Must not defer during final iteration'
         self.deferred = True
+        # Store debug info for this deferral.
+        line = (debug_context.line if debug_context else
+                self.statement.line if self.statement else -1)
+        self.deferral_debug_context.append((self.cur_mod_id, line))
 
     def track_incomplete_refs(self) -> Tag:
         """Return tag that can be used for tracking references to incomplete names."""
@@ -4283,14 +4322,15 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             becomes_typeinfo: Pass this to PlaceholderNode (used by special forms like
                 named tuples that will create TypeInfos).
         """
-        self.defer()
+        self.defer(node)
         if name == '*':
             self.incomplete = True
         elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
-            self.add_symbol(name,
-                            PlaceholderNode(fullname, node, becomes_typeinfo),
-                            context=dummy_context())
+            assert self.statement
+            placeholder = PlaceholderNode(fullname, node, self.statement.line,
+                                          becomes_typeinfo=becomes_typeinfo)
+            self.add_symbol(name, placeholder, context=dummy_context())
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
@@ -4313,28 +4353,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if self.final_iteration:
             self.cannot_resolve_name(name, kind, ctx)
         else:
-            self.defer()
+            self.defer(ctx)
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
         self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
-
-    def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
-        """If node refers to old version of module, return reference to new version.
-
-        If the reference is removed in the new version, return None.
-        """
-        # TODO: Handle type variables and other sorts of references
-        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var, TypeAlias)):
-            # TODO: Why is it possible for fullname() to be None, even though it's not
-            #   annotated as Optional[str]?
-            # TODO: Do this for all modules in the set of modified files
-            # TODO: This doesn't work for things nested within classes
-            if n.node.fullname() and get_prefix(n.node.fullname()) == self.cur_mod_id:
-                # This is an indirect reference to a name defined in the current module.
-                # Rebind it.
-                return self.globals.get(n.node.name())
-        # No need to rebind.
-        return n
 
     def qualified_name(self, name: str) -> str:
         if self.type is not None:
@@ -4434,11 +4456,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
             return
         message = "Name '{}' is not defined".format(name)
-        extra = self.undefined_name_extra_info(name)
-        if extra:
-            message += ' {}'.format(extra)
         self.fail(message, ctx)
-        self.check_for_obsolete_short_name(name, ctx)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -4465,18 +4483,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 ' (Suggestion: "from {module} import {name}")'
             ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
             self.note(hint, ctx)
-
-    def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
-        lowercased_names_handled_by_unimported_hints = {
-            name.lower() for name in TYPES_FOR_UNIMPORTED_HINTS
-        }
-        matches = [
-            obsolete_name for obsolete_name in obsolete_name_mapping
-            if obsolete_name.rsplit('.', 1)[-1] == name
-            and obsolete_name not in lowercased_names_handled_by_unimported_hints
-        ]
-        if len(matches) == 1:
-            self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def already_defined(self,
                         name: str,
@@ -4545,12 +4551,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note')
 
-    def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
-        if fullname in obsolete_name_mapping:
-            return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
-        else:
-            return None
-
     def accept(self, node: Node) -> None:
         try:
             node.accept(self)
@@ -4570,7 +4570,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
             elif not info:
-                self.defer()
+                self.defer(expr)
                 return None
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
@@ -4621,9 +4621,23 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                   third_pass: bool = False) -> Optional[Type]:
         """Semantically analyze a type.
 
-        Return None only if some part of the type couldn't be bound *and* it referred
-        to an incomplete namespace. In case of other errors, report an error message
-        and return AnyType.
+        Args:
+            typ: Type to analyze (if already analyzed, this is a no-op)
+            allow_placeholder: If True, may return PlaceholderType if
+                encountering an incomplete definition
+            third_pass: Unused; only for compatibility with old semantic
+                analyzer
+
+        Return None only if some part of the type couldn't be bound *and* it
+        referred to an incomplete namespace or definition. In this case also
+        defer as needed. During a final iteration this won't return None;
+        instead report an error if the type can't be analyzed and return
+        AnyType.
+
+        In case of other errors, report an error message and return AnyType.
+
+        NOTE: The caller shouldn't defer even if this returns None or a
+              placeholder type.
         """
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                allow_unbound_tvars=allow_unbound_tvars,
@@ -4645,8 +4659,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.patches.append((priority, patch))
 
     def report_hang(self) -> None:
+        print('Deferral trace:')
+        for mod, line in self.deferral_debug_context:
+            print('    {}:{}'.format(mod, line))
         self.errors.report(-1, -1,
-                           'Internal error: maximum semantic analysis iteration count reached',
+                           'INTERNAL ERROR: maximum semantic analysis iteration count reached',
                            blocker=True)
 
     def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:

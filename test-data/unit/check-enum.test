@@ -6,7 +6,7 @@ class Medal(Enum):
     gold = 1
     silver = 2
     bronze = 3
-reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
+reveal_type(Medal.bronze)  # N: Revealed type is '__main__.Medal'
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -20,7 +20,7 @@ class Medal(metaclass=EnumMeta):
     # Without __init__ the definition fails at runtime, but we want to verify that mypy
     # uses `enum.EnumMeta` and not `enum.Enum` as the definition of what is enum.
     def __init__(self, *args): pass
-reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
+reveal_type(Medal.bronze)  # N: Revealed type is '__main__.Medal'
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -34,7 +34,7 @@ class Medal(Achievement):
     bronze = None
     # See comment in testEnumFromEnumMetaBasics
     def __init__(self, *args): pass
-reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
+reveal_type(Medal.bronze)  # N: Revealed type is '__main__.Medal'
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -53,8 +53,8 @@ class Truth(Enum):
     false = False
 x = ''
 x = Truth.true.name
-reveal_type(Truth.true.name)    # E: Revealed type is 'builtins.str'
-reveal_type(Truth.false.value)  # E: Revealed type is 'builtins.bool'
+reveal_type(Truth.true.name)    # N: Revealed type is 'builtins.str'
+reveal_type(Truth.false.value)  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
 [case testEnumUnique]
@@ -167,7 +167,7 @@ class E(IntEnum):
 x = None  # type: int
 reveal_type(E(x))
 [out]
-main:5: error: Revealed type is '__main__.E'
+main:5: note: Revealed type is '__main__.E'
 
 [case testEnumIndex]
 from enum import IntEnum
@@ -176,7 +176,7 @@ class E(IntEnum):
 s = None  # type: str
 reveal_type(E[s])
 [out]
-main:5: error: Revealed type is '__main__.E'
+main:5: note: Revealed type is '__main__.E'
 
 [case testEnumIndexError]
 from enum import IntEnum
@@ -191,16 +191,16 @@ from enum import Enum
 class E(Enum):
     a = 1
     b = 2
-reveal_type(E['a'])  # E: Revealed type is '__main__.E'
+reveal_type(E['a'])  # N: Revealed type is '__main__.E'
 E['a']
 x = E['a']
-reveal_type(x)  # E: Revealed type is '__main__.E'
+reveal_type(x)  # N: Revealed type is '__main__.E'
 
 def get_member(name: str) -> E:
     val = E[name]
     return val
 
-reveal_type(get_member('a'))  # E: Revealed type is '__main__.E'
+reveal_type(get_member('a'))  # N: Revealed type is '__main__.E'
 
 [case testGenericEnum]
 from enum import Enum
@@ -212,7 +212,7 @@ class F(Generic[T], Enum):  # E: Enum class cannot be generic
     x: T
     y: T
 
-reveal_type(F[int].x)  # E: Revealed type is '__main__.F[builtins.int*]'
+reveal_type(F[int].x)  # N: Revealed type is '__main__.F[builtins.int*]'
 
 [case testEnumFlag]
 from enum import Flag
@@ -246,7 +246,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:8: error: Revealed type is '__main__.E@4'
+main:8: note: Revealed type is '__main__.E@4'
 
 [case testEnumInClassBody]
 from enum import Enum
@@ -270,10 +270,10 @@ reveal_type(E.bar.value)
 reveal_type(I.bar)
 reveal_type(I.baz.value)
 [out]
-main:4: error: Revealed type is '__main__.E'
-main:5: error: Revealed type is 'Any'
-main:6: error: Revealed type is '__main__.I'
-main:7: error: Revealed type is 'builtins.int'
+main:4: note: Revealed type is '__main__.E'
+main:5: note: Revealed type is 'Any'
+main:6: note: Revealed type is '__main__.I'
+main:7: note: Revealed type is 'builtins.int'
 
 [case testFunctionalEnumListOfStrings]
 from enum import Enum, IntEnum
@@ -282,8 +282,8 @@ F = IntEnum('F', ['bar', 'baz'])
 reveal_type(E.foo)
 reveal_type(F.baz)
 [out]
-main:4: error: Revealed type is '__main__.E'
-main:5: error: Revealed type is '__main__.F'
+main:4: note: Revealed type is '__main__.E'
+main:5: note: Revealed type is '__main__.F'
 
 [case testFunctionalEnumListOfPairs]
 from enum import Enum, IntEnum
@@ -294,10 +294,10 @@ reveal_type(F.baz)
 reveal_type(E.foo.value)
 reveal_type(F.bar.name)
 [out]
-main:4: error: Revealed type is '__main__.E'
-main:5: error: Revealed type is '__main__.F'
-main:6: error: Revealed type is 'builtins.int'
-main:7: error: Revealed type is 'builtins.str'
+main:4: note: Revealed type is '__main__.E'
+main:5: note: Revealed type is '__main__.F'
+main:6: note: Revealed type is 'builtins.int'
+main:7: note: Revealed type is 'builtins.str'
 
 [case testFunctionalEnumDict]
 from enum import Enum, IntEnum
@@ -308,10 +308,10 @@ reveal_type(F.baz)
 reveal_type(E.foo.value)
 reveal_type(F.bar.name)
 [out]
-main:4: error: Revealed type is '__main__.E'
-main:5: error: Revealed type is '__main__.F'
-main:6: error: Revealed type is 'builtins.int'
-main:7: error: Revealed type is 'builtins.str'
+main:4: note: Revealed type is '__main__.E'
+main:5: note: Revealed type is '__main__.F'
+main:6: note: Revealed type is 'builtins.int'
+main:7: note: Revealed type is 'builtins.str'
 
 [case testFunctionalEnumErrors]
 from enum import Enum, IntEnum
@@ -363,14 +363,14 @@ main:22: error: "Type[W]" has no attribute "c"
 from enum import Flag, IntFlag
 A = Flag('A', 'x y')
 B = IntFlag('B', 'a b')
-reveal_type(A.x)        # E: Revealed type is '__main__.A'
-reveal_type(B.a)        # E: Revealed type is '__main__.B'
-reveal_type(A.x.name)   # E: Revealed type is 'builtins.str'
-reveal_type(B.a.name)   # E: Revealed type is 'builtins.str'
+reveal_type(A.x)        # N: Revealed type is '__main__.A'
+reveal_type(B.a)        # N: Revealed type is '__main__.B'
+reveal_type(A.x.name)   # N: Revealed type is 'builtins.str'
+reveal_type(B.a.name)   # N: Revealed type is 'builtins.str'
 
 # TODO: The revealed type should be 'int' here
-reveal_type(A.x.value)  # E: Revealed type is 'Any'
-reveal_type(B.a.value)  # E: Revealed type is 'Any'
+reveal_type(A.x.value)  # N: Revealed type is 'Any'
+reveal_type(B.a.value)  # N: Revealed type is 'Any'
 
 [case testAnonymousFunctionalEnum]
 from enum import Enum
@@ -381,7 +381,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:7: error: Revealed type is '__main__.A.E@4'
+main:7: note: Revealed type is '__main__.A.E@4'
 
 [case testFunctionalEnumInClassBody]
 from enum import Enum
@@ -397,10 +397,10 @@ if int():
 [case testFunctionalEnumProtocols]
 from enum import IntEnum
 Color = IntEnum('Color', 'red green blue')
-reveal_type(Color['green'])  # E: Revealed type is '__main__.Color'
+reveal_type(Color['green'])  # N: Revealed type is '__main__.Color'
 for c in Color:
-    reveal_type(c)  # E: Revealed type is '__main__.Color*'
-reveal_type(list(Color))  # E: Revealed type is 'builtins.list[__main__.Color*]'
+    reveal_type(c)  # N: Revealed type is '__main__.Color*'
+reveal_type(list(Color))  # N: Revealed type is 'builtins.list[__main__.Color*]'
 
 [builtins fixtures/list.pyi]
 
@@ -451,11 +451,11 @@ F = Enum('F', 'a b')
 [rechecked]
 [stale]
 [out1]
-main:2: error: Revealed type is 'm.E'
-main:3: error: Revealed type is 'm.F'
+main:2: note: Revealed type is 'm.E'
+main:3: note: Revealed type is 'm.F'
 [out2]
-main:2: error: Revealed type is 'm.E'
-main:3: error: Revealed type is 'm.F'
+main:2: note: Revealed type is 'm.E'
+main:3: note: Revealed type is 'm.F'
 
 [case testEnumAuto]
 from enum import Enum, auto
@@ -463,7 +463,7 @@ class Test(Enum):
     a = auto()
     b = auto()
 
-reveal_type(Test.a)  # E: Revealed type is '__main__.Test'
+reveal_type(Test.a)  # N: Revealed type is '__main__.Test'
 [builtins fixtures/primitives.pyi]
 
 [case testEnumAttributeAccessMatrix]
@@ -478,18 +478,18 @@ class A2(Enum):
 class A3(Enum):
     x = 1
 
-is_x(reveal_type(A1.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(A1.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(A1.x.value)         # E: Revealed type is 'Any'
-reveal_type(A1.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(A2.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(A2.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(A2.x.value)         # E: Revealed type is 'Any'
-reveal_type(A2.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(A3.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(A3.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(A3.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(A3.x._value_)       # E: Revealed type is 'builtins.int'
+is_x(reveal_type(A1.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(A1.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(A1.x.value)         # N: Revealed type is 'Any'
+reveal_type(A1.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(A2.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(A2.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(A2.x.value)         # N: Revealed type is 'Any'
+reveal_type(A2.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(A3.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(A3.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(A3.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(A3.x._value_)       # N: Revealed type is 'builtins.int'
 
 B1 = IntEnum('B1', 'x')
 class B2(IntEnum):
@@ -499,18 +499,18 @@ class B3(IntEnum):
 
 # TODO: getting B1.x._value_ and B2.x._value_ to have type 'int' requires a typeshed change
 
-is_x(reveal_type(B1.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(B1.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(B1.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(B1.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(B2.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(B2.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(B2.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(B2.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(B3.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(B3.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(B3.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(B3.x._value_)       # E: Revealed type is 'builtins.int'
+is_x(reveal_type(B1.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(B1.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(B1.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(B1.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(B2.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(B2.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(B2.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(B2.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(B3.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(B3.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(B3.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(B3.x._value_)       # N: Revealed type is 'builtins.int'
 
 # TODO: C1.x.value and C2.x.value should also be of type 'int'
 # This requires either a typeshed change or a plugin refinement
@@ -521,18 +521,18 @@ class C2(IntFlag):
 class C3(IntFlag):
     x = 1
 
-is_x(reveal_type(C1.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(C1.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(C1.x.value)         # E: Revealed type is 'Any'
-reveal_type(C1.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(C2.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(C2.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(C2.x.value)         # E: Revealed type is 'Any'
-reveal_type(C2.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(C3.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(C3.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(C3.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(C3.x._value_)       # E: Revealed type is 'builtins.int'
+is_x(reveal_type(C1.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(C1.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(C1.x.value)         # N: Revealed type is 'Any'
+reveal_type(C1.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(C2.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(C2.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(C2.x.value)         # N: Revealed type is 'Any'
+reveal_type(C2.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(C3.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(C3.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(C3.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(C3.x._value_)       # N: Revealed type is 'builtins.int'
 
 D1 = Flag('D1', 'x')
 class D2(Flag):
@@ -540,18 +540,18 @@ class D2(Flag):
 class D3(Flag):
     x = 1
 
-is_x(reveal_type(D1.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(D1.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(D1.x.value)         # E: Revealed type is 'Any'
-reveal_type(D1.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(D2.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(D2.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(D2.x.value)         # E: Revealed type is 'Any'
-reveal_type(D2.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(D3.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(D3.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(D3.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(D3.x._value_)       # E: Revealed type is 'builtins.int'
+is_x(reveal_type(D1.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(D1.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(D1.x.value)         # N: Revealed type is 'Any'
+reveal_type(D1.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(D2.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(D2.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(D2.x.value)         # N: Revealed type is 'Any'
+reveal_type(D2.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(D3.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(D3.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(D3.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(D3.x._value_)       # N: Revealed type is 'builtins.int'
 
 # TODO: Generalize our enum functional API logic to work with subclasses of Enum
 # See https://github.com/python/mypy/issues/6037
@@ -563,14 +563,14 @@ class E2(Parent):
 class E3(Parent):
     x = 1
 
-is_x(reveal_type(E2.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(E2.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(E2.x.value)         # E: Revealed type is 'Any'
-reveal_type(E2.x._value_)       # E: Revealed type is 'Any'
-is_x(reveal_type(E3.x.name))    # E: Revealed type is 'Literal['x']'
-is_x(reveal_type(E3.x._name_))  # E: Revealed type is 'Literal['x']'
-reveal_type(E3.x.value)         # E: Revealed type is 'builtins.int'
-reveal_type(E3.x._value_)       # E: Revealed type is 'builtins.int'
+is_x(reveal_type(E2.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(E2.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(E2.x.value)         # N: Revealed type is 'Any'
+reveal_type(E2.x._value_)       # N: Revealed type is 'Any'
+is_x(reveal_type(E3.x.name))    # N: Revealed type is 'Literal['x']'
+is_x(reveal_type(E3.x._name_))  # N: Revealed type is 'Literal['x']'
+reveal_type(E3.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(E3.x._value_)       # N: Revealed type is 'builtins.int'
 
 
 # TODO: Figure out if we can construct enums using EnumMetas using the functional API.
@@ -607,6 +607,6 @@ from enum import Enum
 class SomeEnum(Enum):
     a = "foo"
 [out]
-main:2: error: Revealed type is 'builtins.int'
+main:2: note: Revealed type is 'builtins.int'
 [out2]
-main:2: error: Revealed type is 'builtins.str'
+main:2: note: Revealed type is 'builtins.str'

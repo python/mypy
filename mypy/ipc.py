@@ -11,11 +11,7 @@ import sys
 import tempfile
 
 from typing import Optional, Callable
-
-MYPY = False
-if MYPY:
-    from typing import Type
-    from typing_extensions import Final
+from typing_extensions import Final, Type
 
 from types import TracebackType
 

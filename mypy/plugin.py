@@ -1,40 +1,123 @@
 """Plugin system for extending mypy.
 
 At large scale the plugin system works as following:
-* Plugins are collected from the corresponding config option
-  (either a paths to Python files, or installed Python modules)
-  and imported using importlib
+
+* Plugins are collected from the corresponding mypy config file option
+  (either via paths to Python files, or installed Python modules)
+  and imported using importlib.
+
 * Every module should get an entry point function (called 'plugin' by default,
-  but may be overridden in the config file), that should accept a single string
-  argument that is a full mypy version (includes git commit hash for dev versions)
-  and return a subclass of mypy.plugins.Plugin
+  but may be overridden in the config file) that should accept a single string
+  argument that is a full mypy version (includes git commit hash for dev
+  versions) and return a subclass of mypy.plugins.Plugin.
+
 * All plugin class constructors should match the signature of mypy.plugin.Plugin
-  (i.e. should accept an mypy.options.Options object), and *must* call super().__init__
-* At several steps during semantic analysis and type checking mypy calls special `get_xxx`
-  methods on user plugins with a single string argument that is a full name of a relevant
-  node (see mypy.plugin.Plugin method docstrings for details)
-* The plugins are called in the order they are passed in the config option. Every plugin must
-  decide whether to act on a given full name. The first plugin that returns non-None object
-  will be used
+  (i.e. should accept an mypy.options.Options object), and *must* call
+  super().__init__().
+
+* At several steps during semantic analysis and type checking mypy calls
+  special `get_xxx` methods on user plugins with a single string argument that
+  is a fully qualified name (full name) of a relevant definition
+  (see mypy.plugin.Plugin method docstrings for details).
+
+* The plugins are called in the order they are passed in the config option.
+  Every plugin must decide whether to act on a given full name. The first
+  plugin that returns non-None object will be used.
+
 * The above decision should be made using the limited common API specified by
-  mypy.plugin.CommonPluginApi
-* The callback returned by the plugin will be called with a larger context that includes
-  relevant current state (e.g. a default return type, or a default attribute type) and
-  a wider relevant API provider (e.g. SemanticAnalyzerPluginInterface or
-  CheckerPluginInterface)
-* The result of this is used for further processing. See various `XxxContext` named tuples
-  for details about which information is given to each hook.
+  mypy.plugin.CommonPluginApi.
+
+* The callback returned by the plugin will be called with a larger context that
+  includes relevant current state (e.g. a default return type, or a default
+  attribute type) and a wider relevant API provider (e.g.
+  SemanticAnalyzerPluginInterface or CheckerPluginInterface).
+
+* The result of this is used for further processing. See various `XxxContext`
+  named tuples for details about which information is given to each hook.
 
 Plugin developers should ensure that their plugins work well in incremental and
-daemon modes. In particular, plugins should not hold global state, and should always call
-add_plugin_dependency() in plugin hooks called during semantic analysis, see the method
-docstring for more details.
+daemon modes, and with both the old and new semantic analyzers (the old semantic
+analyzer will be removed soon). In particular, plugins should not hold global
+state, and should always call add_plugin_dependency() in plugin hooks called
+during semantic analysis. See the method docstring for more details.
 
-There is no dedicated cache storage for plugins, but plugins can store per-TypeInfo data
-in a special .metadata attribute that is serialized to cache between incremental runs.
-To avoid collisions between plugins they are encouraged to store their state
-under a dedicated key coinciding with plugin name in the metadata dictionary.
-Every value stored there must be JSON-serializable.
+There is no dedicated cache storage for plugins, but plugins can store
+per-TypeInfo data in a special .metadata attribute that is serialized to the
+mypy caches between incremental runs. To avoid collisions between plugins, they
+are encouraged to store their state under a dedicated key coinciding with
+plugin name in the metadata dictionary. Every value stored there must be
+JSON-serializable.
+
+## New semantic analyzer
+
+The new semantic analyzer (enabled through the --new-semantic-analyzer flag)
+changes how plugins are expected to work in several notable ways:
+
+1. The order of processing AST nodes in modules is different. The old semantic
+   analyzer processes modules in textual order, one module at a time. The new
+   semantic analyzer first processes the module top levels, including bodies of
+   any top-level classes and classes nested within classes. ("Top-level" here
+   means "not nested within a function/method".) Functions and methods are
+   processed only after module top levels have been finished. If there is an
+   import cycle, all module top levels in the cycle are processed before
+   processing any functions or methods. Each unit of processing (a module top
+   level or a function/method) is called a *target*.
+
+   This also means that function signatures in the same module have not been
+   analyzed yet when analyzing the module top level. If you need access to
+   a function signature, you'll need to explicitly analyze the signature first
+   using `anal_type()`.
+
+2. Each target can be processed multiple times. This may happen if some forward
+   references are not ready yet, for example. This means that semantic analyzer
+   related plugin hooks can be called multiple times for the same full name.
+   These plugin methods must thus be idempotent.
+
+3. The `anal_type` API function returns None if some part of the type is not
+   available yet. If this happens, the current target being analyzed will be
+   *deferred*, which means that it will be processed again soon, in the hope
+   that additional dependencies will be available. This may happen if there are
+   forward references to types or inter-module references to types within an
+   import cycle.
+
+   Note that if there is a circular definition, mypy may decide to stop
+   processing to avoid an infinite number of iterations. When this happens,
+   `anal_type` will generate an error and return an `AnyType` type object
+   during the final iteration (instead of None).
+
+4. There is a new API method `defer()`. This can be used to explicitly request
+   the current target to be reprocessed one more time. You don't need this
+   to call this if `anal_type` returns None, however.
+
+5. There is a new API property `final_iteration`, which is true once mypy
+   detected no progress during the previous iteration or if the maximum
+   semantic analysis iteration count has been reached. You must never
+   defer during the final iteration, as it will cause a crash.
+
+6. The `node` attribute of SymbolTableNode objects may contain a reference to
+   a PlaceholderNode object. This object means that this definition has not
+   been fully processed yet. If you encounter a PlaceholderNode, you should
+   defer unless it's the final iteration. If it's the final iteration, you
+   should generate an error message. It usually means that there's a cyclic
+   definition that cannot be resolved by mypy. PlaceholderNodes can only refer
+   to references inside an import cycle. If you are looking up things from
+   another module, such as the builtins, that is outside the current module or
+   import cycle, you can safely assume that you won't receive a placeholder.
+
+When testing your plugin with the new semantic analyzer, you should have a test
+case that forces a module top level to be processed multiple times. The easiest
+way to do this is to include a forward reference to a class in a top-level
+annotation. Example:
+
+    c: C  # Forward reference causes second analysis pass
+    class C: pass
+
+Note that a forward reference in a function signature won't trigger another
+pass, since all functions are processed only after the top level has been fully
+analyzed.
+
+You can use `api.options.new_semantic_analyzer` to check whether the new
+semantic analyzer is enabled.
 """
 
 import types
