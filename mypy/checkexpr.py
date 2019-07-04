@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final
+from typing_extensions import ClassVar, Final, overload
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -284,24 +284,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.msg.untyped_function_call(callee_type, e)
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
-        if not isinstance(e.callee, RefExpr):
-            fullname = None
-        else:
+        member = None
+        fullname = None
+        if isinstance(e.callee, RefExpr):
+            # There are two special cases where plugins might act:
+            # * A "static" reference/alias to a class or function;
+            #   get_function_hook() will be invoked for these.
             fullname = e.callee.fullname
             if (isinstance(e.callee.node, TypeAlias) and
                     isinstance(e.callee.node.target, Instance)):
                 fullname = e.callee.node.target.type.fullname()
+            # * Call to a method on object that has a full name (see
+            #   method_fullname() for details on supported objects);
+            #   get_method_hook() and get_method_signature_hook() will
+            #   be invoked for these.
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
-                    and e.callee.expr in self.chk.type_map
-                    and isinstance(callee_type, FunctionLike)):
-                # For method calls we include the defining class for the method
-                # in the full name (example: 'typing.Mapping.get').
-                callee_expr_type = self.chk.type_map[e.callee.expr]
-                fullname = self.method_fullname(callee_expr_type, e.callee.name)
-                if fullname is not None:
-                    object_type = callee_expr_type
-        ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
+                    and e.callee.expr in self.chk.type_map):
+                member = e.callee.name
+                object_type = self.chk.type_map[e.callee.expr]
+        ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname,
+                                                         object_type, member)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
             if e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass'):
                 self.check_runtime_protocol_test(e)
@@ -632,20 +635,52 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          callee_type: Type,
                                          e: CallExpr,
                                          callable_name: Optional[str],
-                                         object_type: Optional[Type]) -> Type:
+                                         object_type: Optional[Type],
+                                         member: Optional[str] = None) -> Type:
         """Type check call expression.
 
-        The given callee type overrides the type of the callee
-        expression.
-        """
-        # Try to refine the call signature using plugin hooks before checking the call.
-        callee_type = self.transform_callee_type(
-            callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+        The callee_type should be used as the type of callee expression. In particular,
+        in case of a union type this can be a particular item of the union, so that we can
+        apply plugin hooks to each item.
 
+        The 'member', 'callable_name' and 'object_type' are only used to call plugin hooks.
+        If 'callable_name' is None but 'member' is not None (member call), try constructing
+        'callable_name' using 'object_type' (the base type on which the method is called),
+        for example 'typing.Mapping.get'.
+        """
+        if callable_name is None and member is not None:
+            assert object_type is not None
+            callable_name = self.method_fullname(object_type, member)
+        if callable_name:
+            # Try to refine the call signature using plugin hooks before checking the call.
+            callee_type = self.transform_callee_type(
+                callable_name, callee_type, e.args, e.arg_kinds, e, e.arg_names, object_type)
+        # Unions are special-cased to allow plugins to act on each item in the union.
+        elif member is not None and isinstance(object_type, UnionType):
+            return self.check_union_call_expr(e, object_type, member)
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee,
                                callable_name=callable_name,
                                object_type=object_type)[0]
+
+    def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
+        """"Type check calling a member expression where the base type is a union."""
+        res = []  # type: List[Type]
+        for typ in object_type.relevant_items():
+            # Member access errors are already reported when visiting the member expression.
+            self.msg.disable_errors()
+            item = analyze_member_access(member, typ, e, False, False, False,
+                                         self.msg, original_type=object_type, chk=self.chk,
+                                         in_literal_context=self.is_literal_context())
+            self.msg.enable_errors()
+            narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
+            if narrowed is None:
+                continue
+            callable_name = self.method_fullname(typ, member)
+            item_object_type = typ if callable_name else None
+            res.append(self.check_call_expr_with_callee_type(narrowed, e, callable_name,
+                                                             item_object_type))
+        return UnionType.make_simplified_union(res)
 
     def check_call(self,
                    callee: Type,
@@ -2018,12 +2053,47 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         local_errors = local_errors or self.msg
         original_type = original_type or base_type
+        # Unions are special-cased to allow plugins to act on each element of the union.
+        if isinstance(base_type, UnionType):
+            return self.check_union_method_call_by_name(method, base_type,
+                                                        args, arg_kinds,
+                                                        context, local_errors, original_type)
+
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             local_errors, original_type=original_type,
                                             chk=self.chk,
                                             in_literal_context=self.is_literal_context())
         return self.check_method_call(
             method, base_type, method_type, args, arg_kinds, context, local_errors)
+
+    def check_union_method_call_by_name(self,
+                                        method: str,
+                                        base_type: UnionType,
+                                        args: List[Expression],
+                                        arg_kinds: List[int],
+                                        context: Context,
+                                        local_errors: MessageBuilder,
+                                        original_type: Optional[Type] = None
+                                        ) -> Tuple[Type, Type]:
+        """Type check a call to a named method on an object with union type.
+
+        This essentially checks the call using check_method_call_by_name() for each
+        union item and unions the result. We do this to allow plugins to act on
+        individual union items.
+        """
+        res = []  # type: List[Type]
+        meth_res = []  # type: List[Type]
+        for typ in base_type.relevant_items():
+            # Format error messages consistently with
+            # mypy.checkmember.analyze_union_member_access().
+            local_errors.disable_type_names += 1
+            item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
+                                                             context, local_errors,
+                                                             original_type)
+            local_errors.disable_type_names -= 1
+            res.append(item)
+            meth_res.append(meth_item)
+        return UnionType.make_simplified_union(res), UnionType.make_simplified_union(meth_res)
 
     def check_method_call(self,
                           method_name: str,
@@ -3524,7 +3594,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Return instance type 'bool'."""
         return self.named_type('builtins.bool')
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
+    @overload
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
+
+    @overload  # noqa
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,
+                                skip_non_overlapping: bool) -> Optional[Type]: ...
+
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,  # noqa
+                                skip_non_overlapping: bool = False) -> Optional[Type]:
+        """Narrow down a known type of expression using information in conditional type binder.
+
+        If 'skip_non_overlapping' is True, return None if the type and restriction are
+        non-overlapping.
+        """
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             # If the current node is deferred, some variables may get Any types that they
@@ -3532,6 +3615,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # produce invalid inferred Optional[Any] types, at least.
             if restriction and not (isinstance(known_type, AnyType)
                                     and self.chk.current_node_deferred):
+                # Note: this call should match the one in narrow_declared_type().
+                if (skip_non_overlapping and
+                        not is_overlapping_types(known_type, restriction,
+                                                 prohibit_none_typevar_overlap=True)):
+                    return None
                 ans = narrow_declared_type(known_type, restriction)
                 return ans
         return known_type

@@ -23,6 +23,7 @@ for x in a:
 
 [case testCtypesArrayCustomElementType]
 import ctypes
+from typing import Union, List
 
 class MyCInt(ctypes.c_int):
     pass
@@ -46,6 +47,10 @@ mya[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches 
                    # N:     def __setitem__(self, slice, List[Union[MyCInt, int]]) -> None
 for myx in mya:
     reveal_type(myx)  # N: Revealed type is '__main__.MyCInt*'
+
+myu: Union[ctypes.Array[ctypes.c_int], List[str]]
+for myi in myu:
+    reveal_type(myi)  # N: Revealed type is 'Union[builtins.int*, builtins.str*]'
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesArrayUnionElementType]
