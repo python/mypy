@@ -74,10 +74,10 @@ from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-# TODO: Could we generate an error here as well?
-from b import bad
+from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
-from a import bad # E: Module 'a' has no attribute 'bad'
+# TODO: Could we generate an error here as well?
+from a import bad
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -331,8 +331,8 @@ MYPY = False
 if MYPY:  # Tweak processing order
     from b import C as C2
 class C: pass
-
 class C2: pass # E: Name 'C2' already defined on line 2
+
 [file b.py]
 from a import C
 
@@ -436,11 +436,11 @@ def main() -> None:
 import b
 [file a.py]
 import b
-x = b.x  # E: Cannot determine type of 'x'
+x = b.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
+         # E: Module has no attribute "x"
 [file b.py]
 import a
-x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
-         # E: Module has no attribute "x"
+x = a.x
 [builtins fixtures/module.pyi]
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
@@ -1086,8 +1086,7 @@ class B: ...
 import a
 [file a.py]
 C = 1
-from b import *  # E: Name 'C' already defined on line 1 \
-                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
 MYPY = False
