@@ -646,6 +646,7 @@ TypeInfo<2>(
     f<3>))
 
 [case testNamedTuple_typeinfo]
+# flags: --new-semantic-analyzer
 import target
 [file target.py]
 from typing import NamedTuple
@@ -666,17 +667,18 @@ TypeInfo<2>(
   Bases(builtins.tuple[target.A<0>]<3>)
   Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
   Names(
-    __annotations__<4> (builtins.object<1>)
-    __doc__<5> (builtins.str<6>)
-    __new__<7>
-    _asdict<8>
-    _field_defaults<9> (builtins.object<1>)
-    _field_types<10> (builtins.object<1>)
-    _fields<11> (Tuple[builtins.str<6>])
-    _make<12>
-    _replace<13>
-    _source<14> (builtins.str<6>)
-    x<15> (target.A<0>)))
+    _NT<4>
+    __annotations__<5> (builtins.object<1>)
+    __doc__<6> (builtins.str<7>)
+    __new__<8>
+    _asdict<9>
+    _field_defaults<10> (builtins.object<1>)
+    _field_types<11> (builtins.object<1>)
+    _fields<12> (Tuple[builtins.str<7>])
+    _make<13>
+    _replace<14>
+    _source<15> (builtins.str<7>)
+    x<16> (target.A<0>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -688,18 +690,19 @@ TypeInfo<2>(
   Bases(builtins.tuple[target.A<0>]<3>)
   Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
   Names(
-    __annotations__<4> (builtins.object<1>)
-    __doc__<5> (builtins.str<6>)
-    __new__<7>
-    _asdict<8>
-    _field_defaults<9> (builtins.object<1>)
-    _field_types<10> (builtins.object<1>)
-    _fields<11> (Tuple[builtins.str<6>, builtins.str<6>])
-    _make<12>
-    _replace<13>
-    _source<14> (builtins.str<6>)
-    x<15> (target.A<0>)
-    y<16> (target.A<0>)))
+    _NT<4>
+    __annotations__<5> (builtins.object<1>)
+    __doc__<6> (builtins.str<7>)
+    __new__<8>
+    _asdict<9>
+    _field_defaults<10> (builtins.object<1>)
+    _field_types<11> (builtins.object<1>)
+    _fields<12> (Tuple[builtins.str<7>, builtins.str<7>])
+    _make<13>
+    _replace<14>
+    _source<15> (builtins.str<7>)
+    x<16> (target.A<0>)
+    y<17> (target.A<0>)))
 
 [case testUnionType_types]
 import target

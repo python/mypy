@@ -500,5 +500,5 @@ def test() -> None:
 def bad(arg: P) -> T:
     pass
 [out]
-_program.py:8: error: Revealed type is 'def [T] (arg: P?) -> T`-1'
+_program.py:8: note: Revealed type is 'def [T] (arg: P?) -> T`-1'
 _program.py:12: error: Invalid type "_testForwardRefToBadAsyncShouldNotCrash.P"

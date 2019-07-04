@@ -740,11 +740,6 @@ and one
 TypedDict
 *********
 
-.. note::
-
-   TypedDict is an officially supported feature, but it is still experimental.
-
-
 Python programs often use dictionaries with string keys to represent objects.
 Here is a typical example:
 

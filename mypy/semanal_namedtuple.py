@@ -4,6 +4,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
 from typing import Tuple, List, Dict, Mapping, Optional, Union, cast
+from typing_extensions import Final
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
@@ -18,10 +19,6 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy import join
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.

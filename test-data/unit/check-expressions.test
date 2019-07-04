@@ -324,7 +324,7 @@ b = None # type: bool
 i = None # type: str
 j = not b and i
 if j:
-    reveal_type(j) # E: Revealed type is 'builtins.str'
+    reveal_type(j) # N: Revealed type is 'builtins.str'
 [builtins fixtures/bool.pyi]
 
 [case testRestrictedTypeOr]
@@ -333,14 +333,14 @@ b = None # type: bool
 i = None # type: str
 j = b or i
 if not j:
-    reveal_type(j) # E: Revealed type is 'builtins.str'
+    reveal_type(j) # N: Revealed type is 'builtins.str'
 [builtins fixtures/bool.pyi]
 
 [case testAndOr]
 
 s = ""
 b = bool()
-reveal_type(s and b or b)  # E: Revealed type is 'builtins.bool'
+reveal_type(s and b or b)  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
 [case testNonBooleanOr]
@@ -746,17 +746,17 @@ i = 8
 f = 8.0
 d = Decimal(8)
 
-reveal_type(divmod(i, i))  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(divmod(f, i))  # E: Revealed type is 'Tuple[builtins.float, builtins.float]'
-reveal_type(divmod(d, i))  # E: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+reveal_type(divmod(i, i))  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(divmod(f, i))  # N: Revealed type is 'Tuple[builtins.float, builtins.float]'
+reveal_type(divmod(d, i))  # N: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
 
-reveal_type(divmod(i, f))  # E: Revealed type is 'Tuple[builtins.float, builtins.float]'
-reveal_type(divmod(f, f))  # E: Revealed type is 'Tuple[builtins.float, builtins.float]'
+reveal_type(divmod(i, f))  # N: Revealed type is 'Tuple[builtins.float, builtins.float]'
+reveal_type(divmod(f, f))  # N: Revealed type is 'Tuple[builtins.float, builtins.float]'
 divmod(d, f)  # E: Unsupported operand types for divmod ("Decimal" and "float")
 
-reveal_type(divmod(i, d))  # E: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+reveal_type(divmod(i, d))  # N: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
 divmod(f, d)  # E: Unsupported operand types for divmod ("float" and "Decimal")
-reveal_type(divmod(d, d))  # E: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+reveal_type(divmod(d, d))  # N: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
 
 # Now some bad calls
 divmod()  # E: 'divmod' expects 2 arguments \
@@ -1523,10 +1523,10 @@ if int():
 
 [case testConditionalExpressionUnion]
 from typing import Union
-reveal_type(1 if bool() else 2) # E: Revealed type is 'builtins.int'
-reveal_type(1 if bool() else '') # E: Revealed type is 'builtins.object'
+reveal_type(1 if bool() else 2) # N: Revealed type is 'builtins.int'
+reveal_type(1 if bool() else '') # N: Revealed type is 'builtins.object'
 x: Union[int, str] = reveal_type(1 if bool() else '') \
-    # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    # N: Revealed type is 'Union[builtins.int, builtins.str]'
 class A:
     pass
 class B(A):
@@ -1539,18 +1539,18 @@ a = A()
 b = B()
 c = C()
 d = D()
-reveal_type(a if bool() else b) # E: Revealed type is '__main__.A'
-reveal_type(b if bool() else c) # E: Revealed type is 'builtins.object'
-reveal_type(c if bool() else b) # E: Revealed type is 'builtins.object'
-reveal_type(c if bool() else a) # E: Revealed type is 'builtins.object'
-reveal_type(d if bool() else b) # E: Revealed type is '__main__.A'
+reveal_type(a if bool() else b) # N: Revealed type is '__main__.A'
+reveal_type(b if bool() else c) # N: Revealed type is 'builtins.object'
+reveal_type(c if bool() else b) # N: Revealed type is 'builtins.object'
+reveal_type(c if bool() else a) # N: Revealed type is 'builtins.object'
+reveal_type(d if bool() else b) # N: Revealed type is '__main__.A'
 [builtins fixtures/bool.pyi]
 
 [case testConditionalExpressionUnionWithAny]
 from typing import Union, Any
 a: Any
-x: Union[int, str] = reveal_type(a if int() else 1)  # E: Revealed type is 'Union[Any, builtins.int]'
-reveal_type(a if int() else 1)  # E: Revealed type is 'Any'
+x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, builtins.int]'
+reveal_type(a if int() else 1)  # N: Revealed type is 'Any'
 
 
 -- Special cases
@@ -1822,7 +1822,7 @@ d() # E: "D[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testRevealType]
-reveal_type(1) # E: Revealed type is 'builtins.int'
+reveal_type(1) # N: Revealed type is 'builtins.int'
 
 [case testRevealLocals]
 x = 1
@@ -1830,15 +1830,15 @@ y = 2
 z = x + y
 reveal_locals()
 [out]
-main:4: error: Revealed local types are:
-main:4: error: x: builtins.int
-main:4: error: y: builtins.int
-main:4: error: z: builtins.int
+main:4: note: Revealed local types are:
+main:4: note:     x: builtins.int
+main:4: note:     y: builtins.int
+main:4: note:     z: builtins.int
 
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: error: Revealed type is 'Any'
+main:1: note: Revealed type is 'Any'
 main:1: error: Name 'x' is not defined
 
 [case testUserDefinedRevealType]
@@ -1854,14 +1854,14 @@ def f() -> None:
     reveal_type(x)
 x = 1 + 1
 [out]
-main:2: error: Revealed type is 'builtins.int'
+main:2: note: Revealed type is 'builtins.int'
 
 [case testRevealUncheckedFunction]
 def f():
     x = 42
     reveal_type(x)
 [out]
-main:3: error: Revealed type is 'Any'
+main:3: note: Revealed type is 'Any'
 main:3: note: 'reveal_type' always outputs 'Any' in unchecked functions
 
 [case testRevealCheckUntypedDefs]
@@ -1870,14 +1870,14 @@ def f():
     x = 42
     reveal_type(x)
 [out]
-main:4: error: Revealed type is 'builtins.int'
+main:4: note: Revealed type is 'builtins.int'
 
 [case testRevealTypedDef]
 def f() -> None:
     x = 42
     reveal_type(x)
 [out]
-main:3: error: Revealed type is 'builtins.int'
+main:3: note: Revealed type is 'builtins.int'
 
 [case testEqNone]
 None == None
@@ -1950,15 +1950,15 @@ class B: ...
 [case testIntPow]
 a = 1
 b = a + 2
-reveal_type(a**0) # E: Revealed type is 'builtins.int'
-reveal_type(a**1) # E: Revealed type is 'builtins.int'
-reveal_type(a**2) # E: Revealed type is 'builtins.int'
-reveal_type(a**-0) # E: Revealed type is 'builtins.int'
-reveal_type(a**-1) # E: Revealed type is 'builtins.float'
-reveal_type(a**(-2)) # E: Revealed type is 'builtins.float'
-reveal_type(a**b) # E: Revealed type is 'Any'
-reveal_type(a.__pow__(2)) # E: Revealed type is 'builtins.int'
-reveal_type(a.__pow__(a)) # E: Revealed type is 'Any'
+reveal_type(a**0) # N: Revealed type is 'builtins.int'
+reveal_type(a**1) # N: Revealed type is 'builtins.int'
+reveal_type(a**2) # N: Revealed type is 'builtins.int'
+reveal_type(a**-0) # N: Revealed type is 'builtins.int'
+reveal_type(a**-1) # N: Revealed type is 'builtins.float'
+reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
+reveal_type(a**b) # N: Revealed type is 'Any'
+reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
+reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
 a.__pow__() # E: Too few arguments for "__pow__" of "int"
 [builtins fixtures/ops.pyi]
 

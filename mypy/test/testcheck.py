@@ -157,10 +157,15 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+
+        # Enable some options automatically based on test file name.
         if 'optional' in testcase.file:
             options.strict_optional = True
         if 'newsemanal' in testcase.file:
             options.new_semantic_analyzer = True
+        if 'columns' in testcase.file:
+            options.show_column_numbers = True
+
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True

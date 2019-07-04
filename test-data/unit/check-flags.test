@@ -173,10 +173,10 @@ def h() -> None: pass
 @TypedDecorator()
 def i() -> None: pass
 
-reveal_type(f)  # E: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(g)  # E: Revealed type is 'Any'
-reveal_type(h)  # E: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(i)  # E: Revealed type is 'Any'
+reveal_type(f)  # N: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(g)  # N: Revealed type is 'Any'
+reveal_type(h)  # N: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(i)  # N: Revealed type is 'Any'
 
 [case testDisallowUntypedDecoratorsNonCallableInstance]
 # flags: --disallow-untyped-decorators
@@ -324,7 +324,7 @@ from mypy_extensions import NoReturn
 def no_return() -> NoReturn: pass
 def f() -> int:
   return 0
-reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
+reveal_type(f() or no_return())  # N: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnVariable]
@@ -1053,8 +1053,7 @@ always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
 [case testCheckDisallowAnyGenericsNamedTuple]
-# Crashes on new semantic analyzer: https://github.com/python/mypy/issues/6445
-# flags: --disallow-any-generics --no-new-semantic-analyzer
+# flags: --disallow-any-generics --new-semantic-analyzer
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)])  # type: ignore
@@ -1062,23 +1061,21 @@ n: N
 [out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
-# Crashes on new semantic analyzer: https://github.com/python/mypy/issues/6445
-# flags: --disallow-any-generics --no-new-semantic-analyzer
+# flags: --disallow-any-generics --new-semantic-analyzer
 from typing import Dict, Any, Optional
 from mypy_extensions import TypedDict
 
 VarsDict = Dict[str, Any]
 HostsDict = Dict[str, Optional[VarsDict]]
 
-GroupDataDict = TypedDict(  # type: ignore
-    "GroupDataDict", {"children": "GroupsDict",
+GroupDataDict = TypedDict(
+    "GroupDataDict", {"children": "GroupsDict",  # type: ignore
                       "vars": VarsDict,
                       "hosts": HostsDict}, total=False
 )
 
 GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCheckDefaultAllowAnyGeneric]
 from typing import TypeVar, Callable
@@ -1165,3 +1162,12 @@ implicit_reexport = True
 implicit_reexport = False
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testImplicitAnyOKForNoArgs]
+# flags: --disallow-any-generics --show-column-numbers
+from typing import List
+
+A = List  # OK
+B = List[A]  # E:10: Missing type parameters for generic type
+x: A  # E:4: Missing type parameters for generic type
+[builtins fixtures/list.pyi]

@@ -2,6 +2,7 @@
 
 from collections import OrderedDict
 from typing import Optional, List, Set, Tuple, cast
+from typing_extensions import Final
 
 from mypy.types import Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES
 from mypy.nodes import (
@@ -14,10 +15,6 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
 from mypy.newsemanal.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                       'expected "field_name: field_type"')  # type: Final
@@ -303,8 +300,9 @@ class TypedDictAnalyzer:
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type],
                                  required_keys: Set[str]) -> TypeInfo:
-        # Prefer typing_extensions if available.
-        fallback = (self.api.named_type_or_none('typing_extensions._TypedDict', []) or
+        # Prefer typing then typing_extensions if available.
+        fallback = (self.api.named_type_or_none('typing._TypedDict', []) or
+                    self.api.named_type_or_none('typing_extensions._TypedDict', []) or
                     self.api.named_type_or_none('mypy_extensions._TypedDict', []))
         assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback)

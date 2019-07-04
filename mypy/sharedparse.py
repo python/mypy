@@ -1,8 +1,5 @@
 from typing import Optional
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 """Shared logic between our three mypy parser files."""
 

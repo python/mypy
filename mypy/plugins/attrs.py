@@ -1,16 +1,19 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
+
 from collections import OrderedDict
+
 from typing import Optional, Dict, List, cast, Tuple, Iterable
+from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
-    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
+    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
-    TypeVarExpr
+    TypeVarExpr, PlaceholderNode
 )
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
@@ -22,10 +25,6 @@ from mypy.types import (
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
@@ -213,7 +212,12 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     if ctx.api.options.new_semantic_analyzer:
         # Check if attribute types are ready.
         for attr in attributes:
-            if info[attr.name].type is None and not ctx.api.final_iteration:
+            node = info.get(attr.name)
+            if node is None:
+                # This name is likely blocked by a star import. We don't need to defer because
+                # defer() is already called by mark_incomplete().
+                return
+            if node.type is None and not ctx.api.final_iteration:
                 ctx.api.defer()
                 return
 
@@ -271,6 +275,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         # instance level assignments.
         if attribute.name in ctx.cls.info.names:
             node = ctx.cls.info.names[attribute.name].node
+            if isinstance(node, PlaceholderNode):
+                # This node is not ready yet.
+                continue
             assert isinstance(node, Var)
             node.is_initialized_in_class = False
 
@@ -465,9 +472,12 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
         if isinstance(converter, RefExpr) and converter.node:
-            if (isinstance(converter.node, FuncBase)
+            if (isinstance(converter.node, FuncDef)
                     and converter.node.type
                     and isinstance(converter.node.type, FunctionLike)):
+                return Converter(converter.node.fullname())
+            elif (isinstance(converter.node, OverloadedFuncDef)
+                    and is_valid_overloaded_converter(converter.node)):
                 return Converter(converter.node.fullname())
             elif isinstance(converter.node, TypeInfo):
                 return Converter(converter.node.fullname())
@@ -490,6 +500,11 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
         )
         return Converter('')
     return Converter(None)
+
+
+def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:
+    return all((not isinstance(item, Decorator) or isinstance(item.func.type, FunctionLike))
+               for item in defn.items)
 
 
 def _parse_assignments(

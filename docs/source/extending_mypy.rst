@@ -235,3 +235,30 @@ insert some entries there) before the class body is analyzed.
 module. It is called before semantic analysis. For example, this can
 be used if a library has dependencies that are dynamically loaded
 based on configuration information.
+
+Supporting the new semantic analyzer
+************************************
+
+Support for the new semantic analyzer (enabled through
+``--new-semantic-analyzer``) requires some changes to plugins. Here is
+a short summary of the most important changes:
+
+* The order of processing AST nodes is different. Code outside
+  functions is processed first, and functions and methods are
+  processed afterwards.
+
+* Each AST node can be processed multiple times to resolve forward
+  references.  The same plugin hook may be called multiple times, so
+  they need to be idempotent.
+
+* The ``anal_type()`` API method returns ``None`` if some part of
+  the type is not available yet due to forward references, for example.
+
+* When looking up symbols, you may encounter *placeholder nodes* that
+  are used for names that haven't been fully processed yet. You'll
+  generally want to request another semantic analysis iteration by
+  *deferring* in that case.
+
+See the docstring at the top of
+`mypy/plugin.py <https://github.com/python/mypy/blob/master/mypy/plugin.py>`_
+for more details.

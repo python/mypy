@@ -116,11 +116,11 @@ def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argumen
 
 [case testPEP570ArgTypesDefault]
 def f(arg: int = 0, /) -> None:
-    reveal_type(arg)  # E: Revealed type is 'builtins.int'
+    reveal_type(arg)  # N: Revealed type is 'builtins.int'
 
 [case testPEP570ArgTypesRequired]
 def f(arg: int, /) -> None:
-    reveal_type(arg)  # E: Revealed type is 'builtins.int'
+    reveal_type(arg)  # N: Revealed type is 'builtins.int'
 
 [case testPEP570Required]
 def f(arg: int, /) -> None: ...  # N: "f" defined here
@@ -146,39 +146,39 @@ f(p=0, p_or_kw=0, kw=0)  # E: Unexpected keyword argument "p" for "f"
 
 [case testPEP570Signatures1]
 def f(p1: bytes, p2: float, /, p_or_kw: int, *, kw: str) -> None:
-    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
-    reveal_type(p2)  # E: Revealed type is 'builtins.float'
-    reveal_type(p_or_kw)  # E: Revealed type is 'builtins.int'
-    reveal_type(kw)  # E: Revealed type is 'builtins.str'
+    reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # N: Revealed type is 'builtins.float'
+    reveal_type(p_or_kw)  # N: Revealed type is 'builtins.int'
+    reveal_type(kw)  # N: Revealed type is 'builtins.str'
 
 [case testPEP570Signatures2]
 def f(p1: bytes, p2: float = 0.0, /, p_or_kw: int = 0, *, kw: str) -> None:
-    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
-    reveal_type(p2)  # E: Revealed type is 'builtins.float'
-    reveal_type(p_or_kw)  # E: Revealed type is 'builtins.int'
-    reveal_type(kw)  # E: Revealed type is 'builtins.str'
+    reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # N: Revealed type is 'builtins.float'
+    reveal_type(p_or_kw)  # N: Revealed type is 'builtins.int'
+    reveal_type(kw)  # N: Revealed type is 'builtins.str'
 
 [case testPEP570Signatures3]
 def f(p1: bytes, p2: float = 0.0, /, *, kw: int) -> None:
-    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
-    reveal_type(p2)  # E: Revealed type is 'builtins.float'
-    reveal_type(kw)  # E: Revealed type is 'builtins.int'
+    reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # N: Revealed type is 'builtins.float'
+    reveal_type(kw)  # N: Revealed type is 'builtins.int'
 
 [case testPEP570Signatures4]
 def f(p1: bytes, p2: int = 0, /) -> None:
-    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
-    reveal_type(p2)  # E: Revealed type is 'builtins.int'
+    reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # N: Revealed type is 'builtins.int'
 
 [case testPEP570Signatures5]
 def f(p1: bytes, p2: float, /, p_or_kw: int) -> None:
-    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
-    reveal_type(p2)  # E: Revealed type is 'builtins.float'
-    reveal_type(p_or_kw)  # E: Revealed type is 'builtins.int'
+    reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # N: Revealed type is 'builtins.float'
+    reveal_type(p_or_kw)  # N: Revealed type is 'builtins.int'
 
 [case testPEP570Signatures6]
 def f(p1: bytes, p2: float, /) -> None:
-    reveal_type(p1)  # E: Revealed type is 'builtins.bytes'
-    reveal_type(p2)  # E: Revealed type is 'builtins.float'
+    reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
+    reveal_type(p2)  # N: Revealed type is 'builtins.float'
 
 [case testWalrus]
 # flags: --strict-optional
@@ -186,43 +186,43 @@ from typing import NamedTuple, Optional
 from typing_extensions import Final
 
 if a := 2:
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    reveal_type(a)  # N: Revealed type is 'builtins.int'
 
 while b := "x":
-    reveal_type(b)  # E: Revealed type is 'builtins.str'
+    reveal_type(b)  # N: Revealed type is 'builtins.str'
 
 def f(x: int = (c := 4)) -> int:
     if a := 2:
-        reveal_type(a)  # E: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is 'builtins.int'
 
     while b := "x":
-        reveal_type(b)  # E: Revealed type is 'builtins.str'
+        reveal_type(b)  # N: Revealed type is 'builtins.str'
 
     x = (y := 1) + (z := 2)
-    reveal_type(x)  # E: Revealed type is 'builtins.int'
-    reveal_type(y)  # E: Revealed type is 'builtins.int'
-    reveal_type(z)  # E: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(y)  # N: Revealed type is 'builtins.int'
+    reveal_type(z)  # N: Revealed type is 'builtins.int'
 
     l = [y2 := 1, y2 + 2, y2 + 3]
-    reveal_type(y2)  # E: Revealed type is 'builtins.int'
-    reveal_type(l)  # E: Revealed type is 'builtins.list[builtins.int*]'
+    reveal_type(y2)  # N: Revealed type is 'builtins.int'
+    reveal_type(l)  # N: Revealed type is 'builtins.list[builtins.int*]'
 
     filtered_data = [y3 for x in l if (y3 := a) is not None]
-    reveal_type(filtered_data)  # E: Revealed type is 'builtins.list[builtins.int*]'
-    reveal_type(y3)  # E: Revealed type is 'builtins.int'
+    reveal_type(filtered_data)  # N: Revealed type is 'builtins.list[builtins.int*]'
+    reveal_type(y3)  # N: Revealed type is 'builtins.int'
 
     # https://www.python.org/dev/peps/pep-0572/#exceptional-cases
     (y4 := 3)
-    reveal_type(y4)  # E: Revealed type is 'builtins.int'
+    reveal_type(y4)  # N: Revealed type is 'builtins.int'
 
     y5 = (y6 := 3)
-    reveal_type(y5)  # E: Revealed type is 'builtins.int'
-    reveal_type(y6)  # E: Revealed type is 'builtins.int'
+    reveal_type(y5)  # N: Revealed type is 'builtins.int'
+    reveal_type(y6)  # N: Revealed type is 'builtins.int'
 
     f(x=(y7 := 3))
-    reveal_type(y7)  # E: Revealed type is 'builtins.int'
+    reveal_type(y7)  # N: Revealed type is 'builtins.int'
 
-    reveal_type((lambda: (y8 := 3) and y8)())  # E: Revealed type is 'builtins.int'
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is 'builtins.int'
     y8  # E: Name 'y8' is not defined
 
     y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
@@ -238,7 +238,7 @@ def f(x: int = (c := 4)) -> int:
 
     return (y9 := 3) + y9
 
-reveal_type(c)  # E: Revealed type is 'builtins.int'
+reveal_type(c)  # N: Revealed type is 'builtins.int'
 
 def check_final() -> None:
     x: Final = 3
@@ -248,20 +248,20 @@ def check_final() -> None:
 
 def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Optional[int],
                  b: Optional[int]) -> None:
-    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
 
     (x := 1)
-    reveal_type(x)  # E: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
 
     if x or (y := 1):
-        reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
 
     if x and (y := 1):
         # TODO should just be int
         # This is because in check_boolean_op in checkexpr.py we accept the right conditional
         # within a binder frame context, so the types assigned in it are lost later. Perhaps
         # we need to make find_isinstance_check() walrus-aware.
-        reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
 
     if (a := 1) and x:
         reveal_type(a)  # E: Revealed type is 'builtins.int'
@@ -277,12 +277,12 @@ def check_partial() -> None:
     if bool() and (x := 2):
         pass
 
-    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
 
 def check_partial_list() -> None:
     if (x := []):
         x.append(3)
 
-    reveal_type(x)  # E: Revealed type is 'builtins.list[builtins.int]'
+    reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.int]'
 
 [builtins fixtures/f_string.pyi]

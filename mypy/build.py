@@ -25,11 +25,7 @@ import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
-
+from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
@@ -45,7 +41,7 @@ from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
 )
-if MYPY:
+if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -117,7 +113,7 @@ class BuildSourceSet:
             return True
         elif file._fullname in self.source_modules:
             return True
-        elif file.path is None and self.source_text_present:
+        elif self.source_text_present:
             return True
         else:
             return False
@@ -1020,12 +1016,16 @@ def read_deps_cache(manager: BuildManager,
 def _load_json_file(file: str, manager: BuildManager,
                     log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
+    t0 = time.time()
     try:
         data = manager.metastore.read(file)
     except IOError:
         manager.log(log_error + file)
         return None
-    manager.trace(log_sucess + data.rstrip())
+    manager.add_stats(metastore_read_time=time.time() - t0)
+    # Only bother to compute the log message if we are logging it, since it could be big
+    if manager.verbosity() >= 2:
+        manager.trace(log_sucess + data.rstrip())
     try:
         result = json.loads(data)
     except ValueError:  # TODO: JSONDecodeError in 3.5
@@ -1109,6 +1109,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     meta = _load_json_file(meta_json, manager,
                            log_sucess='Meta {} '.format(id),
                            log_error='Could not load cache for {}: '.format(id))
+    t1 = time.time()
     if meta is None:
         return None
     if not isinstance(meta, dict):
@@ -1116,7 +1117,10 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                     .format(id, repr(meta)))
         return None
     m = cache_meta_from_dict(meta, data_json)
-    manager.add_stats(load_meta_time=time.time() - t0)
+    t2 = time.time()
+    manager.add_stats(load_meta_time=t2 - t0,
+                      load_meta_load_time=t1 - t0,
+                      load_meta_from_dict_time=t2 - t1)
 
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
@@ -1876,20 +1880,17 @@ class State:
         details.
 
         However, this patching process can occur after `a` has been parsed and
-        serialized during increment mode. Consequently, we need to repeat this
+        serialized during incremental mode. Consequently, we need to repeat this
         patch when deserializing a cached file.
 
         This function should be called only when processing fresh SCCs -- the
         semantic analyzer will perform this patch for us when processing stale
         SCCs.
         """
-        Analyzer = Union[SemanticAnalyzerPass2, NewSemanticAnalyzer]  # noqa
-        if self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.new_semantic_analyzer  # type: Analyzer
-        else:
+        if not self.manager.options.new_semantic_analyzer:
             analyzer = self.manager.semantic_analyzer
-        for dep in self.dependencies:
-            analyzer.add_submodules_to_parent_modules(dep, True)
+            for dep in self.dependencies:
+                analyzer.add_submodules_to_parent_modules(dep, True)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.

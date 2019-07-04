@@ -50,6 +50,28 @@ def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic
 
 [builtins fixtures/list.pyi]
 
+[case testInlineInvert1]
+# flags: --disallow-any-generics --allow-untyped-globals
+import a
+[file a.py]
+# mypy: allow-any-generics, disallow-untyped-globals
+
+x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+
+from typing import List
+def foo() -> List:
+    ...
+
+[builtins fixtures/list.pyi]
+
+[case testInlineInvert2]
+import a
+[file a.py]
+# mypy: no-always-true
+
+[out]
+tmp/a.py:1: error: Can not invert non-boolean key always_true
+
 [case testInlineIncremental1]
 import a
 [file a.py]
@@ -119,7 +141,7 @@ def foo() -> int:
 # mypy: always-true="FOO,BAR
 [out]
 main:1: error: Unrecognized option: invalid_whatever = True
-main:2: error: Unrecognized option: warn_no_return; no_strict_optional = False
+main:2: error: Unrecognized option: no_warn_no_return; no_strict_optional = True
 main:3: error: Unrecognized option: bar = True
 main:4: error: Unterminated quote in configuration comment
 
