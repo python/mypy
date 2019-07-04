@@ -4609,7 +4609,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def report_hang(self) -> None:
         print('Deferral trace:')
         for mod, line in self.deferral_debug_context:
-            print('    {}: {}'.format(mod, line))
+            print('    {}:{}'.format(mod, line))
         self.errors.report(-1, -1,
                            'INTERNAL ERROR: maximum semantic analysis iteration count reached',
                            blocker=True)
