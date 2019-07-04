@@ -2967,16 +2967,16 @@ class SymbolTableNode:
         if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname()
         else:
-            if self.node is not None:
-                if prefix is not None:
-                    fullname = self.node.fullname()
-                    if (fullname is not None and '.' in fullname and
-                            fullname != prefix + '.' + name
-                            and not (isinstance(self.node, Var)
-                                     and self.node.from_module_getattr)):
-                        data['cross_ref'] = fullname
-                        return data
-                data['node'] = self.node.serialize()
+            assert self.node is not None, '%s:%s' % (prefix, name)
+            if prefix is not None:
+                fullname = self.node.fullname()
+                if (fullname is not None and '.' in fullname and
+                        fullname != prefix + '.' + name
+                        and not (isinstance(self.node, Var)
+                                 and self.node.from_module_getattr)):
+                    data['cross_ref'] = fullname
+                    return data
+            data['node'] = self.node.serialize()
         return data
 
     @classmethod
@@ -2988,9 +2988,8 @@ class SymbolTableNode:
             stnode = SymbolTableNode(kind, None)
             stnode.cross_ref = data['cross_ref']
         else:
-            node = None
-            if 'node' in data:
-                node = SymbolNode.deserialize(data['node'])
+            assert 'node' in data, data
+            node = SymbolNode.deserialize(data['node'])
             stnode = SymbolTableNode(kind, node)
         if 'module_hidden' in data:
             stnode.module_hidden = data['module_hidden']

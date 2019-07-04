@@ -88,6 +88,8 @@ class NodeFixer(NodeVisitor[None]):
                     self.visit_type_info(value.node)
                 elif value.node is not None:
                     value.node.accept(self)
+                else:
+                    assert False, 'Unexpected empty node %r: %s' % (key, value)
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:
