@@ -156,6 +156,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result = None  # type: Optional[Type]
         node = e.node
+
+        if isinstance(e, NameExpr) and e.is_special_form:
+            # A special form definition, nothing to check here.
+            return AnyType(TypeOfAny.special_form)
+
         if isinstance(node, Var):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
