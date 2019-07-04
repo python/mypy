@@ -585,6 +585,67 @@ reveal_type(instance(2))  # N: Revealed type is 'builtins.float*'
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/callable_instance.py
 
+[case testGetMethodHooksOnUnions]
+# flags: --config-file tmp/mypy.ini --no-strict-optional
+from typing import Union
+
+class Foo:
+    def meth(self, x: str) -> str: ...
+class Bar:
+    def meth(self, x: int) -> float: ...
+class Other:
+    meth: int
+
+x: Union[Foo, Bar, Other]
+if isinstance(x.meth, int):
+    reveal_type(x.meth)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x.meth(int()))  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/union_method.py
+
+[case testGetMethodHooksOnUnionsStrictOptional]
+# flags: --config-file tmp/mypy.ini --strict-optional
+from typing import Union
+
+class Foo:
+    def meth(self, x: str) -> str: ...
+class Bar:
+    def meth(self, x: int) -> float: ...
+class Other:
+    meth: int
+
+x: Union[Foo, Bar, Other]
+if isinstance(x.meth, int):
+    reveal_type(x.meth)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x.meth(int()))  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/union_method.py
+
+[case testGetMethodHooksOnUnionsSpecial]
+# flags: --config-file tmp/mypy.ini
+from typing import Union
+
+class Foo:
+    def __getitem__(self, x: str) -> str: ...
+class Bar:
+    def __getitem__(self, x: int) -> float: ...
+
+x: Union[Foo, Bar]
+reveal_type(x[int()])  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/union_method.py
+
 [case testPluginDependencies]
 # flags: --config-file tmp/mypy.ini
 

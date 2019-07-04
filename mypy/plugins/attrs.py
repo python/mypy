@@ -13,7 +13,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
-    TypeVarExpr
+    TypeVarExpr, PlaceholderNode
 )
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
@@ -212,7 +212,12 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     if ctx.api.options.new_semantic_analyzer:
         # Check if attribute types are ready.
         for attr in attributes:
-            if info[attr.name].type is None and not ctx.api.final_iteration:
+            node = info.get(attr.name)
+            if node is None:
+                # This name is likely blocked by a star import. We don't need to defer because
+                # defer() is already called by mark_incomplete().
+                return
+            if node.type is None and not ctx.api.final_iteration:
                 ctx.api.defer()
                 return
 
@@ -270,6 +275,9 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         # instance level assignments.
         if attribute.name in ctx.cls.info.names:
             node = ctx.cls.info.names[attribute.name].node
+            if isinstance(node, PlaceholderNode):
+                # This node is not ready yet.
+                continue
             assert isinstance(node, Var)
             node.is_initialized_in_class = False
 

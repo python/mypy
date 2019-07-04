@@ -200,6 +200,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # unbound names due to cyclic definitions and should not defer)?
     _final_iteration = False
     # These names couldn't be added to the symbol table due to incomplete deps.
+    # Note that missing names are per module, _not_ per namespace. This means that e.g.
+    # a missing name at global scope will block adding same name at a class scope.
+    # This should not affect correctness and is purely a performance issue,
+    # since it can cause unnecessary deferrals.
+    # Note that a star import adds a special name '*' to the set, this blocks
+    # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
@@ -434,7 +440,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail)
+                    fix_instance_types(target, self.fail, disallow_any=False)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -1827,6 +1833,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.statement = s
+
+        # Special case assignment like X = X.
+        if self.analyze_identity_global_assignment(s):
+            return
+
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
@@ -1870,6 +1881,47 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+
+    def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
+        """Special case 'X = X' in global scope.
+
+        This allows supporting some important use cases.
+
+        Return true if special casing was applied.
+        """
+        if not isinstance(s.rvalue, NameExpr) or len(s.lvalues) != 1:
+            # Not of form 'X = X'
+            return False
+        lvalue = s.lvalues[0]
+        if not isinstance(lvalue, NameExpr) or s.rvalue.name != lvalue.name:
+            # Not of form 'X = X'
+            return False
+        if self.type is not None or self.is_func_scope():
+            # Not in global scope
+            return False
+        # It's an assignment like 'X = X' in the global scope.
+        name = lvalue.name
+        sym = self.lookup(name, s)
+        if sym is None:
+            if self.final_iteration:
+                # Fall back to normal assignment analysis.
+                return False
+            else:
+                self.defer()
+                return True
+        else:
+            if sym.node is None:
+                # Something special -- fall back to normal assignment analysis.
+                return False
+            if name not in self.globals:
+                # The name is from builtins. Add an alias to the current module.
+                self.add_symbol(name, sym.node, s)
+            if not isinstance(sym.node, PlaceholderNode):
+                for node in s.rvalue, lvalue:
+                    node.node = sym.node
+                    node.kind = GDEF
+                    node.fullname = sym.node.fullname()
+            return True
 
     def should_wait_rhs(self, rv: Expression) -> bool:
         """Can we already classify this r.h.s. of an assignment or should we wait?
@@ -2375,7 +2427,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
-        fix_instance_types(res, self.fail)
+        fix_instance_types(res, self.fail,
+                           disallow_any=self.options.disallow_any_generics and
+                           not self.is_typeshed_stub_file and not no_args)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line

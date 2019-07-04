@@ -1016,12 +1016,16 @@ def read_deps_cache(manager: BuildManager,
 def _load_json_file(file: str, manager: BuildManager,
                     log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
+    t0 = time.time()
     try:
         data = manager.metastore.read(file)
     except IOError:
         manager.log(log_error + file)
         return None
-    manager.trace(log_sucess + data.rstrip())
+    manager.add_stats(metastore_read_time=time.time() - t0)
+    # Only bother to compute the log message if we are logging it, since it could be big
+    if manager.verbosity() >= 2:
+        manager.trace(log_sucess + data.rstrip())
     try:
         result = json.loads(data)
     except ValueError:  # TODO: JSONDecodeError in 3.5
@@ -1105,6 +1109,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     meta = _load_json_file(meta_json, manager,
                            log_sucess='Meta {} '.format(id),
                            log_error='Could not load cache for {}: '.format(id))
+    t1 = time.time()
     if meta is None:
         return None
     if not isinstance(meta, dict):
@@ -1112,7 +1117,10 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
                     .format(id, repr(meta)))
         return None
     m = cache_meta_from_dict(meta, data_json)
-    manager.add_stats(load_meta_time=time.time() - t0)
+    t2 = time.time()
+    manager.add_stats(load_meta_time=t2 - t0,
+                      load_meta_load_time=t1 - t0,
+                      load_meta_from_dict_time=t2 - t1)
 
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or

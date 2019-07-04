@@ -589,7 +589,6 @@ def foo(x: Bogus[int]) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testOverrideByIdemAliasCorrectType]
-# flags: --no-new-semantic-analyzer
 C = C
 class C:  # type: ignore
     pass
