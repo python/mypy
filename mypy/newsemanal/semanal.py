@@ -517,12 +517,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     #
 
     def visit_func_def(self, defn: FuncDef) -> None:
+        self.statement = defn
+
         # Visit default values because they may contain assignment expressions.
         for arg in defn.arguments:
             if arg.initializer:
                 arg.initializer.accept(self)
 
-        self.statement = defn
         defn.is_conditional = self.block_depth[-1] > 0
 
         # Set full names even for those definitions that aren't added
