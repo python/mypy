@@ -1899,6 +1899,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 return False
             else:
                 self.defer()
+                return True
         else:
             if sym.node is None:
                 # Something special -- fall back to normal assignment analysis.
@@ -1911,7 +1912,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     node.node = sym.node
                     node.kind = GDEF
                     node.fullname = sym.node.fullname()
-        return True
+            return True
 
     def should_wait_rhs(self, rv: Expression) -> bool:
         """Can we already classify this r.h.s. of an assignment or should we wait?
