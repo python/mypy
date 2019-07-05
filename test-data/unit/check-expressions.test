@@ -2226,7 +2226,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 def deco(f: F) -> F: ...
 
 class Custom:
-    @ deco
+    @deco
     def __eq__(self, other: object) -> bool: ...
 
 Custom() == int()
