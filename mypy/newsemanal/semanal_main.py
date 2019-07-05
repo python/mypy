@@ -297,6 +297,7 @@ def semantic_analyze_target(target: str,
     - was some definition incomplete
     - were any new names were defined (or placeholders replaced)
     """
+    state.manager.processed_targets.append(target)
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
