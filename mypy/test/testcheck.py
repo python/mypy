@@ -231,17 +231,20 @@ class TypeCheckSuite(DataSuite):
                 actual = res.manager.processed_targets
                 # Skip the initial builtin cycle.
                 actual = [t for t in actual if not any(t.startswith(mod) for mod in core_modules)]
-                assert_target_equivalence(name, expected, actual)
+                if expected is not None:
+                    assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                assert_module_equivalence(
-                    'rechecked' + suffix,
-                    testcase.expected_rechecked_modules.get(incremental_step - 1),
-                    res.manager.rechecked_modules)
-                assert_module_equivalence(
-                    'stale' + suffix,
-                    testcase.expected_stale_modules.get(incremental_step - 1),
-                    res.manager.stale_modules)
+                expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)
+                if expected_rechecked is not None:
+                    assert_module_equivalence(
+                        'rechecked' + suffix,
+                        expected_rechecked, res.manager.rechecked_modules)
+                expected_stale = testcase.expected_stale_modules.get(incremental_step - 1)
+                if expected_stale is not None:
+                    assert_module_equivalence(
+                        'stale' + suffix,
+                        expected_stale, res.manager.stale_modules)
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:
