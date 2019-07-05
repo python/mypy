@@ -203,7 +203,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Note that missing names are per module, _not_ per namespace. This means that e.g.
     # a missing name at global scope will block adding same name at a class scope.
     # This should not affect correctness and is purely a performance issue,
-    # since it can cause unnecessary deferrals.
+    # since it can cause unnecessary deferrals. These are represented as
+    # PlaceholderNodes in the symbol table. We use this to ensure that the first
+    # definition takes precedence even if it's incomplete.
+    #
     # Note that a star import adds a special name '*' to the set, this blocks
     # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
@@ -1702,7 +1705,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.final_iteration:
                 self.report_missing_module_attribute(module_id, id, imported_id, context)
                 return
-            self.record_incomplete_ref()
+            else:
+                # This might become a type.
+                self.mark_incomplete(imported_id, node.node, becomes_typeinfo=True)
         existing_symbol = self.globals.get(imported_id)
         if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
                 not isinstance(node.node, PlaceholderNode)):
@@ -2408,11 +2413,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
-                placeholder = PlaceholderNode(self.qualified_name(lvalue.name),
-                                              rvalue,
-                                              s.line,
-                                              becomes_typeinfo=True)
-                self.add_symbol(lvalue.name, placeholder, s)
+                self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
                 return True
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
@@ -4139,6 +4140,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # need to do anything.
             old = existing.node
             new = symbol.node
+            if isinstance(new, PlaceholderNode):
+                # We don't know whether this is okay. Let's wait until the next iteration.
+                return False
             if not is_same_symbol(old, new):
                 if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
@@ -4306,7 +4310,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer(node)
         if name == '*':
             self.incomplete = True
-        elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
+        elif not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
             assert self.statement
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
@@ -4809,10 +4813,12 @@ def is_valid_replacement(old: SymbolTableNode, new: SymbolTableNode) -> bool:
     2. Placeholder that isn't known to become type replaced with a
        placeholder that can become a type
     """
-    return (isinstance(old.node, PlaceholderNode)
-            and (not isinstance(new.node, PlaceholderNode)
-                 or (not old.node.becomes_typeinfo
-                     and new.node.becomes_typeinfo)))
+    if isinstance(old.node, PlaceholderNode):
+        if isinstance(new.node, PlaceholderNode):
+            return not old.node.becomes_typeinfo and new.node.becomes_typeinfo
+        else:
+            return True
+    return False
 
 
 def is_same_symbol(a: Optional[SymbolNode], b: Optional[SymbolNode]) -> bool:

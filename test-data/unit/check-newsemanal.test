@@ -272,7 +272,33 @@ reveal_type(x) # N: Revealed type is 'TypedDict('__main__.T2', {'x': builtins.st
 y: T4
 reveal_type(y) # N: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
 
-[case testNewAnalyzerRedefinitionAndDeferral]
+[case testNewAnalyzerRedefinitionAndDeferral1a]
+import a
+
+[file a.py]
+MYPY = False
+if MYPY:
+    from b import x as y
+x = 0
+
+def y(): pass # E: Name 'y' already defined on line 4
+reveal_type(y) # N: Revealed type is 'builtins.int'
+
+y2 = y
+class y2: pass # E: Name 'y2' already defined on line 9
+reveal_type(y2) # N: Revealed type is 'builtins.int'
+
+y3, y4 = y, y
+if MYPY:  # Tweak processing order
+    from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
+reveal_type(y3) # N: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import x
+
+def f(): pass
+
+[case testNewAnalyzerRedefinitionAndDeferral1b]
 import a
 
 [file a.py]
@@ -291,11 +317,26 @@ from b import f as y3 # E: Incompatible import of "y3" (imported name has type "
 reveal_type(y3) # N: Revealed type is 'builtins.int'
 
 [file b.py]
-from a import x
+MYPY = False
+if MYPY:  # Tweak processing order
+    from a import x
 
 def f(): pass
 
-[case testNewAnalyzerRedefinitionAndDeferral2]
+[case testNewAnalyzerRedefinitionAndDeferral2a]
+import a
+
+[file a.py]
+MYPY = False
+if MYPY:  # Tweak processing order
+    from b import C as C2
+class C: pass
+class C2: pass # E: Name 'C2' already defined on line 4
+
+[file b.py]
+from a import C
+
+[case testNewAnalyzerRedefinitionAndDeferral2b]
 import a
 
 [file a.py]
@@ -304,7 +345,9 @@ class C: pass
 
 class C2: pass # E: Name 'C2' already defined on line 2
 [file b.py]
-from a import C
+MYPY = False
+if MYPY:  # Tweak processing order
+    from a import C
 
 [case testNewAnalyzerRedefinitionAndDeferral3]
 import a
@@ -320,7 +363,7 @@ reveal_type(b) # N: Revealed type is 'Any'
 [file b.py]
 from a import f
 
-[case testNewAnalyzerImportStarForwardRef]
+[case testNewAnalyzerImportStarForwardRef1]
 import a
 
 [file a.py]
@@ -328,6 +371,25 @@ x: A
 reveal_type(x) # N: Revealed type is 'b.A'
 
 from b import *
+
+class A: pass # E: Name 'A' already defined (possibly by an import)
+
+[file b.py]
+class A: pass
+MYPY = False
+if MYPY:  # Tweak processing order
+    from a import x
+
+[case testNewAnalyzerImportStarForwardRef2]
+import a
+
+[file a.py]
+x: A
+reveal_type(x) # N: Revealed type is 'b.A'
+
+MYPY = False
+if MYPY: # Tweak processing order
+    from b import *
 
 class A: pass # E: Name 'A' already defined (possibly by an import)
 
@@ -1005,15 +1067,30 @@ import a
 class C(B): ...
 class B: ...
 
-[case testNewAnalyzerImportOverExistingInCycleStar]
+[case testNewAnalyzerImportOverExistingInCycleStar1]
 import a
 [file a.py]
 C = 1
-from b import *  # E: Name 'C' already defined on line 1 \
-                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+MYPY = False
+if MYPY:  # Tweak processing ordre
+    from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
 import a
+
+class C(B): ...
+class B: ...
+
+[case testNewAnalyzerImportOverExistingInCycleStar2]
+import a
+[file a.py]
+C = 1
+from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+
+[file b.py]
+MYPY = False
+if MYPY:  # Tweak processing order
+    import a
 
 class C(B): ...
 class B: ...
