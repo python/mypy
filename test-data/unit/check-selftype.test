@@ -517,3 +517,19 @@ class C:
 
 x: Union[A, C]
 reveal_type(x.same)  # N: Revealed type is 'Union[builtins.int, def () -> __main__.C*]'
+
+[case testSelfTypeOnUnionClassMethod]
+from typing import TypeVar, Union, Type
+
+T = TypeVar('T')
+
+class A:
+    same: int
+
+class C:
+    @classmethod
+    def same(cls: Type[T]) -> T: ...
+
+x: Union[A, C]
+reveal_type(x.same)  # N: Revealed type is 'Union[builtins.int, def () -> __main__.C*]'
+[builtins fixtures/classmethod.pyi]
