@@ -204,6 +204,8 @@ def is_overlapping_types(left: Type,
 
     if isinstance(left, TypedDictType) and isinstance(right, TypedDictType):
         return are_typed_dicts_overlapping(left, right, ignore_promotions=ignore_promotions)
+    elif typed_dict_mapping_pair(left, right):
+        return typed_dict_mapping_overlap(left, right)
     elif isinstance(left, TypedDictType):
         left = left.fallback
     elif isinstance(right, TypedDictType):
@@ -608,3 +610,43 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
                            ret_type=meet_types(t.ret_type, s.ret_type),
                            fallback=fallback,
                            name=None)
+
+
+def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
+    assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
+
+    if isinstance(left, TypedDictType):
+        typed, other = left, right
+    elif isinstance(right, TypedDictType):
+        typed, other = right, left
+    else:
+        return False
+    return isinstance(other, Instance) and other.type.has_base('typing.Mapping')
+
+
+def typed_dict_mapping_overlap(left: Type, right: Type) -> bool:
+    assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
+
+    if isinstance(left, TypedDictType):
+        assert isinstance(right, Instance)
+        typed, other = left, right
+    else:
+        assert isinstance(left, Instance)
+        assert isinstance(right, TypedDictType)
+        typed, other = right, left
+
+    mapping = next(base for base in other.type.mro if base.fullname() == 'typing.Mapping')
+    other = map_instance_to_supertype(other, mapping)
+
+    key_type, value_type = other.args
+    if typed.required_keys:
+        if not isinstance(key_type, Instance) or key_type.type.fullname() != 'builtins.str':
+            return False
+        return all(is_overlapping_types(typed.items[k], value_type) for k in typed.required_keys)
+    else:
+        if isinstance(key_type, UninhabitedType) and isinstance(value_type, UninhabitedType):
+            return True
+        if not isinstance(key_type, Instance) or key_type.type.fullname() != 'builtins.str':
+            return False
+        non_required = set(typed.items.keys()) - typed.required_keys
+        return any(is_overlapping_types(typed.items[k], value_type) for k in non_required)

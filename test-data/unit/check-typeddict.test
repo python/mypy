@@ -1673,3 +1673,61 @@ class A(TypedDict):
 d: Union[A, None]
 d.update({'x': 1})
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictOverlapWithDict]
+# mypy: strict-equality
+from typing import TypedDict, Dict
+
+class Config(TypedDict):
+    a: str
+    b: str
+
+x: Dict[str, str]
+y: Config
+
+x == y
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictNonOverlapping]
+# mypy: strict-equality
+from typing import TypedDict, Dict
+
+class Config(TypedDict):
+    a: str
+    b: int
+
+x: Dict[str, str]
+y: Config
+
+x == y  # E: Non-overlapping equality check (left operand type: "Dict[str, str]", right operand type: "Config")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictNonTotal]
+# mypy: strict-equality
+from typing import TypedDict, Dict
+
+class Config(TypedDict, total=False):
+    a: str
+    b: int
+
+x: Dict[str, str]
+y: Config
+
+x == y
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictNonTotalEmpty]
+# mypy: strict-equality
+from typing import TypedDict
+
+class Config(TypedDict, total=False):
+    a: str
+    b: str
+
+x: Config
+x == {}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
