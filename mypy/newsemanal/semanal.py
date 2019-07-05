@@ -4262,10 +4262,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Defer current analysis target to be analyzed again.
 
         This must be called if something in the current target is
-        incomplete or has a placeholder node.
+        incomplete or has a placeholder node. However, this must *not*
+        be called during the final analysis iteration! Instead, an error
+        should be generated. Often 'process_placeholder' is a good
+        way to either defer or generate an error.
 
-        This must not be called during the final analysis iteration!
-        Instead, an error should be generated.
+        NOTE: Some methods, such as 'anal_type', 'mark_incomplete' and
+              'record_incomplete_ref', call this implicitly, or when needed.
+              They are usually preferable to a direct defer() call.
         """
         assert not self.final_iteration, 'Must not defer during final iteration'
         self.deferred = True
