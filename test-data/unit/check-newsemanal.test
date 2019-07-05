@@ -74,10 +74,10 @@ from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-# TODO: Could we generate an error here as well?
-from b import bad
+from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
-from a import bad # E: Module 'a' has no attribute 'bad'
+# TODO: Could we generate an error here as well?
+from a import bad
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -436,11 +436,11 @@ def main() -> None:
 import b
 [file a.py]
 import b
-x = b.x  # E: Cannot determine type of 'x'
+x = b.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
+         # E: Module has no attribute "x"
 [file b.py]
 import a
-x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
-         # E: Module has no attribute "x"
+x = a.x
 [builtins fixtures/module.pyi]
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
