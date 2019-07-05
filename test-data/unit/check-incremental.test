@@ -4509,7 +4509,9 @@ reveal_type(x)
 
 [file lib.pyi]
 from typing import List
-from other import B
+MYPY = False
+if MYPY:  # Force processing order
+    from other import B
 A = List[B]  # type: ignore
 
 [file other.pyi]

@@ -74,10 +74,10 @@ from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-from b import bad # E: Module 'b' has no attribute 'bad'
-[file b.py]
 # TODO: Could we generate an error here as well?
-from a import bad
+from b import bad
+[file b.py]
+from a import bad # E: Module 'a' has no attribute 'bad'
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -281,11 +281,11 @@ if MYPY:
     from b import x as y
 x = 0
 
-def y(): pass # E: Name 'y' already defined on line 2
+def y(): pass # E: Name 'y' already defined on line 4
 reveal_type(y) # N: Revealed type is 'builtins.int'
 
 y2 = y
-class y2: pass # E: Name 'y2' already defined on line 7
+class y2: pass # E: Name 'y2' already defined on line 9
 reveal_type(y2) # N: Revealed type is 'builtins.int'
 
 y3, y4 = y, y
@@ -331,7 +331,7 @@ MYPY = False
 if MYPY:  # Tweak processing order
     from b import C as C2
 class C: pass
-class C2: pass # E: Name 'C2' already defined on line 2
+class C2: pass # E: Name 'C2' already defined on line 4
 
 [file b.py]
 from a import C
@@ -389,7 +389,7 @@ reveal_type(x) # N: Revealed type is 'b.A'
 
 MYPY = False
 if MYPY: # Tweak processing order
-    from b import * # E: Name 'x' already defined on line 1
+    from b import *
 
 class A: pass # E: Name 'A' already defined (possibly by an import)
 
@@ -436,11 +436,11 @@ def main() -> None:
 import b
 [file a.py]
 import b
-x = b.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
-         # E: Module has no attribute "x"
+x = b.x  # E: Cannot determine type of 'x'
 [file b.py]
 import a
-x = a.x
+x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
+         # E: Module has no attribute "x"
 [builtins fixtures/module.pyi]
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
@@ -1073,8 +1073,7 @@ import a
 C = 1
 MYPY = False
 if MYPY:  # Tweak processing ordre
-    from b import *  # E: Name 'C' already defined on line 1 \
-                     # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+    from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
 import a
