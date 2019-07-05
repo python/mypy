@@ -28,7 +28,8 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
+    SYMBOL_FUNCBASE_TYPES
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -3931,9 +3932,10 @@ def is_expr_literal_type(node: Expression) -> bool:
 def custom_equality_method(typ: Type) -> bool:
     """Does this type have a custom __eq__() method?"""
     if isinstance(typ, Instance):
-        method = typ.type.get_method('__eq__')
-        if method and method.info:
-            return not method.info.fullname().startswith('builtins.')
+        method = typ.type.get('__eq__')
+        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
+            if method.node.info:
+                return not method.node.info.fullname().startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
         return any(custom_equality_method(t) for t in typ.items)
