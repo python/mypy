@@ -1662,3 +1662,14 @@ p = Point(x=42, y=1337)
 reveal_type(p)  # N: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testTypedDictOptionalUpdate]
+from typing import Union
+from mypy_extensions import TypedDict
+
+class A(TypedDict):
+    x: int
+
+d: Union[A, None]
+d.update({'x': 1})
+[builtins fixtures/dict.pyi]
