@@ -677,7 +677,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disable_errors()
             item = analyze_member_access(member, typ, e, False, False, False,
                                          self.msg, original_type=object_type, chk=self.chk,
-                                         in_literal_context=self.is_literal_context())
+                                         in_literal_context=self.is_literal_context(),
+                                         self_type=typ)
             self.msg.enable_errors()
             narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
             if narrowed is None:

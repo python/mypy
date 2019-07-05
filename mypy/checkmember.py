@@ -45,11 +45,13 @@ class MemberContext:
                  original_type: Type,
                  context: Context,
                  msg: MessageBuilder,
-                 chk: 'mypy.checker.TypeChecker') -> None:
+                 chk: 'mypy.checker.TypeChecker',
+                 self_type: Optional[Type]) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
         self.is_operator = is_operator
         self.original_type = original_type
+        self.self_type = self_type or original_type
         self.context = context  # Error context
         self.msg = msg
         self.chk = chk
@@ -60,9 +62,16 @@ class MemberContext:
     def not_ready_callback(self, name: str, context: Context) -> None:
         self.chk.handle_cannot_determine_type(name, context)
 
-    def copy_modified(self, messages: MessageBuilder) -> 'MemberContext':
-        return MemberContext(self.is_lvalue, self.is_super, self.is_operator,
-                             self.original_type, self.context, messages, self.chk)
+    def copy_modified(self, *, messages: Optional[MessageBuilder] = None,
+                      self_type: Optional[Type] = None) -> 'MemberContext':
+        mx = MemberContext(self.is_lvalue, self.is_super, self.is_operator,
+                           self.original_type, self.context, self.msg, self.chk,
+                           self.self_type)
+        if messages is not None:
+            mx.msg = messages
+        if self_type is not None:
+            mx.self_type = self_type
+        return mx
 
 
 def analyze_member_access(name: str,
@@ -75,7 +84,8 @@ def analyze_member_access(name: str,
                           original_type: Type,
                           chk: 'mypy.checker.TypeChecker',
                           override_info: Optional[TypeInfo] = None,
-                          in_literal_context: bool = False) -> Type:
+                          in_literal_context: bool = False,
+                          self_type: Optional[Type] = None) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
     The actual implementation is in '_analyze_member_access' and this docstring
@@ -91,7 +101,9 @@ def analyze_member_access(name: str,
     that we have available. When looking for an attribute of 'typ', we may perform
     recursive calls targeting the fallback type, and 'typ' may become some supertype
     of 'original_type'. 'original_type' is always preserved as the 'typ' type used in
-    the initial, non-recursive call.
+    the initial, non-recursive call. The 'self_type' is a component of 'original_type'
+    to which generic self should be bound (a narrower type that has a fallback to instance).
+    Currently this is used only for union types.
     """
     mx = MemberContext(is_lvalue,
                        is_super,
@@ -99,7 +111,8 @@ def analyze_member_access(name: str,
                        original_type,
                        context,
                        msg,
-                       chk=chk)
+                       chk=chk,
+                       self_type=self_type)
     result = _analyze_member_access(name, typ, mx, override_info)
     if in_literal_context and isinstance(result, Instance) and result.last_known_value is not None:
         return result.last_known_value
@@ -183,7 +196,7 @@ def analyze_instance_member_access(name: str,
             # the first argument.
             pass
         else:
-            signature = bind_self(signature, mx.original_type)
+            signature = bind_self(signature, mx.self_type)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
         freeze_type_vars(member_type)
@@ -263,8 +276,11 @@ def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext)
 
 def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
     mx.msg.disable_type_names += 1
-    results = [_analyze_member_access(name, subtype, mx)
-               for subtype in typ.relevant_items()]
+    results = []
+    for subtype in typ.relevant_items():
+        # Self types should be bound to every individual item of a union.
+        item_mx = mx.copy_modified(self_type=subtype)
+        results.append(_analyze_member_access(name, subtype, item_mx))
     mx.msg.disable_type_names -= 1
     return UnionType.make_simplified_union(results)
 
@@ -342,7 +358,7 @@ def analyze_member_var_access(name: str,
                 # that the attribute exists
                 if method and method.info.fullname() != 'builtins.object':
                     function = function_type(method, mx.builtin_type('builtins.function'))
-                    bound_method = bind_self(function, mx.original_type)
+                    bound_method = bind_self(function, mx.self_type)
                     typ = map_instance_to_supertype(itype, method.info)
                     getattr_type = expand_type_by_instance(bound_method, typ)
                     if isinstance(getattr_type, CallableType):
@@ -359,7 +375,7 @@ def analyze_member_var_access(name: str,
             setattr_meth = info.get_method('__setattr__')
             if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':
                 setattr_func = function_type(setattr_meth, mx.builtin_type('builtins.function'))
-                bound_type = bind_self(setattr_func, mx.original_type)
+                bound_type = bind_self(setattr_func, mx.self_type)
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = expand_type_by_instance(bound_type, typ)
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
@@ -515,7 +531,7 @@ def analyze_var(name: str,
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 check_self_arg(functype, dispatched_type, var.is_classmethod, mx.context, name,
                                mx.msg)
-                signature = bind_self(functype, mx.original_type, var.is_classmethod)
+                signature = bind_self(functype, mx.self_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(signature, CallableType)
