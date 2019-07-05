@@ -1719,6 +1719,34 @@ x == y
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictOverlapWithDictNonTotalNonOverlapping]
+# mypy: strict-equality
+from typing import TypedDict, Dict
+
+class Config(TypedDict, total=False):
+    a: int
+    b: int
+
+x: Dict[str, str]
+y: Config
+
+x == y  # E: Non-overlapping equality check (left operand type: "Dict[str, str]", right operand type: "Config")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictEmpty]
+# mypy: strict-equality
+from typing import TypedDict
+
+class Config(TypedDict):
+    a: str
+    b: str
+
+x: Config
+x == {}  # E: Non-overlapping equality check (left operand type: "Config", right operand type: "Dict[<nothing>, <nothing>]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testTypedDictOverlapWithDictNonTotalEmpty]
 # mypy: strict-equality
 from typing import TypedDict
@@ -1729,5 +1757,53 @@ class Config(TypedDict, total=False):
 
 x: Config
 x == {}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictOverload]
+from typing import overload, TypedDict, Dict
+
+class Map(TypedDict):
+    x: int
+    y: str
+
+@overload
+def func(x: Map) -> int: ...
+@overload
+def func(x: Dict[str, str]) -> str: ...
+def func(x):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictOverloadBad]
+from typing import overload, TypedDict, Dict
+
+class Map(TypedDict, total=False):
+    x: int
+    y: str
+
+@overload
+def func(x: Map) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def func(x: Dict[str, str]) -> str: ...
+def func(x):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictOverloadMappingBad]
+from typing import overload, TypedDict, Mapping
+
+class Map(TypedDict, total=False):
+    x: int
+    y: str
+
+@overload
+def func(x: Map) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def func(x: Mapping[str, str]) -> str: ...
+def func(x):
+    pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
