@@ -34,7 +34,7 @@ class NewTypeAnalyzer:
             return
 
         old_type = self.check_newtype_args(name, call, s)
-        call.analyzed = NewTypeExpr(name, old_type, line=call.line)
+        call.analyzed = NewTypeExpr(name, old_type, line=call.line, column=call.column)
         if old_type is None:
             return
 

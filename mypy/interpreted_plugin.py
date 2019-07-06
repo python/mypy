@@ -1,13 +1,14 @@
 """Hack for handling non-mypyc compiled plugins with a mypyc-compiled mypy"""
 
 from typing import Optional, Callable, Any, Dict, List, Tuple
+from typing_extensions import TYPE_CHECKING
+
 from mypy.options import Options
 from mypy.types import Type, CallableType
 from mypy.nodes import SymbolTableNode, MypyFile
 from mypy.lookup import lookup_fully_qualified
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     import mypy.plugin
 
 

@@ -26,6 +26,7 @@ will be incomplete.
 
 import contextlib
 from typing import List, Tuple, Optional, Union, Callable, Iterator
+from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
@@ -45,8 +46,7 @@ from mypy.checker import FineGrainedDeferredNode
 from mypy.server.aststripnew import SavedAttributes
 import mypy.build
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
@@ -168,10 +168,12 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
         worklist += list(reversed(core_modules)) * CORE_WARMUP
     final_iteration = False
     iteration = 0
+    analyzer = state.manager.new_semantic_analyzer
+    analyzer.deferral_debug_context.clear()
+
     while worklist:
         iteration += 1
         if iteration > MAX_ITERATIONS:
-            analyzer = state.manager.new_semantic_analyzer
             # Just pick some module inside the current SCC for error context.
             assert state.tree is not None
             with analyzer.file_context(state.tree, state.options):
@@ -243,6 +245,7 @@ def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
     # Start in the incomplete state (no missing names will be reported on first pass).
     # Note that we use module name, since functions don't create qualified names.
     deferred = [module]
+    analyzer.deferral_debug_context.clear()
     analyzer.incomplete_namespaces.add(module)
     iteration = 0
     while deferred:
@@ -294,6 +297,7 @@ def semantic_analyze_target(target: str,
     - was some definition incomplete
     - were any new names were defined (or placeholders replaced)
     """
+    state.manager.processed_targets.append(target)
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer
@@ -364,7 +368,6 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
     for module in scc:
         tree = graph[module].tree
         assert tree
-        # TODO: calculate properties also for classes nested in functions.
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 saved = (module, node.node, None)  # module, class, function

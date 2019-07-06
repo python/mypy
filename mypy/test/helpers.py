@@ -115,32 +115,30 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
 
 def assert_module_equivalence(name: str,
-                              expected: Optional[Iterable[str]], actual: Iterable[str]) -> None:
-    if expected is not None:
-        expected_normalized = sorted(expected)
-        actual_normalized = sorted(set(actual).difference({"__main__"}))
-        assert_string_arrays_equal(
-            expected_normalized,
-            actual_normalized,
-            ('Actual modules ({}) do not match expected modules ({}) '
-             'for "[{} ...]"').format(
-                 ', '.join(actual_normalized),
-                 ', '.join(expected_normalized),
-                 name))
+                              expected: Iterable[str], actual: Iterable[str]) -> None:
+    expected_normalized = sorted(expected)
+    actual_normalized = sorted(set(actual).difference({"__main__"}))
+    assert_string_arrays_equal(
+        expected_normalized,
+        actual_normalized,
+        ('Actual modules ({}) do not match expected modules ({}) '
+         'for "[{} ...]"').format(
+             ', '.join(actual_normalized),
+             ', '.join(expected_normalized),
+             name))
 
 
 def assert_target_equivalence(name: str,
-                              expected: Optional[List[str]], actual: List[str]) -> None:
+                              expected: List[str], actual: List[str]) -> None:
     """Compare actual and expected targets (order sensitive)."""
-    if expected is not None:
-        assert_string_arrays_equal(
-            expected,
-            actual,
-            ('Actual targets ({}) do not match expected targets ({}) '
-             'for "[{} ...]"').format(
-                 ', '.join(actual),
-                 ', '.join(expected),
-                 name))
+    assert_string_arrays_equal(
+        expected,
+        actual,
+        ('Actual targets ({}) do not match expected targets ({}) '
+         'for "[{} ...]"').format(
+             ', '.join(actual),
+             ', '.join(expected),
+             name))
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
@@ -395,10 +393,6 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
 
     if testcase.config.getoption('--mypy-verbose'):
         options.verbosity = testcase.config.getoption('--mypy-verbose')
-
-    if os.getenv('NEWSEMANAL'):
-        if not flag_list or '--no-new-semantic-analyzer' not in flag_list:
-            options.new_semantic_analyzer = True
 
     return options
 

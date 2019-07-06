@@ -12,10 +12,7 @@ import tokenize
 from typing import (
     Optional, MutableMapping, MutableSequence, List, Sequence, Tuple, NamedTuple, Any
 )
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
 Sig = Tuple[str, str]

@@ -1,12 +1,11 @@
 from collections import OrderedDict
+import os
 import re
 import pprint
 import sys
 
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
@@ -50,6 +49,7 @@ PER_MODULE_OPTIONS = {
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
+    "warn_unreachable",
     "warn_unused_ignores",
 }  # type: Final
 
@@ -87,7 +87,7 @@ class Options:
         self.namespace_packages = False
 
         # Use the new semantic analyzer
-        self.new_semantic_analyzer = False
+        self.new_semantic_analyzer = bool(os.getenv('NEWSEMANAL'))
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -165,6 +165,10 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Report an error for any branches inferred to be unreachable as a result of
+        # type analysis.
+        self.warn_unreachable = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

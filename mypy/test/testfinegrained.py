@@ -133,18 +133,23 @@ class FineGrainedSuite(DataSuite):
                 changed = [mod for mod, file in server.fine_grained_manager.changed_modules]
                 targets = server.fine_grained_manager.processed_targets
 
-            assert_module_equivalence(
-                'stale' + str(step - 1),
-                testcase.expected_stale_modules.get(step - 1),
-                changed)
-            assert_module_equivalence(
-                'rechecked' + str(step - 1),
-                testcase.expected_rechecked_modules.get(step - 1),
-                updated)
-            assert_target_equivalence(
-                'targets' + str(step),
-                testcase.expected_fine_grained_targets.get(step),
-                targets)
+            expected_stale = testcase.expected_stale_modules.get(step - 1)
+            if expected_stale is not None:
+                assert_module_equivalence(
+                    'stale' + str(step - 1),
+                    expected_stale, changed)
+
+            expected_rechecked = testcase.expected_rechecked_modules.get(step - 1)
+            if expected_rechecked is not None:
+                assert_module_equivalence(
+                    'rechecked' + str(step - 1),
+                    expected_rechecked, updated)
+
+            expected = testcase.expected_fine_grained_targets.get(step)
+            if expected:
+                assert_target_equivalence(
+                    'targets' + str(step),
+                    expected, targets)
 
             new_messages = normalize_messages(new_messages)
 
@@ -270,9 +275,11 @@ class FineGrainedSuite(DataSuite):
             callsites = '--callsites' in flags
             no_any = '--no-any' in flags
             no_errors = '--no-errors' in flags
+            try_text = '--try-text' in flags
             res = cast(Dict[str, Any],
                        server.cmd_suggest(
                            target.strip(), json=json, no_any=no_any, no_errors=no_errors,
+                           try_text=try_text,
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             output.extend(val.strip().split('\n'))

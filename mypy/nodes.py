@@ -6,12 +6,8 @@ from collections import OrderedDict, defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
 )
+from typing_extensions import DefaultDict, Final, TYPE_CHECKING
 from mypy_extensions import trait
-
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
-    from typing_extensions import Final
 
 import mypy.strconv
 from mypy.util import short_type
@@ -59,7 +55,7 @@ class Context:
         return self.column
 
 
-if MYPY:
+if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.types
 
@@ -143,6 +139,10 @@ nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
+RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
+                          'typing_extensions.runtime',
+                          'typing_extensions.runtime_checkable')  # type: Final
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
@@ -177,6 +177,15 @@ class Expression(Node):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
+
+
+class FakeExpression(Expression):
+    """A dummy expression.
+
+    We need a dummy expression in one place, and can't instantiate Expression
+    because it is a trait and mypyc barfs.
+    """
+    pass
 
 
 # TODO:
@@ -223,7 +232,7 @@ class MypyFile(SymbolNode):
 
     # Fully qualified module name
     _fullname = None  # type: Bogus[str]
-    # Path to the file (None if not known)
+    # Path to the file (empty string if not known)
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
@@ -281,8 +290,7 @@ class MypyFile(SymbolNode):
         return visitor.visit_mypy_file(self)
 
     def is_package_init_file(self) -> bool:
-        return not (self.path is None) and len(self.path) != 0 \
-            and os.path.basename(self.path).startswith('__init__.')
+        return len(self.path) != 0 and os.path.basename(self.path).startswith('__init__.')
 
     def serialize(self) -> JsonDict:
         return {'.class': 'MypyFile',
@@ -482,7 +490,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         if len(items) > 0:
-            self.set_line(items[0].line)
+            self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
     def name(self) -> str:
@@ -763,7 +771,7 @@ VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
-    'explicit_self_type',
+    'explicit_self_type', 'is_ready',
 ]  # type: Final
 
 
@@ -867,6 +875,7 @@ class Var(SymbolNode):
         name = data['name']
         type = None if data['type'] is None else mypy.types.deserialize_type(data['type'])
         v = Var(name, type)
+        v.is_ready = False  # Override True default set in __init__
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
         v.final_value = data.get('final_value')
@@ -2158,11 +2167,13 @@ class NewTypeExpr(Expression):
     # The synthesized class representing the new type (inherits old_type)
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int) -> None:
+    def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int,
+                 column: int) -> None:
         super().__init__()
         self.name = name
         self.old_type = old_type
         self.line = line
+        self.column = column
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
@@ -2783,7 +2794,7 @@ class PlaceholderNode(SymbolNode):
       node: AST node that contains the definition that caused this to
           be created. This is useful for tracking order of incomplete definitions
           and for debugging.
-      becomes_typeinfo: If True, this refers something that will later
+      becomes_typeinfo: If True, this refers something that could later
           become a TypeInfo. It can't be used with type variables, in
           particular, as this would cause issues with class type variable
           detection.
@@ -2956,16 +2967,16 @@ class SymbolTableNode:
         if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname()
         else:
-            if self.node is not None:
-                if prefix is not None:
-                    fullname = self.node.fullname()
-                    if (fullname is not None and '.' in fullname and
-                            fullname != prefix + '.' + name
-                            and not (isinstance(self.node, Var)
-                                     and self.node.from_module_getattr)):
-                        data['cross_ref'] = fullname
-                        return data
-                data['node'] = self.node.serialize()
+            assert self.node is not None, '%s:%s' % (prefix, name)
+            if prefix is not None:
+                fullname = self.node.fullname()
+                if (fullname is not None and '.' in fullname and
+                        fullname != prefix + '.' + name
+                        and not (isinstance(self.node, Var)
+                                 and self.node.from_module_getattr)):
+                    data['cross_ref'] = fullname
+                    return data
+            data['node'] = self.node.serialize()
         return data
 
     @classmethod
@@ -2977,9 +2988,8 @@ class SymbolTableNode:
             stnode = SymbolTableNode(kind, None)
             stnode.cross_ref = data['cross_ref']
         else:
-            node = None
-            if 'node' in data:
-                node = SymbolNode.deserialize(data['node'])
+            assert 'node' in data, data
+            node = SymbolNode.deserialize(data['node'])
             stnode = SymbolTableNode(kind, node)
         if 'module_hidden' in data:
             stnode.module_hidden = data['module_hidden']

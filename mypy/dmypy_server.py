@@ -17,6 +17,7 @@ import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
 from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing_extensions import Final
 
 import mypy.build
 import mypy.errors
@@ -32,11 +33,6 @@ from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
-
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 

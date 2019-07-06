@@ -1,21 +1,19 @@
 """Plugin that provides support for dataclasses."""
 
 from collections import OrderedDict
+
 from typing import Dict, List, Set, Tuple
+from typing_extensions import Final
 
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Expression, FuncDef, JsonDict, NameExpr, RefExpr,
-    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr
+    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
 from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType
 from mypy.server.trigger import make_wildcard_trigger
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -215,7 +213,17 @@ class DataclassTransformer:
             if not isinstance(lhs, NameExpr):
                 continue
 
-            node = cls.info.names[lhs.name].node
+            sym = cls.info.names.get(lhs.name)
+            if sym is None:
+                # This name is likely blocked by a star import. We don't need to defer because
+                # defer() is already called by mark_incomplete().
+                assert ctx.api.options.new_semantic_analyzer
+                continue
+
+            node = sym.node
+            if isinstance(node, PlaceholderNode):
+                # This node is not ready yet.
+                continue
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.

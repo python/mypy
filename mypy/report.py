@@ -6,16 +6,15 @@ import json
 import os
 import shutil
 import tokenize
-import typing
+import time
+import sys
+import itertools
 from operator import attrgetter
 from urllib.request import pathname2url
+
+import typing
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
-
-import time
-
-import sys
-
-import itertools
+from typing_extensions import Final
 
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
@@ -24,10 +23,6 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 from mypy.defaults import REPORTER_NAMES
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 try:
     # mypyc doesn't properly handle import from of submodules that we

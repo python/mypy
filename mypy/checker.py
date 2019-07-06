@@ -9,6 +9,7 @@ from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
     Sequence
 )
+from typing_extensions import Final
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
@@ -34,7 +35,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional
+    is_optional, remove_optional, TypeTranslator, StarType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
@@ -68,11 +69,6 @@ from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state
 from mypy.traverser import has_return_statement
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 T = TypeVar('T')
 
@@ -788,7 +784,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: Optional[str]) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
-        for item, typ in self.expand_typevars(defn, typ):
+        expanded = self.expand_typevars(defn, typ)
+        for item, typ in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
@@ -937,6 +934,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Type check body in a new scope.
             with self.binder.top_frame_context():
                 with self.scope.push_function(defn):
+                    # We suppress reachability warnings when we use TypeVars with value
+                    # restrictions: we only want to report a warning if a certain statement is
+                    # marked as being suppressed in *all* of the expansions, but we currently
+                    # have no good way of doing this.
+                    #
+                    # TODO: Find a way of working around this limitation
+                    if len(expanded) >= 2:
+                        self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
@@ -1782,12 +1787,45 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
+            # This block was marked as being unreachable during semantic analysis.
+            # It turns out any blocks marked in this way are *intentionally* marked
+            # as unreachable -- so we don't display an error.
             self.binder.unreachable()
             return
         for s in b.body:
             if self.binder.is_unreachable():
+                if (self.options.warn_unreachable
+                        and not self.binder.is_unreachable_warning_suppressed()
+                        and not self.is_raising_or_empty(s)):
+                    self.msg.unreachable_statement(s)
                 break
             self.accept(s)
+
+    def is_raising_or_empty(self, s: Statement) -> bool:
+        """Returns 'true' if the given statement either throws an error of some kind
+        or is a no-op.
+
+        We use this function mostly while handling the '--warn-unreachable' flag. When
+        that flag is present, we normally report an error on any unreachable statement.
+        But if that statement is just something like a 'pass' or a just-in-case 'assert False',
+        reporting an error would be annoying.
+        """
+        if isinstance(s, AssertStmt) and is_false_literal(s.expr):
+            return True
+        elif isinstance(s, (RaiseStmt, PassStmt)):
+            return True
+        elif isinstance(s, ExpressionStmt):
+            if isinstance(s.expr, EllipsisExpr):
+                return True
+            elif isinstance(s.expr, CallExpr):
+                self.expr_checker.msg.disable_errors()
+                typ = self.expr_checker.accept(
+                    s.expr, allow_none_return=True, always_allow_any=True)
+                self.expr_checker.msg.enable_errors()
+
+                if isinstance(typ, UninhabitedType):
+                    return True
+        return False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
@@ -2373,6 +2411,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                            reinferred_rvalue_type, context,
                                                            infer_lvalue_type)
                     return
+                if isinstance(reinferred_rvalue_type, AnyType) and self.current_node_deferred:
+                    # Doing more inference in deferred nodes can be hard, so give up for now.
+                    return
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
 
@@ -2492,6 +2533,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                      # we put Uninhabited if there is no information available from lvalue.
                      UninhabitedType() for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
+        elif isinstance(lvalue, StarExpr):
+            typ, _, _ = self.check_lvalue(lvalue.expr)
+            lvalue_type = StarType(typ) if typ else None
         else:
             lvalue_type = self.expr_checker.accept(lvalue)
 
@@ -2525,7 +2569,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # gets generated in assignment like 'x = []' where item type is not known.
             if not self.infer_partial_type(name, lvalue, init_type):
                 self.msg.need_annotation_for_var(name, context, self.options.python_version)
-                self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+                self.set_inference_error_fallback_type(name, lvalue, init_type)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
               and lvalue.def_var and lvalue.def_var in self.inferred_attribute_types
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
@@ -2574,9 +2618,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
-    def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
-                                          context: Context) -> None:
-        """If errors on context line are ignored, store dummy type for variable.
+    def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
+        """Store best known type for variable if type inference failed.
 
         If a program ignores error on type inference error, the variable should get some
         inferred type so that if can used later on in the program. Example:
@@ -2584,10 +2627,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
           x = []  # type: ignore
           x.append(1)   # Should be ok!
 
-        We implement this here by giving x a valid type (Any).
+        We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
         """
-        if context.get_line() in self.errors.ignored_lines[self.errors.file]:
-            self.set_inferred_type(var, lvalue, AnyType(TypeOfAny.from_error))
+        fallback = type.accept(SetNothingToAny())
+        # Type variables may leak from inference, see https://github.com/python/mypy/issues/5738,
+        # we therefore need to erase them.
+        self.set_inferred_type(var, lvalue, erase_typevars(fallback))
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
@@ -2961,7 +3006,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # type checks in both contexts, but only the resulting types
             # from the latter context affect the type state in the code
             # that follows the try statement.)
-            self.accept(s.finally_body)
+            if not self.binder.is_unreachable():
+                self.accept(s.finally_body)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
@@ -3135,8 +3181,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             e = s.expr
             m = MemberExpr(e.base, '__delitem__')
             m.line = s.line
+            m.column = s.column
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
+            c.column = s.column
             self.expr_checker.accept(c, allow_none_return=True)
         else:
             s.expr.accept(self.expr_checker)
@@ -3913,12 +3961,15 @@ def conditional_type_map(expr: Expression,
     second element is a map from the expression to the type it would hold
     if it was not the proposed type, if any. None means bot, {} means top"""
     if proposed_type_ranges:
-        if len(proposed_type_ranges) == 1:
-            proposed_type = proposed_type_ranges[0].item  # Union with a single type breaks tests
-        else:
-            proposed_type = UnionType([type_range.item for type_range in proposed_type_ranges])
+        proposed_items = [type_range.item for type_range in proposed_type_ranges]
+        proposed_type = UnionType.make_simplified_union(proposed_items)
         if current_type:
-            if (not any(type_range.is_upper_bound for type_range in proposed_type_ranges)
+            if isinstance(proposed_type, AnyType):
+                # We don't really know much about the proposed type, so we shouldn't
+                # attempt to narrow anything. Instead, we broaden the expr to Any to
+                # avoid false positives
+                return {expr: proposed_type}, {}
+            elif (not any(type_range.is_upper_bound for type_range in proposed_type_ranges)
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
@@ -4318,26 +4369,26 @@ def is_valid_inferred_type(typ: Type) -> bool:
         # specific Optional type.  This resolution happens in
         # leave_partial_types when we pop a partial types scope.
         return False
-    return is_valid_inferred_type_component(typ)
+    return not typ.accept(NothingSeeker())
 
 
-def is_valid_inferred_type_component(typ: Type) -> bool:
-    """Is this part of a type a valid inferred type?
+class NothingSeeker(TypeQuery[bool]):
+    """Find any <nothing> types resulting from failed (ambiguous) type inference."""
 
-    In strict Optional mode this excludes bare None types, as otherwise every
-    type containing None would be invalid.
-    """
-    if is_same_type(typ, UninhabitedType()):
-        return False
-    elif isinstance(typ, Instance):
-        for arg in typ.args:
-            if not is_valid_inferred_type_component(arg):
-                return False
-    elif isinstance(typ, TupleType):
-        for item in typ.items:
-            if not is_valid_inferred_type_component(item):
-                return False
-    return True
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return t.ambiguous
+
+
+class SetNothingToAny(TypeTranslator):
+    """Replace all ambiguous <nothing> types with Any (to avoid spurious extra errors)."""
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+        if t.ambiguous:
+            return AnyType(TypeOfAny.from_error)
+        return t
 
 
 def is_node_static(node: Optional[Node]) -> Optional[bool]:

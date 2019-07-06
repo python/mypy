@@ -4,11 +4,8 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 """
 
 from typing import Dict, Set, Tuple, Optional
+from typing_extensions import ClassVar, Final
 
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.server.trigger import make_trigger
