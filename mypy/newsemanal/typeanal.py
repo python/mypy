@@ -22,7 +22,7 @@ from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr,
-    TypeAlias, PlaceholderNode
+    TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.tvar_scope import TypeVarScope
@@ -72,7 +72,7 @@ def analyze_type_alias(node: Expression,
     try:
         type = expr_to_unanalyzed_type(node)
     except TypeTranslationError:
-        api.fail('Invalid type alias', node)
+        api.fail('Invalid type alias: cannot interpret right hand side as a type', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
                             allow_unnormalized=allow_unnormalized, defining_alias=True,
@@ -401,7 +401,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # None of the above options worked. We parse the args (if there are any)
         # to make sure there are no remaining semanal-only types, then give up.
         t = t.copy_modified(args=self.anal_array(t.args))
-        self.fail('Invalid type "{}"'.format(name), t)
+        if isinstance(sym.node, Var):
+            reason = 'Cannot use variable as type'  # TODO: add link to alias docs, see #3494
+        elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
+            reason = 'Cannot use function as type, use Callable[...] or a protocol instead'
+        elif isinstance(sym.node, MypyFile):
+            reason = 'Module cannot be used as type'  # TODO: suggest a protocol when supported
+        elif unbound_tvar:
+            reason = 'Can only use bound type variables as type'
+        else:
+            reason = 'Cannot interpret reference as a type'
+        self.fail('Invalid type "{}": {}'.format(name, reason), t)
 
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages
@@ -422,11 +432,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        self.fail('Invalid type', t)
+        self.fail('Invalid type AAAA', t)
         return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
-        self.fail('Invalid type', t)
+        self.fail('Invalid type BBBB', t)
         return AnyType(TypeOfAny.from_error)
 
     def visit_instance(self, t: Instance) -> Type:
