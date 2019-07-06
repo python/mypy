@@ -2223,7 +2223,7 @@ from typing import List
 
 x: List[int]
 x == []
-[builtins fixtures/list.pyi]
+[builtins fixtures/isinstancelist.pyi]
 
 [case testCustomEqDecoratedStrictEquality]
 # flags: --strict-equality
