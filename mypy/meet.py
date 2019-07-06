@@ -625,9 +625,9 @@ def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
     assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
 
     if isinstance(left, TypedDictType):
-        typed, other = left, right
+        _, other = left, right
     elif isinstance(right, TypedDictType):
-        typed, other = right, left
+        _, other = right, left
     else:
         return False
     return isinstance(other, Instance) and other.type.has_base('typing.Mapping')
