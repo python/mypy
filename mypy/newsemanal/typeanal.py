@@ -432,7 +432,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        self.fail('Invalid type AAAA', t)
+        self.fail('Invalid type: Did you want to use "List[...]"?', t)
         return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
