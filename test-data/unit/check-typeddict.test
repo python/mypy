@@ -1760,6 +1760,20 @@ x == {}
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictOverlapWithDictNonStrKey]
+# mypy: strict-equality
+from typing import TypedDict, Dict, Union
+
+class Config(TypedDict):
+    a: str
+    b: str
+
+x: Config
+y: Dict[Union[str, int], str]
+x == y
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testTypedDictOverlapWithDictOverload]
 from typing import overload, TypedDict, Dict
 
@@ -1803,6 +1817,22 @@ class Map(TypedDict, total=False):
 def func(x: Map) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def func(x: Mapping[str, str]) -> str: ...
+def func(x):
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictOverlapWithDictOverloadNonStrKey]
+from typing import overload, TypedDict, Dict
+
+class Map(TypedDict):
+    x: str
+    y: str
+
+@overload
+def func(x: Map) -> int: ...
+@overload
+def func(x: Dict[int, str]) -> str: ...
 def func(x):
     pass
 [builtins fixtures/dict.pyi]
