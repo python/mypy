@@ -55,12 +55,13 @@ MypyFile:1(
       Any)))
 
 [case testClassVarWithTypeVar]
+# flags: --new-semantic-analyzer
 from typing import ClassVar, TypeVar
 T = TypeVar('T')
 class A:
     x = None  # type: ClassVar[T]
 [out]
-main:4: error: Invalid type "__main__.T": Can only use bound type variables as types
+main:5: error: Invalid type "__main__.T": Can only use bound type variables as types
 
 [case testClassVarInFunctionArgs]
 from typing import ClassVar

@@ -5444,6 +5444,7 @@ main:5: error: Module not callable
 main:8: error: Invalid type "D": Module cannot be used as type
 
 [case testChangeTypeAliasToModuleUnqualified]
+# flags: --new-semantic-analyzer
 from a import C
 x: C
 def f() -> None:
@@ -5465,9 +5466,9 @@ import D
 [out]
 ==
 ==
-main:2: error: Invalid type "D"
-main:4: error: Module not callable
-main:7: error: Invalid type "D"
+main:3: error: Invalid type "D": Module cannot be used as type
+main:5: error: Module not callable
+main:8: error: Invalid type "D": Module cannot be used as type
 
 [case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
 import a

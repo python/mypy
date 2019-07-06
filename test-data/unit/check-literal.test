@@ -1781,6 +1781,7 @@ issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Litera
 [out]
 
 [case testLiteralErrorsWhenSubclassed]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
 from typing_extensions import Literal as Renamed
 import typing_extensions as indirect
@@ -2721,6 +2722,7 @@ expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type
 --
 
 [case testLiteralWithEnumsBasic]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
 from enum import Enum
 

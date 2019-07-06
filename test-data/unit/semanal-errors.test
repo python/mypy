@@ -133,8 +133,8 @@ x = 1
 y = 0 # type: f
 z = 0 # type: x
 [out]
-main:4: error: Invalid type "__main__.f": Cannot use function as type, use Callable[...] or a protocol instead
-main:5: error: Invalid type "__main__.x": Cannot use variable as type
+main:5: error: Invalid type "__main__.f": Cannot use function as type, use Callable[...] or a protocol instead
+main:6: error: Invalid type "__main__.x": Cannot use variable as type
 
 [case testGlobalVarRedefinition]
 import typing
@@ -496,7 +496,7 @@ t = TypeVar('t')
 def f(x: t) -> t: pass
 x = 0 # type: t
 [out]
-main:5: error: Invalid type "__main__.t": Can only use bound type variables as type
+main:5: error: Invalid type "__main__.t": Can only use bound type variables as types
 
 [case testClassTvarScope]
 # flags: --new-semantic-analyzer
@@ -505,7 +505,7 @@ t = TypeVar('t')
 class c(Generic[t]): pass
 x = 0 # type: t
 [out]
-main:5: error: Invalid type "__main__.t": Can only use bound type variables as type
+main:5: error: Invalid type "__main__.t": Can only use bound type variables as types
 
 [case testExpressionRefersToTypeVariable]
 from typing import TypeVar, Generic
@@ -746,8 +746,8 @@ s = TypeVar('s')
 class A(Generic[t]):
     class B(Generic[s]):
         x = 0 # type: A[s]
-        y = 0 # type: A[t]        # E: Invalid type "__main__.t": Can only use bound type variables as type
-    z = 0 # type: A[s]            # E: Invalid type "__main__.s": Can only use bound type variables as type
+        y = 0 # type: A[t]        # E: Invalid type "__main__.t": Can only use bound type variables as types
+    z = 0 # type: A[s]            # E: Invalid type "__main__.s": Can only use bound type variables as types
     a = 0 # type: A[t]
 [out]
 
@@ -799,6 +799,7 @@ cast([int, str], None)   # E: Invalid type: Did you want to use "List[...]"?
 [out]
 
 [case testInvalidCastTargetType]
+# flags: --new-semantic-analyzer
 from typing import cast
 x = 0
 cast(x, None)        # E: Invalid type "__main__.x": Cannot use variable as type
