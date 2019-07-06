@@ -401,6 +401,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # None of the above options worked. We parse the args (if there are any)
         # to make sure there are no remaining semanal-only types, then give up.
         t = t.copy_modified(args=self.anal_array(t.args))
+        # TODO: Move this message building logic to messages.py.
         if isinstance(sym.node, Var):
             reason = 'Cannot use variable as type'  # TODO: add link to alias docs, see #3494
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
@@ -408,7 +409,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif isinstance(sym.node, MypyFile):
             reason = 'Module cannot be used as type'  # TODO: suggest a protocol when supported
         elif unbound_tvar:
-            reason = 'Can only use bound type variables as type'
+            reason = 'Can only use bound type variables as types'
         else:
             reason = 'Cannot interpret reference as a type'
         self.fail('Invalid type "{}": {}'.format(name, reason), t)
@@ -436,7 +437,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
-        self.fail('Invalid type BBBB', t)
+        self.fail('Invalid type', t)
         return AnyType(TypeOfAny.from_error)
 
     def visit_instance(self, t: Instance) -> Type:

@@ -1351,13 +1351,13 @@ with A() as (a, b):
 [builtins fixtures/tuple.pyi]
 
 [case testWithStmtTypeComment]
-
+# flags: --new-semantic-analyzer
 from typing import Union
 class A:
     def __enter__(self) -> int: pass
     def __exit__(self, x, y, z): pass
 
-with A():  # type: int  # E: Invalid type comment
+with A():  # type: int  # E: Invalid type comment: `with` statement has no targets
     pass
 
 with A() as a:  # type: int

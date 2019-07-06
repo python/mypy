@@ -69,32 +69,34 @@ if int():
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
 [case testColumnInvalidType]
+# flags: --new-semantic-analyzer
 from typing import Iterable
 
 bad = 0
 
-def f(x: bad): # E:10: Invalid type "__main__.bad"
-    y: bad # E:8: Invalid type "__main__.bad"
+def f(x: bad): # E:10: Invalid type "__main__.bad": Cannot use variable as type
+    y: bad # E:8: Invalid type "__main__.bad": Cannot use variable as type
 
 if int():
-    def g(x): # E:5: Invalid type "__main__.bad"
+    def g(x): # E:5: Invalid type "__main__.bad": Cannot use variable as type
         # type: (bad) -> None
-        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
+        y = 0  # type: bad  # E:9: Invalid type "__main__.bad": Cannot use variable as type
 
-z: Iterable[bad] # E:13: Invalid type "__main__.bad"
-h: bad[int] # E:4: Invalid type "__main__.bad"
+z: Iterable[bad] # E:13: Invalid type "__main__.bad": Cannot use variable as type
+h: bad[int] # E:4: Invalid type "__main__.bad": Cannot use variable as type
 
 [case testColumnInvalidType_python2]
+# flags: --new-semantic-analyzer
 from typing import Iterable
 
 bad = 0
 
 if int():
-    def g(x): # E:5: Invalid type "__main__.bad"
+    def g(x): # E:5: Invalid type "__main__.bad": Cannot use variable as type
         # type: (bad) -> None
-        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
+        y = 0  # type: bad  # E:9: Invalid type "__main__.bad": Cannot use variable as type
 
-    z = ()  # type: Iterable[bad] # E:5: Invalid type "__main__.bad"
+    z = ()  # type: Iterable[bad] # E:5: Invalid type "__main__.bad": Cannot use variable as type
 
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs

@@ -807,6 +807,7 @@ import m.a
 [out]
 
 [case testCheckDecoratedFuncAsAnnotWithImportCycle]
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 from typing import TypeVar
@@ -823,7 +824,7 @@ MYPY = False
 if MYPY:
     from a import Session
 
-def f(self, session: Session) -> None:  # E: Invalid type "a.Session"
+def f(self, session: Session) -> None:  # E: Invalid type "a.Session": Cannot use function as type, use Callable[...] or a protocol instead
     pass
 [builtins fixtures/bool.pyi]
 

@@ -295,6 +295,7 @@ a = Foo(type(3))
 [out]
 
 [case testNewTypeWithTypeVarsFails]
+# flags: --new-semantic-analyzer
 from typing import NewType, TypeVar, List
 T = TypeVar('T')
 A = NewType('A', T)
@@ -302,8 +303,8 @@ B = NewType('B', List[T])
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: Argument 2 to NewType(...) must be subclassable (got T?)
-main:3: error: Invalid type "__main__.T"
-main:4: error: Invalid type "__main__.T"
+main:3: error: Invalid type "__main__.T": Can only use bound type variables as type
+main:4: error: Invalid type "__main__.T": Can only use bound type variables as type
 
 [case testNewTypeRedefiningVariablesFails]
 # flags: --new-semantic-analyzer

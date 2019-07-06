@@ -108,6 +108,7 @@ def g(x: int) -> None: pass
 main:2: error: Module has no attribute "f"
 
 [case testClassChangedIntoFunction]
+# flags: --new-semantic-analyzer
 import m
 def f(a: m.A) -> None:
     pass
@@ -117,9 +118,10 @@ class A: pass
 def A() -> None: pass
 [out]
 ==
-main:2: error: Invalid type "m.A"
+main:3: error: Invalid type "m.A": Cannot use function as type, use Callable[...] or a protocol instead
 
 [case testClassChangedIntoFunction2]
+# flags: --new-semantic-analyzer
 import m
 class B:
     def f(self, a: m.A) -> None: pass
@@ -130,9 +132,9 @@ def A() -> None: pass
 [file n.py.3]
 [out]
 ==
-main:3: error: Invalid type "m.A"
+main:4: error: Invalid type "m.A": Cannot use function as type, use Callable[...] or a protocol instead
 ==
-main:3: error: Invalid type "m.A"
+main:4: error: Invalid type "m.A": Cannot use function as type, use Callable[...] or a protocol instead
 
 [case testAttributeTypeChanged]
 import m
@@ -5331,10 +5333,10 @@ def T() -> None:
 [out]
 ==
 main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Invalid type "a.T"
+main:4: error: Invalid type "a.T": Cannot use function as type, use Callable[...] or a protocol instead
 main:6: error: Free type variable expected in Generic[...]
-main:7: error: Invalid type "a.T"
-main:10: error: Invalid type "a.T"
+main:7: error: Invalid type "a.T": Cannot use function as type, use Callable[...] or a protocol instead
+main:10: error: Invalid type "a.T": Cannot use function as type, use Callable[...] or a protocol instead
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
@@ -5360,13 +5362,14 @@ import T
 ==
 ==
 main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Invalid type "T"
+main:4: error: Invalid type "T": Module cannot be used as type
 main:6: error: Free type variable expected in Generic[...]
-main:7: error: Invalid type "T"
-main:10: error: Invalid type "T"
+main:7: error: Invalid type "T": Module cannot be used as type
+main:10: error: Invalid type "T": Module cannot be used as type
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
+# flags: --new-semantic-analyzer
 import a
 x: a.C
 def f() -> None:
@@ -5385,9 +5388,9 @@ import C
 [out]
 ==
 ==
-main:2: error: Invalid type "C"
-main:4: error: Module not callable
-main:7: error: Invalid type "C"
+main:3: error: Invalid type "C": Module cannot be used as type
+main:5: error: Module not callable
+main:8: error: Invalid type "C": Module cannot be used as type
 
 [case testChangeTypeVarToTypeAlias]
 # flags: --new-semantic-analyzer
@@ -5414,6 +5417,7 @@ main:6: error: Free type variable expected in Generic[...]
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
+# flags: --new-semantic-analyzer
 import a
 x: a.C
 def f() -> None:
@@ -5435,9 +5439,9 @@ import D
 [out]
 ==
 ==
-main:2: error: Invalid type "D"
-main:4: error: Module not callable
-main:7: error: Invalid type "D"
+main:3: error: Invalid type "D": Module cannot be used as type
+main:5: error: Module not callable
+main:8: error: Invalid type "D": Module cannot be used as type
 
 [case testChangeTypeAliasToModuleUnqualified]
 from a import C
@@ -7842,15 +7846,15 @@ x = 1
 [out]
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
-a.py:7: error: Invalid type "a.T"
+a.py:7: error: Invalid type "a.T": Cannot use variable as type
 a.py:10: error: Name 'bar' already defined on line 6
-a.py:11: error: Invalid type "a.T"
+a.py:11: error: Invalid type "a.T": Cannot use variable as type
 ==
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
-a.py:7: error: Invalid type "a.T"
+a.py:7: error: Invalid type "a.T": Cannot use variable as type
 a.py:10: error: Name 'bar' already defined on line 6
-a.py:11: error: Invalid type "a.T"
+a.py:11: error: Invalid type "a.T": Cannot use variable as type
 
 [case testRefreshForWithTypeComment1]
 [file a.py]
@@ -8301,7 +8305,7 @@ x = 'no way'
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNamedTupleForwardFunctionDirect]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --new-semantic-analyzer
 from typing import NamedTuple
 from b import B
 
@@ -8311,10 +8315,10 @@ def func(x): pass
 B = func
 [out]
 ==
-main:5: error: Invalid type "b.B"
+main:5: error: Invalid type "b.B": Cannot use variable as type
 
 [case testNamedTupleForwardFunctionIndirect]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --new-semantic-analyzer
 from typing import NamedTuple
 from a import A
 
@@ -8327,10 +8331,10 @@ def func(x): pass
 B = func
 [out]
 ==
-main:5: error: Invalid type "a.A"
+main:5: error: Invalid type "a.A": Cannot use variable as type
 
 [case testNamedTupleForwardFunctionIndirectReveal]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --new-semantic-analyzer
 import m
 [file m.py]
 from typing import NamedTuple
@@ -8353,14 +8357,14 @@ def func(x): pass
 B = func
 [out]
 ==
-m.py:4: error: Invalid type "a.A"
+m.py:4: error: Invalid type "a.A": Cannot use variable as type
 ==
-m.py:4: error: Invalid type "a.A"
+m.py:4: error: Invalid type "a.A": Cannot use variable as type
 m.py:5: note: Revealed type is 'A?'
 m.py:7: note: Revealed type is 'A?'
 
 [case testAliasForwardFunctionDirect]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --new-semantic-analyzer
 from typing import Optional
 from b import B
 
@@ -8370,10 +8374,10 @@ def func(x): pass
 B = int()
 [out]
 ==
-main:5: error: Invalid type "b.B"
+main:5: error: Invalid type "b.B": Cannot use variable as type
 
 [case testAliasForwardFunctionIndirect]
-# flags: --ignore-missing-imports
+# flags: --ignore-missing-imports --new-semantic-analyzer
 from typing import Optional
 from a import A
 
@@ -8386,7 +8390,7 @@ def func(x): pass
 B = func
 [out]
 ==
-main:5: error: Invalid type "a.A"
+main:5: error: Invalid type "a.A": Cannot use variable as type
 
 [case testLiteralFineGrainedVarConversion]
 import mod

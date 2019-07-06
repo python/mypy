@@ -555,13 +555,14 @@ MypyFile:1(
         PassStmt:4()))))
 
 [case testInvalidBaseClass]
+# flags: --new-semantic-analyzer
 from typing import Any, Callable
 class A(None): pass
 class B(Any): pass
 class C(Callable[[], int]): pass
 [out]
-main:2: error: Invalid base class
-main:4: error: Invalid base class
+main:3: error: Invalid base class "None"
+main:5: error: Invalid base class "Callable"
 
 [case testTupleAsBaseClass]
 # flags: --new-semantic-analyzer

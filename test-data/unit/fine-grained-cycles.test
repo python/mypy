@@ -204,7 +204,7 @@ def h() -> None:
 
 [out]
 ==
-a.py:3: error: Invalid type "b.C"
+a.py:3: error: Invalid type "b.C": Cannot use function as type, use Callable[...] or a protocol instead
 b.py:7: error: C? has no attribute "g"
 
 -- TODO: More import cycle:
