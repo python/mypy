@@ -470,6 +470,6 @@ Miscellaneous
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
-``new_semantic_analyzer`` (bool, default False)
-    Enables the experimental new semantic analyzer.
+``new_semantic_analyzer`` (bool, default True)
+    Enables the new, improved, semantic analyzer.
     (See :ref:`The mypy command line <command-line>` for more information.)
