@@ -386,7 +386,7 @@ potentially problematic or redundant in some way.
     To help prevent mypy from generating spurious warnings, the "Statement is
     unreachable" warning will be silenced in exactly two cases:
 
-    1.  When the unreachable statement is a ``throw`` statement, is an
+    1.  When the unreachable statement is a ``raise`` statement, is an
         ``assert False`` statement, or calls a function that has the ``NoReturn``
         return type hint. In other words, when the unreachable statement
         throws an error or terminates the program in some way.
