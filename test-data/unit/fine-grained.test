@@ -118,7 +118,8 @@ class A: pass
 def A() -> None: pass
 [out]
 ==
-main:3: error: Invalid type "m.A": Cannot use function as type, use Callable[...] or a protocol instead
+main:3: error: Function "m.A" is not valid as a type
+main:3: note: Perhaps you need "Callable[...]" or a callback protocol?
 
 [case testClassChangedIntoFunction2]
 # flags: --new-semantic-analyzer
@@ -132,9 +133,11 @@ def A() -> None: pass
 [file n.py.3]
 [out]
 ==
-main:4: error: Invalid type "m.A": Cannot use function as type, use Callable[...] or a protocol instead
+main:4: error: Function "m.A" is not valid as a type
+main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
 ==
-main:4: error: Invalid type "m.A": Cannot use function as type, use Callable[...] or a protocol instead
+main:4: error: Function "m.A" is not valid as a type
+main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
 
 [case testAttributeTypeChanged]
 import m
@@ -5333,10 +5336,13 @@ def T() -> None:
 [out]
 ==
 main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Invalid type "a.T": Cannot use function as type, use Callable[...] or a protocol instead
+main:4: error: Function "a.T" is not valid as a type
+main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:6: error: Free type variable expected in Generic[...]
-main:7: error: Invalid type "a.T": Cannot use function as type, use Callable[...] or a protocol instead
-main:10: error: Invalid type "a.T": Cannot use function as type, use Callable[...] or a protocol instead
+main:7: error: Function "a.T" is not valid as a type
+main:7: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:10: error: Function "a.T" is not valid as a type
+main:10: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
@@ -5362,10 +5368,10 @@ import T
 ==
 ==
 main:4: error: "C" expects no type arguments, but 1 given
-main:4: error: Invalid type "T": Module cannot be used as type
+main:4: error: Module "T" is not valid as a type
 main:6: error: Free type variable expected in Generic[...]
-main:7: error: Invalid type "T": Module cannot be used as type
-main:10: error: Invalid type "T": Module cannot be used as type
+main:7: error: Module "T" is not valid as a type
+main:10: error: Module "T" is not valid as a type
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
@@ -5388,9 +5394,9 @@ import C
 [out]
 ==
 ==
-main:3: error: Invalid type "C": Module cannot be used as type
+main:3: error: Module "C" is not valid as a type
 main:5: error: Module not callable
-main:8: error: Invalid type "C": Module cannot be used as type
+main:8: error: Module "C" is not valid as a type
 
 [case testChangeTypeVarToTypeAlias]
 # flags: --new-semantic-analyzer
@@ -5439,9 +5445,9 @@ import D
 [out]
 ==
 ==
-main:3: error: Invalid type "D": Module cannot be used as type
+main:3: error: Module "D" is not valid as a type
 main:5: error: Module not callable
-main:8: error: Invalid type "D": Module cannot be used as type
+main:8: error: Module "D" is not valid as a type
 
 [case testChangeTypeAliasToModuleUnqualified]
 # flags: --new-semantic-analyzer
@@ -5466,9 +5472,9 @@ import D
 [out]
 ==
 ==
-main:3: error: Invalid type "D": Module cannot be used as type
+main:3: error: Module "D" is not valid as a type
 main:5: error: Module not callable
-main:8: error: Invalid type "D": Module cannot be used as type
+main:8: error: Module "D" is not valid as a type
 
 [case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
 import a
@@ -7847,15 +7853,15 @@ x = 1
 [out]
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
-a.py:7: error: Invalid type "a.T": Cannot use variable as type
+a.py:7: error: Variable "a.T" is not valid as a type
 a.py:10: error: Name 'bar' already defined on line 6
-a.py:11: error: Invalid type "a.T": Cannot use variable as type
+a.py:11: error: Variable "a.T" is not valid as a type
 ==
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
-a.py:7: error: Invalid type "a.T": Cannot use variable as type
+a.py:7: error: Variable "a.T" is not valid as a type
 a.py:10: error: Name 'bar' already defined on line 6
-a.py:11: error: Invalid type "a.T": Cannot use variable as type
+a.py:11: error: Variable "a.T" is not valid as a type
 
 [case testRefreshForWithTypeComment1]
 [file a.py]
@@ -8316,7 +8322,7 @@ def func(x): pass
 B = func
 [out]
 ==
-main:5: error: Invalid type "b.B": Cannot use variable as type
+main:5: error: Variable "b.B" is not valid as a type
 
 [case testNamedTupleForwardFunctionIndirect]
 # flags: --ignore-missing-imports --new-semantic-analyzer
@@ -8332,7 +8338,7 @@ def func(x): pass
 B = func
 [out]
 ==
-main:5: error: Invalid type "a.A": Cannot use variable as type
+main:5: error: Variable "a.A" is not valid as a type
 
 [case testNamedTupleForwardFunctionIndirectReveal]
 # flags: --ignore-missing-imports --new-semantic-analyzer
@@ -8358,9 +8364,9 @@ def func(x): pass
 B = func
 [out]
 ==
-m.py:4: error: Invalid type "a.A": Cannot use variable as type
+m.py:4: error: Variable "a.A" is not valid as a type
 ==
-m.py:4: error: Invalid type "a.A": Cannot use variable as type
+m.py:4: error: Variable "a.A" is not valid as a type
 m.py:5: note: Revealed type is 'A?'
 m.py:7: note: Revealed type is 'A?'
 
@@ -8375,7 +8381,7 @@ def func(x): pass
 B = int()
 [out]
 ==
-main:5: error: Invalid type "b.B": Cannot use variable as type
+main:5: error: Variable "b.B" is not valid as a type
 
 [case testAliasForwardFunctionIndirect]
 # flags: --ignore-missing-imports --new-semantic-analyzer
@@ -8391,7 +8397,7 @@ def func(x): pass
 B = func
 [out]
 ==
-main:5: error: Invalid type "a.A": Cannot use variable as type
+main:5: error: Variable "a.A" is not valid as a type
 
 [case testLiteralFineGrainedVarConversion]
 import mod

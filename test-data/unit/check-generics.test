@@ -980,7 +980,7 @@ class C:
         c = int
     def f(self, x: a) -> None: pass  # E: Variable "__main__.C.a" is not valid as a type
     def g(self, x: b) -> None: pass
-    def h(self, x: c) -> None: pass  # E: Variable "__main__.C.a" is not valid as a type
+    def h(self, x: c) -> None: pass  # E: Variable "__main__.C.c" is not valid as a type
     x: b
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [out]

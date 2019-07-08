@@ -303,8 +303,12 @@ B = NewType('B', List[T])
 [builtins fixtures/list.pyi]
 [out]
 main:4: error: Argument 2 to NewType(...) must be subclassable (got T?)
-main:4: error: Invalid type "__main__.T": Can only use bound type variables as types
-main:5: error: Invalid type "__main__.T": Can only use bound type variables as types
+main:4: error: Type variable "__main__.T" is unbound
+main:4: note: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
+main:4: note: (Hint: Use "T" in function signature to bind "T" inside a function)
+main:5: error: Type variable "__main__.T" is unbound
+main:5: note: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
+main:5: note: (Hint: Use "T" in function signature to bind "T" inside a function)
 
 [case testNewTypeRedefiningVariablesFails]
 # flags: --new-semantic-analyzer
