@@ -2555,7 +2555,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(index, SliceExpr):
                 return self.visit_tuple_slice_helper(left_type, index)
 
-            ns = self._get_values(index)
+            ns = self.try_getting_int_literals(index)
             if ns is not None:
                 out = []
                 for n in ns:
@@ -2587,19 +2587,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         stride = [None]  # type: Sequence[Optional[int]]
 
         if slic.begin_index:
-            begin_raw = self._get_values(slic.begin_index)
+            begin_raw = self.try_getting_int_literals(slic.begin_index)
             if begin_raw is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
             begin = begin_raw
 
         if slic.end_index:
-            end_raw = self._get_values(slic.end_index)
+            end_raw = self.try_getting_int_literals(slic.end_index)
             if end_raw is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
             end = end_raw
 
         if slic.stride:
-            stride_raw = self._get_values(slic.stride)
+            stride_raw = self.try_getting_int_literals(slic.stride)
             if stride_raw is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
             stride = stride_raw
@@ -2609,22 +2609,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             items.append(left_type.slice(b, e, s))
         return UnionType.make_simplified_union(items)
 
-    def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
-        index_type = self.accept(index)
-        expected_type = UnionType.make_union([self.named_type('builtins.int'),
-                                              self.named_type('builtins.slice')])
-        if not self.chk.check_subtype(index_type, expected_type, index,
-                                      message_registry.INVALID_TUPLE_INDEX_TYPE,
-                                      'actual type', 'expected type'):
-            return AnyType(TypeOfAny.from_error)
-        else:
-            union = UnionType.make_simplified_union(left_type.items)
-            if isinstance(index, SliceExpr):
-                return self.chk.named_generic_type('builtins.tuple', [union])
-            else:
-                return union
+    def try_getting_int_literals(self, index: Expression) -> Optional[List[int]]:
+        """If the given expression or type corresponds to an int literal
+        or a union of int literals, returns a list of the underlying ints.
+        Otherwise, returns None.
 
-    def _get_values(self, index: Expression) -> Optional[List[int]]:
+        Specifically, this function is guaranteed to return a list with
+        one or more ints if one one the following is true:
+
+        1. 'expr' is a IntExpr or a UnaryExpr backed by an IntExpr
+        2. 'typ' is a LiteralType containing an int
+        3. 'typ' is a UnionType containing only LiteralType of ints
+        """
         if isinstance(index, IntExpr):
             return [index.value]
         elif isinstance(index, UnaryExpr):
@@ -2646,6 +2642,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     return None
             return out
         return None
+
+    def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
+        index_type = self.accept(index)
+        expected_type = UnionType.make_union([self.named_type('builtins.int'),
+                                              self.named_type('builtins.slice')])
+        if not self.chk.check_subtype(index_type, expected_type, index,
+                                      message_registry.INVALID_TUPLE_INDEX_TYPE,
+                                      'actual type', 'expected type'):
+            return AnyType(TypeOfAny.from_error)
+        else:
+            union = UnionType.make_simplified_union(left_type.items)
+            if isinstance(index, SliceExpr):
+                return self.chk.named_generic_type('builtins.tuple', [union])
+            else:
+                return union
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
         if isinstance(index, (StrExpr, UnicodeExpr)):
