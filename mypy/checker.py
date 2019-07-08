@@ -4526,7 +4526,7 @@ def is_singleton_type(typ: Type) -> bool:
 
 
 def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> Type:
-    """Attempts to recursively any enum Instances with the given target_fullname
+    """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
     For example, if we have:
