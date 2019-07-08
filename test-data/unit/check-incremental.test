@@ -4521,12 +4521,12 @@ B = List[A]
 
 [builtins fixtures/list.pyi]
 [out]
-tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
+tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 [out2]
-tmp/other.pyi:2: error: Module 'lib' has no attribute 'A'
+tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
-tmp/a.py:3: note: Revealed type is 'builtins.list[builtins.list[Any]]'
+tmp/a.py:3: note: Revealed type is 'builtins.list[Any]'
 
 [case testRecursiveNamedTupleTypedDict]
 # https://github.com/python/mypy/issues/7125

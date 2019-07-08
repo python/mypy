@@ -5925,3 +5925,49 @@ class B:
 
 class C(A, B): pass
 [out]
+
+[case testAttributeDefOrder1]
+import a
+
+[file a.py]
+from b import C
+
+class D(C):
+    def g(self) -> None:
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+    def f(self) -> None:
+        reveal_type(self.x) # N: Revealed type is 'builtins.int'
+
+
+[file b.py]
+import a
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+[targets b, a, b.C.__init__, a.D.g, a.D.f, __main__]
+
+[case testAttributeDefOrder2]
+class D(C):
+    def g(self) -> None:
+        self.x = ''
+
+    def f(self) -> None:
+        # https://github.com/python/mypy/issues/7162
+        reveal_type(self.x) # N: Revealed type is 'builtins.str'
+
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+class E(C):
+    def g(self) -> None:
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+    def f(self) -> None:
+        reveal_type(self.x) # N: Revealed type is 'builtins.int'
+
+[targets __main__, __main__, __main__.D.g, __main__.D.f, __main__.C.__init__, __main__.E.g, __main__.E.f]

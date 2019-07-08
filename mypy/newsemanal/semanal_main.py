@@ -66,6 +66,9 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
+
+    The scc will be processed roughly in the order the modules are included
+    in the list.
     """
     patches = []  # type: Patches
     # Note that functions can't define new module-level attributes
@@ -151,6 +154,10 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
 
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:
     # Process top levels until everything has been bound.
+
+    # Reverse order of the scc so the first modules in the original list will be
+    # be processed first. This helps with performance.
+    scc = list(reversed(scc))
 
     # Initialize ASTs and symbol tables.
     for id in scc:

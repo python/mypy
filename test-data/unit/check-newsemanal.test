@@ -74,10 +74,11 @@ from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-# TODO: Could we generate an error here as well?
-from b import bad
+from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
-from a import bad # E: Module 'a' has no attribute 'bad'
+# TODO: Could we generate an error here as well?
+from a import bad
+[targets a, b, a, b, a, b, a, b, __main__]
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -225,6 +226,8 @@ class A:
 class C(B):
     c: int
 
+[targets b, a, b, a, __main__]
+
 [case testNewAnalyzerTypedDictClass]
 from mypy_extensions import TypedDict
 import a
@@ -298,6 +301,8 @@ from a import x
 
 def f(): pass
 
+[targets a, b, a, a.y, b.f, __main__]
+
 [case testNewAnalyzerRedefinitionAndDeferral1b]
 import a
 
@@ -322,6 +327,8 @@ if MYPY:  # Tweak processing order
     from a import x
 
 def f(): pass
+
+[targets b, a, b, a, b.f, a.y, __main__]
 
 [case testNewAnalyzerRedefinitionAndDeferral2a]
 import a
@@ -436,11 +443,11 @@ def main() -> None:
 import b
 [file a.py]
 import b
-x = b.x  # E: Cannot determine type of 'x'
+x = b.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
+         # E: Module has no attribute "x"
 [file b.py]
 import a
-x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
-         # E: Module has no attribute "x"
+x = a.x
 [builtins fixtures/module.pyi]
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
@@ -3081,4 +3088,4 @@ class Yes: ...
 import a
 
 def func() -> int: ...
-[targets a, b, a, b.func, a.func, __main__]
+[targets b, a, a, b.func, a.func, __main__]
