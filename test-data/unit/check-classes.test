@@ -5947,6 +5947,8 @@ class C:
     def __init__(self) -> None:
         self.x = 0
 
+[targets b, a, b.C.__init__, a.D.g, a.D.f, __main__]
+
 [case testAttributeDefOrder2]
 class D(C):
     def g(self) -> None:
@@ -5967,3 +5969,5 @@ class E(C):
 
     def f(self) -> None:
         reveal_type(self.x) # N: Revealed type is 'builtins.int'
+
+[targets __main__, __main__, __main__.D.g, __main__.D.f, __main__.C.__init__, __main__.E.g, __main__.E.f]

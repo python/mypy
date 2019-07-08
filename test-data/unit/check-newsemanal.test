@@ -78,6 +78,7 @@ from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
 # TODO: Could we generate an error here as well?
 from a import bad
+[targets a, b, a, b, a, b, a, b, __main__]
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -225,6 +226,8 @@ class A:
 class C(B):
     c: int
 
+[targets b, a, b, a, __main__]
+
 [case testNewAnalyzerTypedDictClass]
 from mypy_extensions import TypedDict
 import a
@@ -298,6 +301,8 @@ from a import x
 
 def f(): pass
 
+[targets a, b, a, a.y, b.f, __main__]
+
 [case testNewAnalyzerRedefinitionAndDeferral1b]
 import a
 
@@ -322,6 +327,8 @@ if MYPY:  # Tweak processing order
     from a import x
 
 def f(): pass
+
+[targets b, a, b, a, b.f, a.y, __main__]
 
 [case testNewAnalyzerRedefinitionAndDeferral2a]
 import a
