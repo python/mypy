@@ -2,6 +2,7 @@
 
 import itertools
 import fnmatch
+import sys
 from contextlib import contextmanager
 
 from typing import (
@@ -3535,21 +3536,34 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
         elif isinstance(node, ComparisonExpr):
-            # Check for `x is None` and `x is not None`.
+            operand_types = [coerce_to_literal(type_map[expr])
+                             for expr in node.operands if expr in type_map]
+
             is_not = node.operators == ['is not']
-            if any(is_literal_none(n) for n in node.operands) and (
-                    is_not or node.operators == ['is']):
+            if (is_not or node.operators == ['is']) and len(operand_types) == len(node.operands):
                 if_vars = {}  # type: TypeMap
                 else_vars = {}  # type: TypeMap
-                for expr in node.operands:
-                    if (literal(expr) == LITERAL_TYPE and not is_literal_none(expr)
-                            and expr in type_map):
+
+                for i, expr in enumerate(node.operands):
+                    var_type = operand_types[i]
+                    other_type = operand_types[1 - i]
+
+                    if literal(expr) == LITERAL_TYPE and is_singleton_type(other_type):
                         # This should only be true at most once: there should be
-                        # two elements in node.operands, and at least one of them
-                        # should represent a None.
-                        vartype = type_map[expr]
-                        none_typ = [TypeRange(NoneType(), is_upper_bound=False)]
-                        if_vars, else_vars = conditional_type_map(expr, vartype, none_typ)
+                        # exactly two elements in node.operands and if the 'other type' is
+                        # a singleton type, it by definition does not need to be narrowed:
+                        # it already has the most precise type possible so does not need to
+                        # be narrowed/included in the output map.
+                        #
+                        # TODO: Generalize this to handle the case where 'other_type' is
+                        # a union of singleton types.
+
+                        if isinstance(other_type, LiteralType) and other_type.is_enum_literal():
+                            fallback_name = other_type.fallback.type.fullname()
+                            var_type = try_expanding_enum_to_union(var_type, fallback_name)
+
+                        target_type = [TypeRange(other_type, is_upper_bound=False)]
+                        if_vars, else_vars = conditional_type_map(expr, var_type, target_type)
                         break
 
                 if is_not:
@@ -4489,3 +4503,78 @@ def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
 def is_private(node_name: str) -> bool:
     """Check if node is private to class definition."""
     return node_name.startswith('__') and not node_name.endswith('__')
+
+
+def is_singleton_type(typ: Type) -> bool:
+    """Returns 'true' if this type is a "singleton type" -- if there exists
+    exactly only one runtime value associated with this type.
+
+    That is, given two values 'a' and 'b' that have the same type 't',
+    'is_singleton_type(t)' returns True if and only if the expression 'a is b' is
+    always true.
+
+    Currently, this returns True when given NoneTypes and enum LiteralTypes.
+
+    Note that other kinds of LiteralTypes cannot count as singleton types. For
+    example, suppose we do 'a = 100000 + 1' and 'b = 100001'. It is not guaranteed
+    that 'a is b' will always be true -- some implementations of Python will end up
+    constructing two distinct instances of 100001.
+    """
+    # TODO: Also make this return True if the type is a bool LiteralType.
+    # Also make this return True if the type corresponds to ... (ellipsis) or NotImplemented?
+    return isinstance(typ, NoneType) or (isinstance(typ, LiteralType) and typ.is_enum_literal())
+
+
+def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> Type:
+    """Attempts to recursively expand any enum Instances with the given target_fullname
+    into a Union of all of its component LiteralTypes.
+
+    For example, if we have:
+
+        class Color(Enum):
+            RED = 1
+            BLUE = 2
+            YELLOW = 3
+
+        class Status(Enum):
+            SUCCESS = 1
+            FAILURE = 2
+            UNKNOWN = 3
+
+    ...and if we call `try_expanding_enum_to_union(Union[Color, Status], 'module.Color')`,
+    this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW, Status].
+    """
+    if isinstance(typ, UnionType):
+        new_items = [try_expanding_enum_to_union(item, target_fullname)
+                     for item in typ.items]
+        return UnionType.make_simplified_union(new_items)
+    elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname() == target_fullname:
+        new_items = []
+        for name, symbol in typ.type.names.items():
+            if not isinstance(symbol.node, Var):
+                continue
+            new_items.append(LiteralType(name, typ))
+        # SymbolTables are really just dicts, and dicts are guaranteed to preserve
+        # insertion order only starting with Python 3.7. So, we sort these for older
+        # versions of Python to help make tests deterministic.
+        #
+        # We could probably skip the sort for Python 3.6 since people probably run mypy
+        # only using CPython, but we might as well for the sake of full correctness.
+        if sys.version_info < (3, 7):
+            new_items.sort(key=lambda lit: lit.value)
+        return UnionType.make_simplified_union(new_items)
+    else:
+        return typ
+
+
+def coerce_to_literal(typ: Type) -> Type:
+    """Recursively converts any Instances that have a last_known_value into the
+    corresponding LiteralType.
+    """
+    if isinstance(typ, UnionType):
+        new_items = [coerce_to_literal(item) for item in typ.items]
+        return UnionType.make_simplified_union(new_items)
+    elif isinstance(typ, Instance) and typ.last_known_value:
+        return typ.last_known_value
+    else:
+        return typ
