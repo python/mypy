@@ -19,7 +19,8 @@ num = id + 1
 
 reveal_type(id)  # N: Revealed type is '__main__.UserId'
 reveal_type(num)  # N: Revealed type is 'builtins.int'
-[out]
+
+[targets __main__, __main__.UserId.__init__, __main__.name_by_id]
 
 [case testNewTypePEP484Example2]
 from typing import NewType

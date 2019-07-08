@@ -45,6 +45,7 @@ a.foo(B())
 class A:
     def foo(self, x: 'B') -> None: pass
 class B(A): pass
+[targets __main__, __main__, __main__.A.foo]
 [out]
 main:3: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
@@ -189,7 +190,7 @@ class A:
 class B(A):
     def f(self) -> None:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[out]
+[targets __main__, __main__.A.f, __main__.B.f]
 
 [case testAssignmentToAttributeInMultipleMethods]
 import typing
@@ -898,6 +899,7 @@ import typing
 class A:
     class B: pass
 A.B = None # E: Cannot assign to a type
+[targets __main__]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
 x = C.x # E: Cannot determine type of 'x'
@@ -921,6 +923,7 @@ class A(Generic[T]):
     x = None  # type: T
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int].x  # E: Access to generic instance variables via class is ambiguous
+[targets __main__]
 
 [case testAccessingNestedGenericClassAttribute]
 from typing import Generic, List, TypeVar, Union
@@ -938,14 +941,13 @@ A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 
 
 [case testClassWithinFunction]
-
 def f() -> None:
     class A:
         def g(self) -> None: pass
     a = None # type: A
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
-[out]
+[targets __main__, __main__.f]
 
 [case testConstructNestedClass]
 import typing
@@ -1119,6 +1121,7 @@ A().f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins fixtures/classmethod.pyi]
+[targets __main__, __main__.A.f]
 
 [case testBuiltinClassMethod]
 import typing
