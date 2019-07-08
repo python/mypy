@@ -16,6 +16,21 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassesCustomInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+    def __init__(self, a: str) -> None:
+        pass
+
+A('1')
+
+[builtins fixtures/list.pyi]
+
 [case testDataclassesBasicInheritance]
 # flags: --python-version 3.6
 from dataclasses import dataclass
