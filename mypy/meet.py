@@ -652,6 +652,7 @@ def typed_dict_mapping_overlap(left: Type, right: Type,
 
       - TypedDict(x=str, y=str, total=False) overlaps with Dict[str, str]
       - TypedDict(x=str, y=str, total=False) doesn't overlap with Dict[str, int]
+      - TypedDict(x=int, y=str, total=False) overlaps with Dict[str, str]
 
     As usual empty, dictionaries lie in a gray area. In general, List[str] and List[str]
     are considered non-overlapping despite empty list belongs to both. However, List[int]
