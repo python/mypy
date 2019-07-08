@@ -61,7 +61,9 @@ T = TypeVar('T')
 class A:
     x = None  # type: ClassVar[T]
 [out]
-main:5: error: Invalid type "__main__.T": Can only use bound type variables as types
+main:5: error: Type variable "__main__.T" is unbound
+main:5: note: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
+main:5: note: (Hint: Use "T" in function signature to bind "T" inside a function)
 
 [case testClassVarInFunctionArgs]
 from typing import ClassVar

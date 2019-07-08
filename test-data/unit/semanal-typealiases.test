@@ -403,13 +403,13 @@ MypyFile:1(
 # flags: --new-semantic-analyzer
 import typing
 A = [int, str]
-a = 1 # type: A  # E: Invalid type "__main__.A": Cannot use variable as type
+a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type
 
 [case testCantUseStringLiteralAsTypeAlias]
 # flags: --new-semantic-analyzer
 from typing import Union
 A = 'Union[int, str]'
-a = 1 # type: A  # E: Invalid type "__main__.A": Cannot use variable as type
+a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type
 
 [case testStringLiteralTypeAsAliasComponent]
 from typing import Union

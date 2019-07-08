@@ -891,7 +891,7 @@ d2t = 3j
 
 a2: a2t
 reveal_type(a2)      # N: Revealed type is 'Any'
-b2: b2t              # E: IVariable "__main__.b2t" is not valid as a type
+b2: b2t              # E: Variable "__main__.b2t" is not valid as a type
 c2: c2t
 reveal_type(c2)      # N: Revealed type is 'Any'
 d2: d2t              # E: Variable "__main__.d2t" is not valid as a type
@@ -928,7 +928,7 @@ c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid a
 [case testLiteralDisallowCollectionsTypeAlias]
 # flags: --new-semantic-analyzer
 from typing_extensions import Literal
-at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias: cannot interpret right hand side as a type
+at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias: expression is not a valid type
 bt = {"a": 1, "b": 2}
 a: at                           # E: Variable "__main__.at" is not valid as a type
 b: bt                           # E: Variable "__main__.bt" is not valid as a type
@@ -938,7 +938,7 @@ b: bt                           # E: Variable "__main__.bt" is not valid as a ty
 [case testLiteralDisallowCollectionsTypeAlias2]
 # flags: --new-semantic-analyzer
 from typing_extensions import Literal
-at = Literal[{1, 2, 3}]         # E: Invalid type alias: cannot interpret right hand side as a type
+at = Literal[{1, 2, 3}]         # E: Invalid type alias: expression is not a valid type
 bt = {1, 2, 3}
 a: at                           # E: Variable "__main__.at" is not valid as a type
 b: bt                           # E: Variable "__main__.bt" is not valid as a type
@@ -2739,7 +2739,7 @@ g: Literal[Color.GREEN]
 b: Literal[Color.BLUE]
 bad1: Literal[Color]         # E: Parameter 1 of Literal[...] is invalid
 bad2: Literal[Color.func]    # E: Function "__main__.Color.func" is not valid as a type \
-                             # N: Perhaps you need "Callable[...]" or a callback protocol?
+                             # N: Perhaps you need "Callable[...]" or a callback protocol? \
                              # E: Parameter 1 of Literal[...] is invalid
 bad3: Literal[Color.func()]  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 
