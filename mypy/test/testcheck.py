@@ -16,9 +16,10 @@ from mypy.test.data import (
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime
+    copy_and_fudge_mtime, assert_target_equivalence
 )
 from mypy.errors import CompileError
+from mypy.newsemanal.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
@@ -222,16 +223,28 @@ class TypeCheckSuite(DataSuite):
             if options.cache_dir != os.devnull:
                 self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
+            if options.new_semantic_analyzer:
+                name = 'targets'
+                if incremental_step:
+                    name += str(incremental_step + 1)
+                expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
+                actual = res.manager.processed_targets
+                # Skip the initial builtin cycle.
+                actual = [t for t in actual if not any(t.startswith(mod) for mod in core_modules)]
+                if expected is not None:
+                    assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                assert_module_equivalence(
-                    'rechecked' + suffix,
-                    testcase.expected_rechecked_modules.get(incremental_step - 1),
-                    res.manager.rechecked_modules)
-                assert_module_equivalence(
-                    'stale' + suffix,
-                    testcase.expected_stale_modules.get(incremental_step - 1),
-                    res.manager.stale_modules)
+                expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)
+                if expected_rechecked is not None:
+                    assert_module_equivalence(
+                        'rechecked' + suffix,
+                        expected_rechecked, res.manager.rechecked_modules)
+                expected_stale = testcase.expected_stale_modules.get(incremental_step - 1)
+                if expected_stale is not None:
+                    assert_module_equivalence(
+                        'stale' + suffix,
+                        expected_stale, res.manager.stale_modules)
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:

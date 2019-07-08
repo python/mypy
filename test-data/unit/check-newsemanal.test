@@ -3069,3 +3069,16 @@ class C:
             def f(self) -> None: pass
 
         Method()  # E: Cannot instantiate abstract class 'Method' with abstract attribute 'f'
+
+[case testModulesAndFuncsTargetsInCycle]
+import a
+[file a.py]
+import b
+defer: Yes
+def func() -> int: ...
+class Yes: ...
+[file b.py]
+import a
+
+def func() -> int: ...
+[targets a, b, a, b.func, a.func, __main__]
