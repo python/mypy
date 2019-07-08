@@ -1087,6 +1087,7 @@ class MessageBuilder:
     def need_annotation_for_var(self, node: SymbolNode, context: Context,
                                 python_version: Optional[Tuple[int, int]] = None) -> None:
         hint = ''
+        has_variable_annotations = not python_version or python_version >= (3, 6)
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
         if (python_version and isinstance(node, Var) and isinstance(node.type, PartialType) and
                 node.type.type and node.type.type.fullname() in reverse_builtin_aliases):
@@ -1095,11 +1096,17 @@ class MessageBuilder:
             type_dec = '<type>'
             if alias == 'Dict':
                 type_dec = '{}, {}'.format(type_dec, type_dec)
-            if python_version < (3, 6):
-                hint = ' (hint: "{} = ...  # type: {}[{}]")'.format(node.name(), alias, type_dec)
-            else:
+            if has_variable_annotations:
                 hint = ' (hint: "{}: {}[{}] = ...")'.format(node.name(), alias, type_dec)
-        self.fail("Need type annotation for '{}'{}".format(unmangle(node.name()), hint), context)
+            else:
+                hint = ' (hint: "{} = ...  # type: {}[{}]")'.format(node.name(), alias, type_dec)
+
+        if has_variable_annotations:
+            needed = 'annotation'
+        else:
+            needed = 'comment'
+
+        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name()), hint), context)
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
