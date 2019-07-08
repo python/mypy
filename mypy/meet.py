@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 
 from mypy.join import (
     is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
@@ -204,6 +204,10 @@ def is_overlapping_types(left: Type,
 
     if isinstance(left, TypedDictType) and isinstance(right, TypedDictType):
         return are_typed_dicts_overlapping(left, right, ignore_promotions=ignore_promotions)
+    elif typed_dict_mapping_pair(left, right):
+        # Overlaps between TypedDicts and Mappings require dedicated logic.
+        return typed_dict_mapping_overlap(left, right,
+                                          overlapping=_is_overlapping_types)
     elif isinstance(left, TypedDictType):
         left = left.fallback
     elif isinstance(right, TypedDictType):
@@ -608,3 +612,85 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
                            ret_type=meet_types(t.ret_type, s.ret_type),
                            fallback=fallback,
                            name=None)
+
+
+def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
+    """Is this a pair where one type is a TypedDict and another one is an instance of Mapping?
+
+    This case requires a precise/principled consideration because there are two use cases
+    that push the boundary the opposite ways: we need to avoid spurious overlaps to avoid
+    false positives for overloads, but we also need to avoid spuriously non-overlapping types
+    to avoid false positives with --strict-equality.
+    """
+    assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
+
+    if isinstance(left, TypedDictType):
+        _, other = left, right
+    elif isinstance(right, TypedDictType):
+        _, other = right, left
+    else:
+        return False
+    return isinstance(other, Instance) and other.type.has_base('typing.Mapping')
+
+
+def typed_dict_mapping_overlap(left: Type, right: Type,
+                               overlapping: Callable[[Type, Type], bool]) -> bool:
+    """Check if a TypedDict type is overlapping with a Mapping.
+
+    The basic logic here consists of two rules:
+
+    * A TypedDict with some required keys is overlapping with Mapping[str, <some type>]
+      if and only if every key type is overlapping with <some type>. For example:
+
+      - TypedDict(x=int, y=str) overlaps with Dict[str, Union[str, int]]
+      - TypedDict(x=int, y=str) doesn't overlap with Dict[str, int]
+
+      Note that any additional non-required keys can't change the above result.
+
+    * A TypedDict with no required keys overlaps with Mapping[str, <some type>] if and
+      only if at least one of key types overlaps with <some type>. For example:
+
+      - TypedDict(x=str, y=str, total=False) overlaps with Dict[str, str]
+      - TypedDict(x=str, y=str, total=False) doesn't overlap with Dict[str, int]
+      - TypedDict(x=int, y=str, total=False) overlaps with Dict[str, str]
+
+    As usual empty, dictionaries lie in a gray area. In general, List[str] and List[str]
+    are considered non-overlapping despite empty list belongs to both. However, List[int]
+    and List[<nothing>] are considered overlapping.
+
+    So here we follow the same logic: a TypedDict with no required keys is considered
+    non-overlapping with Mapping[str, <some type>], but is considered overlapping with
+    Mapping[<nothing>, <nothing>]. This way we avoid false positives for overloads, and also
+    avoid false positives for comparisons like SomeTypedDict == {} under --strict-equality.
+    """
+    assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
+
+    if isinstance(left, TypedDictType):
+        assert isinstance(right, Instance)
+        typed, other = left, right
+    else:
+        assert isinstance(left, Instance)
+        assert isinstance(right, TypedDictType)
+        typed, other = right, left
+
+    mapping = next(base for base in other.type.mro if base.fullname() == 'typing.Mapping')
+    other = map_instance_to_supertype(other, mapping)
+    key_type, value_type = other.args
+
+    # TODO: is there a cleaner way to get str_type here?
+    fallback = typed.as_anonymous().fallback
+    str_type = fallback.type.bases[0].args[0]  # typing._TypedDict inherits Mapping[str, object]
+
+    # Special case: a TypedDict with no required keys overlaps with an empty dict.
+    if isinstance(key_type, UninhabitedType) and isinstance(value_type, UninhabitedType):
+        return not typed.required_keys
+
+    if typed.required_keys:
+        if not overlapping(key_type, str_type):
+            return False
+        return all(overlapping(typed.items[k], value_type) for k in typed.required_keys)
+    else:
+        if not overlapping(key_type, str_type):
+            return False
+        non_required = set(typed.items.keys()) - typed.required_keys
+        return any(overlapping(typed.items[k], value_type) for k in non_required)
