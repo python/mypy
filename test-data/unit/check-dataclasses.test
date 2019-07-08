@@ -670,7 +670,9 @@ c.x = 1  # E: Property "x" defined in "C" is read-only
 import lib
 [file lib.py]
 from dataclasses import dataclass
-from other import *
+MYPY = False
+if MYPY:  # Force deferral
+    from other import *
 
 @dataclass
 class C:

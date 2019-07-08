@@ -572,6 +572,10 @@ class BuildManager:
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
         self.quickstart_state = read_quickstart_file(options, self.stdout)
+        # Fine grained targets (module top levels and top level functions) processed by
+        # the semantic analyzer, used only for testing. Currently used only by the new
+        # semantic analyzer.
+        self.processed_targets = []  # type: List[str]
 
     def dump_stats(self) -> None:
         self.log("Stats:")

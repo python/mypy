@@ -503,3 +503,33 @@ class C:
 ab: Union[A, B, C]
 reveal_type(ab.x)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
+
+[case testSelfTypeOnUnion]
+from typing import TypeVar, Union
+
+T = TypeVar('T')
+
+class A:
+    same: int
+
+class C:
+    def same(self: T) -> T: ...
+
+x: Union[A, C]
+reveal_type(x.same)  # N: Revealed type is 'Union[builtins.int, def () -> __main__.C*]'
+
+[case testSelfTypeOnUnionClassMethod]
+from typing import TypeVar, Union, Type
+
+T = TypeVar('T')
+
+class A:
+    same: int
+
+class C:
+    @classmethod
+    def same(cls: Type[T]) -> T: ...
+
+x: Union[A, C]
+reveal_type(x.same)  # N: Revealed type is 'Union[builtins.int, def () -> __main__.C*]'
+[builtins fixtures/classmethod.pyi]

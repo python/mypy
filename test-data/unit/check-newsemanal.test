@@ -74,10 +74,11 @@ from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-# TODO: Could we generate an error here as well?
-from b import bad
+from b import bad # E: Module 'b' has no attribute 'bad'
 [file b.py]
-from a import bad # E: Module 'a' has no attribute 'bad'
+# TODO: Could we generate an error here as well?
+from a import bad
+[targets a, b, a, b, a, b, a, b, __main__]
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -225,6 +226,8 @@ class A:
 class C(B):
     c: int
 
+[targets b, a, b, a, __main__]
+
 [case testNewAnalyzerTypedDictClass]
 from mypy_extensions import TypedDict
 import a
@@ -272,7 +275,35 @@ reveal_type(x) # N: Revealed type is 'TypedDict('__main__.T2', {'x': builtins.st
 y: T4
 reveal_type(y) # N: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
 
-[case testNewAnalyzerRedefinitionAndDeferral]
+[case testNewAnalyzerRedefinitionAndDeferral1a]
+import a
+
+[file a.py]
+MYPY = False
+if MYPY:
+    from b import x as y
+x = 0
+
+def y(): pass # E: Name 'y' already defined on line 4
+reveal_type(y) # N: Revealed type is 'builtins.int'
+
+y2 = y
+class y2: pass # E: Name 'y2' already defined on line 9
+reveal_type(y2) # N: Revealed type is 'builtins.int'
+
+y3, y4 = y, y
+if MYPY:  # Tweak processing order
+    from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
+reveal_type(y3) # N: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import x
+
+def f(): pass
+
+[targets a, b, a, a.y, b.f, __main__]
+
+[case testNewAnalyzerRedefinitionAndDeferral1b]
 import a
 
 [file a.py]
@@ -291,11 +322,28 @@ from b import f as y3 # E: Incompatible import of "y3" (imported name has type "
 reveal_type(y3) # N: Revealed type is 'builtins.int'
 
 [file b.py]
-from a import x
+MYPY = False
+if MYPY:  # Tweak processing order
+    from a import x
 
 def f(): pass
 
-[case testNewAnalyzerRedefinitionAndDeferral2]
+[targets b, a, b, a, b.f, a.y, __main__]
+
+[case testNewAnalyzerRedefinitionAndDeferral2a]
+import a
+
+[file a.py]
+MYPY = False
+if MYPY:  # Tweak processing order
+    from b import C as C2
+class C: pass
+class C2: pass # E: Name 'C2' already defined on line 4
+
+[file b.py]
+from a import C
+
+[case testNewAnalyzerRedefinitionAndDeferral2b]
 import a
 
 [file a.py]
@@ -304,7 +352,9 @@ class C: pass
 
 class C2: pass # E: Name 'C2' already defined on line 2
 [file b.py]
-from a import C
+MYPY = False
+if MYPY:  # Tweak processing order
+    from a import C
 
 [case testNewAnalyzerRedefinitionAndDeferral3]
 import a
@@ -320,7 +370,7 @@ reveal_type(b) # N: Revealed type is 'Any'
 [file b.py]
 from a import f
 
-[case testNewAnalyzerImportStarForwardRef]
+[case testNewAnalyzerImportStarForwardRef1]
 import a
 
 [file a.py]
@@ -328,6 +378,25 @@ x: A
 reveal_type(x) # N: Revealed type is 'b.A'
 
 from b import *
+
+class A: pass # E: Name 'A' already defined (possibly by an import)
+
+[file b.py]
+class A: pass
+MYPY = False
+if MYPY:  # Tweak processing order
+    from a import x
+
+[case testNewAnalyzerImportStarForwardRef2]
+import a
+
+[file a.py]
+x: A
+reveal_type(x) # N: Revealed type is 'b.A'
+
+MYPY = False
+if MYPY: # Tweak processing order
+    from b import *
 
 class A: pass # E: Name 'A' already defined (possibly by an import)
 
@@ -374,11 +443,11 @@ def main() -> None:
 import b
 [file a.py]
 import b
-x = b.x  # E: Cannot determine type of 'x'
+x = b.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
+         # E: Module has no attribute "x"
 [file b.py]
 import a
-x = a.x  # E: Cannot resolve attribute "x" (possible cyclic definition) \
-         # E: Module has no attribute "x"
+x = a.x
 [builtins fixtures/module.pyi]
 
 [case testNewAnalyzerMutuallyRecursiveOverloadedFunctions]
@@ -993,6 +1062,8 @@ class C: pass
 import a
 from b import C
 
+[targets c, b, a, c, b, __main__]
+
 [case testNewAnalyzerImportOverExistingInCycle]
 import a
 [file a.py]
@@ -1005,15 +1076,30 @@ import a
 class C(B): ...
 class B: ...
 
-[case testNewAnalyzerImportOverExistingInCycleStar]
+[case testNewAnalyzerImportOverExistingInCycleStar1]
 import a
 [file a.py]
 C = 1
-from b import *  # E: Name 'C' already defined on line 1 \
-                 # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+MYPY = False
+if MYPY:  # Tweak processing ordre
+    from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
 import a
+
+class C(B): ...
+class B: ...
+
+[case testNewAnalyzerImportOverExistingInCycleStar2]
+import a
+[file a.py]
+C = 1
+from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+
+[file b.py]
+MYPY = False
+if MYPY:  # Tweak processing order
+    import a
 
 class C(B): ...
 class B: ...
@@ -2469,7 +2555,8 @@ class C:
     def str(self) -> str:
         return 0 # E: Incompatible return value type (got "int", expected "str")
 
-    zz: str # E: Invalid type "__main__.C.str"
+    zz: str # E: Function "__main__.C.str" is not valid as a type \
+            # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 reveal_type(C().x()) # N: Revealed type is 'builtins.int'
 reveal_type(C().y()) # N: Revealed type is 'builtins.int'
@@ -2494,7 +2581,8 @@ class C:
     def str(self) -> str:
         return 0 # E: Incompatible return value type (got "int", expected "str")
 
-    zz: str # E: Invalid type "__main__.C.str"
+    zz: str # E: Function "__main__.C.str" is not valid as a type \
+            # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 reveal_type(C().x()) # N: Revealed type is 'builtins.int'
 reveal_type(C().y()) # N: Revealed type is 'builtins.int'
@@ -2992,3 +3080,36 @@ class C:
             def f(self) -> None: pass
 
         Method()  # E: Cannot instantiate abstract class 'Method' with abstract attribute 'f'
+
+[case testModulesAndFuncsTargetsInCycle]
+import a
+[file a.py]
+import b
+defer: Yes
+def func() -> int: ...
+class Yes: ...
+[file b.py]
+import a
+
+def func() -> int: ...
+[targets b, a, a, b.func, a.func, __main__]
+
+[case testNewAnalyzerForwardReferenceInFunction]
+def f(x: 'A') -> 'A':
+    return A()
+
+class A:
+    pass
+[targets __main__, __main__.f]
+
+[case testNewAnalyzerSimpleImportStarNoDeferral]
+from m import *
+
+x: A
+f()
+
+[file m.py]
+class A: pass
+def f() -> None: pass
+
+[targets m, m.f, __main__]

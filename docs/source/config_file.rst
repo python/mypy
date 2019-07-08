@@ -277,6 +277,10 @@ section of the command line docs.
     Shows a warning when returning a value with type ``Any`` from a function
     declared with a non- ``Any`` return type.
 
+``warn_unreachable`` (bool, default False)
+    Shows a warning when encountering any code inferred to be unreachable or
+    redundant after performing type analysis.
+
 .. _config-file-suppressing-errors:
 
 Suppressing errors

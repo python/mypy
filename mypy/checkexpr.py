@@ -29,7 +29,8 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
+    SYMBOL_FUNCBASE_TYPES
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -157,6 +158,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result = None  # type: Optional[Type]
         node = e.node
+
+        if isinstance(e, NameExpr) and e.is_special_form:
+            # A special form definition, nothing to check here.
+            return AnyType(TypeOfAny.special_form)
+
         if isinstance(node, Var):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
@@ -672,7 +678,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disable_errors()
             item = analyze_member_access(member, typ, e, False, False, False,
                                          self.msg, original_type=object_type, chk=self.chk,
-                                         in_literal_context=self.is_literal_context())
+                                         in_literal_context=self.is_literal_context(),
+                                         self_type=typ)
             self.msg.enable_errors()
             narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
             if narrowed is None:
@@ -3955,9 +3962,10 @@ def is_expr_literal_type(node: Expression) -> bool:
 def custom_equality_method(typ: Type) -> bool:
     """Does this type have a custom __eq__() method?"""
     if isinstance(typ, Instance):
-        method = typ.type.get_method('__eq__')
-        if method and method.info:
-            return not method.info.fullname().startswith('builtins.')
+        method = typ.type.get('__eq__')
+        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
+            if method.node.info:
+                return not method.node.info.fullname().startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
         return any(custom_equality_method(t) for t in typ.items)

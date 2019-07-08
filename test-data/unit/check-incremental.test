@@ -2180,6 +2180,7 @@ tmp/b.py:1: error: Module 'c' has no attribute 'x'
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
 
 [case testCacheDeletedAfterErrorsFound2]
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 from b import x
@@ -2195,9 +2196,11 @@ from b import x
 1 + 1
 [out]
 [out2]
-tmp/b.py:2: error: Invalid type "c.C"
+tmp/b.py:2: error: Function "c.C" is not valid as a type
+tmp/b.py:2: note: Perhaps you need "Callable[...]" or a callback protocol?
 [out3]
-tmp/b.py:2: error: Invalid type "c.C"
+tmp/b.py:2: error: Function "c.C" is not valid as a type
+tmp/b.py:2: note: Perhaps you need "Callable[...]" or a callback protocol?
 
 [case testCacheDeletedAfterErrorsFound3]
 import a
@@ -4497,28 +4500,35 @@ tmp/a.py:3: note: Revealed type is 'builtins.list[builtins.list[builtins.list[An
 [case testRecursiveAliasImported2]
 # flags: --new-semantic-analyzer
 import a
+
 [file a.py]
 import lib
 x: int
+
 [file a.py.2]
 import lib
 x: lib.A
 reveal_type(x)
+
 [file lib.pyi]
 from typing import List
-from other import B
+MYPY = False
+if MYPY:  # Force processing order
+    from other import B
 A = List[B]  # type: ignore
+
 [file other.pyi]
 from typing import List
 from lib import A
 B = List[A]
+
 [builtins fixtures/list.pyi]
 [out]
+tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
-tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
 [out2]
+tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
-tmp/lib.pyi:2: error: Module 'other' has no attribute 'B'
 tmp/a.py:3: note: Revealed type is 'builtins.list[Any]'
 
 [case testRecursiveNamedTupleTypedDict]

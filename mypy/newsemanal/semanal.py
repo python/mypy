@@ -203,7 +203,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     # Note that missing names are per module, _not_ per namespace. This means that e.g.
     # a missing name at global scope will block adding same name at a class scope.
     # This should not affect correctness and is purely a performance issue,
-    # since it can cause unnecessary deferrals.
+    # since it can cause unnecessary deferrals. These are represented as
+    # PlaceholderNodes in the symbol table. We use this to ensure that the first
+    # definition takes precedence even if it's incomplete.
+    #
     # Note that a star import adds a special name '*' to the set, this blocks
     # adding _any_ names in the current file.
     missing_names = None  # type: Set[str]
@@ -1345,6 +1348,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             info.set_line(defn)
         return info
 
+    def get_name_repr_of_expr(self, expr: Expression) -> Optional[str]:
+        """Try finding a short simplified textual representation of a base class expression."""
+        if isinstance(expr, NameExpr):
+            return expr.name
+        if isinstance(expr, MemberExpr):
+            return get_member_expr_fullname(expr)
+        if isinstance(expr, IndexExpr):
+            return self.get_name_repr_of_expr(expr.base)
+        if isinstance(expr, CallExpr):
+            return self.get_name_repr_of_expr(expr.callee)
+        return None
+
     def analyze_base_classes(
             self,
             base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[Type, Expression]],
@@ -1368,7 +1383,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             try:
                 base = self.expr_to_analyzed_type(base_expr, allow_placeholder=True)
             except TypeTranslationError:
-                self.fail('Invalid base class', base_expr)
+                name = self.get_name_repr_of_expr(base_expr)
+                if isinstance(base_expr, CallExpr):
+                    msg = 'Unsupported dynamic base class'
+                else:
+                    msg = 'Invalid base class'
+                if name:
+                    msg += ' "{}"'.format(name)
+                self.fail(msg, base_expr)
                 is_error = True
                 continue
             if base is None:
@@ -1406,7 +1428,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
             else:
-                self.fail('Invalid base class', base_expr)
+                msg = 'Invalid base class'
+                name = self.get_name_repr_of_expr(base_expr)
+                if name:
+                    msg += ' "{}"'.format(name)
+                self.fail(msg, base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
@@ -1418,7 +1444,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                    context=base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
-        if (not base_types and defn.fullname != 'builtins.object'):
+        if not base_types and defn.fullname != 'builtins.object':
             base_types.append(self.object_type())
 
         info.bases = base_types
@@ -1702,7 +1728,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.final_iteration:
                 self.report_missing_module_attribute(module_id, id, imported_id, context)
                 return
-            self.record_incomplete_ref()
+            else:
+                # This might become a type.
+                self.mark_incomplete(imported_id, node.node, becomes_typeinfo=True)
         existing_symbol = self.globals.get(imported_id)
         if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
                 not isinstance(node.node, PlaceholderNode)):
@@ -2408,11 +2436,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
-                placeholder = PlaceholderNode(self.qualified_name(lvalue.name),
-                                              rvalue,
-                                              s.line,
-                                              becomes_typeinfo=True)
-                self.add_symbol(lvalue.name, placeholder, s)
+                self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
                 return True
         self.add_type_alias_deps(depends_on)
         # In addition to the aliases used, we add deps on unbound
@@ -3185,7 +3209,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
-                self.fail('Invalid type comment', s)
+                self.fail('Invalid type comment: "with" statement has no targets', s)
             elif len(actual_targets) == 1:
                 # We have one target and one type
                 types = [s.unanalyzed_type]
@@ -3195,10 +3219,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     types = s.unanalyzed_type.items.copy()
                 else:
                     # But it's the wrong number of items
-                    self.fail('Incompatible number of types for `with` targets', s)
+                    self.fail('Incompatible number of types for "with" targets', s)
             else:
                 # We have multiple targets and one type
-                self.fail('Multiple types expected for multiple `with` targets', s)
+                self.fail('Multiple types expected for multiple "with" targets', s)
 
         new_types = []  # type: List[Type]
         for e, n in zip(s.expr, s.target):
@@ -4139,6 +4163,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             # need to do anything.
             old = existing.node
             new = symbol.node
+            if isinstance(new, PlaceholderNode):
+                # We don't know whether this is okay. Let's wait until the next iteration.
+                return False
             if not is_same_symbol(old, new):
                 if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
@@ -4262,10 +4289,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         """Defer current analysis target to be analyzed again.
 
         This must be called if something in the current target is
-        incomplete or has a placeholder node.
+        incomplete or has a placeholder node. However, this must *not*
+        be called during the final analysis iteration! Instead, an error
+        should be generated. Often 'process_placeholder' is a good
+        way to either defer or generate an error.
 
-        This must not be called during the final analysis iteration!
-        Instead, an error should be generated.
+        NOTE: Some methods, such as 'anal_type', 'mark_incomplete' and
+              'record_incomplete_ref', call this implicitly, or when needed.
+              They are usually preferable to a direct defer() call.
         """
         assert not self.final_iteration, 'Must not defer during final iteration'
         self.deferred = True
@@ -4302,7 +4333,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.defer(node)
         if name == '*':
             self.incomplete = True
-        elif name not in self.current_symbol_table() and not self.is_global_or_nonlocal(name):
+        elif not self.is_global_or_nonlocal(name):
             fullname = self.qualified_name(name)
             assert self.statement
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
@@ -4805,10 +4836,12 @@ def is_valid_replacement(old: SymbolTableNode, new: SymbolTableNode) -> bool:
     2. Placeholder that isn't known to become type replaced with a
        placeholder that can become a type
     """
-    return (isinstance(old.node, PlaceholderNode)
-            and (not isinstance(new.node, PlaceholderNode)
-                 or (not old.node.becomes_typeinfo
-                     and new.node.becomes_typeinfo)))
+    if isinstance(old.node, PlaceholderNode):
+        if isinstance(new.node, PlaceholderNode):
+            return not old.node.becomes_typeinfo and new.node.becomes_typeinfo
+        else:
+            return True
+    return False
 
 
 def is_same_symbol(a: Optional[SymbolNode], b: Optional[SymbolNode]) -> bool:

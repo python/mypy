@@ -66,6 +66,9 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
+
+    The scc will be processed roughly in the order the modules are included
+    in the list.
     """
     patches = []  # type: Patches
     # Note that functions can't define new module-level attributes
@@ -152,6 +155,10 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
 def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None:
     # Process top levels until everything has been bound.
 
+    # Reverse order of the scc so the first modules in the original list will be
+    # be processed first. This helps with performance.
+    scc = list(reversed(scc))
+
     # Initialize ASTs and symbol tables.
     for id in scc:
         state = graph[id]
@@ -215,7 +222,11 @@ def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
         # order of definitions on self.
-        targets = sorted(get_all_leaf_targets(tree), key=lambda x: x[1].line)
+        #
+        # There can be multiple generated methods per line. Use target
+        # name as the second sort key to get a repeatable sort order on
+        # Python 3.5, which doesn't preserve dictionary order.
+        targets = sorted(get_all_leaf_targets(tree), key=lambda x: (x[1].line, x[0]))
         for target, node, active_type in targets:
             assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
             process_top_level_function(analyzer,
@@ -297,6 +308,7 @@ def semantic_analyze_target(target: str,
     - was some definition incomplete
     - were any new names were defined (or placeholders replaced)
     """
+    state.manager.processed_targets.append(target)
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.new_semantic_analyzer

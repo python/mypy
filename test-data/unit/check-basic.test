@@ -325,13 +325,14 @@ import e
 1+'no'  # E: Unsupported operand types for + ("int" and "str")
 
 [case testModuleAsTypeNoCrash]
+# flags: --new-semantic-analyzer
 import mock
 from typing import Union
 
 class A: ...
 class B: ...
 
-x: Union[mock, A]  # E: Invalid type "mock"
+x: Union[mock, A]  # E: Module "mock" is not valid as a type
 
 if isinstance(x, B):
     pass
@@ -340,13 +341,14 @@ if isinstance(x, B):
 [out]
 
 [case testModuleAsTypeNoCrash2]
+# flags: --new-semantic-analyzer
 import mock
 from typing import overload, Any, Union
 
 @overload
 def f(x: int) -> int: ...
 @overload
-def f(x: str) -> Union[mock, str]: ...  # E: Invalid type "mock"
+def f(x: str) -> Union[mock, str]: ...  # E: Module "mock" is not valid as a type
 def f(x):
     pass
 

@@ -246,7 +246,7 @@ def bar(x):
 Total      1      13     92.31%
 
 [case testAnyExprReportHigherKindedTypesAreNotAny]
-# cmd: mypy --no-new-semantic-analyzer --any-exprs-report report i.py
+# cmd: mypy --new-semantic-analyzer --any-exprs-report report i.py
 
 [file i.py]
 from enum import Enum
@@ -283,9 +283,9 @@ def g(m: Movie) -> Movie:
 [outfile report/any-exprs.txt]
  Name   Anys   Exprs   Coverage
 ---------------------------------
-    i      0      16    100.00%
+    i      0      14    100.00%
 ---------------------------------
-Total      0      16    100.00%
+Total      0      14    100.00%
 
 
 [case testAnyExpressionsReportTypesOfAny]
@@ -382,7 +382,7 @@ empty = False
       1       1      0      0 a
 
 [case testAnyExprReportIgnoresSpecialForms]
-# cmd: mypy --no-new-semantic-analyzer --any-exprs-report report i.py j.py k.py l.py
+# cmd: mypy --any-exprs-report report i.py j.py k.py l.py
 
 [file i.py]
 async def some_function() -> None:

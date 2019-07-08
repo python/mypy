@@ -1156,7 +1156,9 @@ C(0).total = 1  # E: Property "total" defined in "C" is read-only
 import lib
 [file lib.py]
 import attr
-from other import *
+MYPY = False
+if MYPY:  # Force deferral
+    from other import *
 
 @attr.s
 class C:

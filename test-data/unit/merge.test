@@ -770,6 +770,7 @@ TypeVarExpr:2: Any
 NameExpr:4: T`1(upper_bound=target.A[Any]<1>)
 
 [case testUnboundType_types]
+# flags: --new-semantic-analyzer
 import target
 [file target.py]
 from typing import TypeVar, Generic
@@ -782,7 +783,7 @@ class A: pass
 foo: int
 x: foo[A]
 [out]
-tmp/target.py:4: error: Invalid type "target.foo"
+tmp/target.py:4: error: Variable "target.foo" is not valid as a type
 ## target
 TempNode:-1: Any
 TempNode:-1: Any

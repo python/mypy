@@ -1605,7 +1605,7 @@ class UnionType(Type):
             return UninhabitedType()
 
     @staticmethod
-    def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+    def make_simplified_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
         """Build union type with redundant union items removed.
 
         If only a single item remains, this may return a non-union type.
@@ -1623,6 +1623,7 @@ class UnionType(Type):
         """
         # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
         #       type operations are not static methods, so this is inconsistent.
+        items = list(items)
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -1640,7 +1641,7 @@ class UnionType(Type):
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if (i != j and is_proper_subtype(tj, ti)):
+                if i != j and is_proper_subtype(tj, ti):
                     # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true

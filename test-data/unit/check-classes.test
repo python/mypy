@@ -45,6 +45,7 @@ a.foo(B())
 class A:
     def foo(self, x: 'B') -> None: pass
 class B(A): pass
+[targets __main__, __main__, __main__.A.foo]
 [out]
 main:3: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
@@ -189,7 +190,7 @@ class A:
 class B(A):
     def f(self) -> None:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[out]
+[targets __main__, __main__.A.f, __main__.B.f]
 
 [case testAssignmentToAttributeInMultipleMethods]
 import typing
@@ -898,6 +899,7 @@ import typing
 class A:
     class B: pass
 A.B = None # E: Cannot assign to a type
+[targets __main__]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
 x = C.x # E: Cannot determine type of 'x'
@@ -921,6 +923,7 @@ class A(Generic[T]):
     x = None  # type: T
 A.x  # E: Access to generic instance variables via class is ambiguous
 A[int].x  # E: Access to generic instance variables via class is ambiguous
+[targets __main__]
 
 [case testAccessingNestedGenericClassAttribute]
 from typing import Generic, List, TypeVar, Union
@@ -938,14 +941,13 @@ A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 
 
 [case testClassWithinFunction]
-
 def f() -> None:
     class A:
         def g(self) -> None: pass
     a = None # type: A
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
-[out]
+[targets __main__, __main__.f]
 
 [case testConstructNestedClass]
 import typing
@@ -1119,6 +1121,7 @@ A().f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins fixtures/classmethod.pyi]
+[targets __main__, __main__.A.f]
 
 [case testBuiltinClassMethod]
 import typing
@@ -4833,12 +4836,13 @@ reveal_type(Arc1[MyDestr]())  # N: Revealed type is '__main__.Arc1[__main__.MyDe
 [typing fixtures/typing-full.pyi]
 
 [case testSixMetaclassErrors]
+# flags: --new-semantic-analyzer
 import six
 class M(type): pass
 class A(object): pass
 def f() -> type: return M
-class C1(six.with_metaclass(M), object): pass  # E: Invalid base class
-class C2(C1, six.with_metaclass(M)): pass  # E: Invalid base class
+class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
+class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
 @six.add_metaclass(A)  # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]" \
                        # E: Metaclasses not inheriting from 'type' are not supported
@@ -5925,3 +5929,49 @@ class B:
 
 class C(A, B): pass
 [out]
+
+[case testAttributeDefOrder1]
+import a
+
+[file a.py]
+from b import C
+
+class D(C):
+    def g(self) -> None:
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+    def f(self) -> None:
+        reveal_type(self.x) # N: Revealed type is 'builtins.int'
+
+
+[file b.py]
+import a
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+[targets b, a, b.C.__init__, a.D.g, a.D.f, __main__]
+
+[case testAttributeDefOrder2]
+class D(C):
+    def g(self) -> None:
+        self.x = ''
+
+    def f(self) -> None:
+        # https://github.com/python/mypy/issues/7162
+        reveal_type(self.x) # N: Revealed type is 'builtins.str'
+
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+class E(C):
+    def g(self) -> None:
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+    def f(self) -> None:
+        reveal_type(self.x) # N: Revealed type is 'builtins.int'
+
+[targets __main__, __main__, __main__.D.g, __main__.D.f, __main__.C.__init__, __main__.E.g, __main__.E.f]
