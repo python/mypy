@@ -4536,8 +4536,13 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> Type:
             BLUE = 2
             YELLOW = 3
 
-    ...and if we call `try_expanding_enum_to_union(color_instance, 'module.Color')`,
-    this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW].
+        class Status(Enum):
+            SUCCESS = 1
+            FAILURE = 2
+            UNKNOWN = 3
+
+    ...and if we call `try_expanding_enum_to_union(Union[Color, Status], 'module.Color')`,
+    this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW, Status].
     """
     if isinstance(typ, UnionType):
         new_items = [try_expanding_enum_to_union(item, target_fullname)
