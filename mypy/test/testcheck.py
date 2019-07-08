@@ -230,7 +230,9 @@ class TypeCheckSuite(DataSuite):
                 expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
                 actual = res.manager.processed_targets
                 # Skip the initial builtin cycle.
-                actual = [t for t in actual if not any(t.startswith(mod) for mod in core_modules)]
+                actual = [t for t in actual
+                          if not any(t.startswith(mod)
+                                     for mod in core_modules + ['mypy_extensions'])]
                 if expected is not None:
                     assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:

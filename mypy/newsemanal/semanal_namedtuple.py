@@ -437,6 +437,7 @@ class NamedTupleAnalyzer:
                 v._fullname = func._fullname
                 func.is_decorated = True
                 dec = Decorator(func, [NameExpr('classmethod')], v)
+                dec.line = line
                 sym = SymbolTableNode(MDEF, dec)
             else:
                 sym = SymbolTableNode(MDEF, func)

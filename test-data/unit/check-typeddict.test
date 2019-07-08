@@ -9,6 +9,7 @@ reveal_type(p)  # N: Revealed type is 'TypedDict('__main__.Point', {'x': builtin
 reveal_type(p.values()) # N: Revealed type is 'typing.Iterable[builtins.object*]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+[targets sys, __main__]
 
 [case testCanCreateTypedDictInstanceWithDictCall]
 from mypy_extensions import TypedDict

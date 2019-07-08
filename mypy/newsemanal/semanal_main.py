@@ -222,7 +222,11 @@ def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
         # order of definitions on self.
-        targets = sorted(get_all_leaf_targets(tree), key=lambda x: x[1].line)
+        #
+        # There can be multiple generated methods per line. Use target
+        # name as the second sort key to get a repeatable sort order on
+        # Python 3.5, which doesn't preserve dictionary order.
+        targets = sorted(get_all_leaf_targets(tree), key=lambda x: (x[1].line, x[0]))
         for target, node, active_type in targets:
             assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
             process_top_level_function(analyzer,

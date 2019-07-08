@@ -4,6 +4,7 @@ i = int
 def f(x: i) -> None: pass
 f(1)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+[targets __main__, __main__.f]
 
 [case testUnionTypeAlias]
 from typing import Union
@@ -12,6 +13,7 @@ def f(x: U) -> None: pass
 f(1)
 f('')
 f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+[targets __main__, __main__.f]
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -19,6 +21,7 @@ T = Tuple[int, str]
 def f(x: T) -> None: pass
 f((1, 'x'))
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
+[targets __main__, __main__.f]
 
 [case testCallableTypeAlias]
 from typing import Callable
@@ -26,6 +29,7 @@ A = Callable[[int], None]
 f = None  # type: A
 f(1)
 f('') # E: Argument 1 has incompatible type "str"; expected "int"
+[targets __main__]
 
 [case testListTypeAlias]
 from typing import List
@@ -34,7 +38,7 @@ def f(x: A) -> None: pass
 f([1])
 f(['x']) # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
-[out]
+[targets __main__, __main__.f]
 
 [case testAnyTypeAlias]
 from typing import Any

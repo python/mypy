@@ -1062,6 +1062,8 @@ class C: pass
 import a
 from b import C
 
+[targets c, b, a, c, b, __main__]
+
 [case testNewAnalyzerImportOverExistingInCycle]
 import a
 [file a.py]
@@ -3091,3 +3093,23 @@ import a
 
 def func() -> int: ...
 [targets b, a, a, b.func, a.func, __main__]
+
+[case testNewAnalyzerForwardReferenceInFunction]
+def f(x: 'A') -> 'A':
+    return A()
+
+class A:
+    pass
+[targets __main__, __main__.f]
+
+[case testNewAnalyzerSimpleImportStarNoDeferral]
+from m import *
+
+x: A
+f()
+
+[file m.py]
+class A: pass
+def f() -> None: pass
+
+[targets m, m.f, __main__]
