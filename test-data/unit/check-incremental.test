@@ -2180,6 +2180,7 @@ tmp/b.py:1: error: Module 'c' has no attribute 'x'
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
 
 [case testCacheDeletedAfterErrorsFound2]
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 from b import x
@@ -2195,9 +2196,11 @@ from b import x
 1 + 1
 [out]
 [out2]
-tmp/b.py:2: error: Invalid type "c.C"
+tmp/b.py:2: error: Function "c.C" is not valid as a type
+tmp/b.py:2: note: Perhaps you need "Callable[...]" or a callback protocol?
 [out3]
-tmp/b.py:2: error: Invalid type "c.C"
+tmp/b.py:2: error: Function "c.C" is not valid as a type
+tmp/b.py:2: note: Perhaps you need "Callable[...]" or a callback protocol?
 
 [case testCacheDeletedAfterErrorsFound3]
 import a

@@ -2553,7 +2553,8 @@ class C:
     def str(self) -> str:
         return 0 # E: Incompatible return value type (got "int", expected "str")
 
-    zz: str # E: Invalid type "__main__.C.str"
+    zz: str # E: Function "__main__.C.str" is not valid as a type \
+            # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 reveal_type(C().x()) # N: Revealed type is 'builtins.int'
 reveal_type(C().y()) # N: Revealed type is 'builtins.int'
@@ -2578,7 +2579,8 @@ class C:
     def str(self) -> str:
         return 0 # E: Incompatible return value type (got "int", expected "str")
 
-    zz: str # E: Invalid type "__main__.C.str"
+    zz: str # E: Function "__main__.C.str" is not valid as a type \
+            # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 reveal_type(C().x()) # N: Revealed type is 'builtins.int'
 reveal_type(C().y()) # N: Revealed type is 'builtins.int'

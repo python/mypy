@@ -1348,6 +1348,18 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             info.set_line(defn)
         return info
 
+    def get_name_repr_of_expr(self, expr: Expression) -> Optional[str]:
+        """Try finding a short simplified textual representation of a base class expression."""
+        if isinstance(expr, NameExpr):
+            return expr.name
+        if isinstance(expr, MemberExpr):
+            return get_member_expr_fullname(expr)
+        if isinstance(expr, IndexExpr):
+            return self.get_name_repr_of_expr(expr.base)
+        if isinstance(expr, CallExpr):
+            return self.get_name_repr_of_expr(expr.callee)
+        return None
+
     def analyze_base_classes(
             self,
             base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[Type, Expression]],
@@ -1371,7 +1383,14 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             try:
                 base = self.expr_to_analyzed_type(base_expr, allow_placeholder=True)
             except TypeTranslationError:
-                self.fail('Invalid base class', base_expr)
+                name = self.get_name_repr_of_expr(base_expr)
+                if isinstance(base_expr, CallExpr):
+                    msg = 'Unsupported dynamic base class'
+                else:
+                    msg = 'Invalid base class'
+                if name:
+                    msg += ' "{}"'.format(name)
+                self.fail(msg, base_expr)
                 is_error = True
                 continue
             if base is None:
@@ -1409,7 +1428,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
             else:
-                self.fail('Invalid base class', base_expr)
+                msg = 'Invalid base class'
+                name = self.get_name_repr_of_expr(base_expr)
+                if name:
+                    msg += ' "{}"'.format(name)
+                self.fail(msg, base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
@@ -1421,7 +1444,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                    context=base_expr)
 
         # Add 'object' as implicit base if there is no other base class.
-        if (not base_types and defn.fullname != 'builtins.object'):
+        if not base_types and defn.fullname != 'builtins.object':
             base_types.append(self.object_type())
 
         info.bases = base_types
@@ -3186,7 +3209,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
-                self.fail('Invalid type comment', s)
+                self.fail('Invalid type comment: "with" statement has no targets', s)
             elif len(actual_targets) == 1:
                 # We have one target and one type
                 types = [s.unanalyzed_type]
@@ -3196,10 +3219,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     types = s.unanalyzed_type.items.copy()
                 else:
                     # But it's the wrong number of items
-                    self.fail('Incompatible number of types for `with` targets', s)
+                    self.fail('Incompatible number of types for "with" targets', s)
             else:
                 # We have multiple targets and one type
-                self.fail('Multiple types expected for multiple `with` targets', s)
+                self.fail('Multiple types expected for multiple "with" targets', s)
 
         new_types = []  # type: List[Type]
         for e, n in zip(s.expr, s.target):

@@ -85,14 +85,15 @@ if int():
 [out]
 
 [case testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Sequence, Type
 T = TypeVar('T')
 
 A: Type[float] = int
 if int():
     A = float  # OK
-x: A  # E: Invalid type "__main__.A"
-def bad(tp: A) -> None:  # E: Invalid type "__main__.A"
+x: A  # E: Variable "__main__.A" is not valid as a type
+def bad(tp: A) -> None:  # E: Variable "__main__.A" is not valid as a type
     pass
 
 Alias = int

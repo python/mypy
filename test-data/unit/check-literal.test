@@ -694,8 +694,9 @@ y: Foo[Foo]     # E: Literal[...] must have at least one parameter
 [out]
 
 [case testLiteralBadRawExpressionWithBadType]
+# flags: --new-semantic-analyzer
 NotAType = 3
-def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Invalid type "__main__.NotAType" \
+def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Variable "__main__.NotAType" is not valid as a type \
                                                         # E: Invalid type comment or annotation
 
 # Note: this makes us re-inspect the type (e.g. via '_patch_indirect_dependencies'
@@ -876,6 +877,7 @@ reveal_type(d)      # N: Revealed type is 'Any'
 [out]
 
 [case testLiteralDisallowFloatsAndComplex]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
 a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
 b1: 3.14             # E: Invalid type: float literals cannot be used as a type
@@ -889,10 +891,10 @@ d2t = 3j
 
 a2: a2t
 reveal_type(a2)      # N: Revealed type is 'Any'
-b2: b2t              # E: Invalid type "__main__.b2t"
+b2: b2t              # E: Variable "__main__.b2t" is not valid as a type
 c2: c2t
 reveal_type(c2)      # N: Revealed type is 'Any'
-d2: d2t              # E: Invalid type "__main__.d2t"
+d2: d2t              # E: Variable "__main__.d2t" is not valid as a type
 [builtins fixtures/complex_tuple.pyi]
 [out]
 
@@ -914,28 +916,32 @@ c: {"a": 1, "b": 2}             # E: Invalid type comment or annotation
 d: {1, 2, 3}                    # E: Invalid type comment or annotation
 
 [case testLiteralDisallowCollections2]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
 a: (1, 2, 3)                    # E: Syntax error in type annotation \
                                 # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 b: Literal[[1, 2, 3]]           # E: Parameter 1 of Literal[...] is invalid
-c: [1, 2, 3]                    # E: Invalid type
+c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type \
+                                # N: Did you mean "List[...]"?
 [out]
 
 [case testLiteralDisallowCollectionsTypeAlias]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
-at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias
+at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias: expression is not a valid type
 bt = {"a": 1, "b": 2}
-a: at                           # E: Invalid type "__main__.at"
-b: bt                           # E: Invalid type "__main__.bt"
+a: at                           # E: Variable "__main__.at" is not valid as a type
+b: bt                           # E: Variable "__main__.bt" is not valid as a type
 [builtins fixtures/dict.pyi]
 [out]
 
 [case testLiteralDisallowCollectionsTypeAlias2]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
-at = Literal[{1, 2, 3}]         # E: Invalid type alias
+at = Literal[{1, 2, 3}]         # E: Invalid type alias: expression is not a valid type
 bt = {1, 2, 3}
-a: at                           # E: Invalid type "__main__.at"
-b: bt                           # E: Invalid type "__main__.bt"
+a: at                           # E: Variable "__main__.at" is not valid as a type
+b: bt                           # E: Variable "__main__.bt" is not valid as a type
 [builtins fixtures/set.pyi]
 [out]
 
@@ -1776,16 +1782,17 @@ issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Litera
 [out]
 
 [case testLiteralErrorsWhenSubclassed]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
 from typing_extensions import Literal as Renamed
 import typing_extensions as indirect
 
 Alias = Literal[3]
 
-class Bad1(Literal[3]): pass            # E: Invalid base class
-class Bad2(Renamed[3]): pass            # E: Invalid base class
-class Bad3(indirect.Literal[3]): pass   # E: Invalid base class
-class Bad4(Alias): pass                 # E: Invalid base class
+class Bad1(Literal[3]): pass            # E: Invalid base class "Literal"
+class Bad2(Renamed[3]): pass            # E: Invalid base class "Renamed"
+class Bad3(indirect.Literal[3]): pass   # E: Invalid base class "indirect.Literal"
+class Bad4(Alias): pass                 # E: Invalid base class "Alias"
 [out]
 
 [case testLiteralErrorsWhenInvoked-skip]
@@ -2650,6 +2657,7 @@ over_literal(reveal_type(WrapperClass(var3)))   # N: Revealed type is '__main__.
 [out]
 
 [case testLiteralFinalUsedInLiteralType]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal, Final
 a: Final[int] = 3
 b: Final = 3
@@ -2662,13 +2670,13 @@ d: Literal[3]
 # "3" wherever it's used and get the same behavior -- so maybe we do need to support
 # at least case "b" for consistency?
 a_wrap: Literal[4, a]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Invalid type "__main__.a"
+                       # E: Variable "__main__.a" is not valid as a type
 b_wrap: Literal[4, b]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Invalid type "__main__.b"
+                       # E: Variable "__main__.b" is not valid as a type
 c_wrap: Literal[4, c]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Invalid type "__main__.c"
+                       # E: Variable "__main__.c" is not valid as a type
 d_wrap: Literal[4, d]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Invalid type "__main__.d"
+                       # E: Variable "__main__.d" is not valid as a type
 [out]
 
 [case testLiteralWithFinalPropagation]
@@ -2715,6 +2723,7 @@ expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type
 --
 
 [case testLiteralWithEnumsBasic]
+# flags: --new-semantic-analyzer
 from typing_extensions import Literal
 from enum import Enum
 
@@ -2729,7 +2738,8 @@ r: Literal[Color.RED]
 g: Literal[Color.GREEN]
 b: Literal[Color.BLUE]
 bad1: Literal[Color]         # E: Parameter 1 of Literal[...] is invalid
-bad2: Literal[Color.func]    # E: Invalid type "__main__.Color.func" \
+bad2: Literal[Color.func]    # E: Function "__main__.Color.func" is not valid as a type \
+                             # N: Perhaps you need "Callable[...]" or a callback protocol? \
                              # E: Parameter 1 of Literal[...] is invalid
 bad3: Literal[Color.func()]  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 

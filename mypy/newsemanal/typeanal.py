@@ -22,7 +22,7 @@ from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr,
-    TypeAlias, PlaceholderNode
+    TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.tvar_scope import TypeVarScope
@@ -72,7 +72,7 @@ def analyze_type_alias(node: Expression,
     try:
         type = expr_to_unanalyzed_type(node)
     except TypeTranslationError:
-        api.fail('Invalid type alias', node)
+        api.fail('Invalid type alias: expression is not a valid type', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
                             allow_unnormalized=allow_unnormalized, defining_alias=True,
@@ -401,7 +401,29 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # None of the above options worked. We parse the args (if there are any)
         # to make sure there are no remaining semanal-only types, then give up.
         t = t.copy_modified(args=self.anal_array(t.args))
-        self.fail('Invalid type "{}"'.format(name), t)
+        # TODO: Move this message building logic to messages.py.
+        notes = []  # type: List[str]
+        if isinstance(sym.node, Var):
+            # TODO: add a link to alias docs, see #3494.
+            message = 'Variable "{}" is not valid as a type'
+        elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
+            message = 'Function "{}" is not valid as a type'
+            notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
+        elif isinstance(sym.node, MypyFile):
+            # TODO: suggest a protocol when supported.
+            message = 'Module "{}" is not valid as a type'
+        elif unbound_tvar:
+            message = 'Type variable "{}" is unbound'
+            short = name.split('.')[-1]
+            notes.append(('(Hint: Use "Generic[{}]" or "Protocol[{}]" base class'
+                          ' to bind "{}" inside a class)').format(short, short, short))
+            notes.append('(Hint: Use "{}" in function signature to bind "{}"'
+                         ' inside a function)'.format(short, short))
+        else:
+            message = 'Cannot interpret reference "{}" as a type'
+        self.fail(message.format(name), t)
+        for note in notes:
+            self.note(note, t)
 
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages
@@ -422,7 +444,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        self.fail('Invalid type', t)
+        self.fail('Bracketed expression "[...]" is not valid as a type', t)
+        self.note('Did you mean "List[...]"?', t)
         return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
@@ -457,9 +480,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if t.implicit and not self.allow_tuple_literal:
             self.fail('Syntax error in type annotation', t)
             if len(t.items) == 1:
-                self.note_func('Suggestion: Is there a spurious trailing comma?', t)
+                self.note('Suggestion: Is there a spurious trailing comma?', t)
             else:
-                self.note_func('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t)
+                self.note('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t)
             return AnyType(TypeOfAny.from_error)
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:
@@ -512,7 +535,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
             self.fail(msg, t)
             if t.note is not None:
-                self.note_func(t.note, t)
+                self.note(t.note, t)
 
         return AnyType(TypeOfAny.from_error, line=t.line, column=t.column)
 
@@ -721,6 +744,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def fail(self, msg: str, ctx: Context) -> None:
         self.fail_func(msg, ctx)
+
+    def note(self, msg: str, ctx: Context) -> None:
+        self.note_func(msg, ctx)
 
     @contextmanager
     def tvar_scope_frame(self) -> Iterator[None]:
