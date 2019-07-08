@@ -824,7 +824,8 @@ MYPY = False
 if MYPY:
     from a import Session
 
-def f(self, session: Session) -> None:  # E: Invalid type "a.Session": Cannot use function as type, use Callable[...] or a protocol instead
+def f(self, session: Session) -> None:  # E: Function "a.Session" is not valid as a type \
+                                        # N: Perhaps you need "Callable[...]" or a callback protocol?
     pass
 [builtins fixtures/bool.pyi]
 

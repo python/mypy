@@ -1383,12 +1383,13 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             try:
                 base = self.expr_to_analyzed_type(base_expr, allow_placeholder=True)
             except TypeTranslationError:
-                msg = 'Invalid base class'
                 name = self.get_name_repr_of_expr(base_expr)
+                if isinstance(base_expr, CallExpr):
+                    msg = 'Unsupported dynamic base class'
+                else:
+                    msg = 'Invalid base class'
                 if name:
                     msg += ' "{}"'.format(name)
-                if isinstance(base_expr, CallExpr):
-                    msg += ': Unsupported dynamic base class'
                 self.fail(msg, base_expr)
                 is_error = True
                 continue
@@ -3208,7 +3209,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
-                self.fail('Invalid type comment: `with` statement has no targets', s)
+                self.fail('Invalid type comment: "with" statement has no targets', s)
             elif len(actual_targets) == 1:
                 # We have one target and one type
                 types = [s.unanalyzed_type]
@@ -3218,10 +3219,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                     types = s.unanalyzed_type.items.copy()
                 else:
                     # But it's the wrong number of items
-                    self.fail('Incompatible number of types for `with` targets', s)
+                    self.fail('Incompatible number of types for "with" targets', s)
             else:
                 # We have multiple targets and one type
-                self.fail('Multiple types expected for multiple `with` targets', s)
+                self.fail('Multiple types expected for multiple "with" targets', s)
 
         new_types = []  # type: List[Type]
         for e, n in zip(s.expr, s.target):

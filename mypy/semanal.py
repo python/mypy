@@ -2864,10 +2864,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     types = s.unanalyzed_type.items
                 else:
                     # But it's the wrong number of items
-                    self.fail('Incompatible number of types for `with` targets', s)
+                    self.fail('Incompatible number of types for "with" targets', s)
             else:
                 # We have multiple targets and one type
-                self.fail('Multiple types expected for multiple `with` targets', s)
+                self.fail('Multiple types expected for multiple "with" targets', s)
 
         new_types = []  # type: List[Type]
         for e, n in zip(s.expr, s.target):
