@@ -1196,6 +1196,7 @@ x = y
 reveal_type(x) # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
 
 [case testTupleOverlapDifferentTuples]
+# flags: --strict-optional
 from typing import Optional, Tuple
 class A: pass
 class B: pass

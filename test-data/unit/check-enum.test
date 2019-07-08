@@ -611,7 +611,7 @@ main:2: note: Revealed type is 'builtins.int'
 [out2]
 main:2: note: Revealed type is 'builtins.str'
 
-[case testEnumReachabilityChecksBasic]
+[case testEnumReachabilityChecksBasicIdentity]
 from enum import Enum
 from typing_extensions import Literal
 
@@ -654,6 +654,54 @@ if Foo.A is y:
 elif Foo.B is y:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
 elif Foo.C is y:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+else:
+    reveal_type(y)  # No output here: this branch is unreachable
+[builtins fixtures/bool.pyi]
+
+[case testEnumReachabilityChecksBasicEquality]
+from enum import Enum
+from typing_extensions import Literal
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+x: Literal[Foo.A, Foo.B, Foo.C]
+if x == Foo.A:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif x == Foo.B:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+elif x == Foo.C:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+else:
+    reveal_type(x)  # No output here: this branch is unreachable
+
+if Foo.A == x:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif Foo.B == x:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+elif Foo.C == x:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+else:
+    reveal_type(x)  # No output here: this branch is unreachable
+
+y: Foo
+if y == Foo.A:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif y == Foo.B:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+elif y == Foo.C:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+else:
+    reveal_type(y)  # No output here: this branch is unreachable
+
+if Foo.A == y:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif Foo.B == y:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+elif Foo.C == y:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
 else:
     reveal_type(y)  # No output here: this branch is unreachable
@@ -853,4 +901,82 @@ def process(response: Union[str, Reason] = '') -> str:
         reveal_type(response)  # N: Revealed type is 'builtins.str'
         return 'PROCESSED: ' + response
 
+[builtins fixtures/primitives.pyi]
+
+[case testEnumReachabilityDisabledGivenCustomEquality]
+from typing import Union
+from enum import Enum
+
+class Parent(Enum):
+    def __ne__(self, other: object) -> bool: return True
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    def __eq__(self, other: object) -> bool: return True
+
+class Bar(Parent):
+    A = 1
+    B = 2
+
+class Ok(Enum):
+    A = 1
+    B = 2
+
+x: Foo
+if x is Foo.A:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+
+if x == Foo.A:
+    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+else:
+    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+
+y: Bar
+if y is Bar.A:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Bar.A]'
+else:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Bar.B]'
+
+if y == Bar.A:
+    reveal_type(y)  # N: Revealed type is '__main__.Bar'
+else:
+    reveal_type(y)  # N: Revealed type is '__main__.Bar'
+
+z1: Union[Bar, Ok]
+if z1 is Ok.A:
+    reveal_type(z1)  # N: Revealed type is 'Literal[__main__.Ok.A]'
+else:
+    reveal_type(z1)  # N: Revealed type is 'Union[__main__.Bar, Literal[__main__.Ok.B]]'
+
+z2: Union[Bar, Ok]
+if z2 == Ok.A:
+    reveal_type(z2)  # N: Revealed type is 'Union[__main__.Bar, __main__.Ok]'
+else:
+    reveal_type(z2)  # N: Revealed type is 'Union[__main__.Bar, __main__.Ok]'
+[builtins fixtures/primitives.pyi]
+
+[case testEnumReachabilityWithChaining]
+from enum import Enum
+class Foo(Enum):
+    A = 1
+    B = 2
+
+x: Foo
+y: Foo
+if x is Foo.A is y:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+else:
+    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+    reveal_type(y)  # N: Revealed type is '__main__.Foo'
+
+if x == Foo.A == y:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+else:
+    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+    reveal_type(y)  # N: Revealed type is '__main__.Foo'
 [builtins fixtures/primitives.pyi]

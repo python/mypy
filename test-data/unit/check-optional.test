@@ -485,6 +485,10 @@ if x == '<string>':
     reveal_type(x)  # N: Revealed type is 'builtins.str'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
+if x is '<string>':
+    reveal_type(x)  # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
 [builtins fixtures/ops.pyi]
 
 [case testInferEqualsNotOptionalWithUnion]
@@ -494,12 +498,20 @@ if x == '<string>':
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
+if x is '<string>':
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
 [builtins fixtures/ops.pyi]
 
 [case testInferEqualsNotOptionalWithOverlap]
 from typing import Union
 x = ''  # type: Union[str, int, None]
 if x == object():
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
+if x is object():
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
