@@ -4545,9 +4545,8 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> Type:
     this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW, Status].
     """
     if isinstance(typ, UnionType):
-        new_items = [try_expanding_enum_to_union(item, target_fullname)
-                     for item in typ.items]
-        return UnionType.make_simplified_union(new_items)
+        items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
+        return UnionType.make_simplified_union(items)
     elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname() == target_fullname:
         new_items = []
         for name, symbol in typ.type.names.items():
