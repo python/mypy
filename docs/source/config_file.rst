@@ -41,7 +41,7 @@ characters.
   whose name matches at least one of the patterns.
 
   A pattern of the form ``qualified_module_name`` matches only the named module,
-  while ``qualified_module_name.*`` matches ``dotted_module_name`` and any
+  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
