@@ -1131,7 +1131,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 # Map left type to corresponding right instances.
                 left = map_instance_to_supertype(left, right.type)
                 if self.erase_instances:
-                    left = erase_type(left)
+                    erased = erase_type(left)
+                    assert isinstance(erased, Instance)
+                    left = erased
 
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
