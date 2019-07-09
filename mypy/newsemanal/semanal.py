@@ -701,8 +701,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
 
-        self.add_symbol(defn.name(), defn, defn)
-
     def analyze_overload_sigs_and_impl(
             self,
             defn: OverloadedFuncDef) -> Tuple[List[CallableType],
