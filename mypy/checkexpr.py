@@ -174,6 +174,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, OverloadedFuncDef) and node.type is not None:
             # node.type is None when there are multiple definitions of a function
             # and it's decorated by something that is not typing.overload
+            # TODO: use a dummy Overloaded instead of AnyType in this case
+            # like we do in mypy.types.function_type()?
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.

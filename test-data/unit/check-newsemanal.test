@@ -3113,3 +3113,22 @@ class A: pass
 def f() -> None: pass
 
 [targets m, m.f, __main__]
+
+[case testNewAnalyzerNoCrashOnCustomProperty]
+# flags: --ignore-missing-imports
+from unimported import custom
+
+class User:
+    first_name: str
+
+    @custom
+    def name(self) -> str:
+        return self.first_name
+
+    @name.setter  # type: ignore
+    def name(self, value: str) -> None:
+        self.first_name = value
+
+    def __init__(self, name: str) -> None:
+        self.name = name  # E: Cannot assign to a method \
+                          # E: Incompatible types in assignment (expression has type "str", variable has type overloaded function)
