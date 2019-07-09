@@ -1006,48 +1006,40 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     return applied
 
 
-def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
-    """Will isinstance(item, supertype) always return True at runtime?
+def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) -> Type:
+    """Return t minus s for runtime type assertions.
 
-    Note: supertype must be already erased by the caller.
+    If we can't determine a precise result, return a supertype of the
+    ideal result (just t is a valid result).
+
+    This is used for type inference of runtime type checks such as
+    isinstance(). Currently this just removes elements of a union type.
     """
+    if isinstance(t, UnionType):
+        new_items = [item for item in t.relevant_items()
+                     if (isinstance(item, AnyType) or
+                         not covers_at_runtime(item, s, ignore_promotions))]
+        return UnionType.make_union(new_items)
+    else:
+        return t
+
+
+def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
+    """Will isinstance(item, supertype) always return True at runtime?"""
+    # Since runtime type checks will ignore type arguments, erase the types.
+    supertype = erase_type(supertype)
     if is_proper_subtype(erase_type(item), supertype, ignore_promotions=ignore_promotions):
         return True
-    if is_proper_subtype(item, supertype, ignore_promotions=ignore_promotions):
-        return True
+    if isinstance(supertype, Instance) and supertype.type.is_protocol:
+        # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
+        if is_proper_subtype(item, supertype, ignore_promotions=ignore_promotions):
+            return True
     if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
         if supertype.type.fullname() == 'builtins.dict':
             return True
     # TODO: Add more special cases.
     return False
-
-
-def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) -> Type:
-    """Return t minus s.
-
-    If we can't determine a precise result, return a supertype of the
-    ideal result (just t is a valid result).
-
-    This is used for type inference of runtime type checks such as
-    isinstance.
-
-    Currently this just removes elements of a union type.
-    """
-    if isinstance(t, UnionType):
-        # TODO: Implement more robust support for runtime isinstance() checks,
-        # see issue #3827
-        new_items = []  # type: List[Type]
-        for item in t.relevant_items():
-            if isinstance(item, AnyType):
-                new_items.append(item)
-            # Since runtime type checks will ignore type arguments, erase the types.
-            elif covers_at_runtime(item, erase_type(s), ignore_promotions):
-                continue
-            new_items.append(item)
-        return UnionType.make_union(new_items)
-    else:
-        return t
 
 
 def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = False) -> bool:
