@@ -2228,6 +2228,88 @@ c.get(str_key_bad, u)                # E: TypedDict "MyDict" has no key 'missing
 [typing fixtures/typing-full.pyi]
 [out]
 
+[case testLiteralIntelligentIndexingTupleUnions]
+from typing import Tuple, NamedTuple
+from typing_extensions import Literal
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+class E: pass
+
+idx1: Literal[1, 2]
+idx2: Literal[3, 4]
+idx_bad: Literal[1, 20]
+
+tup1: Tuple[A, B, C, D, E]
+Tup2Class = NamedTuple('Tup2Class', [('a', A), ('b', B), ('c', C), ('d', D), ('e', E)])
+tup2: Tup2Class
+
+reveal_type(tup1[idx1])         # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(tup1[idx1:idx2])    # N: Revealed type is 'Union[Tuple[__main__.B, __main__.C], Tuple[__main__.B, __main__.C, __main__.D], Tuple[__main__.C], Tuple[__main__.C, __main__.D]]'
+reveal_type(tup1[0::idx1])      # N: Revealed type is 'Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], Tuple[__main__.A, __main__.C, __main__.E]]'
+tup1[idx_bad]                   # E: Tuple index out of range
+
+reveal_type(tup2[idx1])         # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(tup2[idx1:idx2])    # N: Revealed type is 'Union[Tuple[__main__.B, __main__.C, fallback=__main__.Tup2Class], Tuple[__main__.B, __main__.C, __main__.D, fallback=__main__.Tup2Class], Tuple[__main__.C, fallback=__main__.Tup2Class], Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]]'
+reveal_type(tup2[0::idx1])      # N: Revealed type is 'Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E, fallback=__main__.Tup2Class], Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]]'
+tup2[idx_bad]                   # E: Tuple index out of range
+[builtins fixtures/slice.pyi]
+[out]
+
+[case testLiteralIntelligentIndexingTypedDictUnions]
+from typing_extensions import Literal, Final
+from mypy_extensions import TypedDict
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+class E: pass
+
+class Base(TypedDict):
+    a: A
+    b: B
+    c: C
+
+class Test(Base, total=False):
+    d: D
+    e: E
+
+class AAndB(A, B): pass
+
+test: Test
+good_keys: Literal["a", "b"]
+optional_keys: Literal["d", "e"]
+bad_keys: Literal["a", "bad"]
+
+reveal_type(test[good_keys])                      # N: Revealed type is 'Union[__main__.A, __main__.B]'
+reveal_type(test.get(good_keys))                  # N: Revealed type is 'Union[__main__.A, __main__.B]'
+reveal_type(test.get(good_keys, 3))               # N: Revealed type is 'Union[__main__.A, builtins.int, __main__.B]'
+reveal_type(test.pop(optional_keys))              # N: Revealed type is 'Union[__main__.D, __main__.E]'
+reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is 'Union[__main__.D, __main__.E, builtins.int]'
+reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is 'Union[__main__.A, __main__.B]'
+del test[optional_keys]
+
+
+test[bad_keys]                  # E: TypedDict "Test" has no key 'bad'
+test.get(bad_keys)              # E: TypedDict "Test" has no key 'bad'
+test.get(bad_keys, 3)           # E: TypedDict "Test" has no key 'bad'
+test.pop(good_keys)             # E: Key 'a' of TypedDict "Test" cannot be deleted \
+                                # E: Key 'b' of TypedDict "Test" cannot be deleted
+test.pop(bad_keys)              # E: Key 'a' of TypedDict "Test" cannot be deleted \
+                                # E: TypedDict "Test" has no key 'bad'
+test.setdefault(good_keys, 3)   # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "int"; expected "A"
+test.setdefault(bad_keys, 3 )   # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "int"; expected "A"
+del test[good_keys]             # E: Key 'a' of TypedDict "Test" cannot be deleted \
+                                # E: Key 'b' of TypedDict "Test" cannot be deleted
+del test[bad_keys]              # E: Key 'a' of TypedDict "Test" cannot be deleted \
+                                # E: TypedDict "Test" has no key 'bad'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
 [case testLiteralIntelligentIndexingTypedDictPython2-skip]
 # flags: --python-version 2.7
 from normal_mod import NormalDict
@@ -2276,6 +2358,43 @@ UnicodeDict = TypedDict(b'UnicodeDict', {'key': int})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testLiteralIntelligentIndexingMultiTypedDict]
+from typing import Union
+from typing_extensions import Literal
+from mypy_extensions import TypedDict
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+
+class D1(TypedDict):
+    a: A
+    b: B
+    c: C
+
+class D2(TypedDict):
+    b: B
+    c: C
+    d: D
+
+x: Union[D1, D2]
+bad_keys: Literal['a', 'b', 'c', 'd']
+good_keys: Literal['b', 'c']
+
+x[bad_keys]         # E: TypedDict "D1" has no key 'd' \
+                    # E: TypedDict "D2" has no key 'a'
+x.get(bad_keys)     # E: TypedDict "D1" has no key 'd' \
+                    # E: TypedDict "D2" has no key 'a'
+x.get(bad_keys, 3)  # E: TypedDict "D1" has no key 'd' \
+                    # E: TypedDict "D2" has no key 'a'
+
+reveal_type(x[good_keys])           # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, builtins.int, __main__.C]'
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 --
 -- Interactions with 'Final'

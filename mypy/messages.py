@@ -1177,6 +1177,14 @@ class MessageBuilder:
             self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
                 item_name, self.format(typ)), context)
 
+    def typeddict_setdefault_arguments_inconsistent(
+            self,
+            default: Type,
+            expected: Type,
+            context: Context) -> None:
+        msg = 'Argument 2 to "setdefault" of "TypedDict" has incompatible type {}; expected {}'
+        self.fail(msg.format(self.format(default), self.format(expected)), context)
+
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 

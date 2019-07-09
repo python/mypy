@@ -1278,8 +1278,8 @@ class TupleType(Type):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: Optional[int], stride: Optional[int],
-              end: Optional[int]) -> 'TupleType':
+    def slice(self, begin: Optional[int], end: Optional[int],
+              stride: Optional[int]) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.partial_fallback,
                          self.line, self.column, self.implicit)
 
