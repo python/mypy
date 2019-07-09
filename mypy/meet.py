@@ -59,7 +59,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if (narrowed.type.fullname() == 'builtins.dict' and
                 all(isinstance(t, AnyType) for t in narrowed.args)):
             return declared
-        return narrowed
+        return meet_types(declared, narrowed)
     return narrowed
 
 
@@ -484,6 +484,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return meet_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return meet_types(t, self.s)
+        elif isinstance(self.s, TypedDictType):
+            return meet_types(t, self.s)
         return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
@@ -561,6 +563,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
+        elif isinstance(self.s, Instance) and is_subtype(t, self.s):
+            return t
         else:
             return self.default(self.s)
 
