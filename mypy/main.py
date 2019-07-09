@@ -554,7 +554,8 @@ def process_options(args: List[str],
              "the contents of SHADOW_FILE instead.")
     add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
                         group=internals_group)
-    add_invertible_flag('--new-semantic-analyzer', default=False, help=argparse.SUPPRESS,
+    add_invertible_flag('--no-new-semantic-analyzer', dest='new_semantic_analyzer',
+                        default=True, help=argparse.SUPPRESS,
                         group=internals_group)
 
     error_group = parser.add_argument_group(

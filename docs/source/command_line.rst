@@ -659,8 +659,8 @@ Miscellaneous
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
 
-``--new-semantic-analyzer``
-    This flag switches to an improved, experimental implementation of
+``--no-new-semantic-analyzer``
+    This flag disables the improved implementation of
     the *semantic analyzer* (the part of mypy that binds Python
     names to definitions). The old and the new semantic analyzers
     mostly behave identically. The new semantic analyzer is better at
@@ -668,9 +668,8 @@ Miscellaneous
     also fixes inconsistencies between the daemon and non-daemon modes,
     and it detects additional error conditions.
 
-    Likely, the next mypy release will use the new semantic analyzer by
-    default, and the old semantic analyzer will be removed in the next
-    release after that.
+    Likely, the old semantic analyzer will be removed in the next
+    release.
 
 .. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 
