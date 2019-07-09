@@ -580,7 +580,6 @@ def g(x: X, y: M) -> None: pass
 reveal_type(f(g))  # N: Revealed type is '<nothing>'
 [builtins fixtures/dict.pyi]
 
-# TODO: It would be more accurate for the meet to be TypedDict instead.
 [case testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow]
 # flags: --strict-optional
 from mypy_extensions import TypedDict
@@ -590,7 +589,7 @@ I = Iterable[str]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: I) -> None: pass
-reveal_type(f(g))  # N: Revealed type is '<nothing>'
+reveal_type(f(g))  # N: Revealed type is 'TypedDict('__main__.X', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithNonTotal]
@@ -1836,5 +1835,45 @@ def func(x: Map) -> int: ...
 def func(x: Dict[int, str]) -> str: ...
 def func(x):
     pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictIsInstance]
+from typing import TypedDict, Union
+
+class User(TypedDict):
+    id: int
+    name: str
+
+u: Union[str, User]
+u2: User
+
+if isinstance(u, dict):
+    reveal_type(u)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
+else:
+    reveal_type(u)  # N: Revealed type is 'builtins.str'
+
+assert isinstance(u2, dict)
+reveal_type(u2)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictIsInstanceABCs]
+from typing import TypedDict, Union, Mapping, Iterable
+
+class User(TypedDict):
+    id: int
+    name: str
+
+u: Union[int, User]
+u2: User
+
+if isinstance(u, Iterable):
+    reveal_type(u)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
+else:
+    reveal_type(u)  # N: Revealed type is 'builtins.int'
+
+assert isinstance(u2, Mapping)
+reveal_type(u2)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
