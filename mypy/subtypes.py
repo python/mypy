@@ -1006,6 +1006,23 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     return applied
 
 
+def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
+    """Will isinstance(item, supertype) always return True at runtime?
+
+    Note: supertype must be already erased by the caller.
+    """
+    if is_proper_subtype(erase_type(item), supertype, ignore_promotions=ignore_promotions):
+        return True
+    if is_proper_subtype(item, supertype, ignore_promotions=ignore_promotions):
+        return True
+    if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
+        # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
+        if supertype.type.fullname() == 'builtins.dict':
+            return True
+    # TODO: Add more special cases.
+    return False
+
+
 def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) -> Type:
     """Return t minus s.
 
@@ -1018,16 +1035,16 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     Currently this just removes elements of a union type.
     """
     if isinstance(t, UnionType):
-        # Since runtime type checks will ignore type arguments, erase the types.
-        erased_s = erase_type(s)
         # TODO: Implement more robust support for runtime isinstance() checks,
         # see issue #3827
-        new_items = [item for item in t.relevant_items()
-                     if (not (is_proper_subtype(erase_type(item), erased_s,
-                                                ignore_promotions=ignore_promotions) or
-                              is_proper_subtype(item, erased_s,
-                                                ignore_promotions=ignore_promotions))
-                         or isinstance(item, AnyType))]
+        new_items = []  # type: List[Type]
+        for item in t.relevant_items():
+            if isinstance(item, AnyType):
+                new_items.append(item)
+            # Since runtime type checks will ignore type arguments, erase the types.
+            elif covers_at_runtime(item, erase_type(s), ignore_promotions):
+                continue
+            new_items.append(item)
         return UnionType.make_union(new_items)
     else:
         return t

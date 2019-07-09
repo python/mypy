@@ -54,6 +54,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
     elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
+    elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
+        # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
+        if (narrowed.type.fullname() == 'builtins.dict' and
+                all(isinstance(t, AnyType) for t in narrowed.args)):
+            return declared
+        return narrowed
     return narrowed
 
 
