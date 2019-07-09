@@ -2181,6 +2181,7 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
             return callable_type(func, fallback)
         else:
             # Broken overloads can have self.type set to None.
+            # TODO: should we instead always set the type in semantic analyzer?
             assert isinstance(func, mypy.nodes.OverloadedFuncDef)
             any_type = AnyType(TypeOfAny.from_error)
             dummy = CallableType([any_type, any_type],
@@ -2188,6 +2189,8 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
                                  [None, None], any_type,
                                  fallback,
                                  line=func.line, is_ellipsis_args=True)
+            # Return an Overloaded, because some callers may expect that
+            # an OverloadedFuncDef has an Overloaded type.
             return Overloaded([dummy])
 
 
