@@ -819,7 +819,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
                                    arg_names=["_args", "_kwds"],
                                    ret_type=any_type,
                                    fallback=builtin_type('builtins.function'))
-                return class_callable(sig, info, fallback, None)
+                return class_callable(sig, info, fallback, None, is_new=False)
 
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
@@ -884,13 +884,12 @@ def type_object_type_from_function(signature: FunctionLike,
 
 def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
-                   is_new: bool = False) -> CallableType:
+                   is_new: bool) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
-    is_new = True
     if is_new and isinstance(init_type.ret_type, (Instance, TupleType)):
         ret_type = init_type.ret_type  # type: Type
     else:
