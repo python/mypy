@@ -14,7 +14,7 @@ from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, format_type
 
 
 class NewTypeAnalyzer:
@@ -49,7 +49,7 @@ class NewTypeAnalyzer:
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(self.msg.format(old_type)), s)
+            self.fail(message.format(format_type(old_type)), s)
             return
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
