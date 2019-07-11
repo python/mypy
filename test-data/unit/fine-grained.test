@@ -9061,3 +9061,69 @@ def f() -> str: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 ==
+
+[case testTypedDictCrashFallbackAfterDeletedMeet]
+# flags: --ignore-missing-imports
+
+from z import get_data
+from a import Data
+
+for it in get_data()['things']:
+    it['id']
+
+[file z.py]
+from a import Data
+
+def get_data() -> Data: ...
+
+[file a.py]
+from typing import TypedDict, List, Union
+
+class File(TypedDict):
+    id: int
+    name: str
+
+class User(TypedDict):
+    id: int
+    path: str
+
+class Data(TypedDict):
+    things: List[Union[File, User]]
+
+[delete a.py.2]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+
+[case testTypedDictCrashFallbackAfterDeletedJoin]
+# flags: --ignore-missing-imports
+
+from z import get_data
+from a import Data
+
+x = [get_data()[0], get_data()[1]]
+
+[file z.py]
+from a import Data
+
+def get_data() -> Data: ...
+
+[file a.py]
+from typing import TypedDict, Tuple
+
+class File(TypedDict):
+    id: int
+    name: str
+
+class User(TypedDict):
+    id: int
+    path: str
+
+Data = Tuple[User, File]
+
+[delete a.py.2]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
