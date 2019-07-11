@@ -692,7 +692,7 @@ _program.py:6: error: Incompatible types in assignment (expression has type "str
 [case testSuperNew]
 from typing import Dict, Any
 class MyType(type):
-    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type:
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> Any:
         return super().__new__(cls, name + 'x', bases, namespace)
 class A(metaclass=MyType): pass
 print(type(A()).__name__)
@@ -912,8 +912,10 @@ class A:
 _program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
 
 [case testMetaclassAndSuper]
+from typing import Any
+
 class A(type):
-    def __new__(cls, name, bases, namespace) -> 'type':
+    def __new__(cls, name, bases, namespace) -> Any:
         return super().__new__(cls, '', (object,), {'x': 7})
 
 class B(metaclass=A):

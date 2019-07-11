@@ -344,12 +344,12 @@ main:6: error: Return type "A" of "f" incompatible with return type "None" in su
 
 [case testOverride__new__WithDifferentSignature]
 class A:
-    def __new__(cls, x: int) -> str:
-        return ''
+    def __new__(cls, x: int) -> A:
+        pass
 
 class B(A):
-    def __new__(cls) -> int:
-        return 1
+    def __new__(cls) -> B:
+        pass
 
 [case testOverride__new__AndCallObject]
 from typing import TypeVar, Generic
@@ -5363,8 +5363,8 @@ class A:
         pass
 
 class B(A):
-    def __new__(cls) -> int:
-        return 10
+    def __new__(cls) -> B:
+        pass
 
 B()
 
@@ -5975,3 +5975,105 @@ class E(C):
         reveal_type(self.x) # N: Revealed type is 'builtins.int'
 
 [targets __main__, __main__, __main__.D.g, __main__.D.f, __main__.C.__init__, __main__.E.g, __main__.E.f]
+
+[case testNewReturnType1]
+class A:
+    def __new__(cls) -> B:
+        pass
+
+class B(A): pass
+
+reveal_type(A())  # N: Revealed type is '__main__.B'
+reveal_type(B())  # N: Revealed type is '__main__.B'
+
+[case testNewReturnType2]
+from typing import Any
+
+# make sure that __new__ method that return Any are ignored when
+# determining the return type
+class A:
+    def __new__(cls):
+        pass
+
+class B:
+    def __new__(cls) -> Any:
+        pass
+
+reveal_type(A())  # N: Revealed type is '__main__.A'
+reveal_type(B())  # N: Revealed type is '__main__.B'
+
+[case testNewReturnType3]
+
+# Check for invalid __new__ typing
+
+class A:
+    def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
+        pass
+
+reveal_type(A())  # N: Revealed type is 'builtins.int'
+
+[case testNewReturnType4]
+from typing import TypeVar, Type
+
+# Check for __new__ using type vars
+
+TX = TypeVar('TX', bound='X')
+class X:
+    def __new__(lol: Type[TX], x: int) -> TX:
+        pass
+class Y(X): pass
+
+reveal_type(X(20))  # N: Revealed type is '__main__.X*'
+reveal_type(Y(20))  # N: Revealed type is '__main__.Y*'
+
+[case testNewReturnType5]
+from typing import Any, TypeVar, Generic, overload
+
+T = TypeVar('T')
+class O(Generic[T]):
+    @overload
+    def __new__(cls) -> O[int]:
+        pass
+    @overload
+    def __new__(cls, x: int) -> O[str]:
+        pass
+    def __new__(cls, x: int = 0) -> O[Any]:
+        pass
+
+reveal_type(O())  # N: Revealed type is '__main__.O[builtins.int]'
+reveal_type(O(10))  # N: Revealed type is '__main__.O[builtins.str]'
+
+[case testNewReturnType6]
+from typing import Tuple, Optional
+
+# Check for some cases that aren't allowed
+
+class X:
+    def __new__(cls) -> Optional[Y]:  # E: "__new__" must return a class instance (got "Optional[Y]")
+        pass
+class Y:
+    def __new__(cls) -> Optional[int]:  # E: "__new__" must return a class instance (got "Optional[int]")
+        pass
+
+
+[case testNewReturnType7]
+from typing import NamedTuple
+
+# ... test __new__ returning tuple type
+class A:
+    def __new__(cls) -> 'B':
+        pass
+
+N = NamedTuple('N', [('x', int)])
+class B(A, N): pass
+
+reveal_type(A())  # N: Revealed type is 'Tuple[builtins.int, fallback=__main__.B]'
+
+[case testNewReturnType8]
+from typing import TypeVar, Any
+
+# test type var from a different argument
+TX = TypeVar('TX', bound='X')
+class X:
+    def __new__(cls, x: TX) -> TX:  # E: "__new__" must return a class instance (got "TX")
+        pass

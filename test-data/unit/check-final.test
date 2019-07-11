@@ -797,7 +797,7 @@ class B:
     def __new__(cls) -> B: ...
 class C(B):
     def __init__(self) -> None: ...  # E: Cannot override final attribute "__init__" (previously declared in base class "B")
-    def __new__(cls) -> B: ...  # E: Cannot override final attribute "__new__" (previously declared in base class "B")
+    def __new__(cls) -> C: ...  # E: Cannot override final attribute "__new__" (previously declared in base class "B")
 [out]
 
 [case testFinalOverridingMethodWithVar]

@@ -803,6 +803,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
 
+                    # Check validity of __new__ signature
+                    if fdef.info and fdef.name() == '__new__':
+                        self.check___new___signature(fdef, typ)
+
                     self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
@@ -1014,6 +1018,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
+    def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
+        self_type = fill_typevars_with_any(fdef.info)
+        bound_type = bind_self(typ, self_type, is_classmethod=True)
+        # Check that __new__ (after binding cls) returns an instance
+        # type (or any)
+        if not isinstance(bound_type.ret_type, (AnyType, Instance, TupleType)):
+            self.fail(
+                message_registry.NON_INSTANCE_NEW_TYPE.format(
+                    self.msg.format(bound_type.ret_type)),
+                fdef)
+        else:
+            # And that it returns a subtype of the class
+            self.check_subtype(
+                bound_type.ret_type,
+                self_type,
+                fdef,
+                message_registry.INVALID_NEW_TYPE,
+                'returns',
+                'but must return a subtype of'
+            )
 
     def is_trivial_body(self, block: Block) -> bool:
         """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",

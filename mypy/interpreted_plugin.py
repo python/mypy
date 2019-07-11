@@ -22,7 +22,8 @@ class InterpretedPlugin:
     that proxies to this interpreted version.
     """
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> 'mypy.plugin.Plugin':
+    # ... mypy doesn't like these shenanigans so we have to type ignore it!
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'mypy.plugin.Plugin':  # type: ignore
         from mypy.plugin import WrapperPlugin
         plugin = object.__new__(cls)
         plugin.__init__(*args, **kwargs)
