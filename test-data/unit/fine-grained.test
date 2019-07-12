@@ -9062,6 +9062,38 @@ def f() -> str: pass
 [out]
 ==
 
+[case testFileAddedAndImported]
+# flags: --ignore-missing-imports --follow-imports=skip
+# cmd: mypy a.py
+# cmd2: mypy a.py b.py
+
+[file a.py]
+from b import bad
+x = 42
+
+[file b.py.2]
+def good() -> None: ...
+[out]
+==
+a.py:1: error: Module 'b' has no attribute 'bad'
+
+[case testFileAddedAndImported2]
+# flags: --ignore-missing-imports --follow-imports=skip
+# cmd: mypy -m a
+# cmd2: mypy -m a b
+[file a.py]
+x = 42
+
+[file a.py.2]
+from b import bad
+x = 42
+
+[file b.py.2]
+def good() -> None: ...
+[out]
+==
+a.py:1: error: Module 'b' has no attribute 'bad'
+
 [case testTypedDictCrashFallbackAfterDeletedMeet]
 # flags: --ignore-missing-imports
 

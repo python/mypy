@@ -278,6 +278,7 @@ def g() -> None:
 def f() -> None: pass
 [out]
 <n.f> -> m, m.g
+<n> -> m
 
 [case testImportFromAs]
 from n import f as ff
@@ -288,6 +289,7 @@ def g() -> None:
 def f() -> None: pass
 [out]
 <n.f> -> m, m.g
+<n> -> m
 
 [case testNestedClass]
 def f() -> None:
@@ -354,6 +356,7 @@ class D: pass
 <mod.B> -> <m.outer>, m, m.outer
 <mod.C> -> <m.outer>, m, m.outer
 <mod.D> -> <m.outer>, m, m.outer
+<mod> -> m
 
 [case NestedFunctionBody]
 from mod import A, B, C
@@ -376,6 +379,7 @@ class C:
 <mod.B> -> m, m.outer
 <mod.C.x> -> m.outer
 <mod.C> -> m, m.outer
+<mod> -> m
 
 [case testDefaultArgValue]
 def f1(x: int) -> int: pass
@@ -428,6 +432,7 @@ class A: pass
 <m.B.z> -> m.B.h
 <m.B> -> m.B
 <n.A> -> <m.B.h>, <m.B.z>, m, m.B.h
+<n> -> m
 
 [case testAttributeWithClassType2]
 from m import A
@@ -443,6 +448,7 @@ class A: pass
 <m.A.__init__> -> m.B.f
 <m.A.__new__> -> m.B.f
 <m.A> -> <m.B.x>, m, m.B.f
+<m> -> m
 
 [case testAttributeWithClassType3]
 from n import A, x
@@ -459,6 +465,7 @@ x = A()
 <m.B> -> m.B
 <n.A> -> <m.B.x>, m
 <n.x> -> m, m.B.g
+<n> -> m
 
 [case testAttributeWithClassType4]
 from n import A
@@ -472,6 +479,7 @@ class A: pass
 <m.B.x> -> m.B.g
 <m.B> -> m.B
 <n.A> -> <m.B.x>, m, m.B.g
+<n> -> m
 
 [case testClassBody]
 def f() -> int: pass
@@ -498,6 +506,7 @@ class A: pass
 [out]
 <m.B> -> m.B
 <n.A> -> <m.B.x>, m
+<n> -> m
 
 [case testVariableAnnotationInClass]
 from n import A
@@ -513,6 +522,7 @@ class A: pass
 <m.B.x> -> m.B.f
 <m.B> -> m.B
 <n.A> -> <m.B.x>, m
+<n> -> m
 
 [case testGlobalVariableInitialized]
 from n import A
@@ -525,6 +535,7 @@ class A: pass
 <n.A.__init__> -> m
 <n.A.__new__> -> m
 <n.A> -> <m.x>, m
+<n> -> m
 
 [case testGlobalVariableAnnotation]
 from n import A
@@ -535,6 +546,7 @@ class A: pass
 [out]
 <m.x> -> m
 <n.A> -> <m.x>, m
+<n> -> m
 
 [case testProperty]
 class B: pass
@@ -610,9 +622,9 @@ from . import a
 x = 1
 [out]
 <pkg.a.x> -> pkg
-<pkg.a> -> pkg.mod
+<pkg.a> -> pkg, pkg.mod
 <pkg.mod> -> pkg
-<pkg> -> m
+<pkg> -> m, pkg, pkg.mod
 
 [case testTypedDict]
 from mypy_extensions import TypedDict
@@ -813,6 +825,7 @@ def f(x: A) -> None:
 [out]
 <m.A> -> <m.f>, m.f
 <b.A> -> m
+<b> -> m
 
 [case testMissingModuleClass2]
 from p.b import A  # type: ignore
@@ -821,6 +834,7 @@ def f(x: A) -> None:
 [out]
 <m.A> -> <m.f>, m.f
 <p.b.A> -> m
+<p.b> -> m
 
 [case testIgnoredMissingModuleAttribute]
 import a
@@ -853,6 +867,7 @@ class C: pass
 <a.C.__new__> -> m
 <a.C.x> -> m
 <a.C> -> m
+<a> -> m
 
 [case testIgnoredMissingClassAttribute]
 from a import C
@@ -862,6 +877,7 @@ class C: pass
 [out]
 <a.C.x> -> m
 <a.C> -> m
+<a> -> m
 
 [case testDepsFromOverloadMod]
 # __dump_all__
@@ -1130,6 +1146,7 @@ class A(B):
 <mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>
 <mod.C> -> m, m.D
+<mod> -> m
 
 [case testDepsLiskovMethod]
 from mod import A, C
@@ -1153,6 +1170,7 @@ class A(B):
 <mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>
 <mod.C> -> m, m.D
+<mod> -> m
 
 [case testIndexedStarLvalue]
 from typing import List, Tuple
@@ -1413,3 +1431,4 @@ class B(A):
 <m.B> -> m.B
 <m.Z> -> m
 <dataclasses.dataclass> -> m
+<dataclasses> -> m

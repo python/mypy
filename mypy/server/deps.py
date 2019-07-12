@@ -333,6 +333,7 @@ class DependencyVisitor(TraverserVisitor):
                                                o.relative,
                                                o.id,
                                                self.is_package_init_file)
+        self.add_dependency(make_trigger(module_id))  # needed if module is added/removed
         for name, as_name in o.names:
             self.add_dependency(make_trigger(module_id + '.' + name))
 
