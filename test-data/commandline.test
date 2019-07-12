@@ -134,11 +134,6 @@ def decorator(x: Any) -> Any:
 class NeverMetaclass(type):  # E: Inheriting from most builtin types is unimplemented
     pass
 
-@decorator
-class Wrong(metaclass=NeverMetaclass):  # E: Metaclasses are not supported  \
-                                        # E: Class decorators are not supported
-    pass
-
 class Concrete1:
     pass
 

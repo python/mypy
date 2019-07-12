@@ -276,12 +276,22 @@ py_setattr_op = func_op(
     emit=call_negative_bool_emit('PyObject_SetAttr')
 )
 
-func_op(
+py_hasattr_op = func_op(
     name='builtins.hasattr',
     arg_types=[object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_NEVER,
     emit=call_emit('PyObject_HasAttr')
+)
+
+py_calc_meta_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    format_str='{dest} = py_calc_metaclass({comma_args})',
+    emit=simple_emit(
+        '{dest} = (PyObject*) _PyType_CalculateMetaclass((PyTypeObject *){args[0]}, {args[1]});'),
+    is_borrowed = True
 )
 
 py_delattr_op = func_op(
@@ -378,6 +388,11 @@ type_op = func_op(
     result_type=object_rprimitive,
     error_kind=ERR_NEVER,
     emit=call_emit('PyObject_Type'))
+
+type_object_op = name_ref_op('builtins.type',
+                       result_type=object_rprimitive,
+                       error_kind=ERR_NEVER,
+                       emit=name_emit('(PyObject*) &PyType_Type'))
 
 func_op(name='builtins.len',
         arg_types=[object_rprimitive],
