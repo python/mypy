@@ -42,9 +42,10 @@ Making PEP 561 compatible packages
 
 PEP 561 notes three main ways to distribute type information. The first is a
 package that has only inline type annotations in the code itself. The second is
-a package that ships stub files with type information alongside the runtime
-code. The third method, also known as a "stub only package" is a package that
-ships type information for a package separately as stub files.
+a package that ships :ref:`stub files <stub-files>` with type information
+alongside the runtime code. The third method, also known as a "stub only
+package" is a package that ships type information for a package separately as
+stub files.
 
 If you would like to publish a library package to a package repository (e.g.
 PyPI) for either internal or external use in type checking, packages that
@@ -105,8 +106,9 @@ the setup.py might look like:
         packages=["package_b"]
     )
 
-In this example, both ``lib.py`` and ``lib.pyi`` exist. At runtime, the Python
-interpreter will use ``lib.py``, but mypy will use ``lib.pyi`` instead.
+In this example, both ``lib.py`` and the ``lib.pyi`` stub file exist. At
+runtime, the Python interpreter will use ``lib.py``, but mypy will use
+``lib.pyi`` instead.
 
 If the package is stub-only (not imported at runtime), the package should have
 a prefix of the runtime package name and a suffix of ``-stubs``.
