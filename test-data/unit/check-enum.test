@@ -6,7 +6,7 @@ class Medal(Enum):
     gold = 1
     silver = 2
     bronze = 3
-reveal_type(Medal.bronze)  # N: Revealed type is '__main__.Medal'
+reveal_type(Medal.bronze)  # N: Revealed type is '__main__.Medal*'
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -167,7 +167,7 @@ class E(IntEnum):
 x = None  # type: int
 reveal_type(E(x))
 [out]
-main:5: note: Revealed type is '__main__.E'
+main:5: note: Revealed type is '__main__.E*'
 
 [case testEnumIndex]
 from enum import IntEnum
@@ -246,7 +246,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:8: note: Revealed type is '__main__.E@4'
+main:8: note: Revealed type is '__main__.E@4*'
 
 [case testEnumInClassBody]
 from enum import Enum
@@ -270,9 +270,9 @@ reveal_type(E.bar.value)
 reveal_type(I.bar)
 reveal_type(I.baz.value)
 [out]
-main:4: note: Revealed type is '__main__.E'
+main:4: note: Revealed type is '__main__.E*'
 main:5: note: Revealed type is 'Any'
-main:6: note: Revealed type is '__main__.I'
+main:6: note: Revealed type is '__main__.I*'
 main:7: note: Revealed type is 'builtins.int'
 
 [case testFunctionalEnumListOfStrings]
@@ -282,8 +282,8 @@ F = IntEnum('F', ['bar', 'baz'])
 reveal_type(E.foo)
 reveal_type(F.baz)
 [out]
-main:4: note: Revealed type is '__main__.E'
-main:5: note: Revealed type is '__main__.F'
+main:4: note: Revealed type is '__main__.E*'
+main:5: note: Revealed type is '__main__.F*'
 
 [case testFunctionalEnumListOfPairs]
 from enum import Enum, IntEnum
@@ -294,8 +294,8 @@ reveal_type(F.baz)
 reveal_type(E.foo.value)
 reveal_type(F.bar.name)
 [out]
-main:4: note: Revealed type is '__main__.E'
-main:5: note: Revealed type is '__main__.F'
+main:4: note: Revealed type is '__main__.E*'
+main:5: note: Revealed type is '__main__.F*'
 main:6: note: Revealed type is 'builtins.int'
 main:7: note: Revealed type is 'builtins.str'
 
@@ -308,8 +308,8 @@ reveal_type(F.baz)
 reveal_type(E.foo.value)
 reveal_type(F.bar.name)
 [out]
-main:4: note: Revealed type is '__main__.E'
-main:5: note: Revealed type is '__main__.F'
+main:4: note: Revealed type is '__main__.E*'
+main:5: note: Revealed type is '__main__.F*'
 main:6: note: Revealed type is 'builtins.int'
 main:7: note: Revealed type is 'builtins.str'
 
@@ -363,8 +363,8 @@ main:22: error: "Type[W]" has no attribute "c"
 from enum import Flag, IntFlag
 A = Flag('A', 'x y')
 B = IntFlag('B', 'a b')
-reveal_type(A.x)        # N: Revealed type is '__main__.A'
-reveal_type(B.a)        # N: Revealed type is '__main__.B'
+reveal_type(A.x)        # N: Revealed type is '__main__.A*'
+reveal_type(B.a)        # N: Revealed type is '__main__.B*'
 reveal_type(A.x.name)   # N: Revealed type is 'builtins.str'
 reveal_type(B.a.name)   # N: Revealed type is 'builtins.str'
 
@@ -381,7 +381,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:7: note: Revealed type is '__main__.A.E@4'
+main:7: note: Revealed type is '__main__.A.E@4*'
 
 [case testFunctionalEnumInClassBody]
 from enum import Enum
@@ -451,11 +451,11 @@ F = Enum('F', 'a b')
 [rechecked]
 [stale]
 [out1]
-main:2: note: Revealed type is 'm.E'
-main:3: note: Revealed type is 'm.F'
+main:2: note: Revealed type is 'm.E*'
+main:3: note: Revealed type is 'm.F*'
 [out2]
-main:2: note: Revealed type is 'm.E'
-main:3: note: Revealed type is 'm.F'
+main:2: note: Revealed type is 'm.E*'
+main:3: note: Revealed type is 'm.F*'
 
 [case testEnumAuto]
 from enum import Enum, auto
@@ -463,7 +463,7 @@ class Test(Enum):
     a = auto()
     b = auto()
 
-reveal_type(Test.a)  # N: Revealed type is '__main__.Test'
+reveal_type(Test.a)  # N: Revealed type is '__main__.Test*'
 [builtins fixtures/primitives.pyi]
 
 [case testEnumAttributeAccessMatrix]
@@ -689,31 +689,31 @@ else:
 
 if x is z:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is '__main__.Foo'
+    reveal_type(z)  # N: Revealed type is '__main__.Foo*'
     accepts_foo_a(z)
 else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(z)  # N: Revealed type is '__main__.Foo'
+    reveal_type(z)  # N: Revealed type is '__main__.Foo*'
     accepts_foo_a(z)
 if z is x:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is '__main__.Foo'
+    reveal_type(z)  # N: Revealed type is '__main__.Foo*'
     accepts_foo_a(z)
 else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(z)  # N: Revealed type is '__main__.Foo'
+    reveal_type(z)  # N: Revealed type is '__main__.Foo*'
     accepts_foo_a(z)
 
 if y is z:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is '__main__.Foo'
+    reveal_type(z)  # N: Revealed type is '__main__.Foo*'
     accepts_foo_a(z)
 else:
     reveal_type(y)  # No output: this branch is unreachable
     reveal_type(z)  # No output: this branch is unreachable
 if z is y:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is '__main__.Foo'
+    reveal_type(z)  # N: Revealed type is '__main__.Foo*'
     accepts_foo_a(z)
 else:
     reveal_type(y)  # No output: this branch is unreachable

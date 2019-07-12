@@ -38,7 +38,10 @@ from mypy.types import (
     is_optional, remove_optional, TypeTranslator, StarType
 )
 from mypy.sametypes import is_same_type
-from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
+from mypy.messages import (
+    MessageBuilder, make_inferred_type_note, append_invariance_notes,
+    format_type, format_type_bare, format_type_distinctly,
+)
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
@@ -293,7 +296,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     seq_str = self.named_generic_type('typing.Sequence',
                                                     [self.named_type('builtins.unicode')])
                 if not is_subtype(all_.type, seq_str):
-                    str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
+                    str_seq_s, all_s = format_type_distinctly(seq_str, all_.type)
                     self.fail(message_registry.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                             all_node)
 
@@ -803,6 +806,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
 
+                    # Check validity of __new__ signature
+                    if fdef.info and fdef.name() == '__new__':
+                        self.check___new___signature(fdef, typ)
+
                     self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
@@ -1014,6 +1021,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
+    def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
+        self_type = fill_typevars_with_any(fdef.info)
+        bound_type = bind_self(typ, self_type, is_classmethod=True)
+        # Check that __new__ (after binding cls) returns an instance
+        # type (or any)
+        if not isinstance(bound_type.ret_type, (AnyType, Instance, TupleType)):
+            self.fail(
+                message_registry.NON_INSTANCE_NEW_TYPE.format(
+                    format_type(bound_type.ret_type)),
+                fdef)
+        else:
+            # And that it returns a subtype of the class
+            self.check_subtype(
+                bound_type.ret_type,
+                self_type,
+                fdef,
+                message_registry.INVALID_NEW_TYPE,
+                'returns',
+                'but must return a subtype of'
+            )
 
     def is_trivial_body(self, block: Block) -> bool:
         """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
@@ -3332,7 +3360,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # We skip fully filling out a handful of TypeInfo fields because they
         # should be irrelevant for a generated type like this:
         # is_protocol, protocol_members, is_abstract
-        short_name = self.msg.format_bare(typ)
+        short_name = format_type_bare(typ)
         cdef = ClassDef(short_name, Block([]))
         cdef.fullname = cur_module.fullname() + '.' + gen_name
         info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
@@ -3649,7 +3677,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             note_msg = ''
             notes = []  # type: List[str]
             if subtype_label is not None or supertype_label is not None:
-                subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
+                subtype_str, supertype_str = format_type_distinctly(subtype, supertype)
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + subtype_str)
                 if supertype_label is not None:
