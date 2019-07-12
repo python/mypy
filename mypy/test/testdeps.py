@@ -65,7 +65,7 @@ class GetDependenciesSuite(DataSuite):
             TypeState.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
-                if source.startswith('<enum.'):
+                if source.startswith(('<enum', '<typing', '<mypy')):
                     # Remove noise.
                     continue
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))
