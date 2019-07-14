@@ -80,7 +80,7 @@ from mypy.stubutil import (
 from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, CallableType,
+    Type, TypeStrVisitor, CallableType, AnyType,
     UnboundType, NoneType, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
@@ -165,6 +165,11 @@ class AnnotationPrinter(TypeStrVisitor):
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
+
+    def visit_any(self, t: AnyType) -> str:
+        s = super().visit_any(t)
+        self.stubgen.import_tracker.require_name(s)
+        return s
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
