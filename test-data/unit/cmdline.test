@@ -1124,6 +1124,19 @@ p/a.py:4: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 p/b/__init__.py:5: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 
+[case testSrcPEP420Packages]
+# cmd: mypy -p anamespace --namespace-packages
+[file mypy.ini]
+[[mypy]]
+mypy_path = src
+[file src/setup.cfg]
+[file src/anamespace/foo/__init__.py]
+[file src/anamespace/foo/bar.py]
+def bar(a: int, b: int) -> str:
+    return a + b
+[out]
+src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
+
 [case testFollowImportStubs1]
 # cmd: mypy main.py
 [file mypy.ini]

@@ -763,7 +763,7 @@ def process_options(args: List[str],
         search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = FindModuleCache(search_paths, fscache)
+        cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),
