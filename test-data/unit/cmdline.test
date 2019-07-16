@@ -836,9 +836,9 @@ def h(s) -> Tuple[str, str]:  # no error
     return 'a', 'b'
 x: Tuple = ()  # error
 [out]
-m.py:3: error: Missing type parameters for generic type Tuple?
-m.py:4: error: Missing type parameters for generic type Tuple?
-m.py:8: error: Missing type parameters for generic type Tuple?
+m.py:3: error: Missing type parameters for generic type "Tuple"
+m.py:4: error: Missing type parameters for generic type "Tuple"
+m.py:8: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
 # cmd: mypy --new-semantic-analyzer m.py
