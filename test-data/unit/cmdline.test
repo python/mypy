@@ -820,7 +820,7 @@ N = TypedDict('N', {'x': str, 'y': List})  # no error
 m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
-# cmd: mypy --python-version=3.6 m.py
+# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -836,12 +836,12 @@ def h(s) -> Tuple[str, str]:  # no error
     return 'a', 'b'
 x: Tuple = ()  # error
 [out]
-m.py:3: error: Missing type parameters for generic type
-m.py:4: error: Missing type parameters for generic type
-m.py:8: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "Tuple"
+m.py:4: error: Missing type parameters for generic type "Tuple"
+m.py:8: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
-# cmd: mypy m.py
+# cmd: mypy --new-semantic-analyzer m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -853,10 +853,10 @@ from typing import Tuple, List
 def f(s: List[Tuple]) -> None: pass  # error
 def g(s: List[Tuple[str, str]]) -> None: pass  # no error
 [out]
-m.py:3: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTypeType]
-# cmd: mypy --python-version=3.6 m.py
+# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -872,11 +872,11 @@ def h(s) -> Type[str]:  # no error
     return s
 x: Type = g(0)  # error
 [out]
-m.py:4: error: Missing type parameters for generic type
-m.py:8: error: Missing type parameters for generic type
+m.py:4: error: Missing type parameters for generic type "Type"
+m.py:8: error: Missing type parameters for generic type "Type"
 
 [case testDisallowAnyGenericsAliasGenericType]
-# cmd: mypy m.py
+# cmd: mypy --new-semantic-analyzer m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -890,10 +890,10 @@ L = List  # no error
 def f(l: L) -> None: pass  # error
 def g(l: L[str]) -> None: pass  # no error
 [out]
-m.py:5: error: Missing type parameters for generic type
+m.py:5: error: Missing type parameters for generic type "L"
 
 [case testDisallowAnyGenericsGenericAlias]
-# cmd: mypy --python-version=3.6 m.py
+# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -912,12 +912,12 @@ def h(s) -> A[str]:  # no error
     return 'a', 'b', 'c'
 x: A = ('a', 'b', 1)  # error
 [out]
-m.py:6: error: Missing type parameters for generic type
-m.py:7: error: Missing type parameters for generic type
-m.py:11: error: Missing type parameters for generic type
+m.py:6: error: Missing type parameters for generic type "A"
+m.py:7: error: Missing type parameters for generic type "A"
+m.py:11: error: Missing type parameters for generic type "A"
 
 [case testDisallowAnyGenericsPlainList]
-# cmd: mypy --python-version=3.6 m.py
+# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -934,14 +934,14 @@ def i(l: List[List[List[List]]]) -> None: pass  # error
 x = []  # error: need type annotation
 y: List = []  # error
 [out]
-m.py:3: error: Missing type parameters for generic type
-m.py:5: error: Missing type parameters for generic type
-m.py:6: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "List"
+m.py:5: error: Missing type parameters for generic type "List"
+m.py:6: error: Missing type parameters for generic type "List"
 m.py:8: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
-m.py:9: error: Missing type parameters for generic type
+m.py:9: error: Missing type parameters for generic type "List"
 
 [case testDisallowAnyGenericsCustomGenericClass]
-# cmd: mypy --python-version=3.6 m.py
+# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -960,8 +960,8 @@ x: G[Any] = G()  # no error
 y: G = x  # error
 
 [out]
-m.py:6: error: Missing type parameters for generic type
-m.py:10: error: Missing type parameters for generic type
+m.py:6: error: Missing type parameters for generic type "G"
+m.py:10: error: Missing type parameters for generic type "G"
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -986,7 +986,7 @@ m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic para
 m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
 
 [case testDisallowAnyGenericsTypingCollections]
-# cmd: mypy m.py
+# cmd: mypy --new-semantic-analyzer m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -1001,11 +1001,11 @@ def h(s: Dict) -> None: pass
 def i(s: Set) -> None: pass
 def j(s: FrozenSet) -> None: pass
 [out]
-m.py:3: error: Missing type parameters for generic type
-m.py:4: error: Missing type parameters for generic type
-m.py:5: error: Missing type parameters for generic type
-m.py:6: error: Missing type parameters for generic type
-m.py:7: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "Tuple"
+m.py:4: error: Missing type parameters for generic type "List"
+m.py:5: error: Missing type parameters for generic type "Dict"
+m.py:6: error: Missing type parameters for generic type "Set"
+m.py:7: error: Missing type parameters for generic type "FrozenSet"
 
 [case testDisallowSubclassingAny]
 # cmd: mypy m.py y.py
@@ -1032,7 +1032,7 @@ class ShouldNotBeFine(x): ...
 y.py:5: error: Class cannot subclass 'x' (has type 'Any')
 
 [case testSectionInheritance]
-# cmd: mypy a
+# cmd: mypy --new-semantic-analyzer a
 [file a/__init__.py]
 0()
 [file a/foo.py]
@@ -1063,7 +1063,7 @@ strict_optional = True
 [[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
-a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type
+a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
 [case testDisallowUntypedDefsAndGenerics]

@@ -8855,6 +8855,7 @@ y = ''
 ==
 
 [case testInlineConfigFineGrained1]
+# flags: --new-semantic-analyzer
 import a
 [file a.py]
 # mypy: no-warn-no-return
@@ -8883,7 +8884,7 @@ def foo() -> List:
     20
 [out]
 ==
-a.py:4: error: Missing type parameters for generic type
+a.py:4: error: Missing type parameters for generic type "List"
 ==
 ==
 a.py:2: error: Missing return statement
@@ -8942,7 +8943,7 @@ a.py:11: error: Type signature has too few arguments
 c.py:1: error: Type signature has too few arguments
 
 [case testErrorReportingNewAnalyzer]
-# flags: --disallow-any-generics
+# flags: --new-semantic-analyzer --disallow-any-generics
 from a import A
 
 def f() -> None:
@@ -8956,7 +8957,7 @@ T = TypeVar('T')
 class A(Generic[T]): ...
 [out]
 ==
-main:5: error: Missing type parameters for generic type
+main:5: error: Missing type parameters for generic type "A"
 
 [case testStripNewAnalyzer]
 # flags: --ignore-missing-imports

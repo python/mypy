@@ -173,12 +173,12 @@ class D(A):
     def f(self) -> None: pass # E:5: Signature of "f" incompatible with supertype "A"
 
 [case testColumnMissingTypeParameters]
-# flags: --disallow-any-generics
+# flags: --new-semantic-analyzer --disallow-any-generics
 from typing import List, Callable
-def f(x: List) -> None: pass # E:10: Missing type parameters for generic type
+def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
 def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
 if int():
-    c: Callable # E:8: Missing type parameters for generic type
+    c: Callable # E:8: Missing type parameters for generic type "Callable"
 [builtins fixtures/list.pyi]
 
 [case testColumnIncompatibleDefault]
