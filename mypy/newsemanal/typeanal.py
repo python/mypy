@@ -1171,22 +1171,20 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: Callable[[str, Context], None],
-                       disallow_any: bool) -> None:
+def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
     'Union[Dict[Any, Any], List[Any]]' in place.
     """
-    t.accept(InstanceFixer(fail, disallow_any))
+    t.accept(InstanceFixer(fail))
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: Callable[[str, Context], None], disallow_any: bool) -> None:
+    def __init__(self, fail: Callable[[str, Context], None]) -> None:
         self.fail = fail
-        self.disallow_any = disallow_any
 
     def visit_instance(self, typ: Instance) -> None:
         super().visit_instance(typ)
         if len(typ.args) != len(typ.type.type_vars):
-            fix_instance(typ, self.fail, self.disallow_any, use_generic_error=True)
+            fix_instance(typ, self.fail, disallow_any=False, use_generic_error=True)

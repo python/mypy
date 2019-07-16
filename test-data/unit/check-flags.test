@@ -1168,6 +1168,6 @@ main:2: error: Module 'other_module_2' has no attribute 'a'
 from typing import List
 
 A = List  # OK
-B = List[A]  # E:10: Missing type parameters for generic type "list"
+B = List[A]  # E:10: Missing type parameters for generic type "A"
 x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
