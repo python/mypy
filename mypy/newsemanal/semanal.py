@@ -695,6 +695,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
         if not defn.items:
             # It was not a real overload after all, but function redefinition. We've
             # visited the redefinition(s) already.
+            if not defn.impl:
+                # For really broken overloads with no items and no implementation we need to keep
+                # at least one item to hold basic information like function name.
+                defn.impl = defn.unanalyzed_items[-1]
             return
 
         # We know this is an overload def. Infer properties and perform some checks.
