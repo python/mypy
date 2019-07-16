@@ -1261,9 +1261,7 @@ class CollectAnyTypesQuery(TypeQuery[List[AnyType]]):
 
 
 def collect_all_inner_types(t: Type) -> List[Type]:
-    """
-    Return all types that `t` contains
-    """
+    """Return all types that `t` contains"""
     return t.accept(CollectAllInnerTypesQuery())
 
 

@@ -316,7 +316,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.items())
 
     def visit_type_type(self, t: TypeType) -> T:
-        return t.item.accept(self)
+        return self.query_types([t.item])
 
     def visit_forwardref_type(self, t: ForwardRef) -> T:
         if t.resolved:
