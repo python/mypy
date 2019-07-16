@@ -214,7 +214,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # when it is top-level instance, so no need to recurse.
                 if (isinstance(res, Instance) and len(res.args) != len(res.type.type_vars) and
                         not self.defining_alias):
-                    fix_instance(res, self.fail, disallow_any=disallow_any, use_generic_error=True)
+                    fix_instance(res, self.fail, disallow_any=disallow_any, use_generic_error=True,
+                                 unexpanded_type=t)
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
@@ -867,13 +868,15 @@ TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 
 def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
-                    typ: Type, fullname: Optional[str] = None) -> AnyType:
+                    typ: Type, fullname: Optional[str] = None,
+                    unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
         if fullname in nongen_builtins:
             # We use a dedicated error message for builtin generics (as the most common case).
             alternative = nongen_builtins[fullname]
             fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ)
         else:
+            typ = unexpanded_type or typ
             type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
 
             fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ)
@@ -884,7 +887,8 @@ def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
 
 
 def fix_instance(t: Instance, fail: Callable[[str, Context], None],
-                 disallow_any: bool, use_generic_error: bool = False) -> None:
+                 disallow_any: bool, use_generic_error: bool = False,
+                 unexpanded_type: Optional[Type] = None) -> None:
     """Fix a malformed instance by replacing all type arguments with Any.
 
     Also emit a suitable error if this is not due to implicit Any's.
@@ -894,7 +898,7 @@ def fix_instance(t: Instance, fail: Callable[[str, Context], None],
             fullname = None  # type: Optional[str]
         else:
             fullname = t.type.fullname()
-        any_type = get_omitted_any(disallow_any, fail, t, fullname)
+        any_type = get_omitted_any(disallow_any, fail, t, fullname, unexpanded_type)
         t.args = [any_type] * len(t.type.type_vars)
         return
     # Invalid number of type parameters.
@@ -917,7 +921,7 @@ def fix_instance(t: Instance, fail: Callable[[str, Context], None],
 
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
-                      fail: Callable[[str, Context], None], no_args: bool, ctx: Context, *,
+                      fail: Callable[[str, Context], None], no_args: bool, ctx: Type, *,
                       disallow_any: bool = False) -> Type:
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
 
@@ -935,7 +939,8 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
         # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
         assert alias_tvars is not None
         return set_any_tvars(target, alias_tvars, ctx.line, ctx.column,
-                             disallow_any=disallow_any, fail=fail)
+                             disallow_any=disallow_any, fail=fail,
+                             unexpanded_type=ctx)
     if exp_len == 0 and act_len == 0:
         if no_args:
             assert isinstance(target, Instance)
@@ -984,14 +989,19 @@ def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, *,
                   from_error: bool = False,
                   disallow_any: bool = False,
-                  fail: Optional[Callable[[str, Context], None]] = None) -> Type:
+                  fail: Optional[Callable[[str, Context], None]] = None,
+                  unexpanded_type: Optional[Type] = None) -> Type:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
     else:
         type_of_any = TypeOfAny.from_omitted_generics
     if disallow_any:
         assert fail is not None
-        fail(message_registry.BARE_GENERIC.format(format_type(tp)), Context(newline, newcolumn))
+        otype = unexpanded_type or tp
+        type_str = otype.name if isinstance(otype, UnboundType) else format_type_bare(otype)
+
+        fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
+             Context(newline, newcolumn))
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
     return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 

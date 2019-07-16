@@ -5,7 +5,7 @@
 # mypy: disallow-any-generics, no-warn-no-return
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "list"
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -16,7 +16,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "list"
 # mypy: no-warn-no-return
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "list"
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -26,7 +26,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "list"
 # mypy: disallow-any-generics=true, warn-no-return=0
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "list"
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -37,7 +37,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "list"
 # mypy: disallow-any-generics = true, warn-no-return = 0
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "list"
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -48,7 +48,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "list"
 
 from typing import List
 
-def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic type "list"
+def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic type "List"
     if FOO or BAR:
         1+'lol'
     return []
@@ -100,7 +100,7 @@ from typing import List
 def foo() -> List:
     20
 [out]
-tmp/a.py:4: error: Missing type parameters for generic type "list"
+tmp/a.py:4: error: Missing type parameters for generic type "List"
 [out2]
 [out3]
 tmp/a.py:2: error: Missing return statement
@@ -123,7 +123,7 @@ def foo() -> List:
 
 [out]
 [out2]
-tmp/a.py:4: error: Missing type parameters for generic type "list"
+tmp/a.py:4: error: Missing type parameters for generic type "List"
 
 [builtins fixtures/list.pyi]
 

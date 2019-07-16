@@ -8884,7 +8884,7 @@ def foo() -> List:
     20
 [out]
 ==
-a.py:4: error: Missing type parameters for generic type "list"
+a.py:4: error: Missing type parameters for generic type "List"
 ==
 ==
 a.py:2: error: Missing return statement

@@ -1105,7 +1105,7 @@ from typing import TypeVar, Callable
 T = TypeVar('T')
 C = Callable[[], T]
 
-def f(c: C):  # E: Missing type parameters for generic type "Callable[[], T?]"
+def f(c: C):  # E: Missing type parameters for generic type "C"
     pass
 [out]
 
@@ -1169,5 +1169,5 @@ from typing import List
 
 A = List  # OK
 B = List[A]  # E:10: Missing type parameters for generic type "list"
-x: A  # E:4: Missing type parameters for generic type "list"
+x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
