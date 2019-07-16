@@ -8,7 +8,7 @@ from collections import OrderedDict
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
 from typing_extensions import Final
 
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, quote_type_string, format_type, format_type_bare
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
@@ -303,9 +303,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.analyze_literal_type(t)
         return None
 
-    def get_omitted_any(self, ctx: Context, fullname: Optional[str] = None) -> AnyType:
+    def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
         disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
-        return get_omitted_any(disallow_any, self.fail, ctx, fullname)
+        return get_omitted_any(disallow_any, self.fail, typ, fullname)
 
     def analyze_type_with_type_info(self, info: TypeInfo, args: List[Type], ctx: Context) -> Type:
         """Bind unbound type when were able to find target TypeInfo.
@@ -867,17 +867,19 @@ TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 
 def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
-                    ctx: Context, fullname: Optional[str] = None) -> AnyType:
+                    typ: Type, fullname: Optional[str] = None) -> AnyType:
     if disallow_any:
         if fullname in nongen_builtins:
             # We use a dedicated error message for builtin generics (as the most common case).
             alternative = nongen_builtins[fullname]
-            fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), ctx)
+            fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ)
         else:
-            fail(message_registry.BARE_GENERIC, ctx)
-        any_type = AnyType(TypeOfAny.from_error, line=ctx.line, column=ctx.column)
+            type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
+
+            fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ)
+        any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
-        any_type = AnyType(TypeOfAny.from_omitted_generics, line=ctx.line, column=ctx.column)
+        any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
     return any_type
 
 
@@ -989,7 +991,7 @@ def set_any_tvars(tp: Type, vars: List[str],
         type_of_any = TypeOfAny.from_omitted_generics
     if disallow_any:
         assert fail is not None
-        fail(message_registry.BARE_GENERIC, Context(newline, newcolumn))
+        fail(message_registry.BARE_GENERIC.format(format_type(tp)), Context(newline, newcolumn))
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
     return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 

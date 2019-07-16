@@ -267,7 +267,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'
                 if self.options.disallow_any_generics and not self.is_typeshed_stub:
-                    self.fail(message_registry.BARE_GENERIC, t)
+                    self.fail(message_registry.BARE_GENERIC_OLD, t)
                 return self.named_type('builtins.tuple', line=t.line, column=t.column)
             if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                 # Tuple[T, ...] (uniform, variable-length tuple)
