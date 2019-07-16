@@ -5028,3 +5028,21 @@ def asdf() -> None:
 @dec
 def lol(x: int, y: int) -> int:
     pass
+
+[case testVeryBrokenOverload]
+import lib
+[file lib.pyi]
+@overload  # E: Name 'overload' is not defined
+def func(x: int) -> int: ...
+
+def func(x):  # E: Name 'func' already defined on line 1
+    return x
+
+[case testVeryBrokenOverload2]
+import lib
+[file lib.pyi]
+@overload  # E: Name 'overload' is not defined
+def func(x: int) -> int: ...
+@overload  # E: Name 'func' already defined on line 1 \
+           # E: Name 'overload' is not defined
+def func(x: str) -> str: ...
