@@ -8,7 +8,7 @@ from collections import OrderedDict
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
 from typing_extensions import Final
 
-from mypy.messages import MessageBuilder, quote_type_string, format_type, format_type_bare
+from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
