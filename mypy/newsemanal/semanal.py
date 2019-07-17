@@ -2673,6 +2673,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             explicit_type: Assignment has type annotation
             is_final: Is the target final
         """
+        if lval.node:
+            # This has been bound already in a previous iteration.
+            return
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"

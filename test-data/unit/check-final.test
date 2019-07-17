@@ -1064,3 +1064,11 @@ class B:
     def __init__(self) -> None:
         self.x = self.y = 1
 [out]
+
+[case testFinalInDeferredMethod]
+from typing_extensions import Final
+
+class A:
+    def __init__(self) -> None:
+        self.x = 10  # type: Final
+        undefined  # type: ignore
