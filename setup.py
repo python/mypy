@@ -184,5 +184,6 @@ setup(name='mypy',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},
+      python_requires=">=3.5",
       include_package_data=True,
       )
