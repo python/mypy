@@ -3327,7 +3327,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             expr.fullname = sym.fullname
 
     def visit_super_expr(self, expr: SuperExpr) -> None:
-        if not self.type:
+        if not self.type and not expr.call.args:
             self.fail('"super" used outside class', expr)
             return
         expr.info = self.type
