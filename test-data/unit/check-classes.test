@@ -6077,3 +6077,68 @@ TX = TypeVar('TX', bound='X')
 class X:
     def __new__(cls, x: TX) -> TX:  # E: "__new__" must return a class instance (got "TX")
         pass
+
+[case testGenericOverride]
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+
+class B(Generic[T]):
+    x: T
+
+class C(B):
+    def __init__(self) -> None:
+        self.x: Any
+
+[case testGenericOverridePreciseInvalid]
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+
+class B(Generic[T]):
+    x: T
+
+class C(B[str]):
+    def __init__(self) -> None:
+        self.x: int  # E: Incompatible types in assignment (expression has type "int", base class "B" defined the type as "str")
+
+[case testGenericOverridePreciseValid]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class B(Generic[T]):
+    x: T
+
+class C(B[float]):
+    def __init__(self) -> None:
+        self.x: int  # We currently allow covariant overriding.
+
+[case testGenericOverrideGeneric]
+from typing import Generic, TypeVar, List
+
+T = TypeVar('T')
+
+class B(Generic[T]):
+    x: T
+
+class C(B[T]):
+    def __init__(self) -> None:
+        self.x: List[T]  # E: Incompatible types in assignment (expression has type "List[T]", base class "B" defined the type as "T")
+[builtins fixtures/list.pyi]
+
+[case testGenericOverrideGenericChained]
+from typing import Generic, TypeVar, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T]):
+    x: T
+
+class B(A[Tuple[T, S]]): ...
+
+class C(B[int, T]):
+    def __init__(self) -> None:
+        # TODO: error message could be better.
+        self.x: Tuple[str, T]  # E: Incompatible types in assignment (expression has type "Tuple[str, T]", base class "A" defined the type as "Tuple[int, T]")
