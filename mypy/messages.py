@@ -1235,8 +1235,9 @@ def format_type_inner(typ: Type,
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
-    `fullnames` specifies a set of names that should be printed in full
+    Args:
+      verbosity: a coarse grained control on the verbosity of the type
+      fullnames: a set of names that should be printed in full
     """
     def format(typ: Type) -> str:
         return format_type_inner(typ, verbosity, fullnames)
@@ -1386,7 +1387,7 @@ def format_type_inner(typ: Type,
 
 
 def collect_all_instances(t: Type) -> List[Instance]:
-    """Return all instances that `t` contains (including `t`)
+    """Return all instances that `t` contains (including `t`).
 
     This is similar to collect_all_inner_types from typeanal but only
     returns instances and will recurse into fallbacks.
@@ -1432,7 +1433,7 @@ def format_type(typ: Type, verbosity: int = 0) -> str:
     This function returns a string appropriate for unmodified use in error
     messages; this means that it will be quoted in most cases.  If
     modification of the formatted string is required, callers should use
-    .format_bare.
+    format_type_bare.
     """
     return quote_type_string(format_type_bare(typ, verbosity))
 
@@ -1447,8 +1448,8 @@ def format_type_bare(typ: Type,
     `fullnames` specifies a set of names that should be printed in full
 
     This function will return an unquoted string.  If a caller doesn't need to
-    perform post-processing on the string output, .format should be used
-    instead.  (The caller may want to use .quote_type_string after
+    perform post-processing on the string output, format_type should be used
+    instead.  (The caller may want to use quote_type_string after
     processing has happened, to maintain consistent quoting in messages.)
     """
     return format_type_inner(typ, verbosity, find_type_overlaps(typ))
@@ -1461,7 +1462,7 @@ def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tupl
     while also requiring that distinct types with the same short name are
     formatted distinctly.
 
-    By default, the returned strings are created using .format() and will be
+    By default, the returned strings are created using format_type() and will be
     quoted accordingly. If ``bare`` is True, the returned strings will not
     be quoted; callers who need to do post-processing of the strings before
     quoting them (such as prepending * or **) should use this.
