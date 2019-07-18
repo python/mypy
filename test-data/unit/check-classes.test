@@ -6077,3 +6077,15 @@ TX = TypeVar('TX', bound='X')
 class X:
     def __new__(cls, x: TX) -> TX:  # E: "__new__" must return a class instance (got "TX")
         pass
+
+[case testGenericOverride]
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+
+class B(Generic[T]):
+    x: T
+
+class C(B):
+    def __init__(self) -> None:
+        self.x: Any

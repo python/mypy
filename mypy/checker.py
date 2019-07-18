@@ -877,8 +877,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Store argument types.
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
-
-                    ref_type = self.scope.active_self_type()  # type: Optional[Type]
+                    with self.scope.push_function(defn):
+                        # We temporary push the definition to get the self type as
+                        # visible from *inside* of this function/method.
+                        ref_type = self.scope.active_self_type()  # type: Optional[Type]
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
@@ -4456,6 +4458,7 @@ class CheckerScope:
         return None
 
     def enclosing_class(self) -> Optional[TypeInfo]:
+        """Is there a class *directly* enclosing this function?"""
         top = self.top_function()
         assert top, "This method must be called from inside a function"
         index = self.stack.index(top)
@@ -4466,7 +4469,14 @@ class CheckerScope:
         return None
 
     def active_self_type(self) -> Optional[Union[Instance, TupleType]]:
+        """An instance or tuple type representing the current class.
+
+        This returns None unless we are in class body or in a method.
+        In particular, inside a function nested in method this returns None.
+        """
         info = self.active_class()
+        if not info and self.top_function():
+            info = self.enclosing_class()
         if info:
             return fill_typevars(info)
         return None
