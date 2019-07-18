@@ -22,8 +22,9 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType, TypeOfAny, ForwardRef, UnboundType, PartialType
+    UninhabitedType, TypeOfAny, ForwardRef, UnboundType, PartialType,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
@@ -229,12 +230,12 @@ class MessageBuilder:
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
-                typ_format = format_type(typ)
+                typ_format, orig_type_format = format_type_distinctly(typ, original_type)
                 if typ_format == '"object"' and \
                         any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
-                    typ_format, format_type(original_type), member, extra), context)
+                    typ_format, orig_type_format, member, extra), context)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -436,8 +437,9 @@ class MessageBuilder:
 
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context) -> None:
+        index_str, expected_str = format_type_distinctly(index_type, expected_type)
         self.fail('Invalid index type {} for {}; expected type {}'.format(
-            format_type(index_type), base_str, format_type(expected_type)), context)
+            index_str, base_str, expected_str), context)
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
@@ -624,8 +626,9 @@ class MessageBuilder:
             original: Type, override: Type,
             context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
+        override_str, original_str = format_type_distinctly(override, original)
         self.fail('Return type {} of "{}" incompatible with return type {} in {}'
-                  .format(format_type(override), name, format_type(original), target), context)
+                  .format(override_str, name, original_str, target), context)
 
     def override_target(self, name: str, name_in_super: str,
                         supertype: str) -> str:
@@ -1225,27 +1228,19 @@ def quote_type_string(type_string: str) -> str:
     return '"{}"'.format(type_string)
 
 
-def format_type(typ: Type, verbosity: int = 0) -> str:
+def format_type_inner(typ: Type,
+                      verbosity: int,
+                      fullnames: Optional[Set[str]]) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    This method returns a string appropriate for unmodified use in error
-    messages; this means that it will be quoted in most cases.  If
-    modification of the formatted string is required, callers should use
-    .format_bare.
+    Args:
+      verbosity: a coarse grained control on the verbosity of the type
+      fullnames: a set of names that should be printed in full
     """
-    return quote_type_string(format_type_bare(typ, verbosity))
+    def format(typ: Type) -> str:
+        return format_type_inner(typ, verbosity, fullnames)
 
-
-def format_type_bare(typ: Type, verbosity: int = 0) -> str:
-    """
-    Convert a type to a relatively short string suitable for error messages.
-
-    This method will return an unquoted string.  If a caller doesn't need to
-    perform post-processing on the string output, .format should be used
-    instead.  (The caller may want to use .quote_type_string after
-    processing has happened, to maintain consistent quoting in messages.)
-    """
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
@@ -1253,7 +1248,7 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
                                      '_importlib_modulespec.ModuleType'):
             # Make some common error messages simpler and tidier.
             return 'Module'
-        if verbosity >= 2:
+        if verbosity >= 2 or (fullnames and itype.type.fullname() in fullnames):
             base_str = itype.type.fullname()
         else:
             base_str = itype.type.name()
@@ -1261,19 +1256,19 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
             # No type arguments, just return the type name
             return base_str
         elif itype.type.fullname() == 'builtins.tuple':
-            item_type_str = format_type_bare(itype.args[0])
+            item_type_str = format(itype.args[0])
             return 'Tuple[{}, ...]'.format(item_type_str)
         elif itype.type.fullname() in reverse_builtin_aliases:
             alias = reverse_builtin_aliases[itype.type.fullname()]
             alias = alias.split('.')[-1]
-            items = [format_type_bare(arg) for arg in itype.args]
+            items = [format(arg) for arg in itype.args]
             return '{}[{}]'.format(alias, ', '.join(items))
         else:
             # There are type arguments. Convert the arguments to strings.
             # If the result is too long, replace arguments with [...].
             a = []  # type: List[str]
             for arg in itype.args:
-                a.append(format_type_bare(arg))
+                a.append(format(arg))
             s = ', '.join(a)
             if len((base_str + s)) < 150:
                 return '{}[{}]'.format(base_str, s)
@@ -1285,10 +1280,10 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname() != 'builtins.tuple':
-            return format_type_bare(typ.partial_fallback)
+            return format(typ.partial_fallback)
         items = []
         for t in typ.items:
-            items.append(format_type_bare(t))
+            items.append(format(t))
         s = 'Tuple[{}]'.format(', '.join(items))
         if len(s) < 400:
             return s
@@ -1297,18 +1292,18 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
         if not typ.is_anonymous():
-            return format_type_bare(typ.fallback)
+            return format(typ.fallback)
         items = []
         for (item_name, item_type) in typ.items.items():
             modifier = '' if item_name in typ.required_keys else '?'
             items.append('{!r}{}: {}'.format(item_name,
                                              modifier,
-                                             format_type_bare(item_type)))
+                                             format(item_type)))
         s = 'TypedDict({{{}}})'.format(', '.join(items))
         return s
     elif isinstance(typ, LiteralType):
         if typ.is_enum_literal():
-            underlying_type = format_type_bare(typ.fallback, verbosity=verbosity)
+            underlying_type = format(typ.fallback)
             return 'Literal[{}.{}]'.format(underlying_type, typ.value)
         else:
             return str(typ)
@@ -1318,11 +1313,11 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
                              sum(isinstance(t, NoneType) for t in typ.items) == 1)
         if print_as_optional:
             rest = [t for t in typ.items if not isinstance(t, NoneType)]
-            return 'Optional[{}]'.format(format_type_bare(rest[0]))
+            return 'Optional[{}]'.format(format(rest[0]))
         else:
             items = []
             for t in typ.items:
-                items.append(format_type_bare(t))
+                items.append(format(t))
             s = 'Union[{}]'.format(', '.join(items))
             if len(s) < 400:
                 return s
@@ -1340,23 +1335,20 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
         else:
             return '<nothing>'
     elif isinstance(typ, TypeType):
-        return 'Type[{}]'.format(format_type_bare(typ.item, verbosity))
+        return 'Type[{}]'.format(format(typ.item))
     elif isinstance(typ, ForwardRef):  # may appear in semanal.py
         if typ.resolved:
-            return format_type_bare(typ.resolved, verbosity)
+            return format(typ.resolved)
         else:
-            return format_type_bare(typ.unbound, verbosity)
+            return format(typ.unbound)
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
             # The type of a type object type can be derived from the
             # return type (this always works).
-            return format_type_bare(
-                TypeType.make_normalized(
-                    erase_type(func.items()[0].ret_type)),
-                verbosity)
+            return format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)))
         elif isinstance(func, CallableType):
-            return_type = format_type_bare(func.ret_type)
+            return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
             arg_strings = []
@@ -1365,20 +1357,17 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
                 if (arg_kind == ARG_POS and arg_name is None
                         or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
 
-                    arg_strings.append(
-                        format_type_bare(
-                            arg_type,
-                            verbosity=max(verbosity - 1, 0)))
+                    arg_strings.append(format(arg_type))
                 else:
                     constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
                     if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
                         arg_strings.append("{}({})".format(
                             constructor,
-                            format_type_bare(arg_type)))
+                            format(arg_type)))
                     else:
                         arg_strings.append("{}({}, {})".format(
                             constructor,
-                            format_type_bare(arg_type),
+                            format(arg_type),
                             repr(arg_name)))
 
             return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
@@ -1396,27 +1385,97 @@ def format_type_bare(typ: Type, verbosity: int = 0) -> str:
         return 'object'
 
 
+def collect_all_instances(t: Type) -> List[Instance]:
+    """Return all instances that `t` contains (including `t`).
+
+    This is similar to collect_all_inner_types from typeanal but only
+    returns instances and will recurse into fallbacks.
+    """
+    visitor = CollectAllInstancesQuery()
+    t.accept(visitor)
+    return visitor.instances
+
+
+class CollectAllInstancesQuery(TypeTraverserVisitor):
+    def __init__(self) -> None:
+        self.instances = []  # type: List[Instance]
+
+    def visit_instance(self, t: Instance) -> None:
+        self.instances.append(t)
+        super().visit_instance(t)
+
+
+def find_type_overlaps(*types: Type) -> Set[str]:
+    """Return a set of fullnames that share a short name and appear in either type.
+
+    This is used to ensure that distinct types with the same short name are printed
+    with their fullname.
+    """
+    d = {}  # type: Dict[str, Set[str]]
+    for type in types:
+        for inst in collect_all_instances(type):
+            d.setdefault(inst.type.name(), set()).add(inst.type.fullname())
+
+    overlaps = set()  # type: Set[str]
+    for fullnames in d.values():
+        if len(fullnames) > 1:
+            overlaps.update(fullnames)
+    return overlaps
+
+
+def format_type(typ: Type, verbosity: int = 0) -> str:
+    """
+    Convert a type to a relatively short string suitable for error messages.
+
+    `verbosity` is a coarse grained control on the verbosity of the type
+
+    This function returns a string appropriate for unmodified use in error
+    messages; this means that it will be quoted in most cases.  If
+    modification of the formatted string is required, callers should use
+    format_type_bare.
+    """
+    return quote_type_string(format_type_bare(typ, verbosity))
+
+
+def format_type_bare(typ: Type,
+                     verbosity: int = 0,
+                     fullnames: Optional[Set[str]] = None) -> str:
+    """
+    Convert a type to a relatively short string suitable for error messages.
+
+    `verbosity` is a coarse grained control on the verbosity of the type
+    `fullnames` specifies a set of names that should be printed in full
+
+    This function will return an unquoted string.  If a caller doesn't need to
+    perform post-processing on the string output, format_type should be used
+    instead.  (The caller may want to use quote_type_string after
+    processing has happened, to maintain consistent quoting in messages.)
+    """
+    return format_type_inner(typ, verbosity, find_type_overlaps(typ))
+
+
 def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tuple[str, str]:
     """Jointly format a pair of types to distinct strings.
 
-    Increase the verbosity of the type strings until they become distinct.
+    Increase the verbosity of the type strings until they become distinct
+    while also requiring that distinct types with the same short name are
+    formatted distinctly.
 
-    By default, the returned strings are created using .format() and will be
+    By default, the returned strings are created using format_type() and will be
     quoted accordingly. If ``bare`` is True, the returned strings will not
     be quoted; callers who need to do post-processing of the strings before
     quoting them (such as prepending * or **) should use this.
     """
-    if bare:
-        format_method = format_type_bare
-    else:
-        format_method = format_type
-    verbosity = 0
-    for verbosity in range(3):
-        str1 = format_method(type1, verbosity=verbosity)
-        str2 = format_method(type2, verbosity=verbosity)
+    overlapping = find_type_overlaps(type1, type2)
+    for verbosity in range(2):
+        str1 = format_type_inner(type1, verbosity=verbosity, fullnames=overlapping)
+        str2 = format_type_inner(type2, verbosity=verbosity, fullnames=overlapping)
         if str1 != str2:
-            return (str1, str2)
-    return (str1, str2)
+            break
+    if bare:
+        return (str1, str2)
+    else:
+        return (quote_type_string(str1), quote_type_string(str2))
 
 
 def pretty_callable(tp: CallableType) -> str:

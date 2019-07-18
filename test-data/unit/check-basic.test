@@ -390,3 +390,79 @@ y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]
      # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
      # N: Consider using "Mapping" instead, which is covariant in the value type
 [builtins fixtures/dict.pyi]
+
+[case testDistinctTypes]
+# flags: --strict-optional
+import b
+
+[file a.py]
+from typing import NamedTuple
+from typing_extensions import TypedDict
+from enum import Enum
+class A: pass
+N = NamedTuple('N', [('x', int)])
+D = TypedDict('D', {'x': int})
+class B(Enum):
+    b = 10
+
+[file b.py]
+from typing import List, Optional, Union, Sequence, NamedTuple, Tuple, Type
+from typing_extensions import Literal, Final, TypedDict
+from enum import Enum
+import a
+class A: pass
+N = NamedTuple('N', [('x', int)])
+class B(Enum):
+    b = 10
+D = TypedDict('D', {'y': int})
+
+def foo() -> Optional[A]:
+    b = True
+    return a.A() if b else None  # E: Incompatible return value type (got "Optional[a.A]", expected "Optional[b.A]")
+
+def bar() -> List[A]:
+    l = [a.A()]
+    return l  # E: Incompatible return value type (got "List[a.A]", expected "List[b.A]")
+
+def baz() -> Union[A, int]:
+    b = True
+    return a.A() if b else 10  # E: Incompatible return value type (got "Union[a.A, int]", expected "Union[b.A, int]")
+
+def spam() -> Optional[A]:
+    return a.A()  # E: Incompatible return value type (got "a.A", expected "Optional[b.A]")
+
+def eggs() -> Sequence[A]:
+    x = [a.A()]
+    return x  # E: Incompatible return value type (got "List[a.A]", expected "Sequence[b.A]")
+
+def eggs2() -> Sequence[N]:
+    x = [a.N(0)]
+    return x  # E: Incompatible return value type (got "List[a.N]", expected "Sequence[b.N]")
+
+def asdf1() -> Sequence[Tuple[a.A, A]]:
+    x = [(a.A(), a.A())]
+    return x  # E: Incompatible return value type (got "List[Tuple[a.A, a.A]]", expected "Sequence[Tuple[a.A, b.A]]")
+
+def asdf2() -> Sequence[Tuple[A, a.A]]:
+    x = [(a.A(), a.A())]
+    return x  # E: Incompatible return value type (got "List[Tuple[a.A, a.A]]", expected "Sequence[Tuple[b.A, a.A]]")
+
+def arg() -> Tuple[A, A]:
+    return A()  # E: Incompatible return value type (got "A", expected "Tuple[A, A]")
+
+def types() -> Sequence[Type[A]]:
+    x = [a.A]
+    return x  # E: Incompatible return value type (got "List[Type[a.A]]", expected "Sequence[Type[b.A]]")
+
+def literal() -> Sequence[Literal[B.b]]:
+    x = [a.B.b]  # type: List[Literal[a.B.b]]
+    return x  # E: Incompatible return value type (got "List[Literal[a.B.b]]", expected "Sequence[Literal[b.B.b]]")
+
+def typeddict() -> Sequence[D]:
+    x = [{'x': 0}]  # type: List[a.D]
+    return x  # E: Incompatible return value type (got "List[a.D]", expected "Sequence[b.D]")
+
+a = (a.A(), A())
+a.x  # E: "Tuple[a.A, b.A]" has no attribute "x"
+
+[builtins fixtures/dict.pyi]

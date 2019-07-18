@@ -2664,7 +2664,7 @@ class C(Generic[T]):
     pass
 # TODO: Error message is confusing
 C = C[int]  # E: Cannot assign to a type \
-            # E: Incompatible types in assignment (expression has type "Type[__main__.C[Any]]", variable has type "Type[__main__.C[Any]]")
+            # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "Type[C[Any]]")
 x: C
 reveal_type(x) # N: Revealed type is '__main__.C[Any]'
 [out]
