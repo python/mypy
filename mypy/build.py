@@ -2185,7 +2185,7 @@ class State:
             if dep not in self.suppressed_set and dep not in self.manager.missing_modules:
                 self.add_dependency(dep)
                 self.priorities[dep] = PRI_INDIRECT
-            elif dep in self.manager.missing_modules:
+            elif dep not in self.suppressed_set and dep in self.manager.missing_modules:
                 self.suppress_dependency(dep)
 
     def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
