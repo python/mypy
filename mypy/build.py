@@ -1626,8 +1626,14 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
+    # We keep both a list and set of dependencies. A set because it makes it efficient to
+    # prevent duplicates and the list because I am afraid of changing the order of
+    # iteration over dependencies.
+    # They should be managed with add_dependency and suppress_dependency.
     dependencies = None  # type: List[str]  # Modules directly imported by the module
+    dependencies_set = None  # type: Set[str]  # The same but as a set for deduplication purposes
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
+    suppressed_set = None  # type: Set[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
 
     # Map each dependency to the line number where it is first imported
@@ -1735,7 +1741,9 @@ class State:
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
             self.dependencies = list(self.meta.dependencies)
+            self.dependencies_set = set(self.dependencies)
             self.suppressed = list(self.meta.suppressed)
+            self.suppressed_set = set(self.suppressed)
             all_deps = self.dependencies + self.suppressed
             assert len(all_deps) == len(self.meta.dep_prios)
             self.priorities = {id: pri
@@ -1925,13 +1933,15 @@ class State:
         new_dependencies = []
         entry_points = self.manager.source_set.source_modules
         for dep in self.dependencies + self.suppressed:
-            ignored = dep in self.suppressed and dep not in entry_points
+            ignored = dep in self.suppressed_set and dep not in entry_points
             if ignored or dep not in graph:
                 new_suppressed.append(dep)
             else:
                 new_dependencies.append(dep)
         self.dependencies = new_dependencies
+        self.dependencies_set = set(new_dependencies)
         self.suppressed = new_suppressed
+        self.suppressed_set = set(new_suppressed)
 
     # Methods for processing modules from source code.
 
@@ -2039,6 +2049,22 @@ class State:
             with self.wrap_context():
                 first.visit_file(self.tree, self.xpath, self.id, options)
 
+    def add_dependency(self, dep: str) -> None:
+        if dep not in self.dependencies_set:
+            self.dependencies.append(dep)
+            self.dependencies_set.add(dep)
+        if dep in self.suppressed_set:
+            self.suppressed.remove(dep)
+            self.suppressed_set.remove(dep)
+
+    def suppress_dependency(self, dep: str) -> None:
+        if dep in self.dependencies_set:
+            self.dependencies.remove(dep)
+            self.dependencies_set.remove(dep)
+        if dep not in self.suppressed_set:
+            self.suppressed.append(dep)
+            self.suppressed_set.add(dep)
+
     def compute_dependencies(self) -> None:
         """Compute a module's dependencies after parsing it.
 
@@ -2052,28 +2078,27 @@ class State:
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
         # Also keep track of each dependency's source line.
-        dependencies = []
-        priorities = {}  # type: Dict[str, int]  # id -> priority
-        dep_line_map = {}  # type: Dict[str, int]  # id -> line
+        # Missing dependencies will be moved from dependencies to
+        # suppressed when they fail to be loaded in load_graph.
+
+        self.dependencies = []
+        self.dependencies_set = set()
+        self.suppressed = []
+        self.suppressed_set = set()
+        self.priorities = {}  # id -> priority
+        self.dep_line_map = {}  # id -> line
         dep_entries = (manager.all_imported_modules_in_file(self.tree) +
                        self.manager.plugin.get_additional_deps(self.tree))
         for pri, id, line in dep_entries:
-            priorities[id] = min(pri, priorities.get(id, PRI_ALL))
+            self.priorities[id] = min(pri, self.priorities.get(id, PRI_ALL))
             if id == self.id:
                 continue
-            if id not in dep_line_map:
-                dependencies.append(id)
-                dep_line_map[id] = line
+            self.add_dependency(id)
+            if id not in self.dep_line_map:
+                self.dep_line_map[id] = line
         # Every module implicitly depends on builtins.
-        if self.id != 'builtins' and 'builtins' not in dep_line_map:
-            dependencies.append('builtins')
-
-        # Missing dependencies will be moved from dependencies to
-        # suppressed when they fail to be loaded in load_graph.
-        self.dependencies = dependencies
-        self.suppressed = []
-        self.priorities = priorities
-        self.dep_line_map = dep_line_map
+        if self.id != 'builtins':
+            self.add_dependency('builtins')
 
         self.check_blockers()  # Can fail due to bogus relative imports
 
@@ -2085,7 +2110,7 @@ class State:
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
         self.patches = patches
         for dep in self.manager.semantic_analyzer.imports:
-            self.dependencies.append(dep)
+            self.add_dependency(dep)
             self.priorities[dep] = PRI_LOW
 
     def semantic_analysis_pass_three(self) -> None:
@@ -2157,11 +2182,11 @@ class State:
         for dep in sorted(extra):
             if dep not in self.manager.modules:
                 continue
-            if dep not in self.suppressed and dep not in self.manager.missing_modules:
-                self.dependencies.append(dep)
+            if dep not in self.suppressed_set and dep not in self.manager.missing_modules:
+                self.add_dependency(dep)
                 self.priorities[dep] = PRI_INDIRECT
-            elif dep not in self.suppressed and dep in self.manager.missing_modules:
-                self.suppressed.append(dep)
+            elif dep not in self.suppressed_set and dep in self.manager.missing_modules:
+                self.suppress_dependency(dep)
 
     def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
         assert self.tree is not None
@@ -2204,6 +2229,8 @@ class State:
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
         assert self.source_hash is not None
+        assert len(set(self.dependencies)) == len(self.dependencies), (
+            "Duplicates in dependencies list for {} ({})".format(self.id, self.dependencies))
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
@@ -2733,7 +2760,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             # comment about this in `State.__init__()`.
             added = []
         for dep in st.ancestors + dependencies + st.suppressed:
-            ignored = dep in st.suppressed and dep not in entry_points
+            ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
             elif dep not in graph:
@@ -2747,20 +2774,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         newst = State(id=dep, path=None, source=None, manager=manager,
                                       caller_state=st, caller_line=st.dep_line_map.get(dep, 1))
                 except ModuleNotFound:
-                    if dep in st.dependencies:
-                        st.dependencies.remove(dep)
-                        st.suppressed.append(dep)
+                    if dep in st.dependencies_set:
+                        st.suppress_dependency(dep)
                 else:
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
             if dep in st.ancestors and dep in graph:
                 graph[dep].child_modules.add(st.id)
-            if dep in graph and dep in st.suppressed:
+            if dep in graph and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
-                if dep in st.suppressed:
-                    st.suppressed.remove(dep)
-                    st.dependencies.append(dep)
+                st.add_dependency(dep)
     manager.plugin.set_modules(manager.modules)
     return graph
 

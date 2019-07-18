@@ -331,7 +331,7 @@ def semantic_analyze_target(target: str,
         if isinstance(node, Decorator):
             infer_decorator_signature_if_simple(node, analyzer)
     for dep in analyzer.imports:
-        state.dependencies.append(dep)
+        state.add_dependency(dep)
         priority = mypy.build.PRI_LOW
         if priority <= state.priorities.get(dep, priority):
             state.priorities[dep] = priority
