@@ -261,7 +261,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_list(self, t: TypeList) -> T:
-        return self.query_types(t.items)
+        return t.item.accept(self)
 
     def visit_callable_argument(self, t: CallableArgument) -> T:
         return t.typ.accept(self)

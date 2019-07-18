@@ -24,8 +24,8 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType, PartialType,
-    TypeQuery,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
@@ -1389,32 +1389,20 @@ def collect_all_instances(t: Type) -> List[Instance]:
     """Return all instances that `t` contains (including `t`)
 
     This is similar to collect_all_inner_types from typeanal but only
-    returns instances and will recurse into fallbacks when they affect
-    how a type is formatted.
+    returns instances and will recurse into fallbacks.
     """
-    return CollectAllInstancesQuery().query_types([t])
+    visitor = CollectAllInstancesQuery()
+    t.accept(visitor)
+    return visitor.instances
 
 
-class CollectAllInstancesQuery(TypeQuery[List[Instance]]):
+class CollectAllInstancesQuery(TypeTraverserVisitor):
     def __init__(self) -> None:
-        super().__init__(self.combine_lists_strategy)
+        self.instances = []  # type: List[Instance]
 
-    def visit_literal_type(self, t: LiteralType) -> List[Instance]:
-        return self.query_types([t.fallback])
-
-    def visit_tuple_type(self, t: TupleType) -> List[Instance]:
-        return self.query_types(t.items + [t.partial_fallback])
-
-    def visit_typeddict_type(self, t: TypedDictType) -> List[Instance]:
-        return self.query_types(list(t.items.values()) + [t.fallback])
-
-    def query_types(self, types: Iterable[Type]) -> List[Instance]:
-        return (self.strategy([t.accept(self) for t in types]) +
-                [t for t in types if isinstance(t, Instance)])
-
-    @classmethod
-    def combine_lists_strategy(cls, it: Iterable[List[Instance]]) -> List[Instance]:
-        return [t for t in itertools.chain.from_iterable(it)]
+    def visit_instance(self, t: Instance) -> None:
+        self.instances.append(t)
+        super().visit_instance(t)
 
 
 def find_type_overlaps(*types: Type) -> Set[str]:

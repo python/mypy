@@ -397,14 +397,24 @@ import b
 
 [file a.py]
 from typing import NamedTuple
+from typing_extensions import TypedDict
+from enum import Enum
 class A: pass
 N = NamedTuple('N', [('x', int)])
+D = TypedDict('D', {'x': int})
+class B(Enum):
+    b = 10
 
 [file b.py]
 from typing import List, Optional, Union, Sequence, NamedTuple, Tuple, Type
+from typing_extensions import Literal, Final, TypedDict
+from enum import Enum
 import a
 class A: pass
 N = NamedTuple('N', [('x', int)])
+class B(Enum):
+    b = 10
+D = TypedDict('D', {'y': int})
 
 def foo() -> Optional[A]:
     b = True
@@ -444,7 +454,15 @@ def types() -> Sequence[Type[A]]:
     x = [a.A]
     return x  # E: Incompatible return value type (got "List[Type[a.A]]", expected "Sequence[Type[b.A]]")
 
+def literal() -> Sequence[Literal[B.b]]:
+    x = [a.B.b]  # type: List[Literal[a.B.b]]
+    return x  # E: Incompatible return value type (got "List[Literal[a.B.b]]", expected "Sequence[Literal[b.B.b]]")
+
+def typeddict() -> Sequence[D]:
+    x = [{'x': 0}]  # type: List[a.D]
+    return x  # E: Incompatible return value type (got "List[a.D]", expected "Sequence[b.D]")
+
 a = (a.A(), A())
 a.x  # E: "Tuple[a.A, b.A]" has no attribute "x"
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
