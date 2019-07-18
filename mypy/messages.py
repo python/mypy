@@ -13,7 +13,6 @@ from collections import OrderedDict
 import re
 import difflib
 from textwrap import dedent
-import itertools
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 from typing_extensions import Final
