@@ -1,6 +1,13 @@
-[case testErrorCodeAttribute]
+[case testErrorCodeNoAttribute]
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
 'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
+[file m.py]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedName]
+x # E: Name 'x' is not defined  [name-defined]
+def f() -> None:
+    y # E: Name 'y' is not defined  [name-defined]
 [file m.py]
 [builtins fixtures/module.pyi]

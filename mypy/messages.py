@@ -33,7 +33,7 @@ from mypy.nodes import (
 )
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
-from mypy import message_registry, errorcodes
+from mypy import message_registry, errorcodes as codes
 
 
 ARG_CONSTRUCTOR_NAMES = {
@@ -238,14 +238,14 @@ class MessageBuilder:
                             '{} has no attribute "{}"; maybe {}?{}'.format(
                                 format_type(original_type), member, pretty_or(matches), extra),
                             context,
-                            code=errorcodes.ATTR_DEFINED)
+                            code=codes.ATTR_DEFINED)
                         failed = True
                 if not failed:
                     self.fail(
                         '{} has no attribute "{}"{}'.format(
                             format_type(original_type),member, extra),
                         context,
-                        code=errorcodes.ATTR_DEFINED)
+                        code=codes.ATTR_DEFINED)
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
