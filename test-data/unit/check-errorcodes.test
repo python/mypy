@@ -17,3 +17,6 @@ class A:
     def __init__(self) -> int: \
         # E: The return type of "__init__" must be None  [misc]
         pass
+
+[case testErrorCodeNoteHasNoCode]
+reveal_type(1)  # N: Revealed type is 'builtins.int'
