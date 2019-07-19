@@ -209,6 +209,12 @@ class TypeFixer(TypeVisitor[None]):
             for it in tdt.items.values():
                 it.accept(self)
         if tdt.fallback is not None:
+            if tdt.fallback.type_ref is not None:
+                if lookup_qualified(self.modules, tdt.fallback.type_ref,
+                                    self.allow_missing) is None:
+                    # We reject fake TypeInfos for TypedDict fallbacks because
+                    # the latter are used in type checking and must be valid.
+                    tdt.fallback.type_ref = 'typing._TypedDict'
             tdt.fallback.accept(self)
 
     def visit_literal_type(self, lt: LiteralType) -> None:

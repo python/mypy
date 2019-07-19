@@ -22,19 +22,19 @@ jobs:
     python: 3.6    # 3.6.3  pip  9.0.1
   - name: "run test suite with python 3.7"
     python: 3.7    # 3.7.0  pip 10.0.1
-  - name: "run test suite with python 3.5.1 (new semantic analyzer)"
+  - name: "run test suite with python 3.5.1 (old semantic analyzer)"
     python: 3.5.1
     dist: trusty
     env:
     - TOXENV=py
     - EXTRA_ARGS="-n 12"
-    - NEWSEMANAL=1
-  - name: "run test suite with python 3.7 (new semantic analyzer)"
+    - NEWSEMANAL=0
+  - name: "run test suite with python 3.7 (old semantic analyzer)"
     python: 3.7
     env:
     - TOXENV=py
     - EXTRA_ARGS="-n 12"
-    - NEWSEMANAL=1
+    - NEWSEMANAL=0
   - name: "run test suite with python 3.7 (compiled with mypyc)"
     python: 3.7
     env:

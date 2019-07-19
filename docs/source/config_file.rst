@@ -41,7 +41,7 @@ characters.
   whose name matches at least one of the patterns.
 
   A pattern of the form ``qualified_module_name`` matches only the named module,
-  while ``qualified_module_name.*`` matches ``dotted_module_name`` and any
+  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
@@ -277,6 +277,10 @@ section of the command line docs.
     Shows a warning when returning a value with type ``Any`` from a function
     declared with a non- ``Any`` return type.
 
+``warn_unreachable`` (bool, default False)
+    Shows a warning when encountering any code inferred to be unreachable or
+    redundant after performing type analysis.
+
 .. _config-file-suppressing-errors:
 
 Suppressing errors
@@ -466,6 +470,6 @@ Miscellaneous
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
-``new_semantic_analyzer`` (bool, default False)
-    Enables the experimental new semantic analyzer.
+``new_semantic_analyzer`` (bool, default True)
+    Enables the new, improved, semantic analyzer.
     (See :ref:`The mypy command line <command-line>` for more information.)

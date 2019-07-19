@@ -6,7 +6,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
-from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance
+from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance, UnionType
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 
@@ -129,18 +129,34 @@ def add_method(
     info.defn.defs.body.append(func)
 
 
-def try_getting_str_literal(expr: Expression, typ: Type) -> Optional[str]:
-    """If this expression is a string literal, or if the corresponding type
-    is something like 'Literal["some string here"]', returns the underlying
-    string value. Otherwise, returns None."""
-    if isinstance(typ, Instance) and typ.last_known_value is not None:
-        typ = typ.last_known_value
+def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]:
+    """If the given expression or type corresponds to a string literal
+    or a union of string literals, returns a list of the underlying strings.
+    Otherwise, returns None.
 
-    if isinstance(typ, LiteralType) and typ.fallback.type.fullname() == 'builtins.str':
-        val = typ.value
-        assert isinstance(val, str)
-        return val
-    elif isinstance(expr, StrExpr):
-        return expr.value
+    Specifically, this function is guaranteed to return a list with
+    one or more strings if one one the following is true:
+
+    1. 'expr' is a StrExpr
+    2. 'typ' is a LiteralType containing a string
+    3. 'typ' is a UnionType containing only LiteralType of strings
+    """
+    if isinstance(expr, StrExpr):
+        return [expr.value]
+
+    if isinstance(typ, Instance) and typ.last_known_value is not None:
+        possible_literals = [typ.last_known_value]  # type: List[Type]
+    elif isinstance(typ, UnionType):
+        possible_literals = typ.items
     else:
-        return None
+        possible_literals = [typ]
+
+    strings = []
+    for lit in possible_literals:
+        if isinstance(lit, LiteralType) and lit.fallback.type.fullname() == 'builtins.str':
+            val = lit.value
+            assert isinstance(val, str)
+            strings.append(val)
+        else:
+            return None
+    return strings

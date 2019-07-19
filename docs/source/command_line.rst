@@ -364,6 +364,43 @@ potentially problematic or redundant in some way.
     This flag causes mypy to generate a warning when returning a value
     with type ``Any`` from a function declared with a non- ``Any`` return type.
 
+``--warn-unreachable``
+    This flag will make mypy report an error whenever it encounters
+    code determined to be unreachable or redundant after performing type analysis.
+    This can be a helpful way of detecting certain kinds of bugs in your code.
+
+    For example, enabling this flag will make mypy report that the ``x > 7``
+    check is redundant and that the ``else`` block below is unreachable.
+
+    .. code-block:: python
+
+        def process(x: int) -> None:
+            # Error: Right operand of 'or' is never evaluated
+            if isinstance(x, int) or x > 7:
+                # Error: Unsupported operand types for + ("int" and "str")
+                print(x + "bad")
+            else:
+                # Error: 'Statement is unreachable' error
+                print(x + "bad")
+
+    To help prevent mypy from generating spurious warnings, the "Statement is
+    unreachable" warning will be silenced in exactly two cases:
+
+    1.  When the unreachable statement is a ``raise`` statement, is an
+        ``assert False`` statement, or calls a function that has the ``NoReturn``
+        return type hint. In other words, when the unreachable statement
+        throws an error or terminates the program in some way.
+    2.  When the unreachable statement was *intentionally* marked as unreachable
+        using :ref:`version_and_platform_checks`.
+    
+    .. note::
+
+        Mypy currently cannot detect and report unreachable or redundant code
+        inside any functions using :ref:`type-variable-value-restriction`.
+
+        This limitation will be removed in future releases of mypy.
+        
+
 Miscellaneous strictness flags
 ******************************
 
@@ -622,8 +659,8 @@ Miscellaneous
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
 
-``--new-semantic-analyzer``
-    This flag switches to an improved, experimental implementation of
+``--no-new-semantic-analyzer``
+    This flag disables the improved implementation of
     the *semantic analyzer* (the part of mypy that binds Python
     names to definitions). The old and the new semantic analyzers
     mostly behave identically. The new semantic analyzer is better at
@@ -631,9 +668,8 @@ Miscellaneous
     also fixes inconsistencies between the daemon and non-daemon modes,
     and it detects additional error conditions.
 
-    Likely, the next mypy release will use the new semantic analyzer by
-    default, and the old semantic analyzer will be removed in the next
-    release after that.
+    Likely, the old semantic analyzer will be removed in the next
+    release.
 
 .. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 

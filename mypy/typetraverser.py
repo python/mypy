@@ -38,7 +38,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_literal_type(self, t: LiteralType) -> None:
-        pass
+        t.fallback.accept(self)
 
     # Composite types
 
@@ -57,6 +57,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         self.traverse_types(t.items.values())
+        t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> None:
         self.traverse_types(t.items)

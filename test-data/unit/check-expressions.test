@@ -2217,6 +2217,14 @@ o in exp
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testEmptyListOverlap]
+# mypy: strict-equality
+from typing import List
+
+x: List[int]
+x == []
+[builtins fixtures/isinstancelist.pyi]
+
 [case testCustomEqDecoratedStrictEquality]
 # flags: --strict-equality
 from typing import TypeVar, Callable, Any

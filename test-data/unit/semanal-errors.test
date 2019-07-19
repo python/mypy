@@ -126,14 +126,16 @@ y = None # type: Callable[[], A[int]]  # E: "A" expects no type arguments, but 1
 [out]
 
 [case testVarOrFuncAsType]
+# flags: --new-semantic-analyzer
 import typing
 def f(): pass
 x = 1
 y = 0 # type: f
 z = 0 # type: x
 [out]
-main:4: error: Invalid type "__main__.f"
-main:5: error: Invalid type "__main__.x"
+main:5: error: Function "__main__.f" is not valid as a type
+main:5: note: Perhaps you need "Callable[...]" or a callback protocol?
+main:6: error: Variable "__main__.x" is not valid as a type
 
 [case testGlobalVarRedefinition]
 import typing
@@ -489,20 +491,26 @@ del z     # E: Name 'z' is not defined
 [out]
 
 [case testFunctionTvarScope]
+# flags: --new-semantic-analyzer
 from typing import TypeVar
 t = TypeVar('t')
 def f(x: t) -> t: pass
 x = 0 # type: t
 [out]
-main:4: error: Invalid type "__main__.t"
+main:5: error: Type variable "__main__.t" is unbound
+main:5: note: (Hint: Use "Generic[t]" or "Protocol[t]" base class to bind "t" inside a class)
+main:5: note: (Hint: Use "t" in function signature to bind "t" inside a function)
 
 [case testClassTvarScope]
+# flags: --new-semantic-analyzer
 from typing import Generic, TypeVar
 t = TypeVar('t')
 class c(Generic[t]): pass
 x = 0 # type: t
 [out]
-main:4: error: Invalid type "__main__.t"
+main:5: error: Type variable "__main__.t" is unbound
+main:5: note: (Hint: Use "Generic[t]" or "Protocol[t]" base class to bind "t" inside a class)
+main:5: note: (Hint: Use "t" in function signature to bind "t" inside a function)
 
 [case testExpressionRefersToTypeVariable]
 from typing import TypeVar, Generic
@@ -736,14 +744,19 @@ foo = 0 # type: A.x      # E: Name 'A.x' is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 s = TypeVar('s')
 class A(Generic[t]):
     class B(Generic[s]):
         x = 0 # type: A[s]
-        y = 0 # type: A[t]        # E: Invalid type "__main__.t"
-    z = 0 # type: A[s]            # E: Invalid type "__main__.s"
+        y = 0 # type: A[t]        # E: Type variable "__main__.t" is unbound \
+                                  # N: (Hint: Use "Generic[t]" or "Protocol[t]" base class to bind "t" inside a class) \
+                                  # N: (Hint: Use "t" in function signature to bind "t" inside a function)
+    z = 0 # type: A[s]            # E: Type variable "__main__.s" is unbound \
+                                  # N: (Hint: Use "Generic[s]" or "Protocol[s]" base class to bind "s" inside a class) \
+                                  # N: (Hint: Use "s" in function signature to bind "s" inside a function)
     a = 0 # type: A[t]
 [out]
 
@@ -784,19 +797,22 @@ A = None # E: Cannot assign to a type
 [out]
 
 [case testInvalidCastTargetSyntax]
+# flags: --new-semantic-analyzer
 from typing import cast, TypeVar, Generic
 t = TypeVar('t')
 class C(Generic[t]): pass
 cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
-cast([int, str], None)   # E: Invalid type
+cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a type \
+                         # N: Did you mean "List[...]"?
 [out]
 
 [case testInvalidCastTargetType]
+# flags: --new-semantic-analyzer
 from typing import cast
 x = 0
-cast(x, None)        # E: Invalid type "__main__.x"
+cast(x, None)        # E: Variable "__main__.x" is not valid as a type
 cast(t, None)        # E: Name 't' is not defined
 cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
 [out]
@@ -826,7 +842,9 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 [out]
 
 [case testTypeListAsType]
-def f(x:[int, str]) -> None: # E: Invalid type
+# flags: --new-semantic-analyzer
+def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
+                             # N: Did you mean "List[...]"?
     pass
 [out]
 
@@ -885,10 +903,11 @@ class A:
 main:4: error: Type cannot be declared in assignment to non-self attribute
 
 [case testInvalidTypeInTypeApplication]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
-A[TypeVar] # E: Invalid type "typing.TypeVar"
+A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type
 [out]
 
 [case testInvalidTypeInTypeApplication2]
@@ -1435,6 +1454,7 @@ class A: ... # E: Name 'A' already defined on line 2
 [out]
 
 [case testNoInvalidTypeInDynamicFunctions]
+# flags: --new-semantic-analyzer
 from typing import Dict, TypeVar
 T = TypeVar('T')
 
@@ -1446,7 +1466,8 @@ def f():  # Note no annotation
     t: nested
 
 def g() -> None:
-    x: Dict[str, T] = {}  # E: Invalid type "__main__.T"
-
+    x: Dict[str, T] = {}  # E: Type variable "__main__.T" is unbound \
+                          # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+                          # N: (Hint: Use "T" in function signature to bind "T" inside a function)
 [builtins fixtures/dict.pyi]
 [out]

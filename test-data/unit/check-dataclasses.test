@@ -16,6 +16,21 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassesCustomInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+    def __init__(self, a: str) -> None:
+        pass
+
+A('1')
+
+[builtins fixtures/list.pyi]
+
 [case testDataclassesBasicInheritance]
 # flags: --python-version 3.6
 from dataclasses import dataclass
@@ -670,7 +685,9 @@ c.x = 1  # E: Property "x" defined in "C" is read-only
 import lib
 [file lib.py]
 from dataclasses import dataclass
-from other import *
+MYPY = False
+if MYPY:  # Force deferral
+    from other import *
 
 @dataclass
 class C:

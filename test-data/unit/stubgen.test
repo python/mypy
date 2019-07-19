@@ -1460,3 +1460,23 @@ def f(x):
 from typing import Any
 
 def f(x: Any): ...
+
+[case testFunctionPartiallyAnnotated]
+def f(x) -> None:
+    pass
+
+def g(x, y: str):
+    pass
+
+class A:
+    def f(self, x) -> None:
+        pass
+
+[out]
+from typing import Any
+
+def f(x: Any) -> None: ...
+def g(x: Any, y: str) -> Any: ...
+
+class A:
+    def f(self, x: Any) -> None: ...

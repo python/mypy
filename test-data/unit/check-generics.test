@@ -722,6 +722,7 @@ reveal_type(f('a'))  # N: Revealed type is '__main__.D[builtins.str*]'
 main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
 
 [case testGenericTypeAliasesSubclassingBad]
+# flags: --new-semantic-analyzer
 from typing import TypeVar, Generic, Tuple, Union
 T = TypeVar('T')
 class Node(Generic[T]):
@@ -733,7 +734,7 @@ UNode = Union[int, Node[T]]
 
 class C(TupledNode): ... # Same as TupledNode[Any]
 class D(TupledNode[T]): ...
-class E(Generic[T], UNode[T]): ... # E: Invalid base class
+class E(Generic[T], UNode[T]): ... # E: Invalid base class "UNode"
 
 reveal_type(D((1, 1))) # N: Revealed type is '__main__.D[builtins.int*]'
 [builtins fixtures/list.pyi]
@@ -962,6 +963,7 @@ O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1  # E:
 [out]
 
 [case testAliasesInClassBodyNormalVsSubscripted]
+# flags: --new-semantic-analyzer
 from typing import Union, Type, Iterable
 
 class A: pass
@@ -976,9 +978,9 @@ class C:
         b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
     if int():
         c = int
-    def f(self, x: a) -> None: pass  # E: Invalid type "__main__.C.a"
+    def f(self, x: a) -> None: pass  # E: Variable "__main__.C.a" is not valid as a type
     def g(self, x: b) -> None: pass
-    def h(self, x: c) -> None: pass  # E: Invalid type "__main__.C.c"
+    def h(self, x: c) -> None: pass  # E: Variable "__main__.C.c" is not valid as a type
     x: b
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [out]

@@ -554,7 +554,8 @@ def process_options(args: List[str],
              "the contents of SHADOW_FILE instead.")
     add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
                         group=internals_group)
-    add_invertible_flag('--new-semantic-analyzer', default=False, help=argparse.SUPPRESS,
+    add_invertible_flag('--no-new-semantic-analyzer', dest='new_semantic_analyzer',
+                        default=True, help=argparse.SUPPRESS,
                         group=internals_group)
 
     error_group = parser.add_argument_group(
@@ -762,7 +763,7 @@ def process_options(args: List[str],
         search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = FindModuleCache(search_paths, fscache)
+        cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),

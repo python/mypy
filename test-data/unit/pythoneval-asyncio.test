@@ -485,7 +485,7 @@ loop.close()
 [out]
 _program.py:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-[case testForwardRefToBadAsyncShouldNotCrash]
+[case testForwardRefToBadAsyncShouldNotCrash_newsemanal]
 from typing import TypeVar
 import asyncio
 
@@ -501,4 +501,4 @@ def bad(arg: P) -> T:
     pass
 [out]
 _program.py:8: note: Revealed type is 'def [T] (arg: P?) -> T`-1'
-_program.py:12: error: Invalid type "_testForwardRefToBadAsyncShouldNotCrash.P"
+_program.py:12: error: Variable "_testForwardRefToBadAsyncShouldNotCrash_newsemanal.P" is not valid as a type

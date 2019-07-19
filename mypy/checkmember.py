@@ -803,8 +803,10 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     fallback = info.metaclass_type or builtin_type('builtins.type')
     if init_index < new_index:
         method = init_method.node  # type: Union[FuncBase, Decorator]
+        is_new = False
     elif init_index > new_index:
         method = new_method.node
+        is_new = True
     else:
         if init_method.node.info.fullname() == 'builtins.object':
             # Both are defined by object.  But if we've got a bogus
@@ -817,12 +819,13 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
                                    arg_names=["_args", "_kwds"],
                                    ret_type=any_type,
                                    fallback=builtin_type('builtins.function'))
-                return class_callable(sig, info, fallback, None)
+                return class_callable(sig, info, fallback, None, is_new=False)
 
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
         # typeshed (#5647).
         method = init_method.node
+        is_new = False
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
     if isinstance(method, FuncBase):
@@ -830,7 +833,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     else:
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
-    return type_object_type_from_function(t, info, method.info, fallback)
+    return type_object_type_from_function(t, info, method.info, fallback, is_new)
 
 
 def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
@@ -849,7 +852,8 @@ def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
 def type_object_type_from_function(signature: FunctionLike,
                                    info: TypeInfo,
                                    def_info: TypeInfo,
-                                   fallback: Instance) -> FunctionLike:
+                                   fallback: Instance,
+                                   is_new: bool) -> FunctionLike:
     # The __init__ method might come from a generic superclass
     # (init_or_new.info) with type variables that do not map
     # identically to the type variables of the class being constructed
@@ -859,7 +863,7 @@ def type_object_type_from_function(signature: FunctionLike,
     #   class B(A[List[T]], Generic[T]): pass
     #
     # We need to first map B's __init__ to the type (List[T]) -> None.
-    signature = bind_self(signature)
+    signature = bind_self(signature, original_type=fill_typevars(info), is_classmethod=is_new)
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, def_info))
     special_sig = None  # type: Optional[str]
@@ -868,25 +872,31 @@ def type_object_type_from_function(signature: FunctionLike,
         special_sig = 'dict'
 
     if isinstance(signature, CallableType):
-        return class_callable(signature, info, fallback, special_sig)
+        return class_callable(signature, info, fallback, special_sig, is_new)
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items = []  # type: List[CallableType]
         for item in signature.items():
-            items.append(class_callable(item, info, fallback, special_sig))
+            items.append(class_callable(item, info, fallback, special_sig, is_new))
         return Overloaded(items)
 
 
 def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
-                   special_sig: Optional[str]) -> CallableType:
+                   special_sig: Optional[str],
+                   is_new: bool) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
+    if is_new and isinstance(init_type.ret_type, (Instance, TupleType)):
+        ret_type = init_type.ret_type  # type: Type
+    else:
+        ret_type = fill_typevars(info)
+
     callable_type = init_type.copy_modified(
-        ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
+        ret_type=ret_type, fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name(info.name())
     return c

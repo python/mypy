@@ -5028,3 +5028,33 @@ def asdf() -> None:
 @dec
 def lol(x: int, y: int) -> int:
     pass
+
+[case testVeryBrokenOverload]
+import lib
+reveal_type(lib.func)
+[file lib.pyi]
+@overload
+def func(x: int) -> int: ...
+
+def func(x):
+    return x
+[out]
+tmp/lib.pyi:1: error: Name 'overload' is not defined
+tmp/lib.pyi:4: error: Name 'func' already defined on line 1
+main:2: note: Revealed type is 'Any'
+
+-- Order of errors is different
+[case testVeryBrokenOverload2]
+# flags: --new-semantic-analyzer
+import lib
+reveal_type(lib.func)
+[file lib.pyi]
+@overload
+def func(x: int) -> int: ...
+@overload
+def func(x: str) -> str: ...
+[out]
+tmp/lib.pyi:1: error: Name 'overload' is not defined
+tmp/lib.pyi:3: error: Name 'func' already defined on line 1
+tmp/lib.pyi:3: error: Name 'overload' is not defined
+main:3: note: Revealed type is 'Any'

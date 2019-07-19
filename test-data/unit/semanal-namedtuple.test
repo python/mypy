@@ -170,5 +170,5 @@ class B(A): pass
 class A(NamedTuple('N', [1])): pass
 class B(A): pass
 [out]
-main:2: error: Invalid base class
+main:2: error: Unsupported dynamic base class "NamedTuple"
 main:2: error: Name 'NamedTuple' is not defined

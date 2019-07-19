@@ -2794,7 +2794,7 @@ class PlaceholderNode(SymbolNode):
       node: AST node that contains the definition that caused this to
           be created. This is useful for tracking order of incomplete definitions
           and for debugging.
-      becomes_typeinfo: If True, this refers something that will later
+      becomes_typeinfo: If True, this refers something that could later
           become a TypeInfo. It can't be used with type variables, in
           particular, as this would cause issues with class type variable
           detection.
