@@ -568,6 +568,9 @@ def process_options(args: List[str],
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages",
                         group=error_group)
+    add_invertible_flag('--show-error-codes', default=False,
+                        help="Show error codes in error messages",
+                        group=error_group)
 
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))

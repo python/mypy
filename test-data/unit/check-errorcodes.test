@@ -1,0 +1,10 @@
+[case testErrorCodeAttribute]
+# flags: --show-error-codes
+import m
+m.x
+'x'.foobar
+[file m.py]
+[builtins fixtures/module.pyi]
+[out]
+main:3: error: Module has no attribute "x"  [attr-defined]
+main:4: error: "str" has no attribute "foobar"  [attr-defined]
