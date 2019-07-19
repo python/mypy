@@ -167,6 +167,8 @@ class TypeCheckSuite(DataSuite):
             options.new_semantic_analyzer = True
         if 'columns' in testcase.file:
             options.show_column_numbers = True
+        if 'errorcodes' in testcase.file:
+            options.show_error_codes = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
