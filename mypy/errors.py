@@ -10,6 +10,7 @@ from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
+from mypy import errorcodes as codes
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -289,6 +290,9 @@ class Errors:
 
         if end_line is None:
             end_line = origin_line
+
+        if severity == 'error' and code is None:
+            code = codes.MISC
 
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          function, line, column, severity, message, code,

@@ -11,3 +11,9 @@ def f() -> None:
     y # E: Name 'y' is not defined  [name-defined]
 [file m.py]
 [builtins fixtures/module.pyi]
+
+[case testErrorCodeUnclassifiedError]
+class A:
+    def __init__(self) -> int: \
+        # E: The return type of "__init__" must be None  [misc]
+        pass
