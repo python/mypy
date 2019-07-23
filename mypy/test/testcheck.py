@@ -249,7 +249,7 @@ class TypeCheckSuite(DataSuite):
                         expected_stale, res.manager.stale_modules)
 
         if testcase.output_files:
-            check_test_output_files(testcase, incremental_step)
+            check_test_output_files(testcase, incremental_step, strip_prefix='tmp/')
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:

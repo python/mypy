@@ -427,9 +427,12 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
         os.utime(target_path, times=(new_time, new_time))
 
 
-def check_test_output_files(testcase: DataDrivenTestCase, step: int) -> None:
+def check_test_output_files(testcase: DataDrivenTestCase,
+                            step: int,
+                            strip_prefix: str = '') -> None:
     for path, expected_content in testcase.output_files:
-        path = path[4:]  # FIXME this is bad!!
+        if path.startswith(strip_prefix):
+            path = path[len(strip_prefix):]
         if not os.path.exists(path):
             raise AssertionError(
                 'Expected file {} was not produced by test case{}'.format(
