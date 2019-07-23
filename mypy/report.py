@@ -13,7 +13,7 @@ from operator import attrgetter
 from urllib.request import pathname2url
 
 import typing
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Iterator
 from typing_extensions import Final
 
 from mypy.nodes import MypyFile, Expression, FuncDef
@@ -114,6 +114,23 @@ def register_reporter(report_name: str,
 
 def alias_reporter(source_reporter: str, target_reporter: str) -> None:
     reporter_classes[target_reporter] = reporter_classes[source_reporter]
+
+
+def should_skip_path(path: str) -> bool:
+    if stats.is_special_module(path):
+        return True
+    if path.startswith('..'):
+        return True
+    if 'stubs' in path.split('/'):
+        return True
+    return False
+
+
+def iterate_file_tokens(path: str) -> Iterator[Tuple[int, str]]:
+    """Return an iterator over (line number, token) tuples from a Python file."""
+    with tokenize.open(path) as input_file:
+        for token in enumerate(input_file, 1):
+            yield token
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -443,11 +460,7 @@ class MemoryXmlReporter(AbstractReporter):
                 options: Options) -> None:
         self.last_xml = None
         path = os.path.relpath(tree.path)
-        if stats.is_special_module(path):
-            return
-        if path.startswith('..'):
-            return
-        if 'stubs' in path.split('/'):
+        if should_skip_path(path):
             return
 
         visitor = stats.StatisticsVisitor(inferred=True,
@@ -461,15 +474,14 @@ class MemoryXmlReporter(AbstractReporter):
         doc = etree.ElementTree(root)
         file_info = FileInfo(path, tree._fullname)
 
-        with tokenize.open(path) as input_file:
-            for lineno, line_text in enumerate(input_file, 1):
-                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
-                file_info.counts[status] += 1
-                etree.SubElement(root, 'line',
-                                 number=str(lineno),
-                                 precision=stats.precision_names[status],
-                                 content=line_text.rstrip('\n').translate(self.control_fixer),
-                                 any_info=self._get_any_info_for_line(visitor, lineno))
+        for lineno, line_text in iterate_file_tokens(path):
+            status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+            file_info.counts[status] += 1
+            etree.SubElement(root, 'line',
+                             number=str(lineno),
+                             precision=stats.precision_names[status],
+                             content=line_text.rstrip('\n').translate(self.control_fixer),
+                             any_info=self._get_any_info_for_line(visitor, lineno))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -782,11 +794,14 @@ class LinePrecisionReporter(AbstractReporter):
 
     Each line can be of these:
 
-    * precise (no Any types)
+    * precise (can be fully type checked)
     * imprecise (Any types in type component, such as List[Any])
-    * any (bare Any types, implicit or explicit)
+    * any (something with an Any type, implicit or explicit)
     * empty (empty line, comment or docstring)
     * unanalyzed (semantic analysis treats as unreachable)
+
+    The meaning of these categories varies slightly depending on
+    context.
     """
 
     def __init__(self, reports: Reports, output_dir: str) -> None:
@@ -799,11 +814,7 @@ class LinePrecisionReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         path = os.path.relpath(tree.path)
-        if stats.is_special_module(path):
-            return
-        if path.startswith('..'):
-            return
-        if 'stubs' in path.split('/'):
+        if should_skip_path(path):
             return
 
         visitor = stats.StatisticsVisitor(inferred=True,
@@ -814,10 +825,9 @@ class LinePrecisionReporter(AbstractReporter):
         tree.accept(visitor)
 
         file_info = FileInfo(path, tree._fullname)
-        with tokenize.open(path) as input_file:
-            for lineno, line_text in enumerate(input_file, 1):
-                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
-                file_info.counts[status] += 1
+        for lineno, _ in iterate_file_tokens(path):
+            status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+            file_info.counts[status] += 1
 
         self.files.append(file_info)
 
