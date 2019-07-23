@@ -74,9 +74,13 @@ class Reports:
         self.named_reporters[report_type] = reporter
         return reporter
 
-    def file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
+    def file(self,
+             tree: MypyFile,
+             modules: Dict[str, MypyFile],
+             type_map: Dict[Expression, Type],
+             options: Options) -> None:
         for reporter in self.reporters:
-            reporter.on_file(tree, type_map, options)
+            reporter.on_file(tree, modules, type_map, options)
 
     def finish(self) -> None:
         for reporter in self.reporters:
@@ -90,7 +94,11 @@ class AbstractReporter(metaclass=ABCMeta):
             stats.ensure_dir_exists(output_dir)
 
     @abstractmethod
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                modules: Dict[str, MypyFile],
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         pass
 
     @abstractmethod
@@ -124,6 +132,7 @@ class LineCountReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         # Count physical lines.  This assumes the file's encoding is a
@@ -171,10 +180,14 @@ class AnyExpressionsReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
-        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True,
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname(),
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True,
                                           visit_untyped_defs=False)
         tree.accept(visitor)
         self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
@@ -363,6 +376,7 @@ class LineCoverageReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         with open(tree.path) as f:
@@ -424,6 +438,7 @@ class MemoryXmlReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         self.last_xml = None
@@ -435,8 +450,11 @@ class MemoryXmlReporter(AbstractReporter):
         if 'stubs' in path.split('/'):
             return
 
-        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname(),
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True)
         tree.accept(visitor)
 
         root = etree.Element('mypy-report-file', name=path, module=tree._fullname)
@@ -551,11 +569,15 @@ class CoberturaXmlReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         path = os.path.relpath(tree.path)
-        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname(),
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True)
         tree.accept(visitor)
 
         class_name = os.path.basename(path)
@@ -648,6 +670,7 @@ class XmlReporter(AbstractXmlReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         last_xml = self.memory_xml.last_xml
@@ -690,6 +713,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         last_xml = self.memory_xml.last_xml
@@ -732,6 +756,7 @@ class XsltTxtReporter(AbstractXmlReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         pass
@@ -770,6 +795,7 @@ class LinePrecisionReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         path = os.path.relpath(tree.path)
@@ -782,6 +808,7 @@ class LinePrecisionReporter(AbstractReporter):
 
         visitor = stats.StatisticsVisitor(inferred=True,
                                           filename=tree.fullname(),
+                                          modules=modules,
                                           typemap=type_map,
                                           all_nodes=True)
         tree.accept(visitor)
