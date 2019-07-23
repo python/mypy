@@ -1,9 +1,6 @@
 -- Tests for reports
--- ------------------------------
 --
--- This file follows syntax of cmdline.test
-
--- ----------------------------------------
+-- This file follows syntax of cmdline.test.
 
 [case testConfigErrorUnknownReport]
 # cmd: mypy -c pass
