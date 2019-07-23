@@ -106,7 +106,6 @@ class TypeCheckSuite(DataSuite):
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
