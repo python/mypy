@@ -389,10 +389,12 @@ type_op = func_op(
     error_kind=ERR_NEVER,
     emit=call_emit('PyObject_Type'))
 
-type_object_op = name_ref_op('builtins.type',
-                       result_type=object_rprimitive,
-                       error_kind=ERR_NEVER,
-                       emit=name_emit('(PyObject*) &PyType_Type'))
+type_object_op = name_ref_op(
+    'builtins.type',
+    result_type=object_rprimitive,
+    error_kind=ERR_NEVER,
+    emit=name_emit('(PyObject*) &PyType_Type'),
+    is_borrowed=True)
 
 func_op(name='builtins.len',
         arg_types=[object_rprimitive],
