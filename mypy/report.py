@@ -126,11 +126,11 @@ def should_skip_path(path: str) -> bool:
     return False
 
 
-def iterate_file_tokens(path: str) -> Iterator[Tuple[int, str]]:
-    """Return an iterator over (line number, token) tuples from a Python file."""
+def iterate_python_lines(path: str) -> Iterator[Tuple[int, str]]:
+    """Return an iterator over (line number, line text) from a Python file."""
     with tokenize.open(path) as input_file:
-        for token in enumerate(input_file, 1):
-            yield token
+        for line_info in enumerate(input_file, 1):
+            yield line_info
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -474,7 +474,7 @@ class MemoryXmlReporter(AbstractReporter):
         doc = etree.ElementTree(root)
         file_info = FileInfo(path, tree._fullname)
 
-        for lineno, line_text in iterate_file_tokens(path):
+        for lineno, line_text in iterate_python_lines(path):
             status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
             file_info.counts[status] += 1
             etree.SubElement(root, 'line',
@@ -792,13 +792,13 @@ alias_reporter('xslt-txt', 'txt')
 class LinePrecisionReporter(AbstractReporter):
     """Report per-module line counts for typing precision.
 
-    Each line can be of these:
+    Each line is classified into one of these categories:
 
-    * precise (can be fully type checked)
-    * imprecise (Any types in type component, such as List[Any])
+    * precise (fully type checked)
+    * imprecise (Any types in a type component, such as List[Any])
     * any (something with an Any type, implicit or explicit)
     * empty (empty line, comment or docstring)
-    * unanalyzed (semantic analysis treats as unreachable)
+    * unanalyzed (mypy considers line unreachable)
 
     The meaning of these categories varies slightly depending on
     context.
@@ -825,7 +825,8 @@ class LinePrecisionReporter(AbstractReporter):
         tree.accept(visitor)
 
         file_info = FileInfo(path, tree._fullname)
-        for lineno, _ in iterate_file_tokens(path):
+        for lineno, _ in iterate_python_lines(path):
+            print(repr((lineno, _)))
             status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
             file_info.counts[status] += 1
 

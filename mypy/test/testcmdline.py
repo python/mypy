@@ -16,7 +16,6 @@ from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, check_test_output_files
 )
-import mypy.version
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -109,17 +108,3 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
-
-
-def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
-    """Normalize file output for comparison."""
-    timestamp_regex = re.compile(r'\d{10}')
-    result = [x.replace(current_abs_path, '$PWD') for x in content]
-    version = mypy.version.__version__
-    result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
-    # We generate a new mypy.version when building mypy wheels that
-    # lacks base_version, so handle that case.
-    base_version = getattr(mypy.version, 'base_version', version)
-    result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
-    result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
-    return result
