@@ -4,7 +4,7 @@ import os
 from collections import Counter
 
 import typing
-from typing import Dict, List, cast, Optional
+from typing import Dict, List, cast, Optional, Union
 from typing_extensions import Final
 
 from mypy.traverser import TraverserVisitor
@@ -17,7 +17,7 @@ from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    ImportFrom, Import
+    ImportFrom, Import, ImportAll
 )
 from mypy.util import correct_relative_import
 
@@ -80,6 +80,12 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_mypy_file(o)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
+        self.process_import(imp)
+
+    def visit_import_all(self, imp: ImportAll) -> None:
+        self.process_import(imp)
+
+    def process_import(self, imp: Union[ImportFrom, ImportAll]) -> None:
         import_id, ok = correct_relative_import(self.cur_mod_id,
                                                 imp.relative,
                                                 imp.id,

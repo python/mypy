@@ -79,7 +79,6 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 __main__      8        2          0    2      4           0
 m             2        1          0    1      0           0
 
-
 [case testLinePrecisionImport]
 # flags: --lineprecision-report out --ignore-missing-imports
 import m
@@ -92,3 +91,17 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
 __main__      4        1          0    2      1           0
 m             0        0          0    0      0           0
+
+[case testLinePrecisionStarImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+from m import *
+from bad import *
+
+[file m.py]
+def f(): pass
+def g() -> None: pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      3        1          0    1      1           0
+m             2        1          0    1      0           0
