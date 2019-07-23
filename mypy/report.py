@@ -162,6 +162,8 @@ register_reporter('linecount', LineCountReporter)
 
 
 class AnyExpressionsReporter(AbstractReporter):
+    """Report frequencies of different kinds of Any types."""
+
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
@@ -354,6 +356,7 @@ class LineCoverageReporter(AbstractReporter):
     source file's absolute pathname the list of line numbers that
     belong to typed functions in that file.
     """
+
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.lines_covered = {}  # type: Dict[str, List[int]]
@@ -506,8 +509,8 @@ def get_line_rate(covered_lines: int, total_lines: int) -> str:
 
 
 class CoberturaPackage(object):
-    """Container for XML and statistics mapping python modules to Cobertura package
-    """
+    """Container for XML and statistics mapping python modules to Cobertura package."""
+
     def __init__(self, name: str) -> None:
         self.name = name
         self.classes = {}  # type: Dict[str, Any]
@@ -535,8 +538,7 @@ class CoberturaPackage(object):
 
 
 class CoberturaXmlReporter(AbstractReporter):
-    """Reporter for generating Cobertura compliant XML.
-    """
+    """Reporter for generating Cobertura compliant XML."""
 
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
