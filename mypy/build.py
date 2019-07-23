@@ -2523,7 +2523,7 @@ def log_configuration(manager: BuildManager) -> None:
         ("Configured Executable", manager.options.python_executable),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
-        ("Compiled", not __file__.endswith(".py")),
+        ("Compiled", str(not __file__.endswith(".py"))),
     )
 
     for conf_name, conf_value in configuration_vars:
