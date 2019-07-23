@@ -26,4 +26,5 @@ REPORTER_NAMES = ['linecount',
                   'xslt-html',
                   'xslt-txt',
                   'html',
-                  'txt']  # type: Final
+                  'txt',
+                  'lineprecision']  # type: Final

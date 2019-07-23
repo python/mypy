@@ -16,7 +16,7 @@ from mypy.test.data import (
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime, assert_target_equivalence
+    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
 )
 from mypy.errors import CompileError
 from mypy.newsemanal.semanal_main import core_modules
@@ -85,6 +85,7 @@ typecheck_files = [
     'check-literal.test',
     'check-newsemanal.test',
     'check-inline-config.test',
+    'check-reports.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -246,6 +247,9 @@ class TypeCheckSuite(DataSuite):
                     assert_module_equivalence(
                         'stale' + suffix,
                         expected_stale, res.manager.stale_modules)
+
+        if testcase.output_files:
+            check_test_output_files(testcase, incremental_step)
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:

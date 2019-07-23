@@ -1,0 +1,44 @@
+[case testReportBasic]
+# flags: --xml-report out
+def f(): pass
+
+def g() -> None: pass
+[outfile out/index.xml]
+<?xml-stylesheet type="text/xsl" href="mypy-html.xslt"?><mypy-report-index name="index"><file module="__main__" name="main" total="4" any="1" empty="2" imprecise="0" precise="1" unanalyzed="0"/></mypy-report-index>
+
+[case testLinePrecisionBasic]
+# flags: --lineprecision-report out
+def f(): pass
+
+def g() -> None:
+    a = 1
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        2          0    1      2           0
+
+[case testLinePrecisionImpreciseType]
+# flags: --lineprecision-report out
+def f(x: list) -> None: pass
+[builtins fixtures/list.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      2        0          1    0      1           0
+
+[case testLinePrecisionUnanalyzed]
+# flags: --lineprecision-report out
+import sys
+MYPY = False
+if not MYPY:
+    a = 1
+
+def f(x: int) -> None:
+    if isinstance(x, str):
+        b = 1
+        c = 1
+[builtins fixtures/isinstance.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        4          0    0      3           3

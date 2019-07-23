@@ -751,6 +751,72 @@ register_reporter('xslt-txt', XsltTxtReporter, needs_lxml=True)
 alias_reporter('xslt-html', 'html')
 alias_reporter('xslt-txt', 'txt')
 
+
+class LinePrecisionReporter(AbstractReporter):
+    """Report per-module line counts for typing precision.
+
+    Each line can be of these:
+
+    * precise (no Any types)
+    * imprecise (Any types in type component, such as List[Any])
+    * any (bare Any types, implicit or explicit)
+    * empty (empty line, comment or docstring)
+    * unanalyzed (semantic analysis treats as unreachable)
+    """
+
+    def __init__(self, reports: Reports, output_dir: str) -> None:
+        super().__init__(reports, output_dir)
+        self.files = []  # type: List[FileInfo]
+
+    def on_file(self,
+                tree: MypyFile,
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
+        path = os.path.relpath(tree.path)
+        if stats.is_special_module(path):
+            return
+        if path.startswith('..'):
+            return
+        if 'stubs' in path.split('/'):
+            return
+
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname(),
+                                          typemap=type_map,
+                                          all_nodes=True)
+        tree.accept(visitor)
+
+        file_info = FileInfo(path, tree._fullname)
+        with tokenize.open(path) as input_file:
+            for lineno, line_text in enumerate(input_file, 1):
+                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+                file_info.counts[status] += 1
+
+        self.files.append(file_info)
+
+    def on_finish(self) -> None:
+        output_files = sorted(self.files, key=lambda x: x.module)
+        report_file = os.path.join(self.output_dir, 'lineprecision.txt')
+        width = max(4, max(len(info.module) for info in output_files))
+        fmt = '{:%d}  {:5}  {:7}  {:9}  {:3}  {:5}  {:10}\n' % width
+        with open(report_file, 'w') as f:
+            f.write(
+                fmt.format('Name', 'Lines', 'Precise', 'Imprecise', 'Any', 'Empty', 'Unanalyzed'))
+            f.write('-' * (width + 51) + '\n')
+            for file_info in output_files:
+                counts = file_info.counts
+                f.write(fmt.format(file_info.module.ljust(width),
+                                   file_info.total(),
+                                   counts[stats.TYPE_PRECISE],
+                                   counts[stats.TYPE_IMPRECISE],
+                                   counts[stats.TYPE_ANY],
+                                   counts[stats.TYPE_EMPTY],
+                                   counts[stats.TYPE_UNANALYZED]))
+
+
+register_reporter('lineprecision', LinePrecisionReporter)
+
+
 # Reporter class names are defined twice to speed up mypy startup, as this
 # module is slow to import. Ensure that the two definitions match.
 assert set(reporter_classes) == set(REPORTER_NAMES)
