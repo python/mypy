@@ -245,6 +245,9 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_str_expr(self, o: StrExpr) -> None:
         self.record_precise_if_checked_scope(o)
 
+    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
     def visit_bytes_expr(self, o: BytesExpr) -> None:
         self.record_precise_if_checked_scope(o)
 
