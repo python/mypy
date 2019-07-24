@@ -284,3 +284,20 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
 __main__      5        3          0    1      1           0
 m             3        2          0    1      0           0
+
+[case testLinePrecisionCallImpreciseArg]
+# flags: --lineprecision-report out
+from m import f
+def g() -> None:
+    f(1)  # Precise
+    f(1, [2])  # Imprecise
+[file m.py]
+from typing import List, Any
+def f(x: int, y: List[Any] = []) -> None:
+    pass
+[builtins fixtures/list.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          1    0      1           0
+m             3        2          1    0      0           0

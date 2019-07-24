@@ -225,7 +225,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.record_call_target_precision(o)
 
     def record_call_target_precision(self, o: CallExpr) -> None:
-        """Record precision of used formal argument types."""
+        """Record precision of formal argument types used in a call."""
         if not self.typemap or o.callee not in self.typemap:
             # Type not availabe.
             return
@@ -249,8 +249,8 @@ class StatisticsVisitor(TraverserVisitor):
                 formal = callee.arg_types[n]
                 if isinstance(formal, AnyType):
                     self.record_line(o.line, TYPE_ANY)
-                else:
-                    pass  # TODO
+                elif is_imprecise(formal):
+                    self.record_line(o.line, TYPE_IMPRECISE)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
         self.process_node(o)
