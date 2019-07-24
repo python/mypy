@@ -121,7 +121,7 @@ def should_skip_path(path: str) -> bool:
         return True
     if path.startswith('..'):
         return True
-    if 'stubs' in path.split('/'):
+    if 'stubs' in path.split('/') or 'stubs' in path.split(os.sep):
         return True
     return False
 
@@ -826,7 +826,6 @@ class LinePrecisionReporter(AbstractReporter):
 
         file_info = FileInfo(path, tree._fullname)
         for lineno, _ in iterate_python_lines(path):
-            print(repr((lineno, _)))
             status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
             file_info.counts[status] += 1
 
@@ -836,10 +835,12 @@ class LinePrecisionReporter(AbstractReporter):
         output_files = sorted(self.files, key=lambda x: x.module)
         report_file = os.path.join(self.output_dir, 'lineprecision.txt')
         width = max(4, max(len(info.module) for info in output_files))
-        fmt = '{:%d}  {:5}  {:7}  {:9}  {:3}  {:5}  {:10}\n' % width
+        titles = ('Lines', 'Precise', 'Imprecise', 'Any', 'Empty', 'Unanalyzed')
+        widths = (width,) + tuple(len(t) for t in titles)
+        fmt = '{:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}\n' % widths
         with open(report_file, 'w') as f:
             f.write(
-                fmt.format('Name', 'Lines', 'Precise', 'Imprecise', 'Any', 'Empty', 'Unanalyzed'))
+                fmt.format('Name', *titles))
             f.write('-' * (width + 51) + '\n')
             for file_info in output_files:
                 counts = file_info.counts
