@@ -22,6 +22,7 @@ from mypy.nodes import (
     UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
 )
 from mypy.util import correct_relative_import
+from mypy.argmap import map_actuals_to_formals
 
 TYPE_EMPTY = 0  # type: Final
 TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code
@@ -221,6 +222,35 @@ class StatisticsVisitor(TraverserVisitor):
             o.callee.accept(self)
             for a in o.args:
                 a.accept(self)
+            self.record_call_target_precision(o)
+
+    def record_call_target_precision(self, o: CallExpr) -> None:
+        """Record precision of used formal argument types."""
+        if not self.typemap or o.callee not in self.typemap:
+            # Type not availabe.
+            return
+        callee_type = self.typemap[o.callee]
+        if isinstance(callee_type, CallableType):
+            self.record_callable_target_precision(o, callee_type)
+        else:
+            pass # TODO
+
+    def record_callable_target_precision(self, o: CallExpr, callee: CallableType) -> None:
+        assert self.typemap
+        typemap = self.typemap
+        actual_to_formal = map_actuals_to_formals(
+            o.arg_kinds,
+            o.arg_names,
+            callee.arg_kinds,
+            callee.arg_names,
+            lambda n: typemap[o.args[n]])
+        for formals in actual_to_formal:
+            for n in formals:
+                formal = callee.arg_types[n]
+                if isinstance(formal, AnyType):
+                    self.record_line(o.line, TYPE_ANY)
+                else:
+                    pass  # TODO
 
     def visit_member_expr(self, o: MemberExpr) -> None:
         self.process_node(o)
