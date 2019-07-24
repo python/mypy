@@ -401,6 +401,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             name = var.name()
             annotated_type = (o.unanalyzed_type.arg_types[i]
                               if isinstance(o.unanalyzed_type, CallableType) else None)
+            # I think the name check is incorrect: there are libraries which
+            #   name their 0th argument other than self/cls
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
             if (annotated_type is None
