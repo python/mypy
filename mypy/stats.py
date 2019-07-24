@@ -22,7 +22,7 @@ from mypy.nodes import (
     UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
 )
 from mypy.util import correct_relative_import
-from mypy.argmap import map_actuals_to_formals
+from mypy.argmap import map_formals_to_actuals
 
 TYPE_EMPTY = 0  # type: Final
 TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code
@@ -238,7 +238,7 @@ class StatisticsVisitor(TraverserVisitor):
     def record_callable_target_precision(self, o: CallExpr, callee: CallableType) -> None:
         assert self.typemap
         typemap = self.typemap
-        actual_to_formal = map_actuals_to_formals(
+        actual_to_formal = map_formals_to_actuals(
             o.arg_kinds,
             o.arg_names,
             callee.arg_kinds,

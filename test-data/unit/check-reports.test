@@ -301,3 +301,22 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
 __main__      5        3          1    0      1           0
 m             3        2          1    0      0           0
+
+[case testLinePrecisionCallAnyArgWithKeywords]
+# flags: --lineprecision-report out
+from m import f
+def g() -> None:
+    f(x=1)  # Precise
+    f(x=1, z=1)  # Precise
+    f(z=1, x=1)  # Precise
+    f(y=1)  # Any
+    f(y=1, x=1)  # Any
+[file m.py]
+from typing import Any
+def f(x: int = 0, y: Any = 0, z: int = 0) -> None:
+    pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      8        5          0    2      1           0
+m             3        2          0    1      0           0
