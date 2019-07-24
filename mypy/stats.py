@@ -233,7 +233,7 @@ class StatisticsVisitor(TraverserVisitor):
         if isinstance(callee_type, CallableType):
             self.record_callable_target_precision(o, callee_type)
         else:
-            pass # TODO
+            pass  # TODO: Handle overloaded functions, etc.
 
     def record_callable_target_precision(self, o: CallExpr, callee: CallableType) -> None:
         assert self.typemap
