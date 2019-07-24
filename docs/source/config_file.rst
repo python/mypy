@@ -405,6 +405,8 @@ section of the command line docs.
 
 ``cache_dir`` (string, default ``.mypy_cache``)
     Specifies the location where mypy stores incremental cache info.
+    User home directory and environment variables will be expanded.
+
     Note that the cache is only read when incremental mode is enabled
     but is always written to, unless the value is set to ``/dev/nul``
     (UNIX) or ``nul`` (Windows).
