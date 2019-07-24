@@ -1,0 +1,125 @@
+[case testReportBasic]
+# flags: --xml-report out
+def f(): pass
+
+def g() -> None: pass
+[outfile out/index.xml]
+<?xml-stylesheet type="text/xsl" href="mypy-html.xslt"?><mypy-report-index name="index"><file module="__main__" name="main" total="4" any="1" empty="2" imprecise="0" precise="1" unanalyzed="0"/></mypy-report-index>
+
+[case testLinePrecisionBasic]
+# flags: --lineprecision-report out
+def f(): pass
+
+def g() -> None:
+    a = 1
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        2          0    1      2           0
+
+[case testLinePrecisionImpreciseType]
+# flags: --lineprecision-report out
+def f(x: list) -> None: pass
+[builtins fixtures/list.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      2        0          1    0      1           0
+
+[case testLinePrecisionUnanalyzed]
+# flags: --lineprecision-report out
+import sys
+MYPY = False
+if not MYPY:
+    a = 1
+
+def f(x: int) -> None:
+    if isinstance(x, str):
+        b = 1
+        c = 1
+[builtins fixtures/isinstance.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        5          0    0      2           3
+
+[case testLinePrecisionEmptyLines]
+# flags: --lineprecision-report out
+def f() -> None:
+    """docstring
+
+    long
+    """
+    x = 0
+
+    # comment
+    y = 0  # comment (non-empty)
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        3          0    0      7           0
+
+[case testLinePrecisionImportFrom]
+# flags: --lineprecision-report out --ignore-missing-imports
+from m import f
+from m import g
+from bad import foo
+from bad import (  # treated as a single line
+    foo2,
+    foo3,
+)
+
+[file m.py]
+def f(): pass
+def g() -> None: pass
+
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      8        2          0    2      4           0
+m             2        1          0    1      0           0
+
+[case testLinePrecisionImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+import m
+import bad
+import m, bad
+
+[file m.py]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      4        1          0    2      1           0
+m             0        0          0    0      0           0
+
+[case testLinePrecisionStarImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+from m import *
+from bad import *
+
+[file m.py]
+def f(): pass
+def g() -> None: pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      3        1          0    1      1           0
+m             2        1          0    1      0           0
+
+[case testLinePrecisionRelativeImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+import a
+
+[file a/__init__.py]
+from .m import f
+from .bad import g
+
+[file a/m.py]
+def f(): pass
+
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      2        1          0    0      1           0
+a             2        1          0    1      0           0
+a.m           1        0          0    1      0           0

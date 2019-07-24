@@ -16,7 +16,7 @@ from mypy.test.data import (
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime, assert_target_equivalence
+    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
 )
 from mypy.errors import CompileError
 from mypy.newsemanal.semanal_main import core_modules
@@ -85,6 +85,7 @@ typecheck_files = [
     'check-literal.test',
     'check-newsemanal.test',
     'check-inline-config.test',
+    'check-reports.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -106,7 +107,6 @@ class TypeCheckSuite(DataSuite):
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
@@ -247,6 +247,9 @@ class TypeCheckSuite(DataSuite):
                     assert_module_equivalence(
                         'stale' + suffix,
                         expected_stale, res.manager.stale_modules)
+
+        if testcase.output_files:
+            check_test_output_files(testcase, incremental_step, strip_prefix='tmp/')
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:

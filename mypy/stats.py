@@ -4,7 +4,7 @@ import os
 from collections import Counter
 
 import typing
-from typing import Dict, List, cast, Optional
+from typing import Dict, List, cast, Optional, Union
 from typing_extensions import Final
 
 from mypy.traverser import TraverserVisitor
@@ -16,8 +16,10 @@ from mypy.types import (
 from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
+    ImportFrom, Import, ImportAll
 )
+from mypy.util import correct_relative_import
 
 TYPE_EMPTY = 0  # type: Final
 TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code
@@ -38,11 +40,13 @@ class StatisticsVisitor(TraverserVisitor):
     def __init__(self,
                  inferred: bool,
                  filename: str,
+                 modules: Dict[str, MypyFile],
                  typemap: Optional[Dict[Expression, Type]] = None,
                  all_nodes: bool = False,
                  visit_untyped_defs: bool = True) -> None:
         self.inferred = inferred
         self.filename = filename
+        self.modules = modules
         self.typemap = typemap
         self.all_nodes = all_nodes
         self.visit_untyped_defs = visit_untyped_defs
@@ -69,6 +73,35 @@ class StatisticsVisitor(TraverserVisitor):
         self.output = []  # type: List[str]
 
         TraverserVisitor.__init__(self)
+
+    def visit_mypy_file(self, o: MypyFile) -> None:
+        self.cur_mod_node = o
+        self.cur_mod_id = o.fullname()
+        super().visit_mypy_file(o)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        self.process_import(imp)
+
+    def visit_import_all(self, imp: ImportAll) -> None:
+        self.process_import(imp)
+
+    def process_import(self, imp: Union[ImportFrom, ImportAll]) -> None:
+        import_id, ok = correct_relative_import(self.cur_mod_id,
+                                                imp.relative,
+                                                imp.id,
+                                                self.cur_mod_node.is_package_init_file())
+        if ok and import_id in self.modules:
+            kind = TYPE_PRECISE
+        else:
+            kind = TYPE_ANY
+        self.record_line(imp.line, kind)
+
+    def visit_import(self, imp: Import) -> None:
+        if all(id in self.modules for id, _ in imp.ids):
+            kind = TYPE_PRECISE
+        else:
+            kind = TYPE_ANY
+        self.record_line(imp.line, kind)
 
     def visit_func_def(self, o: FuncDef) -> None:
         self.line = o.line
@@ -235,12 +268,18 @@ class StatisticsVisitor(TraverserVisitor):
                                   self.line_map.get(line, TYPE_EMPTY))
 
 
-def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
+def dump_type_stats(tree: MypyFile,
+                    path: str,
+                    modules: Dict[str, MypyFile],
+                    inferred: bool = False,
                     typemap: Optional[Dict[Expression, Type]] = None) -> None:
     if is_special_module(path):
         return
     print(path)
-    visitor = StatisticsVisitor(inferred, filename=tree.fullname(), typemap=typemap)
+    visitor = StatisticsVisitor(inferred,
+                                filename=tree.fullname(),
+                                modules=modules,
+                                typemap=typemap)
     tree.accept(visitor)
     for line in visitor.output:
         print(line)

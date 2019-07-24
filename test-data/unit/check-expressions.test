@@ -1290,6 +1290,14 @@ b'%c' % (123)
 [case testUnicodeInterpolation_python2]
 u'%s' % (u'abc',)
 
+[case testStringInterpolationVariableLengthTuple]
+from typing import Tuple
+def f(t: Tuple[int, ...]) -> None:
+    '%d %d' % t
+    '%d %d %d' % t
+[builtins fixtures/primitives.pyi]
+
+
 -- Lambdas
 -- -------
 

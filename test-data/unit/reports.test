@@ -1,9 +1,6 @@
 -- Tests for reports
--- ------------------------------
 --
--- This file follows syntax of cmdline.test
-
--- ----------------------------------------
+-- This file follows syntax of cmdline.test.
 
 [case testConfigErrorUnknownReport]
 # cmd: mypy -c pass
@@ -30,7 +27,7 @@ def bar() -> str:
 def untyped_function():
   return 42
 [outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8000" branch-rate="0">
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8333" branch-rate="0">
   <sources>
     <source>$PWD</source>
   </sources>
@@ -44,6 +41,7 @@ def untyped_function():
         <class complexity="1.0" filename="pkg/a.py" name="a.py" branch-rate="0" line-rate="1.0000">
           <methods/>
           <lines>
+            <line branch="false" hits="1" number="1" precision="precise"/>
             <line branch="true" hits="1" number="3" precision="imprecise" condition-coverage="50% (1/2)"/>
             <line branch="false" hits="1" number="4" precision="precise"/>
             <line branch="false" hits="1" number="5" precision="precise"/>
@@ -128,7 +126,7 @@ T = TypeVar('T')
 <span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
 <span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
 </pre></td>
-<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">from typing import TypeVar</span>
+<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from typing import TypeVar</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-empty" title="No Anys on this line!">T = TypeVar('T')</span>
 </pre></td>
@@ -173,7 +171,7 @@ def bar(x):
 <span id="L5" class="lineno"><a class="lineno" href="#L5">5</a></span>
 <span id="L6" class="lineno"><a class="lineno" href="#L6">6</a></span>
 </pre></td>
-<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">from any import any_f</span>
+<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from any import any_f</span>
 <span class="line-precise" title="No Anys on this line!">def bar(x):</span>
 <span class="line-empty" title="No Anys on this line!">    # type: (str) -&gt; None</span>
 <span class="line-precise" title="Any Types on this line:
@@ -211,7 +209,7 @@ old_stdout = sys.stdout
 <span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
 <span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
 </pre></td>
-<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">import sys</span>
+<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">import sys</span>
 <span class="line-empty" title="No Anys on this line!"></span>
 <span class="line-precise" title="No Anys on this line!">old_stdout = sys.stdout</span>
 </pre></td>

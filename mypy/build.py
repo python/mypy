@@ -748,7 +748,7 @@ class BuildManager:
                     type_map: Dict[Expression, Type],
                     options: Options) -> None:
         if self.reports is not None and self.source_set.is_source(file):
-            self.reports.file(file, type_map, options)
+            self.reports.file(file, self.modules, type_map, options)
 
     def verbosity(self) -> int:
         return self.options.verbosity
@@ -2120,7 +2120,7 @@ class State:
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
                                                             self.options, patches)
             if self.options.dump_type_stats:
-                dump_type_stats(self.tree, self.xpath)
+                dump_type_stats(self.tree, self.xpath, self.manager.modules)
         self.patches = patches + self.patches
 
     def semantic_analysis_apply_patches(self) -> None:
@@ -2165,7 +2165,10 @@ class State:
             self._patch_indirect_dependencies(self.type_checker().module_refs, self.type_map())
 
             if self.options.dump_inference_stats:
-                dump_type_stats(self.tree, self.xpath, inferred=True,
+                dump_type_stats(self.tree,
+                                self.xpath,
+                                modules=self.manager.modules,
+                                inferred=True,
                                 typemap=self.type_map())
             manager.report_file(self.tree, self.type_map(), self.options)
 

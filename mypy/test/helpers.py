@@ -18,7 +18,9 @@ from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename
+from mypy.test.config import test_temp_dir
+import mypy.version
 
 skip = pytest.mark.skip
 
@@ -423,3 +425,43 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
+
+
+def check_test_output_files(testcase: DataDrivenTestCase,
+                            step: int,
+                            strip_prefix: str = '') -> None:
+    for path, expected_content in testcase.output_files:
+        if path.startswith(strip_prefix):
+            path = path[len(strip_prefix):]
+        if not os.path.exists(path):
+            raise AssertionError(
+                'Expected file {} was not produced by test case{}'.format(
+                    path, ' on step %d' % step if testcase.output2 else ''))
+        with open(path, 'r', encoding='utf8') as output_file:
+            actual_output_content = output_file.read().splitlines()
+        normalized_output = normalize_file_output(actual_output_content,
+                                                  os.path.abspath(test_temp_dir))
+        # We always normalize things like timestamp, but only handle operating-system
+        # specific things if requested.
+        if testcase.normalize_output:
+            if testcase.suite.native_sep and os.path.sep == '\\':
+                normalized_output = [fix_cobertura_filename(line)
+                                     for line in normalized_output]
+            normalized_output = normalize_error_messages(normalized_output)
+        assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
+                                   'Output file {} did not match its expected output{}'.format(
+                                       path, ' on step %d' % step if testcase.output2 else ''))
+
+
+def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
+    """Normalize file output for comparison."""
+    timestamp_regex = re.compile(r'\d{10}')
+    result = [x.replace(current_abs_path, '$PWD') for x in content]
+    version = mypy.version.__version__
+    result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
+    # We generate a new mypy.version when building mypy wheels that
+    # lacks base_version, so handle that case.
+    base_version = getattr(mypy.version, 'base_version', version)
+    result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
+    result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
+    return result
