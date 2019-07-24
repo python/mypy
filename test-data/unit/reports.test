@@ -27,7 +27,7 @@ def bar() -> str:
 def untyped_function():
   return 42
 [outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8333" branch-rate="0">
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.7500" branch-rate="0">
   <sources>
     <source>$PWD</source>
   </sources>
@@ -59,7 +59,9 @@ def untyped_function():
           <methods/>
           <lines>
             <line branch="false" hits="1" number="1" precision="precise"/>
+            <line branch="false" hits="1" number="2" precision="precise"/>
             <line branch="false" hits="0" number="3" precision="any"/>
+            <line branch="false" hits="0" number="4" precision="any"/>
           </lines>
         </class>
       </classes>
@@ -71,7 +73,7 @@ def untyped_function():
 [case testAnyExprReportDivisionByZero]
 # cmd: mypy --any-exprs-report=out -c 'pass'
 
-[case testClassDefIsTreatedAsEmpty]
+[case testClassDefIsNotTreatedAsEmpty]
 # cmd: mypy --html-report report n.py
 [file n.py]
 class A(object):
@@ -93,8 +95,8 @@ class A(object):
 <td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
 <span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
 </pre></td>
-<td class="table-code"><pre><span class="line-empty" title="No Anys on this line!">class A(object):</span>
-<span class="line-empty" title="No Anys on this line!">	pass  # line indented with tab; hex 1f here: (?)</span>
+<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">class A(object):</span>
+<span class="line-precise" title="No Anys on this line!">	pass  # line indented with tab; hex 1f here: (?)</span>
 </pre></td>
 </tr></tbody>
 </table>
@@ -174,7 +176,7 @@ def bar(x):
 <td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from any import any_f</span>
 <span class="line-precise" title="No Anys on this line!">def bar(x):</span>
 <span class="line-empty" title="No Anys on this line!">    # type: (str) -&gt; None</span>
-<span class="line-precise" title="Any Types on this line:
+<span class="line-any" title="Any Types on this line:
 Explicit (x1)">    any_f(x)</span>
 <span class="line-precise" title="No Anys on this line!">    assert False</span>
 <span class="line-unanalyzed" title="No Anys on this line!">    any_f(x)</span>
@@ -238,10 +240,10 @@ def bar(x):
 [outfile report/any-exprs.txt]
  Name   Anys   Exprs   Coverage
 ---------------------------------
-    i      1       7     85.71%
-    j      0       6    100.00%
+    i      1       6     83.33%
+    j      0       5    100.00%
 ---------------------------------
-Total      1      13     92.31%
+Total      1      11     90.91%
 
 [case testAnyExprReportHigherKindedTypesAreNotAny]
 # cmd: mypy --new-semantic-analyzer --any-exprs-report report i.py
