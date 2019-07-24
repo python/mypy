@@ -18,7 +18,8 @@ from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt
+    ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr, BytesExpr,
+    IntExpr, FloatExpr, ComplexExpr, EllipsisExpr
 )
 from mypy.util import correct_relative_import
 
@@ -191,12 +192,15 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_continue_stmt(self, o: ContinueStmt) -> None:
         self.record_precise_if_checked_scope(o.line)
 
-    def record_precise_if_checked_scope(self, line: int) -> None:
-        self.record_line(line, TYPE_PRECISE if self.is_checked_scope() else TYPE_ANY)
-
     def visit_name_expr(self, o: NameExpr) -> None:
-        self.process_node(o)
-        super().visit_name_expr(o)
+        if o.fullname in ('builtins.None',
+                          'builtins.True',
+                          'builtins.False',
+                          'builtins.Ellipsis'):
+            self.record_precise_if_checked_scope(o.line)
+        else:
+            self.process_node(o)
+            super().visit_name_expr(o)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
         if o.expr:
@@ -231,11 +235,34 @@ class StatisticsVisitor(TraverserVisitor):
         self.process_node(o)
         super().visit_unary_expr(o)
 
+    def visit_str_expr(self, o: StrExpr) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_bytes_expr(self, o: BytesExpr) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_int_expr(self, o: IntExpr) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_float_expr(self, o: FloatExpr) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_complex_expr(self, o: ComplexExpr) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_ellipsis(self, o: EllipsisExpr) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    # Helpers
+
     def process_node(self, node: Expression) -> None:
         if self.all_nodes:
             if self.typemap is not None:
                 self.line = node.line
                 self.type(self.typemap.get(node))
+
+    def record_precise_if_checked_scope(self, line: int) -> None:
+        self.record_line(line, TYPE_PRECISE if self.is_checked_scope() else TYPE_ANY)
 
     def type(self, t: Optional[Type]) -> None:
         if not t:

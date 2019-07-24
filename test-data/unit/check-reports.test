@@ -166,3 +166,83 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 __main__      3        2          0    0      1           0
 a             7        4          0    3      0           0
 b             7        4          0    3      0           0
+
+[case testLinePrecisionLiterals]
+# flags: --lineprecision-report out
+import str_lit
+import bytes_lit
+import int_lit
+import float_lit
+import true_lit
+import false_lit
+import none_lit
+import complex_lit
+import dots_lit
+
+[file str_lit.py]
+def f() -> object:
+    return ''
+def g():
+    return ''
+
+[file bytes_lit.py]
+def f() -> object:
+    return b''
+def g():
+    return b''
+
+[file int_lit.py]
+def f() -> object:
+    return 1
+def g():
+    return 1
+
+[file float_lit.py]
+def f() -> object:
+    return 1.1
+def g():
+    return 1.1
+
+[file true_lit.py]
+def f() -> object:
+    return True
+def g():
+    return True
+
+[file false_lit.py]
+def f() -> object:
+    return False
+def g():
+    return False
+
+[file none_lit.py]
+def f() -> object:
+    return None
+def g():
+    return None
+
+[file complex_lit.py]
+def f() -> object:
+    return None
+def g():
+    return None
+
+[file dots_lit.py]
+def f() -> object:
+    return ...
+def g():
+    return ...
+
+[outfile out/lineprecision.txt]
+Name         Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+----------------------------------------------------------------
+__main__        10        9          0    0      1           0
+bytes_lit        4        2          0    2      0           0
+complex_lit      4        2          0    2      0           0
+dots_lit         4        2          0    2      0           0
+false_lit        4        2          0    2      0           0
+float_lit        4        2          0    2      0           0
+int_lit          4        2          0    2      0           0
+none_lit         4        2          0    2      0           0
+str_lit          4        2          0    2      0           0
+true_lit         4        2          0    2      0           0
