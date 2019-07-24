@@ -18,7 +18,7 @@ from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    ImportFrom, Import, ImportAll, PassStmt
+    ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt
 )
 from mypy.util import correct_relative_import
 
@@ -183,7 +183,16 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_assignment_stmt(o)
 
     def visit_pass_stmt(self, o: PassStmt) -> None:
-        self.record_line(o.line, TYPE_PRECISE if self.is_checked_scope() else TYPE_ANY)
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_break_stmt(self, o: BreakStmt) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def visit_continue_stmt(self, o: ContinueStmt) -> None:
+        self.record_precise_if_checked_scope(o.line)
+
+    def record_precise_if_checked_scope(self, line: int) -> None:
+        self.record_line(line, TYPE_PRECISE if self.is_checked_scope() else TYPE_ANY)
 
     def visit_name_expr(self, o: NameExpr) -> None:
         self.process_node(o)

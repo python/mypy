@@ -136,3 +136,33 @@ class C:
 Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
 __main__      7        4          0    2      1           0
+
+[case testLinePrecisionBreakAndContinueStatement]
+# flags: --lineprecision-report out
+import a
+import b
+
+[file a.py]
+def f() -> int:
+    while f():
+        break
+    return f()
+def g():
+    while g():
+        break
+
+[file b.py]
+def f() -> int:
+    while f():
+        continue
+    return f()
+def g():
+    while g():
+        continue
+
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      3        2          0    0      1           0
+a             7        4          0    3      0           0
+b             7        4          0    3      0           0
