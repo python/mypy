@@ -4271,15 +4271,29 @@ test()
 
 [case testIterTypeTrickiness]
 # Test inferring the type of a for loop body doesn't cause us grief
-# Extracted from something that broke in mypy
+# Extracted from somethings that broke in mypy
 
+from typing import Optional
+
+# really I only care that this one build
 def foo(x: object) -> None:
     if isinstance(x, dict):
         for a in x:
             pass
 
+def bar(x: Optional[str]) -> None:
+    vars = (
+        ("a", 'lol'),
+        ("b", 'asdf'),
+        ("lol", x),
+        ("an int", 10),
+    )
+    for name, value in vars:
+        pass
+
 [file driver.py]
-# really I only care it builds
+from native import bar
+bar(None)
 
 [case testComplicatedArgs]
 from typing import Tuple, Dict
@@ -4441,15 +4455,3 @@ with assertRaises(TypeError, "varargs4() missing required keyword-only argument 
     varargs4(1, 2, 3)
 with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
     varargs4(y=20)
-
-[case testIterTypeTrickiness]
-# Test inferring the type of a for loop body doesn't cause us grief
-# Extracted from something that broke in mypy
-
-def foo(x: object) -> None:
-    if isinstance(x, dict):
-        for a in x:
-            pass
-
-[file driver.py]
-# really I only care it builds
