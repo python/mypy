@@ -337,3 +337,20 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
 __main__      5        3          0    1      1           0
 m             4        3          0    1      0           0
+
+[case testLinePrecisionCallAnyConstructorArg]
+# flags: --lineprecision-report out
+from m import C
+def g() -> None:
+    C(1)  # Precise
+    C(1, 2)  # Any
+[file m.py]
+from typing import Any
+class C:
+    def __init__(self, x: int, y: Any = 0) -> None:
+        pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          0    1      1           0
+m             4        3          0    1      0           0
