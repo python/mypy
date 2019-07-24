@@ -416,12 +416,6 @@ class HasAnyQuery(TypeQuery[bool]):
     def visit_any(self, t: AnyType) -> bool:
         return not is_special_form_any(t)
 
-    def visit_instance(self, t: Instance) -> bool:
-        if t.type.fullname() == 'builtins.tuple':
-            return True
-        else:
-            return super().visit_instance(t)
-
 
 def is_imprecise2(t: Type) -> bool:
     return t.accept(HasAnyQuery2())
