@@ -123,3 +123,16 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 __main__      2        1          0    0      1           0
 a             2        1          0    1      0           0
 a.m           1        0          0    1      0           0
+
+[case testLinePrecisionPassStatement]
+# flags: --lineprecision-report out
+def f() -> None:
+    pass
+def g():
+    pass
+class C:
+    pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      7        4          0    2      1           0

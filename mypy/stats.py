@@ -2,9 +2,10 @@
 
 import os
 from collections import Counter
+from contextlib import contextmanager
 
 import typing
-from typing import Dict, List, cast, Optional, Union
+from typing import Dict, List, cast, Optional, Union, Iterator
 from typing_extensions import Final
 
 from mypy.traverser import TraverserVisitor
@@ -17,7 +18,7 @@ from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    ImportFrom, Import, ImportAll
+    ImportFrom, Import, ImportAll, PassStmt
 )
 from mypy.util import correct_relative_import
 
@@ -70,6 +71,12 @@ class StatisticsVisitor(TraverserVisitor):
         self.type_of_any_counter = Counter()  # type: typing.Counter[int]
         self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
+        # For each scope (top level/function), whether the scope was type checked
+        # (annotated function).
+        #
+        # TODO: Handle --check-untyped-defs
+        self.checked_scopes = [True]
+
         self.output = []  # type: List[str]
 
         TraverserVisitor.__init__(self)
@@ -104,30 +111,42 @@ class StatisticsVisitor(TraverserVisitor):
         self.record_line(imp.line, kind)
 
     def visit_func_def(self, o: FuncDef) -> None:
-        self.line = o.line
-        if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
-            if o in o.expanded:
-                print('{}:{}: ERROR: cycle in function expansion; skipping'.format(self.filename,
-                                                                                   o.get_line()))
-                return
-            for defn in o.expanded:
-                self.visit_func_def(cast(FuncDef, defn))
-        else:
-            if o.type:
-                sig = cast(CallableType, o.type)
-                arg_types = sig.arg_types
-                if (sig.arg_names and sig.arg_names[0] == 'self' and
-                        not self.inferred):
-                    arg_types = arg_types[1:]
-                for arg in arg_types:
-                    self.type(arg)
-                self.type(sig.ret_type)
-            elif self.all_nodes:
-                self.record_line(self.line, TYPE_ANY)
-            if not o.is_dynamic() or self.visit_untyped_defs:
-                super().visit_func_def(o)
+        with self.enter_scope(o):
+            self.line = o.line
+            if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
+                if o in o.expanded:
+                    print('{}:{}: ERROR: cycle in function expansion; skipping'.format(
+                        self.filename,
+                        o.get_line()))
+                    return
+                for defn in o.expanded:
+                    self.visit_func_def(cast(FuncDef, defn))
+            else:
+                if o.type:
+                    sig = cast(CallableType, o.type)
+                    arg_types = sig.arg_types
+                    if (sig.arg_names and sig.arg_names[0] == 'self' and
+                            not self.inferred):
+                        arg_types = arg_types[1:]
+                    for arg in arg_types:
+                        self.type(arg)
+                    self.type(sig.ret_type)
+                elif self.all_nodes:
+                    self.record_line(self.line, TYPE_ANY)
+                if not o.is_dynamic() or self.visit_untyped_defs:
+                    super().visit_func_def(o)
+
+    @contextmanager
+    def enter_scope(self, o: FuncDef) -> Iterator[None]:
+        self.checked_scopes.append(o.type is not None and self.checked_scopes[-1])
+        yield None
+        self.checked_scopes.pop()
+
+    def is_checked_scope(self) -> bool:
+        return self.checked_scopes[-1]
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self.record_line(o.line, TYPE_PRECISE)  # TODO: Look at base classes
         # Override this method because we don't want to analyze base_type_exprs (base_type_exprs
         # are base classes in a class declaration).
         # While base_type_exprs are technically expressions, type analyzer does not visit them and
@@ -162,6 +181,9 @@ class StatisticsVisitor(TraverserVisitor):
                         if self.typemap is not None:
                             self.type(self.typemap.get(item))
         super().visit_assignment_stmt(o)
+
+    def visit_pass_stmt(self, o: PassStmt) -> None:
+        self.record_line(o.line, TYPE_PRECISE if self.is_checked_scope() else TYPE_ANY)
 
     def visit_name_expr(self, o: NameExpr) -> None:
         self.process_node(o)
