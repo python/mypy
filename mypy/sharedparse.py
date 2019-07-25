@@ -38,7 +38,7 @@ _NON_BINARY_MAGIC_METHODS = {
     "__missing__",
     "__neg__",
     "__new__",
-    "__not__",
+    # "__not__",  # Not magic -- `not` calls `__bool__` or `__len__`.
     "__nonzero__",
     "__oct__",
     "__pos__",
