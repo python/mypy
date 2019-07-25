@@ -1,3 +1,7 @@
+-- Tests for error codes
+--
+-- These implicitly use --show-error-codes.
+
 [case testErrorCodeNoAttribute]
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
@@ -25,6 +29,14 @@ reveal_type(1) # N: Revealed type is 'builtins.int'
 1 '' # E: invalid syntax  [syntax]
 
 [case testErrorCodeSyntaxError2]
+def f(): # E: Type signature has too many arguments  [syntax]
+    # type: (int) -> None
+    1
+
+[case testErrorCodeSyntaxError_python2]
+1 '' # E: invalid syntax  [syntax]
+
+[case testErrorCodeSyntaxError2_python2]
 def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1

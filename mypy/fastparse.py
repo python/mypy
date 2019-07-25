@@ -274,13 +274,9 @@ class ASTConverter:
              msg: str,
              line: int,
              column: int,
-             blocker: bool = True,
-             *,
-             code: Optional[ErrorCode] = None) -> None:
-        if code is None:
-            code = codes.SYNTAX
+             blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=code)
+            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -1296,12 +1292,9 @@ class TypeConverter:
             return None
         return self.node_stack[-2]
 
-    def fail(self, msg: str, line: int, column: int, *, code: Optional[ErrorCode] = None) -> None:
-        print(1, code)
-        if code is None:
-            code = codes.SYNTAX
+    def fail(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, blocker=True, code=code)
+            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:

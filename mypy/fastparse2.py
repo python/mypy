@@ -41,7 +41,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
 )
-from mypy import message_registry
+from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment, bytes_to_human_readable_repr
 from mypy.options import Options
@@ -111,7 +111,7 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True)
+        errors.report(e.lineno, e.offset, e.msg, blocker=True, code=codes.SYNTAX)
         tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
@@ -166,7 +166,7 @@ class ASTConverter:
 
     def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker)
+            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
 
     def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
         if node is None:
