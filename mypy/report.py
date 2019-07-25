@@ -832,6 +832,9 @@ class LinePrecisionReporter(AbstractReporter):
         self.files.append(file_info)
 
     def on_finish(self) -> None:
+        if not self.files:
+            # Nothing to do.
+            return
         output_files = sorted(self.files, key=lambda x: x.module)
         report_file = os.path.join(self.output_dir, 'lineprecision.txt')
         width = max(4, max(len(info.module) for info in output_files))

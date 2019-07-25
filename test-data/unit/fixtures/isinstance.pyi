@@ -1,4 +1,4 @@
-from typing import Tuple, TypeVar, Generic, Union, cast, Any
+from typing import Tuple, TypeVar, Generic, Union, cast, Any, Type
 
 T = TypeVar('T')
 
@@ -12,8 +12,8 @@ class tuple(Generic[T]): pass
 
 class function: pass
 
-def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
-def issubclass(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
+def isinstance(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
+def issubclass(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 
 class int:
     def __add__(self, other: 'int') -> 'int': pass
