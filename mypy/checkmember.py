@@ -136,17 +136,17 @@ def _analyze_member_access(name: str,
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         return analyze_type_callable_member_access(name, typ, mx)
     elif isinstance(typ, TypeType):
-        return analyze_type_type_member_access(name, typ, mx)
+        return analyze_type_type_member_access(name, typ, mx, override_info)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
-        return _analyze_member_access(name, tuple_fallback(typ), mx)
+        return _analyze_member_access(name, tuple_fallback(typ), mx, override_info)
     elif isinstance(typ, (TypedDictType, LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
-        return _analyze_member_access(name, typ.fallback, mx)
+        return _analyze_member_access(name, typ.fallback, mx, override_info)
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarType):
-        return _analyze_member_access(name, typ.upper_bound, mx)
+        return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
@@ -238,7 +238,10 @@ def analyze_type_callable_member_access(name: str,
         assert False, 'Unexpected type {}'.format(repr(ret_type))
 
 
-def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext) -> Type:
+def analyze_type_type_member_access(name: str,
+                                    typ: TypeType,
+                                    mx: MemberContext,
+                                    override_info: Optional[TypeInfo]) -> Type:
     # Similar to analyze_type_callable_attribute_access.
     item = None
     fallback = mx.builtin_type('builtins.type')
@@ -248,7 +251,7 @@ def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext)
         item = typ.item
     elif isinstance(typ.item, AnyType):
         mx = mx.copy_modified(messages=ignore_messages)
-        return _analyze_member_access(name, fallback, mx)
+        return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TypeVarType):
         if isinstance(typ.item.upper_bound, Instance):
             item = typ.item.upper_bound
@@ -262,7 +265,7 @@ def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext)
             item = typ.item.item.type.metaclass_type
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
-        result = analyze_class_attribute_access(item, name, mx)
+        result = analyze_class_attribute_access(item, name, mx, override_info)
         if result:
             if not (isinstance(result, AnyType) and item.type.fallback_to_any):
                 return result
@@ -271,7 +274,7 @@ def analyze_type_type_member_access(name: str, typ: TypeType, mx: MemberContext)
                 mx = mx.copy_modified(messages=ignore_messages)
     if item is not None:
         fallback = item.type.metaclass_type or fallback
-    return _analyze_member_access(name, fallback, mx)
+    return _analyze_member_access(name, fallback, mx, override_info)
 
 
 def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
@@ -603,11 +606,16 @@ def check_self_arg(functype: FunctionLike,
 
 def analyze_class_attribute_access(itype: Instance,
                                    name: str,
-                                   mx: MemberContext) -> Optional[Type]:
+                                   mx: MemberContext,
+                                   override_info: Optional[TypeInfo] = None) -> Optional[Type]:
     """original_type is the type of E in the expression E.var"""
-    node = itype.type.get(name)
+    info = itype.type
+    if override_info:
+        info = override_info
+
+    node = info.get(name)
     if not node:
-        if itype.type.fallback_to_any:
+        if info.fallback_to_any:
             return AnyType(TypeOfAny.special_form)
         return None
 
@@ -628,9 +636,9 @@ def analyze_class_attribute_access(itype: Instance,
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
     if mx.is_lvalue and not mx.chk.get_final_context():
-        check_final_member(name, itype.type, mx.msg, mx.context)
+        check_final_member(name, info, mx.msg, mx.context)
 
-    if itype.type.is_enum and not (mx.is_lvalue or is_decorated or is_method):
+    if info.is_enum and not (mx.is_lvalue or is_decorated or is_method):
         enum_literal = LiteralType(name, fallback=itype)
         return itype.copy_modified(last_known_value=enum_literal)
 
@@ -691,7 +699,7 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, TypeVarExpr):
         mx.msg.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
-                    itype.type.name(), name), mx.context)
+                    info.name(), name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
