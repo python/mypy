@@ -236,6 +236,13 @@ class StatisticsVisitor(TraverserVisitor):
             pass  # TODO: Handle overloaded functions, etc.
 
     def record_callable_target_precision(self, o: CallExpr, callee: CallableType) -> None:
+        """Record imprecision caused by callee argument types.
+
+        This only considers arguments passed in a call expression. Arguments
+        with default values that aren't provided in a call arguably don't
+        contribute to typing imprecision at the *call site* (but they
+        contribute at the function definition).
+        """
         assert self.typemap
         typemap = self.typemap
         actual_to_formal = map_formals_to_actuals(
