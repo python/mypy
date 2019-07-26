@@ -17,7 +17,7 @@ two in a typesafe way.
 import sys
 
 import typing  # for typing.Type, which conflicts with types.Type
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, Set
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 from typing_extensions import Final, Literal
 
 from mypy.sharedparse import (

@@ -243,7 +243,7 @@ class MessageBuilder:
                 if not failed:
                     self.fail(
                         '{} has no attribute "{}"{}'.format(
-                            format_type(original_type),member, extra),
+                            format_type(original_type), member, extra),
                         context,
                         code=codes.ATTR_DEFINED)
             elif isinstance(original_type, UnionType):

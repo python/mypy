@@ -3,7 +3,7 @@ import sys
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload, Set
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
 from typing_extensions import Final, Literal
 
@@ -33,7 +33,6 @@ from mypy.types import (
     TypeOfAny, Instance, RawExpressionType,
 )
 from mypy import defaults
-from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
