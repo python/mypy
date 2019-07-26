@@ -183,8 +183,7 @@ class TestRun(MypycDataSuite):
 
             proc = subprocess.Popen(['python', driver_path], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, env=env)
-            output, _ = proc.communicate()
-            output = output.decode('utf8')
+            output = proc.communicate()[0].decode('utf8')
             outlines = output.splitlines()
 
             show_c(cfiles)
