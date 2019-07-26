@@ -40,3 +40,23 @@ def f(): # E: Type signature has too many arguments  [syntax]
 def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
+
+[case testErrorCodeIgnore1]
+'x'.foobar  # type: ignore[attr-defined]
+'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+'x'.foobar  # type: ignore
+
+[case testErrorCodeIgnore2]
+a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
+b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+c = 'x'.foobar  # type: int  # type: ignore
+
+[case testErrorCodeIgnore1_python2]
+'x'.foobar  # type: ignore[attr-defined]
+'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+'x'.foobar  # type: ignore
+
+[case testErrorCodeIgnore2_python2]
+a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
+b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+c = 'x'.foobar  # type: int  # type: ignore

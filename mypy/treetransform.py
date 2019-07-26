@@ -59,8 +59,10 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         # NOTE: The 'names' and 'imports' instance variables will be empty!
+        ignored_lines = {line: codes[:]
+                         for line, codes in node.ignored_lines.items()}
         new = MypyFile(self.statements(node.defs), [], node.is_bom,
-                       ignored_lines=set(node.ignored_lines))
+                       ignored_lines=ignored_lines)
         new._fullname = node._fullname
         new.path = node.path
         new.names = SymbolTable()
