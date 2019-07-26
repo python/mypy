@@ -60,3 +60,8 @@ c = 'x'.foobar  # type: int  # type: ignore
 a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
 b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
 c = 'x'.foobar  # type: int  # type: ignore
+
+[case testErrorCodeIgnoreMultiple]
+a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
+a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]

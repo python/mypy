@@ -186,10 +186,10 @@ def parse(source: Union[str, bytes],
 def parse_type_ignore_tag(tag: str) -> List[str]:
     if not tag:
         return []
-    m = re.match(r'\[(.*)\]', tag)
+    m = re.match(r'\[([^#]*)\]', tag)
     if m is None:
         return []
-    return [m.group(1)]
+    return [code.strip() for code in m.group(1).split(',')]
 
 
 def parse_type_comment(type_comment: str,
