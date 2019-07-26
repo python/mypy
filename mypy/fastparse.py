@@ -184,6 +184,7 @@ def parse(source: Union[str, bytes],
 
 
 def parse_type_ignore_tag(tag: str) -> List[str]:
+    # TODO: Implement proper parsing and error checking
     if not tag:
         return []
     m = re.match(r'\[([^#]*)\]', tag)
