@@ -44,7 +44,8 @@ from mypy.types import (
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
-    TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag
+    TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
+    TYPE_IGNORE_PATTERN
 )
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
@@ -533,12 +534,20 @@ class ASTConverter:
             raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
         return Var(v)
 
-    def get_type(self, i: int, type_comments: Sequence[Optional[str]],
+    def get_type(self,
+                 i: int,
+                 type_comments: Sequence[Optional[str]],
                  converter: TypeConverter) -> Optional[Type]:
         if i < len(type_comments):
             comment = type_comments[i]
             if comment is not None:
-                return converter.visit_raw_str(comment)
+                typ = converter.visit_raw_str(comment)
+                extra_ignore = TYPE_IGNORE_PATTERN.match(comment)
+                if extra_ignore:
+                    tag = extra_ignore.group(1)
+                    ignored = parse_type_ignore_tag(tag)
+                    self.type_ignores[converter.line] = ignored
+                return typ
         return None
 
     def stringify_name(self, n: AST) -> str:
