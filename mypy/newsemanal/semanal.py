@@ -1852,7 +1852,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                                 name, existing_symbol, node, i):
                             continue
                     self.add_imported_symbol(name, node, i)
-                    i.imported_names.append(name)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
