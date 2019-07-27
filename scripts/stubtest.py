@@ -6,11 +6,12 @@ at runtime.
 
 import importlib
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, List, Iterator
 from collections import defaultdict, namedtuple
 
 from mypy import build
-from mypy.build import default_data_dir, default_lib_path, find_modules_recursive
+from mypy.build import default_data_dir
+from mypy.modulefinder import compute_search_paths, FindModuleCache
 from mypy.errors import CompileError
 from mypy import nodes
 from mypy.options import Options
@@ -54,9 +55,11 @@ Error = namedtuple('Error', (
     'module_type'))
 
 
-def test_stub(name: str):
+def test_stub(options: Options,
+              find_module_cache: FindModuleCache,
+              name: str) -> Iterator[Error]:
     stubs = {
-        mod: stub for mod, stub in build_stubs(name).items()
+        mod: stub for mod, stub in build_stubs(options, find_module_cache, name).items()
         if (mod == name or mod.startswith(name + '.')) and mod not in skip
     }
 
@@ -152,7 +155,7 @@ def verify_typevarexpr(node, module_node):
 
 
 @verify.register(nodes.Decorator)
-def verify_decorator(node, module_noode):
+def verify_decorator(node, module_node):
     if False:
         yield None
 
@@ -162,14 +165,10 @@ def dump_module(name: str) -> Dict[str, Any]:
     return {'type': 'file', 'names': dumpmodule.module_to_json(mod)}
 
 
-def build_stubs(mod):
-    data_dir = default_data_dir(None)
-    options = Options()
-    options.python_version = (3, 6)
-    lib_path = default_lib_path(data_dir,
-                                options.python_version,
-                                custom_typeshed_dir=None)
-    sources = find_modules_recursive(mod, lib_path)
+def build_stubs(options: Options,
+                find_module_cache: FindModuleCache,
+                mod: str) -> Dict[str, nodes.MypyFile]:
+    sources = find_module_cache.find_modules_recursive(mod)
     try:
         res = build.build(sources=sources,
                           options=options)
@@ -184,15 +183,21 @@ def build_stubs(mod):
     return res.files
 
 
-def main(args):
+def main(args: List[str]) -> Iterator[Error]:
     if len(args) == 1:
         print('must provide at least one module to test')
         sys.exit(1)
     else:
         modules = args[1:]
 
+    options = Options()
+    options.python_version = (3, 6)
+    data_dir = default_data_dir()
+    search_path = compute_search_paths([], options, data_dir)
+    find_module_cache = FindModuleCache(search_path)
+
     for module in modules:
-        for error in test_stub(module):
+        for error in test_stub(options, find_module_cache, module):
             yield error
 
 
