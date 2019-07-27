@@ -224,7 +224,7 @@ def parse_section(prefix: str, template: Options,
             print("%s%s: %s" % (prefix, key, err), file=stderr)
             continue
         if key == 'cache_dir':
-            v = os.path.expanduser(v)
+            v = os.path.expandvars(os.path.expanduser(v))
         if key == 'silent_imports':
             print("%ssilent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=stderr)

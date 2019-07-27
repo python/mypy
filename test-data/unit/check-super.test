@@ -121,6 +121,7 @@ class C(B):
     def h(self, x) -> None:
         reveal_type(super(x, x).f) # N: Revealed type is 'def ()'
         reveal_type(super(C, x).f) # N: Revealed type is 'def ()'
+        reveal_type(super(C, type(x)).f) # N: Revealed type is 'def (self: __main__.B)'
 
 [case testSuperInUnannotatedMethod]
 class C:
@@ -203,6 +204,53 @@ class C(B, Generic[T, S]):
         super(C, y).f # E: Argument 2 for "super" not an instance of argument 1
 
 class D(C): pass
+
+[case testSuperInClassMethod]
+from typing import Union
+
+class A:
+    def f(self, i: int) -> None: pass
+
+class B(A):
+    def f(self, i: Union[int, str]) -> None: pass
+
+    @classmethod
+    def g(cls, i: int) -> None:
+        super().f(B(), i)
+        super(B, cls).f(cls(), i)
+        super(B, B()).f(i)
+
+        super().f(B(), '') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
+        super(B, cls).f(cls(), '') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
+        super(B, B()).f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
+[case testSuperWithUnrelatedTypes]
+from typing import Union
+
+class A:
+    def f(self, s: str) -> None: pass
+
+class B(A):
+    def f(self, i: Union[int, str]) -> None: pass
+
+class C:
+    def g(self, b: B) -> None:
+        super(B, b).f('42')
+        super(B, b).f(42) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected "str"
+
+[case testSuperOutsideClass]
+from typing import Union
+
+class A:
+    def f(self, s: str) -> None: pass
+
+class B(A):
+    def f(self, i: Union[int, str]) -> None: pass
+
+def g(b: B) -> None:
+    super(B, b).f('42')
+    super(B, b).f(42) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected "str"
 
 
 -- Invalid uses of super()

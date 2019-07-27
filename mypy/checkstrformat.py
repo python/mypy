@@ -143,6 +143,9 @@ class StringFormatterChecker:
             rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
             return
+        elif isinstance(rhs_type, Instance) and rhs_type.type.fullname() == 'builtins.tuple':
+            # Assume that an arbitrary-length tuple has the right number of items.
+            rep_types = [rhs_type.args[0]] * len(checkers)
         else:
             rep_types = [rhs_type]
 

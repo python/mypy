@@ -3108,111 +3108,140 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
-        self.check_super_arguments(e)
-        t = self.analyze_super(e, False)
-        return t
 
-    def check_super_arguments(self, e: SuperExpr) -> None:
-        """Check arguments in a super(...) call."""
-        if ARG_STAR in e.call.arg_kinds:
+        # We have an expression like super(T, var).member
+
+        # First compute the types of T and var
+        types = self._super_arg_types(e)
+        if isinstance(types, tuple):
+            type_type, instance_type = types
+        else:
+            return types
+
+        # Now get the MRO
+        type_info = type_info_from_type(type_type)
+        if type_info is None:
+            self.chk.fail(message_registry.UNSUPPORTED_ARG_1_FOR_SUPER, e)
+            return AnyType(TypeOfAny.from_error)
+
+        instance_info = type_info_from_type(instance_type)
+        if instance_info is None:
+            self.chk.fail(message_registry.UNSUPPORTED_ARG_2_FOR_SUPER, e)
+            return AnyType(TypeOfAny.from_error)
+
+        mro = instance_info.mro
+
+        # The base is the first MRO entry *after* type_info that has a member
+        # with the right name
+        try:
+            index = mro.index(type_info)
+        except ValueError:
+            self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+            return AnyType(TypeOfAny.from_error)
+
+        for base in mro[index+1:]:
+            if e.name in base.names or base == mro[-1]:
+                if e.info and e.info.fallback_to_any and base == mro[-1]:
+                    # There's an undefined base class, and we're at the end of the
+                    # chain.  That's not an error.
+                    return AnyType(TypeOfAny.special_form)
+
+                return analyze_member_access(name=e.name,
+                                             typ=instance_type,
+                                             is_lvalue=False,
+                                             is_super=True,
+                                             is_operator=False,
+                                             original_type=instance_type,
+                                             override_info=base,
+                                             context=e,
+                                             msg=self.msg,
+                                             chk=self.chk,
+                                             in_literal_context=self.is_literal_context())
+
+        assert False, 'unreachable'
+
+    def _super_arg_types(self, e: SuperExpr) -> Union[Type, Tuple[Type, Type]]:
+        """
+        Computes the types of the type and instance expressions in super(T, instance), or the
+        implicit ones for zero-argument super() expressions.  Returns a single type for the whole
+        super expression when possible (for errors, anys), otherwise the pair of computed types.
+        """
+
+        if not self.chk.in_checked_function():
+            return AnyType(TypeOfAny.unannotated)
+        elif len(e.call.args) == 0:
+            if self.chk.options.python_version[0] == 2:
+                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
+                return AnyType(TypeOfAny.from_error)
+            elif not e.info:
+                # This has already been reported by the semantic analyzer.
+                return AnyType(TypeOfAny.from_error)
+            elif self.chk.scope.active_class():
+                self.chk.fail(message_registry.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
+                return AnyType(TypeOfAny.from_error)
+
+            # Zero-argument super() is like super(<current class>, <self>)
+            current_type = fill_typevars(e.info)
+            type_type = TypeType(current_type)  # type: Type
+
+            # Use the type of the self argument, in case it was annotated
+            method = self.chk.scope.top_function()
+            assert method is not None
+            if method.arguments:
+                instance_type = method.arguments[0].variable.type or current_type  # type: Type
+            else:
+                self.chk.fail(message_registry.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
+                return AnyType(TypeOfAny.from_error)
+        elif ARG_STAR in e.call.arg_kinds:
             self.chk.fail(message_registry.SUPER_VARARGS_NOT_SUPPORTED, e)
-        elif e.call.args and set(e.call.arg_kinds) != {ARG_POS}:
+            return AnyType(TypeOfAny.from_error)
+        elif set(e.call.arg_kinds) != {ARG_POS}:
             self.chk.fail(message_registry.SUPER_POSITIONAL_ARGS_REQUIRED, e)
+            return AnyType(TypeOfAny.from_error)
         elif len(e.call.args) == 1:
             self.chk.fail(message_registry.SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED, e)
-        elif len(e.call.args) > 2:
-            self.chk.fail(message_registry.TOO_MANY_ARGS_FOR_SUPER, e)
-        elif self.chk.options.python_version[0] == 2 and len(e.call.args) == 0:
-            self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
-        elif len(e.call.args) == 2:
-            type_obj_type = self.accept(e.call.args[0])
-            instance_type = self.accept(e.call.args[1])
-            if isinstance(type_obj_type, FunctionLike) and type_obj_type.is_type_obj():
-                type_info = type_obj_type.type_object()
-            elif isinstance(type_obj_type, TypeType):
-                item = type_obj_type.item
-                if isinstance(item, AnyType):
-                    # Could be anything.
-                    return
-                if isinstance(item, TupleType):
-                    # Handle named tuples and other Tuple[...] subclasses.
-                    item = tuple_fallback(item)
-                if not isinstance(item, Instance):
-                    # A complicated type object type. Too tricky, give up.
-                    # TODO: Do something more clever here.
-                    self.chk.fail(message_registry.UNSUPPORTED_ARG_1_FOR_SUPER, e)
-                    return
-                type_info = item.type
-            elif isinstance(type_obj_type, AnyType):
-                return
-            else:
-                self.msg.first_argument_for_super_must_be_type(type_obj_type, e)
-                return
-
-            if isinstance(instance_type, (Instance, TupleType, TypeVarType)):
-                if isinstance(instance_type, TypeVarType):
-                    # Needed for generic self.
-                    instance_type = instance_type.upper_bound
-                    if not isinstance(instance_type, (Instance, TupleType)):
-                        # Too tricky, give up.
-                        # TODO: Do something more clever here.
-                        self.chk.fail(message_registry.UNSUPPORTED_ARG_2_FOR_SUPER, e)
-                        return
-                if isinstance(instance_type, TupleType):
-                    # Needed for named tuples and other Tuple[...] subclasses.
-                    instance_type = tuple_fallback(instance_type)
-                if type_info not in instance_type.type.mro:
-                    self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
-            elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
-                                                         and instance_type.is_type_obj()):
-                # TODO: Check whether this is a valid type object here.
-                pass
-            elif not isinstance(instance_type, AnyType):
-                self.chk.fail(message_registry.UNSUPPORTED_ARG_2_FOR_SUPER, e)
-
-    def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
-        """Type check a super expression."""
-        if e.info and e.info.bases:
-            # TODO fix multiple inheritance etc
-            if len(e.info.mro) < 2:
-                self.chk.fail('Internal error: unexpected mro for {}: {}'.format(
-                    e.info.name(), e.info.mro), e)
-                return AnyType(TypeOfAny.from_error)
-            for base in e.info.mro[1:]:
-                if e.name in base.names or base == e.info.mro[-1]:
-                    if e.info.fallback_to_any and base == e.info.mro[-1]:
-                        # There's an undefined base class, and we're
-                        # at the end of the chain.  That's not an error.
-                        return AnyType(TypeOfAny.special_form)
-                    if not self.chk.in_checked_function():
-                        return AnyType(TypeOfAny.unannotated)
-                    if self.chk.scope.active_class() is not None:
-                        self.chk.fail(message_registry.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
-                        return AnyType(TypeOfAny.from_error)
-                    method = self.chk.scope.top_function()
-                    assert method is not None
-                    args = method.arguments
-                    # super() in a function with empty args is an error; we
-                    # need something in declared_self.
-                    if not args:
-                        self.chk.fail(message_registry.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
-                        return AnyType(TypeOfAny.from_error)
-                    declared_self = args[0].variable.type or fill_typevars(e.info)
-                    return analyze_member_access(name=e.name,
-                                                 typ=fill_typevars(e.info),
-                                                 is_lvalue=False,
-                                                 is_super=True,
-                                                 is_operator=False,
-                                                 original_type=declared_self,
-                                                 override_info=base,
-                                                 context=e,
-                                                 msg=self.msg,
-                                                 chk=self.chk,
-                                                 in_literal_context=self.is_literal_context())
-            assert False, 'unreachable'
-        else:
-            # Invalid super. This has been reported by the semantic analyzer.
             return AnyType(TypeOfAny.from_error)
+        elif len(e.call.args) == 2:
+            type_type = self.accept(e.call.args[0])
+            instance_type = self.accept(e.call.args[1])
+        else:
+            self.chk.fail(message_registry.TOO_MANY_ARGS_FOR_SUPER, e)
+            return AnyType(TypeOfAny.from_error)
+
+        # Imprecisely assume that the type is the current class
+        if isinstance(type_type, AnyType):
+            if e.info:
+                type_type = TypeType(fill_typevars(e.info))
+            else:
+                return AnyType(TypeOfAny.from_another_any, source_any=type_type)
+        elif isinstance(type_type, TypeType):
+            type_item = type_type.item
+            if isinstance(type_item, AnyType):
+                if e.info:
+                    type_type = TypeType(fill_typevars(e.info))
+                else:
+                    return AnyType(TypeOfAny.from_another_any, source_any=type_item)
+
+        if (not isinstance(type_type, TypeType)
+                and not (isinstance(type_type, FunctionLike) and type_type.is_type_obj())):
+            self.msg.first_argument_for_super_must_be_type(type_type, e)
+            return AnyType(TypeOfAny.from_error)
+
+        # Imprecisely assume that the instance is of the current class
+        if isinstance(instance_type, AnyType):
+            if e.info:
+                instance_type = fill_typevars(e.info)
+            else:
+                return AnyType(TypeOfAny.from_another_any, source_any=instance_type)
+        elif isinstance(instance_type, TypeType):
+            instance_item = instance_type.item
+            if isinstance(instance_item, AnyType):
+                if e.info:
+                    instance_type = TypeType(fill_typevars(e.info))
+                else:
+                    return AnyType(TypeOfAny.from_another_any, source_any=instance_item)
+
+        return type_type, instance_type
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
         expected = make_optional_type(self.named_type('builtins.int'))
@@ -4001,3 +4030,22 @@ def has_bytes_component(typ: Type) -> bool:
     if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
         return True
     return False
+
+
+def type_info_from_type(typ: Type) -> Optional[TypeInfo]:
+    """Gets the TypeInfo for a type, indirecting through things like type variables and tuples."""
+
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
+        return typ.type_object()
+    if isinstance(typ, TypeType):
+        typ = typ.item
+    if isinstance(typ, TypeVarType):
+        typ = typ.upper_bound
+    if isinstance(typ, TupleType):
+        typ = tuple_fallback(typ)
+    if isinstance(typ, Instance):
+        return typ.type
+
+    # A complicated type. Too tricky, give up.
+    # TODO: Do something more clever here.
+    return None

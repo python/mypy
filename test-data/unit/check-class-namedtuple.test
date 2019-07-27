@@ -493,7 +493,7 @@ Y(y=1, x='1').method()
 
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
-        super().__init__(x)
+        super().__init__(x) # E: Too many arguments for "__init__" of "object"
 
 [case testNewNamedTupleWithMethods]
 from typing import NamedTuple
