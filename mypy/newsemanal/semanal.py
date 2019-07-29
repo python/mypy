@@ -1661,14 +1661,6 @@ class NewSemanticAnalyzer(NodeVisitor[None],
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i, module_hidden=not module_public)
 
-    def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
-        if child not in parent_mod.names:
-            return True
-        node = parent_mod.names[child].node
-        if isinstance(node, Var) and node.is_suppressed_import:
-            return True
-        return False
-
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
         module_id = self.correct_relative_import(imp)
