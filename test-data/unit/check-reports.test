@@ -4,7 +4,7 @@ def f(): pass
 
 def g() -> None: pass
 [outfile out/index.xml]
-<?xml-stylesheet type="text/xsl" href="mypy-html.xslt"?><mypy-report-index name="index"><file module="__main__" name="main" total="4" empty="2" unanalyzed="0" precise="1" imprecise="0" any="1"/></mypy-report-index>
+<?xml-stylesheet type="text/xsl" href="mypy-html.xslt"?><mypy-report-index name="index"><file module="__main__" name="main" total="4" any="1" empty="2" imprecise="0" precise="1" unanalyzed="0"/></mypy-report-index>
 
 [case testLinePrecisionBasic]
 # flags: --lineprecision-report out

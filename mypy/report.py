@@ -427,7 +427,7 @@ class FileInfo:
         return sum(self.counts)
 
     def attrib(self) -> Dict[str, str]:
-        return {name: str(val) for name, val in zip(stats.precision_names, self.counts)}
+        return {name: str(val) for name, val in sorted(zip(stats.precision_names, self.counts))}
 
 
 class MemoryXmlReporter(AbstractReporter):
