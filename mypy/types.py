@@ -2240,6 +2240,19 @@ def remove_optional(typ: Type) -> Type:
         return typ
 
 
+def is_literal_type(typ: Type, fallback_fullname: str, value: LiteralValue) -> bool:
+    """Returns 'true' if this type is a LiteralType with the given value
+    and underlying base fallback type.
+    """
+    if isinstance(typ, Instance) and typ.last_known_value:
+        typ = typ.last_known_value
+    if not isinstance(typ, LiteralType):
+        return False
+    if typ.fallback.type.fullname() != fallback_fullname:
+        return False
+    return typ.value == value
+
+
 names = globals().copy()  # type: Final
 names.pop('NOT_READY', None)
 deserialize_map = {

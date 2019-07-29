@@ -1405,3 +1405,23 @@ _testStrictEqualityWhitelist.py:5: error: Non-overlapping equality check (left o
 _testStrictEqualityWhitelist.py:11: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "Set[str]")
 _testStrictEqualityWhitelist.py:12: error: Non-overlapping equality check (left operand type: "ValuesView[int]", right operand type: "Set[int]")
 _testStrictEqualityWhitelist.py:13: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "List[int]")
+
+[case testUnreachableWithOpen]
+# mypy: warn-unreachable
+
+class Suppresses:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+# This test overlaps with some of the warn-unreachable tests in check-unreachable-code,
+# but 'open(...)' is a very common function so we want to make sure we don't regress
+# against it specifically
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+
+def f_suppresses() -> int:
+    with Suppresses():
+        return 3
+[out]
+_testUnreachableWithOpen.py:14: error: Missing return statement

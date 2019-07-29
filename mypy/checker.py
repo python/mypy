@@ -35,7 +35,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional, TypeTranslator, StarType
+    is_optional, remove_optional, is_literal_type, TypeTranslator, StarType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -3290,12 +3290,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
+        exceptions_maybe_suppressed = False
         for expr, target in zip(s.expr, s.target):
             if s.is_async:
-                self.check_async_with_item(expr, target, s.unanalyzed_type is None)
+                exit_ret_type = self.check_async_with_item(expr, target, s.unanalyzed_type is None)
             else:
-                self.check_with_item(expr, target, s.unanalyzed_type is None)
-        self.accept(s.body)
+                exit_ret_type = self.check_with_item(expr, target, s.unanalyzed_type is None)
+            if is_literal_type(exit_ret_type, "builtins.bool", False):
+                continue
+            if is_literal_type(exit_ret_type, "builtins.bool", True):
+                exceptions_maybe_suppressed = True
+            elif (isinstance(exit_ret_type, Instance)
+                    and exit_ret_type.type.fullname() == 'builtins.bool'):
+                exceptions_maybe_suppressed = True
+        if exceptions_maybe_suppressed:
+            with self.binder.frame_context(can_skip=True, try_frame=True):
+                self.accept(s.body)
+        else:
+            self.accept(s.body)
 
     def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
         if not self.options.disallow_any_decorated or self.is_stub:
@@ -3305,7 +3317,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(self, expr: Expression, target: Optional[Expression],
-                              infer_lvalue_type: bool) -> None:
+                              infer_lvalue_type: bool) -> Type:
         echk = self.expr_checker
         ctx = echk.accept(expr)
         obj = echk.check_method_call_by_name('__aenter__', ctx, [], [], expr)[0]
@@ -3314,20 +3326,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        res = echk.check_method_call_by_name(
-            '__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
-        echk.check_awaitable_expr(
+        res, _ = echk.check_method_call_by_name(
+            '__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        return echk.check_awaitable_expr(
             res, expr, message_registry.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
     def check_with_item(self, expr: Expression, target: Optional[Expression],
-                        infer_lvalue_type: bool) -> None:
+                        infer_lvalue_type: bool) -> Type:
         echk = self.expr_checker
         ctx = echk.accept(expr)
         obj = echk.check_method_call_by_name('__enter__', ctx, [], [], expr)[0]
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        echk.check_method_call_by_name('__exit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        res, _ = echk.check_method_call_by_name(
+            '__exit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        return res
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
