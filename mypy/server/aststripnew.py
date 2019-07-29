@@ -152,7 +152,6 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.assignments = []
-        node.imported_names = []
 
     def visit_for_stmt(self, node: ForStmt) -> None:
         node.index_type = node.unanalyzed_index_type

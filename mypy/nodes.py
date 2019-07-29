@@ -368,6 +368,7 @@ class ImportAll(ImportBase):
     """from m import *"""
     id = None  # type: str
     relative = None  # type: int
+    # NOTE: Only filled and used by old semantic analyzer.
     imported_names = None  # type: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
