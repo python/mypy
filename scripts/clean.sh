@@ -1,4 +1,4 @@
 #!/bin/bash
 echo "Cleaning C/C++ build artifacts..."
-(cd lib-rt; make clean)
-(cd googletest/make; make clean)
+(cd mypyc/lib-rt; make clean)
+(cd mypyc/external/googletest/make; make clean)

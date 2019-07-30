@@ -24,9 +24,10 @@ class TestExternal(unittest.TestCase):
         if sys.platform == 'darwin':
             cppflags += ['-mmacosx-version-min=10.10', '-stdlib=libc++']
         env['CPPFLAGS'] = ' '.join(cppflags)
-        subprocess.check_call(['make', 'libgtest.a'],
-                              env=env,
-                              cwd=os.path.join(base_dir, 'external', 'googletest', 'make'))
+        subprocess.check_call(
+            ['make', 'libgtest.a'],
+            env=env,
+            cwd=os.path.join(base_dir, 'mypyc', 'external', 'googletest', 'make'))
         # Build Python wrapper for C unit tests.
         env = os.environ.copy()
         env['CPPFLAGS'] = ' '.join(cppflags)
