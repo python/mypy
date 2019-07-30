@@ -3,14 +3,13 @@
 from typing import List
 
 from mypyc.ops import (
-    EmitterInterface, PrimitiveOp,
+    EmitterInterface,
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
     ERR_FALSE, ERR_MAGIC, ERR_NEVER,
 )
 from mypyc.ops_primitive import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
-    simple_emit, negative_int_emit,
-    call_emit, call_negative_bool_emit, call_negative_magic_emit,
+    simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
 )
 
 

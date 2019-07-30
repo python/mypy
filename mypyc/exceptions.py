@@ -9,14 +9,12 @@ We need to split basic blocks on each error check since branches can
 only be placed at the end of a basic block.
 """
 
-from typing import Optional, List, Dict
+from typing import List
 
 from mypyc.ops import (
-    FuncIR, BasicBlock, LoadErrorValue, Return, Goto, Branch, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, RegisterOp, PrimitiveOp,
-    NO_TRACEBACK_LINE_NO,
+    FuncIR, BasicBlock, LoadErrorValue, Return, Branch, RegisterOp,
+    ERR_NEVER, ERR_MAGIC, ERR_FALSE, NO_TRACEBACK_LINE_NO,
 )
-from mypyc.ops_exc import assert_err_occured_op
 
 
 def insert_exception_handling(ir: FuncIR) -> None:

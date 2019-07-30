@@ -7,28 +7,24 @@ import subprocess
 import contextlib
 import shutil
 import sys
-from typing import List, Iterator, Optional
+from typing import Iterator, Optional
 
 from mypy import build
 from mypy.test.data import DataDrivenTestCase
-from mypy.test.config import test_temp_dir, PREFIX
+from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
 
-from mypyc import genops
 from mypyc import emitmodule
 from mypyc.options import CompilerOptions
-from mypyc.test.config import prefix
 from mypyc.build import shared_lib_name
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
     use_custom_builtins, MypycDataSuite, assert_test_output,
-    heading, show_c
+    show_c
 )
 
 from distutils.core import run_setup
-
-import pytest  # type: ignore  # no pytest in typeshed
 
 files = [
     'run-functions.test',

@@ -6,10 +6,10 @@ a specific function is called with the specific positional argument
 count and argument types.
 """
 
-from typing import Dict, List, Callable, Optional
+from typing import Dict, List, Optional
 
 from mypyc.ops import (
-    OpDescription, PrimitiveOp, RType, EmitterInterface, EmitCallback, StealsDescription,
+    OpDescription, RType, EmitterInterface, EmitCallback, StealsDescription,
     short_name, bool_rprimitive
 )
 

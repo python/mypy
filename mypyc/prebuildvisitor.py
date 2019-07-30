@@ -1,4 +1,4 @@
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set
 
 from mypy.nodes import (
     Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr

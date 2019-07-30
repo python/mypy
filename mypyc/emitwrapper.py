@@ -4,8 +4,7 @@ from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
     ClassIR, FuncIR, RType, RuntimeArg,
-    is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive,
-    bool_rprimitive, object_rprimitive,
+    is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive,
     FUNC_STATICMETHOD,
 )
 from mypyc.namegen import NameGenerator
@@ -13,10 +12,6 @@ from mypyc.namegen import NameGenerator
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
 from typing import List, Optional
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:

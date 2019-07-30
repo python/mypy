@@ -16,7 +16,7 @@ decremented before returning. An assignment to a borrowed value turns it
 into a regular, owned reference that needs to freed before return.
 """
 
-from typing import List, Dict, Tuple, Set, Iterable, Optional
+from typing import Dict, Iterable, List, Set, Tuple
 
 from mypyc.analysis import (
     get_cfg,
@@ -29,7 +29,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, ControlOp, RType, Value, Register, AssignmentTargetRegister
+    Op, ControlOp, Value, Register
 )
 
 

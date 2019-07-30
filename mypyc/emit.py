@@ -8,13 +8,12 @@ from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES
 )
 from mypyc.ops import (
-    Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
-    RUnion, RPrimitive, RVoid,
-    RTypeVisitor,
+    Environment, BasicBlock, Value, RType, RTuple, RInstance,
+    RUnion, RPrimitive,
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
-    FuncIR, FuncDecl, int_rprimitive, is_optional_type, optional_value_type, all_concrete_classes
+    FuncDecl, int_rprimitive, is_optional_type, optional_value_type, all_concrete_classes
 )
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type

@@ -1,16 +1,12 @@
 """Exception-related primitive ops."""
 
-from typing import List
 
 from mypyc.ops import (
-    EmitterInterface, PrimitiveOp, none_rprimitive, bool_rprimitive, object_rprimitive,
-    void_rtype,
-    exc_rtuple,
-    ERR_NEVER, ERR_MAGIC, ERR_FALSE
+    bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple,
+    ERR_NEVER, ERR_FALSE
 )
 from mypyc.ops_primitive import (
-    simple_emit, func_op, method_op, custom_op,
-    negative_int_emit,
+    simple_emit, custom_op,
 )
 
 # TODO: Making this raise conditionally is kind of hokey.

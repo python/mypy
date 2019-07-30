@@ -9,7 +9,7 @@ from typing import Union, List
 
 from mypy.nodes import Lvalue, Expression
 from mypyc.ops import (
-    Value, BasicBlock, int_rprimitive, is_short_int_rprimitive, LoadInt, RType,
+    Value, BasicBlock, is_short_int_rprimitive, LoadInt, RType,
     PrimitiveOp, Branch, Register, AssignmentTarget
 )
 from mypyc.ops_int import unsafe_short_add
@@ -58,19 +58,15 @@ class ForGenerator:
 
     def gen_condition(self) -> None:
         """Generate check for loop exit (e.g. exhaustion of iteration)."""
-        pass
 
     def begin_body(self) -> None:
         """Generate ops at the beginning of the body (if needed)."""
-        pass
 
     def gen_step(self) -> None:
         """Generate stepping to the next item (if needed)."""
-        pass
 
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
-        pass
 
 
 class ForIterable(ForGenerator):

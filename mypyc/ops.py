@@ -10,17 +10,15 @@ can hold various things:
 - literals (integer literals, True, False, etc.)
 """
 
-from abc import abstractmethod, abstractproperty
-import re
+from abc import abstractmethod
 from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
     Union, Iterable, Type, Set
 )
 from collections import OrderedDict
 
-from mypyc.common import PROPSET_PREFIX
 
-from mypy.nodes import Block, SymbolNode, Var, FuncDef, ARG_POS, ARG_OPT, ARG_NAMED_OPT
+from mypy.nodes import ARG_NAMED_OPT, ARG_OPT, ARG_POS, Block, FuncDef, SymbolNode
 
 from mypy_extensions import trait
 
@@ -1858,9 +1856,9 @@ def all_concrete_classes(class_ir: ClassIR) -> List[ClassIR]:
 
 
 # Import various modules that set up global state.
-import mypyc.ops_int
-import mypyc.ops_str
-import mypyc.ops_list
-import mypyc.ops_dict
-import mypyc.ops_tuple
-import mypyc.ops_misc
+import mypyc.ops_int  # noqa
+import mypyc.ops_str  # noqa
+import mypyc.ops_list  # noqa
+import mypyc.ops_dict  # noqa
+import mypyc.ops_tuple  # noqa
+import mypyc.ops_misc  # noqa

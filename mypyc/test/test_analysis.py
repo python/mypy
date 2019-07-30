@@ -12,7 +12,7 @@ from mypyc import exceptions
 from mypyc.ops import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
-    assert_test_output, remove_comment_lines
+    assert_test_output,
 )
 
 files = [

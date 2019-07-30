@@ -2,7 +2,7 @@
 
 from mypyc.ops import (
     RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion,
-    is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive, none_rprimitive,
+    is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive,
     is_short_int_rprimitive,
     is_object_rprimitive
 )

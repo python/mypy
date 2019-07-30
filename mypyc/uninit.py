@@ -1,6 +1,6 @@
 """Insert checks for uninitialized values."""
 
-from typing import Optional, List, Dict
+from typing import List
 
 from mypyc.analysis import (
     get_cfg,
@@ -9,10 +9,8 @@ from mypyc.analysis import (
     AnalysisDict
 )
 from mypyc.ops import (
-    FuncIR, BasicBlock, LoadErrorValue, Return, Goto, Branch, ERR_NEVER, ERR_MAGIC,
+    FuncIR, BasicBlock, Branch,
     Value, RaiseStandardError, Unreachable, Environment, Register,
-    ERR_FALSE, RegisterOp, PrimitiveOp,
-    NO_TRACEBACK_LINE_NO,
 )
 
 

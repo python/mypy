@@ -1,9 +1,7 @@
-from typing import List
 
 from mypyc.ops import (
-    PrimitiveOp,
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
-    RType, EmitterInterface, OpDescription,
+    RType, OpDescription,
     ERR_NEVER, ERR_MAGIC,
 )
 from mypyc.ops_primitive import (

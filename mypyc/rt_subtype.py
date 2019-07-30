@@ -15,11 +15,8 @@ coercion is necessary first.
 
 from mypyc.ops import (
     RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor,
-    is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive, none_rprimitive,
-    is_short_int_rprimitive,
-    is_object_rprimitive
+    is_int_rprimitive, is_short_int_rprimitive,
 )
-from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
 
 

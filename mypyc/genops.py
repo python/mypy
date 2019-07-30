@@ -21,14 +21,13 @@ if MYPY:
     from typing import ClassVar, NoReturn
 from abc import abstractmethod
 import sys
-import traceback
 import importlib.util
 import itertools
 
 from mypy.build import Graph
 from mypy.nodes import (
-    Node, MypyFile, SymbolNode, Statement, FuncItem, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
-    IntExpr, NameExpr, LDEF, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr,
+    MypyFile, SymbolNode, Statement, FuncItem, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
+    IntExpr, NameExpr, LDEF, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, CallExpr,
     IndexExpr, Block, Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue,
     BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
     TypeInfo, Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode,
@@ -38,17 +37,16 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_NAMED_OPT, ARG_STAR2, is_class_var, op_methods
+    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var, op_methods
 )
 import mypy.nodes
 import mypy.errors
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
-    TypeType, FunctionLike, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
+    TypeType, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
     LiteralType,
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypy.subtypes import is_named_instance
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.state import strict_optional_set
 
@@ -66,15 +64,14 @@ from mypyc.ops import (
     LoadStatic, InitStatic, MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple, is_tuple_rprimitive,
-    PrimitiveOp, ControlOp, LoadErrorValue, ERR_FALSE, OpDescription, RegisterOp,
+    exc_rtuple,
+    PrimitiveOp, ControlOp, LoadErrorValue, OpDescription, RegisterOp,
     is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
     FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
-    RUnion, is_optional_type, optional_value_type, is_short_int_rprimitive, all_concrete_classes
+    RUnion, is_optional_type, optional_value_type, all_concrete_classes
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
-from mypyc.ops_int import unsafe_short_add
 from mypyc.ops_list import (
     list_append_op, list_extend_op, list_len_op, new_list_op, to_list, list_pop_last
 )
@@ -93,7 +90,7 @@ from mypyc.ops_misc import (
     ellipsis_op, method_new_op, type_is_op, type_object_op, py_calc_meta_op
 )
 from mypyc.ops_exc import (
-    no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
+    raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
     error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
     get_exc_info_op, keep_propagating_op,
 )

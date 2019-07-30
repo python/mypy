@@ -1,10 +1,8 @@
 """Miscellaneous primitive ops."""
 
-from typing import List
 
 from mypyc.ops import (
-    EmitterInterface, PrimitiveOp, RTuple,
-    none_rprimitive, bool_rprimitive, object_rprimitive, tuple_rprimitive, str_rprimitive,
+    RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive,
     ERR_NEVER, ERR_MAGIC, ERR_FALSE
 )

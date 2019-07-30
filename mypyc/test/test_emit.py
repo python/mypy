@@ -3,7 +3,7 @@ import unittest
 from mypy.nodes import Var
 
 from mypyc.emit import Emitter, EmitterContext
-from mypyc.ops import Environment, RType, int_rprimitive, BasicBlock
+from mypyc.ops import BasicBlock, Environment, int_rprimitive
 
 
 class TestEmitter(unittest.TestCase):

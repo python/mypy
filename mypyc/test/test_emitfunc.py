@@ -6,7 +6,7 @@ from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ops import (
-    Environment, BasicBlock, FuncIR, RuntimeArg, RType, Goto, Return, LoadInt, Assign,
+    Environment, BasicBlock, FuncIR, RuntimeArg, Goto, Return, LoadInt, Assign,
     IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
     RegisterOp, FuncDecl,
     ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,

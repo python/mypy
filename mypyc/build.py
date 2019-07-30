@@ -21,12 +21,10 @@ hackily decide based on whether setuptools has been imported already.
 import glob
 import sys
 import os.path
-import subprocess
 import hashlib
 import time
-import shutil
 
-from typing import List, Tuple, Any, Optional, Union, Dict, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 MYPY = False
 if MYPY:
     from typing import NoReturn
@@ -51,7 +49,7 @@ if not USE_SETUPTOOLS:
     from distutils.core import setup, Extension
     from distutils.command.build_ext import build_ext  # type: ignore
 else:
-    from setuptools import setup, Extension  # type: ignore
+    from setuptools import setup, Extension  # type: ignore  # noqa
     from setuptools.command.build_ext import build_ext  # type: ignore
 
 from distutils import sysconfig, ccompiler

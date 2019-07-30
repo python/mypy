@@ -1,14 +1,13 @@
 """Code generation for native function bodies."""
 
-from typing import Optional, List
 
 from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, TOP_LEVEL_NAME
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
-    BasicBlock, Value, Register, RType, RTuple, MethodCall, PrimitiveOp,
-    EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
+    BasicBlock, Value, RType, RTuple, MethodCall, PrimitiveOp,
+    EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE,
     RaiseStandardError, FuncDecl, ClassIR,
     FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )

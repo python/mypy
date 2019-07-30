@@ -5,7 +5,7 @@ from typing import List
 from mypyc.ops import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive,
     ERR_MAGIC, ERR_NEVER,
-    ERR_FALSE, EmitterInterface, PrimitiveOp, Value
+    ERR_FALSE, EmitterInterface,
 )
 from mypyc.ops_primitive import (
     name_ref_op, binary_op, func_op, method_op, custom_op, simple_emit,
