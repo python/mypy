@@ -34,6 +34,14 @@ def parse_version(v: str) -> Tuple[int, int]:
     return major, minor
 
 
+def expand_path(path: str) -> str:
+    """Expand the user home directory and any environment variables contained within
+    the provided path.
+    """
+
+    return os.path.expandvars(os.path.expanduser(path))
+
+
 def split_and_match_files(paths: str) -> List[str]:
     """Take a string representing a list of files/directories (with support for globbing
     through the glob library).
@@ -45,8 +53,7 @@ def split_and_match_files(paths: str) -> List[str]:
     expanded_paths = []
 
     for path in paths.split(','):
-        path = path.strip()
-        path = os.path.expandvars(os.path.expanduser(path))
+        path = expand_path(path.strip())
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
             expanded_paths.extend(globbed_files)
@@ -64,9 +71,8 @@ config_types = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
-    'custom_typeshed_dir': lambda s: os.path.expandvars(os.path.expanduser(s)),
-    'mypy_path': lambda s: [os.path.expandvars(os.path.expanduser(p.strip()))
-                            for p in re.split('[,:]', s)],
+    'custom_typeshed_dir': expand_path,
+    'mypy_path': lambda s: [expand_path(p.strip()) for p in re.split('[,:]', s)],
     'files': split_and_match_files,
     'quickstart_file': str,
     'junit_xml': str,
@@ -77,8 +83,8 @@ config_types = {
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
-    'cache_dir': lambda s: os.path.expandvars(os.path.expanduser(s)),
-    'python_executable': lambda s: os.path.expandvars(os.path.expanduser(s)),
+    'cache_dir': expand_path,
+    'python_executable': expand_path,
 }  # type: Final
 
 
