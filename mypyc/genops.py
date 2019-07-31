@@ -37,7 +37,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var, op_methods
+    ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, is_class_var, op_methods
 )
 import mypy.nodes
 import mypy.errors
@@ -633,6 +633,16 @@ def prepare_non_ext_class_def(path: str, module_name: str, cdef: ClassDef,
             else:
                 errors.error("Non-extension classes do not support overlaoded functions",
                              path, cdef.line)
+
+
+def concrete_arg_kind(kind: int) -> int:
+    """Find the concrete version of an arg kind that is being passed."""
+    if kind == ARG_OPT:
+        return ARG_POS
+    elif kind == ARG_NAMED_OPT:
+        return ARG_NAMED
+    else:
+        return kind
 
 
 class FuncInfo(object):
@@ -1605,7 +1615,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         args = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
                 for var, type in fake_vars]
         arg_names = [arg.name for arg in rt_args]
-        arg_kinds = [arg.kind for arg in rt_args]
+        arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
 
         retval = self.call(target.decl, args, arg_kinds, arg_names, line)
         retval = self.coerce(retval, sig.ret_type, line)

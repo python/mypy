@@ -164,7 +164,7 @@ class Person3:
 
 def get_next_age(g: Callable[[Any], int]) -> Callable[[Any], int]:
     def f(a: Any) -> int:
-        return g(a) + 1 
+        return g(a) + 1
     return f
 
 @dataclass
@@ -900,16 +900,23 @@ class A:
         pass
     def bar(self, *, x: int = 0, y: int = 0) -> None:
         pass
+    def baz(self, x: int = 0) -> None:
+        pass
 class B(A):
     def foo(self, *, y: int = 0, x: int = 0) -> None:
         print(x, y)
     def bar(self, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+    def baz(self, x: int = 0, *, y: int = 0) -> None:
         print(x, y)
 
 def a(x: A) -> None:
     x.foo(x=1)
     x.bar(x=1, y=2)
     x.bar(x=2, y=1)
+    x.baz()
+    x.baz(1)
+    x.baz(x=2)
 
 [file driver.py]
 from native import B, a
@@ -918,6 +925,9 @@ a(B())
 1 0
 1 2
 2 1
+0 0
+1 0
+2 0
 
 [case testMethodOverrideDefault3]
 class A:
