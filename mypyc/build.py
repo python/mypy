@@ -24,7 +24,7 @@ import os.path
 import hashlib
 import time
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import List, Tuple, Any, Optional, Dict, cast
 MYPY = False
 if MYPY:
     from typing import NoReturn
@@ -160,14 +160,13 @@ def include_dir() -> str:
 
 
 def generate_c(sources: List[BuildSource], options: Options,
-               shared_lib_name: Optional[str],
+               groups: List[Tuple[List[BuildSource], Optional[str]]],
                compiler_options: Optional[CompilerOptions] = None
                ) -> Tuple[List[Tuple[str, str]], str]:
     """Drive the actual core compilation step.
 
     Returns the C source code and (for debugging) the pretty printed IR.
     """
-    module_names = [source.module for source in sources]
     compiler_options = compiler_options or CompilerOptions()
 
     # Do the actual work now
@@ -186,9 +185,12 @@ def generate_c(sources: List[BuildSource], options: Options,
     errors = Errors()
 
     ops = []  # type: List[str]
-    ctext = emitmodule.compile_modules_to_c(result, module_names, shared_lib_name,
-                                            compiler_options=compiler_options,
-                                            errors=errors, ops=ops)
+    ctext = []  # type: List[Tuple[str, str]]
+    for group_sources, shared_lib_name in groups:
+        module_names = [source.module for source in group_sources]
+        ctext += emitmodule.compile_modules_to_c(result, module_names, shared_lib_name,
+                                                 compiler_options=compiler_options,
+                                                 errors=errors, ops=ops)
     if errors.num_errors:
         errors.flush_errors()
         sys.exit(1)
@@ -321,13 +323,18 @@ def mypycify(paths: List[str],
     # around with making the single module code handle packages.)
     use_shared_lib = len(sources) > 1 or any('.' in x.module for x in sources)
 
-    lib_name = shared_lib_name([source.module for source in sources]) if use_shared_lib else None
+    source_groups = [sources]
+
+    groups = [
+        (sources,
+         shared_lib_name([source.module for source in group]) if use_shared_lib else None)
+        for group in source_groups]
 
     # We let the test harness make us skip doing the full compilation
     # so that it can do a corner-cutting version without full stubs.
     # TODO: Be able to do this based on file mtimes?
     if not skip_cgen:
-        cfiles, ops_text = generate_c(sources, options, lib_name,
+        cfiles, ops_text = generate_c(sources, options, groups,
                                       compiler_options=compiler_options)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
@@ -376,11 +383,12 @@ def mypycify(paths: List[str],
             write_file(rt_file, f.read())
         cfilenames.append(rt_file)
 
-    if use_shared_lib:
-        assert lib_name
-        extensions = build_using_shared_lib(sources, lib_name, cfilenames, build_dir, cflags)
-    else:
-        extensions = build_single_module(sources, cfilenames, cflags)
+    for group_sources, lib_name in groups:
+        if use_shared_lib:
+            assert lib_name
+            extensions = build_using_shared_lib(sources, lib_name, cfilenames, build_dir, cflags)
+        else:
+            extensions = build_single_module(sources, cfilenames, cflags)
 
     return extensions
 
