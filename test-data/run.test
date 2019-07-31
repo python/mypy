@@ -3757,16 +3757,37 @@ assert run_generator(basic(), [5, 50]) == ((1, 6), 50)
 assert run_generator(use_from(), [5, 50]) == ((1, 6), 50)
 
 [case testYieldFrom]
-from typing import Generator, Iterator
+from typing import Generator, Iterator, List
 
 def basic() -> Iterator[int]:
     yield from [1, 2, 3]
 
+def call_next() -> int:
+    x = []  # type: List[int]
+    return next(iter(x))
+
+def inner(b: bool) -> Generator[int, None, int]:
+    if b:
+        yield from [1, 2, 3]
+    return 10
+
+def with_return(b: bool) -> Generator[int, None, int]:
+    x = yield from inner(b)
+    for a in [1, 2]:
+        pass
+    return x
+
 [file driver.py]
-from native import basic
-from testutil import run_generator
+from native import basic, call_next, with_return
+from testutil import run_generator, assertRaises
 
 assert run_generator(basic()) == ((1, 2, 3), None)
+
+with assertRaises(StopIteration):
+    call_next()
+
+assert run_generator(with_return(True)) == ((1, 2, 3), 10)
+assert run_generator(with_return(False)) == ((), 10)
 
 [case testDecorators1]
 from typing import Generator, Callable, Iterator

@@ -3985,7 +3985,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
         # Try extracting a return value from a StopIteration and return it.
-        # If it wasn't, this rereaises the exception.
+        # If it wasn't, this reraises the exception.
         self.activate_block(stop_block)
         self.assign(result, self.primitive_op(check_stop_op, [], o.line), o.line)
         self.goto(done_block)

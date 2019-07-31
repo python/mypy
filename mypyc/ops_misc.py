@@ -62,8 +62,10 @@ next_op = custom_op(name='next',
                     error_kind=ERR_NEVER,
                     emit=call_emit('PyIter_Next'))
 
-# Do a next, don't swallow StopIteration, but also don't
-# propagate an error.
+# Do a next, don't swallow StopIteration, but also don't propagate an
+# error. (N.B: This can still return NULL without an error to
+# represent an implicit StopIteration, but if StopIteration is
+# *explicitly* raised this will not swallow it.)
 # Can return NULL: see next_op.
 next_raw_op = custom_op(name='next',
                         arg_types=[object_rprimitive],
@@ -81,13 +83,6 @@ send_op = custom_op(name='send',
                     result_type=object_rprimitive,
                     error_kind=ERR_NEVER,
                     emit=call_emit('CPyIter_Send'))
-
-# An honest next. Doesn't swallow StopIteration, raises exceptions.
-func_op(name='builtins.next',
-        arg_types=[object_rprimitive],
-        result_type=object_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=call_emit('CPyIter_Next'))
 
 
 # This is sort of unfortunate but oh well: yield_from_except performs most of the
@@ -113,6 +108,7 @@ method_new_op = custom_op(name='method_new',
                           emit=call_emit('PyMethod_New'))
 
 # Check if the current exception is a StopIteration and return its value if so.
+# Treats "no exception" as StopIteration with a None value.
 # If it is a different exception, re-reraise it.
 check_stop_op = custom_op(name='check_stop_iteration',
                           arg_types=[],

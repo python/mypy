@@ -188,6 +188,7 @@ def len(o: object) -> int: pass
 def print(*object) -> None: pass
 def range(x: int, y: int = ..., z: int = ...) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
+def iter(i: Iterable[T]) -> Iterator[T]: pass
 @overload
 def next(i: Iterator[T]) -> T: pass
 @overload
