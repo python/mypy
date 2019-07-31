@@ -414,7 +414,7 @@ class Environment:
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
         self.indexes = OrderedDict()  # type: Dict[Value, int]
-        self.symtable = {}  # type: Dict[SymbolNode, AssignmentTarget]
+        self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
         self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]

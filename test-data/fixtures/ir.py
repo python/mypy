@@ -51,8 +51,10 @@ class str:
     def __gt__(self, x: str) -> bool: ...
     def __ge__(self, x: str) -> bool: ...
     def __contains__(self, item: str) -> bool: pass
+    def strip (self, item: str) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
+    def upper(self) -> str: pass
 
 class float:
     def __init__(self, x: object) -> None: pass

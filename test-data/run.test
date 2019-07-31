@@ -4087,6 +4087,29 @@ with assertRaises(StopIteration):
 2
 42
 
+[case testGeneratorSuper]
+from typing import Iterator, Callable, Any
+
+class A():
+    def testA(self) -> int:
+        return 2
+
+class B(A):
+    def testB(self) -> Iterator[int]:
+        x = super().testA()
+        while True:
+            yield x
+
+def testAsserts():
+    b = B()
+    b_gen = b.testB()
+    assert next(b_gen) == 2
+
+[file driver.py]
+from native import testAsserts
+
+testAsserts()
+
 [case testAssignModule]
 import a
 assert a.x == 20

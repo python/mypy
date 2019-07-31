@@ -300,7 +300,8 @@ def compute_vtable(cls: ClassIR) -> None:
     """Compute the vtable structure for a class."""
     if cls.vtable is not None: return
 
-    cls.has_dict = any(x.inherits_python for x in cls.mro)
+    if not cls.is_generated:
+        cls.has_dict = any(x.inherits_python for x in cls.mro)
 
     for t in cls.mro[1:]:
         # Make sure all ancestors are processed first
@@ -1135,22 +1136,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Perform the function of visit_method for methods inside non-extension classes.
         name = fdef.name()
         func_ir, func_reg = self.gen_func_item(fdef, name, self.mapper.fdef_to_sig(fdef), cdef)
+        assert func_reg is not None
         self.functions.append(func_ir)
 
         if self.is_decorated(fdef):
             # The undecorated method is a generated callable class
-            assert func_reg is not None
             orig_func = func_reg
             func_reg = self.load_decorated_func(fdef, orig_func)
 
         # TODO: Support property setters in non-extension classes
         if fdef.is_property:
-            # Wrap the method in a call to builtins.property
             prop = self.load_module_attr_by_fullname('builtins.property', fdef.line)
-            assert func_reg is not None
             func_reg = self.py_call(prop, [func_reg], fdef.line)
 
-        assert func_reg is not None
+        elif self.mapper.func_to_decl[fdef].kind == FUNC_CLASSMETHOD:
+            cls_meth = self.load_module_attr_by_fullname('builtins.classmethod', fdef.line)
+            func_reg = self.py_call(cls_meth, [func_reg], fdef.line)
+
+        elif self.mapper.func_to_decl[fdef].kind == FUNC_STATICMETHOD:
+            stat_meth = self.load_module_attr_by_fullname('builtins.staticmethod', fdef.line)
+            func_reg = self.py_call(stat_meth, [func_reg], fdef.line)
+
         self.add_to_non_ext_dict(name, func_reg, fdef.line)
 
     def visit_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
@@ -1251,6 +1257,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L957
         filler_doc_str = 'filler docstring for classes decorated with dataclass'
         self.add_to_non_ext_dict('__doc__', self.load_static_unicode(filler_doc_str), line)
+        self.add_to_non_ext_dict('__module__', self.load_static_unicode(self.module_name), line)
         metaclass = self.primitive_op(type_object_op, [], line)
         metaclass = self.primitive_op(py_calc_meta_op, [metaclass, self.non_ext_info.bases], line)
 
@@ -1748,15 +1755,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.enter(FuncInfo(fitem, name, class_name, self.gen_func_ns(),
                             is_nested, contains_nested, is_decorated, in_non_ext))
 
-        if self.fn_info.is_nested or self.fn_info.in_non_ext:
-            self.setup_callable_class()
-
         # Functions that contain nested functions need an environment class to store variables that
         # are free in their nested functions. Generator functions need an environment class to
         # store a variable denoting the next instruction to be executed when the __next__ function
         # is called, along with all the variables inside the function itself.
         if self.fn_info.contains_nested or self.fn_info.is_generator:
             self.setup_env_class()
+
+        if self.fn_info.is_nested or self.fn_info.in_non_ext:
+            self.setup_callable_class()
 
         if self.fn_info.is_generator:
             # Do a first-pass and generate a function that just returns a generator object.
@@ -3017,7 +3024,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             decl = ir.method_decl(callee.name)
             args = []
             arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
-            if decl.kind == FUNC_CLASSMETHOD:  # Add the class argument for class methods
+            # Add the class argument for class methods in extension classes
+            if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
                 args.append(self.load_native_type_object(callee.expr.node.fullname()))
                 arg_kinds.insert(0, ARG_POS)
                 arg_names.insert(0, None)
@@ -3079,6 +3087,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             vself = next(iter(self.environment.indexes))  # grab first argument
             if decl.kind == FUNC_CLASSMETHOD:
                 vself = self.primitive_op(type_op, [vself], expr.line)
+            elif self.fn_info.is_generator:
+                # For generator classes, the self target is the 6th value
+                # in the symbol table (which is an ordered dict). This is sort
+                # of ugly, but we can't search by name since the 'self' parameter
+                # could be named anything, and it doesn't get added to the
+                # environment indexes.
+                self_targ = list(self.environment.symtable.values())[6]
+                vself = self.read(self_targ, self.fn_info.fitem.line)
             arg_values.insert(0, vself)
             arg_kinds.insert(0, ARG_POS)
             arg_names.insert(0, None)
@@ -3390,7 +3406,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             length = self.primitive_op(list_len_op, [value], value.line)
             zero = self.add(LoadInt(0))
             value = self.binary_op(length, zero, '!=', value.line)
-        elif isinstance(value.type, RInstance) and value.type.class_ir.has_method('__bool__'):
+        elif (isinstance(value.type, RInstance) and value.type.class_ir.is_ext_class
+                and value.type.class_ir.has_method('__bool__')):
             # Directly call the __bool__ method on classes that have it.
             value = self.gen_method_call(value, '__bool__', [], bool_rprimitive, value.line)
         else:
@@ -3943,7 +3960,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             ir = self.mapper.type_to_ir[o.info]
             iter_env = iter(self.environment.indexes)
             vself = next(iter_env)  # grab first argument
-            if not ir.is_ext_class:
+            if self.fn_info.is_generator:
+                # grab sixth argument (see comment in translate_super_method_call)
+                self_targ = list(self.environment.symtable.values())[6]
+                vself = self.read(self_targ, self.fn_info.fitem.line)
+            elif not ir.is_ext_class:
                 vself = next(iter_env)  # second argument is self if non_extension class
             args = [typ, vself]
         res = self.py_call(sup_val, args, o.line)
@@ -4659,6 +4680,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Define the actual callable class ClassIR, and set its environment to point at the
         # previously defined environment class.
         callable_class_ir = ClassIR(name, self.module_name, is_generated=True)
+
+        # The functools @wraps decorator attempts to call setattr on nested functions, so
+        # we create a dict for these nested functions.
+        # https://github.com/python/cpython/blob/3.7/Lib/functools.py#L58
+        if self.fn_info.is_nested:
+            callable_class_ir.has_dict = True
+
         # If the enclosing class doesn't contain nested (which will happen if
         # this is a toplevel lambda), don't set up an environment.
         if self.fn_infos[-2].contains_nested:

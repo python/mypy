@@ -84,7 +84,6 @@ send_op = custom_op(name='send',
                     error_kind=ERR_NEVER,
                     emit=call_emit('CPyIter_Send'))
 
-
 # This is sort of unfortunate but oh well: yield_from_except performs most of the
 # error handling logic in `yield from` operations. It returns a bool and a value.
 # If the bool is true, then a StopIteration was received and we should return.

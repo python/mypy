@@ -100,6 +100,7 @@ assert a.c == 3
 assert a.get_a() == 1
 assert a.get_b() == 2
 assert a.get_c() == 3
+assert A.constant() == 4
 
 [case testEnum]
 from enum import Enum
@@ -129,6 +130,15 @@ from typing import Set, List, Callable, Any
 class Person1:
     age : int
     name : str
+
+    def __bool__(self) -> bool:
+        return self.name == 'robot'
+
+def testBool(p: Person1) -> bool:
+    if p:
+        return True
+    else:
+        return False
 
 @dataclass
 class Person2:
@@ -178,10 +188,12 @@ version = sys.version_info[:2]
 if version[0] < 3 or version[1] < 7:
     exit()
 
-from native import Person1, Person2, Person3, Person4
+from native import Person1, Person2, Person3, Person4, testBool
 i1 = Person1(age = 5, name = 'robot')
 assert i1.age == 5
 assert i1.name == 'robot'
+assert testBool(i1) == True
+assert testBool(Person1(age = 5, name = 'robo')) == False
 i2 = Person2(age = 5)
 assert i2.age == 5
 assert i2.name == 'robot'
