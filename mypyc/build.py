@@ -83,6 +83,11 @@ def get_mypy_config(paths: List[str],
     mypy_options.extend(paths)
 
     sources, options = process_options(mypy_options)
+
+    # Override whatever python_version is inferred from the .ini file,
+    # and set the python_version to be the currently used version.
+    options.python_version = sys.version_info[:2]
+
     if options.python_version[0] == 2:
         fail('Python 2 not supported')
     if not options.strict_optional:
