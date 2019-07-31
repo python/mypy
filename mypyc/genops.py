@@ -516,6 +516,14 @@ def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
     return False
 
 
+def can_subclass_builtin(builtin_base: str) -> bool:
+    # BaseException and dict are special cased.
+    return builtin_base in (
+        ('builtins.Exception', 'builtins.LookupError', 'builtins.IndexError',
+        'builtins.Warning', 'builtins.UserWarning',
+        'builtins.object', ))
+
+
 def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
                       errors: Errors, mapper: Mapper) -> None:
 
@@ -547,21 +555,18 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     for cls in info.mro:
         # Special case exceptions and dicts
         # XXX: How do we handle *other* things??
-        if cls.fullname() == 'builtins.Exception':
-            # don't do anything for Exception (we'll do something for BaseException)
-            pass
-        elif cls.fullname() == 'builtins.BaseException':
+        if cls.fullname() == 'builtins.BaseException':
             ir.builtin_base = 'PyBaseExceptionObject'
         elif cls.fullname() == 'builtins.dict':
             ir.builtin_base = 'PyDictObject'
-        elif cls.fullname() == 'builtins.object':
-            pass
         elif cls.fullname().startswith('builtins.'):
-            # Note that if we try to subclass a C extension class that
-            # isn't in builtins, bad things will happen and we won't
-            # catch it here! But this should catch a lot of the most
-            # common pitfalls.
-            errors.error("Inheriting from most builtin types is unimplemented", path, cdef.line)
+            if not can_subclass_builtin(cls.fullname()):
+                # Note that if we try to subclass a C extension class that
+                # isn't in builtins, bad things will happen and we won't
+                # catch it here! But this should catch a lot of the most
+                # common pitfalls.
+                errors.error("Inheriting from most builtin types is unimplemented",
+                             path, cdef.line)
 
     if ir.builtin_base:
         ir.attributes.clear()

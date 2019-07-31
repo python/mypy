@@ -162,6 +162,10 @@ class BaseException: pass
 class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
 
+class Warning(Exception): pass
+
+class UserWarning(Warning): pass
+
 class TypeError(Exception): pass
 
 class AttributeError(Exception): pass
