@@ -4,6 +4,7 @@ from typing import (
 
 class object:
     def __init__(self) -> None: pass
+    def __eq__(self, other: object) -> bool: pass
 
 class type:
     def __init__(self, x) -> None: pass

@@ -2,6 +2,7 @@
 
 import itertools
 import fnmatch
+import sys
 from contextlib import contextmanager
 
 from typing import (
@@ -37,7 +38,10 @@ from mypy.types import (
     is_optional, remove_optional, TypeTranslator, StarType
 )
 from mypy.sametypes import is_same_type
-from mypy.messages import MessageBuilder, make_inferred_type_note, append_invariance_notes
+from mypy.messages import (
+    MessageBuilder, make_inferred_type_note, append_invariance_notes,
+    format_type, format_type_bare, format_type_distinctly,
+)
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
@@ -292,7 +296,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     seq_str = self.named_generic_type('typing.Sequence',
                                                     [self.named_type('builtins.unicode')])
                 if not is_subtype(all_.type, seq_str):
-                    str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
+                    str_seq_s, all_s = format_type_distinctly(seq_str, all_.type)
                     self.fail(message_registry.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                             all_node)
 
@@ -802,6 +806,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item)
 
+                    # Check validity of __new__ signature
+                    if fdef.info and fdef.name() == '__new__':
+                        self.check___new___signature(fdef, typ)
+
                     self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
@@ -869,8 +877,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Store argument types.
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
-
-                    ref_type = self.scope.active_self_type()  # type: Optional[Type]
+                    with self.scope.push_function(defn):
+                        # We temporary push the definition to get the self type as
+                        # visible from *inside* of this function/method.
+                        ref_type = self.scope.active_self_type()  # type: Optional[Type]
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
@@ -1013,6 +1023,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
+    def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
+        self_type = fill_typevars_with_any(fdef.info)
+        bound_type = bind_self(typ, self_type, is_classmethod=True)
+        # Check that __new__ (after binding cls) returns an instance
+        # type (or any)
+        if not isinstance(bound_type.ret_type, (AnyType, Instance, TupleType)):
+            self.fail(
+                message_registry.NON_INSTANCE_NEW_TYPE.format(
+                    format_type(bound_type.ret_type)),
+                fdef)
+        else:
+            # And that it returns a subtype of the class
+            self.check_subtype(
+                bound_type.ret_type,
+                self_type,
+                fdef,
+                message_registry.INVALID_NEW_TYPE,
+                'returns',
+                'but must return a subtype of'
+            )
 
     def is_trivial_body(self, block: Block) -> bool:
         """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
@@ -3334,7 +3365,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # We skip fully filling out a handful of TypeInfo fields because they
         # should be irrelevant for a generated type like this:
         # is_protocol, protocol_members, is_abstract
-        short_name = self.msg.format_bare(typ)
+        short_name = format_type_bare(typ)
         cdef = ClassDef(short_name, Block([]))
         cdef.fullname = cur_module.fullname() + '.' + gen_name
         info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
@@ -3538,21 +3569,34 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
         elif isinstance(node, ComparisonExpr):
-            # Check for `x is None` and `x is not None`.
+            operand_types = [coerce_to_literal(type_map[expr])
+                             for expr in node.operands if expr in type_map]
+
             is_not = node.operators == ['is not']
-            if any(is_literal_none(n) for n in node.operands) and (
-                    is_not or node.operators == ['is']):
+            if (is_not or node.operators == ['is']) and len(operand_types) == len(node.operands):
                 if_vars = {}  # type: TypeMap
                 else_vars = {}  # type: TypeMap
-                for expr in node.operands:
-                    if (literal(expr) == LITERAL_TYPE and not is_literal_none(expr)
-                            and expr in type_map):
+
+                for i, expr in enumerate(node.operands):
+                    var_type = operand_types[i]
+                    other_type = operand_types[1 - i]
+
+                    if literal(expr) == LITERAL_TYPE and is_singleton_type(other_type):
                         # This should only be true at most once: there should be
-                        # two elements in node.operands, and at least one of them
-                        # should represent a None.
-                        vartype = type_map[expr]
-                        none_typ = [TypeRange(NoneType(), is_upper_bound=False)]
-                        if_vars, else_vars = conditional_type_map(expr, vartype, none_typ)
+                        # exactly two elements in node.operands and if the 'other type' is
+                        # a singleton type, it by definition does not need to be narrowed:
+                        # it already has the most precise type possible so does not need to
+                        # be narrowed/included in the output map.
+                        #
+                        # TODO: Generalize this to handle the case where 'other_type' is
+                        # a union of singleton types.
+
+                        if isinstance(other_type, LiteralType) and other_type.is_enum_literal():
+                            fallback_name = other_type.fallback.type.fullname()
+                            var_type = try_expanding_enum_to_union(var_type, fallback_name)
+
+                        target_type = [TypeRange(other_type, is_upper_bound=False)]
+                        if_vars, else_vars = conditional_type_map(expr, var_type, target_type)
                         break
 
                 if is_not:
@@ -3638,7 +3682,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             note_msg = ''
             notes = []  # type: List[str]
             if subtype_label is not None or supertype_label is not None:
-                subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
+                subtype_str, supertype_str = format_type_distinctly(subtype, supertype)
                 if subtype_label is not None:
                     extra_info.append(subtype_label + ' ' + subtype_str)
                 if supertype_label is not None:
@@ -4417,6 +4461,7 @@ class CheckerScope:
         return None
 
     def enclosing_class(self) -> Optional[TypeInfo]:
+        """Is there a class *directly* enclosing this function?"""
         top = self.top_function()
         assert top, "This method must be called from inside a function"
         index = self.stack.index(top)
@@ -4427,7 +4472,14 @@ class CheckerScope:
         return None
 
     def active_self_type(self) -> Optional[Union[Instance, TupleType]]:
+        """An instance or tuple type representing the current class.
+
+        This returns None unless we are in class body or in a method.
+        In particular, inside a function nested in method this returns None.
+        """
         info = self.active_class()
+        if not info and self.top_function():
+            info = self.enclosing_class()
         if info:
             return fill_typevars(info)
         return None
@@ -4492,3 +4544,77 @@ def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
 def is_private(node_name: str) -> bool:
     """Check if node is private to class definition."""
     return node_name.startswith('__') and not node_name.endswith('__')
+
+
+def is_singleton_type(typ: Type) -> bool:
+    """Returns 'true' if this type is a "singleton type" -- if there exists
+    exactly only one runtime value associated with this type.
+
+    That is, given two values 'a' and 'b' that have the same type 't',
+    'is_singleton_type(t)' returns True if and only if the expression 'a is b' is
+    always true.
+
+    Currently, this returns True when given NoneTypes and enum LiteralTypes.
+
+    Note that other kinds of LiteralTypes cannot count as singleton types. For
+    example, suppose we do 'a = 100000 + 1' and 'b = 100001'. It is not guaranteed
+    that 'a is b' will always be true -- some implementations of Python will end up
+    constructing two distinct instances of 100001.
+    """
+    # TODO: Also make this return True if the type is a bool LiteralType.
+    # Also make this return True if the type corresponds to ... (ellipsis) or NotImplemented?
+    return isinstance(typ, NoneType) or (isinstance(typ, LiteralType) and typ.is_enum_literal())
+
+
+def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> Type:
+    """Attempts to recursively expand any enum Instances with the given target_fullname
+    into a Union of all of its component LiteralTypes.
+
+    For example, if we have:
+
+        class Color(Enum):
+            RED = 1
+            BLUE = 2
+            YELLOW = 3
+
+        class Status(Enum):
+            SUCCESS = 1
+            FAILURE = 2
+            UNKNOWN = 3
+
+    ...and if we call `try_expanding_enum_to_union(Union[Color, Status], 'module.Color')`,
+    this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW, Status].
+    """
+    if isinstance(typ, UnionType):
+        items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
+        return UnionType.make_simplified_union(items)
+    elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname() == target_fullname:
+        new_items = []
+        for name, symbol in typ.type.names.items():
+            if not isinstance(symbol.node, Var):
+                continue
+            new_items.append(LiteralType(name, typ))
+        # SymbolTables are really just dicts, and dicts are guaranteed to preserve
+        # insertion order only starting with Python 3.7. So, we sort these for older
+        # versions of Python to help make tests deterministic.
+        #
+        # We could probably skip the sort for Python 3.6 since people probably run mypy
+        # only using CPython, but we might as well for the sake of full correctness.
+        if sys.version_info < (3, 7):
+            new_items.sort(key=lambda lit: lit.value)
+        return UnionType.make_simplified_union(new_items)
+    else:
+        return typ
+
+
+def coerce_to_literal(typ: Type) -> Type:
+    """Recursively converts any Instances that have a last_known_value into the
+    corresponding LiteralType.
+    """
+    if isinstance(typ, UnionType):
+        new_items = [coerce_to_literal(item) for item in typ.items]
+        return UnionType.make_simplified_union(new_items)
+    elif isinstance(typ, Instance) and typ.last_known_value:
+        return typ.last_known_value
+    else:
+        return typ

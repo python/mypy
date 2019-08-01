@@ -87,7 +87,12 @@ class Options:
         self.namespace_packages = False
 
         # Use the new semantic analyzer
-        self.new_semantic_analyzer = bool(os.getenv('NEWSEMANAL'))
+        new_analyzer = os.getenv('NEWSEMANAL')
+        if new_analyzer:
+            # Use NEWSEMANAL=0 to change the default (for tests).
+            self.new_semantic_analyzer = bool(int(new_analyzer))
+        else:
+            self.new_semantic_analyzer = True
 
         # disallow_any options
         self.disallow_any_generics = False

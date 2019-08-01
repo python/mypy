@@ -150,6 +150,7 @@ i = n.b # type: int  # E: Incompatible types in assignment (expression has type 
 x, y = n
 if int():
     x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[targets __main__, __main__.N.__new__, __main__.N._asdict, __main__.N._make, __main__.N._replace]
 
 
 [case testNamedTupleWithTupleFieldNamesWithItemTypes]

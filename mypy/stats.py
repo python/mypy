@@ -2,9 +2,10 @@
 
 import os
 from collections import Counter
+from contextlib import contextmanager
 
 import typing
-from typing import Dict, List, cast, Optional
+from typing import Dict, List, cast, Optional, Union, Iterator
 from typing_extensions import Final
 
 from mypy.traverser import TraverserVisitor
@@ -17,8 +18,11 @@ from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    AssignmentExpr,
+    AssignmentExpr, ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr,
+    BytesExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
 )
+from mypy.util import correct_relative_import
+from mypy.argmap import map_formals_to_actuals
 
 TYPE_EMPTY = 0  # type: Final
 TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code
@@ -39,11 +43,13 @@ class StatisticsVisitor(TraverserVisitor):
     def __init__(self,
                  inferred: bool,
                  filename: str,
+                 modules: Dict[str, MypyFile],
                  typemap: Optional[Dict[Expression, Type]] = None,
                  all_nodes: bool = False,
                  visit_untyped_defs: bool = True) -> None:
         self.inferred = inferred
         self.filename = filename
+        self.modules = modules
         self.typemap = typemap
         self.all_nodes = all_nodes
         self.visit_untyped_defs = visit_untyped_defs
@@ -67,35 +73,82 @@ class StatisticsVisitor(TraverserVisitor):
         self.type_of_any_counter = Counter()  # type: typing.Counter[int]
         self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
+        # For each scope (top level/function), whether the scope was type checked
+        # (annotated function).
+        #
+        # TODO: Handle --check-untyped-defs
+        self.checked_scopes = [True]
+
         self.output = []  # type: List[str]
 
         TraverserVisitor.__init__(self)
 
-    def visit_func_def(self, o: FuncDef) -> None:
-        self.line = o.line
-        if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
-            if o in o.expanded:
-                print('{}:{}: ERROR: cycle in function expansion; skipping'.format(self.filename,
-                                                                                   o.get_line()))
-                return
-            for defn in o.expanded:
-                self.visit_func_def(cast(FuncDef, defn))
+    def visit_mypy_file(self, o: MypyFile) -> None:
+        self.cur_mod_node = o
+        self.cur_mod_id = o.fullname()
+        super().visit_mypy_file(o)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        self.process_import(imp)
+
+    def visit_import_all(self, imp: ImportAll) -> None:
+        self.process_import(imp)
+
+    def process_import(self, imp: Union[ImportFrom, ImportAll]) -> None:
+        import_id, ok = correct_relative_import(self.cur_mod_id,
+                                                imp.relative,
+                                                imp.id,
+                                                self.cur_mod_node.is_package_init_file())
+        if ok and import_id in self.modules:
+            kind = TYPE_PRECISE
         else:
-            if o.type:
-                sig = cast(CallableType, o.type)
-                arg_types = sig.arg_types
-                if (sig.arg_names and sig.arg_names[0] == 'self' and
-                        not self.inferred):
-                    arg_types = arg_types[1:]
-                for arg in arg_types:
-                    self.type(arg)
-                self.type(sig.ret_type)
-            elif self.all_nodes:
-                self.record_line(self.line, TYPE_ANY)
-            if not o.is_dynamic() or self.visit_untyped_defs:
-                super().visit_func_def(o)
+            kind = TYPE_ANY
+        self.record_line(imp.line, kind)
+
+    def visit_import(self, imp: Import) -> None:
+        if all(id in self.modules for id, _ in imp.ids):
+            kind = TYPE_PRECISE
+        else:
+            kind = TYPE_ANY
+        self.record_line(imp.line, kind)
+
+    def visit_func_def(self, o: FuncDef) -> None:
+        with self.enter_scope(o):
+            self.line = o.line
+            if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
+                if o in o.expanded:
+                    print('{}:{}: ERROR: cycle in function expansion; skipping'.format(
+                        self.filename,
+                        o.get_line()))
+                    return
+                for defn in o.expanded:
+                    self.visit_func_def(cast(FuncDef, defn))
+            else:
+                if o.type:
+                    sig = cast(CallableType, o.type)
+                    arg_types = sig.arg_types
+                    if (sig.arg_names and sig.arg_names[0] == 'self' and
+                            not self.inferred):
+                        arg_types = arg_types[1:]
+                    for arg in arg_types:
+                        self.type(arg)
+                    self.type(sig.ret_type)
+                elif self.all_nodes:
+                    self.record_line(self.line, TYPE_ANY)
+                if not o.is_dynamic() or self.visit_untyped_defs:
+                    super().visit_func_def(o)
+
+    @contextmanager
+    def enter_scope(self, o: FuncDef) -> Iterator[None]:
+        self.checked_scopes.append(o.type is not None and self.checked_scopes[-1])
+        yield None
+        self.checked_scopes.pop()
+
+    def is_checked_scope(self) -> bool:
+        return self.checked_scopes[-1]
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self.record_line(o.line, TYPE_PRECISE)  # TODO: Look at base classes
         # Override this method because we don't want to analyze base_type_exprs (base_type_exprs
         # are base classes in a class declaration).
         # While base_type_exprs are technically expressions, type analyzer does not visit them and
@@ -131,9 +184,31 @@ class StatisticsVisitor(TraverserVisitor):
                             self.type(self.typemap.get(item))
         super().visit_assignment_stmt(o)
 
+    def visit_expression_stmt(self, o: ExpressionStmt) -> None:
+        if isinstance(o.expr, (StrExpr, UnicodeExpr, BytesExpr)):
+            # Docstring
+            self.record_line(o.line, TYPE_EMPTY)
+        else:
+            super().visit_expression_stmt(o)
+
+    def visit_pass_stmt(self, o: PassStmt) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_break_stmt(self, o: BreakStmt) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_continue_stmt(self, o: ContinueStmt) -> None:
+        self.record_precise_if_checked_scope(o)
+
     def visit_name_expr(self, o: NameExpr) -> None:
-        self.process_node(o)
-        super().visit_name_expr(o)
+        if o.fullname in ('builtins.None',
+                          'builtins.True',
+                          'builtins.False',
+                          'builtins.Ellipsis'):
+            self.record_precise_if_checked_scope(o)
+        else:
+            self.process_node(o)
+            super().visit_name_expr(o)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
         if o.expr:
@@ -147,6 +222,42 @@ class StatisticsVisitor(TraverserVisitor):
             o.callee.accept(self)
             for a in o.args:
                 a.accept(self)
+            self.record_call_target_precision(o)
+
+    def record_call_target_precision(self, o: CallExpr) -> None:
+        """Record precision of formal argument types used in a call."""
+        if not self.typemap or o.callee not in self.typemap:
+            # Type not availabe.
+            return
+        callee_type = self.typemap[o.callee]
+        if isinstance(callee_type, CallableType):
+            self.record_callable_target_precision(o, callee_type)
+        else:
+            pass  # TODO: Handle overloaded functions, etc.
+
+    def record_callable_target_precision(self, o: CallExpr, callee: CallableType) -> None:
+        """Record imprecision caused by callee argument types.
+
+        This only considers arguments passed in a call expression. Arguments
+        with default values that aren't provided in a call arguably don't
+        contribute to typing imprecision at the *call site* (but they
+        contribute at the function definition).
+        """
+        assert self.typemap
+        typemap = self.typemap
+        actual_to_formal = map_formals_to_actuals(
+            o.arg_kinds,
+            o.arg_names,
+            callee.arg_kinds,
+            callee.arg_names,
+            lambda n: typemap[o.args[n]])
+        for formals in actual_to_formal:
+            for n in formals:
+                formal = callee.arg_types[n]
+                if isinstance(formal, AnyType):
+                    self.record_line(o.line, TYPE_ANY)
+                elif is_imprecise(formal):
+                    self.record_line(o.line, TYPE_IMPRECISE)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
         self.process_node(o)
@@ -172,11 +283,43 @@ class StatisticsVisitor(TraverserVisitor):
         self.process_node(o)
         super().visit_unary_expr(o)
 
+    def visit_str_expr(self, o: StrExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_bytes_expr(self, o: BytesExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_int_expr(self, o: IntExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_float_expr(self, o: FloatExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_complex_expr(self, o: ComplexExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    def visit_ellipsis(self, o: EllipsisExpr) -> None:
+        self.record_precise_if_checked_scope(o)
+
+    # Helpers
+
     def process_node(self, node: Expression) -> None:
         if self.all_nodes:
             if self.typemap is not None:
                 self.line = node.line
                 self.type(self.typemap.get(node))
+
+    def record_precise_if_checked_scope(self, node: Node) -> None:
+        if isinstance(node, Expression) and self.typemap and node not in self.typemap:
+            kind = TYPE_UNANALYZED
+        elif self.is_checked_scope():
+            kind = TYPE_PRECISE
+        else:
+            kind = TYPE_ANY
+        self.record_line(node.line, kind)
 
     def type(self, t: Optional[Type]) -> None:
         if not t:
@@ -240,12 +383,18 @@ class StatisticsVisitor(TraverserVisitor):
                                   self.line_map.get(line, TYPE_EMPTY))
 
 
-def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
+def dump_type_stats(tree: MypyFile,
+                    path: str,
+                    modules: Dict[str, MypyFile],
+                    inferred: bool = False,
                     typemap: Optional[Dict[Expression, Type]] = None) -> None:
     if is_special_module(path):
         return
     print(path)
-    visitor = StatisticsVisitor(inferred, filename=tree.fullname(), typemap=typemap)
+    visitor = StatisticsVisitor(inferred,
+                                filename=tree.fullname(),
+                                modules=modules,
+                                typemap=typemap)
     tree.accept(visitor)
     for line in visitor.output:
         print(line)
@@ -277,12 +426,6 @@ class HasAnyQuery(TypeQuery[bool]):
 
     def visit_any(self, t: AnyType) -> bool:
         return not is_special_form_any(t)
-
-    def visit_instance(self, t: Instance) -> bool:
-        if t.type.fullname() == 'builtins.tuple':
-            return True
-        else:
-            return super().visit_instance(t)
 
 
 def is_imprecise2(t: Type) -> bool:

@@ -16,9 +16,10 @@ from mypy.test.data import (
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime
+    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
 )
 from mypy.errors import CompileError
+from mypy.newsemanal.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
@@ -84,6 +85,7 @@ typecheck_files = [
     'check-literal.test',
     'check-newsemanal.test',
     'check-inline-config.test',
+    'check-reports.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -105,7 +107,6 @@ class TypeCheckSuite(DataSuite):
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
@@ -222,16 +223,33 @@ class TypeCheckSuite(DataSuite):
             if options.cache_dir != os.devnull:
                 self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
+            if options.new_semantic_analyzer:
+                name = 'targets'
+                if incremental_step:
+                    name += str(incremental_step + 1)
+                expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
+                actual = res.manager.processed_targets
+                # Skip the initial builtin cycle.
+                actual = [t for t in actual
+                          if not any(t.startswith(mod)
+                                     for mod in core_modules + ['mypy_extensions'])]
+                if expected is not None:
+                    assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                assert_module_equivalence(
-                    'rechecked' + suffix,
-                    testcase.expected_rechecked_modules.get(incremental_step - 1),
-                    res.manager.rechecked_modules)
-                assert_module_equivalence(
-                    'stale' + suffix,
-                    testcase.expected_stale_modules.get(incremental_step - 1),
-                    res.manager.stale_modules)
+                expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)
+                if expected_rechecked is not None:
+                    assert_module_equivalence(
+                        'rechecked' + suffix,
+                        expected_rechecked, res.manager.rechecked_modules)
+                expected_stale = testcase.expected_stale_modules.get(incremental_step - 1)
+                if expected_stale is not None:
+                    assert_module_equivalence(
+                        'stale' + suffix,
+                        expected_stale, res.manager.stale_modules)
+
+        if testcase.output_files:
+            check_test_output_files(testcase, incremental_step, strip_prefix='tmp/')
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:

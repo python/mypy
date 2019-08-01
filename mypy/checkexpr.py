@@ -2,6 +2,7 @@
 
 from collections import OrderedDict
 from contextlib import contextmanager
+import itertools
 from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
@@ -28,7 +29,8 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
+    SYMBOL_FUNCBASE_TYPES
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -172,6 +174,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, OverloadedFuncDef) and node.type is not None:
             # node.type is None when there are multiple definitions of a function
             # and it's decorated by something that is not typing.overload
+            # TODO: use a dummy Overloaded instead of AnyType in this case
+            # like we do in mypy.types.function_type()?
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
@@ -676,7 +680,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.disable_errors()
             item = analyze_member_access(member, typ, e, False, False, False,
                                          self.msg, original_type=object_type, chk=self.chk,
-                                         in_literal_context=self.is_literal_context())
+                                         in_literal_context=self.is_literal_context(),
+                                         self_type=typ)
             self.msg.enable_errors()
             narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
             if narrowed is None:
@@ -2558,15 +2563,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(index, SliceExpr):
                 return self.visit_tuple_slice_helper(left_type, index)
 
-            n = self._get_value(index)
-            if n is not None:
-                if n < 0:
-                    n += len(left_type.items)
-                if 0 <= n < len(left_type.items):
-                    return left_type.items[n]
-                else:
-                    self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
-                    return AnyType(TypeOfAny.from_error)
+            ns = self.try_getting_int_literals(index)
+            if ns is not None:
+                out = []
+                for n in ns:
+                    if n < 0:
+                        n += len(left_type.items)
+                    if 0 <= n < len(left_type.items):
+                        out.append(left_type.items[n])
+                    else:
+                        self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
+                        return AnyType(TypeOfAny.from_error)
+                return UnionType.make_simplified_union(out)
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
@@ -2582,26 +2590,66 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return result
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
-        begin = None
-        end = None
-        stride = None
+        begin = [None]   # type: Sequence[Optional[int]]
+        end = [None]     # type: Sequence[Optional[int]]
+        stride = [None]  # type: Sequence[Optional[int]]
 
         if slic.begin_index:
-            begin = self._get_value(slic.begin_index)
-            if begin is None:
+            begin_raw = self.try_getting_int_literals(slic.begin_index)
+            if begin_raw is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
+            begin = begin_raw
 
         if slic.end_index:
-            end = self._get_value(slic.end_index)
-            if end is None:
+            end_raw = self.try_getting_int_literals(slic.end_index)
+            if end_raw is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
+            end = end_raw
 
         if slic.stride:
-            stride = self._get_value(slic.stride)
-            if stride is None:
+            stride_raw = self.try_getting_int_literals(slic.stride)
+            if stride_raw is None:
                 return self.nonliteral_tuple_index_helper(left_type, slic)
+            stride = stride_raw
 
-        return left_type.slice(begin, stride, end)
+        items = []  # type: List[Type]
+        for b, e, s in itertools.product(begin, end, stride):
+            items.append(left_type.slice(b, e, s))
+        return UnionType.make_simplified_union(items)
+
+    def try_getting_int_literals(self, index: Expression) -> Optional[List[int]]:
+        """If the given expression or type corresponds to an int literal
+        or a union of int literals, returns a list of the underlying ints.
+        Otherwise, returns None.
+
+        Specifically, this function is guaranteed to return a list with
+        one or more ints if one one the following is true:
+
+        1. 'expr' is a IntExpr or a UnaryExpr backed by an IntExpr
+        2. 'typ' is a LiteralType containing an int
+        3. 'typ' is a UnionType containing only LiteralType of ints
+        """
+        if isinstance(index, IntExpr):
+            return [index.value]
+        elif isinstance(index, UnaryExpr):
+            if index.op == '-':
+                operand = index.expr
+                if isinstance(operand, IntExpr):
+                    return [-1 * operand.value]
+        typ = self.accept(index)
+        if isinstance(typ, Instance) and typ.last_known_value is not None:
+            typ = typ.last_known_value
+        if isinstance(typ, LiteralType) and isinstance(typ.value, int):
+            return [typ.value]
+        if isinstance(typ, UnionType):
+            out = []
+            for item in typ.items:
+                if isinstance(item, LiteralType) and isinstance(item.value, int):
+                    out.append(item.value)
+                else:
+                    return None
+            return out
+        return None
 
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
         index_type = self.accept(index)
@@ -2618,40 +2666,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return union
 
-    def _get_value(self, index: Expression) -> Optional[int]:
-        if isinstance(index, IntExpr):
-            return index.value
-        elif isinstance(index, UnaryExpr):
-            if index.op == '-':
-                operand = index.expr
-                if isinstance(operand, IntExpr):
-                    return -1 * operand.value
-        typ = self.accept(index)
-        if isinstance(typ, Instance) and typ.last_known_value is not None:
-            typ = typ.last_known_value
-        if isinstance(typ, LiteralType) and isinstance(typ.value, int):
-            return typ.value
-        return None
-
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
         if isinstance(index, (StrExpr, UnicodeExpr)):
-            item_name = index.value
+            key_names = [index.value]
         else:
             typ = self.accept(index)
-            if isinstance(typ, Instance) and typ.last_known_value is not None:
-                typ = typ.last_known_value
-
-            if isinstance(typ, LiteralType) and isinstance(typ.value, str):
-                item_name = typ.value
+            if isinstance(typ, UnionType):
+                key_types = typ.items
             else:
-                self.msg.typeddict_key_must_be_string_literal(td_type, index)
-                return AnyType(TypeOfAny.from_error)
+                key_types = [typ]
 
-        item_type = td_type.items.get(item_name)
-        if item_type is None:
-            self.msg.typeddict_key_not_found(td_type, item_name, index)
-            return AnyType(TypeOfAny.from_error)
-        return item_type
+            key_names = []
+            for key_type in key_types:
+                if isinstance(key_type, Instance) and key_type.last_known_value is not None:
+                    key_type = key_type.last_known_value
+
+                if isinstance(key_type, LiteralType) and isinstance(key_type.value, str):
+                    key_names.append(key_type.value)
+                else:
+                    self.msg.typeddict_key_must_be_string_literal(td_type, index)
+                    return AnyType(TypeOfAny.from_error)
+
+        value_types = []
+        for key_name in key_names:
+            value_type = td_type.items.get(key_name)
+            if value_type is None:
+                self.msg.typeddict_key_not_found(td_type, key_name, index)
+                return AnyType(TypeOfAny.from_error)
+            else:
+                value_types.append(value_type)
+        return UnionType.make_simplified_union(value_types)
 
     def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,
                               context: Context) -> Type:
@@ -3070,111 +3114,140 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
-        self.check_super_arguments(e)
-        t = self.analyze_super(e, False)
-        return t
 
-    def check_super_arguments(self, e: SuperExpr) -> None:
-        """Check arguments in a super(...) call."""
-        if ARG_STAR in e.call.arg_kinds:
+        # We have an expression like super(T, var).member
+
+        # First compute the types of T and var
+        types = self._super_arg_types(e)
+        if isinstance(types, tuple):
+            type_type, instance_type = types
+        else:
+            return types
+
+        # Now get the MRO
+        type_info = type_info_from_type(type_type)
+        if type_info is None:
+            self.chk.fail(message_registry.UNSUPPORTED_ARG_1_FOR_SUPER, e)
+            return AnyType(TypeOfAny.from_error)
+
+        instance_info = type_info_from_type(instance_type)
+        if instance_info is None:
+            self.chk.fail(message_registry.UNSUPPORTED_ARG_2_FOR_SUPER, e)
+            return AnyType(TypeOfAny.from_error)
+
+        mro = instance_info.mro
+
+        # The base is the first MRO entry *after* type_info that has a member
+        # with the right name
+        try:
+            index = mro.index(type_info)
+        except ValueError:
+            self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+            return AnyType(TypeOfAny.from_error)
+
+        for base in mro[index+1:]:
+            if e.name in base.names or base == mro[-1]:
+                if e.info and e.info.fallback_to_any and base == mro[-1]:
+                    # There's an undefined base class, and we're at the end of the
+                    # chain.  That's not an error.
+                    return AnyType(TypeOfAny.special_form)
+
+                return analyze_member_access(name=e.name,
+                                             typ=instance_type,
+                                             is_lvalue=False,
+                                             is_super=True,
+                                             is_operator=False,
+                                             original_type=instance_type,
+                                             override_info=base,
+                                             context=e,
+                                             msg=self.msg,
+                                             chk=self.chk,
+                                             in_literal_context=self.is_literal_context())
+
+        assert False, 'unreachable'
+
+    def _super_arg_types(self, e: SuperExpr) -> Union[Type, Tuple[Type, Type]]:
+        """
+        Computes the types of the type and instance expressions in super(T, instance), or the
+        implicit ones for zero-argument super() expressions.  Returns a single type for the whole
+        super expression when possible (for errors, anys), otherwise the pair of computed types.
+        """
+
+        if not self.chk.in_checked_function():
+            return AnyType(TypeOfAny.unannotated)
+        elif len(e.call.args) == 0:
+            if self.chk.options.python_version[0] == 2:
+                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
+                return AnyType(TypeOfAny.from_error)
+            elif not e.info:
+                # This has already been reported by the semantic analyzer.
+                return AnyType(TypeOfAny.from_error)
+            elif self.chk.scope.active_class():
+                self.chk.fail(message_registry.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
+                return AnyType(TypeOfAny.from_error)
+
+            # Zero-argument super() is like super(<current class>, <self>)
+            current_type = fill_typevars(e.info)
+            type_type = TypeType(current_type)  # type: Type
+
+            # Use the type of the self argument, in case it was annotated
+            method = self.chk.scope.top_function()
+            assert method is not None
+            if method.arguments:
+                instance_type = method.arguments[0].variable.type or current_type  # type: Type
+            else:
+                self.chk.fail(message_registry.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
+                return AnyType(TypeOfAny.from_error)
+        elif ARG_STAR in e.call.arg_kinds:
             self.chk.fail(message_registry.SUPER_VARARGS_NOT_SUPPORTED, e)
-        elif e.call.args and set(e.call.arg_kinds) != {ARG_POS}:
+            return AnyType(TypeOfAny.from_error)
+        elif set(e.call.arg_kinds) != {ARG_POS}:
             self.chk.fail(message_registry.SUPER_POSITIONAL_ARGS_REQUIRED, e)
+            return AnyType(TypeOfAny.from_error)
         elif len(e.call.args) == 1:
             self.chk.fail(message_registry.SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED, e)
-        elif len(e.call.args) > 2:
-            self.chk.fail(message_registry.TOO_MANY_ARGS_FOR_SUPER, e)
-        elif self.chk.options.python_version[0] == 2 and len(e.call.args) == 0:
-            self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
-        elif len(e.call.args) == 2:
-            type_obj_type = self.accept(e.call.args[0])
-            instance_type = self.accept(e.call.args[1])
-            if isinstance(type_obj_type, FunctionLike) and type_obj_type.is_type_obj():
-                type_info = type_obj_type.type_object()
-            elif isinstance(type_obj_type, TypeType):
-                item = type_obj_type.item
-                if isinstance(item, AnyType):
-                    # Could be anything.
-                    return
-                if isinstance(item, TupleType):
-                    # Handle named tuples and other Tuple[...] subclasses.
-                    item = tuple_fallback(item)
-                if not isinstance(item, Instance):
-                    # A complicated type object type. Too tricky, give up.
-                    # TODO: Do something more clever here.
-                    self.chk.fail(message_registry.UNSUPPORTED_ARG_1_FOR_SUPER, e)
-                    return
-                type_info = item.type
-            elif isinstance(type_obj_type, AnyType):
-                return
-            else:
-                self.msg.first_argument_for_super_must_be_type(type_obj_type, e)
-                return
-
-            if isinstance(instance_type, (Instance, TupleType, TypeVarType)):
-                if isinstance(instance_type, TypeVarType):
-                    # Needed for generic self.
-                    instance_type = instance_type.upper_bound
-                    if not isinstance(instance_type, (Instance, TupleType)):
-                        # Too tricky, give up.
-                        # TODO: Do something more clever here.
-                        self.chk.fail(message_registry.UNSUPPORTED_ARG_2_FOR_SUPER, e)
-                        return
-                if isinstance(instance_type, TupleType):
-                    # Needed for named tuples and other Tuple[...] subclasses.
-                    instance_type = tuple_fallback(instance_type)
-                if type_info not in instance_type.type.mro:
-                    self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
-            elif isinstance(instance_type, TypeType) or (isinstance(instance_type, FunctionLike)
-                                                         and instance_type.is_type_obj()):
-                # TODO: Check whether this is a valid type object here.
-                pass
-            elif not isinstance(instance_type, AnyType):
-                self.chk.fail(message_registry.UNSUPPORTED_ARG_2_FOR_SUPER, e)
-
-    def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
-        """Type check a super expression."""
-        if e.info and e.info.bases:
-            # TODO fix multiple inheritance etc
-            if len(e.info.mro) < 2:
-                self.chk.fail('Internal error: unexpected mro for {}: {}'.format(
-                    e.info.name(), e.info.mro), e)
-                return AnyType(TypeOfAny.from_error)
-            for base in e.info.mro[1:]:
-                if e.name in base.names or base == e.info.mro[-1]:
-                    if e.info.fallback_to_any and base == e.info.mro[-1]:
-                        # There's an undefined base class, and we're
-                        # at the end of the chain.  That's not an error.
-                        return AnyType(TypeOfAny.special_form)
-                    if not self.chk.in_checked_function():
-                        return AnyType(TypeOfAny.unannotated)
-                    if self.chk.scope.active_class() is not None:
-                        self.chk.fail(message_registry.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
-                        return AnyType(TypeOfAny.from_error)
-                    method = self.chk.scope.top_function()
-                    assert method is not None
-                    args = method.arguments
-                    # super() in a function with empty args is an error; we
-                    # need something in declared_self.
-                    if not args:
-                        self.chk.fail(message_registry.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
-                        return AnyType(TypeOfAny.from_error)
-                    declared_self = args[0].variable.type or fill_typevars(e.info)
-                    return analyze_member_access(name=e.name,
-                                                 typ=fill_typevars(e.info),
-                                                 is_lvalue=False,
-                                                 is_super=True,
-                                                 is_operator=False,
-                                                 original_type=declared_self,
-                                                 override_info=base,
-                                                 context=e,
-                                                 msg=self.msg,
-                                                 chk=self.chk,
-                                                 in_literal_context=self.is_literal_context())
-            assert False, 'unreachable'
-        else:
-            # Invalid super. This has been reported by the semantic analyzer.
             return AnyType(TypeOfAny.from_error)
+        elif len(e.call.args) == 2:
+            type_type = self.accept(e.call.args[0])
+            instance_type = self.accept(e.call.args[1])
+        else:
+            self.chk.fail(message_registry.TOO_MANY_ARGS_FOR_SUPER, e)
+            return AnyType(TypeOfAny.from_error)
+
+        # Imprecisely assume that the type is the current class
+        if isinstance(type_type, AnyType):
+            if e.info:
+                type_type = TypeType(fill_typevars(e.info))
+            else:
+                return AnyType(TypeOfAny.from_another_any, source_any=type_type)
+        elif isinstance(type_type, TypeType):
+            type_item = type_type.item
+            if isinstance(type_item, AnyType):
+                if e.info:
+                    type_type = TypeType(fill_typevars(e.info))
+                else:
+                    return AnyType(TypeOfAny.from_another_any, source_any=type_item)
+
+        if (not isinstance(type_type, TypeType)
+                and not (isinstance(type_type, FunctionLike) and type_type.is_type_obj())):
+            self.msg.first_argument_for_super_must_be_type(type_type, e)
+            return AnyType(TypeOfAny.from_error)
+
+        # Imprecisely assume that the instance is of the current class
+        if isinstance(instance_type, AnyType):
+            if e.info:
+                instance_type = fill_typevars(e.info)
+            else:
+                return AnyType(TypeOfAny.from_another_any, source_any=instance_type)
+        elif isinstance(instance_type, TypeType):
+            instance_item = instance_type.item
+            if isinstance(instance_item, AnyType):
+                if e.info:
+                    instance_type = TypeType(fill_typevars(e.info))
+                else:
+                    return AnyType(TypeOfAny.from_another_any, source_any=instance_item)
+
+        return type_type, instance_type
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
         expected = make_optional_type(self.named_type('builtins.int'))
@@ -3937,9 +4010,10 @@ def is_expr_literal_type(node: Expression) -> bool:
 def custom_equality_method(typ: Type) -> bool:
     """Does this type have a custom __eq__() method?"""
     if isinstance(typ, Instance):
-        method = typ.type.get_method('__eq__')
-        if method and method.info:
-            return not method.info.fullname().startswith('builtins.')
+        method = typ.type.get('__eq__')
+        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
+            if method.node.info:
+                return not method.node.info.fullname().startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
         return any(custom_equality_method(t) for t in typ.items)
@@ -3962,3 +4036,22 @@ def has_bytes_component(typ: Type) -> bool:
     if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
         return True
     return False
+
+
+def type_info_from_type(typ: Type) -> Optional[TypeInfo]:
+    """Gets the TypeInfo for a type, indirecting through things like type variables and tuples."""
+
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
+        return typ.type_object()
+    if isinstance(typ, TypeType):
+        typ = typ.item
+    if isinstance(typ, TypeVarType):
+        typ = typ.upper_bound
+    if isinstance(typ, TupleType):
+        typ = tuple_fallback(typ)
+    if isinstance(typ, Instance):
+        return typ.type
+
+    # A complicated type. Too tricky, give up.
+    # TODO: Do something more clever here.
+    return None

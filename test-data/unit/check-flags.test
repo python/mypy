@@ -1099,18 +1099,18 @@ def f(c: C) -> None:
 [out]
 
 [case testCheckDisallowAnyGenericsAnyGeneric]
-# flags: --disallow-any-generics
+# flags: --new-semantic-analyzer --disallow-any-generics
 from typing import TypeVar, Callable
 
 T = TypeVar('T')
 C = Callable[[], T]
 
-def f(c: C):  # E: Missing type parameters for generic type
+def f(c: C):  # E: Missing type parameters for generic type "C"
     pass
 [out]
 
 [case testStrictAnyGeneric]
-# flags: --strict
+# flags: --new-semantic-analyzer --strict
 from typing import TypeVar, Generic
 
 T = TypeVar('T')
@@ -1118,7 +1118,7 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-def f(c: A) -> None:  # E: Missing type parameters for generic type
+def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
     pass
 [out]
 
@@ -1164,10 +1164,10 @@ implicit_reexport = False
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
 [case testImplicitAnyOKForNoArgs]
-# flags: --disallow-any-generics --show-column-numbers
+# flags: --new-semantic-analyzer --disallow-any-generics --show-column-numbers
 from typing import List
 
 A = List  # OK
-B = List[A]  # E:10: Missing type parameters for generic type
-x: A  # E:4: Missing type parameters for generic type
+B = List[A]  # E:10: Missing type parameters for generic type "A"
+x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]

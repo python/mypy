@@ -266,7 +266,7 @@ def f() -> None:
     class y: pass # E: Name 'y' already defined on line 5
 
 [case testRedefineVarAsTypeVar]
-# flags: --allow-redefinition
+# flags: --allow-redefinition --new-semantic-analyzer
 from typing import TypeVar
 def f() -> None:
     x = TypeVar('x')
@@ -276,7 +276,7 @@ def f() -> None:
     # NOTE: '"int" not callable' is due to test stubs
     y = TypeVar('y')  # E: Cannot redefine 'y' as a type variable \
                       # E: "int" not callable
-    def h(a: y) -> y: return a # E: Invalid type "y"
+    def h(a: y) -> y: return a # E: Variable "y" is not valid as a type
 
 [case testCannotRedefineVarAsModule]
 # flags: --allow-redefinition

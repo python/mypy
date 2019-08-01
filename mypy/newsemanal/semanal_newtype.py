@@ -18,7 +18,7 @@ from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.newsemanal.typeanal import check_for_explicit_any, has_any_from_unimported_type
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, format_type
 
 
 class NewTypeAnalyzer:
@@ -74,7 +74,7 @@ class NewTypeAnalyzer:
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
-                self.fail(message.format(self.msg.format(old_type)), s)
+                self.fail(message.format(format_type(old_type)), s)
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type('__builtins__.object')

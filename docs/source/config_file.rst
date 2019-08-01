@@ -21,6 +21,10 @@ Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
 flags may take a different value based on the module being processed.
 
+Some flags support user home directory and environment variable expansion.
+To refer to the user home directory, use ``~`` at the beginning of the path.
+To expand environment variables use ``$VARNAME`` or ``${VARNAME}``.
+
 Config file format
 ******************
 
@@ -41,7 +45,7 @@ characters.
   whose name matches at least one of the patterns.
 
   A pattern of the form ``qualified_module_name`` matches only the named module,
-  while ``qualified_module_name.*`` matches ``dotted_module_name`` and any
+  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
@@ -277,6 +281,10 @@ section of the command line docs.
     Shows a warning when returning a value with type ``Any`` from a function
     declared with a non- ``Any`` return type.
 
+``warn_unreachable`` (bool, default False)
+    Shows a warning when encountering any code inferred to be unreachable or
+    redundant after performing type analysis.
+
 .. _config-file-suppressing-errors:
 
 Suppressing errors
@@ -351,7 +359,8 @@ a list of import discovery options that may be used
 
 ``python_executable`` (string)
     Specifies the path to the Python executable to inspect to collect
-    a list of available :ref:`PEP 561 packages <installed-packages>`. Defaults to
+    a list of available :ref:`PEP 561 packages <installed-packages>`. User
+    home directory and environment variables will be expanded. Defaults to
     the executable used to run mypy.
 
 ``no_silence_site_packages`` (bool, default False)
@@ -362,13 +371,15 @@ a list of import discovery options that may be used
 ``mypy_path`` (string)
     Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
     variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
+    Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
+    User home directory and environment variables will be expanded.
 
 ``files`` (string)
     A comma-separated list of paths which should be checked by mypy if none are given on the command
     line. Supports recursive file globbing using
     [the glob library](https://docs.python.org/3/library/glob.html), where `*` (e.g. `*.py`) matches
     files in the current directory and `**/` (e.g. `**/*.py`) matches files in any directories below
-    the current one.
+    the current one. User home directory and environment variables will be expanded.
 
 
 Platform configuration
@@ -401,6 +412,8 @@ section of the command line docs.
 
 ``cache_dir`` (string, default ``.mypy_cache``)
     Specifies the location where mypy stores incremental cache info.
+    User home directory and environment variables will be expanded.
+
     Note that the cache is only read when incremental mode is enabled
     but is always written to, unless the value is set to ``/dev/nul``
     (UNIX) or ``nul`` (Windows).
@@ -441,7 +454,8 @@ section of the command line docs.
 
 ``custom_typeshed_dir`` (string)
     Specifies an alternative directory to look for stubs instead of the
-    default ``typeshed`` directory.
+    default ``typeshed`` directory. User home directory and environment
+    variables will be expanded.
 
 ``warn_incomplete_stub`` (bool, default False)
     Warns about missing type annotations in typeshed.  This is only relevant
@@ -466,6 +480,6 @@ Miscellaneous
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
-``new_semantic_analyzer`` (bool, default False)
-    Enables the experimental new semantic analyzer.
+``new_semantic_analyzer`` (bool, default True)
+    Enables the new, improved, semantic analyzer.
     (See :ref:`The mypy command line <command-line>` for more information.)

@@ -1290,6 +1290,14 @@ b'%c' % (123)
 [case testUnicodeInterpolation_python2]
 u'%s' % (u'abc',)
 
+[case testStringInterpolationVariableLengthTuple]
+from typing import Tuple
+def f(t: Tuple[int, ...]) -> None:
+    '%d %d' % t
+    '%d %d %d' % t
+[builtins fixtures/primitives.pyi]
+
+
 -- Lambdas
 -- -------
 
@@ -2217,6 +2225,38 @@ o in exp
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testEmptyListOverlap]
+# mypy: strict-equality
+from typing import List
+
+x: List[int]
+x == []
+[builtins fixtures/isinstancelist.pyi]
+
+[case testCustomEqDecoratedStrictEquality]
+# flags: --strict-equality
+from typing import TypeVar, Callable, Any
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+def deco(f: F) -> F: ...
+
+class Custom:
+    @deco
+    def __eq__(self, other: object) -> bool: ...
+
+Custom() == int()
+[builtins fixtures/bool.pyi]
+
+[case testCustomEqVarStrictEquality]
+# flags: --strict-equality
+
+class Custom:
+    def compare(self, other: object) -> bool: ...
+    __eq__ = compare
+
+Custom() == int()
+[builtins fixtures/bool.pyi]
 
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name 'Any' is not defined \

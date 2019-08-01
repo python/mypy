@@ -22,6 +22,7 @@ class A: pass
 <m.N.a> -> m.f
 <m.N> -> m.f
 <a.A> -> <m.N.a>, <m.N>, m
+<a> -> m
 
 [case testNamedTuple2]
 from typing import NamedTuple, Any, Tuple
@@ -41,6 +42,7 @@ class B: pass
 <m.N> -> m.f
 <a.A> -> <m.N.a>, <m.N>, m
 <a.B> -> <m.N.a>, <m.N>, m
+<a> -> m
 
 [case testNamedTuple3]
 from typing import NamedTuple
@@ -75,6 +77,7 @@ class A: pass
 <m.N.a> -> m.f
 <m.N> -> m.N, m.f
 <a.A> -> <m.N.a>, <m.N>, m, m.N
+<a> -> m
 
 [case testIfFalseInClassBody]
 class A:
@@ -178,6 +181,7 @@ class B: pass
 <m.B.__new__> -> m
 -- The <m.A.X> dependecy target is superfluous but benign
 <m.B> -> <m.A.X>, m
+<m> -> m
 
 [case testClassAttribute]
 class C:

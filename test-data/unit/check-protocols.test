@@ -306,6 +306,7 @@ main:11: note:     x: expected "int", got "None"
 -- --------------------------------
 
 [case testBasicSemanalErrorsInProtocols]
+# flags: --new-semantic-analyzer
 from typing import Protocol, Generic, TypeVar, Iterable
 
 T = TypeVar('T', covariant=True)
@@ -324,7 +325,9 @@ class P3(Protocol[T], Generic[S]): # E: Only single Generic[...] or Protocol[...
         pass
 
 class P4(Protocol[T]):
-    attr: Iterable[S] # E: Invalid type "__main__.S"
+    attr: Iterable[S] # E: Type variable "__main__.S" is unbound \
+                      # N: (Hint: Use "Generic[S]" or "Protocol[S]" base class to bind "S" inside a class) \
+                      # N: (Hint: Use "S" in function signature to bind "S" inside a function)
 
 class P5(Iterable[S], Protocol[T]): # E: If Generic[...] or Protocol[...] is present it should list all type variables
     def meth(self) -> T:

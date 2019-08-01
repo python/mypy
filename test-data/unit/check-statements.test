@@ -1351,13 +1351,13 @@ with A() as (a, b):
 [builtins fixtures/tuple.pyi]
 
 [case testWithStmtTypeComment]
-
+# flags: --new-semantic-analyzer
 from typing import Union
 class A:
     def __enter__(self) -> int: pass
     def __exit__(self, x, y, z): pass
 
-with A():  # type: int  # E: Invalid type comment
+with A():  # type: int  # E: Invalid type comment: "with" statement has no targets
     pass
 
 with A() as a:  # type: int
@@ -1424,7 +1424,7 @@ with A() as e, A() as (f, g), B() as h:  # type: Tuple[int, int], Tuple[int, int
 with A() as i, A() as (j, k), B() as l:  # type: (int, int), (int, int), str  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
-with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int]  # E: Incompatible number of types for `with` targets
+with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int]  # E: Incompatible number of types for "with" targets
     pass
 
 with A(), B(), B() as p, A(), A():  # type: str

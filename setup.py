@@ -132,13 +132,14 @@ if USE_MYPYC:
 
     from mypyc.build import mypycify, MypycifyBuildExt
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+    force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
         mypyc_targets,
         ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
         # Use multi-file compliation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
-        multi_file=sys.platform == 'win32',
+        multi_file=sys.platform == 'win32' or force_multifile,
     )
     cmdclass['build_ext'] = MypycifyBuildExt
 else:
@@ -184,5 +185,6 @@ setup(name='mypy',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},
+      python_requires=">=3.5",
       include_package_data=True,
       )
