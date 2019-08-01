@@ -162,6 +162,3 @@ a_str = " ".join(str(i) for i in range(10))
 wtvr = next(i for i in range(10) if i == 5)
 
 d1 = {1: 2}
-
-async def aio(x: Any) -> Any:  # E: async functions are unimplemented
-    await x  # E: await is unimplemented

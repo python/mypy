@@ -86,6 +86,7 @@ class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __getitem__(self, i: int) -> T_co: pass
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[T_co]: ...
+    def __contains__(self, item: object) -> int: ...
 
 class function: pass
 
@@ -101,6 +102,7 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def __rmul__(self, i: int) -> List[T]: pass
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
+    def __contains__(self, item: object) -> int: ...
     def append(self, x: T) -> None: pass
     def pop(self, i: int = -1) -> T: pass
     def count(self, T) -> int: pass
@@ -118,7 +120,7 @@ class dict(Mapping[K, V]):
     def __getitem__(self, key: K) -> V: pass
     def __setitem__(self, k: K, v: V) -> None: pass
     def __delitem__(self, k: K) -> None: pass
-    def __contains__(self, item: object) -> bool: pass
+    def __contains__(self, item: object) -> int: pass
     def __iter__(self) -> Iterator[K]: pass
     def __len__(self) -> int: pass
     @overload

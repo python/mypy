@@ -301,6 +301,32 @@ for k in range(12):
     assert next(gen) == k % 4
 [out]
 
+[case testAsync]
+import asyncio
+
+async def h() -> int:
+    return 1
+
+async def g() -> int:
+    await asyncio.sleep(0.01)
+    return await h()
+
+async def f() -> int:
+    return await g()
+
+loop = asyncio.get_event_loop()
+result = loop.run_until_complete(f())
+assert result == 1
+
+[typing fixtures/typing-full.pyi]
+
+[file driver.py]
+from native import f
+import asyncio
+loop = asyncio.get_event_loop()
+result = loop.run_until_complete(f())
+assert result == 1
+
 [case testRecursiveFibonacci]
 def fib(n: int) -> int:
     if n <= 1:

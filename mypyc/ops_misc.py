@@ -54,6 +54,12 @@ iter_op = func_op(name='builtins.iter',
                   error_kind=ERR_MAGIC,
                   emit=call_emit('PyObject_GetIter'))
 
+coro_op = custom_op(name='get_coroutine_obj',
+                    arg_types=[object_rprimitive],
+                    result_type=object_rprimitive,
+                    error_kind=ERR_MAGIC,
+                    emit=call_emit('CPy_GetCoro'))
+
 # Although the error_kind is set to be ERR_NEVER, this can actually
 # return NULL, and thus it must be checked using Branch.IS_ERROR.
 next_op = custom_op(name='next',
