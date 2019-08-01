@@ -140,7 +140,7 @@ from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_ana
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.aststripnew import strip_target_new, SavedAttributes
-from mypy.server.deps import get_dependencies_of_target
+from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.util import module_prefix, split_target
@@ -163,7 +163,9 @@ class FineGrainedBuildManager:
         self.manager = manager
         self.graph = result.graph
         self.previous_modules = get_module_to_path_map(self.graph)
-        self.deps = get_all_dependencies(manager, self.graph)
+        self.deps = manager.fg_deps
+        # Merge in any root dependencies that may not have been loaded
+        merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), self.deps)
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
@@ -378,7 +380,8 @@ class FineGrainedBuildManager:
             self.manager.log_fine_grained('triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         if module in graph:
-            merge_dependencies(graph[module].compute_fine_grained_deps(), self.deps)
+            graph[module].update_fine_grained_deps(self.deps)
+            graph[module].free_state()
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
@@ -453,15 +456,11 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
         process_fresh_modules(graph, to_process, manager)
 
 
-def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
-    """Return the fine-grained dependency map for an entire build."""
-    # Deps for each module were computed during build() or loaded from the cache.
-    deps = manager.load_fine_grained_deps(FAKE_ROOT_MODULE)  # type: Dict[str, Set[str]]
-    for id in graph:
-        if graph[id].tree is not None:
-            merge_dependencies(graph[id].compute_fine_grained_deps(), deps)
-    TypeState.add_all_protocol_deps(deps)
-    return deps
+def fix_fg_dependencies(manager: BuildManager, deps: Dict[str, Set[str]]) -> None:
+    """Populate the dependencies with stuff that build may have missed"""
+    # This means the root module and typestate
+    merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), deps)
+    # TypeState.add_all_protocol_deps(deps)
 
 
 # The result of update_module_isolated when no blockers, with these items:
@@ -608,15 +607,12 @@ def update_module_isolated(module: str,
     state.type_check_first_pass()
     state.type_check_second_pass()
     t2 = time.time()
-    state.compute_fine_grained_deps()
-    t3 = time.time()
     state.finish_passes()
-    t4 = time.time()
+    t3 = time.time()
     manager.add_stats(
         semanal_time=t1 - t0,
         typecheck_time=t2 - t1,
-        deps_time=t3 - t2,
-        finish_passes_time=t4 - t3)
+        finish_passes_time=t3 - t2)
 
     graph[module] = state
 
@@ -698,14 +694,6 @@ def get_sources(fscache: FileSystemCache,
         if fscache.isfile(path):
             sources.append(BuildSource(path, id, None))
     return sources
-
-
-def merge_dependencies(new_deps: Dict[str, Set[str]],
-                       deps: Dict[str, Set[str]]) -> None:
-    for trigger, targets in new_deps.items():
-        deps.setdefault(trigger, set()).update(targets)
-    # Merge also the newly added protocol deps.
-    TypeState.update_protocol_deps(deps)
 
 
 def calculate_active_triggers(manager: BuildManager,
@@ -993,6 +981,8 @@ def reprocess_nodes(manager: BuildManager,
 
     # Report missing imports.
     graph[module_id].verify_dependencies()
+
+    graph[module_id].free_state()
 
     return new_triggered
 
