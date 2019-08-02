@@ -958,6 +958,12 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
 
+def merge_dependencies(new_deps: Dict[str, Set[str]],
+                       deps: Dict[str, Set[str]]) -> None:
+    for trigger, targets in new_deps.items():
+        deps.setdefault(trigger, set()).update(targets)
+
+
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
     return [base for base in info.mro[1:]
             if base.fullname() != 'builtins.object']

@@ -716,11 +716,9 @@ class A: pass
 a: Union[A, int]
 [out]
 ## target
-TempNode:-1: Any
 NameExpr:3: target.A<0>
 ==>
 ## target
-TempNode:-1: Any
 NameExpr:3: Union[target.A<0>, builtins.int<1>]
 
 [case testTypeType_types]
@@ -735,11 +733,9 @@ class A: pass
 a: Type[A]
 [out]
 ## target
-TempNode:-1: Any
 NameExpr:3: Type[target.A<0>]
 ==>
 ## target
-TempNode:-1: Any
 NameExpr:3: Type[target.A<0>]
 
 [case testTypeVar_types]
@@ -756,14 +752,12 @@ class A(Generic[T]):
     x: T
 [out]
 ## target
-TempNode:-1: Any
 CallExpr:2: Any
 NameExpr:2: Any
 TypeVarExpr:2: Any
 NameExpr:4: T`1(upper_bound=builtins.int<0>)
 ==>
 ## target
-TempNode:-1: Any
 CallExpr:2: Any
 NameExpr:2: Any
 TypeVarExpr:2: Any
@@ -785,14 +779,10 @@ x: foo[A]
 [out]
 tmp/target.py:4: error: Variable "target.foo" is not valid as a type
 ## target
-TempNode:-1: Any
-TempNode:-1: Any
 NameExpr:3: builtins.int<0>
 NameExpr:4: foo?[target.A<1>]
 ==>
 ## target
-TempNode:-1: Any
-TempNode:-1: Any
 NameExpr:3: builtins.int<0>
 NameExpr:4: foo?[target.A<1>]
 
@@ -1046,11 +1036,9 @@ class C(Generic[T]):
 A = C[int]
 [out]
 ## target
-TempNode:-1: Any
 NameExpr:2: _x.C[builtins.int<0>]<1>
 ==>
 ## target
-TempNode:-1: Any
 NameExpr:2: _x.C[builtins.int<0>]<1>
 
 [case testRefreshVar_symtable]
@@ -1502,4 +1490,3 @@ MypyFile:1<1>(
     NameExpr(bar [target.bar<6>])
     IntExpr(5)
     Literal[5]))
-

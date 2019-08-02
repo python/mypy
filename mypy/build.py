@@ -59,6 +59,7 @@ from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadat
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
+from mypy.freetree import free_tree
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -471,6 +472,7 @@ class BuildManager:
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
+      fg_deps:         A fine-grained dependency map
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       plugins_snapshot:
@@ -523,6 +525,11 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
+        # fg_deps holds the dependencies of every module that has been
+        # processed. We store this in BuildManager so that we can compute
+        # dependencies as we go, which allows us to free ASTs and type information,
+        # saving a ton of memory on net.
+        self.fg_deps = {}  # type: Dict[str, Set[str]]
         # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
@@ -894,15 +901,13 @@ def invert_deps(deps: Dict[str, Set[str]],
     return rdeps
 
 
-def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
-                            manager: BuildManager,
+def generate_deps_for_cache(manager: BuildManager,
                             graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
     """Generate fine-grained dependencies into a form suitable for serializing.
 
-    This does a few things:
-    1. Computes all fine grained deps from modules that were processed
-    2. Splits fine-grained deps based on the module of the trigger
-    3. For each module we generated fine-grained deps for, load any previous
+    This does a couple things:
+    1. Splits fine-grained deps based on the module of the trigger
+    2. For each module we generated fine-grained deps for, load any previous
        deps and merge them in.
 
     Returns a dictionary from module ids to all dependencies on that
@@ -910,16 +915,10 @@ def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
     associated with the nearest parent module that is in the build, or the
     fake module FAKE_ROOT_MODULE if none are.
     """
-    from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
-
-    # Compute the full set of dependencies from everything we've processed.
-    deps = {}  # type: Dict[str, Set[str]]
-    things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
-    for st_deps in things:
-        merge_dependencies(st_deps, deps)
+    from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
     # Split the dependencies out into based on the module that is depended on.
-    rdeps = invert_deps(deps, graph)
+    rdeps = invert_deps(manager.fg_deps, graph)
 
     # We can't just clobber existing dependency information, so we
     # load the deps for every module we've generated new dependencies
@@ -2172,6 +2171,16 @@ class State:
                                 typemap=self.type_map())
             manager.report_file(self.tree, self.type_map(), self.options)
 
+            self.update_fine_grained_deps(self.manager.fg_deps)
+            self.free_state()
+            if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
+                free_tree(self.tree)
+
+    def free_state(self) -> None:
+        if self._type_checker:
+            self._type_checker.reset()
+            self._type_checker = None
+
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
                                      type_map: Dict[Expression, Type]) -> None:
@@ -2205,6 +2214,13 @@ class State:
                                 type_map=self.type_map(),
                                 python_version=self.options.python_version,
                                 options=self.manager.options)
+
+    def update_fine_grained_deps(self, deps: Dict[str, Set[str]]) -> None:
+        options = self.manager.options
+        if options.cache_fine_grained or options.fine_grained_incremental:
+            from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
+            merge_dependencies(self.compute_fine_grained_deps(), deps)
+            TypeState.update_protocol_deps(deps)
 
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
@@ -2616,10 +2632,9 @@ def dispatch(sources: List[BuildSource],
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.update_protocol_deps()
+            TypeState.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
-                proto_deps = TypeState.proto_deps or {}
-                rdeps = generate_deps_for_cache(proto_deps, manager, graph)
+                rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)
 
     if manager.options.dump_deps:
@@ -3023,23 +3038,29 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
             graph[id].semantic_analysis_pass_three()
         for id in stale:
             graph[id].semantic_analysis_apply_patches()
+
+    # Track what modules aren't yet done so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
     for id in stale:
         graph[id].type_check_first_pass()
-    more = True
-    while more:
-        more = False
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+
+    while unfinished_modules:
         for id in stale:
-            if graph[id].type_check_second_pass():
-                more = True
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+                graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        graph[id].finish_passes()
-        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            graph[id].compute_fine_grained_deps()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
