@@ -1,25 +1,12 @@
 """Dump the runtime structure of a module as JSON.
 
 This is used for testing stubs.
-
-This needs to run in Python 2.7 and 3.x.
 """
-
-from __future__ import print_function
-
 import importlib
 import json
 import sys
 import types
-from typing import Text
-
-
-if sys.version_info >= (3, 0):
-    import inspect
-    long = int
-else:
-    import inspect2 as inspect
-
+import inspect
 
 
 def dump_module(id):
@@ -75,7 +62,7 @@ def dump_value(value, depth=0):
 
 
 def dump_simple(value):
-    if type(value) in (int, bool, float, str, bytes, Text, long, list, set, dict, tuple):
+    if type(value) in (int, bool, float, str, bytes, list, set, dict, tuple):
         return {'type': type(value).__name__}
     if value is None:
         return {'type': 'None'}
