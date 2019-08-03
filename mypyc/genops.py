@@ -1489,7 +1489,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         'os.path': ('os',),
         'tokenize': ('token',),
         'weakref': ('_weakref',),
-        'asyncio': ('asyncio.events', 'asyncio.tasks'),
+        'asyncio': ('asyncio.events', 'asyncio.tasks',),
+        'click': ('click.core', 'click.termui', 'click.decorators',
+                  'click.exceptions', 'click.types'),
+        'ast': ('_ast',),
     }  # type: ClassVar[Dict[str, Sequence[str]]]
 
     def gen_import(self, id: str, line: int) -> None:
