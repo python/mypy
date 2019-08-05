@@ -2504,7 +2504,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
         # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
-        iterable = self.graph[self.module_name].type_map()[expr]
+        iterable = self.types[expr]
         echk = self.graph[self.module_name].type_checker().expr_checker
         iterator = echk.check_method_call_by_name('__iter__', iterable, [], [], expr)[0]
 

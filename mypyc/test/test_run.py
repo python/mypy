@@ -82,6 +82,7 @@ class TestRun(MypycDataSuite):
             # But a lot of the tests use type annotations so we can't say it is 3.5.
             options.python_version = max(sys.version_info[:2], (3, 6))
             options.export_types = True
+            options.preserve_asts = True
 
             # Avoid checking modules/packages named 'unchecked', to provide a way
             # to test interacting with code we don't have types for.

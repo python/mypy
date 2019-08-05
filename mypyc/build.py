@@ -97,6 +97,7 @@ def get_mypy_config(paths: List[str],
     options.export_types = True
     # TODO: Support incremental checking
     options.incremental = False
+    options.preserve_asts = True
 
     for source in sources:
         options.per_module_options.setdefault(source.module, {})['mypyc'] = True
