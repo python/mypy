@@ -127,7 +127,7 @@ if USE_MYPYC:
 
     ext_modules = mypycify(mypyc_targets,
                   ['--config-file=mypyc_bootstrap.ini'],
-                  opt_level=opt_level, 
+                  opt_level=opt_level,
                   multi_file=sys.platform == 'win32')
 else:
   ext_modules = []
@@ -160,6 +160,7 @@ setup(name='mypyc',
       classifiers=classifiers,
       cmdclass=cmdclass,
       install_requires = ['typed-ast >= 1.4.0, < 1.5.0',
+                          'typing_extensions>=3.7.4',
                           'mypy_extensions >= 0.4.0, < 0.5.0',
                           ],
       include_package_data=True,
