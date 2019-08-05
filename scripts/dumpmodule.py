@@ -1,35 +1,28 @@
 """Dump the runtime structure of a module as JSON.
 
 This is used for testing stubs.
-
-This needs to run in Python 2.7 and 3.x.
 """
-
-from __future__ import print_function
-
 import importlib
+import inspect
 import json
 import sys
 import types
-from typing import Text
+from types import FunctionType
+from typing import Optional, Dict, Any, Set, Callable
+from typing_extensions import Final
 
 
-if sys.version_info >= (3, 0):
-    import inspect
-    long = int
-else:
-    import inspect2 as inspect
+DumpNode = Dict[str, Any]
 
 
-
-def dump_module(id):
+def dump_module(id: str) -> None:
     m = importlib.import_module(id)
     data = module_to_json(m)
     print(json.dumps(data, ensure_ascii=True, indent=4, sort_keys=True))
 
 
-def module_to_json(m):
-    result = {}
+def module_to_json(m: object) -> Dict[str, DumpNode]:
+    result = {}  # type: Dict[str, DumpNode]
     for name, value in m.__dict__.items():
         # Filter out some useless attributes.
 
@@ -46,7 +39,7 @@ def module_to_json(m):
             result[name] = dump_value(value)
 
         try:
-            _, line = inspect.getsourcelines(getattr(m, name))
+            line = inspect.getsourcelines(getattr(m, name))[1]  # type: Optional[int]
         except (TypeError, OSError):
             line = None
 
@@ -55,12 +48,13 @@ def module_to_json(m):
     return result
 
 
-def dump_value(value, depth=0):
+def dump_value(value: object, depth: int = 0) -> DumpNode:
     if depth > 10:
-        return 'max_recursion_depth_exceeded'
+        # TODO: Callers don't handle this case.
+        return 'max_recursion_depth_exceeded'  # type: ignore
     if isinstance(value, type):
         return dump_class(value, depth + 1)
-    if inspect.isfunction(value):
+    if isinstance(value, FunctionType):
         return dump_function(value)
     if callable(value):
         return {'type': 'callable'}  # TODO more information
@@ -74,8 +68,8 @@ def dump_value(value, depth=0):
     return dump_simple(value)
 
 
-def dump_simple(value):
-    if type(value) in (int, bool, float, str, bytes, Text, long, list, set, dict, tuple):
+def dump_simple(value: object) -> DumpNode:
+    if type(value) in (int, bool, float, str, bytes, list, set, dict, tuple):
         return {'type': type(value).__name__}
     if value is None:
         return {'type': 'None'}
@@ -84,7 +78,7 @@ def dump_simple(value):
     return {'type': 'unknown'}
 
 
-def dump_class(value, depth):
+def dump_class(value: type, depth: int) -> DumpNode:
     return {
         'type': 'class',
         'attributes': dump_attrs(value, depth),
@@ -99,13 +93,13 @@ special_methods = [
     '__bool__',
     '__contains__',
     '__iter__',
-]
+]  # type: Final
 
 
 # Change to return a dict
-def dump_attrs(d, depth):
+def dump_attrs(d: type, depth: int) -> DumpNode:
     result = {}
-    seen = set()
+    seen = set()  # type: Set[str]
     try:
         mro = d.mro()
     except TypeError:
@@ -128,10 +122,10 @@ kind_map = {
     inspect.Parameter.VAR_POSITIONAL: 'VAR_POS',
     inspect.Parameter.KEYWORD_ONLY: 'KW_ONLY',
     inspect.Parameter.VAR_KEYWORD: 'VAR_KW',
-}
+}  # type: Final
 
 
-def param_kind(p):
+def param_kind(p: inspect.Parameter) -> str:
     s = kind_map[p.kind]
     if p.default != inspect.Parameter.empty:
         assert s in ('POS_ONLY', 'POS_OR_KW', 'KW_ONLY')
@@ -139,7 +133,7 @@ def param_kind(p):
     return s
 
 
-def dump_function(value):
+def dump_function(value: FunctionType) -> DumpNode:
     try:
         sig = inspect.signature(value)
     except ValueError:
