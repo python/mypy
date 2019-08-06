@@ -16,6 +16,8 @@ def final(x: _T) -> _T: pass
 
 Literal: _SpecialForm = ...
 
+Annotated: _SpecialForm = ...
+
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):
