@@ -59,7 +59,7 @@ reveal_type(C().x)  # N: Revealed type is 'builtins.float'
 [out]
 
 [case testFinalInvalidDefinitions]
-# flags: --new-semantic-analyzer
+
 # Errors are shown in a different order with the new analyzer.
 from typing import Final, Any
 
@@ -338,7 +338,7 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
-# flags: --allow-redefinition --new-semantic-analyzer
+# flags: --allow-redefinition
 from typing import Final
 
 x: Final = 1
@@ -382,7 +382,7 @@ y
 y: Final = 3  # E: Cannot redefine an existing name as final
 
 [case testFinalReassignModuleVar3]
-# flags: --disallow-redefinition --new-semantic-analyzer
+# flags: --disallow-redefinition
 # Error formatting is subtly different with new analyzer.
 from typing import Final
 
@@ -410,7 +410,7 @@ z: Final = 2  # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleReexport]
-# flags: --new-semantic-analyzer
+
 # Error formatting is subtly different with the new analyzer.
 from typing import Final
 
@@ -484,7 +484,7 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
-# flags: --new-semantic-analyzer
+
 from typing import Final
 
 class C:

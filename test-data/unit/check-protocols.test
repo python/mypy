@@ -306,7 +306,7 @@ main:11: note:     x: expected "int", got "None"
 -- --------------------------------
 
 [case testBasicSemanalErrorsInProtocols]
-# flags: --new-semantic-analyzer
+
 from typing import Protocol, Generic, TypeVar, Iterable
 
 T = TypeVar('T', covariant=True)

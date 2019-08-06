@@ -231,7 +231,7 @@ class D(object):
 [out]
 
 [case testClassNamesDefinedOnSelUsedInClassBodyReveal]
-# flags: --new-semantic-analyzer
+
 class A(object):
     def f(self) -> None:
         self.attr = 1
@@ -4358,7 +4358,7 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# flags: --new-semantic-analyzer
+
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
@@ -4373,7 +4373,7 @@ a: A
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
-# flags: --new-semantic-analyzer
+
 from typing import NamedTuple
 
 class N(NamedTuple):
@@ -4387,7 +4387,7 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# flags: --new-semantic-analyzer
+
 from mypy_extensions import TypedDict
 
 class N(TypedDict):
@@ -4489,7 +4489,7 @@ x = NT(N(1))
 [out]
 
 [case testNewTypeFromForwardTypedDict]
-# flags: --new-semantic-analyzer
+
 from typing import NewType, Tuple
 from mypy_extensions import TypedDict
 
@@ -4836,7 +4836,7 @@ reveal_type(Arc1[MyDestr]())  # N: Revealed type is '__main__.Arc1[__main__.MyDe
 [typing fixtures/typing-full.pyi]
 
 [case testSixMetaclassErrors]
-# flags: --new-semantic-analyzer
+
 import six
 class M(type): pass
 class A(object): pass

@@ -1340,7 +1340,7 @@ reveal_type(x['a']['b']) # N: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testSelfRecursiveTypedDictInheriting]
-# flags: --new-semantic-analyzer
+
 from mypy_extensions import TypedDict
 
 class MovieBase(TypedDict):
@@ -1356,7 +1356,7 @@ reveal_type(m['director']['name']) # N: Revealed type is 'Any'
 [out]
 
 [case testSubclassOfRecursiveTypedDict]
-# flags: --new-semantic-analyzer
+
 from typing import List
 from mypy_extensions import TypedDict
 
@@ -1406,7 +1406,7 @@ tmp/b.py:4: note: Revealed type is 'TypedDict('a.N', {'a': builtins.str})'
 tmp/b.py:5: note: Revealed type is 'builtins.str'
 
 [case testTypedDictImportCycle]
-# flags: --new-semantic-analyzer
+
 import b
 [file a.py]
 class C:

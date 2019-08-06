@@ -49,7 +49,7 @@ A().foo(1)
 A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testInvalidBaseClass2]
-# flags: --new-semantic-analyzer
+
 X = 1
 class A(X): # E
     x = 1
@@ -82,7 +82,7 @@ x = 1
 yield from x # E: 'yield from' outside function
 
 [case testImportFuncDup]
-# flags: --new-semantic-analyzer
+
 import m
 def m() -> None: ...  # E: Name 'm' already defined (by an import)
 
@@ -90,7 +90,7 @@ def m() -> None: ...  # E: Name 'm' already defined (by an import)
 [out]
 
 [case testIgnoredImportDup]
-# flags: --new-semantic-analyzer
+
 import m # type: ignore
 from m import f # type: ignore
 def m() -> None: ...  # E: Name 'm' already defined (possibly by an import)

@@ -34,7 +34,7 @@ from mypy.nodes import (
 from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
 from mypy.newsemanal.semanal import (
-    NewSemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
+    SemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
 )
 from mypy.newsemanal.semanal_classprop import (
     calculate_class_abstract_status, calculate_class_vars, check_protocol_status,
@@ -120,7 +120,7 @@ def semantic_analysis_for_targets(
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
     restore_saved_attrs(saved_attrs)
-    analyzer = state.manager.new_semantic_analyzer
+    analyzer = state.manager.semantic_analyzer
     for n in nodes:
         if isinstance(n.node, MypyFile):
             # Already done above.
@@ -163,7 +163,7 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
     for id in scc:
         state = graph[id]
         assert state.tree is not None
-        state.manager.new_semantic_analyzer.prepare_file(state.tree)
+        state.manager.semantic_analyzer.prepare_file(state.tree)
 
     # Initially all namespaces in the SCC are incomplete (well they are empty).
     state.manager.incomplete_namespaces.update(scc)
@@ -175,7 +175,7 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
         worklist += list(reversed(core_modules)) * CORE_WARMUP
     final_iteration = False
     iteration = 0
-    analyzer = state.manager.new_semantic_analyzer
+    analyzer = state.manager.semantic_analyzer
     analyzer.deferral_debug_context.clear()
 
     while worklist:
@@ -217,7 +217,7 @@ def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
     for module in scc:
         tree = graph[module].tree
         assert tree is not None
-        analyzer = graph[module].manager.new_semantic_analyzer
+        analyzer = graph[module].manager.semantic_analyzer
         # In principle, functions can be processed in arbitrary order,
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
@@ -238,7 +238,7 @@ def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
                                        patches)
 
 
-def process_top_level_function(analyzer: 'NewSemanticAnalyzer',
+def process_top_level_function(analyzer: 'SemanticAnalyzer',
                                state: 'State',
                                module: str,
                                target: str,
@@ -311,7 +311,7 @@ def semantic_analyze_target(target: str,
     state.manager.processed_targets.append(target)
     tree = state.tree
     assert tree is not None
-    analyzer = state.manager.new_semantic_analyzer
+    analyzer = state.manager.semantic_analyzer
     # TODO: Move initialization to somewhere else
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]

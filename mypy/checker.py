@@ -29,7 +29,7 @@ from mypy.nodes import (
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
+from mypy.newsemanal.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
@@ -56,7 +56,7 @@ from mypy.subtypes import (
 from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
-from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.newsemanal.semanal import set_callable_name, refers_to_fullname
 from mypy.mro import calculate_mro
 from mypy.erasetype import erase_typevars, remove_instance_last_known_values
 from mypy.expandtype import expand_type, expand_type_by_instance

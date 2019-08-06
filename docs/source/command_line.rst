@@ -392,14 +392,14 @@ potentially problematic or redundant in some way.
         throws an error or terminates the program in some way.
     2.  When the unreachable statement was *intentionally* marked as unreachable
         using :ref:`version_and_platform_checks`.
-    
+
     .. note::
 
         Mypy currently cannot detect and report unreachable or redundant code
         inside any functions using :ref:`type-variable-value-restriction`.
 
         This limitation will be removed in future releases of mypy.
-        
+
 
 Miscellaneous strictness flags
 ******************************
@@ -658,18 +658,6 @@ Miscellaneous
     (The default ``__main__`` is technically more correct, but if you
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
-
-``--no-new-semantic-analyzer``
-    This flag disables the improved implementation of
-    the *semantic analyzer* (the part of mypy that binds Python
-    names to definitions). The old and the new semantic analyzers
-    mostly behave identically. The new semantic analyzer is better at
-    handling import cycles and forward references to definitions. It
-    also fixes inconsistencies between the daemon and non-daemon modes,
-    and it detects additional error conditions.
-
-    Likely, the old semantic analyzer will be removed in the next
-    release.
 
 .. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 

@@ -1,7 +1,7 @@
 -- Checks for 'mypy: option' directives inside files
 
 [case testInlineSimple1]
-# flags: --new-semantic-analyzer
+
 # mypy: disallow-any-generics, no-warn-no-return
 
 from typing import List
@@ -11,7 +11,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 
 [case testInlineSimple2]
-# flags: --new-semantic-analyzer
+
 # mypy: disallow-any-generics
 # mypy: no-warn-no-return
 
@@ -22,7 +22,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 
 [case testInlineSimple3]
-# flags: --new-semantic-analyzer
+
 # mypy: disallow-any-generics=true, warn-no-return=0
 
 from typing import List
@@ -33,7 +33,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 
 
 [case testInlineSimple4]
-# flags: --new-semantic-analyzer
+
 # mypy: disallow-any-generics = true, warn-no-return = 0
 
 from typing import List
@@ -43,7 +43,7 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 
 [case testInlineList]
-# flags: --new-semantic-analyzer
+
 # mypy: disallow-any-generics,always-false="FOO,BAR"
 
 from typing import List
@@ -56,7 +56,7 @@ def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic
 [builtins fixtures/list.pyi]
 
 [case testInlineInvert1]
-# flags: --new-semantic-analyzer --disallow-any-generics --allow-untyped-globals
+# flags: --disallow-any-generics --allow-untyped-globals
 import a
 [file a.py]
 # mypy: allow-any-generics, disallow-untyped-globals
@@ -70,7 +70,7 @@ def foo() -> List:
 [builtins fixtures/list.pyi]
 
 [case testInlineInvert2]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 # mypy: no-always-true
@@ -79,7 +79,7 @@ import a
 tmp/a.py:1: error: Can not invert non-boolean key always_true
 
 [case testInlineIncremental1]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 # mypy: disallow-any-generics, no-warn-no-return
@@ -108,8 +108,8 @@ tmp/a.py:2: error: Missing return statement
 [builtins fixtures/list.pyi]
 
 [case testInlineIncremental2]
-# flags: --new-semantic-analyzer
-# flags2: --new-semantic-analyzer --disallow-any-generics
+
+# flags2: --disallow-any-generics
 import a
 [file a.py]
 # mypy: no-warn-no-return

@@ -263,7 +263,7 @@ class A:
 __main__.A.B
 
 [case testChangeNamedTupleAttribute]
-# flags: --new-semantic-analyzer
+
 from typing import NamedTuple
 class A:
     x: str

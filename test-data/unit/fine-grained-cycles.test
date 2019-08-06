@@ -175,7 +175,7 @@ def h() -> None:
 a.py:1: error: Module 'b' has no attribute 'C'
 
 [case testReferenceToTypeThroughCycleAndReplaceWithFunction]
-# flags: --new-semantic-analyzer
+
 import a
 
 [file a.py]

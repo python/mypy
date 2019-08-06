@@ -266,7 +266,7 @@ def f() -> None:
     class y: pass # E: Name 'y' already defined on line 5
 
 [case testRedefineVarAsTypeVar]
-# flags: --allow-redefinition --new-semantic-analyzer
+# flags: --allow-redefinition
 from typing import TypeVar
 def f() -> None:
     x = TypeVar('x')

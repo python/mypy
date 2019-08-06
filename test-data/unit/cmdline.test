@@ -820,7 +820,7 @@ N = TypedDict('N', {'x': str, 'y': List})  # no error
 m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
-# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -841,7 +841,7 @@ m.py:4: error: Missing type parameters for generic type "Tuple"
 m.py:8: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
-# cmd: mypy --new-semantic-analyzer m.py
+# cmd: mypy m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -856,7 +856,7 @@ def g(s: List[Tuple[str, str]]) -> None: pass  # no error
 m.py:3: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTypeType]
-# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -876,7 +876,7 @@ m.py:4: error: Missing type parameters for generic type "Type"
 m.py:8: error: Missing type parameters for generic type "Type"
 
 [case testDisallowAnyGenericsAliasGenericType]
-# cmd: mypy --new-semantic-analyzer m.py
+# cmd: mypy m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -893,7 +893,7 @@ def g(l: L[str]) -> None: pass  # no error
 m.py:5: error: Missing type parameters for generic type "L"
 
 [case testDisallowAnyGenericsGenericAlias]
-# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -917,7 +917,7 @@ m.py:7: error: Missing type parameters for generic type "A"
 m.py:11: error: Missing type parameters for generic type "A"
 
 [case testDisallowAnyGenericsPlainList]
-# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -941,7 +941,7 @@ m.py:8: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
 m.py:9: error: Missing type parameters for generic type "List"
 
 [case testDisallowAnyGenericsCustomGenericClass]
-# cmd: mypy --new-semantic-analyzer --python-version=3.6 m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -986,7 +986,7 @@ m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic para
 m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
 
 [case testDisallowAnyGenericsTypingCollections]
-# cmd: mypy --new-semantic-analyzer m.py
+# cmd: mypy m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -1032,7 +1032,7 @@ class ShouldNotBeFine(x): ...
 y.py:5: error: Class cannot subclass 'x' (has type 'Any')
 
 [case testSectionInheritance]
-# cmd: mypy --new-semantic-analyzer a
+# cmd: mypy a
 [file a/__init__.py]
 0()
 [file a/foo.py]

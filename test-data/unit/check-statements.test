@@ -1351,7 +1351,7 @@ with A() as (a, b):
 [builtins fixtures/tuple.pyi]
 
 [case testWithStmtTypeComment]
-# flags: --new-semantic-analyzer
+
 from typing import Union
 class A:
     def __enter__(self) -> int: pass
@@ -1665,7 +1665,7 @@ N = TypedDict('N', {'x': int})
 [out]
 
 [case testGlobalWithoutInitialization]
-# flags: --new-semantic-analyzer
+
 from typing import List
 
 def foo() -> None:

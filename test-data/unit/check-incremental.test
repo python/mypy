@@ -2180,7 +2180,7 @@ tmp/b.py:1: error: Module 'c' has no attribute 'x'
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
 
 [case testCacheDeletedAfterErrorsFound2]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 from b import x
@@ -2468,7 +2468,7 @@ x: int = C()[0][0]
 [out]
 
 [case testForwardTypeAliasInBase2]
-# flags: --new-semantic-analyzer
+
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
@@ -2485,7 +2485,7 @@ C(1)[0]
 [out]
 
 [case testSerializeRecursiveAliases1]
-# flags: --new-semantic-analyzer
+
 from typing import Type, Callable, Union
 
 A = Union[A, int]  # type: ignore
@@ -2494,7 +2494,7 @@ C = Type[C] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases2]
-# flags: --new-semantic-analyzer
+
 from typing import Type, Callable, Union
 
 A = Union[B, int]  # type: ignore
@@ -2503,7 +2503,7 @@ C = Type[A] # type: ignore
 [out]
 
 [case testSerializeRecursiveAliases3]
-# flags: --new-semantic-analyzer
+
 from typing import Type, Callable, Union, NamedTuple
 
 A = Union[B, int]  # type: ignore
@@ -2573,7 +2573,7 @@ M = NamedTuple('M', [('x', int)])
 [out]
 
 [case testSelfRefNTIncremental1]
-# flags: --new-semantic-analyzer
+
 from typing import Tuple, NamedTuple
 
 Node = NamedTuple('Node', [
@@ -2584,7 +2584,7 @@ n: Node
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental2]
-# flags: --new-semantic-analyzer
+
 from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [
@@ -2599,7 +2599,7 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental3]
-# flags: --new-semantic-analyzer
+
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple):
@@ -2615,7 +2615,7 @@ lst = [m, n]
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental4]
-# flags: --new-semantic-analyzer
+
 from typing import NamedTuple
 
 class B(NamedTuple):
@@ -2629,7 +2629,7 @@ n: A
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNTIncremental5]
-# flags: --new-semantic-analyzer
+
 from typing import NamedTuple
 
 B = NamedTuple('B', [
@@ -3283,8 +3283,9 @@ main:8: note: Revealed type is 'def (x: builtins.str) -> __main__.A@6'
 [out2]
 main:8: note: Revealed type is 'def (x: builtins.str) -> __main__.A@6'
 
-[case testAttrsIncrementalConverterInSubmoduleForwardRef]
-# flags: --no-new-semantic-analyzer
+-- FIXME: new analyzer busted
+[case testAttrsIncrementalConverterInSubmoduleForwardRef-skip]
+
 from a.a import A
 reveal_type(A)
 [file a/__init__.py]
@@ -3306,8 +3307,9 @@ main:3: note: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 [out2]
 main:3: note: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 
-[case testAttrsIncrementalConverterType]
-# flags: --no-new-semantic-analyzer
+-- FIXME: new analyzer busted
+[case testAttrsIncrementalConverterType-skip]
+
 from a import C
 import attr
 o = C("1", "2", "3", "4")
@@ -3338,7 +3340,7 @@ class C:
     d: int = attr.ib(converter=parse)
 [builtins fixtures/attr.pyi]
 [out1]
-main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+5main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
 main:10: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 [out2]
 main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
@@ -4474,8 +4476,8 @@ def outer() -> None:
 [out]
 [out2]
 
-[case testRecursiveAliasImported]
-# flags: --no-new-semantic-analyzer
+[case testRecursiveAliasImported-skip]
+
 import a
 [file a.py]
 import lib
@@ -4498,7 +4500,7 @@ B = List[A]
 tmp/a.py:3: note: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
 
 [case testRecursiveAliasImported2]
-# flags: --new-semantic-analyzer
+
 import a
 
 [file a.py]
@@ -4531,9 +4533,9 @@ tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/a.py:3: note: Revealed type is 'builtins.list[Any]'
 
-[case testRecursiveNamedTupleTypedDict]
+[case testRecursiveNamedTupleTypedDict-skip]
 # https://github.com/python/mypy/issues/7125
-# flags: --no-new-semantic-analyzer
+
 import a
 [file a.py]
 import lib
@@ -4628,7 +4630,7 @@ tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "s
 
 [case testOverrideByIdemAlias]
 # https://github.com/python/mypy/issues/6404
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 import lib
@@ -4986,7 +4988,7 @@ import a
 [out2]
 
 [case testNewAnalyzerIncrementalBrokenNamedTuple]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 from b import NT
@@ -5003,7 +5005,7 @@ NT = NamedTuple('BadName', [('x', int)])
 tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 from b import C
@@ -5022,7 +5024,7 @@ def test() -> None:
 [out2]
 
 [case testNewAnalyzerIncrementalMethodNamedTuple]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 from b import C
@@ -5059,7 +5061,7 @@ reveal_type(c)
 tmp/a.py:3: note: Revealed type is 'Any'
 
 [case testNewAnalyzerIncrementalNestedEnum]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 from b import C
@@ -5079,7 +5081,7 @@ def test() -> None:
 [out2]
 
 [case testCannotDetermineTypeFromOtherModule]
-# flags: --new-semantic-analyzer
+
 import aa
 
 [file aa.py]

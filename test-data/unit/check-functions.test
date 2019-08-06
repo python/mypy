@@ -1423,7 +1423,7 @@ else:
     def f(x: str) -> None: pass # E: Incompatible redefinition (redefinition with type "Callable[[str], None]", original type "Callable[[int], None]")
 
 [case testConditionalFunctionDefinitionUsingDecorator3]
-# flags: --new-semantic-analyzer
+
 from typing import Callable
 
 def dec(f) -> Callable[[int], None]: pass
@@ -1436,7 +1436,7 @@ else:
     def f(): pass
 
 [case testConditionalFunctionDefinitionUsingDecorator4]
-# flags: --new-semantic-analyzer
+
 from typing import Callable
 
 def dec(f) -> Callable[[int], None]: pass
@@ -1720,7 +1720,7 @@ def Arg(x, y): pass
 F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
 
 [case testCallableParsingFromExpr]
-# flags: --new-semantic-analyzer
+
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions

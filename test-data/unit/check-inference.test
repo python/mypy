@@ -432,7 +432,7 @@ def id(x: T) -> T:
 [out]
 
 [case testUnderspecifiedInferenceResult]
-# flags: --new-semantic-analyzer --no-strict-optional
+# flags: --no-strict-optional
 from typing import TypeVar
 T = TypeVar('T')
 class A: pass
@@ -2742,7 +2742,7 @@ x = f()
 reveal_type(x)  # N: Revealed type is 'def (*Any, **Any) -> <nothing>'
 
 [case testDeferralInNestedScopes]
-# flags: --new-semantic-analyzer
+
 
 def g() -> None:
     def f() -> None:
