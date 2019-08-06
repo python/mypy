@@ -1223,6 +1223,7 @@ b'%a' % 3
 [case testStringInterpolationMappingTypes]
 '%(a)d %(b)s' % {'a': 1, 'b': 's'}
 '%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "Union[int, float]")
+b'%(x)s' % {b'x': b'data'}
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingKeys]
