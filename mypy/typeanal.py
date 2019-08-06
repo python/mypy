@@ -28,7 +28,7 @@ from mypy.typetraverser import TypeTraverserVisitor
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
-from mypy.newsemanal.semanal_shared import SemanticAnalyzerCoreInterface
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, message_registry
 
 T = TypeVar('T')

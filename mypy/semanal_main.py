@@ -31,19 +31,19 @@ from typing_extensions import TYPE_CHECKING
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
 )
-from mypy.newsemanal.semanal_typeargs import TypeArgumentAnalyzer
+from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.state import strict_optional_set
-from mypy.newsemanal.semanal import (
+from mypy.semanal import (
     SemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
 )
-from mypy.newsemanal.semanal_classprop import (
+from mypy.semanal_classprop import (
     calculate_class_abstract_status, calculate_class_vars, check_protocol_status,
     add_type_promotion
 )
 from mypy.errors import Errors
-from mypy.newsemanal.semanal_infer import infer_decorator_signature_if_simple
+from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
-from mypy.server.aststripnew import SavedAttributes
+from mypy.server.aststrip import SavedAttributes
 import mypy.build
 
 if TYPE_CHECKING:

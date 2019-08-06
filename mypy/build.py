@@ -29,9 +29,9 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
-from mypy.newsemanal.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.newsemanal.semanal import SemanticAnalyzer
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
+from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.semanal import SemanticAnalyzer
+from mypy.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error

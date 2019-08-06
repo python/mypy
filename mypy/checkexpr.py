@@ -9,7 +9,7 @@ from typing import (
 from typing_extensions import ClassVar, Final, overload
 
 from mypy.errors import report_internal_error
-from mypy.newsemanal.typeanal import (
+from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
     make_optional_type,
 )
