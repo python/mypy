@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import os
 import re
 import pprint
 import sys
@@ -54,7 +53,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"platform", "bazel", "plugins", "new_semantic_analyzer"})
+                            {"platform", "bazel", "plugins"})
                            - {"debug_cache"})  # type: Final
 
 
@@ -85,14 +84,6 @@ class Options:
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
         self.namespace_packages = False
-
-        # Use the new semantic analyzer
-        new_analyzer = os.getenv('NEWSEMANAL')
-        if new_analyzer:
-            # Use NEWSEMANAL=0 to change the default (for tests).
-            self.new_semantic_analyzer = bool(int(new_analyzer))
-        else:
-            self.new_semantic_analyzer = True
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -264,6 +255,11 @@ class Options:
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = False
+
+    # To avoid breaking plugin compatability, keep providing new_semantic_analyzer
+    @property
+    def new_semantic_analyzer(self) -> bool:
+        return True
 
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""

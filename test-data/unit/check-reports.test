@@ -168,7 +168,7 @@ a             7        4          0    3      0           0
 b             7        4          0    3      0           0
 
 [case testLinePrecisionLiterals]
-# flags: --lineprecision-report out --new-semantic-analyzer
+# flags: --lineprecision-report out
 import str_lit
 import bytes_lit
 import int_lit

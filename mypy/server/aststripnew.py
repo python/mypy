@@ -15,14 +15,13 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
 from mypy.typestate import TypeState
-from mypy.server.aststrip import nothing
 
 
 SavedAttributes = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
 
-def strip_target_new(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
-                     saved_attrs: SavedAttributes) -> None:
+def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
+                 saved_attrs: SavedAttributes) -> None:
     """Reset a fine-grained incremental target to state before main pass of semantic analysis.
 
     The most notable difference from the old version of strip_target() is that new semantic
@@ -221,3 +220,8 @@ class NodeStripVisitor(TraverserVisitor):
         yield
         self.type = old_type
         self.is_class_body = old_is_class_body
+
+
+@contextlib.contextmanager
+def nothing() -> Iterator[None]:
+    yield

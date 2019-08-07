@@ -114,7 +114,7 @@ test cases (test-data/unit/fine-grained*.test).
 
 import time
 from typing import (
-    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Callable, Sequence
+    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Sequence
 )
 from typing_extensions import Final
 
@@ -132,14 +132,12 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.fscache import FileSystemCache
-from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststrip import strip_target
-from mypy.server.aststripnew import strip_target_new, SavedAttributes
+from mypy.server.aststripnew import strip_target, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
@@ -577,25 +575,12 @@ def update_module_isolated(module: str,
     assert state.tree is not None, "file must be at least parsed"
     t0 = time.time()
     # TODO: state.fix_suppressed_dependencies()?
-    if not manager.options.new_semantic_analyzer:
-        if module == 'typing':
-            # We need to manually add typing aliases to builtins, like we
-            # do in process_stale_scc. Because this can't be done until
-            # builtins is also loaded, there isn't an obvious way to
-            # refactor this.
-            manager.semantic_analyzer.add_builtin_aliases(state.tree)
     try:
-        if not manager.options.new_semantic_analyzer:
-            state.semantic_analysis()
-        else:
-            semantic_analysis_for_scc(graph, [state.id], manager.errors)
+        semantic_analysis_for_scc(graph, [state.id], manager.errors)
     except CompileError as err:
         # There was a blocking error, so module AST is incomplete. Restore old modules.
         restore([module])
         return BlockedUpdate(module, path, remaining_modules, err.messages)
-    if not manager.options.new_semantic_analyzer:
-        state.semantic_analysis_pass_three()
-        state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
     new_modules_dict = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
@@ -938,14 +923,8 @@ def reprocess_nodes(manager: BuildManager,
     saved_attrs = {}  # type: SavedAttributes
     for deferred in nodes:
         processed_targets.append(deferred.node.fullname())
-        if not manager.options.new_semantic_analyzer:
-            strip_target(deferred.node)
-        else:
-            strip_target_new(deferred.node, saved_attrs)
-    if not options.new_semantic_analyzer:
-        re_analyze_nodes(file_node, nodes, manager, options)
-    else:
-        semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
+        strip_target(deferred.node, saved_attrs)
+    semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
@@ -985,43 +964,6 @@ def reprocess_nodes(manager: BuildManager,
     graph[module_id].free_state()
 
     return new_triggered
-
-
-def re_analyze_nodes(file_node: MypyFile, nodes: List[FineGrainedDeferredNode],
-                     manager: BuildManager, options: Options) -> None:
-    """Perform semantic analysis of targets in a given file.
-
-    This uses the old semantic analyzer.
-    """
-    semantic_analyzer = manager.semantic_analyzer
-    patches = []  # type: List[Tuple[int, Callable[[], None]]]
-
-    # Second pass of semantic analysis. We don't redo the first pass, because it only
-    # does local things that won't go stale.
-    for deferred in nodes:
-        with semantic_analyzer.file_context(
-                file_node=file_node,
-                fnam=file_node.path,
-                options=options,
-                active_type=deferred.active_typeinfo):
-            manager.semantic_analyzer.refresh_partial(deferred.node, patches)
-
-    # Third pass of semantic analysis.
-    for deferred in nodes:
-        with semantic_analyzer.file_context(
-                file_node=file_node,
-                fnam=file_node.path,
-                options=options,
-                active_type=deferred.active_typeinfo,
-                scope=manager.semantic_analyzer_pass3.scope):
-            manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
-
-    with semantic_analyzer.file_context(
-            file_node=file_node,
-            fnam=file_node.path,
-            options=options,
-            active_type=None):
-        apply_semantic_analyzer_patches(patches)
 
 
 def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str, SymbolTable]:

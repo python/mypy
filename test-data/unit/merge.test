@@ -646,7 +646,7 @@ TypeInfo<2>(
     f<3>))
 
 [case testNamedTuple_typeinfo]
-# flags: --new-semantic-analyzer
+
 import target
 [file target.py]
 from typing import NamedTuple
@@ -764,7 +764,7 @@ TypeVarExpr:2: Any
 NameExpr:4: T`1(upper_bound=target.A[Any]<1>)
 
 [case testUnboundType_types]
-# flags: --new-semantic-analyzer
+
 import target
 [file target.py]
 from typing import TypeVar, Generic

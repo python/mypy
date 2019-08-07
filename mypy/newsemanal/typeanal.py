@@ -210,6 +210,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 an_args = self.anal_array(t.args)
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = expand_type_alias(target, all_vars, an_args, self.fail, node.no_args, t,
+                                        unexpanded_type=t,
                                         disallow_any=disallow_any)
                 # The only case where expand_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
@@ -928,7 +929,8 @@ def fix_instance(t: Instance, fail: Callable[[str, Context], None],
 
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
-                      fail: Callable[[str, Context], None], no_args: bool, ctx: Type, *,
+                      fail: Callable[[str, Context], None], no_args: bool, ctx: Context, *,
+                      unexpanded_type: Optional[Type] = None,
                       disallow_any: bool = False) -> Type:
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
 
@@ -947,7 +949,7 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
         assert alias_tvars is not None
         return set_any_tvars(target, alias_tvars, ctx.line, ctx.column,
                              disallow_any=disallow_any, fail=fail,
-                             unexpanded_type=ctx)
+                             unexpanded_type=unexpanded_type)
     if exp_len == 0 and act_len == 0:
         if no_args:
             assert isinstance(target, Instance)

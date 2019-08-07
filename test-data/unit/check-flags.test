@@ -1053,7 +1053,7 @@ always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
 [case testCheckDisallowAnyGenericsNamedTuple]
-# flags: --disallow-any-generics --new-semantic-analyzer
+# flags: --disallow-any-generics
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)])  # type: ignore
@@ -1061,7 +1061,7 @@ n: N
 [out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
-# flags: --disallow-any-generics --new-semantic-analyzer
+# flags: --disallow-any-generics
 from typing import Dict, Any, Optional
 from mypy_extensions import TypedDict
 
@@ -1099,7 +1099,7 @@ def f(c: C) -> None:
 [out]
 
 [case testCheckDisallowAnyGenericsAnyGeneric]
-# flags: --new-semantic-analyzer --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import TypeVar, Callable
 
 T = TypeVar('T')
@@ -1110,7 +1110,7 @@ def f(c: C):  # E: Missing type parameters for generic type "C"
 [out]
 
 [case testStrictAnyGeneric]
-# flags: --new-semantic-analyzer --strict
+# flags: --strict
 from typing import TypeVar, Generic
 
 T = TypeVar('T')
@@ -1164,7 +1164,7 @@ implicit_reexport = False
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
 [case testImplicitAnyOKForNoArgs]
-# flags: --new-semantic-analyzer --disallow-any-generics --show-column-numbers
+# flags: --disallow-any-generics --show-column-numbers
 from typing import List
 
 A = List  # OK

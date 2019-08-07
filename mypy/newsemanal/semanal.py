@@ -158,9 +158,9 @@ CORE_BUILTIN_CLASSES = ['object', 'bool', 'function']  # type: Final
 Tag = int
 
 
-class NewSemanticAnalyzer(NodeVisitor[None],
-                          SemanticAnalyzerInterface,
-                          SemanticAnalyzerPluginInterface):
+class SemanticAnalyzer(NodeVisitor[None],
+                       SemanticAnalyzerInterface,
+                       SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for an

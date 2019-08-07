@@ -29,11 +29,8 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
-from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.newsemanal.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
-from mypy.semanal_pass3 import SemanticAnalyzerPass3
-from mypy.newsemanal.semanal import NewSemanticAnalyzer
+from mypy.newsemanal.semanal import SemanticAnalyzer
 from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
@@ -536,21 +533,15 @@ class BuildManager:
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
-        if options.new_semantic_analyzer:
-            # Set of namespaces (module or class) that are being populated during semantic
-            # analysis and may have missing definitions.
-            self.incomplete_namespaces = set()  # type: Set[str]
-            self.new_semantic_analyzer = NewSemanticAnalyzer(
-                self.modules,
-                self.missing_modules,
-                self.incomplete_namespaces,
-                self.errors,
-                self.plugin)
-        else:
-            self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
-                                                           self.errors, self.plugin)
-            self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
-                                                                 self.semantic_analyzer)
+        # Set of namespaces (module or class) that are being populated during semantic
+        # analysis and may have missing definitions.
+        self.incomplete_namespaces = set()  # type: Set[str]
+        self.semantic_analyzer = SemanticAnalyzer(
+            self.modules,
+            self.missing_modules,
+            self.incomplete_namespaces,
+            self.errors,
+            self.plugin)
         self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -1885,26 +1876,6 @@ class State:
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
-    def patch_dependency_parents(self) -> None:
-        """
-        In Python, if a and a.b are both modules, running `import a.b` will
-        modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
-        details.
-
-        However, this patching process can occur after `a` has been parsed and
-        serialized during incremental mode. Consequently, we need to repeat this
-        patch when deserializing a cached file.
-
-        This function should be called only when processing fresh SCCs -- the
-        semantic analyzer will perform this patch for us when processing stale
-        SCCs.
-        """
-        if not self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.semantic_analyzer
-            for dep in self.dependencies:
-                analyzer.add_submodules_to_parent_modules(dep, True)
-
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -1999,12 +1970,6 @@ class State:
 
         self.semantic_analysis_pass1()
 
-        if not self.options.new_semantic_analyzer:
-            # Initialize module symbol table, which was populated by the
-            # semantic analyzer.
-            # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
-            self.tree.names = manager.semantic_analyzer.globals
-
         self.check_blockers()
 
     def parse_inline_configuration(self, source: str) -> None:
@@ -2024,31 +1989,21 @@ class State:
         """
         options = self.options
         assert self.tree is not None
-        if options.new_semantic_analyzer:
-            # Do the first pass of semantic analysis: analyze the reachability
-            # of blocks and import statements. We must do this before
-            # processing imports, since this may mark some import statements as
-            # unreachable.
-            #
-            # TODO: Once we remove the old semantic analyzer, this no longer should
-            #     be considered as a semantic analysis pass -- it's an independent
-            #     pass.
-            analyzer = SemanticAnalyzerPreAnalysis()
-            with self.wrap_context():
-                analyzer.visit_file(self.tree, self.xpath, self.id, options)
-            # TODO: Do this while contructing the AST?
-            self.tree.names = SymbolTable()
-            if options.allow_redefinition:
-                # Perform renaming across the AST to allow variable redefinitions
-                self.tree.accept(VariableRenameVisitor())
-        else:
-            # Do the first pass of semantic analysis: add top-level
-            # definitions in the file to the symbol table.  We must do
-            # this before processing imports, since this may mark some
-            # import statements as unreachable.
-            first = SemanticAnalyzerPass1(self.manager.semantic_analyzer)
-            with self.wrap_context():
-                first.visit_file(self.tree, self.xpath, self.id, options)
+        # Do the first pass of semantic analysis: analyze the reachability
+        # of blocks and import statements. We must do this before
+        # processing imports, since this may mark some import statements as
+        # unreachable.
+        #
+        # TODO: This should not be considered as a semantic analysis
+        #     pass -- it's an independent pass.
+        analyzer = SemanticAnalyzerPreAnalysis()
+        with self.wrap_context():
+            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        # TODO: Do this while contructing the AST?
+        self.tree.names = SymbolTable()
+        if options.allow_redefinition:
+            # Perform renaming across the AST to allow variable redefinitions
+            self.tree.accept(VariableRenameVisitor())
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
@@ -2102,30 +2057,6 @@ class State:
             self.add_dependency('builtins')
 
         self.check_blockers()  # Can fail due to bogus relative imports
-
-    def semantic_analysis(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        self.manager.semantic_analyzer.imports.clear()
-        with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
-        self.patches = patches
-        for dep in self.manager.semantic_analyzer.imports:
-            self.add_dependency(dep)
-            self.priorities[dep] = PRI_LOW
-
-    def semantic_analysis_pass_three(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
-                                                            self.options, patches)
-            if self.options.dump_type_stats:
-                dump_type_stats(self.tree, self.xpath, self.manager.modules)
-        self.patches = patches + self.patches
-
-    def semantic_analysis_apply_patches(self) -> None:
-        apply_semantic_analyzer_patches(self.patches)
 
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
@@ -3006,8 +2937,6 @@ def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManage
     t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
-    for id in modules:
-        graph[id].patch_dependency_parents()
     t2 = time.time()
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
@@ -3029,17 +2958,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-        if not manager.options.new_semantic_analyzer:
-            manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc, manager.errors)
-    else:
-        for id in stale:
-            graph[id].semantic_analysis()
-        for id in stale:
-            graph[id].semantic_analysis_pass_three()
-        for id in stale:
-            graph[id].semantic_analysis_apply_patches()
+    semantic_analysis_for_scc(graph, scc, manager.errors)
 
     # Track what modules aren't yet done so we can finish them as soon
     # as possible, saving memory.

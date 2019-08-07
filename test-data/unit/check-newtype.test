@@ -296,7 +296,7 @@ a = Foo(type(3))
 [out]
 
 [case testNewTypeWithTypeVarsFails]
-# flags: --new-semantic-analyzer
+
 from typing import NewType, TypeVar, List
 T = TypeVar('T')
 A = NewType('A', T)
@@ -312,7 +312,7 @@ main:5: note: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" in
 main:5: note: (Hint: Use "T" in function signature to bind "T" inside a function)
 
 [case testNewTypeRedefiningVariablesFails]
-# flags: --new-semantic-analyzer
+
 from typing import NewType
 
 a = 3
@@ -372,7 +372,7 @@ issubclass(object, T)  # E: Cannot use issubclass() with a NewType type
 [builtins fixtures/isinstancelist.pyi]
 
 [case testInvalidNewTypeCrash]
-# flags: --new-semantic-analyzer
+
 from typing import List, NewType, Union
 N = NewType('N', XXX)  # E: Argument 2 to NewType(...) must be subclassable (got "Any") \
                        # E: Name 'XXX' is not defined

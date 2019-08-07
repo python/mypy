@@ -1301,7 +1301,7 @@ C = str
 tmp/a.py:2: note: Revealed type is 'builtins.str'
 
 [case testSerializeForwardReferenceToImportedAliasInProperty]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 import b

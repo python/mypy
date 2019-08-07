@@ -716,7 +716,7 @@ reveal_type(f) # N: Revealed type is 'Overload(def (x: builtins.int) -> typing.C
 [typing fixtures/typing-full.pyi]
 
 [case testAsyncForwardRefInBody]
-# flags: --new-semantic-analyzer
+
 async def f() -> None:
     forwardref: C
     class C: pass

@@ -69,7 +69,7 @@ if int():
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
 [case testColumnInvalidType]
-# flags: --new-semantic-analyzer
+
 from typing import Iterable
 
 bad = 0
@@ -86,7 +86,7 @@ z: Iterable[bad] # E:13: Variable "__main__.bad" is not valid as a type
 h: bad[int] # E:4: Variable "__main__.bad" is not valid as a type
 
 [case testColumnInvalidType_python2]
-# flags: --new-semantic-analyzer
+
 from typing import Iterable
 
 bad = 0
@@ -173,7 +173,7 @@ class D(A):
     def f(self) -> None: pass # E:5: Signature of "f" incompatible with supertype "A"
 
 [case testColumnMissingTypeParameters]
-# flags: --new-semantic-analyzer --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import List, Callable
 def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
 def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
@@ -203,7 +203,7 @@ if int():
       # N:5:     y
 
 [case testColumnRedundantCast]
-# flags: --warn-redundant-casts --new-semantic-analyzer
+# flags: --warn-redundant-casts
 from typing import cast
 y = 1
 x = cast(int, y) # E:5: Redundant cast to "int"
@@ -231,7 +231,7 @@ if 1 == '': # E:4: Non-overlapping equality check (left operand type: "int", rig
 [builtins fixtures/bool.pyi]
 
 [case testColumnValueOfTypeVariableCannotBe]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic
 
 T = TypeVar('T', int, str)

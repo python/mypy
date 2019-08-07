@@ -126,7 +126,7 @@ y = None # type: Callable[[], A[int]]  # E: "A" expects no type arguments, but 1
 [out]
 
 [case testVarOrFuncAsType]
-# flags: --new-semantic-analyzer
+
 import typing
 def f(): pass
 x = 1
@@ -491,7 +491,7 @@ del z     # E: Name 'z' is not defined
 [out]
 
 [case testFunctionTvarScope]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar
 t = TypeVar('t')
 def f(x: t) -> t: pass
@@ -502,7 +502,7 @@ main:5: note: (Hint: Use "Generic[t]" or "Protocol[t]" base class to bind "t" in
 main:5: note: (Hint: Use "t" in function signature to bind "t" inside a function)
 
 [case testClassTvarScope]
-# flags: --new-semantic-analyzer
+
 from typing import Generic, TypeVar
 t = TypeVar('t')
 class c(Generic[t]): pass
@@ -744,7 +744,7 @@ foo = 0 # type: A.x      # E: Name 'A.x' is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic
 t = TypeVar('t')
 s = TypeVar('s')
@@ -769,25 +769,14 @@ class D(str): pass # ok
 [out]
 
 [case testCyclicInheritance1]
-# flags: --new-semantic-analyzer
+
 class A(A): pass # E: Cannot resolve name "A" (possible cyclic definition)
 [out]
 
 [case testCyclicInheritance2]
-# flags: --new-semantic-analyzer
+
 class A(B): pass # E: Cannot resolve name "B" (possible cyclic definition)
 class B(A): pass
-[out]
-
-[case testCyclicInheritance1Old]
-# flags: --no-new-semantic-analyzer
-class A(A): pass # E: Cycle in inheritance hierarchy
-[out]
-
-[case testCyclicInheritance2Old]
-# flags: --no-new-semantic-analyzer
-class A(B): pass
-class B(A): pass # E: Cycle in inheritance hierarchy
 [out]
 
 [case testAssignToTypeDef]
@@ -797,7 +786,7 @@ A = None # E: Cannot assign to a type
 [out]
 
 [case testInvalidCastTargetSyntax]
-# flags: --new-semantic-analyzer
+
 from typing import cast, TypeVar, Generic
 t = TypeVar('t')
 class C(Generic[t]): pass
@@ -809,7 +798,7 @@ cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a typ
 [out]
 
 [case testInvalidCastTargetType]
-# flags: --new-semantic-analyzer
+
 from typing import cast
 x = 0
 cast(x, None)        # E: Variable "__main__.x" is not valid as a type
@@ -842,7 +831,7 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 [out]
 
 [case testTypeListAsType]
-# flags: --new-semantic-analyzer
+
 def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
                              # N: Did you mean "List[...]"?
     pass
@@ -903,7 +892,7 @@ class A:
 main:4: error: Type cannot be declared in assignment to non-self attribute
 
 [case testInvalidTypeInTypeApplication]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
@@ -1250,58 +1239,10 @@ def f() -> List[int]: pass
 main:2: error: Name 'List' is not defined
 main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
-[case testImportObsoleteTypingFunction]
-# flags: --no-new-semantic-analyzer
-from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
-from _m import Function # E: Module '_m' has no attribute 'Function'
-[file _m.py]
-[out]
-
-[case testTypeRefresToObsoleteTypingFunction]
-# flags: --no-new-semantic-analyzer
-import typing
-import _m
-def f(x: typing.Function[[], None]) -> None: pass
-def g(x: _m.Function[[], None]) -> None: pass
-[file _m.py]
-[out]
-main:4: error: Name 'typing.Function' is not defined (it's now called 'typing.Callable')
---'
-main:5: error: Name '_m.Function' is not defined
-
-[case testUnqualifiedNameRefersToObsoleteTypingFunction]
-# flags: --no-new-semantic-analyzer
-x = None # type: Function[[], None]
-[out]
-main:2: error: Name 'Function' is not defined
-main:2: note: (Did you mean 'typing.Callable'?)
-
 [case testInvalidWithTarget]
 def f(): pass
 with f() as 1: pass  # E: can't assign to literal
 [out]
-
-[case testUseObsoleteNameForTypeVar]
-# flags: --no-new-semantic-analyzer
-from typing import typevar
-t = typevar('t')
-[out]
-main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
---' (this fixes syntax highlighting)
-
-[case testUseObsoleteNameForTypeVar2]
-# flags: --no-new-semantic-analyzer
-t = typevar('t')
-[out]
-main:2: error: Name 'typevar' is not defined
-main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
-
-[case testUseObsoleteNameForTypeVar3]
-# flags: --no-new-semantic-analyzer
-import typing
-t = typing.typevar('t')
-[out]
-main:3: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 
 [case testInvalidTypeAnnotation]
 import typing
@@ -1454,7 +1395,7 @@ class A: ... # E: Name 'A' already defined on line 2
 [out]
 
 [case testNoInvalidTypeInDynamicFunctions]
-# flags: --new-semantic-analyzer
+
 from typing import Dict, TypeVar
 T = TypeVar('T')
 

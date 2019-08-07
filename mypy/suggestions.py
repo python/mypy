@@ -476,10 +476,7 @@ class SuggestionEngine:
         return state.tree
 
     def builtin_type(self, s: str) -> Instance:
-        if self.manager.options.new_semantic_analyzer:
-            return self.manager.new_semantic_analyzer.builtin_type(s)
-        else:
-            return self.manager.semantic_analyzer.builtin_type(s)
+        return self.manager.semantic_analyzer.builtin_type(s)
 
     def json_suggestion(self, function: str, suggestion: str) -> str:
         """Produce a json blob for a suggestion suitable for application by pyannotate."""

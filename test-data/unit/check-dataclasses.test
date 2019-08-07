@@ -536,7 +536,7 @@ app.database_name  # E: "SpecializedApplication" has no attribute "database_name
 [builtins fixtures/list.pyi]
 
 [case testDataclassesInitVarsAndDefer]
-# flags: --new-semantic-analyzer
+
 from dataclasses import InitVar, dataclass
 
 defer: Yes
@@ -641,7 +641,7 @@ class C:
 [builtins fixtures/dict.pyi]
 
 [case testDataclassOrderingDeferred]
-# flags: --python-version 3.6 --new-semantic-analyzer
+# flags: --python-version 3.6
 from dataclasses import dataclass
 
 defer: Yes

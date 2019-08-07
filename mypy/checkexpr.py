@@ -9,8 +9,9 @@ from typing import (
 from typing_extensions import ClassVar, Final, overload
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import (
-    has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias
+from mypy.newsemanal.typeanal import (
+    has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
+    make_optional_type,
 )
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
@@ -56,7 +57,6 @@ from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
-from mypy.typeanal import make_optional_type
 from mypy.typeops import tuple_fallback
 
 # Type of callback user for checking individual function arguments. See

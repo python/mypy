@@ -164,13 +164,10 @@ class TypeCheckSuite(DataSuite):
         # Enable some options automatically based on test file name.
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if 'newsemanal' in testcase.file:
-            options.new_semantic_analyzer = True
         if 'columns' in testcase.file:
             options.show_column_numbers = True
         if 'errorcodes' in testcase.file:
             options.show_error_codes = True
-            options.new_semantic_analyzer = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
@@ -228,18 +225,17 @@ class TypeCheckSuite(DataSuite):
             if options.cache_dir != os.devnull:
                 self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
-            if options.new_semantic_analyzer:
-                name = 'targets'
-                if incremental_step:
-                    name += str(incremental_step + 1)
-                expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
-                actual = res.manager.processed_targets
-                # Skip the initial builtin cycle.
-                actual = [t for t in actual
-                          if not any(t.startswith(mod)
-                                     for mod in core_modules + ['mypy_extensions'])]
-                if expected is not None:
-                    assert_target_equivalence(name, expected, actual)
+            name = 'targets'
+            if incremental_step:
+                name += str(incremental_step + 1)
+            expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
+            actual = res.manager.processed_targets
+            # Skip the initial builtin cycle.
+            actual = [t for t in actual
+                      if not any(t.startswith(mod)
+                                 for mod in core_modules + ['mypy_extensions'])]
+            if expected is not None:
+                assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
                 expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)

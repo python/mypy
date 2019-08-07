@@ -437,7 +437,7 @@ x = 1
 
 
 [case testSysPlatformInMethodImport2]
-# flags: --new-semantic-analyzer
+
 import sys
 class A:
     def foo(self) -> None:

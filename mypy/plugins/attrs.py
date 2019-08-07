@@ -209,17 +209,16 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
-    if ctx.api.options.new_semantic_analyzer:
-        # Check if attribute types are ready.
-        for attr in attributes:
-            node = info.get(attr.name)
-            if node is None:
-                # This name is likely blocked by a star import. We don't need to defer because
-                # defer() is already called by mark_incomplete().
-                return
-            if node.type is None and not ctx.api.final_iteration:
-                ctx.api.defer()
-                return
+    # Check if attribute types are ready.
+    for attr in attributes:
+        node = info.get(attr.name)
+        if node is None:
+            # This name is likely blocked by a star import. We don't need to defer because
+            # defer() is already called by mark_incomplete().
+            return
+        if node.type is None and not ctx.api.final_iteration:
+            ctx.api.defer()
+            return
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {

@@ -400,13 +400,13 @@ MypyFile:1(
     Union[builtins.int, builtins.str]))
 
 [case testListTypeDoesNotGenerateAlias]
-# flags: --new-semantic-analyzer
+
 import typing
 A = [int, str]
 a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type
 
 [case testCantUseStringLiteralAsTypeAlias]
-# flags: --new-semantic-analyzer
+
 from typing import Union
 A = 'Union[int, str]'
 a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type

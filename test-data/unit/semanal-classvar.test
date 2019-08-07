@@ -55,7 +55,7 @@ MypyFile:1(
       Any)))
 
 [case testClassVarWithTypeVar]
-# flags: --new-semantic-analyzer
+
 from typing import ClassVar, TypeVar
 T = TypeVar('T')
 class A:
