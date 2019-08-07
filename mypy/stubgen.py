@@ -345,6 +345,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # Best known value of __all__.
         self._all_ = _all_
         self._output = []  # type: List[str]
+        self._decorators = []  # type: List[str]
         self._import_lines = []  # type: List[str]
         # Current indent level (indent is hardcoded to 4 spaces).
         self._indent = ''
@@ -392,6 +393,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
+        # dump decorators, just before "def ..."
+        for s in self._decorators:
+            self.add(s)
+        self.clear_decorators()
         self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name()))
         self.record_name(o.name())
         args = []  # type: List[str]
@@ -401,6 +406,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             name = var.name()
             annotated_type = (o.unanalyzed_type.arg_types[i]
                               if isinstance(o.unanalyzed_type, CallableType) else None)
+            # I think the name check is incorrect: there are libraries which
+            # name their 0th argument other than self/cls
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
             if (annotated_type is None
@@ -457,7 +464,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 if decorator.name in ('property',
                                       'staticmethod',
                                       'classmethod'):
-                    self.add('%s@%s\n' % (self._indent, decorator.name))
+                    self.add_decorator('%s@%s\n' % (self._indent, decorator.name))
                 elif self.import_tracker.module_for.get(decorator.name) in ('asyncio',
                                                                             'asyncio.coroutines',
                                                                             'types'):
@@ -465,18 +472,19 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 elif (self.import_tracker.module_for.get(decorator.name) == 'abc' and
                       (decorator.name == 'abstractmethod' or
                        self.import_tracker.reverse_alias.get(decorator.name) == 'abstractmethod')):
-                    self.add('%s@%s\n' % (self._indent, decorator.name))
+                    self.add_decorator('%s@%s\n' % (self._indent, decorator.name))
                     self.import_tracker.require_name(decorator.name)
                     is_abstract = True
             elif isinstance(decorator, MemberExpr):
                 if decorator.name == 'setter' and isinstance(decorator.expr, NameExpr):
-                    self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
+                    self.add_decorator('%s@%s.setter\n' % (self._indent, decorator.expr.name))
                 elif (isinstance(decorator.expr, NameExpr) and
                       (decorator.expr.name == 'abc' or
                        self.import_tracker.reverse_alias.get('abc')) and
                       decorator.name == 'abstractmethod'):
                     self.import_tracker.require_name(decorator.expr.name)
-                    self.add('%s@%s.%s\n' % (self._indent, decorator.expr.name, decorator.name))
+                    self.add_decorator('%s@%s.%s\n' %
+                                       (self._indent, decorator.expr.name, decorator.name))
                     is_abstract = True
                 elif decorator.name == 'coroutine':
                     if (isinstance(decorator.expr, MemberExpr) and
@@ -739,6 +747,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Add text to generated stub."""
         self._output.append(string)
 
+    def add_decorator(self, string: str) -> None:
+        self._decorators.append(string)
+
+    def clear_decorators(self) -> None:
+        self._decorators.clear()
+
     def add_typing_import(self, name: str) -> None:
         """Add a name to be imported from typing, unless it's imported already.
 
@@ -754,8 +768,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def add_coroutine_decorator(self, func: FuncDef, name: str, require_name: str) -> None:
         func.is_awaitable_coroutine = True
         if not self._indent and self._state not in (EMPTY, FUNC):
-            self.add('\n')
-        self.add('%s@%s\n' % (self._indent, name))
+            self.add_decorator('\n')
+        self.add_decorator('%s@%s\n' % (self._indent, name))
         self.import_tracker.require_name(require_name)
 
     def output(self) -> str:
