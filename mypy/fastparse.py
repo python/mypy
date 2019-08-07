@@ -182,7 +182,7 @@ def parse(source: Union[str, bytes],
     return tree
 
 
-def parse_type_ignore_tag(tag: str) -> List[str]:
+def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
     # TODO: Implement proper parsing and error checking
     if not tag:
         return []
@@ -215,7 +215,8 @@ def parse_type_comment(type_comment: str,
     else:
         extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
         if extra_ignore:
-            tag = extra_ignore.group(1)
+            # Typeshed has a non-optional return type for group!
+            tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
             ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
         else:
             ignored = None
