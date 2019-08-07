@@ -86,6 +86,7 @@ typecheck_files = [
     'check-newsemanal.test',
     'check-inline-config.test',
     'check-reports.test',
+    'check-errorcodes.test',
     'check-annotated.test',
 ]
 
@@ -165,6 +166,8 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if 'columns' in testcase.file:
             options.show_column_numbers = True
+        if 'errorcodes' in testcase.file:
+            options.show_error_codes = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
