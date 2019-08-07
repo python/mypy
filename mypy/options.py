@@ -216,6 +216,12 @@ class Options:
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False
 
+        # Disable the memory optimization of freeing ASTs when
+        # possible. This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like mypyc.)
+        self.preserve_asts = False
+
         # Paths of user plugins
         self.plugins = []  # type: List[str]
 

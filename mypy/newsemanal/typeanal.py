@@ -41,6 +41,7 @@ type_constructors = {
     'typing.Union',
     'typing.Literal',
     'typing_extensions.Literal',
+    'typing_extensions.Annotated',
 }  # type: Final
 
 ARG_KINDS_BY_CONSTRUCTOR = {
@@ -302,6 +303,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return UninhabitedType(is_noreturn=True)
         elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
             return self.analyze_literal_type(t)
+        elif fullname == 'typing_extensions.Annotated':
+            if len(t.args) < 2:
+                self.fail("Annotated[...] must have exactly one type argument"
+                          " and at least one annotation", t)
+                return AnyType(TypeOfAny.from_error)
+            return self.anal_type(t.args[0])
         return None
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:

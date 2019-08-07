@@ -427,7 +427,7 @@ class FileInfo:
         return sum(self.counts)
 
     def attrib(self) -> Dict[str, str]:
-        return {name: str(val) for name, val in zip(stats.precision_names, self.counts)}
+        return {name: str(val) for name, val in sorted(zip(stats.precision_names, self.counts))}
 
 
 class MemoryXmlReporter(AbstractReporter):
@@ -478,10 +478,10 @@ class MemoryXmlReporter(AbstractReporter):
             status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
             file_info.counts[status] += 1
             etree.SubElement(root, 'line',
-                             number=str(lineno),
-                             precision=stats.precision_names[status],
+                             any_info=self._get_any_info_for_line(visitor, lineno),
                              content=line_text.rstrip('\n').translate(self.control_fixer),
-                             any_info=self._get_any_info_for_line(visitor, lineno))
+                             number=str(lineno),
+                             precision=stats.precision_names[status])
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -516,9 +516,9 @@ class MemoryXmlReporter(AbstractReporter):
         for file_info in output_files:
             etree.SubElement(root, 'file',
                              file_info.attrib(),
-                             total=str(file_info.total()),
+                             module=file_info.module,
                              name=file_info.name,
-                             module=file_info.module)
+                             total=str(file_info.total()))
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
                 'type="text/xsl" href="%s"' % pathname2url(xslt_path))
@@ -550,8 +550,8 @@ class CoberturaPackage(object):
 
     def as_xml(self) -> Any:
         package_element = etree.Element('package',
-                                        name=self.name,
-                                        complexity='1.0')
+                                        complexity='1.0',
+                                        name=self.name)
         package_element.attrib['branch-rate'] = '0'
         package_element.attrib['line-rate'] = get_line_rate(self.covered_lines, self.total_lines)
         classes_element = etree.SubElement(package_element, 'classes')
@@ -595,8 +595,8 @@ class CoberturaXmlReporter(AbstractReporter):
         class_name = os.path.basename(path)
         file_info = FileInfo(path, tree._fullname)
         class_element = etree.Element('class',
-                                      filename=path,
                                       complexity='1.0',
+                                      filename=path,
                                       name=class_name)
         etree.SubElement(class_element, 'methods')
         lines_element = etree.SubElement(class_element, 'lines')
@@ -618,10 +618,10 @@ class CoberturaXmlReporter(AbstractReporter):
                     branch = True
                 file_info.counts[status] += 1
                 line_element = etree.SubElement(lines_element, 'line',
-                                                number=str(lineno),
-                                                precision=stats.precision_names[status],
+                                                branch=str(branch).lower(),
                                                 hits=str(hits),
-                                                branch=str(branch).lower())
+                                                number=str(lineno),
+                                                precision=stats.precision_names[status])
                 if branch:
                     line_element.attrib['condition-coverage'] = '50% (1/2)'
             class_element.attrib['branch-rate'] = '0'

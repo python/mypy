@@ -211,15 +211,13 @@ class TypeState:
     def add_all_protocol_deps(deps: Dict[str, Set[str]]) -> None:
         """Add all known protocol dependencies to deps.
 
-        This is used by tests and debug output, and also when passing
-        all collected or loaded dependencies on to FineGrainedBuildManager
-        in its __init__.
+        This is used by tests and debug output, and also when collecting
+        all collected or loaded dependencies as part of build.
         """
         TypeState.update_protocol_deps()  # just in case
-        assert TypeState.proto_deps is not None, (
-            "This should not be called after failed cache load")
-        for trigger, targets in TypeState.proto_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
+        if TypeState.proto_deps is not None:
+            for trigger, targets in TypeState.proto_deps.items():
+                deps.setdefault(trigger, set()).update(targets)
 
 
 def reset_global_state() -> None:

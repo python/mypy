@@ -31,6 +31,7 @@ class TypeExportSuite(DataSuite):
             options.use_builtins_fixtures = True
             options.show_traceback = True
             options.export_types = True
+            options.preserve_asts = True
             result = build.build(sources=[BuildSource('main', None, src)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)

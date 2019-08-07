@@ -87,6 +87,7 @@ typecheck_files = [
     'check-inline-config.test',
     'check-reports.test',
     'check-errorcodes.test',
+    'check-annotated.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
