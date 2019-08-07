@@ -135,9 +135,9 @@ from mypy.fscache import FileSystemCache
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
+from mypy.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststripnew import strip_target, SavedAttributes
+from mypy.server.aststrip import strip_target, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG

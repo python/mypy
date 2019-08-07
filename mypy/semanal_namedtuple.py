@@ -1,6 +1,6 @@
 """Semantic analysis of named tuple definitions.
 
-This is conceptually part of mypy.newsemanal.semanal.
+This is conceptually part of mypy.semanal.
 """
 
 from contextlib import contextmanager
@@ -10,7 +10,7 @@ from typing_extensions import Final
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
 )
-from mypy.newsemanal.semanal_shared import (
+from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
 )
 from mypy.nodes import (

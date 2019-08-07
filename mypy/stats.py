@@ -9,7 +9,7 @@ from typing import Dict, List, cast, Optional, Union, Iterator
 from typing_extensions import Final
 
 from mypy.traverser import TraverserVisitor
-from mypy.newsemanal.typeanal import collect_all_inner_types
+from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType,
     TypeOfAny

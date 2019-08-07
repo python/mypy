@@ -5,7 +5,7 @@ from mypy.nodes import (
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, StrExpr,
 )
 from mypy.plugin import ClassDefContext
-from mypy.newsemanal.semanal import set_callable_name
+from mypy.semanal import set_callable_name
 from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance, UnionType
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name

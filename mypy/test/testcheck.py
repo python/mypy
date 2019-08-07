@@ -19,7 +19,7 @@ from mypy.test.helpers import (
     copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
 )
 from mypy.errors import CompileError
-from mypy.newsemanal.semanal_main import core_modules
+from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.

@@ -20,7 +20,7 @@ from mypy.erasetype import erase_typevars
 from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
 from mypy.plugin import AttributeContext
-from mypy.newsemanal.typeanal import set_any_tvars
+from mypy.typeanal import set_any_tvars
 from mypy import message_registry
 from mypy import subtypes
 from mypy import meet
