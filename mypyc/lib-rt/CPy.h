@@ -57,15 +57,6 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
     }
 }
 
-// At load time, we need to patch up trait vtables to contain actual pointers
-// to the type objects of the trait, rather than an indirection.
-static inline void CPy_FixupTraitVtable(CPyVTableItem *vtable, int count) {
-    int i;
-    for (i = 0; i < count; i++) {
-        vtable[i*2] = *(CPyVTableItem *)vtable[i*2];
-    }
-}
-
 static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // mypyc classes can't work with metaclasses in
     // general. Through some various nasty hacks we *do*
