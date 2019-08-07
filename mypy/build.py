@@ -1994,9 +1994,8 @@ class State:
         # processing imports, since this may mark some import statements as
         # unreachable.
         #
-        # TODO: Once we remove the old semantic analyzer, this no longer should
-        #     be considered as a semantic analysis pass -- it's an independent
-        #     pass.
+        # TODO: This should not be considered as a semantic analysis
+        #     pass -- it's an independent pass.
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
