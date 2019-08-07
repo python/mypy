@@ -544,7 +544,7 @@ class ASTConverter:
                 typ = converter.visit_raw_str(comment)
                 extra_ignore = TYPE_IGNORE_PATTERN.match(comment)
                 if extra_ignore:
-                    tag = extra_ignore.group(1)
+                    tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
                     ignored = parse_type_ignore_tag(tag)
                     self.type_ignores[converter.line] = ignored
                 return typ
