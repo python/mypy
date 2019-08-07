@@ -3340,7 +3340,7 @@ class C:
     d: int = attr.ib(converter=parse)
 [builtins fixtures/attr.pyi]
 [out1]
-5main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
 main:10: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 [out2]
 main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
@@ -4476,30 +4476,7 @@ def outer() -> None:
 [out]
 [out2]
 
-[case testRecursiveAliasImported-skip]
-
-import a
-[file a.py]
-import lib
-x: int
-[file a.py.2]
-import lib
-x: lib.A
-reveal_type(x)
-[file lib.pyi]
-from typing import List
-from other import B
-A = List[B]  # type: ignore
-[file other.pyi]
-from typing import List
-from lib import A
-B = List[A]
-[builtins fixtures/list.pyi]
-[out]
-[out2]
-tmp/a.py:3: note: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
-
-[case testRecursiveAliasImported2]
+[case testRecursiveAliasImported]
 
 import a
 
