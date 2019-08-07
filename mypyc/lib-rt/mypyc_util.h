@@ -15,6 +15,14 @@
 #define CPy_Unreachable() abort()
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+#define CPy_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define CPy_NOINLINE __declspec(noinline)
+#else
+#define CPy_NOINLINE
+#endif
+
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
 // I'm honestly kind of surprised that this isn't done by default.

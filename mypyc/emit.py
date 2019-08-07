@@ -255,7 +255,7 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref('{}.f{}'.format(dest, i), item_type, is_xdec)
         elif not rtype.is_unboxed:
-            self.emit_line('CPy_%sDECREF(%s);' % (x, dest))
+            self.emit_line('CPy_%sDecRef(%s);' % (x, dest))
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:

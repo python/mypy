@@ -16,6 +16,21 @@ extern "C" {
 } // why isn't emacs smart enough to not indent this
 #endif
 
+/* We use intentionally non-inlined decrefs since it pretty
+ * substantially speeds up compile time while only causing a ~1%
+ * performance degradation. We have our own copies both to avoid the
+ * null check in Py_DecRef and to avoid making an indirect PIC
+ * call. */
+CPy_NOINLINE
+static void CPy_DecRef(PyObject *p) {
+    CPy_DECREF(p);
+}
+
+CPy_NOINLINE
+static void CPy_XDecRef(PyObject *p) {
+    CPy_XDECREF(p);
+}
+
 // Naming conventions:
 //
 // Tagged: tagged int
@@ -369,19 +384,22 @@ static Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
     }
 }
 
-static inline void CPyTagged_IncRef(CPyTagged x) {
+CPy_NOINLINE
+static void CPyTagged_IncRef(CPyTagged x) {
     if (CPyTagged_CheckLong(x)) {
         Py_INCREF(CPyTagged_LongAsObject(x));
     }
 }
 
-static inline void CPyTagged_DecRef(CPyTagged x) {
+CPy_NOINLINE
+static void CPyTagged_DecRef(CPyTagged x) {
     if (CPyTagged_CheckLong(x)) {
         Py_DECREF(CPyTagged_LongAsObject(x));
     }
 }
 
-static inline void CPyTagged_XDecRef(CPyTagged x) {
+CPy_NOINLINE
+static void CPyTagged_XDecRef(CPyTagged x) {
     if (CPyTagged_CheckLong(x)) {
         Py_XDECREF(CPyTagged_LongAsObject(x));
     }
