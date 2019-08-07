@@ -248,6 +248,7 @@ class Options:
         # -- experimental options --
         self.shadow_file = None  # type: Optional[List[List[str]]]
         self.show_column_numbers = False  # type: bool
+        self.show_error_codes = False
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False

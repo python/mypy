@@ -32,7 +32,9 @@ from mypy.nodes import (
     CallExpr
 )
 from mypy.util import unmangle
-from mypy import message_registry
+from mypy.errorcodes import ErrorCode
+from mypy import message_registry, errorcodes as codes
+
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -104,8 +106,14 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Optional[Context], severity: str,
-               file: Optional[str] = None, origin: Optional[Context] = None,
+    def report(self,
+               msg: str,
+               context: Optional[Context],
+               severity: str,
+               *,
+               code: Optional[ErrorCode] = None,
+               file: Optional[str] = None,
+               origin: Optional[Context] = None,
                offset: int = 0) -> None:
         """Report an error or note (unless disabled)."""
         if origin is not None:
@@ -119,12 +127,18 @@ class MessageBuilder:
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None,
-                               end_line=end_line)
+                               end_line=end_line,
+                               code=code)
 
-    def fail(self, msg: str, context: Optional[Context], file: Optional[str] = None,
+    def fail(self,
+             msg: str,
+             context: Optional[Context],
+             *,
+             code: Optional[ErrorCode] = None,
+             file: Optional[str] = None,
              origin: Optional[Context] = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file, origin=origin)
+        self.report(msg, context, 'error', code=code, file=file, origin=origin)
 
     def note(self, msg: str, context: Context, file: Optional[str] = None,
              origin: Optional[Context] = None, offset: int = 0) -> None:
@@ -220,13 +234,18 @@ class MessageBuilder:
                         # TODO: Handle differences in division between Python 2 and 3 more cleanly
                         matches = []
                     if matches:
-                        self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
-                            format_type(original_type), member, pretty_or(matches), extra),
-                            context)
+                        self.fail(
+                            '{} has no attribute "{}"; maybe {}?{}'.format(
+                                format_type(original_type), member, pretty_or(matches), extra),
+                            context,
+                            code=codes.ATTR_DEFINED)
                         failed = True
                 if not failed:
-                    self.fail('{} has no attribute "{}"{}'.format(format_type(original_type),
-                                                                  member, extra), context)
+                    self.fail(
+                        '{} has no attribute "{}"{}'.format(
+                            format_type(original_type), member, extra),
+                        context,
+                        code=codes.ATTR_DEFINED)
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.

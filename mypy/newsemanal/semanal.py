@@ -81,7 +81,8 @@ from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import best_matches, MessageBuilder, pretty_or
-from mypy import message_registry
+from mypy.errorcodes import ErrorCode
+from mypy import message_registry, errorcodes as codes
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
@@ -3163,12 +3164,12 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail("'break' outside loop", s, True, blocker=True)
+            self.fail("'break' outside loop", s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail("'continue' outside loop", s, True, blocker=True)
+            self.fail("'continue' outside loop", s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
@@ -3358,10 +3359,10 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
-            self.fail("'yield from' outside function", e, True, blocker=True)
+            self.fail("'yield from' outside function", e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
-                self.fail("'yield from' in async function", e, True, blocker=True)
+                self.fail("'yield from' in async function", e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
         if e.expr:
@@ -3738,11 +3739,11 @@ class NewSemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail("'yield' outside function", expr, True, blocker=True)
+            self.fail("'yield' outside function", expr, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):
-                    self.fail("'yield' in async function", expr, True, blocker=True)
+                    self.fail("'yield' in async function", expr, serious=True, blocker=True)
                 else:
                     self.function_stack[-1].is_generator = True
                     self.function_stack[-1].is_async_generator = True
@@ -4446,7 +4447,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
             return
         message = "Name '{}' is not defined".format(name)
-        self.fail(message, ctx)
+        self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -4520,7 +4521,9 @@ class NewSemanticAnalyzer(NodeVisitor[None],
     def fail(self,
              msg: str,
              ctx: Context,
-             serious: bool = False, *,
+             serious: bool = False,
+             *,
+             code: Optional[ErrorCode] = None,
              blocker: bool = False) -> None:
         if (not serious and
                 not self.options.check_untyped_defs and
@@ -4529,7 +4532,7 @@ class NewSemanticAnalyzer(NodeVisitor[None],
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker)
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
