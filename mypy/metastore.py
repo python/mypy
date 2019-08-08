@@ -9,13 +9,16 @@ We provide two implementations.
 """
 
 import binascii
-import sqlite3
-import sqlite3.dbapi2
 import os
 import time
 
 from abc import abstractmethod
 from typing import List, Iterable, Any, Optional
+from typing_extensions import TYPE_CHECKING
+if TYPE_CHECKING:
+    # We avoid importing sqlite3 unless we are using it so we can mostly work
+    # on semi-broken pythons that are missing it.
+    import sqlite3
 
 
 class MetadataStore:
@@ -147,7 +150,9 @@ MIGRATIONS = [
 ]  # type: List[str]
 
 
-def connect_db(db_file: str) -> sqlite3.Connection:
+def connect_db(db_file: str) -> 'sqlite3.Connection':
+    import sqlite3.dbapi2
+
     db = sqlite3.dbapi2.connect(db_file)
     db.executescript(SCHEMA)
     for migr in MIGRATIONS:
@@ -189,6 +194,8 @@ class SqliteMetadataStore(MetadataStore):
         return self._query(name, 'data')
 
     def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+        import sqlite3
+
         if not self.db:
             return False
         try:
