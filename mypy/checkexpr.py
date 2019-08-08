@@ -71,6 +71,15 @@ ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, M
 MAX_UNIONS = 5  # type: Final
 
 
+# Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
+OVERLAPPING_TYPES_WHITELIST = [('builtins.set', 'builtins.frozenset'),
+                               ('typing.KeysView', 'builtins.set'),
+                               ('typing.KeysView', 'builtins.frozenset')]  # type: Final
+
+for l, r in OVERLAPPING_TYPES_WHITELIST.copy():
+    OVERLAPPING_TYPES_WHITELIST.append((r, l))
+
+
 class TooManyUnions(Exception):
     """Indicates that we need to stop splitting unions in an attempt
     to match an overload in order to save performance.
@@ -2038,6 +2047,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We need to special case bytes, because both 97 in b'abc' and b'a' in b'abc'
             # return True (and we want to show the error only if the check can _never_ be True).
             return False
+        if isinstance(left, Instance) and isinstance(right, Instance):
+            if any(left.type.fullname() == l and right.type.fullname() == r
+                   for l, r in OVERLAPPING_TYPES_WHITELIST):
+                return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
