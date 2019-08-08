@@ -2259,6 +2259,18 @@ class Custom:
 Custom() == int()
 [builtins fixtures/bool.pyi]
 
+[case testStrictEqualityDisabledWithTypeVarRestrictions]
+# flags: --strict-equality
+from typing import TypeVar
+
+T = TypeVar('T', str, int)
+
+def f(x: T) -> T:
+    if x == int():  # OK
+        ...
+    return x
+[builtins fixtures/bool.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name 'Any' is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
