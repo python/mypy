@@ -1176,7 +1176,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             self.handle_non_ext_method(cdef, fdef)
 
-    def is_approximately_constant(self, e: Expression) -> bool:
+    def is_constant(self, e: Expression) -> bool:
         """Check whether we allow an expression to appear as a default value.
 
         We don't currently properly support storing the evaluated
@@ -1189,7 +1189,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 or (isinstance(e, UnaryExpr) and e.op == '-'
                     and isinstance(e.expr, (IntExpr, FloatExpr)))
                 or (isinstance(e, TupleExpr)
-                    and all(self.is_approximately_constant(e) for e in e.items))
+                    and all(self.is_constant(e) for e in e.items))
                 or (isinstance(e, RefExpr) and e.kind == GDEF
                     and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
                          or (isinstance(e.node, Var) and e.node.is_final))))
@@ -1228,7 +1228,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            if not stmt.is_final_def and not self.is_approximately_constant(stmt.rvalue):
+            if not stmt.is_final_def and not self.is_constant(stmt.rvalue):
                 self.warning('Unsupported default attribute value', stmt.rvalue.line)
 
             # If the attribute is initialized to None and type isn't optional,
@@ -1693,20 +1693,61 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             cls.methods['__ne__'] = f
             self.functions.append(f)
 
-    def gen_arg_default(self) -> None:
+    def calculate_arg_defaults(self,
+                               fn_info: FuncInfo,
+                               env: Environment,
+                               func_reg: Optional[Value]) -> None:
+        """Calculate default argument values and store them.
+
+        They are stored in statics for top level functions and in
+        the function objects for nested functions (while constants are
+        still stored computed on demand).
+        """
+        fitem = fn_info.fitem
+        for arg in fitem.arguments:
+            # Constant values don't get stored but just recomputed
+            if arg.initializer and not self.is_constant(arg.initializer):
+                value = self.coerce(self.accept(arg.initializer),
+                                    env.lookup(arg.variable).type, arg.line)
+                if not fn_info.is_nested:
+                    name = fitem.fullname() + '.' + arg.variable.name()
+                    self.add(InitStatic(value, name, 'final'))
+                else:
+                    assert func_reg is not None
+                    self.add(SetAttr(func_reg, arg.variable.name(), value, arg.line))
+
+    def gen_arg_defaults(self) -> None:
         """Generate blocks for arguments that have default values.
 
-        If the passed value is an error value, then assign the default value to the argument.
+        If the passed value is an error value, then assign the default
+        value to the argument.
         """
         fitem = self.fn_info.fitem
         for arg in fitem.arguments:
             if arg.initializer:
-                if not self.is_approximately_constant(arg.initializer):
-                    self.warning('Unsupported default argument value', arg.initializer.line)
                 target = self.environment.lookup(arg.variable)
+
+                def get_default() -> Value:
+                    assert arg.initializer is not None
+
+                    # If it is constant, don't bother storing it
+                    if self.is_constant(arg.initializer):
+                        return self.accept(arg.initializer)
+
+                    # Because gen_arg_defaults runs before calculate_arg_defaults, we
+                    # add the static/attribute to final_names/the class here.
+                    elif not self.fn_info.is_nested:
+                        name = fitem.fullname() + '.' + arg.variable.name()
+                        self.final_names.append((name, target.type))
+                        return self.add(LoadStatic(target.type, name, 'final'))
+                    else:
+                        name = arg.variable.name()
+                        self.fn_info.callable_class.ir.attributes[name] = target.type
+                        return self.add(
+                            GetAttr(self.fn_info.callable_class.self_reg, name, arg.line))
                 assert isinstance(target, AssignmentTargetRegister)
                 self.assign_if_null(target,
-                                    lambda: self.accept(cast(Expression, arg.initializer)),
+                                    get_default,
                                     arg.initializer.line)
 
     def gen_func_item(self,
@@ -1793,7 +1834,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_raise_exception_blocks_to_generator_class(fitem.line)
         else:
             self.load_env_registers()
-            self.gen_arg_default()
+            self.gen_arg_defaults()
 
         if self.fn_info.contains_nested and not self.fn_info.is_generator:
             self.finalize_env_class()
@@ -1849,6 +1890,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         else:
             func_ir, func_reg = self.gen_func_ir(blocks, sig, env, fn_info, cdef)
+
+        self.calculate_arg_defaults(fn_info, env, func_reg)
 
         return (func_ir, func_reg)
 
@@ -3776,7 +3819,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         runtime_args = []
         for arg, arg_type in zip(expr.arguments, typ.arg_types):
             arg.variable.type = arg_type
-            runtime_args.append(RuntimeArg(arg.variable.name(), self.type_to_rtype(arg_type)))
+            runtime_args.append(
+                RuntimeArg(arg.variable.name(), self.type_to_rtype(arg_type), arg.kind))
         ret_type = self.type_to_rtype(typ.ret_type)
 
         fsig = FuncSignature(runtime_args, ret_type)
@@ -4857,7 +4901,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def gen_generator_func(self) -> None:
         self.setup_generator_class()
         self.load_env_registers()
-        self.gen_arg_default()
+        self.gen_arg_defaults()
         self.finalize_env_class()
         self.add(Return(self.instantiate_generator_class()))
 

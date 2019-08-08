@@ -148,9 +148,6 @@ class Concrete2:
 class Trait2(Concrete2):
     pass
 
-def warning(x: List[int] = []) -> None:  # W: Unsupported default argument value
-    pass
-
 class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent list  # E: Non-trait MRO must be linear
     pass
 
