@@ -2028,6 +2028,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.options.strict_equality:
             return False
+        if self.chk.binder.is_unreachable_warning_suppressed():
+            # We are inside a function that contains type variables with value restrictions in
+            # its signature. In this case we just suppress all strict-equality checks to avoid
+            # false positives for code like:
+            #
+            #     T = TypeVar('T', str, int)
+            #     def f(x: T) -> T:
+            #         if x == 0:
+            #             ...
+            #         return x
+            #
+            # TODO: find a way of disabling the check only for types resulted from the expansion.
+            return False
         if isinstance(left, NoneType) or isinstance(right, NoneType):
             return False
         if isinstance(left, UnionType) and isinstance(right, UnionType):
