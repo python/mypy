@@ -577,9 +577,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
-            for arg in defn.arguments:
-                if arg.initializer:
-                    arg.initializer.accept(self)
 
         self.analyze_function_body(defn)
         if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
@@ -871,6 +868,11 @@ class SemanticAnalyzer(NodeVisitor[None],
     def analyze_function_body(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+            # Analyze default arguments
+            for arg in defn.arguments:
+                if arg.initializer:
+                    arg.initializer.accept(self)
+
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
