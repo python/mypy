@@ -22,7 +22,7 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType, TypeOfAny, ForwardRef, UnboundType, PartialType,
+    UninhabitedType, TypeOfAny, UnboundType, PartialType,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -1355,11 +1355,6 @@ def format_type_inner(typ: Type,
             return '<nothing>'
     elif isinstance(typ, TypeType):
         return 'Type[{}]'.format(format(typ.item))
-    elif isinstance(typ, ForwardRef):  # may appear in semanal.py
-        if typ.resolved:
-            return format(typ.resolved)
-        else:
-            return format(typ.unbound)
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():

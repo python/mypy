@@ -1808,54 +1808,6 @@ class TypeType(Type):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
-class ForwardRef(Type):
-    """Class to wrap forward references to other types.
-
-    This is used when a forward reference to an (unanalyzed) synthetic type is found,
-    for example:
-
-        x: A
-        A = TypedDict('A', {'x': int})
-
-    To avoid false positives and crashes in such situations, we first wrap the first
-    occurrence of 'A' in ForwardRef. Then, the wrapped UnboundType is updated in the third
-    pass of semantic analysis and ultimately fixed in the patches after the third pass.
-    So that ForwardRefs are temporary and will be completely replaced with the linked types
-    or Any (to avoid cyclic references) before the type checking stage.
-    """
-    _unbound = None  # type: UnboundType  # The original wrapped type
-    _resolved = None  # type: Optional[Type]  # The resolved forward reference (initially None)
-
-    def __init__(self, unbound: UnboundType) -> None:
-        super().__init__()
-        self._unbound = unbound
-        self._resolved = None
-
-    @property
-    def unbound(self) -> UnboundType:
-        # This is read-only to make it clear that resolution happens through resolve().
-        return self._unbound
-
-    @property
-    def resolved(self) -> Optional[Type]:
-        # Similar to above.
-        return self._resolved
-
-    def resolve(self, resolved: Type) -> None:
-        """Resolve an unbound forward reference to point to a type."""
-        assert self._resolved is None
-        self._resolved = resolved
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_forwardref_type(self)
-
-    def serialize(self) -> str:
-        name = self.unbound.name
-        # We should never get here since all forward references should be resolved
-        # and removed during semantic analysis.
-        assert False, "Internal error: Unresolved forward reference to {}".format(name)
-
-
 class PlaceholderType(Type):
     """Temporary, yet-unknown type during semantic analysis.
 
@@ -2063,12 +2015,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_type_type(self, t: TypeType) -> str:
         return 'Type[{}]'.format(t.item.accept(self))
-
-    def visit_forwardref_type(self, t: ForwardRef) -> str:
-        if t.resolved:
-            return '~{}'.format(t.resolved.accept(self))
-        else:
-            return '~{}'.format(t.unbound.accept(self))
 
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
         return '<placeholder {}>'.format(t.fullname)

@@ -14,7 +14,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny, ForwardRef,
+    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
     LiteralType, RawExpressionType, PlaceholderType
 )
 
@@ -567,9 +567,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
-    def visit_forwardref_type(self, t: ForwardRef) -> Type:
-        return t
-
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
         n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)
         if not n or isinstance(n.node, PlaceholderNode):
@@ -742,8 +739,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return None
                 out.extend(union_result)
             return out
-        elif isinstance(arg, ForwardRef):
-            return [arg]
         else:
             self.fail('Parameter {} of Literal[...] is invalid'.format(idx), ctx)
             return None
