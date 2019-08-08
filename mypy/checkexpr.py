@@ -39,6 +39,7 @@ import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
 from mypy.erasetype import replace_meta_vars, erase_type
+from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy import message_registry
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -72,12 +73,9 @@ MAX_UNIONS = 5  # type: Final
 
 
 # Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
-OVERLAPPING_TYPES_WHITELIST = [('builtins.set', 'builtins.frozenset'),
-                               ('typing.KeysView', 'builtins.set'),
-                               ('typing.KeysView', 'builtins.frozenset')]  # type: Final
-
-for l, r in OVERLAPPING_TYPES_WHITELIST.copy():
-    OVERLAPPING_TYPES_WHITELIST.append((r, l))
+# NOTE: All these types are subtypes of AbstractSet.
+OVERLAPPING_TYPES_WHITELIST = ['builtins.set', 'builtins.frozenset',
+                               'typing.KeysView', 'typing.ItemsView']  # type: Final
 
 
 class TooManyUnions(Exception):
@@ -2048,9 +2046,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # return True (and we want to show the error only if the check can _never_ be True).
             return False
         if isinstance(left, Instance) and isinstance(right, Instance):
-            if any(left.type.fullname() == l and right.type.fullname() == r
-                   for l, r in OVERLAPPING_TYPES_WHITELIST):
-                return False
+            # Special case some builtin implementations of AbstractSet.
+            if (left.type.fullname() in OVERLAPPING_TYPES_WHITELIST and
+                    right.type.fullname() in OVERLAPPING_TYPES_WHITELIST):
+                abstract_set = self.chk.lookup_typeinfo('typing.AbstractSet')
+                left = map_instance_to_supertype(left, abstract_set)
+                right = map_instance_to_supertype(right, abstract_set)
+                return not is_overlapping_types(left.args[0], right.args[0])
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
