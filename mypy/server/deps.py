@@ -96,7 +96,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, ForwardRef, Overloaded, TypeOfAny, LiteralType,
+    FunctionLike, Overloaded, TypeOfAny, LiteralType,
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -921,9 +921,6 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
                 triggers.append(trigger.rstrip('>') + '.__init__>')
                 triggers.append(trigger.rstrip('>') + '.__new__>')
         return triggers
-
-    def visit_forwardref_type(self, typ: ForwardRef) -> List[str]:
-        assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
         triggers = []

@@ -6,7 +6,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
     TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
     Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    ForwardRef, PlaceholderType, PartialType, RawExpressionType
+    PlaceholderType, PartialType, RawExpressionType
 )
 
 
@@ -83,9 +83,6 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.type.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> None:
-        pass
-
-    def visit_forwardref_type(self, t: ForwardRef) -> None:
         pass
 
     def visit_placeholder_type(self, t: PlaceholderType) -> None:
