@@ -2549,3 +2549,9 @@ def f() -> int: ...
 [file p/d.py]
 import p
 def f() -> int: ...
+
+[case testLambdaDefaultTypeErrors]
+lambda a=nonsense: a  # E: Name 'nonsense' is not defined
+lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
+def f(x: int = i):  # E: Name 'i' is not defined
+    i = 42

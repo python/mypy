@@ -557,7 +557,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
 
-        # Analyze function signature and initializers first.
+        # Analyze function signature
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
@@ -577,10 +577,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
-            for arg in defn.arguments:
-                if arg.initializer:
-                    arg.initializer.accept(self)
 
+        self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
         if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
             if defn.is_async_generator:
@@ -867,6 +865,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             func.info = self.type
         func._fullname = self.qualified_name(func.name())
         self.add_symbol(func.name(), func, func)
+
+    def analyze_arg_initializers(self, defn: FuncItem) -> None:
+        with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+            # Analyze default arguments
+            for arg in defn.arguments:
+                if arg.initializer:
+                    arg.initializer.accept(self)
 
     def analyze_function_body(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
@@ -3722,6 +3727,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         expr.sequences[0].accept(self)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> None:
+        self.analyze_arg_initializers(expr)
         self.analyze_function_body(expr)
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> None:

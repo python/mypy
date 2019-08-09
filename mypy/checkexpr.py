@@ -3065,6 +3065,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""
+        self.chk.check_default_args(e, body_is_trivial=False)
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
