@@ -2029,11 +2029,11 @@ class B: ...
 a: Union[int, str]
 b: Union[A, B]
 
-a == 42
-b == 42  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "int")
+a == int()
+b == int()  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "int")
 
-a is 42
-b is 42  # E: Non-overlapping identity check (left operand type: "Union[A, B]", right operand type: "int")
+a is int()
+b is int()  # E: Non-overlapping identity check (left operand type: "Union[A, B]", right operand type: "int")
 
 ca: Union[Container[int], Container[str]]
 cb: Union[Container[A], Container[B]]
@@ -2061,7 +2061,7 @@ x in b'abc'
 
 [case testStrictEqualityNoPromotePy3]
 # flags: --strict-equality
-'a' == b'a'  # E: Non-overlapping equality check (left operand type: "str", right operand type: "bytes")
+'a' == b'a'  # E: Non-overlapping equality check (left operand type: "Literal['a']", right operand type: "Literal[b'a']")
 b'a' in 'abc'  # E: Non-overlapping container check (element type: "bytes", container item type: "str")
 
 x: str

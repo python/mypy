@@ -1125,7 +1125,7 @@ def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
 [case testStrictEqualityPerFile]
 # flags: --config-file tmp/mypy.ini
 import b
-42 == 'no'  # E: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+42 == 'no'  # E: Non-overlapping equality check (left operand type: "Literal[42]", right operand type: "Literal['no']")
 [file b.py]
 42 == 'no'
 [file mypy.ini]

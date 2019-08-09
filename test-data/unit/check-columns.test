@@ -226,7 +226,7 @@ if int():
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
-if 1 == '': # E:4: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+if 1 == '': # E:4: Non-overlapping equality check (left operand type: "Literal[1]", right operand type: "Literal['']")
     pass
 [builtins fixtures/bool.pyi]
 
