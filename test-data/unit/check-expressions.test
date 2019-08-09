@@ -2029,11 +2029,11 @@ class B: ...
 a: Union[int, str]
 b: Union[A, B]
 
-a == 42
-b == 42  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "int")
+a == int()
+b == int()  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "int")
 
-a is 42
-b is 42  # E: Non-overlapping identity check (left operand type: "Union[A, B]", right operand type: "int")
+a is int()
+b is int()  # E: Non-overlapping identity check (left operand type: "Union[A, B]", right operand type: "int")
 
 ca: Union[Container[int], Container[str]]
 cb: Union[Container[A], Container[B]]
@@ -2061,7 +2061,7 @@ x in b'abc'
 
 [case testStrictEqualityNoPromotePy3]
 # flags: --strict-equality
-'a' == b'a'  # E: Non-overlapping equality check (left operand type: "str", right operand type: "bytes")
+'a' == b'a'  # E: Non-overlapping equality check (left operand type: "Literal['a']", right operand type: "Literal[b'a']")
 b'a' in 'abc'  # E: Non-overlapping container check (element type: "bytes", container item type: "str")
 
 x: str
@@ -2269,6 +2269,22 @@ def f(x: T) -> T:
     if x == int():  # OK
         ...
     return x
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityWithALiteral]
+# flags: --strict-equality
+from typing_extensions import Literal, Final
+
+def returns_a_or_b() -> Literal['a', 'b']:
+    ...
+def returns_1_or_2() -> Literal[1, 2]:
+    ...
+THREE: Final = 3
+
+if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Union[Literal['a'], Literal['b']]", right operand type: "Literal['c']")
+    ...
+if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Union[Literal[1], Literal[2]]", right operand type: "Literal[3]")
+    ...
 [builtins fixtures/bool.pyi]
 
 [case testUnimportedHintAny]

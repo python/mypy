@@ -1988,17 +1988,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # testCustomEqCheckStrictEquality for an example.
                 if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
                     right_type = self.accept(right)
+                    # We suppress the error if there is a custom __eq__() method on either
+                    # side. User defined (or even standard library) classes can define this
+                    # to return True for comparisons between non-overlapping types.
                     if (not custom_equality_method(left_type) and
                             not custom_equality_method(right_type)):
-                        # We suppress the error if there is a custom __eq__() method on either
-                        # side. User defined (or even standard library) classes can define this
-                        # to return True for comparisons between non-overlapping types.
+                        # Also flag non-overlapping literals in situations like:
+                        #    x: Literal['a', 'b']
+                        #    if x == 'c':
+                        #        ...
+                        left_type = try_getting_literal(left_type)
+                        right_type = try_getting_literal(right_type)
                         if self.dangerous_comparison(left_type, right_type):
                             self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
 
             elif operator == 'is' or operator == 'is not':
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
+                left_type = try_getting_literal(left_type)
+                right_type = try_getting_literal(right_type)
                 if self.dangerous_comparison(left_type, right_type):
                     self.msg.dangerous_comparison(left_type, right_type, 'identity', e)
                 method_type = None
@@ -4015,6 +4023,13 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
                 or any(is_literal_type_like(item) for item in t.values))
     else:
         return False
+
+
+def try_getting_literal(typ: Type) -> Type:
+    """If possible, get a more precise literal type for a given type."""
+    if isinstance(typ, Instance) and typ.last_known_value is not None:
+        return typ.last_known_value
+    return typ
 
 
 def is_expr_literal_type(node: Expression) -> bool:
