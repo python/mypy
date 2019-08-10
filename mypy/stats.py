@@ -18,8 +18,8 @@ from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr, BytesExpr,
-    UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
+    AssignmentExpr, ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr,
+    BytesExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
 )
 from mypy.util import correct_relative_import
 from mypy.argmap import map_formals_to_actuals
@@ -274,6 +274,10 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_index_expr(self, o: IndexExpr) -> None:
         self.process_node(o)
         super().visit_index_expr(o)
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        self.process_node(o)
+        super().visit_assignment_expr(o)
 
     def visit_unary_expr(self, o: UnaryExpr) -> None:
         self.process_node(o)

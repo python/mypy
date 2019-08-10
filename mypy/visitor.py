@@ -92,6 +92,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_list_expr(self, o: 'mypy.nodes.ListExpr') -> T:
         pass
 
@@ -472,6 +476,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:
+        pass
+
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> T:
         pass
 
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> T:

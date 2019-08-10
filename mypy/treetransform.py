@@ -19,7 +19,7 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
     OverloadPart, EnumCallExpr, REVEAL_TYPE
 )
 from mypy.types import Type, FunctionLike
@@ -408,6 +408,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new = SuperExpr(node.name, call)
         new.info = node.info
         return new
+
+    def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
+        return AssignmentExpr(node.target, node.value)
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))

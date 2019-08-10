@@ -1593,6 +1593,17 @@ class UnaryExpr(Expression):
         return visitor.visit_unary_expr(self)
 
 
+class AssignmentExpr(Expression):
+    """Assignment expressions in Python 3.8+, like "a := 2"."""
+    def __init__(self, target: Expression, value: Expression) -> None:
+        super().__init__()
+        self.target = target
+        self.value = value
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_assignment_expr(self)
+
+
 # Map from binary operator id to related method name (in Python 3).
 op_methods = {
     '+': '__add__',

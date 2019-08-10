@@ -26,7 +26,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
+    ConditionalExpr, ComparisonExpr, TempNode, SetComprehension, AssignmentExpr,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
@@ -2543,6 +2543,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         result, method_type = self.check_op('__mul__', left_type, e.right, e)
         e.method_type = method_type
         return result
+
+    def visit_assignment_expr(self, e: AssignmentExpr) -> Type:
+        value = self.accept(e.value)
+        self.chk.check_assignment(e.target, e.value)
+        self.chk.check_final(e)
+        return value
 
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
         """Type check an unary operation ('not', '-', '+' or '~')."""

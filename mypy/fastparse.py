@@ -20,7 +20,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, LambdaExpr, ComparisonExpr,
+    UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
@@ -757,10 +757,6 @@ class ASTConverter:
                                    self.visit(n.value))
         return self.set_line(s, n)
 
-    def visit_NamedExpr(self, n: NamedExpr) -> None:
-        self.fail("assignment expressions are not yet supported", n.lineno, n.col_offset)
-        return None
-
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
         target_type = self.translate_type_comment(n, n.type_comment)
@@ -901,6 +897,10 @@ class ASTConverter:
         return self.set_line(s, n)
 
     # --- expr ---
+
+    def visit_NamedExpr(self, n: NamedExpr) -> AssignmentExpr:
+        s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
+        return self.set_line(s, n)
 
     # BoolOp(boolop op, expr* values)
     def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
