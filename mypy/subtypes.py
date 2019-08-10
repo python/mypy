@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType,
+    FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type
 )
 import mypy.applytype
 import mypy.constraints
@@ -64,6 +64,9 @@ def is_subtype(left: Type, right: Type,
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    left = get_proper_type(left)
+    right = get_proper_type(right)
+
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
@@ -113,7 +116,7 @@ def is_equivalent(a: Type, b: Type,
 
 class SubtypeVisitor(TypeVisitor[bool]):
 
-    def __init__(self, right: Type,
+    def __init__(self, right: ProperType,
                  *,
                  ignore_type_params: bool,
                  ignore_pos_arg_names: bool = False,
@@ -1053,6 +1056,9 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
     If erase_instances is True, erase left instance *after* mapping it to supertype
     (this is useful for runtime isinstance() checks).
     """
+    left = get_proper_type(left)
+    right = get_proper_type(right)
+
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         return any([is_proper_subtype(left, item, ignore_promotions=ignore_promotions,
                                       erase_instances=erase_instances)
@@ -1062,7 +1068,7 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
 
 
 class ProperSubtypeVisitor(TypeVisitor[bool]):
-    def __init__(self, right: Type, *,
+    def __init__(self, right: ProperType, *,
                  ignore_promotions: bool = False,
                  erase_instances: bool = False) -> None:
         self.right = right

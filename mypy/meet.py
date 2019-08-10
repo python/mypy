@@ -8,6 +8,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
+    ProperType, get_proper_type
 )
 from mypy.subtypes import (
     is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
@@ -23,6 +24,9 @@ from mypy import state
 
 def meet_types(s: Type, t: Type) -> Type:
     """Return the greatest lower bound of two types."""
+    s = get_proper_type(s)
+    t = get_proper_type(t)
+
     if isinstance(s, ErasedType):
         return s
     if isinstance(s, AnyType):
@@ -34,6 +38,9 @@ def meet_types(s: Type, t: Type) -> Type:
 
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
+    declared = get_proper_type(declared)
+    narrowed = get_proper_type(narrowed)
+
     if declared == narrowed:
         return declared
     if isinstance(declared, UnionType):
@@ -88,6 +95,8 @@ def get_possible_variants(typ: Type) -> List[Type]:
     Normalizing both kinds of types in the same way lets us reuse the same algorithm
     for both.
     """
+    typ = get_proper_type(typ)
+
     if isinstance(typ, TypeVarType):
         if len(typ.values) > 0:
             return typ.values
@@ -113,6 +122,8 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
+    left = get_proper_type(left)
+    right = get_proper_type(right)
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         '''Encode the kind of overlapping check to perform.
@@ -386,7 +397,7 @@ def is_tuple(typ: Type) -> bool:
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
-    def __init__(self, s: Type) -> None:
+    def __init__(self, s: ProperType) -> None:
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:

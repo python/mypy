@@ -6,7 +6,8 @@ from typing import List, Optional
 from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
-    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny,
+    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny, get_proper_type,
+    ProperType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -20,6 +21,10 @@ from mypy import state
 
 def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
     """Return a simple least upper bound given the declared type."""
+    if declaration:
+        declaration = get_proper_type(declaration)
+    s = get_proper_type(s)
+    t = get_proper_type(t)
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
@@ -59,6 +64,9 @@ def join_types(s: Type, t: Type) -> Type:
 
     For example, the join of 'int' and 'object' is 'object'.
     """
+    s = get_proper_type(s)
+    t = get_proper_type(t)
+
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
         s = true_or_false(s)
@@ -90,7 +98,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
       s: The other (left) type operand.
     """
 
-    def __init__(self, s: Type) -> None:
+    def __init__(self, s: ProperType) -> None:
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:

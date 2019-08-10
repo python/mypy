@@ -8,7 +8,7 @@ from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
     Sequence, Iterator,
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, final
 
 import mypy.nodes
 from mypy import state
@@ -144,6 +144,17 @@ class Type(mypy.nodes.Context):
         raise NotImplementedError('Cannot deserialize {} instance'.format(cls.__name__))
 
 
+@final
+class TypeAliasType:
+    def __init__(self, alias: mypy.nodes.TypeAlias, args: List[Type]) -> None:
+        self.alias = alias
+        self.args = args
+
+
+class ProperType(Type):
+    """Not a type alias."""
+
+
 class TypeVarId:
     # A type variable is uniquely identified by its raw id and meta level.
 
@@ -262,7 +273,7 @@ class TypeVarDef(mypy.nodes.Context):
                           )
 
 
-class UnboundType(Type):
+class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
 
     __slots__ = ('name', 'args', 'optional', 'empty_tuple_index',
@@ -351,7 +362,7 @@ class UnboundType(Type):
                            )
 
 
-class CallableArgument(Type):
+class CallableArgument(ProperType):
     """Represents a Arg(type, 'name') inside a Callable's type list.
 
     Note that this is a synthetic type for helping parse ASTs, not a real type.
@@ -375,7 +386,7 @@ class CallableArgument(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class TypeList(Type):
+class TypeList(ProperType):
     """Information about argument types and names [...].
 
     This is used for the arguments of a Callable type, i.e. for
@@ -398,7 +409,7 @@ class TypeList(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class AnyType(Type):
+class AnyType(ProperType):
     """The type 'Any'."""
 
     __slots__ = ('type_of_any', 'source_any', 'missing_import_name')
@@ -470,7 +481,7 @@ class AnyType(Type):
                        data['missing_import_name'])
 
 
-class UninhabitedType(Type):
+class UninhabitedType(ProperType):
     """This type has no members.
 
     This type is the bottom type.
@@ -519,7 +530,7 @@ class UninhabitedType(Type):
         return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
-class NoneType(Type):
+class NoneType(ProperType):
     """The type of 'None'.
 
     This type can be written by users as 'None'.
@@ -556,7 +567,7 @@ class NoneType(Type):
 NoneTyp = NoneType
 
 
-class ErasedType(Type):
+class ErasedType(ProperType):
     """Placeholder for an erased type.
 
     This is used during type inference. This has the special property that
@@ -567,7 +578,7 @@ class ErasedType(Type):
         return visitor.visit_erased_type(self)
 
 
-class DeletedType(Type):
+class DeletedType(ProperType):
     """Type of deleted variables.
 
     These can be used as lvalues but not rvalues.
@@ -596,7 +607,7 @@ class DeletedType(Type):
 NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')  # type: Final
 
 
-class Instance(Type):
+class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
     The list of type variables may be empty.
@@ -723,7 +734,7 @@ class Instance(Type):
         return self.type.has_readable_member(name)
 
 
-class TypeVarType(Type):
+class TypeVarType(ProperType):
     """A type variable type.
 
     This refers to either a class type variable (id > 0) or a function
@@ -784,7 +795,7 @@ class TypeVarType(Type):
         return TypeVarType(tvdef)
 
 
-class FunctionLike(Type):
+class FunctionLike(ProperType):
     """Abstract base class for function types."""
 
     __slots__ = ('fallback',)
@@ -964,7 +975,7 @@ class CallableType(FunctionLike):
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
-        ret = self.ret_type
+        ret = get_proper_type(self.ret_type)
         if isinstance(ret, TypeVarType):
             ret = ret.upper_bound
         if isinstance(ret, TupleType):
@@ -1216,7 +1227,7 @@ class Overloaded(FunctionLike):
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
 
 
-class TupleType(Type):
+class TupleType(ProperType):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
 
     Instance variables:
@@ -1284,7 +1295,7 @@ class TupleType(Type):
                          self.line, self.column, self.implicit)
 
 
-class TypedDictType(Type):
+class TypedDictType(ProperType):
     """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
     A TypedDict object is a dictionary with specific string (literal) keys. Each
@@ -1398,7 +1409,7 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
-class RawExpressionType(Type):
+class RawExpressionType(ProperType):
     """A synthetic type representing some arbitrary expression that does not cleanly
     translate into a type.
 
@@ -1474,7 +1485,7 @@ class RawExpressionType(Type):
             return NotImplemented
 
 
-class LiteralType(Type):
+class LiteralType(ProperType):
     """The type of a Literal instance. Literal[Value]
 
     A Literal always consists of:
@@ -1556,7 +1567,7 @@ class LiteralType(Type):
         )
 
 
-class StarType(Type):
+class StarType(ProperType):
     """The star type *type_parameter.
 
     This is not a real type but a syntactic AST construct.
@@ -1576,7 +1587,7 @@ class StarType(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class UnionType(Type):
+class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
     __slots__ = ('items',)
@@ -1689,7 +1700,7 @@ class UnionType(Type):
         return UnionType([deserialize_type(t) for t in data['items']])
 
 
-class PartialType(Type):
+class PartialType(ProperType):
     """Type such as List[?] where type arguments are unknown, or partial None type.
 
     These are used for inferring types in multiphase initialization such as this:
@@ -1722,7 +1733,7 @@ class PartialType(Type):
         return visitor.visit_partial_type(self)
 
 
-class EllipsisType(Type):
+class EllipsisType(ProperType):
     """The type ... (ellipsis).
 
     This is not a real type but a syntactic AST construct, used in Callable[..., T], for example.
@@ -1738,7 +1749,7 @@ class EllipsisType(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class TypeType(Type):
+class TypeType(ProperType):
     """For types like Type[User].
 
     This annotates variables that are class objects, constrained by
@@ -1768,7 +1779,7 @@ class TypeType(Type):
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
-    item = None  # type: Type
+    item = None  # type: ProperType
 
     def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,
@@ -1808,7 +1819,7 @@ class TypeType(Type):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
-class PlaceholderType(Type):
+class PlaceholderType(ProperType):
     """Temporary, yet-unknown type during semantic analysis.
 
     This is needed when there's a reference to a type before the real symbol
@@ -2045,7 +2056,10 @@ def is_named_instance(t: Type, fullname: str) -> bool:
     return isinstance(t, Instance) and t.type.fullname() == fullname
 
 
-def copy_type(t: Type) -> Type:
+TP = TypeVar('TP', bound=Type)
+
+
+def copy_type(t: TP) -> TP:
     """
     Build a copy of the type; used to mutate the copy with truthiness information
     """
@@ -2058,10 +2072,12 @@ def copy_type(t: Type) -> Type:
     return nt
 
 
-def true_only(t: Type) -> Type:
+def true_only(t: Type) -> ProperType:
     """
     Restricted version of t with only True-ish values
     """
+    t = get_proper_type(t)
+
     if not t.can_be_true:
         # All values of t are False-ish, so there are no true values in it
         return UninhabitedType(line=t.line, column=t.column)
@@ -2078,10 +2094,12 @@ def true_only(t: Type) -> Type:
         return new_t
 
 
-def false_only(t: Type) -> Type:
+def false_only(t: Type) -> ProperType:
     """
     Restricted version of t with only False-ish values
     """
+    t = get_proper_type(t)
+
     if not t.can_be_false:
         if state.strict_optional:
             # All values of t are True-ish, so there are no false values in it
@@ -2103,10 +2121,12 @@ def false_only(t: Type) -> Type:
         return new_t
 
 
-def true_or_false(t: Type) -> Type:
+def true_or_false(t: Type) -> ProperType:
     """
     Unrestricted version of t with both True-ish and False-ish values
     """
+    t = get_proper_type(t)
+
     if isinstance(t, UnionType):
         new_items = [true_or_false(item) for item in t.items]
         return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
@@ -2238,6 +2258,13 @@ def remove_optional(typ: Type) -> Type:
         return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
     else:
         return typ
+
+
+def get_proper_type(typ: Type) -> ProperType:
+    if isinstance(typ, TypeAliasType):
+        typ = typ.alias.target
+    assert isinstance(typ, ProperType)
+    return typ
 
 
 names = globals().copy()  # type: Final
