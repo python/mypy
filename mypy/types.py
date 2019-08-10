@@ -1830,6 +1830,7 @@ class PlaceholderType(Type):
         self.args = args
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_placeholder_type(self)
 
     def serialize(self) -> str:
