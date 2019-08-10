@@ -1,0 +1,112 @@
+-- Tests for error codes
+--
+-- These implicitly use --show-error-codes.
+
+[case testErrorCodeNoAttribute]
+import m
+m.x  # E: Module has no attribute "x"  [attr-defined]
+'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
+[file m.py]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUndefinedName]
+x # E: Name 'x' is not defined  [name-defined]
+def f() -> None:
+    y # E: Name 'y' is not defined  [name-defined]
+[file m.py]
+[builtins fixtures/module.pyi]
+
+[case testErrorCodeUnclassifiedError]
+class A:
+    def __init__(self) -> int: \
+        # E: The return type of "__init__" must be None  [misc]
+        pass
+
+[case testErrorCodeNoteHasNoCode]
+reveal_type(1) # N: Revealed type is 'builtins.int'
+
+[case testErrorCodeSyntaxError]
+1 '' # E: invalid syntax  [syntax]
+
+[case testErrorCodeSyntaxError2]
+def f(): # E: Type signature has too many arguments  [syntax]
+    # type: (int) -> None
+    1
+
+[case testErrorCodeSyntaxError_python2]
+1 '' # E: invalid syntax  [syntax]
+
+[case testErrorCodeSyntaxError2_python2]
+def f(): # E: Type signature has too many arguments  [syntax]
+    # type: (int) -> None
+    1
+
+[case testErrorCodeIgnore1]
+'x'.foobar  # type: ignore[attr-defined]
+'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+'x'.foobar  # type: ignore
+
+[case testErrorCodeIgnore2]
+a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
+b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+c = 'x'.foobar  # type: int  # type: ignore
+
+[case testErrorCodeIgnore1_python2]
+'x'.foobar  # type: ignore[attr-defined]
+'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+'x'.foobar  # type: ignore
+
+[case testErrorCodeIgnore2_python2]
+a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
+b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+c = 'x'.foobar  # type: int  # type: ignore
+
+[case testErrorCodeIgnoreMultiple1]
+a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
+a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]
+
+[case testErrorCodeIgnoreMultiple2]
+a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
+b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+
+[case testErrorCodeIgnoreMultiple1_python2]
+a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
+a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]
+
+[case testErrorCodeIgnoreMultiple2_python2]
+a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
+b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+
+[case testErrorCodeIgnoreAfterArgComment]
+def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
+      ):
+    # type () -> None
+    pass
+
+def g(x  # type: xyz  # type: ignore  # Comment
+      ):
+    # type () -> None
+    pass
+
+def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name-defined]
+      ):
+    # type () -> None
+    pass
+
+[case testErrorCodeIgnoreAfterArgComment_python2]
+def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
+      ):
+    # type () -> None
+    pass
+
+def g(x  # type: xyz  # type: ignore  # Comment
+      ):
+    # type () -> None
+    pass
+
+def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name-defined]
+      ):
+    # type () -> None
+    pass

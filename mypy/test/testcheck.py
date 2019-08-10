@@ -19,7 +19,7 @@ from mypy.test.helpers import (
     copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
 )
 from mypy.errors import CompileError
-from mypy.newsemanal.semanal_main import core_modules
+from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
@@ -86,6 +86,8 @@ typecheck_files = [
     'check-newsemanal.test',
     'check-inline-config.test',
     'check-reports.test',
+    'check-errorcodes.test',
+    'check-annotated.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -162,10 +164,10 @@ class TypeCheckSuite(DataSuite):
         # Enable some options automatically based on test file name.
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if 'newsemanal' in testcase.file:
-            options.new_semantic_analyzer = True
         if 'columns' in testcase.file:
             options.show_column_numbers = True
+        if 'errorcodes' in testcase.file:
+            options.show_error_codes = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
@@ -223,18 +225,17 @@ class TypeCheckSuite(DataSuite):
             if options.cache_dir != os.devnull:
                 self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
-            if options.new_semantic_analyzer:
-                name = 'targets'
-                if incremental_step:
-                    name += str(incremental_step + 1)
-                expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
-                actual = res.manager.processed_targets
-                # Skip the initial builtin cycle.
-                actual = [t for t in actual
-                          if not any(t.startswith(mod)
-                                     for mod in core_modules + ['mypy_extensions'])]
-                if expected is not None:
-                    assert_target_equivalence(name, expected, actual)
+            name = 'targets'
+            if incremental_step:
+                name += str(incremental_step + 1)
+            expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
+            actual = res.manager.processed_targets
+            # Skip the initial builtin cycle.
+            actual = [t for t in actual
+                      if not any(t.startswith(mod)
+                                 for mod in core_modules + ['mypy_extensions'])]
+            if expected is not None:
+                assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
                 expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)

@@ -1,6 +1,6 @@
 -- Test cases for function overloading
 [case testOverloadNotImportedNoCrash]
-# flags: --new-semantic-analyzer
+
 @overload
 def f(a): pass
 @overload
@@ -1522,7 +1522,7 @@ f(0)  # E: No overload variant of "f" matches argument type "int" \
       # N:     def f(a: str) -> None
 
 [case testCustomRedefinitionDecorator]
-# flags: --new-semantic-analyzer
+
 from typing import Any, Callable, Type
 
 class Chain(object):
@@ -5045,7 +5045,7 @@ main:2: note: Revealed type is 'Any'
 
 -- Order of errors is different
 [case testVeryBrokenOverload2]
-# flags: --new-semantic-analyzer
+
 import lib
 reveal_type(lib.func)
 [file lib.pyi]

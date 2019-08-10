@@ -5,7 +5,7 @@ from typing import Optional
 from mypy.nodes import Expression, Decorator, CallExpr, FuncDef, RefExpr, Var, ARG_POS
 from mypy.types import Type, CallableType, AnyType, TypeOfAny, TypeVarType, function_type
 from mypy.typevars import has_no_typevars
-from mypy.newsemanal.semanal_shared import SemanticAnalyzerInterface
+from mypy.semanal_shared import SemanticAnalyzerInterface
 
 
 def infer_decorator_signature_if_simple(dec: Decorator,

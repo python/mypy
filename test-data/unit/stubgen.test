@@ -1480,3 +1480,34 @@ def g(x: Any, y: str) -> Any: ...
 
 class A:
     def f(self, x: Any) -> None: ...
+
+[case testPlacementOfDecorators]
+class A:
+    @property
+    def x(self):
+        self.y = 'y'
+        return 'x'
+
+class B:
+    @property
+    def x(self):
+        return 'x'
+
+    @x.setter
+    def x(self, value):
+        self.y = 'y'
+
+[out]
+from typing import Any
+
+class A:
+    y: str = ...
+    @property
+    def x(self): ...
+
+class B:
+    @property
+    def x(self): ...
+    y: str = ...
+    @x.setter
+    def x(self, value: Any) -> None: ...

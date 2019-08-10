@@ -7,21 +7,19 @@ from typing_extensions import Final
 from mypy_extensions import trait
 
 from mypy.nodes import (
-    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
+    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF,
+    SymbolNode, SymbolTable
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance, TPDICT_FB_NAMES
+from mypy.types import Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES
 from mypy.tvar_scope import TypeVarScope
+from mypy import join
 
-# Priorities for ordering of patches within the final "patch" phase of semantic analysis
-# (after pass 3):
+# Priorities for ordering of patches within the "patch" phase of semantic analysis
+# (after the main pass):
 
-# Fix forward references (needs to happen first)
-PRIORITY_FORWARD_REF = 0  # type: Final
 # Fix fallbacks (does joins)
 PRIORITY_FALLBACKS = 1  # type: Final
-# Checks type var values (does subtype checks)
-PRIORITY_TYPEVAR_VALUES = 2  # type: Final
 
 
 @trait
@@ -41,6 +39,10 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+    @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         raise NotImplementedError
@@ -50,8 +52,21 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def dereference_module_cross_ref(
-            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
+    def record_incomplete_ref(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def defer(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        """Is a module or class namespace potentially missing some definitions?"""
+        raise NotImplementedError
+
+    @abstractproperty
+    def final_iteration(self) -> bool:
+        """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
 
@@ -89,8 +104,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
-                  report_invalid_types: bool = True,
-                  third_pass: bool = False) -> Type:
+                  report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 
     @abstractmethod
@@ -102,8 +116,33 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
-        """Add node to global symbol table (or to nearest class if there is one)."""
+    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
+        """Add node to the current symbol table."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def current_symbol_table(self) -> SymbolTable:
+        """Get currently active symbol table.
+
+        May be module, class, or local namespace.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_symbol(self, name: str, node: SymbolNode, context: Context,
+                   module_public: bool = True, module_hidden: bool = False,
+                   can_defer: bool = True) -> bool:
+        """Add symbol to the current symbol table."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
+        """Add symbol to the current symbol table, skipping locals.
+
+        This is used to store symbol nodes in a symbol table that
+        is going to be serialized (local namespaces are not serialized).
+        See implementation docstring for more details.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -154,3 +193,22 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
             return sig.with_name(fdef.name())
     else:
         return sig
+
+
+def calculate_tuple_fallback(typ: TupleType) -> None:
+    """Calculate a precise item type for the fallback of a tuple type.
+
+    This must be called only after the main semantic analysis pass, since joins
+    aren't available before that.
+
+    Note that there is an apparent chicken and egg problem with respect
+    to verifying type arguments against bounds. Verifying bounds might
+    require fallbacks, but we might use the bounds to calculate the
+    fallbacks. In partice this is not a problem, since the worst that
+    can happen is that we have invalid type argument values, and these
+    can happen in later stages as well (they will generate errors, but
+    we don't prevent their existence).
+    """
+    fallback = typ.partial_fallback
+    assert fallback.type.fullname() == 'builtins.tuple'
+    fallback.args[0] = join.join_type_list(list(typ.items))

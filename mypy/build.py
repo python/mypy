@@ -29,12 +29,9 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
-from mypy.semanal_pass1 import SemanticAnalyzerPass1
-from mypy.newsemanal.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
-from mypy.semanal_pass3 import SemanticAnalyzerPass3
-from mypy.newsemanal.semanal import NewSemanticAnalyzer
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
+from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.semanal import SemanticAnalyzer
+from mypy.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
@@ -59,6 +56,7 @@ from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadat
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
+from mypy.freetree import free_tree
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -198,7 +196,9 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
-    errors = Errors(options.show_error_context, options.show_column_numbers)
+    errors = Errors(options.show_error_context,
+                    options.show_column_numbers,
+                    options.show_error_codes)
     plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
@@ -471,6 +471,7 @@ class BuildManager:
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
+      fg_deps:         A fine-grained dependency map
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       plugins_snapshot:
@@ -523,25 +524,24 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
+        # fg_deps holds the dependencies of every module that has been
+        # processed. We store this in BuildManager so that we can compute
+        # dependencies as we go, which allows us to free ASTs and type information,
+        # saving a ton of memory on net.
+        self.fg_deps = {}  # type: Dict[str, Set[str]]
         # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
-        if options.new_semantic_analyzer:
-            # Set of namespaces (module or class) that are being populated during semantic
-            # analysis and may have missing definitions.
-            self.incomplete_namespaces = set()  # type: Set[str]
-            self.new_semantic_analyzer = NewSemanticAnalyzer(
-                self.modules,
-                self.missing_modules,
-                self.incomplete_namespaces,
-                self.errors,
-                self.plugin)
-        else:
-            self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
-                                                           self.errors, self.plugin)
-            self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
-                                                                 self.semantic_analyzer)
+        # Set of namespaces (module or class) that are being populated during semantic
+        # analysis and may have missing definitions.
+        self.incomplete_namespaces = set()  # type: Set[str]
+        self.semantic_analyzer = SemanticAnalyzer(
+            self.modules,
+            self.missing_modules,
+            self.incomplete_namespaces,
+            self.errors,
+            self.plugin)
         self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -894,15 +894,13 @@ def invert_deps(deps: Dict[str, Set[str]],
     return rdeps
 
 
-def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
-                            manager: BuildManager,
+def generate_deps_for_cache(manager: BuildManager,
                             graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
     """Generate fine-grained dependencies into a form suitable for serializing.
 
-    This does a few things:
-    1. Computes all fine grained deps from modules that were processed
-    2. Splits fine-grained deps based on the module of the trigger
-    3. For each module we generated fine-grained deps for, load any previous
+    This does a couple things:
+    1. Splits fine-grained deps based on the module of the trigger
+    2. For each module we generated fine-grained deps for, load any previous
        deps and merge them in.
 
     Returns a dictionary from module ids to all dependencies on that
@@ -910,16 +908,10 @@ def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
     associated with the nearest parent module that is in the build, or the
     fake module FAKE_ROOT_MODULE if none are.
     """
-    from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
-
-    # Compute the full set of dependencies from everything we've processed.
-    deps = {}  # type: Dict[str, Set[str]]
-    things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
-    for st_deps in things:
-        merge_dependencies(st_deps, deps)
+    from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
     # Split the dependencies out into based on the module that is depended on.
-    rdeps = invert_deps(deps, graph)
+    rdeps = invert_deps(manager.fg_deps, graph)
 
     # We can't just clobber existing dependency information, so we
     # load the deps for every module we've generated new dependencies
@@ -1884,26 +1876,6 @@ class State:
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
-    def patch_dependency_parents(self) -> None:
-        """
-        In Python, if a and a.b are both modules, running `import a.b` will
-        modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
-        details.
-
-        However, this patching process can occur after `a` has been parsed and
-        serialized during incremental mode. Consequently, we need to repeat this
-        patch when deserializing a cached file.
-
-        This function should be called only when processing fresh SCCs -- the
-        semantic analyzer will perform this patch for us when processing stale
-        SCCs.
-        """
-        if not self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.semantic_analyzer
-            for dep in self.dependencies:
-                analyzer.add_submodules_to_parent_modules(dep, True)
-
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -1998,12 +1970,6 @@ class State:
 
         self.semantic_analysis_pass1()
 
-        if not self.options.new_semantic_analyzer:
-            # Initialize module symbol table, which was populated by the
-            # semantic analyzer.
-            # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
-            self.tree.names = manager.semantic_analyzer.globals
-
         self.check_blockers()
 
     def parse_inline_configuration(self, source: str) -> None:
@@ -2023,31 +1989,21 @@ class State:
         """
         options = self.options
         assert self.tree is not None
-        if options.new_semantic_analyzer:
-            # Do the first pass of semantic analysis: analyze the reachability
-            # of blocks and import statements. We must do this before
-            # processing imports, since this may mark some import statements as
-            # unreachable.
-            #
-            # TODO: Once we remove the old semantic analyzer, this no longer should
-            #     be considered as a semantic analysis pass -- it's an independent
-            #     pass.
-            analyzer = SemanticAnalyzerPreAnalysis()
-            with self.wrap_context():
-                analyzer.visit_file(self.tree, self.xpath, self.id, options)
-            # TODO: Do this while contructing the AST?
-            self.tree.names = SymbolTable()
-            if options.allow_redefinition:
-                # Perform renaming across the AST to allow variable redefinitions
-                self.tree.accept(VariableRenameVisitor())
-        else:
-            # Do the first pass of semantic analysis: add top-level
-            # definitions in the file to the symbol table.  We must do
-            # this before processing imports, since this may mark some
-            # import statements as unreachable.
-            first = SemanticAnalyzerPass1(self.manager.semantic_analyzer)
-            with self.wrap_context():
-                first.visit_file(self.tree, self.xpath, self.id, options)
+        # Do the first pass of semantic analysis: analyze the reachability
+        # of blocks and import statements. We must do this before
+        # processing imports, since this may mark some import statements as
+        # unreachable.
+        #
+        # TODO: This should not be considered as a semantic analysis
+        #     pass -- it's an independent pass.
+        analyzer = SemanticAnalyzerPreAnalysis()
+        with self.wrap_context():
+            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        # TODO: Do this while contructing the AST?
+        self.tree.names = SymbolTable()
+        if options.allow_redefinition:
+            # Perform renaming across the AST to allow variable redefinitions
+            self.tree.accept(VariableRenameVisitor())
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
@@ -2102,30 +2058,6 @@ class State:
 
         self.check_blockers()  # Can fail due to bogus relative imports
 
-    def semantic_analysis(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        self.manager.semantic_analyzer.imports.clear()
-        with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
-        self.patches = patches
-        for dep in self.manager.semantic_analyzer.imports:
-            self.add_dependency(dep)
-            self.priorities[dep] = PRI_LOW
-
-    def semantic_analysis_pass_three(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
-                                                            self.options, patches)
-            if self.options.dump_type_stats:
-                dump_type_stats(self.tree, self.xpath, self.manager.modules)
-        self.patches = patches + self.patches
-
-    def semantic_analysis_apply_patches(self) -> None:
-        apply_semantic_analyzer_patches(self.patches)
-
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
             return
@@ -2172,6 +2104,16 @@ class State:
                                 typemap=self.type_map())
             manager.report_file(self.tree, self.type_map(), self.options)
 
+            self.update_fine_grained_deps(self.manager.fg_deps)
+            self.free_state()
+            if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
+                free_tree(self.tree)
+
+    def free_state(self) -> None:
+        if self._type_checker:
+            self._type_checker.reset()
+            self._type_checker = None
+
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
                                      type_map: Dict[Expression, Type]) -> None:
@@ -2205,6 +2147,13 @@ class State:
                                 type_map=self.type_map(),
                                 python_version=self.options.python_version,
                                 options=self.manager.options)
+
+    def update_fine_grained_deps(self, deps: Dict[str, Set[str]]) -> None:
+        options = self.manager.options
+        if options.cache_fine_grained or options.fine_grained_incremental:
+            from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
+            merge_dependencies(self.compute_fine_grained_deps(), deps)
+            TypeState.update_protocol_deps(deps)
 
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
@@ -2616,10 +2565,9 @@ def dispatch(sources: List[BuildSource],
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.update_protocol_deps()
+            TypeState.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
-                proto_deps = TypeState.proto_deps or {}
-                rdeps = generate_deps_for_cache(proto_deps, manager, graph)
+                rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)
 
     if manager.options.dump_deps:
@@ -2989,8 +2937,6 @@ def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManage
     t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
-    for id in modules:
-        graph[id].patch_dependency_parents()
     t2 = time.time()
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
@@ -3012,34 +2958,30 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-        if not manager.options.new_semantic_analyzer:
-            manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc, manager.errors)
-    else:
-        for id in stale:
-            graph[id].semantic_analysis()
-        for id in stale:
-            graph[id].semantic_analysis_pass_three()
-        for id in stale:
-            graph[id].semantic_analysis_apply_patches()
+    semantic_analysis_for_scc(graph, scc, manager.errors)
+
+    # Track what modules aren't yet done so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
     for id in stale:
         graph[id].type_check_first_pass()
-    more = True
-    while more:
-        more = False
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+
+    while unfinished_modules:
         for id in stale:
-            if graph[id].type_check_second_pass():
-                more = True
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+                graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        graph[id].finish_passes()
-        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            graph[id].compute_fine_grained_deps()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()

@@ -10,7 +10,8 @@ from typing_extensions import ClassVar, Final, overload
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
-    has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias
+    has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
+    make_optional_type,
 )
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
@@ -38,6 +39,7 @@ import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
 from mypy.erasetype import replace_meta_vars, erase_type
+from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy import message_registry
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -56,7 +58,6 @@ from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
-from mypy.typeanal import make_optional_type
 from mypy.typeops import tuple_fallback
 
 # Type of callback user for checking individual function arguments. See
@@ -69,6 +70,12 @@ ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, M
 # nicely captures most corner cases, its worst case complexity is exponential,
 # see https://github.com/python/mypy/pull/5255#discussion_r196896335 for discussion.
 MAX_UNIONS = 5  # type: Final
+
+
+# Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
+# NOTE: All these types are subtypes of AbstractSet.
+OVERLAPPING_TYPES_WHITELIST = ['builtins.set', 'builtins.frozenset',
+                               'typing.KeysView', 'typing.ItemsView']  # type: Final
 
 
 class TooManyUnions(Exception):
@@ -1981,17 +1988,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # testCustomEqCheckStrictEquality for an example.
                 if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
                     right_type = self.accept(right)
+                    # We suppress the error if there is a custom __eq__() method on either
+                    # side. User defined (or even standard library) classes can define this
+                    # to return True for comparisons between non-overlapping types.
                     if (not custom_equality_method(left_type) and
                             not custom_equality_method(right_type)):
-                        # We suppress the error if there is a custom __eq__() method on either
-                        # side. User defined (or even standard library) classes can define this
-                        # to return True for comparisons between non-overlapping types.
+                        # Also flag non-overlapping literals in situations like:
+                        #    x: Literal['a', 'b']
+                        #    if x == 'c':
+                        #        ...
+                        left_type = try_getting_literal(left_type)
+                        right_type = try_getting_literal(right_type)
                         if self.dangerous_comparison(left_type, right_type):
                             self.msg.dangerous_comparison(left_type, right_type, 'equality', e)
 
             elif operator == 'is' or operator == 'is not':
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
+                left_type = try_getting_literal(left_type)
+                right_type = try_getting_literal(right_type)
                 if self.dangerous_comparison(left_type, right_type):
                     self.msg.dangerous_comparison(left_type, right_type, 'identity', e)
                 method_type = None
@@ -2028,6 +2043,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.options.strict_equality:
             return False
+        if self.chk.binder.is_unreachable_warning_suppressed():
+            # We are inside a function that contains type variables with value restrictions in
+            # its signature. In this case we just suppress all strict-equality checks to avoid
+            # false positives for code like:
+            #
+            #     T = TypeVar('T', str, int)
+            #     def f(x: T) -> T:
+            #         if x == 0:
+            #             ...
+            #         return x
+            #
+            # TODO: find a way of disabling the check only for types resulted from the expansion.
+            return False
         if isinstance(left, NoneType) or isinstance(right, NoneType):
             return False
         if isinstance(left, UnionType) and isinstance(right, UnionType):
@@ -2038,6 +2066,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We need to special case bytes, because both 97 in b'abc' and b'a' in b'abc'
             # return True (and we want to show the error only if the check can _never_ be True).
             return False
+        if isinstance(left, Instance) and isinstance(right, Instance):
+            # Special case some builtin implementations of AbstractSet.
+            if (left.type.fullname() in OVERLAPPING_TYPES_WHITELIST and
+                    right.type.fullname() in OVERLAPPING_TYPES_WHITELIST):
+                abstract_set = self.chk.lookup_typeinfo('typing.AbstractSet')
+                left = map_instance_to_supertype(left, abstract_set)
+                right = map_instance_to_supertype(right, abstract_set)
+                return not is_overlapping_types(left.args[0], right.args[0])
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
@@ -3035,6 +3071,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""
+        self.chk.check_default_args(e, body_is_trivial=False)
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
@@ -3993,6 +4030,13 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
                 or any(is_literal_type_like(item) for item in t.values))
     else:
         return False
+
+
+def try_getting_literal(typ: Type) -> Type:
+    """If possible, get a more precise literal type for a given type."""
+    if isinstance(typ, Instance) and typ.last_known_value is not None:
+        return typ.last_known_value
+    return typ
 
 
 def is_expr_literal_type(node: Expression) -> bool:

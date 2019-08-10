@@ -325,7 +325,7 @@ def bar() -> None:
 ==
 
 [case testSuggestNewSemanal]
-# flags: --strict-optional --new-semantic-analyzer
+# flags: --strict-optional
 # suggest: foo.Foo.foo
 # suggest: foo.foo
 [file foo.py]

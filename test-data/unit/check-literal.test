@@ -694,7 +694,7 @@ y: Foo[Foo]     # E: Literal[...] must have at least one parameter
 [out]
 
 [case testLiteralBadRawExpressionWithBadType]
-# flags: --new-semantic-analyzer
+
 NotAType = 3
 def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Variable "__main__.NotAType" is not valid as a type \
                                                         # E: Invalid type comment or annotation
@@ -877,7 +877,7 @@ reveal_type(d)      # N: Revealed type is 'Any'
 [out]
 
 [case testLiteralDisallowFloatsAndComplex]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal
 a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
 b1: 3.14             # E: Invalid type: float literals cannot be used as a type
@@ -916,7 +916,7 @@ c: {"a": 1, "b": 2}             # E: Invalid type comment or annotation
 d: {1, 2, 3}                    # E: Invalid type comment or annotation
 
 [case testLiteralDisallowCollections2]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal
 a: (1, 2, 3)                    # E: Syntax error in type annotation \
                                 # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
@@ -926,7 +926,7 @@ c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid a
 [out]
 
 [case testLiteralDisallowCollectionsTypeAlias]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal
 at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias: expression is not a valid type
 bt = {"a": 1, "b": 2}
@@ -936,7 +936,7 @@ b: bt                           # E: Variable "__main__.bt" is not valid as a ty
 [out]
 
 [case testLiteralDisallowCollectionsTypeAlias2]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal
 at = Literal[{1, 2, 3}]         # E: Invalid type alias: expression is not a valid type
 bt = {1, 2, 3}
@@ -1782,7 +1782,7 @@ issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Litera
 [out]
 
 [case testLiteralErrorsWhenSubclassed]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal
 from typing_extensions import Literal as Renamed
 import typing_extensions as indirect
@@ -2776,7 +2776,7 @@ over_literal(reveal_type(WrapperClass(var3)))   # N: Revealed type is '__main__.
 [out]
 
 [case testLiteralFinalUsedInLiteralType]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal, Final
 a: Final[int] = 3
 b: Final = 3
@@ -2842,7 +2842,7 @@ expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type
 --
 
 [case testLiteralWithEnumsBasic]
-# flags: --new-semantic-analyzer
+
 from typing_extensions import Literal
 from enum import Enum
 

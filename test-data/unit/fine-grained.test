@@ -108,7 +108,7 @@ def g(x: int) -> None: pass
 main:2: error: Module has no attribute "f"
 
 [case testClassChangedIntoFunction]
-# flags: --new-semantic-analyzer
+
 import m
 def f(a: m.A) -> None:
     pass
@@ -122,7 +122,7 @@ main:3: error: Function "m.A" is not valid as a type
 main:3: note: Perhaps you need "Callable[...]" or a callback protocol?
 
 [case testClassChangedIntoFunction2]
-# flags: --new-semantic-analyzer
+
 import m
 class B:
     def f(self, a: m.A) -> None: pass
@@ -5315,7 +5315,7 @@ a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
 [case testChangeTypeVarToFunction]
-# flags: --new-semantic-analyzer
+
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5346,7 +5346,7 @@ main:10: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeVarToModule]
-# flags: --new-semantic-analyzer
+
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5375,7 +5375,7 @@ main:10: error: Module "T" is not valid as a type
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeClassToModule]
-# flags: --new-semantic-analyzer
+
 import a
 x: a.C
 def f() -> None:
@@ -5399,7 +5399,7 @@ main:5: error: Module not callable
 main:8: error: Module "C" is not valid as a type
 
 [case testChangeTypeVarToTypeAlias]
-# flags: --new-semantic-analyzer
+
 import a
 from typing import Generic
 Alias = C[C[a.T]]
@@ -5423,7 +5423,7 @@ main:6: error: Free type variable expected in Generic[...]
 main:10: error: Bad number of arguments for type alias, expected: 0, given: 1
 
 [case testChangeTypeAliasToModule]
-# flags: --new-semantic-analyzer
+
 import a
 x: a.C
 def f() -> None:
@@ -5450,7 +5450,7 @@ main:5: error: Module not callable
 main:8: error: Module "D" is not valid as a type
 
 [case testChangeTypeAliasToModuleUnqualified]
-# flags: --new-semantic-analyzer
+
 from a import C
 x: C
 def f() -> None:
@@ -7820,7 +7820,7 @@ b.py:5: error: Name 'a' already defined on line 2
 b.py:5: error: Name 'a' already defined on line 2
 
 [case testFakeOverloadCrash2]
-# flags: --new-semantic-analyzer
+
 # this test just should not crash
 import a
 [file a.py]
@@ -8312,7 +8312,7 @@ x = 'no way'
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNamedTupleForwardFunctionDirect]
-# flags: --ignore-missing-imports --new-semantic-analyzer
+# flags: --ignore-missing-imports
 from typing import NamedTuple
 from b import B
 
@@ -8325,7 +8325,7 @@ B = func
 main:5: error: Variable "b.B" is not valid as a type
 
 [case testNamedTupleForwardFunctionIndirect]
-# flags: --ignore-missing-imports --new-semantic-analyzer
+# flags: --ignore-missing-imports
 from typing import NamedTuple
 from a import A
 
@@ -8341,7 +8341,7 @@ B = func
 main:5: error: Variable "a.A" is not valid as a type
 
 [case testNamedTupleForwardFunctionIndirectReveal]
-# flags: --ignore-missing-imports --new-semantic-analyzer
+# flags: --ignore-missing-imports
 import m
 [file m.py]
 from typing import NamedTuple
@@ -8371,7 +8371,7 @@ m.py:5: note: Revealed type is 'A?'
 m.py:7: note: Revealed type is 'A?'
 
 [case testAliasForwardFunctionDirect]
-# flags: --ignore-missing-imports --new-semantic-analyzer
+# flags: --ignore-missing-imports
 from typing import Optional
 from b import B
 
@@ -8384,7 +8384,7 @@ B = int()
 main:5: error: Variable "b.B" is not valid as a type
 
 [case testAliasForwardFunctionIndirect]
-# flags: --ignore-missing-imports --new-semantic-analyzer
+# flags: --ignore-missing-imports
 from typing import Optional
 from a import A
 
@@ -8825,7 +8825,7 @@ B().x
 ==
 
 [case testNewSemanticAnalyzerUpdateMethodAndClass]
-# flags: --new-semantic-analyzer
+
 import m
 
 m.x
@@ -8855,7 +8855,7 @@ y = ''
 ==
 
 [case testInlineConfigFineGrained1]
-# flags: --new-semantic-analyzer
+
 import a
 [file a.py]
 # mypy: no-warn-no-return
@@ -8943,7 +8943,7 @@ a.py:11: error: Type signature has too few arguments
 c.py:1: error: Type signature has too few arguments
 
 [case testErrorReportingNewAnalyzer]
-# flags: --new-semantic-analyzer --disallow-any-generics
+# flags: --disallow-any-generics
 from a import A
 
 def f() -> None:
@@ -8983,7 +8983,7 @@ class B: ...
 ==
 
 [case testClassVariableOrderingRefresh]
-# flags: --new-semantic-analyzer
+
 from b import bar
 
 def foo(x: str) -> None: pass
@@ -9006,7 +9006,7 @@ main:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 main:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
 [case testInfiniteLoop]
-# flags: --new-semantic-analyzer
+
 [file a.py]
 from b import f
 from typing import Callable, TypeVar
@@ -9036,7 +9036,7 @@ def f() -> str: pass
 ==
 
 [case testInfiniteLoop2]
-# flags: --new-semantic-analyzer
+
 [file a.py]
 from b import f
 from typing import Callable, TypeVar, NamedTuple

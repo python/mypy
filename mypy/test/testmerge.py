@@ -106,6 +106,7 @@ class ASTMergeSuite(DataSuite):
         options.incremental = True
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
+        options.export_types = True
         options.show_traceback = True
         options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
@@ -216,7 +217,13 @@ class ASTMergeSuite(DataSuite):
         for module_id in sorted(manager.manager.modules):
             if not is_dumped_module(module_id):
                 continue
-            type_map = manager.graph[module_id].type_map()
+            all_types = manager.manager.all_types
+            # Compute a module type map from the global type map
+            tree = manager.graph[module_id].tree
+            assert tree is not None
+            type_map = {node: all_types[node]
+                        for node in get_subexpressions(tree)
+                        if node in all_types}
             if type_map:
                 a.append('## {}'.format(module_id))
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),

@@ -246,7 +246,7 @@ def bar(x):
 Total      1      11     90.91%
 
 [case testAnyExprReportHigherKindedTypesAreNotAny]
-# cmd: mypy --new-semantic-analyzer --any-exprs-report report i.py
+# cmd: mypy --any-exprs-report report i.py
 
 [file i.py]
 from enum import Enum

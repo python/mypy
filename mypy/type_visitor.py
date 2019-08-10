@@ -22,7 +22,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
+    UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
     PlaceholderType,
 )
 
@@ -101,9 +101,6 @@ class TypeVisitor(Generic[T]):
     @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
         pass
-
-    def visit_forwardref_type(self, t: ForwardRef) -> T:
-        raise RuntimeError('Internal error: unresolved forward reference')
 
     def visit_placeholder_type(self, t: PlaceholderType) -> T:
         raise RuntimeError('Internal error: unresolved placeholder type {}'.format(t.fullname))
@@ -237,9 +234,6 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
 
-    def visit_forwardref_type(self, t: ForwardRef) -> Type:
-        return t
-
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
         return PlaceholderType(t.fullname, self.translate_types(t.args), t.line)
 
@@ -317,12 +311,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
-
-    def visit_forwardref_type(self, t: ForwardRef) -> T:
-        if t.resolved:
-            return t.resolved.accept(self)
-        else:
-            return t.unbound.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         return self.strategy([])

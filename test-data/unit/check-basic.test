@@ -325,7 +325,7 @@ import e
 1+'no'  # E: Unsupported operand types for + ("int" and "str")
 
 [case testModuleAsTypeNoCrash]
-# flags: --new-semantic-analyzer
+
 import mock
 from typing import Union
 
@@ -341,7 +341,7 @@ if isinstance(x, B):
 [out]
 
 [case testModuleAsTypeNoCrash2]
-# flags: --new-semantic-analyzer
+
 import mock
 from typing import overload, Any, Union
 

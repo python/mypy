@@ -490,7 +490,7 @@ class Instr(Generic[T]): ...
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 
 [case testDynamicClassPluginNegatives]
-# flags: --new-semantic-analyzer --config-file tmp/mypy.ini
+# flags: --config-file tmp/mypy.ini
 from mod import declarative_base, Column, Instr, non_declarative_base
 
 Bad1 = non_declarative_base()

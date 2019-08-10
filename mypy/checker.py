@@ -926,19 +926,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Type check initialization expressions.
                 body_is_trivial = self.is_trivial_body(defn.body)
-                for arg in item.arguments:
-                    if arg.initializer is None:
-                        continue
-                    if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
-                        continue
-                    name = arg.variable.name()
-                    msg = 'Incompatible default for '
-                    if name.startswith('__tuple_arg_'):
-                        msg += "tuple argument {}".format(name[12:])
-                    else:
-                        msg += 'argument "{}"'.format(name)
-                    self.check_simple_assignment(arg.variable.type, arg.initializer,
-                        context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
+                self.check_default_args(item, body_is_trivial)
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
@@ -977,6 +965,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
+        for arg in item.arguments:
+            if arg.initializer is None:
+                continue
+            if body_is_trivial and isinstance(arg.initializer, EllipsisExpr):
+                continue
+            name = arg.variable.name()
+            msg = 'Incompatible default for '
+            if name.startswith('__tuple_arg_'):
+                msg += "tuple argument {}".format(name[12:])
+            else:
+                msg += 'argument "{}"'.format(name)
+            self.check_simple_assignment(arg.variable.type, arg.initializer,
+                context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
 
     def is_forward_op_method(self, method_name: str) -> bool:
         if self.options.python_version[0] == 2 and method_name == '__div__':

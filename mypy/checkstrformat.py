@@ -174,11 +174,11 @@ class StringFormatterChecker:
                                         replacements: Expression,
                                         expr: FormatStringExpr) -> None:
         if (isinstance(replacements, DictExpr) and
-                all(isinstance(k, (StrExpr, BytesExpr))
+                all(isinstance(k, (StrExpr, BytesExpr, UnicodeExpr))
                     for k, v in replacements.items)):
             mapping = {}  # type: Dict[str, Type]
             for k, v in replacements.items:
-                key_str = cast(StrExpr, k).value
+                key_str = cast(FormatStringExpr, k).value
                 mapping[key_str] = self.accept(v)
 
             for specifier in specifiers:

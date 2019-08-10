@@ -581,7 +581,7 @@ main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
 -- Error formatting is a bit different (and probably better) with new analyzer
 [case testGenericTypeAliasesWrongAliases]
-# flags: --show-column-numbers --python-version 3.6 --no-strict-optional --new-semantic-analyzer
+# flags: --show-column-numbers --python-version 3.6 --no-strict-optional
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')
@@ -722,7 +722,7 @@ reveal_type(f('a'))  # N: Revealed type is '__main__.D[builtins.str*]'
 main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
 
 [case testGenericTypeAliasesSubclassingBad]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic, Tuple, Union
 T = TypeVar('T')
 class Node(Generic[T]):
@@ -963,7 +963,7 @@ O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1  # E:
 [out]
 
 [case testAliasesInClassBodyNormalVsSubscripted]
-# flags: --new-semantic-analyzer
+
 from typing import Union, Type, Iterable
 
 class A: pass
@@ -1484,8 +1484,8 @@ class A(Generic[T]):
 
 -- This is non-trivial with new analyzer (and also in fine grained incremental):
 -- We need to store whole tvar_scope, not only active class.
-[case testFunctionInGenericInnerClassTypeVariable]
-# flags: --no-new-semantic-analyzer
+[case testFunctionInGenericInnerClassTypeVariable-skip]
+
 from typing import TypeVar, Generic
 
 T = TypeVar('T')
