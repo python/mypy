@@ -4489,7 +4489,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
             return
         message = "Name '{}' is not defined".format(name)
-        self.fail(message, ctx)
+        self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -4563,8 +4563,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     def fail(self,
              msg: str,
              ctx: Context,
-             *,
              serious: bool = False,
+             *,
              code: Optional[ErrorCode] = None,
              blocker: bool = False) -> None:
         if (not serious and
