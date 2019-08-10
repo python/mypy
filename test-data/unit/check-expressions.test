@@ -2303,3 +2303,9 @@ def f(x: any) -> None:  # E: Name 'any' is not defined \
 def f(x: Optional[str]) -> None:  # E: Name 'Optional' is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Optional")
     pass
+
+[case testAssertionLazily]
+from typing import Optional, List
+li: Optional[List] = []
+assert li is None, li[0]
+[builtins fixtures/list.pyi]
