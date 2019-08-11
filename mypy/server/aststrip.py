@@ -110,7 +110,7 @@ class NodeStripVisitor(TraverserVisitor):
             # this causes unanalyzed_type to be modified in place. We needed to revert this
             # in order to get the state exactly as it was before semantic analysis.
             # See also #4814.
-            assert isinstance(node.type, CallableType)
+            assert isinstance(node.type, CallableType)  # type: ignore
             node.type.variables = []
         with self.enter_method(node.info) if node.info else nothing():
             super().visit_func_def(node)
