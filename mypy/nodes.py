@@ -451,7 +451,7 @@ class FuncBase(Node):
         # something else for decorated functions.
         self.type = None  # type: Optional[mypy.types.Type]
         # Original, not semantically analyzed type (used for reprocessing)
-        self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
+        self.unanalyzed_type = None  # type: Optional[mypy.types.ProperType]
         # If method, reference to TypeInfo
         # TODO: Type should be Optional[TypeInfo]
         self.info = FUNC_NO_INFO
