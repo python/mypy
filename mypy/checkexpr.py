@@ -18,7 +18,7 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    StarType, is_optional, remove_optional, is_generic_instance
+    StarType, is_optional, remove_optional, is_generic_instance, get_proper_type
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -585,6 +585,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply method plugin
             method_callback = self.plugin.get_method_hook(fullname)
             assert method_callback is not None  # Assume that caller ensures this
+            object_type = get_proper_type(object_type)
             return method_callback(
                 MethodContext(object_type, formal_arg_types, formal_arg_kinds,
                               callee.arg_names, formal_arg_names,
@@ -606,6 +607,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for formal, actuals in enumerate(formal_to_actual):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
+            object_type = get_proper_type(object_type)
             return signature_hook(
                 MethodSigContext(object_type, formal_arg_exprs, callee, context, self.chk))
         else:

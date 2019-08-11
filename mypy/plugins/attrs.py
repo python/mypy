@@ -20,7 +20,7 @@ from mypy.plugins.common import (
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
-    Overloaded, UnionType, FunctionLike
+    Overloaded, UnionType, FunctionLike, get_proper_type
 )
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
@@ -94,6 +94,7 @@ class Attribute:
                 converter_type = converter.type
 
             init_type = None
+            converter_type = get_proper_type(converter_type)
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
@@ -473,7 +474,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
         if isinstance(converter, RefExpr) and converter.node:
             if (isinstance(converter.node, FuncDef)
                     and converter.node.type
-                    and isinstance(converter.node.type, FunctionLike)):
+                    and isinstance(converter.node.type, FunctionLike)):  # type: ignore
                 return Converter(converter.node.fullname())
             elif (isinstance(converter.node, OverloadedFuncDef)
                     and is_valid_overloaded_converter(converter.node)):
@@ -502,7 +503,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
 
 
 def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:
-    return all((not isinstance(item, Decorator) or isinstance(item.func.type, FunctionLike))
+    return all((not isinstance(item, Decorator) or isinstance(item.func.type, FunctionLike))  # type: ignore
                for item in defn.items)
 
 

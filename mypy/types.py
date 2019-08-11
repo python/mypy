@@ -2274,7 +2274,7 @@ def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:
     return flat_items
 
 
-def union_items(typ: Type) -> List[Type]:
+def union_items(typ: Type) -> List[ProperType]:
     """Return the flattened items of a union type.
 
     For non-union types, return a list containing just the argument.
