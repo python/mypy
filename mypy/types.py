@@ -2155,7 +2155,6 @@ def true_or_false(t: Type) -> ProperType:
 
 def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
     if func.type:
-        assert isinstance(func.type, ProperType)  # TODO: can this ever be an alias?
         assert isinstance(func.type, FunctionLike)
         return func.type
     else:
@@ -2333,7 +2332,7 @@ def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]
 names = globals().copy()  # type: Final
 names.pop('NOT_READY', None)
 deserialize_map = {
-    key: obj.deserialize  # type: ignore
+    key: obj.deserialize
     for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
 }  # type: Final

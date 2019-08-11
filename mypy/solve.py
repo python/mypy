@@ -53,7 +53,7 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
         bottom = get_proper_type(bottom)
         if isinstance(top, AnyType) or isinstance(bottom, AnyType):
             source_any = top if isinstance(top, AnyType) else bottom
-            assert isinstance(source_any, AnyType)  # type: ignore
+            assert isinstance(source_any, AnyType)
             res.append(AnyType(TypeOfAny.from_another_any, source_any=source_any))
             continue
         elif bottom is None:

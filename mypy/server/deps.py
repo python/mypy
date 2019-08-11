@@ -180,7 +180,7 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.enter_function(o)
         target = self.scope.current_target()
         if o.type:
-            if self.is_class and isinstance(o.type, FunctionLike):  # type: ignore
+            if self.is_class and isinstance(o.type, FunctionLike):
                 signature = bind_self(o.type)  # type: Type
             else:
                 signature = o.type

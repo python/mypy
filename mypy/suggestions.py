@@ -424,7 +424,7 @@ class SuggestionEngine:
             elif (isinstance(dec, CallExpr)
                     and isinstance(dec.callee, RefExpr)
                     and isinstance(dec.callee.node, FuncDef)
-                    and isinstance(dec.callee.node.type, CallableType)):  # type: ignore
+                    and isinstance(dec.callee.node.type, CallableType)):
                 typ = get_proper_type(dec.callee.node.type.ret_type)
 
             if not isinstance(typ, FunctionLike):

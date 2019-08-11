@@ -430,7 +430,7 @@ class ASTConverter:
                        args,
                        body,
                        func_type)
-        if isinstance(func_def.type, CallableType):  # type: ignore
+        if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
         if func_type is not None:

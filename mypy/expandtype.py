@@ -102,7 +102,7 @@ class ExpandTypeVisitor(TypeVisitor[ProperType]):
         items = []  # type: List[CallableType]
         for item in t.items():
             new_item = item.accept(self)
-            assert isinstance(new_item, CallableType)  # type: ignore
+            assert isinstance(new_item, CallableType)
             items.append(new_item)
         return Overloaded(items)
 

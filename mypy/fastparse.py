@@ -578,7 +578,7 @@ class ASTConverter:
                        args,
                        self.as_required_block(n.body, lineno),
                        func_type)
-        if isinstance(func_def.type, CallableType):  # type: ignore
+        if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
         if is_coroutine:
@@ -1461,7 +1461,7 @@ class TypeConverter:
 
         # Do an ignore because the field doesn't exist in 3.8 (where
         # this method doesn't actually ever run.)
-        kind = n.kind  # type: str  # type: ignore
+        kind = n.kind  # type: str
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,

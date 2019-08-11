@@ -474,7 +474,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
         if isinstance(converter, RefExpr) and converter.node:
             if (isinstance(converter.node, FuncDef)
                     and converter.node.type
-                    and isinstance(converter.node.type, FunctionLike)):  # type: ignore
+                    and isinstance(converter.node.type, FunctionLike)):
                 return Converter(converter.node.fullname())
             elif (isinstance(converter.node, OverloadedFuncDef)
                     and is_valid_overloaded_converter(converter.node)):
@@ -503,7 +503,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
 
 
 def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:
-    return all((not isinstance(item, Decorator) or isinstance(item.func.type, FunctionLike))  # type: ignore
+    return all((not isinstance(item, Decorator) or isinstance(item.func.type, FunctionLike))
                for item in defn.items)
 
 
