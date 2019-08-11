@@ -202,12 +202,12 @@ def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
             and mypy.sametypes.is_same_type(c1.target, c2.target))
 
 
-def simplify_away_incomplete_types(types: List[Type]) -> List[Type]:
+def simplify_away_incomplete_types(types: Iterable[Type]) -> List[Type]:
     complete = [typ for typ in types if is_complete_type(typ)]
     if complete:
         return complete
     else:
-        return types
+        return list(types)
 
 
 def is_complete_type(typ: Type) -> bool:
@@ -301,7 +301,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)
-            assert isinstance(erased, Instance)
+            assert isinstance(erased, Instance)  # type: ignore
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if (self.direction == SUBTYPE_OF and

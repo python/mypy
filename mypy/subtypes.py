@@ -557,7 +557,7 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
                 # structural subtyping.
                 method = info.get_method(method_name)
                 if method and method.info.fullname() != 'builtins.object':
-                    getattr_type = find_node_type(method, itype, subtype)
+                    getattr_type = get_proper_type(find_node_type(method, itype, subtype))
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
         if itype.type.fallback_to_any:
@@ -615,6 +615,7 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
                             fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
     else:
         typ = node.type
+    typ = get_proper_type(typ)
     if typ is None:
         return AnyType(TypeOfAny.from_error)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
@@ -643,7 +644,7 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
     instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
 
     for member in tp.protocol_members:
-        typ = find_member(member, instance, instance)
+        typ = get_proper_type(find_member(member, instance, instance))
         if not isinstance(typ, CallableType):
             result.append(member)
     return result
@@ -1033,7 +1034,6 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
 def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
-    supertype = get_proper_type(supertype)
 
     # Since runtime type checks will ignore type arguments, erase the types.
     supertype = erase_type(supertype)
@@ -1195,7 +1195,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     is_named_instance(right, 'typing.Reversible')):
                 if not right.args:
                     return False
-                iter_type = right.args[0]
+                iter_type = get_proper_type(right.args[0])
                 if is_named_instance(right, 'builtins.tuple') and isinstance(iter_type, AnyType):
                     # TODO: We shouldn't need this special case. This is currently needed
                     #       for isinstance(x, tuple), though it's unclear why.
@@ -1261,7 +1261,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             item = left.item
             if isinstance(item, TypeVarType):
-                item = item.upper_bound
+                item = get_proper_type(item.upper_bound)
             if isinstance(item, Instance):
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_proper_subtype(metaclass, right)
@@ -1276,6 +1276,7 @@ def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False)
     any left.
     """
     # TODO Should List[int] be more precise than List[Any]?
+    right = get_proper_type(right)
     if isinstance(right, AnyType):
         return True
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)

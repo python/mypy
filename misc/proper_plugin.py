@@ -34,7 +34,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                                                       'mypy.types.TypeAliasType'):
                     # Special case: things like assert isinstance(typ, ProperType) are always OK.
                     return ctx.default_return_type
-                if right.type_object().fullname() in ('mypy.types.UninhabitedType',
+                if right.type_object().fullname() in ('mypy.types.UnboundType',
                                                       'mypy.types.TypeVarType'):
                     # Special case: these are not valid targets for a type alias and thus safe.
                     return ctx.default_return_type

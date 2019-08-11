@@ -8,7 +8,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type
+    ProperType, get_proper_type, get_proper_types
 )
 from mypy.subtypes import (
     is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
@@ -22,7 +22,7 @@ from mypy import state
 # TODO Describe this module.
 
 
-def meet_types(s: Type, t: Type) -> Type:
+def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
     s = get_proper_type(s)
     t = get_proper_type(t)
@@ -64,7 +64,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
         if (narrowed.type.fullname() == 'builtins.dict' and
-                all(isinstance(t, AnyType) for t in narrowed.args)):
+                all(isinstance(t, AnyType) for t in get_proper_types(narrowed.args))):
             return declared
         return meet_types(declared, narrowed)
     return narrowed
@@ -103,7 +103,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
         else:
             return [typ.upper_bound]
     elif isinstance(typ, UnionType):
-        return typ.items
+        return list(typ.items)
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
@@ -186,7 +186,7 @@ def is_overlapping_types(left: Type,
     # If both types are singleton variants (and are not TypeVars), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
+    def is_none_typevar_overlap(t1: ProperType, t2: ProperType) -> bool:
         return isinstance(t1, NoneType) and isinstance(t2, TypeVarType)
 
     if prohibit_none_typevar_overlap:
@@ -245,7 +245,7 @@ def is_overlapping_types(left: Type,
     if isinstance(left, TypeType) and isinstance(right, TypeType):
         return _is_overlapping_types(left.item, right.item)
 
-    def _type_object_overlap(left: Type, right: Type) -> bool:
+    def _type_object_overlap(left: ProperType, right: ProperType) -> bool:
         """Special cases for type object types overlaps."""
         # TODO: these checks are a bit in gray area, adjust if they cause problems.
         # 1. Type[C] vs Callable[..., C], where the latter is class object.
@@ -367,7 +367,7 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
     return True
 
 
-def are_tuples_overlapping(left: Type, right: Type, *,
+def are_tuples_overlapping(left: ProperType, right: ProperType, *,
                            ignore_promotions: bool = False,
                            prohibit_none_typevar_overlap: bool = False) -> bool:
     """Returns true if left and right are overlapping tuples."""
@@ -383,7 +383,7 @@ def are_tuples_overlapping(left: Type, right: Type, *,
                for l, r in zip(left.items, right.items))
 
 
-def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
+def adjust_tuple(left: ProperType, r: ProperType) -> Optional[TupleType]:
     """Find out if `left` is a Tuple[A, ...], and adjust its length to `right`"""
     if isinstance(left, Instance) and left.type.fullname() == 'builtins.tuple':
         n = r.length() if isinstance(r, TupleType) else 1
@@ -392,15 +392,16 @@ def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
 
 
 def is_tuple(typ: Type) -> bool:
+    typ = get_proper_type(typ)
     return (isinstance(typ, TupleType)
             or (isinstance(typ, Instance) and typ.type.fullname() == 'builtins.tuple'))
 
 
-class TypeMeetVisitor(TypeVisitor[Type]):
+class TypeMeetVisitor(TypeVisitor[ProperType]):
     def __init__(self, s: ProperType) -> None:
         self.s = s
 
-    def visit_unbound_type(self, t: UnboundType) -> Type:
+    def visit_unbound_type(self, t: UnboundType) -> ProperType:
         if isinstance(self.s, NoneType):
             if state.strict_optional:
                 return AnyType(TypeOfAny.special_form)
@@ -411,10 +412,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return AnyType(TypeOfAny.special_form)
 
-    def visit_any(self, t: AnyType) -> Type:
+    def visit_any(self, t: AnyType) -> ProperType:
         return self.s
 
-    def visit_union_type(self, t: UnionType) -> Type:
+    def visit_union_type(self, t: UnionType) -> ProperType:
         if isinstance(self.s, UnionType):
             meets = []  # type: List[Type]
             for x in t.items:
@@ -425,7 +426,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                      for x in t.items]
         return UnionType.make_simplified_union(meets)
 
-    def visit_none_type(self, t: NoneType) -> Type:
+    def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, NoneType) or (isinstance(self.s, Instance) and
                                                self.s.type.fullname() == 'builtins.object'):
@@ -435,10 +436,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return t
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+    def visit_uninhabited_type(self, t: UninhabitedType) -> ProperType:
         return t
 
-    def visit_deleted_type(self, t: DeletedType) -> Type:
+    def visit_deleted_type(self, t: DeletedType) -> ProperType:
         if isinstance(self.s, NoneType):
             if state.strict_optional:
                 return t
@@ -449,16 +450,16 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return t
 
-    def visit_erased_type(self, t: ErasedType) -> Type:
+    def visit_erased_type(self, t: ErasedType) -> ProperType:
         return self.s
 
-    def visit_type_var(self, t: TypeVarType) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
         else:
             return self.default(self.s)
 
-    def visit_instance(self, t: Instance) -> Type:
+    def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             si = self.s
             if t.type == si.type:
@@ -499,12 +500,12 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return meet_types(t, self.s)
         return self.default(self.s)
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> ProperType:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
-            if isinstance(result.ret_type, UninhabitedType):
+            if isinstance(get_proper_types(result.ret_type), UninhabitedType):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
             return result
@@ -520,7 +521,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return meet_types(t, call)
         return self.default(self.s)
 
-    def visit_overloaded(self, t: Overloaded) -> Type:
+    def visit_overloaded(self, t: Overloaded) -> ProperType:
         # TODO: Implement a better algorithm that covers at least the same cases
         # as TypeJoinVisitor.visit_overloaded().
         s = self.s
@@ -539,7 +540,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return meet_types(t, call)
         return meet_types(t.fallback, s)
 
-    def visit_tuple_type(self, t: TupleType) -> Type:
+    def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
             items = []  # type: List[Type]
             for i in range(t.length()):
@@ -555,7 +556,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return t
         return self.default(self.s)
 
-    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+    def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
             for (name, l, r) in self.s.zip(t):
                 if (not is_equivalent(l, r) or
@@ -579,7 +580,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_literal_type(self, t: LiteralType) -> Type:
+    def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType) and self.s == t:
             return t
         elif isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
@@ -587,11 +588,11 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_partial_type(self, t: PartialType) -> Type:
+    def visit_partial_type(self, t: PartialType) -> ProperType:
         # We can't determine the meet of partial types. We should never get here.
         assert False, 'Internal error'
 
-    def visit_type_type(self, t: TypeType) -> Type:
+    def visit_type_type(self, t: TypeType) -> ProperType:
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneType):
@@ -604,10 +605,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def meet(self, s: Type, t: Type) -> Type:
+    def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)
 
-    def default(self, typ: Type) -> Type:
+    def default(self, typ: Type) -> ProperType:
         if isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
         else:
@@ -635,7 +636,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
                            name=None)
 
 
-def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
+def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
     """Is this a pair where one type is a TypedDict and another one is an instance of Mapping?
 
     This case requires a precise/principled consideration because there are two use cases
@@ -654,7 +655,7 @@ def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
     return isinstance(other, Instance) and other.type.has_base('typing.Mapping')
 
 
-def typed_dict_mapping_overlap(left: Type, right: Type,
+def typed_dict_mapping_overlap(left: ProperType, right: ProperType,
                                overlapping: Callable[[Type, Type], bool]) -> bool:
     """Check if a TypedDict type is overlapping with a Mapping.
 
@@ -696,7 +697,7 @@ def typed_dict_mapping_overlap(left: Type, right: Type,
 
     mapping = next(base for base in other.type.mro if base.fullname() == 'typing.Mapping')
     other = map_instance_to_supertype(other, mapping)
-    key_type, value_type = other.args
+    key_type, value_type = get_proper_types(other.args)
 
     # TODO: is there a cleaner way to get str_type here?
     fallback = typed.as_anonymous().fallback
