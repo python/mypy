@@ -443,7 +443,7 @@ class MessageBuilder:
                 arg_label, target, quote_type_string(arg_type_str),
                 quote_type_string(expected_type_str))
             if isinstance(expected_type, UnionType):
-                expected_types = expected_type.items
+                expected_types = list(expected_type.items)  # type: List[Type]
             else:
                 expected_types = [expected_type]
             for type in expected_types:

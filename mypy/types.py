@@ -865,7 +865,7 @@ class CallableType(FunctionLike):
                  )
 
     def __init__(self,
-                 arg_types: List[Type],
+                 arg_types: Sequence[Type],
                  arg_kinds: List[int],
                  arg_names: Sequence[Optional[str]],
                  ret_type: Type,
@@ -886,7 +886,7 @@ class CallableType(FunctionLike):
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
             variables = []
-        self.arg_types = arg_types
+        self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
@@ -917,7 +917,7 @@ class CallableType(FunctionLike):
             self.def_extras = {}
 
     def copy_modified(self,
-                      arg_types: Bogus[List[Type]] = _dummy,
+                      arg_types: Bogus[Sequence[Type]] = _dummy,
                       arg_kinds: Bogus[List[int]] = _dummy,
                       arg_names: Bogus[List[Optional[str]]] = _dummy,
                       ret_type: Bogus[Type] = _dummy,

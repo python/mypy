@@ -30,7 +30,8 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
         if is_improper_type(arg):
             right = get_proper_type(ctx.arg_types[1][0])
             if isinstance(right, CallableType) and right.is_type_obj():
-                if right.type_object().fullname() in ('mypy.types.ProperType',
+                if right.type_object().fullname() in ('mypy.types.Type',
+                                                      'mypy.types.ProperType',
                                                       'mypy.types.TypeAliasType'):
                     # Special case: things like assert isinstance(typ, ProperType) are always OK.
                     return ctx.default_return_type

@@ -30,7 +30,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType,
+    TypeOfAny, Instance, RawExpressionType, ProperType
 )
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
@@ -197,7 +197,7 @@ def parse_type_comment(type_comment: str,
                        column: int,
                        errors: Optional[Errors],
                        assume_str_is_unicode: bool = True,
-                       ) -> Tuple[Optional[List[str]], Optional[Type]]:
+                       ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
     """Parse type portion of a type comment (+ optional type ignore).
 
     Return (ignore info, parsed type).
@@ -229,7 +229,7 @@ def parse_type_comment(type_comment: str,
 
 
 def parse_type_string(expr_string: str, expr_fallback_name: str,
-                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> ProperType:
     """Parses a type that was originally present inside of an explicit string,
     byte string, or unicode string.
 
@@ -348,7 +348,7 @@ class ASTConverter:
 
     def translate_type_comment(self,
                                n: Union[ast3.stmt, ast3.arg],
-                               type_comment: Optional[str]) -> Optional[Type]:
+                               type_comment: Optional[str]) -> Optional[ProperType]:
         if type_comment is None:
             return None
         else:
@@ -555,7 +555,8 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)  # type: ignore
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
@@ -577,7 +578,7 @@ class ASTConverter:
                        args,
                        self.as_required_block(n.body, lineno),
                        func_type)
-        if isinstance(func_def.type, CallableType):
+        if isinstance(func_def.type, CallableType):  # type: ignore
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
         if is_coroutine:
@@ -1267,12 +1268,12 @@ class TypeConverter:
         )
 
     @overload
-    def visit(self, node: ast3.expr) -> Type: ...
+    def visit(self, node: ast3.expr) -> ProperType: ...
 
     @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[Type]: ...  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...  # noqa
 
-    def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None

@@ -505,7 +505,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
-            if isinstance(get_proper_types(result.ret_type), UninhabitedType):
+            if isinstance(get_proper_type(result.ret_type), UninhabitedType):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
             return result

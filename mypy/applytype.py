@@ -3,7 +3,9 @@ from typing import Dict, Sequence, Optional
 import mypy.subtypes
 import mypy.sametypes
 from mypy.expandtype import expand_type
-from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType
+from mypy.types import (
+    Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types
+)
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
@@ -25,10 +27,10 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
     assert len(tvars) == len(orig_types)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
-    types = list(orig_types)
+    types = get_proper_types(orig_types)
     for i, type in enumerate(types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"
-        values = callable.variables[i].values
+        values = get_proper_types(callable.variables[i].values)
         if type is None:
             continue
         if values:

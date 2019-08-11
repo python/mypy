@@ -511,7 +511,7 @@ def analyze_var(name: str,
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
-        result = t
+        result = t  # type: Type
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:

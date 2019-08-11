@@ -3634,8 +3634,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
             vartype = type_map[node]
-            if_type = true_only(vartype)
-            else_type = false_only(vartype)
+            if_type = true_only(vartype)  # type: Type
+            else_type = false_only(vartype)  # type: Type
             ref = node  # type: Expression
             if_map = {ref: if_type} if not isinstance(if_type, UninhabitedType) else None
             else_map = {ref: else_type} if not isinstance(else_type, UninhabitedType) else None
@@ -4122,7 +4122,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     # expressions whose type is refined by both conditions. (We do not
     # learn anything about expressions whose type is refined by only
     # one condition.)
-    result = {}
+    result = {}  # type: Dict[Expression, Type]
     for n1 in m1:
         for n2 in m2:
             if literal_hash(n1) == literal_hash(n2):

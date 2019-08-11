@@ -2702,7 +2702,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             typ = self.accept(index)
             if isinstance(typ, UnionType):
-                key_types = typ.items
+                key_types = list(typ.items)  # type: List[Type]
             else:
                 key_types = [typ]
 
@@ -3541,7 +3541,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(typ, TypeType):
             # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
             # so we don't need to care about unions here.
-            item = typ.item
+            item = typ.item  # type: Type
             if isinstance(item, TypeVarType):
                 item = item.upper_bound
             if isinstance(item, TupleType):

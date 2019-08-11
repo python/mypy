@@ -10,7 +10,7 @@ from mypy.nodes import (
 from mypy.fastparse import parse_type_string
 from mypy.types import (
     Type, UnboundType, TypeList, EllipsisType, AnyType, CallableArgument, TypeOfAny,
-    RawExpressionType,
+    RawExpressionType, ProperType
 )
 
 
@@ -29,7 +29,7 @@ def _extract_argument_name(expr: Expression) -> Optional[str]:
         raise TypeTranslationError()
 
 
-def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = None) -> Type:
+def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = None) -> ProperType:
     """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.

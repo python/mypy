@@ -32,7 +32,8 @@ def is_same_type(left: Type, right: Type) -> bool:
         return left.accept(SameTypeVisitor(right))
 
 
-def simplify_union(t: Type) -> Type:
+def simplify_union(t: Type) -> ProperType:
+    t = get_proper_type(t)
     if isinstance(t, UnionType):
         return UnionType.make_simplified_union(t.items)
     return t

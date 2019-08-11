@@ -814,7 +814,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return False
         return self.tvar_scope.get_binding(tvar_node) is not None
 
-    def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
+    def anal_array(self, a: Iterable[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
         for t in a:
             res.append(self.anal_type(t, nested))
