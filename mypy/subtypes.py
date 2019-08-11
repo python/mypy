@@ -427,7 +427,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             item = left.item
             if isinstance(item, TypeVarType):
-                item = item.upper_bound
+                item = get_proper_type(item.upper_bound)
             if isinstance(item, Instance):
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_subtype(metaclass, right)
@@ -477,9 +477,9 @@ def is_protocol_implementation(left: Instance, right: Instance,
             ignore_names = member != '__call__'  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
-            supertype = find_member(member, right, left)
+            supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            subtype = find_member(member, left, left)
+            subtype = get_proper_type(find_member(member, left, left))
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1018,6 +1018,9 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     This is used for type inference of runtime type checks such as
     isinstance(). Currently this just removes elements of a union type.
     """
+    t = get_proper_type(t)
+    s = get_proper_type(s)
+
     if isinstance(t, UnionType):
         new_items = [item for item in t.relevant_items()
                      if (isinstance(item, AnyType) or
@@ -1029,6 +1032,9 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
 
 def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
+    item = get_proper_type(item)
+    supertype = get_proper_type(supertype)
+
     # Since runtime type checks will ignore type arguments, erase the types.
     supertype = erase_type(supertype)
     if is_proper_subtype(erase_type(item), supertype, ignore_promotions=ignore_promotions,
