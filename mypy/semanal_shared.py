@@ -11,7 +11,9 @@ from mypy.nodes import (
     SymbolNode, SymbolTable
 )
 from mypy.util import correct_relative_import
-from mypy.types import Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES
+from mypy.types import (
+    Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type
+)
 from mypy.tvar_scope import TypeVarScope
 from mypy import join
 
@@ -179,7 +181,8 @@ def create_indirect_imported_name(file_node: MypyFile,
     return SymbolTableNode(GDEF, link)
 
 
-def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
+def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
+    sig = get_proper_type(sig)
     if isinstance(sig, FunctionLike):
         if fdef.info:
             if fdef.info.fullname() in TPDICT_FB_NAMES:
@@ -192,7 +195,7 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
         else:
             return sig.with_name(fdef.name())
     else:
-        return sig
+        return get_proper_type(sig)
 
 
 def calculate_tuple_fallback(typ: TupleType) -> None:

@@ -35,7 +35,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional, TypeTranslator, StarType
+    is_optional, remove_optional, TypeTranslator, StarType, ProperType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -464,7 +464,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         impl_type = None  # type: Optional[CallableType]
         if defn.impl:
             if isinstance(defn.impl, FuncDef):
-                inner_type = defn.impl.type
+                inner_type = defn.impl.type  # type: Optional[Type]
             elif isinstance(defn.impl, Decorator):
                 inner_type = defn.impl.var.type
             else:

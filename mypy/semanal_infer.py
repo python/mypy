@@ -3,7 +3,9 @@
 from typing import Optional
 
 from mypy.nodes import Expression, Decorator, CallExpr, FuncDef, RefExpr, Var, ARG_POS
-from mypy.types import Type, CallableType, AnyType, TypeOfAny, TypeVarType, function_type
+from mypy.types import (
+    Type, CallableType, AnyType, TypeOfAny, TypeVarType, function_type, ProperType, get_proper_type
+)
 from mypy.typevars import has_no_typevars
 from mypy.semanal_shared import SemanticAnalyzerInterface
 
@@ -62,13 +64,14 @@ def infer_decorator_signature_if_simple(dec: Decorator,
 
 def is_identity_signature(sig: Type) -> bool:
     """Is type a callable of form T -> T (where T is a type variable)?"""
+    sig = get_proper_type(sig)
     if isinstance(sig, CallableType) and sig.arg_kinds == [ARG_POS]:
         if isinstance(sig.arg_types[0], TypeVarType) and isinstance(sig.ret_type, TypeVarType):
             return sig.arg_types[0].id == sig.ret_type.id
     return False
 
 
-def calculate_return_type(expr: Expression) -> Optional[Type]:
+def calculate_return_type(expr: Expression) -> Optional[ProperType]:
     """Return the return type if we can calculate it.
 
     This only uses information available during semantic analysis so this
@@ -83,10 +86,10 @@ def calculate_return_type(expr: Expression) -> Optional[Type]:
                 return AnyType(TypeOfAny.unannotated)
             # Explicit Any return?
             if isinstance(typ, CallableType):
-                return typ.ret_type
+                return get_proper_type(typ.ret_type)
             return None
         elif isinstance(expr.node, Var):
-            return expr.node.type
+            return get_proper_type(expr.node.type)
     elif isinstance(expr, CallExpr):
         return calculate_return_type(expr.callee)
     return None
@@ -104,11 +107,13 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             typ = expr.node.type
             if typ:
                 if isinstance(typ, CallableType) and has_no_typevars(typ.ret_type):
-                    if isinstance(typ.ret_type, CallableType):
-                        return typ.ret_type
+                    ret_type = get_proper_type(typ.ret_type)
+                    if isinstance(ret_type, CallableType):
+                        return ret_type
     elif isinstance(expr, CallExpr):
         t = find_fixed_callable_return(expr.callee)
         if t:
-            if isinstance(t.ret_type, CallableType):
-                return t.ret_type
+            ret_type = get_proper_type(t.ret_type)
+            if isinstance(ret_type, CallableType):
+                return ret_type
     return None
