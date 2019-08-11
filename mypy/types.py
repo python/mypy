@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence, Iterator,
+    Sequence, Iterator, overload
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, final
 
@@ -145,10 +145,17 @@ class Type(mypy.nodes.Context):
 
 
 @final
-class TypeAliasType:
+class TypeAliasType(Type):
     def __init__(self, alias: mypy.nodes.TypeAlias, args: List[Type]) -> None:
         self.alias = alias
         self.args = args
+
+    def expand_once(self) -> Type:
+        return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
+                                   self.line, self.column)
+
+    def expand_all_if_possible(self) -> Optional['ProperType']:
+        raise NotImplementedError('TODO')
 
 
 class ProperType(Type):
@@ -977,7 +984,7 @@ class CallableType(FunctionLike):
         assert self.is_type_obj()
         ret = get_proper_type(self.ret_type)
         if isinstance(ret, TypeVarType):
-            ret = ret.upper_bound
+            ret = get_proper_type(ret.upper_bound)
         if isinstance(ret, TupleType):
             ret = ret.partial_fallback
         assert isinstance(ret, Instance)
@@ -1592,9 +1599,9 @@ class UnionType(ProperType):
 
     __slots__ = ('items',)
 
-    def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.items = flatten_nested_unions(items)  # type: List[Type]
+        self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
 
@@ -1606,8 +1613,15 @@ class UnionType(ProperType):
             return NotImplemented
         return frozenset(self.items) == frozenset(other.items)
 
+    @overload
     @staticmethod
-    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+    def make_union(items: List[ProperType], line: int = -1, column: int = -1) -> ProperType: ...
+    @overload
+    @staticmethod
+    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type: ...
+
+    @staticmethod
+    def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
         if len(items) > 1:
             return UnionType(items, line, column)
         elif len(items) == 1:
@@ -1616,7 +1630,7 @@ class UnionType(ProperType):
             return UninhabitedType()
 
     @staticmethod
-    def make_simplified_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
+    def make_simplified_union(items: Sequence[Type], line: int = -1, column: int = -1) -> ProperType:
         """Build union type with redundant union items removed.
 
         If only a single item remains, this may return a non-union type.
@@ -1634,9 +1648,9 @@ class UnionType(ProperType):
         """
         # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
         #       type operations are not static methods, so this is inconsistent.
-        items = list(items)
+        items = get_proper_types(items)
         while any(isinstance(typ, UnionType) for typ in items):
-            all_items = []  # type: List[Type]
+            all_items = []  # type: List[ProperType]
             for typ in items:
                 if isinstance(typ, UnionType):
                     all_items.extend(typ.items)
@@ -1682,7 +1696,7 @@ class UnionType(ProperType):
                    (isinstance(x, Instance) and x.type.has_readable_member(name))
                    for x in self.relevant_items())
 
-    def relevant_items(self) -> List[Type]:
+    def relevant_items(self) -> List[ProperType]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
         if state.strict_optional:
             return self.items
@@ -1791,7 +1805,8 @@ class TypeType(ProperType):
         self.item = item
 
     @staticmethod
-    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:
+    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> ProperType:
+        item = get_proper_type(item)
         if isinstance(item, UnionType):
             return UnionType.make_union(
                 [TypeType.make_normalized(union_item) for union_item in item.items],
@@ -1953,7 +1968,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         s = '({})'.format(s)
 
-        if not isinstance(t.ret_type, NoneType):
+        if not isinstance(get_proper_type(t.ret_type), NoneType):
             s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
@@ -2030,7 +2045,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
         return '<placeholder {}>'.format(t.fullname)
 
-    def list_str(self, a: List[Type]) -> str:
+    def list_str(self, a: Iterable[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
         """
@@ -2040,9 +2055,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return ', '.join(res)
 
 
-def strip_type(typ: Type) -> Type:
+def strip_type(typ: Type) -> ProperType:
     """Make a copy of type without 'debugging info' (function name)."""
-
+    typ = get_proper_type(typ)
     if isinstance(typ, CallableType):
         return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
@@ -2053,6 +2068,7 @@ def strip_type(typ: Type) -> Type:
 
 
 def is_named_instance(t: Type, fullname: str) -> bool:
+    t = get_proper_type(t)
     return isinstance(t, Instance) and t.type.fullname() == fullname
 
 
@@ -2139,6 +2155,7 @@ def true_or_false(t: Type) -> ProperType:
 
 def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
     if func.type:
+        assert isinstance(func.type, ProperType)  # TODO: can this ever be an alias?
         assert isinstance(func.type, FunctionLike)
         return func.type
     else:
@@ -2175,18 +2192,44 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
     )
 
 
+def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
+                        newline: int, newcolumn: int) -> Type:
+    """Replace type variables in a generic type alias tp with substitutions subs
+    resetting context. Length of subs should be already checked.
+    """
+    typ_args = get_typ_args(tp)
+    new_args = typ_args[:]
+    for i, arg in enumerate(typ_args):
+        if isinstance(arg, (UnboundType, TypeVarType)):  # type: ignore
+            tvar = arg.name  # type: Optional[str]
+        else:
+            tvar = None
+        if tvar and tvar in vars:
+            # Perform actual substitution...
+            new_args[i] = subs[vars.index(tvar)]
+        else:
+            # ...recursively, if needed.
+            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
+    return set_typ_args(tp, new_args, newline, newcolumn)
+
+
 def get_typ_args(tp: Type) -> List[Type]:
     """Get all type arguments from a parametrizable Type."""
+    # TODO: replace this and related functions with proper visitors.
+    tp = get_proper_type(tp)  # TODO: is this really needed?
+
     if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
         return []
     typ_args = (tp.args if isinstance(tp, Instance) else
                 tp.items if not isinstance(tp, CallableType) else
                 tp.arg_types + [tp.ret_type])
-    return typ_args
+    return cast(List[Type], typ_args)
 
 
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
     """Return a copy of a parametrizable Type with arguments set to new_args."""
+    tp = get_proper_type(tp)  # TODO: is this really needed?
+
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
@@ -2220,10 +2263,10 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
     return tvars
 
 
-def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
+def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:
     """Flatten nested unions in a type list."""
-    flat_items = []  # type: List[Type]
-    for tp in types:
+    flat_items = []  # type: List[ProperType]
+    for tp in get_proper_types(types):
         if isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items))
         else:
@@ -2236,6 +2279,7 @@ def union_items(typ: Type) -> List[Type]:
 
     For non-union types, return a list containing just the argument.
     """
+    typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         items = []
         for item in typ.items:
@@ -2246,25 +2290,44 @@ def union_items(typ: Type) -> List[Type]:
 
 
 def is_generic_instance(tp: Type) -> bool:
+    tp = get_proper_type(tp)
     return isinstance(tp, Instance) and bool(tp.args)
 
 
 def is_optional(t: Type) -> bool:
+    t = get_proper_type(t)
     return isinstance(t, UnionType) and any(isinstance(e, NoneType) for e in t.items)
 
 
-def remove_optional(typ: Type) -> Type:
+def remove_optional(typ: Type) -> ProperType:
+    typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
     else:
         return typ
 
+@overload
+def get_proper_type(typ: None) -> None: ...
+@overload
+def get_proper_type(typ: Type) -> ProperType: ...
 
-def get_proper_type(typ: Type) -> ProperType:
-    if isinstance(typ, TypeAliasType):
-        typ = typ.alias.target
-    assert isinstance(typ, ProperType)
+
+def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
+    if typ is None:
+        return None
+    while isinstance(typ, TypeAliasType):
+        typ = typ.expand_once()
+    assert isinstance(typ, ProperType), typ
     return typ
+
+@overload
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
+@overload
+def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
+
+
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
+    return [get_proper_type(t) for t in it]
 
 
 names = globals().copy()  # type: Final

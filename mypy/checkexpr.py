@@ -3735,8 +3735,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         not is_overlapping_types(known_type, restriction,
                                                  prohibit_none_typevar_overlap=True)):
                     return None
-                ans = narrow_declared_type(known_type, restriction)
-                return ans
+                return narrow_declared_type(known_type, restriction)
         return known_type
 
 

@@ -2708,7 +2708,7 @@ class TypeAlias(SymbolNode):
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized', 'line', 'column')
 
-    def __init__(self, target: 'mypy.types.ProperType', fullname: str, line: int, column: int,
+    def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
                  alias_tvars: Optional[List[str]] = None,
                  no_args: bool = False,

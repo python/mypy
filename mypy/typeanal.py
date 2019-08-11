@@ -13,7 +13,7 @@ from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
     LiteralType, RawExpressionType, PlaceholderType
 )
@@ -966,27 +966,6 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
             and typ.type.fullname() == 'mypy_extensions.FlexibleAlias'):
         typ = typ.args[-1]
     return typ
-
-
-def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
-                        newline: int, newcolumn: int) -> Type:
-    """Replace type variables in a generic type alias tp with substitutions subs
-    resetting context. Length of subs should be already checked.
-    """
-    typ_args = get_typ_args(tp)
-    new_args = typ_args[:]
-    for i, arg in enumerate(typ_args):
-        if isinstance(arg, (UnboundType, TypeVarType)):
-            tvar = arg.name  # type: Optional[str]
-        else:
-            tvar = None
-        if tvar and tvar in vars:
-            # Perform actual substitution...
-            new_args[i] = subs[vars.index(tvar)]
-        else:
-            # ...recursively, if needed.
-            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
-    return set_typ_args(tp, new_args, newline, newcolumn)
 
 
 def set_any_tvars(tp: Type, vars: List[str],
