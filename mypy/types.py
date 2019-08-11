@@ -1616,11 +1616,11 @@ class UnionType(ProperType):
     @overload
     @staticmethod
     def make_union(items: List[ProperType], line: int = -1, column: int = -1) -> ProperType: ...
-    @overload
+    @overload  # noqa
     @staticmethod
     def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type: ...
 
-    @staticmethod
+    @staticmethod  # noqa
     def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
         if len(items) > 1:
             return UnionType(items, line, column)
@@ -1630,7 +1630,8 @@ class UnionType(ProperType):
             return UninhabitedType()
 
     @staticmethod
-    def make_simplified_union(items: Sequence[Type], line: int = -1, column: int = -1) -> ProperType:
+    def make_simplified_union(items: Sequence[Type],
+                              line: int = -1, column: int = -1) -> ProperType:
         """Build union type with redundant union items removed.
 
         If only a single item remains, this may return a non-union type.
@@ -2305,6 +2306,7 @@ def remove_optional(typ: Type) -> ProperType:
     else:
         return typ
 
+
 @overload
 def get_proper_type(typ: None) -> None: ...
 @overload
@@ -2318,6 +2320,7 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
         typ = typ.expand_once()
     assert isinstance(typ, ProperType), typ
     return typ
+
 
 @overload
 def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...

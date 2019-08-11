@@ -35,7 +35,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional, TypeTranslator, StarType, ProperType
+    is_optional, remove_optional, TypeTranslator, StarType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
