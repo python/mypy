@@ -929,7 +929,8 @@ class MessageBuilder:
         else:
             needed = 'comment'
 
-        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name()), hint), context)
+        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name()), hint), context,
+                  code=codes.VAR_ANNOTATED)
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)

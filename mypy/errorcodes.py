@@ -31,7 +31,7 @@ ARG_TYPE = ErrorCode(
     'arg-type', "Check argument types in calls", 'General')  # type: Final
 VALID_TYPE = ErrorCode(
     'valid-type', "Check that type (annotation) is valid", 'General')  # type: Final
-MISSING_ANN = ErrorCode(
+VAR_ANNOTATED = ErrorCode(
     'var-annotated', "Require variable annotation if type can't be inferred",
     'General')  # type: Final
 OVERRIDE = ErrorCode(

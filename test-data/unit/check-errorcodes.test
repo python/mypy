@@ -146,3 +146,12 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
 import sys
 y: sys  # E: Module "sys" is not valid as a type  [valid-type]
 z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type]
+
+[case testErrorCodeNeedTypeAnnotation]
+from typing import TypeVar
+
+T = TypeVar('T')
+def f() -> T: pass
+x = f()  # E: Need type annotation for 'x'  [var-annotated]
+y = []  # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")  [var-annotated]
+[builtins fixtures/list.pyi]
