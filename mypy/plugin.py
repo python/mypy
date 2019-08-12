@@ -256,7 +256,7 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False) -> None:
+             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
         """Emmit an error message at given location."""
         raise NotImplementedError
 
