@@ -477,15 +477,15 @@ class MessageBuilder:
                 msg += ' "{}" in call to {}'.format(args, callee_name)
         else:
             msg = 'Too few arguments' + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG)
 
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
         msg = 'Missing named argument "{}"'.format(name) + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG)
 
     def too_many_arguments_from_typed_dict(self,
                                            callee: CallableType,
@@ -509,7 +509,7 @@ class MessageBuilder:
     def unexpected_keyword_argument(self, callee: CallableType, name: str,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None

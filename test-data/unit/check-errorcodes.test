@@ -110,3 +110,20 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name
       ):
     # type () -> None
     pass
+
+[case testErrorCodeArgKindAndCount]
+def f(x: int) -> None: pass  # N: "f" defined here
+f()  # E: Too few arguments for "f"  [call-arg]
+f(1, 2)  # E: Too many arguments for "f"  [call-arg]
+f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
+
+def g(*, x: int) -> None: pass
+g()  # E: Missing named argument "x" for "g"  [call-arg]
+
+[case testErrorCodeSuperArgs_python2]
+class A:
+    def f(self):
+        pass
+class B(A):
+    def f(self):  # type: () -> None
+        super().f()  # E: Too few arguments for "super"  [call-arg]
