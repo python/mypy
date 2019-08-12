@@ -72,6 +72,7 @@ from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state
 from mypy.traverser import has_return_statement
+from mypy.errorcodes import ErrorCode
 
 T = TypeVar('T')
 
@@ -3948,9 +3949,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             temp.set_line(context.get_line())
         return temp
 
-    def fail(self, msg: str, context: Context) -> None:
+    def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
-        self.msg.fail(msg, context)
+        self.msg.fail(msg, context, code=code)
 
     def note(self, msg: str, context: Context, offset: int = 0) -> None:
         """Produce a note."""
