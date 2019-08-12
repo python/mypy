@@ -120,6 +120,10 @@ f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
 def g(*, x: int) -> None: pass
 g()  # E: Missing named argument "x" for "g"  [call-arg]
 
+def h(x: int, y: int, z: int) -> None: pass
+h(y=1, z=1)  # E: Missing positional argument "x" in call to "h"  [call-arg]
+h(y=1)  # E: Missing positional arguments "x", "z" in call to "h"  [call-arg]
+
 [case testErrorCodeSuperArgs_python2]
 class A:
     def f(self):
