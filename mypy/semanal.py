@@ -1784,7 +1784,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if matches:
                 suggestion = "; maybe {}?".format(pretty_or(matches))
                 message += "{}".format(suggestion)
-        self.fail(message, context)
+        self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(imported_id, context)
 
         if import_id == 'typing':

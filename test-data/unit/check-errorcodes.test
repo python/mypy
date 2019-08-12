@@ -6,7 +6,10 @@
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
 'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
+from m import xx  # E: Module 'm' has no attribute 'xx'  [attr-defined]
+from m import think  # E: Module 'm' has no attribute 'think'; maybe "thing"?  [attr-defined]
 [file m.py]
+thing = 0
 [builtins fixtures/module.pyi]
 
 [case testErrorCodeUndefinedName]
