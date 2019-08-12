@@ -980,7 +980,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 msg += 'argument "{}"'.format(name)
             self.check_simple_assignment(arg.variable.type, arg.initializer,
-                context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
+                context=arg, msg=msg, lvalue_name='argument', rvalue_name='default',
+                code=codes.ASSIGNMENT)
 
     def is_forward_op_method(self, method_name: str) -> bool:
         if self.options.python_version[0] == 2 and method_name == '__div__':
@@ -1975,7 +1976,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
                         instance_type, lvalue_type, rvalue, lvalue)
                 else:
-                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
+                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue,
+                                                               code=codes.ASSIGNMENT)
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
@@ -2111,7 +2113,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return self.check_subtype(compare_type, base_type, lvalue,
                                       message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
-                                      'base class "%s" defined the type as' % base.name())
+                                      'base class "%s" defined the type as' % base.name(),
+                                      code=codes.ASSIGNMENT)
         return True
 
     def lvalue_type_from_base(self, expr_node: Var,
@@ -2675,7 +2678,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 context: Context,
                                 msg: str = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                 lvalue_name: str = 'variable',
-                                rvalue_name: str = 'expression') -> Type:
+                                rvalue_name: str = 'expression', *,
+                                code: Optional[ErrorCode] = None) -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
@@ -2690,7 +2694,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif lvalue_type:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    '{} has type'.format(rvalue_name),
-                                   '{} has type'.format(lvalue_name))
+                                   '{} has type'.format(lvalue_name), code=code)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
