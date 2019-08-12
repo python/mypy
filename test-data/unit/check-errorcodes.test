@@ -127,3 +127,12 @@ class A:
 class B(A):
     def f(self):  # type: () -> None
         super().f()  # E: Too few arguments for "super"  [call-arg]
+
+[case testErrorCodeArgType]
+def f(x: int) -> None: pass
+f('')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"  [arg-type]
+
+class A:
+    def g(self, *, x: int) -> None: pass
+
+A().g(x='')  # E: Argument "x" to "g" of "A" has incompatible type "str"; expected "int"  [arg-type]

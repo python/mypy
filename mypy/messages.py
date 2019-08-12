@@ -350,6 +350,7 @@ class MessageBuilder:
             target = 'to {} '.format(name)
 
         msg = ''
+        code = codes.MISC
         notes = []  # type: List[str]
         if callee_name == '<list>':
             name = callee_name[1:-1]
@@ -442,6 +443,7 @@ class MessageBuilder:
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 arg_label, target, quote_type_string(arg_type_str),
                 quote_type_string(expected_type_str))
+            code = codes.ARG_TYPE
             if isinstance(expected_type, UnionType):
                 expected_types = expected_type.items
             else:
@@ -449,7 +451,7 @@ class MessageBuilder:
             for type in expected_types:
                 if isinstance(arg_type, Instance) and isinstance(type, Instance):
                     notes = append_invariance_notes(notes, arg_type, type)
-        self.fail(msg, context)
+        self.fail(msg, context, code=code)
         if notes:
             for note_msg in notes:
                 self.note(note_msg, context)
