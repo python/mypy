@@ -607,7 +607,7 @@ class MessageBuilder:
             overload: Overloaded, context: Context) -> None:
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context)
+            name, target), context, code=codes.OVERRIDE)
 
         note_template = 'Overload variants must be defined in the same order as they are in "{}"'
         self.note(note_template.format(supertype), context)
@@ -617,7 +617,7 @@ class MessageBuilder:
             context: Context) -> None:
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context)
+            name, target), context, code=codes.OVERRIDE)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
@@ -627,7 +627,9 @@ class MessageBuilder:
         arg_type_in_supertype_f = format_type_bare(arg_type_in_supertype)
         self.fail('Argument {} of "{}" is incompatible with {}; '
                   'supertype defines the argument type as "{}"'
-                  .format(arg_num, name, target, arg_type_in_supertype_f), context)
+                  .format(arg_num, name, target, arg_type_in_supertype_f),
+                  context,
+                  code=codes.OVERRIDE)
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
@@ -649,7 +651,9 @@ class MessageBuilder:
         target = self.override_target(name, name_in_supertype, supertype)
         override_str, original_str = format_type_distinctly(override, original)
         self.fail('Return type {} of "{}" incompatible with return type {} in {}'
-                  .format(override_str, name, original_str, target), context)
+                  .format(override_str, name, original_str, target),
+                  context,
+                  code=codes.OVERRIDE)
 
     def override_target(self, name: str, name_in_super: str,
                         supertype: str) -> str:

@@ -155,3 +155,39 @@ def f() -> T: pass
 x = f()  # E: Need type annotation for 'x'  [var-annotated]
 y = []  # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
+
+[case testErrorCodeBadOverride]
+from typing import overload
+
+class A:
+    def f(self) -> int:
+        return 0
+class B(A):
+    def f(self) -> str:  # E: Return type "str" of "f" incompatible with return type "int" in supertype "A"  [override]
+        return ''
+class C(A):
+    def f(self, x: int) -> int:  # E: Signature of "f" incompatible with supertype "A"  [override]
+        return 0
+class D:
+    def f(self, x: int) -> int:
+        return 0
+class E(D):
+    def f(self, x: str) -> int:  # E: Argument 1 of "f" is incompatible with supertype "D"; supertype defines the argument type as "int"  [override]
+        return 0
+
+class O:
+    @overload
+    def f(self, x: int) -> None: pass
+    @overload
+    def f(self, x: str) -> None: pass
+    def f(self, x):
+        pass
+
+class OO(O):
+    @overload  # E: Signature of "f" incompatible with supertype "O"  [override] \
+               # N: Overload variants must be defined in the same order as they are in "O"
+    def f(self, x: str) -> None: pass
+    @overload
+    def f(self, x: int) -> None: pass
+    def f(self, x):
+        pass
