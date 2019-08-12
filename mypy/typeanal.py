@@ -878,12 +878,14 @@ def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
         if fullname in nongen_builtins:
             # We use a dedicated error message for builtin generics (as the most common case).
             alternative = nongen_builtins[fullname]
-            fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ)
+            fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ,
+                 code=codes.TYPE_ARG)
         else:
             typ = unexpanded_type or typ
             type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
 
-            fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ)
+            fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ,
+                 code=codes.TYPE_ARG)
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
         any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
@@ -1006,7 +1008,7 @@ def set_any_tvars(tp: Type, vars: List[str],
         type_str = otype.name if isinstance(otype, UnboundType) else format_type_bare(otype)
 
         fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
-             Context(newline, newcolumn))
+             Context(newline, newcolumn), code=codes.TYPE_ARG)
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
     return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 

@@ -207,3 +207,13 @@ class A:
 
 class B(A):
     x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")  [assignment]
+
+[case testErrorCodeMissingTypeArg]
+# flags: --disallow-any-generics
+from typing import List, TypeVar
+x: List  # E: Missing type parameters for generic type "List"  [type-arg]
+y: list  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters  [type-arg]
+T = TypeVar('T')
+L = List[List[T]]
+z: L  # E: Missing type parameters for generic type "L"  [type-arg]
+[builtins fixtures/list.pyi]

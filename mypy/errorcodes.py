@@ -42,6 +42,8 @@ RETURN_VALUE = ErrorCode(
     'General')  # type: Final
 ASSIGNMENT = ErrorCode(
     'assignment', "Check that assigned value is compatible with target", 'General')  # type: Final
+TYPE_ARG = ErrorCode(
+    'type-arg', "Check that generic type arguments are present", 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final
