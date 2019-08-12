@@ -49,6 +49,10 @@ UNION_ATTR = ErrorCode(
 
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
+NO_UNTYPED_CALL = ErrorCode(
+    'no-untyped-call',
+    "Disallow calling functions without type annotations from annotated functions",
+    'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final

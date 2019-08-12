@@ -298,7 +298,8 @@ class MessageBuilder:
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callable_name(callee) or '(unknown)'
-        self.fail('Call to untyped function {} in typed context'.format(name), context)
+        self.fail('Call to untyped function {} in typed context'.format(name), context,
+                  code=codes.NO_UNTYPED_CALL)
         return AnyType(TypeOfAny.from_error)
 
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
