@@ -134,6 +134,7 @@ from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
+from mypy.errorcodes import ErrorCode
 import mypy.interpreted_plugin
 
 
@@ -152,7 +153,7 @@ class TypeAnalyzerPluginInterface:
     options = None  # type: Options
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Emmit an error message at given location."""
         raise NotImplementedError
 

@@ -13,6 +13,7 @@ from mypy.nodes import (
 from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES
 from mypy.tvar_scope import TypeVarScope
+from mypy.errorcodes import ErrorCode
 from mypy import join
 
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
@@ -44,7 +45,7 @@ class SemanticAnalyzerCoreInterface:
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False) -> None:
+             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
         raise NotImplementedError
 
     @abstractmethod

@@ -29,6 +29,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
+from mypy.errorcodes import ErrorCode
 from mypy import nodes, message_registry
 
 T = TypeVar('T')
@@ -746,8 +747,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.fail_func(msg, ctx)
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+        self.fail_func(msg, ctx, code=code)
 
     def note(self, msg: str, ctx: Context) -> None:
         self.note_func(msg, ctx)
