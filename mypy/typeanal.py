@@ -30,7 +30,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.errorcodes import ErrorCode
-from mypy import nodes, message_registry
+from mypy import nodes, message_registry, errorcodes as codes
 
 T = TypeVar('T')
 
@@ -431,7 +431,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                          ' inside a function)'.format(short, short))
         else:
             message = 'Cannot interpret reference "{}" as a type'
-        self.fail(message.format(name), t)
+        self.fail(message.format(name), t, code=codes.VALID_TYPE)
         for note in notes:
             self.note(note, t)
 

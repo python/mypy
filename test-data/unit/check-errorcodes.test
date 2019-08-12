@@ -136,3 +136,13 @@ class A:
     def g(self, *, x: int) -> None: pass
 
 A().g(x='')  # E: Argument "x" to "g" of "A" has incompatible type "str"; expected "int"  [arg-type]
+
+[case testErrorCodeInvalidType]
+def f(): pass
+
+x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
+      # N: Perhaps you need "Callable[...]" or a callback protocol?
+
+import sys
+y: sys  # E: Module "sys" is not valid as a type  [valid-type]
+z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type]
