@@ -70,7 +70,7 @@ from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
-from mypy import state
+from mypy import state, errorcodes as codes
 from mypy.traverser import has_return_statement
 from mypy.errorcodes import ErrorCode
 
@@ -2892,7 +2892,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype_label='expected',
                         supertype=return_type,
                         context=s,
-                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE)
+                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        code=codes.RETURN_VALUE)
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
                 # coroutines.
@@ -3674,7 +3675,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_subtype(self, subtype: Type, supertype: Type, context: Context,
                       msg: str = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
-                      supertype_label: Optional[str] = None) -> bool:
+                      supertype_label: Optional[str] = None, *,
+                      code: Optional[ErrorCode] = None) -> bool:
         """Generate an error if the subtype is not compatible with
         supertype."""
         if is_subtype(subtype, supertype):
@@ -3697,7 +3699,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     notes = append_invariance_notes([], subtype, supertype)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
-            self.fail(msg, context)
+            self.fail(msg, context, code=code)
             for note in notes:
                 self.msg.note(note, context)
             if note_msg:

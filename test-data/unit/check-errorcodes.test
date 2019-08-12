@@ -191,3 +191,7 @@ class OO(O):
     def f(self, x: int) -> None: pass
     def f(self, x):
         pass
+
+[case testErrorCodeReturnValue]
+def f() -> int:
+    return ''  # E: Incompatible return value type (got "str", expected "int")  [return-value]
