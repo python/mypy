@@ -217,3 +217,12 @@ T = TypeVar('T')
 L = List[List[T]]
 z: L  # E: Missing type parameters for generic type "L"  [type-arg]
 [builtins fixtures/list.pyi]
+
+[case testErrorCodeUnionAttribute]
+from typing import Union
+class A:
+    x: int
+class B:
+    y: str
+a: Union[A, B]
+a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]

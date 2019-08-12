@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from collections import OrderedDict
 
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
-from typing_extensions import Final
+from typing_extensions import Final, Protocol
 
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
@@ -871,7 +871,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 
-def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
+class FailCallback(Protocol):
+    def __call__(self,
+                 __msg: str,
+                 __ctx: Context,
+                 *,
+                 code: Optional[ErrorCode] = None) -> None: ...
+
+
+def get_omitted_any(disallow_any: bool, fail: FailCallback,
                     typ: Type, fullname: Optional[str] = None,
                     unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
@@ -892,7 +900,7 @@ def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
     return any_type
 
 
-def fix_instance(t: Instance, fail: Callable[[str, Context], None],
+def fix_instance(t: Instance, fail: FailCallback,
                  disallow_any: bool, use_generic_error: bool = False,
                  unexpanded_type: Optional[Type] = None) -> None:
     """Fix a malformed instance by replacing all type arguments with Any.
@@ -927,7 +935,7 @@ def fix_instance(t: Instance, fail: Callable[[str, Context], None],
 
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
-                      fail: Callable[[str, Context], None], no_args: bool, ctx: Context, *,
+                      fail: FailCallback, no_args: bool, ctx: Context, *,
                       unexpanded_type: Optional[Type] = None,
                       disallow_any: bool = False) -> Type:
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
@@ -996,7 +1004,7 @@ def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, *,
                   from_error: bool = False,
                   disallow_any: bool = False,
-                  fail: Optional[Callable[[str, Context], None]] = None,
+                  fail: Optional[FailCallback] = None,
                   unexpanded_type: Optional[Type] = None) -> Type:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
@@ -1178,7 +1186,7 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> None:
+def fix_instance_types(t: Type, fail: FailCallback) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
@@ -1188,7 +1196,7 @@ def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> None:
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: Callable[[str, Context], None]) -> None:
+    def __init__(self, fail: FailCallback) -> None:
         self.fail = fail
 
     def visit_instance(self, typ: Instance) -> None:

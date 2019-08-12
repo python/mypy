@@ -44,6 +44,8 @@ ASSIGNMENT = ErrorCode(
     'assignment', "Check that assigned value is compatible with target", 'General')  # type: Final
 TYPE_ARG = ErrorCode(
     'type-arg', "Check that generic type arguments are present", 'General')  # type: Final
+UNION_ATTR = ErrorCode(
+    'union-attr', "Check that attribute exists in each item of a union", 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final

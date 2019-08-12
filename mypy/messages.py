@@ -254,7 +254,8 @@ class MessageBuilder:
                         any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
-                    typ_format, orig_type_format, member, extra), context)
+                    typ_format, orig_type_format, member, extra), context,
+                    code=codes.UNION_ATTR)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
