@@ -416,3 +416,12 @@ from nonexistent3 import *  # E: Cannot find module named 'nonexistent3'  [impor
 from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
 from pkg.bad2 import bad3  # E: Cannot find module named 'pkg.bad2'  [import]
 [file pkg/__init__.py]
+
+[case testErrorCodeAlreadyDefined]
+x: int
+x: str  # E: Name 'x' already defined on line 1  [no-redef]
+
+def f():
+    pass
+def f(): # E: Name 'f' already defined on line 4  [no-redef]
+    pass

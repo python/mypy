@@ -4540,7 +4540,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx)
+        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx,
+                  code=codes.NO_REDEF)
 
     def name_already_defined(self,
                              name: str,
