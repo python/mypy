@@ -332,3 +332,17 @@ from typing import List, Dict
 x: List[int] = ['']  # E: List item 0 has incompatible type "str"; expected "int"  [list-item]
 y: Dict[int, int] = {1: ''}  # E: Dict entry 0 has incompatible type "int": "str"; expected "int": "int"  [dict-item]
 [builtins fixtures/dict.pyi]
+
+[case testErrorCodeTypedDict]
+from typing_extensions import TypedDict
+class D(TypedDict):
+    x: int
+class E(TypedDict):
+    x: int
+    y: int
+
+a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
+b: D = {'y': ''}  # E: Extra key 'y' for TypedDict "D"  [typeddict-item]
+c = D(x=0) if int() else E(x=0, y=0)
+c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
+[builtins fixtures/dict.pyi]

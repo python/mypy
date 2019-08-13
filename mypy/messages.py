@@ -959,7 +959,7 @@ class MessageBuilder:
                 missing = [key for key in expected_keys if key not in actual_set]
                 self.fail('{} missing for TypedDict {}'.format(
                     format_key_list(missing, short=True).capitalize(), format_type(typ)),
-                    context)
+                    context, code=codes.TYPEDDICT_ITEM)
                 return
             else:
                 extra = [key for key in actual_keys if key not in expected_set]
@@ -968,7 +968,7 @@ class MessageBuilder:
                     # simplicity.
                     self.fail('Extra {} for TypedDict {}'.format(
                         format_key_list(extra, short=True), format_type(typ)),
-                        context)
+                        context, code=codes.TYPEDDICT_ITEM)
                     return
         found = format_key_list(actual_keys, short=True)
         if not expected_keys:
@@ -977,7 +977,8 @@ class MessageBuilder:
         expected = format_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
-        self.fail('Expected {} but found {}'.format(expected, found), context)
+        self.fail('Expected {} but found {}'.format(expected, found), context,
+                  code=codes.TYPEDDICT_ITEM)
 
     def typeddict_key_must_be_string_literal(
             self,

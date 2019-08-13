@@ -56,6 +56,8 @@ LIST_ITEM = ErrorCode(
     'list-item', "Check list items in [item, ...]", 'General')  # type: Final
 DICT_ITEM = ErrorCode(
     'dict-item', "Check dict items in {key: value, ...}", 'General')  # type: Final
+TYPEDDICT_ITEM = ErrorCode(
+    'typeddict-item', "Check items when constructing TypedDict", 'General')  # type: Final
 
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
