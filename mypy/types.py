@@ -8,7 +8,7 @@ from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
     Sequence, Iterator, overload
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING, final
+from typing_extensions import ClassVar, Final, TYPE_CHECKING
 
 import mypy.nodes
 from mypy import state
@@ -115,7 +115,17 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
 
 
 class Type(mypy.nodes.Context):
-    """Abstract base class for all types."""
+    """Abstract base class for all types.
+
+    The type hierarchy looks like this:
+        * Type:
+            * PlaceholderType:
+                Something we didn't clasify yet (exists only during semantic analysis).
+            * TypeAliasType:
+                An alias to another type.
+            * ProperType:
+                All other types inherit from this (including special types like ErasedType).
+    """
 
     __slots__ = ('can_be_true', 'can_be_false')
 
@@ -144,22 +154,91 @@ class Type(mypy.nodes.Context):
         raise NotImplementedError('Cannot deserialize {} instance'.format(cls.__name__))
 
 
-@final
 class TypeAliasType(Type):
-    def __init__(self, alias: mypy.nodes.TypeAlias, args: List[Type]) -> None:
+    """
+    A type alias to another type.
+
+    To support recursive type aliases we don't immediately expand a type alias
+    during semantic analysis, but create an in stance of this type that records the target alias
+    definition node (mypy.nodes.TypeAlias) and type arguments (for generic aliases).
+
+    This is very similar to how TypeInfo vs Instance interact.
+    """
+    def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
         self.alias = alias
         self.args = args
+        self.type_ref = None  # type: Optional[str]
 
     def expand_once(self) -> Type:
+        """Expand to the target type exactly once.
+
+        This doesn't do full expansion, i.e. the result can contain another
+        (or even this same) type alias.
+        """
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
     def expand_all_if_possible(self) -> Optional['ProperType']:
-        raise NotImplementedError('TODO')
+        """Attempt a full expansion of the type alias (including nested aliases).
+
+        If the expansion is not possible, i.e. the alias is (mutually-)recursive,
+        return None.
+        """
+        return
+
+    @property
+    def can_be_true(self) -> bool:
+        return self.alias.target.can_be_true
+
+    @property
+    def can_be_false(self) -> bool:
+        return self.alias.target.can_be_false
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_alias_type(self)
+
+    def __hash__(self) -> int:
+        return hash((self.alias, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeAliasType):
+            return NotImplemented
+        return (self.alias == other.alias
+                and self.args == other.args)
+
+    def serialize(self) -> JsonDict:
+        data = {'.class': 'TypeAliasType',
+                'type_ref': self.alias.fullname(),
+                'args': [arg.serialize() for arg in self.args]}  # type: JsonDict
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeAliasType':
+        assert data['.class'] == 'TypeAliasType'
+        args = []  # type: List[Type]
+        if 'args' in data:
+            args_list = data['args']
+            assert isinstance(args_list, list)
+            args = [deserialize_type(arg) for arg in args_list]
+        alias = TypeAliasType(None, args)
+        alias.type_ref = data['type_ref']  # TODO: fix this up in fixup.py.
+        return alias
+
+    def copy_modified(self, *,
+                      args: Optional[List[Type]] = None) -> 'TypeAliasType':
+        return TypeAliasType(
+            self.alias,
+            args if args is not None else self.args.copy(),
+            self.line, self.column)
 
 
 class ProperType(Type):
-    """Not a type alias."""
+    """Not a type alias.
+
+    Every type except TypeAliasType and PlaceholderType must inherit from this type.
+    """
 
 
 class TypeVarId:
@@ -1835,7 +1914,7 @@ class TypeType(ProperType):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
-class PlaceholderType(ProperType):
+class PlaceholderType:
     """Temporary, yet-unknown type during semantic analysis.
 
     This is needed when there's a reference to a type before the real symbol
