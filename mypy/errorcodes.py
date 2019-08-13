@@ -53,6 +53,8 @@ NO_UNTYPED_CALL = ErrorCode(
     'no-untyped-call',
     "Disallow calling functions without type annotations from annotated functions",
     'General')  # type: Final
+INDEX = ErrorCode(
+    'index', "Check indexing operations", 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final

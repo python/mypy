@@ -203,10 +203,10 @@ class MessageBuilder:
                     format_type(original_type)), context)
             else:
                 self.fail('Value of type {} is not indexable'.format(
-                    format_type(original_type)), context)
+                    format_type(original_type)), context, code=codes.INDEX)
         elif member == '__setitem__':
             # Indexed set.
-            self.fail('Unsupported target for indexed assignment', context)
+            self.fail('Unsupported target for indexed assignment', context, code=codes.INDEX)
         elif member == '__call__':
             if isinstance(original_type, Instance) and \
                     (original_type.type.fullname() == 'builtins.function'):
@@ -462,7 +462,7 @@ class MessageBuilder:
                            context: Context) -> None:
         index_str, expected_str = format_type_distinctly(index_type, expected_type)
         self.fail('Invalid index type {} for {}; expected type {}'.format(
-            index_str, base_str, expected_str), context)
+            index_str, base_str, expected_str), context, code=codes.INDEX)
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
