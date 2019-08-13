@@ -461,3 +461,28 @@ B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'  [ab
 from typing import Union, NewType
 
 X = NewType('X', Union[int, str])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, str]")  [valid-newtype]
+
+[case testErrorCodeOverloadVariant]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x):
+    return x
+
+f(object())  # E: No overload variant of "f" matches argument type "object"  [call-overload] \
+  # N: Possible overload variants: \
+  # N:     def f(x: int) -> int \
+  # N:     def f(x: str) -> str
+
+f()  # E: All overload variants of "f" require at least one argument  [call-overload] \
+  # N: Possible overload variants: \
+  # N:     def f(x: int) -> int \
+  # N:     def f(x: str) -> str
+
+f(1, 1)  # E: No overload variant of "f" matches argument types "int", "int"  [call-overload] \
+  # N: Possible overload variants: \
+  # N:     def f(x: int) -> int \
+  # N:     def f(x: str) -> str

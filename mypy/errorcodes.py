@@ -29,6 +29,8 @@ CALL_ARG = ErrorCode(
     'call-arg', "Check number, names and kinds of arguments in calls", 'General')  # type: Final
 ARG_TYPE = ErrorCode(
     'arg-type', "Check argument types in calls", 'General')  # type: Final
+CALL_OVERLOAD = ErrorCode(
+    'call-overload', "Check that an overload variant matches arguments", 'General')  # type: Final
 VALID_TYPE = ErrorCode(
     'valid-type', "Check that type (annotation) is valid", 'General')  # type: Final
 VAR_ANNOTATED = ErrorCode(

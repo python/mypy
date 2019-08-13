@@ -577,13 +577,13 @@ class MessageBuilder:
         num_args = len(arg_types)
         if num_args == 0:
             self.fail('All overload variants{} require at least one argument'.format(name_str),
-                      context)
+                      context, code=codes.CALL_OVERLOAD)
         elif num_args == 1:
             self.fail('No overload variant{} matches argument type {}'
-                      .format(name_str, arg_types_str), context)
+                      .format(name_str, arg_types_str), context, code=codes.CALL_OVERLOAD)
         else:
             self.fail('No overload variant{} matches argument types {}'
-                      .format(name_str, arg_types_str), context)
+                      .format(name_str, arg_types_str), context, code=codes.CALL_OVERLOAD)
 
         self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2)
 
