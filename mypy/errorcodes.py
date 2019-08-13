@@ -88,6 +88,8 @@ REDUNDANT_CAST = ErrorCode(
 COMPARISON_OVERLAP = ErrorCode(
     'comparison-overlap',
     "Check that types in comparisons have overlap", 'General')  # type: Final
+NO_ANY_UNIMPORTED = ErrorCode(
+    'no-any-unimported', 'Reject "Any" types from unfollowed imports', 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final

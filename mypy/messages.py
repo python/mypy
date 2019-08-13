@@ -918,7 +918,7 @@ class MessageBuilder:
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, format_type(typ)),
-                  ctx)
+                  ctx, code=codes.NO_ANY_UNIMPORTED)
 
     def need_annotation_for_var(self, node: SymbolNode, context: Context,
                                 python_version: Optional[Tuple[int, int]] = None) -> None:

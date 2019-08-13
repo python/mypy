@@ -486,3 +486,11 @@ f(1, 1)  # E: No overload variant of "f" matches argument types "int", "int"  [c
   # N: Possible overload variants: \
   # N:     def f(x: int) -> int \
   # N:     def f(x: str) -> str
+
+[case testErrorCodeAnyFromUnfollowedImport]
+# flags: --disallow-any-unimported
+from m import C  # type: ignore
+def f(x: C) -> None:  # E: Argument 1 to "f" becomes "Any" due to an unfollowed import  [no-any-unimported]
+    pass
+
+def g() -> C: ...  # E: Return type becomes "Any" due to an unfollowed import  [no-any-unimported]
