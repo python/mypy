@@ -350,3 +350,9 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 [case testErrorCodeCannotDetermineType]
 x  # E: Cannot determine type of 'x'  [has-type]
 x = None
+
+[case testErrorCodeRedundantCast]
+# flags: --warn-redundant-casts
+from typing import cast
+
+x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]

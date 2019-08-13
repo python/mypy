@@ -910,7 +910,8 @@ class MessageBuilder:
         self.fail('Unsupported type Type[{}]'.format(format_type(item)), context)
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
-        self.fail('Redundant cast to {}'.format(format_type(typ)), context)
+        self.fail('Redundant cast to {}'.format(format_type(typ)), context,
+                  code=codes.REDUNDANT_CAST)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, format_type(typ)),

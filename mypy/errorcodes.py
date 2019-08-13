@@ -67,6 +67,8 @@ NO_UNTYPED_CALL = ErrorCode(
     'no-untyped-call',
     "Disallow calling functions without type annotations from annotated functions",
     'General')  # type: Final
+REDUNDANT_CAST = ErrorCode(
+    'redundant-cast', "Check that cast changes type of expression", 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final
