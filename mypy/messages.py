@@ -743,7 +743,7 @@ class MessageBuilder:
         self.fail('String interpolation mixes specifier with and without mapping keys', context)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
-        self.fail("Cannot determine type of '%s'" % name, context)
+        self.fail("Cannot determine type of '%s'" % name, context, code=codes.HAS_TYPE)
 
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s' in base class '%s'" % (name, base), context)
