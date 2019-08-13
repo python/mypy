@@ -212,9 +212,10 @@ class MessageBuilder:
                     (original_type.type.fullname() == 'builtins.function'):
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.
-                self.fail('Cannot call function of unknown type', context)
+                self.fail('Cannot call function of unknown type', context, code=codes.OPERATOR)
             else:
-                self.fail('{} not callable'.format(format_type(original_type)), context)
+                self.fail('{} not callable'.format(format_type(original_type)), context,
+                          code=codes.OPERATOR)
         else:
             # The non-special case: a missing ordinary attribute.
             extra = ''

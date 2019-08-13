@@ -51,7 +51,7 @@ UNION_ATTR = ErrorCode(
 INDEX = ErrorCode(
     'index', "Check indexing operations", 'General')  # type: Final
 OPERATOR = ErrorCode(
-    'operator', "Check operands in binary and unary operations", 'General')  # type: Final
+    'operator', "Check that operator is valid for operands", 'General')  # type: Final
 LIST_ITEM = ErrorCode(
     'list-item', "Check list items in [item, ...]", 'General')  # type: Final
 DICT_ITEM = ErrorCode(

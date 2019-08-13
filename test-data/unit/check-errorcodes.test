@@ -327,6 +327,8 @@ B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
 '' + B()  # E: Unsupported operand types for + ("str" and "B")  [operator]
 '' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]
 
+1()  # E: "int" not callable  [operator]
+
 [case testErrorCodeListOrDictItem]
 from typing import List, Dict
 x: List[int] = ['']  # E: List item 0 has incompatible type "str"; expected "int"  [list-item]
