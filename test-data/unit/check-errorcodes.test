@@ -356,3 +356,21 @@ x = None
 from typing import cast
 
 x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]
+
+[case testErrorCodeInvalidCommentSignature]
+def f(x):  # E: Type signature has too few arguments  [syntax]
+    # type: () -> None
+    pass
+
+def g(x):  # E: Type signature has too many arguments  [syntax]
+    # type: (int, int) -> None
+    pass
+
+[case testErrorCodeInvalidCommentSignature_python2]
+def f(x):  # E: Type signature has too few arguments  [syntax]
+    # type: () -> None
+    pass
+
+def g(x):  # E: Type signature has too many arguments  [syntax]
+    # type: (int, int) -> None
+    pass
