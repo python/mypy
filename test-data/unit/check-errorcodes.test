@@ -38,6 +38,8 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
+x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+
 [case testErrorCodeSyntaxError_python2]
 1 '' # E: invalid syntax  [syntax]
 
@@ -45,6 +47,8 @@ def f(): # E: Type signature has too many arguments  [syntax]
 def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
+
+x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
 
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]
