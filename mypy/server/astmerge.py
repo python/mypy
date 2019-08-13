@@ -59,7 +59,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, DeletedType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType
+    RawExpressionType, PartialType,
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState

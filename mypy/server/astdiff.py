@@ -59,7 +59,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, LiteralType
+    UnionType, Overloaded, PartialType, TypeType, LiteralType,
 )
 from mypy.util import get_prefix
 

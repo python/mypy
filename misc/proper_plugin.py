@@ -16,6 +16,17 @@ FILE_WHITELIST = [
 
 
 class ProperTypePlugin(Plugin):
+    """
+    A plugin to ensure that every type is expanded before doing any special-casing.
+
+    This solves the problem that we have hundreds of call sites like:
+
+        if isinstance(typ, UnionType):
+            ...  # special-case union
+
+    But after introducing a new type TypeAliasType (and removing immediate expansion)
+    all these became dangerous because typ may be e.g. an alias to union.
+    """
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         if fullname == 'builtins.isinstance':
@@ -45,6 +56,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
 
 
 def is_improper_type(typ: Type) -> bool:
+    """Is this a type that is not a subtype of ProperType?"""
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         info = typ.type
