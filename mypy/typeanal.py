@@ -926,7 +926,7 @@ def fix_instance(t: Instance, fail: FailCallback,
     if act == '0':
         act = 'none'
     fail('"{}" expects {}, but {} given'.format(
-        t.type.name(), s, act), t)
+        t.type.name(), s, act), t, code=codes.TYPE_ARG)
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
     # things to be right.

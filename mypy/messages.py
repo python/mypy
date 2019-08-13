@@ -815,7 +815,8 @@ class MessageBuilder:
                                    context: Context) -> None:
         self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE
                   .format(typevar_name, callable_name(callee) or 'function', format_type(typ)),
-                  context)
+                  context,
+                  code=codes.TYPE_VAR)
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
         left_str = 'element' if kind == 'container' else 'left operand'
