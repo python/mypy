@@ -1036,7 +1036,7 @@ class MessageBuilder:
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
         message = 'Returning Any from function declared to return {}'.format(
             format_type(typ))
-        self.fail(message, context)
+        self.fail(message, context, code=codes.NO_ANY_RETURN)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ, AnyType):

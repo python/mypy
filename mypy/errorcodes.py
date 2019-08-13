@@ -90,6 +90,9 @@ COMPARISON_OVERLAP = ErrorCode(
     "Check that types in comparisons have overlap", 'General')  # type: Final
 NO_ANY_UNIMPORTED = ErrorCode(
     'no-any-unimported', 'Reject "Any" types from unfollowed imports', 'General')  # type: Final
+NO_ANY_RETURN = ErrorCode(
+    'no-any-return', 'Reject returning value with "Any" type if return type is not "Any"',
+    'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final
