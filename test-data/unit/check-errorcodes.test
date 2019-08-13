@@ -305,3 +305,24 @@ z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
 def h(a: TT, s: S) -> None:
     b: C[TT]  # E: Invalid type argument value for "C"  [type-var]
     c: C[S]  # E: Type variable "S" not valid as type argument value for "C"  [type-var]
+
+[case testErrorCodeOperators]
+class A: pass
+A() + 1  # E: Unsupported left operand type for + ("A")  [operator]
+1 in A()  # E: Unsupported right operand type for in ("A")  [operator]
+A() < 1  # E: Unsupported left operand type for < ("A")  [operator]
+-A()  # E: Unsupported operand type for unary - ("A")  [operator]
++A()  # E: Unsupported operand type for unary + ("A")  [operator]
+~A()  # E: Unsupported operand type for ~ ("A")  [operator]
+
+class B:
+    def __add__(self, other: int) -> 'B':
+        return self
+    def __radd__(self, other: int) -> 'B':
+        return self
+    def __contains__(self, other: int) -> int:
+        return 0
+
+B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
+'' + B()  # E: Unsupported operand types for + ("str" and "B")  [operator]
+'' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]

@@ -48,6 +48,10 @@ TYPE_VAR = ErrorCode(
     'type-var', "Check that type variable values are valid", 'General')  # type: Final
 UNION_ATTR = ErrorCode(
     'union-attr', "Check that attribute exists in each item of a union", 'General')  # type: Final
+INDEX = ErrorCode(
+    'index', "Check indexing operations", 'General')  # type: Final
+OPERATOR = ErrorCode(
+    'operator', "Check operands in binary and unary operations", 'General')  # type: Final
 
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
@@ -55,8 +59,6 @@ NO_UNTYPED_CALL = ErrorCode(
     'no-untyped-call',
     "Disallow calling functions without type annotations from annotated functions",
     'General')  # type: Final
-INDEX = ErrorCode(
-    'index', "Check indexing operations", 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final

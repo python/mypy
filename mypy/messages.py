@@ -178,7 +178,7 @@ class MessageBuilder:
             self.fail('Member "{}" is not assignable'.format(member), context)
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
-                format_type(original_type)), context)
+                format_type(original_type)), context, code=codes.OPERATOR)
         elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
@@ -188,13 +188,13 @@ class MessageBuilder:
                     break
         elif member == '__neg__':
             self.fail('Unsupported operand type for unary - ({})'.format(
-                format_type(original_type)), context)
+                format_type(original_type)), context, code=codes.OPERATOR)
         elif member == '__pos__':
             self.fail('Unsupported operand type for unary + ({})'.format(
-                format_type(original_type)), context)
+                format_type(original_type)), context, code=codes.OPERATOR)
         elif member == '__invert__':
             self.fail('Unsupported operand type for ~ ({})'.format(
-                format_type(original_type)), context)
+                format_type(original_type)), context, code=codes.OPERATOR)
         elif member == '__getitem__':
             # Indexed get.
             # TODO: Fix this consistently in format_type
@@ -281,7 +281,7 @@ class MessageBuilder:
         else:
             msg = 'Unsupported operand types for {} ({} and {})'.format(
                 op, left_str, right_str)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.OPERATOR)
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
@@ -290,7 +290,7 @@ class MessageBuilder:
         else:
             msg = 'Unsupported left operand type for {} ({})'.format(
                 op, format_type(typ))
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.OPERATOR)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(format_type(typ)), context)
