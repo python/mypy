@@ -40,6 +40,13 @@ def f(): # E: Type signature has too many arguments  [syntax]
 
 x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
 
+[case testErrorCodeSyntaxError3]
+# This is a bit inconsistent -- syntax error would be more logical?
+x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
+for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+    # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+    pass
+
 [case testErrorCodeSyntaxError_python2]
 1 '' # E: invalid syntax  [syntax]
 
@@ -49,6 +56,12 @@ def f(): # E: Type signature has too many arguments  [syntax]
     1
 
 x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+
+[case testErrorCodeSyntaxError3_python2]
+def f(): pass
+for v in f():  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+    # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+    pass
 
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]

@@ -488,7 +488,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
-            self.fail('Syntax error in type annotation', t)
+            self.fail('Syntax error in type annotation', t, code=codes.SYNTAX)
             if len(t.items) == 1:
                 self.note('Suggestion: Is there a spurious trailing comma?', t)
             else:
@@ -543,7 +543,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # or just misspelled a regular type. So we avoid guessing.
                 msg = 'Invalid type comment or annotation'
 
-            self.fail(msg, t)
+            self.fail(msg, t, code=codes.VALID_TYPE)
             if t.note is not None:
                 self.note(t.note, t)
 
