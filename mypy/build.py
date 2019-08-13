@@ -57,6 +57,7 @@ from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
+from mypy import errorcodes as codes
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -2422,14 +2423,16 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
           or (manager.options.python_version[0] >= 3
               and moduleinfo.is_py3_std_lib_module(target))):
         errors.report(
-            line, 0, "No library stub file for standard library module '{}'".format(target))
+            line, 0, "No library stub file for standard library module '{}'".format(target),
+            code=codes.IMPORT)
         errors.report(line, 0, stub_msg, severity='note', only_once=True)
     elif moduleinfo.is_third_party_module(target):
-        errors.report(line, 0, "No library stub file for module '{}'".format(target))
+        errors.report(line, 0, "No library stub file for module '{}'".format(target),
+                      code=codes.IMPORT)
         errors.report(line, 0, stub_msg, severity='note', only_once=True)
     else:
         note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
-        errors.report(line, 0, "Cannot find module named '{}'".format(target))
+        errors.report(line, 0, "Cannot find module named '{}'".format(target), code=codes.IMPORT)
         errors.report(line, 0, note, severity='note', only_once=True)
     errors.set_import_context(save_import_context)
 

@@ -384,3 +384,14 @@ if int() != str():  # E: Non-overlapping equality check (left operand type: "int
 if int() is str():  # E: Non-overlapping identity check (left operand type: "int", right operand type: "str")  [comparison-overlap]
     pass
 [builtins fixtures/primitives.pyi]
+
+[case testErrorCodeMissingModule]
+from defusedxml import xyz  # E: No library stub file for module 'defusedxml'  [import] \
+                            # N: (Stub files are from https://github.com/python/typeshed)
+from nonexistent import foobar  # E: Cannot find module named 'nonexistent'  [import] \
+    # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+import nonexistent2  # E: Cannot find module named 'nonexistent2'  [import]
+from nonexistent3 import *  # E: Cannot find module named 'nonexistent3'  [import]
+from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
+from pkg.bad2 import bad3  # E: Cannot find module named 'pkg.bad2'  [import]
+[file pkg/__init__.py]
