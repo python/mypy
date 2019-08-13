@@ -158,7 +158,7 @@ Arguments with default values can be annotated like so:
        # 'args' has type 'Tuple[int, ...]' (a tuple of ints)
        # 'kwargs' has type 'Dict[str, float]' (a dict of strs to floats)
        for arg in args:
-           print(name)
+           print(arg)
        for key, value in kwargs:
            print(key, value)
 
