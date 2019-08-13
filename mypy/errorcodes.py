@@ -69,6 +69,9 @@ NO_UNTYPED_CALL = ErrorCode(
     'General')  # type: Final
 REDUNDANT_CAST = ErrorCode(
     'redundant-cast', "Check that cast changes type of expression", 'General')  # type: Final
+COMPARISON_OVERLAP = ErrorCode(
+    'comparison-overlap',
+    "Check that types in comparisons have overlap", 'General')  # type: Final
 
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final

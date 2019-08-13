@@ -825,7 +825,8 @@ class MessageBuilder:
         right_str = 'container item' if kind == 'container' else 'right operand'
         message = 'Non-overlapping {} check ({} type: {}, {} type: {})'
         left_typ, right_typ = format_type_distinctly(left, right)
-        self.fail(message.format(kind, left_str, left_typ, right_str, right_typ), ctx)
+        self.fail(message.format(kind, left_str, left_typ, right_str, right_typ), ctx,
+                  code=codes.COMPARISON_OVERLAP)
 
     def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
         self.fail(
