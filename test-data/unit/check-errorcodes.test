@@ -326,3 +326,9 @@ class B:
 B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
 '' + B()  # E: Unsupported operand types for + ("str" and "B")  [operator]
 '' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]
+
+[case testErrorCodeListOrDictItem]
+from typing import List, Dict
+x: List[int] = ['']  # E: List item 0 has incompatible type "str"; expected "int"  [list-item]
+y: Dict[int, int] = {1: ''}  # E: Dict entry 0 has incompatible type "int": "str"; expected "int": "int"  [dict-item]
+[builtins fixtures/dict.pyi]

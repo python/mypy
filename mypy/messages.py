@@ -361,6 +361,7 @@ class MessageBuilder:
                                                                         callee.arg_types[0])
             msg = '{} item {} has incompatible type {}; expected {}'.format(
                 name.title(), n, actual_type_str, expected_type_str)
+            code = codes.LIST_ITEM
         elif callee_name == '<dict>':
             name = callee_name[1:-1]
             n -= 1
@@ -385,6 +386,7 @@ class MessageBuilder:
             msg = '{} entry {} has incompatible type {}: {}; expected {}: {}'.format(
                 name.title(), n, key_type_str, value_type_str,
                 expected_key_type_str, expected_value_type_str)
+            code = codes.DICT_ITEM
         elif callee_name == '<list-comprehension>':
             actual_type_str, expected_type_str = map(strip_quotes,
                                                      format_type_distinctly(arg_type,
