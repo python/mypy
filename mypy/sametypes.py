@@ -4,7 +4,7 @@ from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type, TypeAliasType
+    ProperType, get_proper_type
 )
 from mypy.typeops import tuple_fallback
 
@@ -160,6 +160,3 @@ class SameTypeVisitor(TypeVisitor[bool]):
             return is_same_type(left.item, self.right.item)
         else:
             return False
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
-        raise NotImplementedError('TODO')

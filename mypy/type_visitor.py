@@ -102,9 +102,8 @@ class TypeVisitor(Generic[T]):
     def visit_type_type(self, t: TypeType) -> T:
         pass
 
-    @abstractmethod
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
-        pass
+        raise NotImplementedError('TODO')
 
     def visit_placeholder_type(self, t: PlaceholderType) -> T:
         raise RuntimeError('Internal error: unresolved placeholder type {}'.format(t.fullname))
@@ -239,10 +238,6 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
         return PlaceholderType(t.fullname, self.translate_types(t.args), t.line)
 
-    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # TODO: should we translate the target too?
-        return t.copy_modified(args=self.translate_types(t.args))
-
 
 @trait
 class TypeQuery(SyntheticTypeVisitor[T]):
@@ -322,10 +317,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([])
 
     def visit_placeholder_type(self, t: PlaceholderType) -> T:
-        return self.query_types(t.args)
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> T:
-        # TODO: should we query also the target?
         return self.query_types(t.args)
 
     def query_types(self, types: Iterable[Type]) -> T:

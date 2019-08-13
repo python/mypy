@@ -10,7 +10,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
-    TypeType, NOT_READY, TypeAliasType
+    TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
@@ -159,9 +159,6 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        raise NotImplementedError('TODO')
 
     def visit_any(self, o: Any) -> None:
         pass  # Nothing to descend into.

@@ -59,7 +59,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, DeletedType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, TypeAliasType
+    RawExpressionType, PartialType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -428,9 +428,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_union_type(self, typ: UnionType) -> None:
         for item in typ.items:
             item.accept(self)
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        raise NotImplementedError('TODO')
 
     # Helpers
 

@@ -110,9 +110,3 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
 
     def visit_type_type(self, t: types.TypeType) -> Set[str]:
         return self._visit(t.item)
-
-    def visit_type_alias_type(self, t: types.TypeAliasType) -> Set[str]:
-        out = self._visit(t.args)
-        assert t.alias is not None
-        out.update(self._visit(t.alias.target))
-        return out
