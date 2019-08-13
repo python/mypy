@@ -2399,11 +2399,11 @@ def remove_optional(typ: Type) -> ProperType:
 
 @overload
 def get_proper_type(typ: None) -> None: ...
-@overload
+@overload  # noqa
 def get_proper_type(typ: Type) -> ProperType: ...
 
 
-def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
+def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:  # noqa
     if typ is None:
         return None
     while isinstance(typ, TypeAliasType):
@@ -2414,11 +2414,11 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
 
 @overload
 def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
-@overload
+@overload  # noqa
 def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
 
 
-def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore  # noqa
     return [get_proper_type(t) for t in it]
 
 
