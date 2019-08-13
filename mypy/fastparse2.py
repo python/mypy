@@ -107,6 +107,7 @@ def parse(source: Union[str, bytes],
     is_stub_file = fnam.endswith('.pyi')
     try:
         assert options.python_version[0] < 3 and not is_stub_file
+        # Disable deprecation warnings about <>.
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             ast = ast27.parse(source, fnam, 'exec')
