@@ -771,7 +771,7 @@ class MessageBuilder:
         self.fail("Cannot instantiate abstract class '%s' with abstract "
                   "attribute%s %s" % (class_name, plural_s(abstract_attributes),
                                    attrs),
-                  context)
+                  context, code=codes.ABSTRACT)
 
     def base_class_definitions_incompatible(self, name: str, base1: TypeInfo,
                                             base2: TypeInfo,

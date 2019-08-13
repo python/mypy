@@ -69,6 +69,9 @@ NO_REDEF = ErrorCode(
 FUNC_RETURNS_VALUE = ErrorCode(
     'func-returns-value', "Check that called function returns a value in value context",
     'General')  # type: Final
+ABSTRACT = ErrorCode(
+    'abstract', "Prevent instantiation of classes with abstract attributes",
+    'General')  # type: Final
 
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
