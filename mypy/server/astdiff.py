@@ -59,7 +59,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, LiteralType,
+    UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
 )
 from mypy.util import get_prefix
 
@@ -335,6 +335,11 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_type_type(self, typ: TypeType) -> SnapshotItem:
         return ('TypeType', snapshot_type(typ.item))
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> SnapshotItem:
+        assert t.alias is not None
+        # TODO: avoid recursion here.
+        return ('TypeAliasType', t.alias.fullname(), snapshot_types(t.args))
 
 
 def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tuple[object, ...]:

@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type
+    ProperType, get_proper_type, TypeAliasType
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -267,6 +267,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_partial_type(self, template: PartialType) -> List[Constraint]:
         # We can't do anything useful with a partial type here.
         assert False, "Internal error"
+
+    def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
+        raise RuntimeError('Type aliases must be expanded once before building constraints')
 
     # Non-trivial leaf type
 

@@ -115,17 +115,7 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
 
 
 class Type(mypy.nodes.Context):
-    """Abstract base class for all types.
-
-    The type hierarchy looks like this:
-        * Type:
-            * PlaceholderType:
-                Something we didn't clasify yet (exists only during semantic analysis).
-            * TypeAliasType:
-                An alias to another type.
-            * ProperType:
-                All other types inherit from this (including special types like ErasedType).
-    """
+    """Abstract base class for all types."""
 
     __slots__ = ('can_be_true', 'can_be_false')
 
@@ -177,6 +167,7 @@ class TypeAliasType(Type):
         This doesn't do full expansion, i.e. the result can contain another
         (or even this same) type alias.
         """
+        assert self.alias is not None
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
@@ -186,14 +177,16 @@ class TypeAliasType(Type):
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
         return None.
         """
-        return
+        raise NotImplementedError('TODO')
 
     @property
-    def can_be_true(self) -> bool:
+    def can_be_true(self) -> bool:  # type: ignore
+        assert self.alias is not None
         return self.alias.target.can_be_true
 
     @property
-    def can_be_false(self) -> bool:
+    def can_be_false(self) -> bool:  # type: ignore
+        assert self.alias is not None
         return self.alias.target.can_be_false
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -209,6 +202,7 @@ class TypeAliasType(Type):
                 and self.args == other.args)
 
     def serialize(self) -> JsonDict:
+        assert self.alias is not None
         data = {'.class': 'TypeAliasType',
                 'type_ref': self.alias.fullname(),
                 'args': [arg.serialize() for arg in self.args]}  # type: JsonDict
@@ -237,7 +231,7 @@ class TypeAliasType(Type):
 class ProperType(Type):
     """Not a type alias.
 
-    Every type except TypeAliasType and PlaceholderType must inherit from this type.
+    Every type except TypeAliasType must inherit from this type.
     """
 
 
@@ -1914,7 +1908,7 @@ class TypeType(ProperType):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
-class PlaceholderType:
+class PlaceholderType(ProperType):
     """Temporary, yet-unknown type during semantic analysis.
 
     This is needed when there's a reference to a type before the real symbol
@@ -2124,6 +2118,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
         return '<placeholder {}>'.format(t.fullname)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> str:
+        if t.alias is not None:
+            return '<alias {}>'.format(t.alias.fullname())
+        return '<alias (unfixed)>'
 
     def list_str(self, a: Iterable[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)

@@ -3,7 +3,8 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType
+    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
+    get_proper_type, TypeAliasType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -20,7 +21,7 @@ def erase_type(typ: Type) -> ProperType:
       Callable[[A1, A2, ...], R] -> Callable[..., Any]
       Type[X] -> Type[Any]
     """
-
+    typ = get_proper_type(typ)
     return typ.accept(EraseTypeVisitor())
 
 
@@ -90,6 +91,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        raise RuntimeError('Type aliases must be expanded once before erasing')
 
 
 def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
