@@ -961,7 +961,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # This is a NoReturn function
                         self.msg.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
                     else:
-                        self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+                        self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn,
+                                      code=codes.RETURN)
 
             self.return_types.pop()
 

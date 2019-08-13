@@ -37,6 +37,8 @@ VAR_ANNOTATED = ErrorCode(
 OVERRIDE = ErrorCode(
     'override', "Check that method override is compatible with base class",
     'General')  # type: Final
+RETURN = ErrorCode(
+    'return', "Check that function always returns a value", 'General')  # type: Final
 RETURN_VALUE = ErrorCode(
     'return-value', "Check that return value is compatible with signature",
     'General')  # type: Final

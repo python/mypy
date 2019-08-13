@@ -425,3 +425,7 @@ def f():
     pass
 def f(): # E: Name 'f' already defined on line 4  [no-redef]
     pass
+
+[case testErrorCodeMissingReturn]
+def f() -> int:  # E: Missing return statement  [return]
+    x = 0
