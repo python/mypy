@@ -429,3 +429,18 @@ def f(): # E: Name 'f' already defined on line 4  [no-redef]
 [case testErrorCodeMissingReturn]
 def f() -> int:  # E: Missing return statement  [return]
     x = 0
+
+[case testErrorCodeFunctionDoesNotReturnValue]
+from typing import Callable
+
+def f() -> None: pass
+
+x = f()  # E: "f" does not return a value  [func-returns-value]
+
+class A:
+    def g(self) -> None: pass
+
+y = A().g()  # E: "g" of "A" does not return a value  [func-returns-value]
+
+c: Callable[[], None]
+z = c()  # E: Function does not return a value  [func-returns-value]

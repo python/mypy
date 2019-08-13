@@ -538,9 +538,10 @@ class MessageBuilder:
         if isinstance(callee_type, FunctionLike):
             name = callable_name(callee_type)
         if name is not None:
-            self.fail('{} does not return a value'.format(capitalize(name)), context)
+            self.fail('{} does not return a value'.format(capitalize(name)), context,
+                      code=codes.FUNC_RETURNS_VALUE)
         else:
-            self.fail('Function does not return a value', context)
+            self.fail('Function does not return a value', context, code=codes.FUNC_RETURNS_VALUE)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""

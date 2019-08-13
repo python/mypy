@@ -66,6 +66,9 @@ IMPORT = ErrorCode(
     'import', "Require that imported module can be found or has stubs", 'General')  # type: Final
 NO_REDEF = ErrorCode(
     'no-redef', "Check that each name is defined once", 'General')  # type: Final
+FUNC_RETURNS_VALUE = ErrorCode(
+    'func-returns-value', "Check that called function returns a value in value context",
+    'General')  # type: Final
 
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
