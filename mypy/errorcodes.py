@@ -72,6 +72,8 @@ FUNC_RETURNS_VALUE = ErrorCode(
 ABSTRACT = ErrorCode(
     'abstract', "Prevent instantiation of classes with abstract attributes",
     'General')  # type: Final
+VALID_NEWTYPE = ErrorCode(
+    'valid-newtype', "Check that argument 2 to NewType is valid", 'General')  # type: Final
 
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
