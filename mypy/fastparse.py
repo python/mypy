@@ -208,7 +208,7 @@ def parse_type_comment(type_comment: str,
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
             err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
-            errors.report(line, e.offset, err_msg, blocker=True)
+            errors.report(line, e.offset, err_msg, blocker=True, code=codes.SYNTAX)
             return None, None
         else:
             raise

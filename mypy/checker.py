@@ -70,7 +70,7 @@ from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
-from mypy import state
+from mypy import state, errorcodes as codes
 from mypy.traverser import has_return_statement
 from mypy.errorcodes import ErrorCode
 
@@ -961,7 +961,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # This is a NoReturn function
                         self.msg.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
                     else:
-                        self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+                        self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn,
+                                      code=codes.RETURN)
 
             self.return_types.pop()
 
@@ -980,7 +981,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 msg += 'argument "{}"'.format(name)
             self.check_simple_assignment(arg.variable.type, arg.initializer,
-                context=arg, msg=msg, lvalue_name='argument', rvalue_name='default')
+                context=arg, msg=msg, lvalue_name='argument', rvalue_name='default',
+                code=codes.ASSIGNMENT)
 
     def is_forward_op_method(self, method_name: str) -> bool:
         if self.options.python_version[0] == 2 and method_name == '__div__':
@@ -1009,24 +1011,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 if (not fdef.arguments or (len(fdef.arguments) == 1 and
                         (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
+                              code=codes.NO_UNTYPED_DEF)
                     if not has_return_statement(fdef):
                         self.note('Use "-> None" if function does not return a value', fdef)
                 else:
-                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef,
+                              code=codes.NO_UNTYPED_DEF)
             elif isinstance(fdef.type, CallableType):
                 ret_type = fdef.type.ret_type
                 if is_unannotated_any(ret_type):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
+                              code=codes.NO_UNTYPED_DEF)
                 elif fdef.is_generator:
                     if is_unannotated_any(self.get_generator_return_type(ret_type,
                                                                         fdef.is_coroutine)):
-                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
+                                  code=codes.NO_UNTYPED_DEF)
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
-                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
+                                  code=codes.NO_UNTYPED_DEF)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
-                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef,
+                              code=codes.NO_UNTYPED_DEF)
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
@@ -1975,7 +1983,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
                         instance_type, lvalue_type, rvalue, lvalue)
                 else:
-                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
+                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue,
+                                                               code=codes.ASSIGNMENT)
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
@@ -2111,7 +2120,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return self.check_subtype(compare_type, base_type, lvalue,
                                       message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
-                                      'base class "%s" defined the type as' % base.name())
+                                      'base class "%s" defined the type as' % base.name(),
+                                      code=codes.ASSIGNMENT)
         return True
 
     def lvalue_type_from_base(self, expr_node: Var,
@@ -2675,7 +2685,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 context: Context,
                                 msg: str = message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                 lvalue_name: str = 'variable',
-                                rvalue_name: str = 'expression') -> Type:
+                                rvalue_name: str = 'expression', *,
+                                code: Optional[ErrorCode] = None) -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
@@ -2690,7 +2701,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif lvalue_type:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    '{} has type'.format(rvalue_name),
-                                   '{} has type'.format(lvalue_name))
+                                   '{} has type'.format(lvalue_name), code=code)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
@@ -2892,7 +2903,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype_label='expected',
                         supertype=return_type,
                         context=s,
-                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE)
+                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        code=codes.RETURN_VALUE)
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
                 # coroutines.
@@ -3674,7 +3686,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_subtype(self, subtype: Type, supertype: Type, context: Context,
                       msg: str = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
-                      supertype_label: Optional[str] = None) -> bool:
+                      supertype_label: Optional[str] = None, *,
+                      code: Optional[ErrorCode] = None) -> bool:
         """Generate an error if the subtype is not compatible with
         supertype."""
         if is_subtype(subtype, supertype):
@@ -3697,7 +3710,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     notes = append_invariance_notes([], subtype, supertype)
             if extra_info:
                 msg += ' (' + ', '.join(extra_info) + ')'
-            self.fail(msg, context)
+            self.fail(msg, context, code=code)
             for note in notes:
                 self.msg.note(note, context)
             if note_msg:

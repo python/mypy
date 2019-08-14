@@ -59,6 +59,7 @@ from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeops import tuple_fallback
+import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -483,7 +484,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                     msg=message_registry.INCOMPATIBLE_TYPES,
                     lvalue_name='TypedDict item "{}"'.format(item_name),
-                    rvalue_name='expression')
+                    rvalue_name='expression',
+                    code=codes.TYPEDDICT_ITEM)
 
         return callee
 
@@ -3214,7 +3216,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.unannotated)
         elif len(e.call.args) == 0:
             if self.chk.options.python_version[0] == 2:
-                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
+                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e, code=codes.CALL_ARG)
                 return AnyType(TypeOfAny.from_error)
             elif not e.info:
                 # This has already been reported by the semantic analyzer.

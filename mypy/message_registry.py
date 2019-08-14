@@ -89,8 +89,6 @@ MODULE_LEVEL_GETATTRIBUTE = '__getattribute__ is not valid at the module level' 
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type {}'  # type: Final
-# TODO: remove when the old semantic analyzer is gone
-BARE_GENERIC_OLD = 'Missing type parameters for generic type'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
     'Implicit generic "Any". Use "{}" and specify generic parameters'  # type: Final
 
