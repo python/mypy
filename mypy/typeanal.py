@@ -6,7 +6,8 @@ from contextlib import contextmanager
 from collections import OrderedDict
 
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
-from typing_extensions import Final, Protocol
+from typing_extensions import Final
+from mypy_extensions import DefaultNamedArg
 
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
@@ -870,13 +871,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
-
-class FailCallback(Protocol):
-    def __call__(self,
-                 __msg: str,
-                 __ctx: Context,
-                 *,
-                 code: Optional[ErrorCode] = None) -> None: ...
+# Mypyc doesn't support callback protocols yet.
+FailCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
 
 
 def get_omitted_any(disallow_any: bool, fail: FailCallback,
