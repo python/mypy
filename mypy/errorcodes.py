@@ -57,9 +57,10 @@ INDEX = ErrorCode(
 OPERATOR = ErrorCode(
     'operator', "Check that operator is valid for operands", 'General')  # type: Final
 LIST_ITEM = ErrorCode(
-    'list-item', "Check list items in [item, ...]", 'General')  # type: Final
+    'list-item', "Check list items in a list expression [item, ...]", 'General')  # type: Final
 DICT_ITEM = ErrorCode(
-    'dict-item', "Check dict items in {key: value, ...}", 'General')  # type: Final
+    'dict-item',
+    "Check dict items in a dict expression {key: value, ...}", 'General')  # type: Final
 TYPEDDICT_ITEM = ErrorCode(
     'typeddict-item', "Check items when constructing TypedDict", 'General')  # type: Final
 HAS_TYPE = ErrorCode(
@@ -77,6 +78,7 @@ ABSTRACT = ErrorCode(
 VALID_NEWTYPE = ErrorCode(
     'valid-newtype', "Check that argument 2 to NewType is valid", 'General')  # type: Final
 
+# These error codes aren't enable by default.
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
 NO_UNTYPED_CALL = ErrorCode(
@@ -87,15 +89,17 @@ REDUNDANT_CAST = ErrorCode(
     'redundant-cast', "Check that cast changes type of expression", 'General')  # type: Final
 COMPARISON_OVERLAP = ErrorCode(
     'comparison-overlap',
-    "Check that types in comparisons have overlap", 'General')  # type: Final
+    "Check that types in comparisons and 'in' expressions overlap", 'General')  # type: Final
 NO_ANY_UNIMPORTED = ErrorCode(
     'no-any-unimported', 'Reject "Any" types from unfollowed imports', 'General')  # type: Final
 NO_ANY_RETURN = ErrorCode(
     'no-any-return', 'Reject returning value with "Any" type if return type is not "Any"',
     'General')  # type: Final
 
+# Syntax errors are often blocking.
 SYNTAX = ErrorCode(
     'syntax', "Report syntax errors", 'General')  # type: Final
 
+# This is a catch-all for remaining uncategorized errors.
 MISC = ErrorCode(
     'misc', "Miscenallenous other checks", 'General')  # type: Final
