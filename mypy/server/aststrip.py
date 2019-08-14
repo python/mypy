@@ -1,6 +1,34 @@
-"""
-This module essentially copies functionality of server/aststrip.py. See its docstring for details.
-TODO: copy docstring here, when this is the default implementation.
+"""Strip/reset AST in-place to match state after semantic analyzer pre-analysis.
+
+Fine-grained incremental mode reruns semantic analysis main pass
+and type checking for *existing* AST nodes (targets) when changes are
+propagated using fine-grained dependencies.  AST nodes attributes are
+sometimes changed during semantic analysis main pass, and running
+semantic analysis again on those nodes would produce incorrect
+results, since this pass isn't idempotent. This pass resets AST
+nodes to reflect the state after semantic pre-analysis, so that we
+can rerun semantic analysis.
+(The above is in contrast to behavior with modules that have source code
+changes, for which we re-parse the entire module and reconstruct a fresh
+AST. No stripping is required in this case. Both modes of operation should
+have the same outcome.)
+Notes:
+* This is currently pretty fragile, as we must carefully undo whatever
+  changes can be made in semantic analysis main pass, including changes
+  to symbol tables.
+* We reuse existing AST nodes because it makes it relatively straightforward
+  to reprocess only a single target within a module efficiently. If there
+  was a way to parse a single target within a file, in time proportional to
+  the size of the target, we'd rather create fresh AST nodes than strip them.
+  (This is possible only in Python 3.8+)
+* Currently we don't actually reset all changes, but only those known to affect
+  non-idempotent semantic analysis behavior.
+  TODO: It would be more principled and less fragile to reset everything
+      changed in semantic analysis main pass and later.
+* Reprocessing may recreate AST nodes (such as Var nodes, and TypeInfo nodes
+  created with assignment statements) that will get different identities from
+  the original AST. Thus running an AST merge is necessary after stripping,
+  even though some identities are preserved.
 """
 
 import contextlib
