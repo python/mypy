@@ -552,7 +552,8 @@ def process_options(args: List[str],
         dest='shadow_file', action='append',
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
-    add_invertible_flag('--fast-exit', default=True, group=internals_group)
+    add_invertible_flag('--fast-exit', default=True, help=argparse.SUPPRESS,
+                        group=internals_group)
 
     error_group = parser.add_argument_group(
         title='Error reporting',

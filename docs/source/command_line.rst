@@ -659,9 +659,6 @@ Miscellaneous
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
 
-``--fast-exit``
-    This flag makes mypy exit faster by skipping the final GC pass.
-
 .. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 
 .. _PEP 561: https://www.python.org/dev/peps/pep-0561/
