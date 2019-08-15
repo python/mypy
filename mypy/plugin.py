@@ -382,6 +382,7 @@ FunctionContext = NamedTuple(
 # A context for a method signature hook that infers a better signature for a
 # method.  Note that argument types aren't available yet.  If you need them,
 # you have to use a method hook instead.
+# TODO: document ProperType in the plugin changelog/update issue.
 MethodSigContext = NamedTuple(
     'MethodSigContext', [
         ('type', ProperType),                       # Base object type for method call

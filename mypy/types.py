@@ -157,15 +157,17 @@ class Type(mypy.nodes.Context):
 
 
 class TypeAliasType(Type):
-    """
-    A type alias to another type.
+    """A type alias to another type.
+
+    NOTE: this is not being used yet, and the implementation is still incomplete.
 
     To support recursive type aliases we don't immediately expand a type alias
-    during semantic analysis, but create an in stance of this type that records the target alias
+    during semantic analysis, but create an instance of this type that records the target alias
     definition node (mypy.nodes.TypeAlias) and type arguments (for generic aliases).
 
     This is very similar to how TypeInfo vs Instance interact.
     """
+
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -173,11 +175,12 @@ class TypeAliasType(Type):
         self.args = args
         self.type_ref = None  # type: Optional[str]
 
-    def expand_once(self) -> Type:
+    def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
 
         This doesn't do full expansion, i.e. the result can contain another
-        (or even this same) type alias.
+        (or even this same) type alias. Use this internal helper only when really needed,
+        its public wrapper mypy.types.get_proper_type() is preferred.
         """
         assert self.alias is not None
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
@@ -191,11 +194,13 @@ class TypeAliasType(Type):
         """
         raise NotImplementedError('TODO')
 
+    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
     def can_be_true(self) -> bool:  # type: ignore
         assert self.alias is not None
         return self.alias.target.can_be_true
 
+    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
     def can_be_false(self) -> bool:  # type: ignore
         assert self.alias is not None
@@ -2407,7 +2412,7 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:  # noqa
     if typ is None:
         return None
     while isinstance(typ, TypeAliasType):
-        typ = typ.expand_once()
+        typ = typ._expand_once()
     assert isinstance(typ, ProperType), typ
     return typ
 
