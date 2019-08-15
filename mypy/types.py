@@ -2360,6 +2360,9 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
 
 def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:
     """Flatten nested unions in a type list."""
+    # This and similar functions on unions can cause infinite recursion
+    # if passed a "pathological" alias like A = Union[int, A] or similar.
+    # TODO: ban such aliases in semantic analyzer.
     flat_items = []  # type: List[ProperType]
     for tp in get_proper_types(types):
         if isinstance(tp, UnionType):
