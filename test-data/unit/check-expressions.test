@@ -2303,6 +2303,18 @@ if f == 0:  # E: Non-overlapping equality check (left operand type: "FileId", ri
     ...
 [builtins fixtures/bool.pyi]
 
+[case testStrictEqualityPromotionsLiterals]
+# flags: --strict-equality --py2
+from typing import Final
+
+U_FOO = u'foo'  # type: Final
+
+if str() == U_FOO:
+    pass
+assert u'foo' == 'foo'
+assert u'foo' == u'bar'  # E: Non-overlapping equality check (left operand type: "Literal[u'foo']", right operand type: "Literal[u'bar']")
+[builtins_py2 fixtures/python2.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name 'Any' is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")

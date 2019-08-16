@@ -10,10 +10,7 @@ from mypy.types import (
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types
 )
-from mypy.subtypes import (
-    is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
-    is_proper_subtype,
-)
+from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback
@@ -276,7 +273,13 @@ def is_overlapping_types(left: Type,
         right = right.fallback
 
     if isinstance(left, LiteralType) and isinstance(right, LiteralType):
-        return left == right
+        if left.value == right.value:
+            # If values are the same, we still need to check if fallbacks are overlapping,
+            # this is done below.
+            left = left.fallback
+            right = right.fallback
+        else:
+            return False
     elif isinstance(left, LiteralType):
         left = left.fallback
     elif isinstance(right, LiteralType):
@@ -285,15 +288,13 @@ def is_overlapping_types(left: Type,
     # Finally, we handle the case where left and right are instances.
 
     if isinstance(left, Instance) and isinstance(right, Instance):
-        if left.type.is_protocol and is_protocol_implementation(right, left):
-            return True
-        if right.type.is_protocol and is_protocol_implementation(left, right):
+        # First we need to handle promotions and structural compatibility for instances
+        # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
+        if (is_subtype(left, right, ignore_promotions=ignore_promotions)
+                or is_subtype(right, left, ignore_promotions=ignore_promotions)):
             return True
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.
-        # We don't need to handle promotions because they've already been handled
-        # by the calls to `is_subtype(...)` up above (and promotable types never
-        # have any generic arguments we need to recurse on).
         if left.type.has_base(right.type.fullname()):
             left = map_instance_to_supertype(left, right.type)
         elif right.type.has_base(left.type.fullname()):
@@ -302,9 +303,6 @@ def is_overlapping_types(left: Type,
             return False
 
         if len(left.args) == len(right.args):
-            if not left.args:
-                # We can get here if the instance is in fact a fallback from another type.
-                return True
             # Note: we don't really care about variance here, since the overlapping check
             # is symmetric and since we want to return 'True' even for partial overlaps.
             #
