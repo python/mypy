@@ -265,8 +265,7 @@ def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-d
 def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
     pass
 
-def gen():  # E: Function is missing a return type annotation  [no-untyped-def] \
-            # N: Use "-> None" if function does not return a value
+def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
     yield 1
 
 def gen2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
