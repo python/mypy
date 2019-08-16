@@ -5058,3 +5058,18 @@ tmp/lib.pyi:1: error: Name 'overload' is not defined
 tmp/lib.pyi:3: error: Name 'func' already defined on line 1
 tmp/lib.pyi:3: error: Name 'overload' is not defined
 main:3: note: Revealed type is 'Any'
+
+[case testLiteralSubtypeOverlap]
+from typing import overload
+from typing_extensions import Literal
+
+class MyInt(int): ...
+
+# Strictly speaking we can't prove this is unsafe (this depends on the implementation),
+# but such APIs seem like an anti-pattern anyways.
+@overload
+def foo(x: Literal[0]) -> None: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo(x: MyInt) -> int: ...
+def foo(x):
+    ...
