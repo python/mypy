@@ -1013,7 +1013,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
                               code=codes.NO_UNTYPED_DEF)
-                    if not has_return_statement(fdef):
+                    if not has_return_statement(fdef) and not fdef.is_generator:
                         self.note('Use "-> None" if function does not return a value', fdef)
                 else:
                     self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef,
