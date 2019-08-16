@@ -2312,6 +2312,7 @@ U_FOO = u'foo'  # type: Final
 if str() == U_FOO:
     pass
 assert u'foo' == 'foo'
+assert u'foo' == u'bar'  # E: Non-overlapping equality check (left operand type: "Literal[u'foo']", right operand type: "Literal[u'bar']")
 [builtins_py2 fixtures/python2.pyi]
 
 [case testUnimportedHintAny]
