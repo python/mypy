@@ -10,10 +10,7 @@ from mypy.types import (
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types
 )
-from mypy.subtypes import (
-    is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
-    is_proper_subtype,
-)
+from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback
