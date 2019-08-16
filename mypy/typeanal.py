@@ -452,7 +452,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
-        return t
+        # This type should exist only temporarily during type inference
+        assert False, "Internal error: Unexpected erased type"
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         return t
@@ -489,6 +490,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return ret
 
     def visit_overloaded(self, t: Overloaded) -> Type:
+        # Overloaded types are manually constructed in semanal.py by analyzing the
+        # AST and combining together the Callable types this visitor converts.
+        #
+        # So if we're ever asked to reanalyze an Overloaded type, we know it's
+        # fine to just return it as-is.
         return t
 
     def visit_tuple_type(self, t: TupleType) -> Type:

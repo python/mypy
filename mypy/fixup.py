@@ -186,7 +186,8 @@ class TypeFixer(TypeVisitor[None]):
             ct.accept(self)
 
     def visit_erased_type(self, o: Any) -> None:
-        pass  # Nothing to descend into.
+        # This type should exist only temporarily during type inference
+        raise RuntimeError("Shouldn't get here", o)
 
     def visit_deleted_type(self, o: Any) -> None:
         pass  # Nothing to descend into.

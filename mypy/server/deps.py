@@ -902,7 +902,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_erased_type(self, t: ErasedType) -> List[str]:
-        return []
+        # This type should exist only temporarily during type inference
+        assert False, "Should not see an erased type here"
 
     def visit_deleted_type(self, typ: DeletedType) -> List[str]:
         return []

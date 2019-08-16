@@ -374,7 +374,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
             t.fallback.accept(self)
 
     def visit_erased_type(self, t: ErasedType) -> None:
-        pass
+        # This type should exist only temporarily during type inference
+        raise RuntimeError
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
