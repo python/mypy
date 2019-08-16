@@ -3081,3 +3081,15 @@ takes_three(x)  # E: Argument 1 to "takes_three" has incompatible type "int"; ex
 if x == 2:  # OK
     ...
 [builtins fixtures/bool.pyi]
+
+[case testLiteralBinderLastValueErasedPartialTypes]
+# mypy: strict-equality
+
+def test() -> None:
+    x = None
+    if bool():
+        x = 1
+
+    if x == 2:  # OK
+        ...
+[builtins fixtures/bool.pyi]
