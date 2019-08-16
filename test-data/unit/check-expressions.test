@@ -2212,10 +2212,10 @@ Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad
 from typing import List, Type
 
 class Meta(type): ...
+class OtherMeta(type): ...
 
 class A(metaclass=Meta): ...
-class B(metaclass=Meta): ...
-class C: ...
+class C(metaclass=OtherMeta): ...
 
 o: Type[object]
 exp: List[Meta]
@@ -2284,6 +2284,22 @@ THREE: Final = 3
 if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Union[Literal['a'], Literal['b']]", right operand type: "Literal['c']")
     ...
 if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Union[Literal[1], Literal[2]]", right operand type: "Literal[3]")
+    ...
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityWithALiteralNewType]
+# flags: --strict-equality
+from typing import NewType
+
+UserId = NewType('UserId', int)
+FileId = NewType('FileId', str)
+
+u: UserId
+f: FileId
+
+if u == 0:  # OK
+    ...
+if f == 0:  # E: Non-overlapping equality check (left operand type: "FileId", right operand type: "Literal[0]")
     ...
 [builtins fixtures/bool.pyi]
 
