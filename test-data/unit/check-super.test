@@ -254,8 +254,9 @@ def g(b: B) -> None:
 
 [case testSuperInInitSubclass]
 class A:
-    def __init_subclass(cls) -> None:
+    def __init_subclass__(cls) -> None:
         super().__init_subclass__()
+[builtins fixtures/__init_subclass__.pyi]
 
 
 -- Invalid uses of super()
