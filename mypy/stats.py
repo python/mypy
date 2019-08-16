@@ -12,14 +12,14 @@ from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType, TypeQuery, CallableType,
-    TypeOfAny
+    TypeOfAny, get_proper_type, get_proper_types
 )
 from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
-    ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr, BytesExpr,
-    UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
+    AssignmentExpr, ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr,
+    BytesExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
 )
 from mypy.util import correct_relative_import
 from mypy.argmap import map_formals_to_actuals
@@ -229,7 +229,7 @@ class StatisticsVisitor(TraverserVisitor):
         if not self.typemap or o.callee not in self.typemap:
             # Type not availabe.
             return
-        callee_type = self.typemap[o.callee]
+        callee_type = get_proper_type(self.typemap[o.callee])
         if isinstance(callee_type, CallableType):
             self.record_callable_target_precision(o, callee_type)
         else:
@@ -253,7 +253,7 @@ class StatisticsVisitor(TraverserVisitor):
             lambda n: typemap[o.args[n]])
         for formals in actual_to_formal:
             for n in formals:
-                formal = callee.arg_types[n]
+                formal = get_proper_type(callee.arg_types[n])
                 if isinstance(formal, AnyType):
                     self.record_line(o.line, TYPE_ANY)
                 elif is_imprecise(formal):
@@ -274,6 +274,10 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_index_expr(self, o: IndexExpr) -> None:
         self.process_node(o)
         super().visit_index_expr(o)
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        self.process_node(o)
+        super().visit_assignment_expr(o)
 
     def visit_unary_expr(self, o: UnaryExpr) -> None:
         self.process_node(o)
@@ -318,6 +322,8 @@ class StatisticsVisitor(TraverserVisitor):
         self.record_line(node.line, kind)
 
     def type(self, t: Optional[Type]) -> None:
+        t = get_proper_type(t)
+
         if not t:
             # If an expression does not have a type, it is often due to dead code.
             # Don't count these because there can be an unanalyzed value on a line with other
@@ -342,7 +348,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.num_precise_exprs += 1
             self.record_line(self.line, TYPE_PRECISE)
 
-        for typ in collect_all_inner_types(t) + [t]:
+        for typ in get_proper_types(collect_all_inner_types(t)) + [t]:
             if isinstance(typ, AnyType):
                 typ = get_original_any(typ)
                 if is_special_form_any(typ):
@@ -436,10 +442,12 @@ class HasAnyQuery2(HasAnyQuery):
 
 
 def is_generic(t: Type) -> bool:
+    t = get_proper_type(t)
     return isinstance(t, Instance) and bool(t.args)
 
 
 def is_complex(t: Type) -> bool:
+    t = get_proper_type(t)
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType,
                                            TypeVarType))
 

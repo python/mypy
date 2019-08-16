@@ -6,7 +6,12 @@
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
 'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
+from m import xx  # E: Module 'm' has no attribute 'xx'  [attr-defined]
+from m import think  # E: Module 'm' has no attribute 'think'; maybe "thing"?  [attr-defined]
+for x in 1:  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
+    pass
 [file m.py]
+thing = 0
 [builtins fixtures/module.pyi]
 
 [case testErrorCodeUndefinedName]
@@ -33,6 +38,15 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
+x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+
+[case testErrorCodeSyntaxError3]
+# This is a bit inconsistent -- syntax error would be more logical?
+x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
+for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+    # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+    pass
+
 [case testErrorCodeSyntaxError_python2]
 1 '' # E: invalid syntax  [syntax]
 
@@ -40,6 +54,14 @@ def f(): # E: Type signature has too many arguments  [syntax]
 def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
+
+x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+
+[case testErrorCodeSyntaxError3_python2]
+def f(): pass
+for v in f():  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+    # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+    pass
 
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]
@@ -110,3 +132,372 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name
       ):
     # type () -> None
     pass
+
+[case testErrorCodeArgKindAndCount]
+def f(x: int) -> None: pass  # N: "f" defined here
+f()  # E: Too few arguments for "f"  [call-arg]
+f(1, 2)  # E: Too many arguments for "f"  [call-arg]
+f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
+
+def g(*, x: int) -> None: pass
+g()  # E: Missing named argument "x" for "g"  [call-arg]
+
+def h(x: int, y: int, z: int) -> None: pass
+h(y=1, z=1)  # E: Missing positional argument "x" in call to "h"  [call-arg]
+h(y=1)  # E: Missing positional arguments "x", "z" in call to "h"  [call-arg]
+
+[case testErrorCodeSuperArgs_python2]
+class A:
+    def f(self):
+        pass
+class B(A):
+    def f(self):  # type: () -> None
+        super().f()  # E: Too few arguments for "super"  [call-arg]
+
+[case testErrorCodeArgType]
+def f(x: int) -> None: pass
+f('')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"  [arg-type]
+
+class A:
+    def g(self, *, x: int) -> None: pass
+
+A().g(x='')  # E: Argument "x" to "g" of "A" has incompatible type "str"; expected "int"  [arg-type]
+
+[case testErrorCodeInvalidType]
+def f(): pass
+
+x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
+      # N: Perhaps you need "Callable[...]" or a callback protocol?
+
+import sys
+y: sys  # E: Module "sys" is not valid as a type  [valid-type]
+z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type]
+
+[case testErrorCodeNeedTypeAnnotation]
+from typing import TypeVar
+
+T = TypeVar('T')
+def f() -> T: pass
+x = f()  # E: Need type annotation for 'x'  [var-annotated]
+y = []  # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")  [var-annotated]
+[builtins fixtures/list.pyi]
+
+[case testErrorCodeBadOverride]
+from typing import overload
+
+class A:
+    def f(self) -> int:
+        return 0
+class B(A):
+    def f(self) -> str:  # E: Return type "str" of "f" incompatible with return type "int" in supertype "A"  [override]
+        return ''
+class C(A):
+    def f(self, x: int) -> int:  # E: Signature of "f" incompatible with supertype "A"  [override]
+        return 0
+class D:
+    def f(self, x: int) -> int:
+        return 0
+class E(D):
+    def f(self, x: str) -> int:  # E: Argument 1 of "f" is incompatible with supertype "D"; supertype defines the argument type as "int"  [override]
+        return 0
+
+class O:
+    @overload
+    def f(self, x: int) -> None: pass
+    @overload
+    def f(self, x: str) -> None: pass
+    def f(self, x):
+        pass
+
+class OO(O):
+    @overload  # E: Signature of "f" incompatible with supertype "O"  [override] \
+               # N: Overload variants must be defined in the same order as they are in "O"
+    def f(self, x: str) -> None: pass
+    @overload
+    def f(self, x: int) -> None: pass
+    def f(self, x):
+        pass
+
+[case testErrorCodeReturnValue]
+def f() -> int:
+    return ''  # E: Incompatible return value type (got "str", expected "int")  [return-value]
+
+[case testErrorCodeAssignment]
+x: str = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+
+def f(x: str = 0) -> None:  # E: Incompatible default for argument "x" (default has type "int", argument has type "str")  [assignment]
+    pass
+
+class A:
+    x = 0
+
+class B(A):
+    x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")  [assignment]
+
+[case testErrorCodeMissingTypeArg]
+# flags: --disallow-any-generics
+from typing import List, TypeVar
+x: List  # E: Missing type parameters for generic type "List"  [type-arg]
+y: list  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters  [type-arg]
+T = TypeVar('T')
+L = List[List[T]]
+z: L  # E: Missing type parameters for generic type "L"  [type-arg]
+[builtins fixtures/list.pyi]
+
+[case testErrorCodeUnionAttribute]
+from typing import Union
+class A:
+    x: int
+class B:
+    y: str
+a: Union[A, B]
+a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]
+
+[case testErrorCodeFunctionHasNoAnnotation]
+# flags: --disallow-untyped-defs
+
+def f(x):  # E: Function is missing a type annotation  [no-untyped-def]
+    pass
+
+def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
+    pass
+
+def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+    pass
+
+def gen():  # E: Function is missing a return type annotation  [no-untyped-def] \
+            # N: Use "-> None" if function does not return a value
+    yield 1
+
+def gen2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
+    yield 1
+
+async def asyncf():  # E: Function is missing a return type annotation  [no-untyped-def]
+    return 0
+
+async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
+    return 0
+[typing fixtures/typing-full.pyi]
+
+[case testErrorCodeCallUntypedFunction]
+# flags: --disallow-untyped-calls
+
+def f() -> None:
+    g()  # E: Call to untyped function "g" in typed context  [no-untyped-call]
+
+def g():
+    pass
+
+[case testErrorCodeIndexing]
+from typing import Dict
+x: Dict[int, int]
+x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
+1['']  # E: Value of type "int" is not indexable  [index]
+1[''] = 1  # E: Unsupported target for indexed assignment  [index]
+[builtins fixtures/dict.pyi]
+
+[case testErrorCodeInvalidTypeArg]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', int, str)
+TT = TypeVar('TT', int, None)
+S = TypeVar('S', bound=str)
+
+def f(x: T) -> T:
+    return x
+
+f(object())  # E: Value of type variable "T" of "f" cannot be "object"  [type-var]
+
+def g(x: S) -> S:
+    return x
+
+g(1)  # E: Value of type variable "S" of "g" cannot be "int"  [type-var]
+
+class C(Generic[T]): pass
+class D(Generic[S]): pass
+class E(Generic[S, T]): pass
+
+x: C[object]  # E: Value of type variable "T" of "C" cannot be "object"  [type-var]
+y: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "builtins.str"  [type-var]
+z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
+
+def h(a: TT, s: S) -> None:
+    b: C[TT]  # E: Invalid type argument value for "C"  [type-var]
+    c: C[S]  # E: Type variable "S" not valid as type argument value for "C"  [type-var]
+
+[case testErrorCodeOperators]
+class A: pass
+A() + 1  # E: Unsupported left operand type for + ("A")  [operator]
+1 in A()  # E: Unsupported right operand type for in ("A")  [operator]
+A() < 1  # E: Unsupported left operand type for < ("A")  [operator]
+-A()  # E: Unsupported operand type for unary - ("A")  [operator]
++A()  # E: Unsupported operand type for unary + ("A")  [operator]
+~A()  # E: Unsupported operand type for ~ ("A")  [operator]
+
+class B:
+    def __add__(self, other: int) -> 'B':
+        return self
+    def __radd__(self, other: int) -> 'B':
+        return self
+    def __contains__(self, other: int) -> int:
+        return 0
+
+B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
+'' + B()  # E: Unsupported operand types for + ("str" and "B")  [operator]
+'' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]
+
+1()  # E: "int" not callable  [operator]
+
+[case testErrorCodeListOrDictItem]
+from typing import List, Dict
+x: List[int] = ['']  # E: List item 0 has incompatible type "str"; expected "int"  [list-item]
+y: Dict[int, int] = {1: ''}  # E: Dict entry 0 has incompatible type "int": "str"; expected "int": "int"  [dict-item]
+[builtins fixtures/dict.pyi]
+
+[case testErrorCodeTypedDict]
+from typing_extensions import TypedDict
+class D(TypedDict):
+    x: int
+class E(TypedDict):
+    x: int
+    y: int
+
+a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
+b: D = {'y': ''}  # E: Extra key 'y' for TypedDict "D"  [typeddict-item]
+c = D(x=0) if int() else E(x=0, y=0)
+c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
+[builtins fixtures/dict.pyi]
+
+[case testErrorCodeCannotDetermineType]
+x  # E: Cannot determine type of 'x'  [has-type]
+x = None
+
+[case testErrorCodeRedundantCast]
+# flags: --warn-redundant-casts
+from typing import cast
+
+x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]
+
+[case testErrorCodeInvalidCommentSignature]
+def f(x):  # E: Type signature has too few arguments  [syntax]
+    # type: () -> None
+    pass
+
+def g(x):  # E: Type signature has too many arguments  [syntax]
+    # type: (int, int) -> None
+    pass
+
+[case testErrorCodeInvalidCommentSignature_python2]
+def f(x):  # E: Type signature has too few arguments  [syntax]
+    # type: () -> None
+    pass
+
+def g(x):  # E: Type signature has too many arguments  [syntax]
+    # type: (int, int) -> None
+    pass
+
+[case testErrorCodeNonOverlappingEquality]
+# flags: --strict-equality
+if int() == str():  # E: Non-overlapping equality check (left operand type: "int", right operand type: "str")  [comparison-overlap]
+    pass
+if int() != str():  # E: Non-overlapping equality check (left operand type: "int", right operand type: "str")  [comparison-overlap]
+    pass
+if int() is str():  # E: Non-overlapping identity check (left operand type: "int", right operand type: "str")  [comparison-overlap]
+    pass
+[builtins fixtures/primitives.pyi]
+
+[case testErrorCodeMissingModule]
+from defusedxml import xyz  # E: No library stub file for module 'defusedxml'  [import] \
+                            # N: (Stub files are from https://github.com/python/typeshed)
+from nonexistent import foobar  # E: Cannot find module named 'nonexistent'  [import] \
+    # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+import nonexistent2  # E: Cannot find module named 'nonexistent2'  [import]
+from nonexistent3 import *  # E: Cannot find module named 'nonexistent3'  [import]
+from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
+from pkg.bad2 import bad3  # E: Cannot find module named 'pkg.bad2'  [import]
+[file pkg/__init__.py]
+
+[case testErrorCodeAlreadyDefined]
+x: int
+x: str  # E: Name 'x' already defined on line 1  [no-redef]
+
+def f():
+    pass
+def f(): # E: Name 'f' already defined on line 4  [no-redef]
+    pass
+
+[case testErrorCodeMissingReturn]
+def f() -> int:  # E: Missing return statement  [return]
+    x = 0
+
+[case testErrorCodeFunctionDoesNotReturnValue]
+from typing import Callable
+
+def f() -> None: pass
+
+x = f()  # E: "f" does not return a value  [func-returns-value]
+
+class A:
+    def g(self) -> None: pass
+
+y = A().g()  # E: "g" of "A" does not return a value  [func-returns-value]
+
+c: Callable[[], None]
+z = c()  # E: Function does not return a value  [func-returns-value]
+
+[case testErrorCodeInstantiateAbstract]
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def f(self): pass
+
+class B(A):
+    pass
+
+B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'  [abstract]
+
+[case testErrorCodeNewTypeNotSubclassable]
+from typing import Union, NewType
+
+X = NewType('X', Union[int, str])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, str]")  [valid-newtype]
+
+[case testErrorCodeOverloadVariant]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x):
+    return x
+
+f(object())  # E: No overload variant of "f" matches argument type "object"  [call-overload] \
+  # N: Possible overload variants: \
+  # N:     def f(x: int) -> int \
+  # N:     def f(x: str) -> str
+
+f()  # E: All overload variants of "f" require at least one argument  [call-overload] \
+  # N: Possible overload variants: \
+  # N:     def f(x: int) -> int \
+  # N:     def f(x: str) -> str
+
+f(1, 1)  # E: No overload variant of "f" matches argument types "int", "int"  [call-overload] \
+  # N: Possible overload variants: \
+  # N:     def f(x: int) -> int \
+  # N:     def f(x: str) -> str
+
+[case testErrorCodeAnyFromUnfollowedImport]
+# flags: --disallow-any-unimported
+from m import C  # type: ignore
+def f(x: C) -> None:  # E: Argument 1 to "f" becomes "Any" due to an unfollowed import  [no-any-unimported]
+    pass
+
+def g() -> C: ...  # E: Return type becomes "Any" due to an unfollowed import  [no-any-unimported]
+
+[case testErrorCodeReturnAny]
+# flags: --warn-return-any
+def f(): pass
+
+def g() -> int:
+    return f()  # E: Returning Any from function declared to return "int"  [no-any-return]

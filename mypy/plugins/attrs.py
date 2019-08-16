@@ -20,7 +20,7 @@ from mypy.plugins.common import (
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
-    Overloaded, UnionType, FunctionLike
+    Overloaded, UnionType, FunctionLike, get_proper_type
 )
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
@@ -94,6 +94,7 @@ class Attribute:
                 converter_type = converter.type
 
             init_type = None
+            converter_type = get_proper_type(converter_type)
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):

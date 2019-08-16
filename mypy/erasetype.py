@@ -3,12 +3,13 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType,
+    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
+    get_proper_type
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
 
-def erase_type(typ: Type) -> Type:
+def erase_type(typ: Type) -> ProperType:
     """Erase any type variables from a type.
 
     Also replace tuple types with the corresponding concrete types.
@@ -20,43 +21,43 @@ def erase_type(typ: Type) -> Type:
       Callable[[A1, A2, ...], R] -> Callable[..., Any]
       Type[X] -> Type[Any]
     """
-
+    typ = get_proper_type(typ)
     return typ.accept(EraseTypeVisitor())
 
 
-class EraseTypeVisitor(TypeVisitor[Type]):
+class EraseTypeVisitor(TypeVisitor[ProperType]):
 
-    def visit_unbound_type(self, t: UnboundType) -> Type:
+    def visit_unbound_type(self, t: UnboundType) -> ProperType:
         # TODO: replace with an assert after UnboundType can't leak from semantic analysis.
         return AnyType(TypeOfAny.from_error)
 
-    def visit_any(self, t: AnyType) -> Type:
+    def visit_any(self, t: AnyType) -> ProperType:
         return t
 
-    def visit_none_type(self, t: NoneType) -> Type:
+    def visit_none_type(self, t: NoneType) -> ProperType:
         return t
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+    def visit_uninhabited_type(self, t: UninhabitedType) -> ProperType:
         return t
 
-    def visit_erased_type(self, t: ErasedType) -> Type:
+    def visit_erased_type(self, t: ErasedType) -> ProperType:
         # Should not get here.
         raise RuntimeError()
 
-    def visit_partial_type(self, t: PartialType) -> Type:
+    def visit_partial_type(self, t: PartialType) -> ProperType:
         # Should not get here.
         raise RuntimeError()
 
-    def visit_deleted_type(self, t: DeletedType) -> Type:
+    def visit_deleted_type(self, t: DeletedType) -> ProperType:
         return t
 
-    def visit_instance(self, t: Instance) -> Type:
+    def visit_instance(self, t: Instance) -> ProperType:
         return Instance(t.type, [AnyType(TypeOfAny.special_form)] * len(t.args), t.line)
 
-    def visit_type_var(self, t: TypeVarType) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.
         any_type = AnyType(TypeOfAny.special_form)
         return CallableType(
@@ -69,26 +70,26 @@ class EraseTypeVisitor(TypeVisitor[Type]):
             implicit=True,
         )
 
-    def visit_overloaded(self, t: Overloaded) -> Type:
+    def visit_overloaded(self, t: Overloaded) -> ProperType:
         return t.fallback.accept(self)
 
-    def visit_tuple_type(self, t: TupleType) -> Type:
+    def visit_tuple_type(self, t: TupleType) -> ProperType:
         return t.partial_fallback.accept(self)
 
-    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+    def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         return t.fallback.accept(self)
 
-    def visit_literal_type(self, t: LiteralType) -> Type:
+    def visit_literal_type(self, t: LiteralType) -> ProperType:
         # The fallback for literal types should always be either
         # something like int or str, or an enum class -- types that
         # don't contain any TypeVars. So there's no need to visit it.
         return t
 
-    def visit_union_type(self, t: UnionType) -> Type:
+    def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
         return UnionType.make_simplified_union(erased_items)
 
-    def visit_type_type(self, t: TypeType) -> Type:
+    def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)
 
 

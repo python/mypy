@@ -179,3 +179,110 @@ def f(p1: bytes, p2: float, /, p_or_kw: int) -> None:
 def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p1)  # N: Revealed type is 'builtins.bytes'
     reveal_type(p2)  # N: Revealed type is 'builtins.float'
+
+[case testWalrus]
+# flags: --strict-optional
+from typing import NamedTuple, Optional
+from typing_extensions import Final
+
+if a := 2:
+    reveal_type(a)  # N: Revealed type is 'builtins.int'
+
+while b := "x":
+    reveal_type(b)  # N: Revealed type is 'builtins.str'
+
+def f(x: int = (c := 4)) -> int:
+    if a := 2:
+        reveal_type(a)  # N: Revealed type is 'builtins.int'
+
+    while b := "x":
+        reveal_type(b)  # N: Revealed type is 'builtins.str'
+
+    x = (y := 1) + (z := 2)
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(y)  # N: Revealed type is 'builtins.int'
+    reveal_type(z)  # N: Revealed type is 'builtins.int'
+
+    l = [y2 := 1, y2 + 2, y2 + 3]
+    reveal_type(y2)  # N: Revealed type is 'builtins.int'
+    reveal_type(l)  # N: Revealed type is 'builtins.list[builtins.int*]'
+
+    filtered_data = [y3 for x in l if (y3 := a) is not None]
+    reveal_type(filtered_data)  # N: Revealed type is 'builtins.list[builtins.int*]'
+    reveal_type(y3)  # N: Revealed type is 'builtins.int'
+
+    # https://www.python.org/dev/peps/pep-0572/#exceptional-cases
+    (y4 := 3)
+    reveal_type(y4)  # N: Revealed type is 'builtins.int'
+
+    y5 = (y6 := 3)
+    reveal_type(y5)  # N: Revealed type is 'builtins.int'
+    reveal_type(y6)  # N: Revealed type is 'builtins.int'
+
+    f(x=(y7 := 3))
+    reveal_type(y7)  # N: Revealed type is 'builtins.int'
+
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is 'builtins.int'
+    y8  # E: Name 'y8' is not defined
+
+    y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+    if y7 := "x":  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        pass
+
+    # Just make sure we don't crash on this sort of thing.
+    if NT := NamedTuple("NT", [("x", int)]):  # E: "int" not callable
+        z2: NT  # E: Invalid type "NT"
+
+    if Alias := int:
+        z3: Alias  # E: Invalid type "Alias"
+
+    return (y9 := 3) + y9
+
+reveal_type(c)  # N: Revealed type is 'builtins.int'
+
+def check_final() -> None:
+    x: Final = 3
+
+    if x := 4:  # E: Cannot assign to final name "x"
+        pass
+
+def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Optional[int],
+                 b: Optional[int]) -> None:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
+
+    (x := 1)
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+    if x or (y := 1):
+        reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
+
+    if x and (y := 1):
+        # TODO should just be int
+        # This is because in check_boolean_op in checkexpr.py we accept the right conditional
+        # within a binder frame context, so the types assigned in it are lost later. Perhaps
+        # we need to make find_isinstance_check() walrus-aware.
+        reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
+
+    if (a := 1) and x:
+        reveal_type(a)  # N: Revealed type is 'builtins.int'
+
+    if (b := 1) or x:
+        reveal_type(b)  # N: Revealed type is 'builtins.int'
+
+    if z := 1:
+        reveal_type(z)  # N: Revealed type is 'builtins.int'
+
+def check_partial() -> None:
+    x = None
+    if bool() and (x := 2):
+        pass
+
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
+
+def check_partial_list() -> None:
+    if (x := []):
+        x.append(3)
+
+    reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.int]'
+
+[builtins fixtures/f_string.pyi]

@@ -19,10 +19,10 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
     OverloadPart, EnumCallExpr, REVEAL_TYPE
 )
-from mypy.types import Type, FunctionLike
+from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
 from mypy.visitor import NodeVisitor
 from mypy.util import replace_object_state
@@ -154,7 +154,9 @@ class TransformVisitor(NodeVisitor[Node]):
             newitem.line = olditem.line
         new = OverloadedFuncDef(items)
         new._fullname = node._fullname
-        new.type = self.optional_type(node.type)
+        new_type = self.optional_type(node.type)
+        assert isinstance(new_type, ProperType)
+        new.type = new_type
         new.info = node.info
         new.is_static = node.is_static
         new.is_class = node.is_class
@@ -408,6 +410,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new = SuperExpr(node.name, call)
         new.info = node.info
         return new
+
+    def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
+        return AssignmentExpr(node.target, node.value)
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))
