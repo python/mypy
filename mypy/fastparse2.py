@@ -15,6 +15,7 @@ different class hierarchies, which made it difficult to write a shared visitor b
 two in a typesafe way.
 """
 import sys
+import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
@@ -106,7 +107,10 @@ def parse(source: Union[str, bytes],
     is_stub_file = fnam.endswith('.pyi')
     try:
         assert options.python_version[0] < 3 and not is_stub_file
-        ast = ast27.parse(source, fnam, 'exec')
+        # Disable deprecation warnings about <>.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            ast = ast27.parse(source, fnam, 'exec')
         tree = ASTConverter(options=options,
                             errors=errors,
                             ).visit(ast)
@@ -405,7 +409,8 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)  # type: ignore
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):

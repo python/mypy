@@ -20,7 +20,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, LambdaExpr, ComparisonExpr,
+    UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
@@ -30,7 +30,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType,
+    TypeOfAny, Instance, RawExpressionType, ProperType
 )
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
@@ -197,7 +197,7 @@ def parse_type_comment(type_comment: str,
                        column: int,
                        errors: Optional[Errors],
                        assume_str_is_unicode: bool = True,
-                       ) -> Tuple[Optional[List[str]], Optional[Type]]:
+                       ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
     """Parse type portion of a type comment (+ optional type ignore).
 
     Return (ignore info, parsed type).
@@ -208,7 +208,7 @@ def parse_type_comment(type_comment: str,
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
             err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
-            errors.report(line, e.offset, err_msg, blocker=True)
+            errors.report(line, e.offset, err_msg, blocker=True, code=codes.SYNTAX)
             return None, None
         else:
             raise
@@ -229,7 +229,7 @@ def parse_type_comment(type_comment: str,
 
 
 def parse_type_string(expr_string: str, expr_fallback_name: str,
-                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> ProperType:
     """Parses a type that was originally present inside of an explicit string,
     byte string, or unicode string.
 
@@ -348,7 +348,7 @@ class ASTConverter:
 
     def translate_type_comment(self,
                                n: Union[ast3.stmt, ast3.arg],
-                               type_comment: Optional[str]) -> Optional[Type]:
+                               type_comment: Optional[str]) -> Optional[ProperType]:
         if type_comment is None:
             return None
         else:
@@ -555,7 +555,8 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)  # type: ignore
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
@@ -757,10 +758,6 @@ class ASTConverter:
                                    self.visit(n.value))
         return self.set_line(s, n)
 
-    def visit_NamedExpr(self, n: NamedExpr) -> None:
-        self.fail("assignment expressions are not yet supported", n.lineno, n.col_offset)
-        return None
-
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
         target_type = self.translate_type_comment(n, n.type_comment)
@@ -901,6 +898,10 @@ class ASTConverter:
         return self.set_line(s, n)
 
     # --- expr ---
+
+    def visit_NamedExpr(self, n: NamedExpr) -> AssignmentExpr:
+        s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
+        return self.set_line(s, n)
 
     # BoolOp(boolop op, expr* values)
     def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
@@ -1267,12 +1268,12 @@ class TypeConverter:
         )
 
     @overload
-    def visit(self, node: ast3.expr) -> Type: ...
+    def visit(self, node: ast3.expr) -> ProperType: ...
 
     @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[Type]: ...  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...  # noqa
 
-    def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1460,7 +1461,7 @@ class TypeConverter:
 
         # Do an ignore because the field doesn't exist in 3.8 (where
         # this method doesn't actually ever run.)
-        kind = n.kind  # type: str  # type: ignore
+        kind = n.kind  # type: str
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,

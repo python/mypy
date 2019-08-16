@@ -23,7 +23,7 @@ from mypy.types import (
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType,
+    PlaceholderType, TypeAliasType
 )
 
 
@@ -98,6 +98,9 @@ class TypeVisitor(Generic[T]):
     def visit_type_type(self, t: TypeType) -> T:
         pass
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        raise NotImplementedError('TODO')
+
 
 @trait
 class SyntheticTypeVisitor(TypeVisitor[T]):
@@ -160,7 +163,7 @@ class TypeTranslator(TypeVisitor[Type]):
         last_known_value = None  # type: Optional[LiteralType]
         if t.last_known_value is not None:
             raw_last_known_value = t.last_known_value.accept(self)
-            assert isinstance(raw_last_known_value, LiteralType)
+            assert isinstance(raw_last_known_value, LiteralType)  # type: ignore
             last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
@@ -200,7 +203,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         fallback = t.fallback.accept(self)
-        assert isinstance(fallback, Instance)
+        assert isinstance(fallback, Instance)  # type: ignore
         return LiteralType(
             value=t.value,
             fallback=fallback,
@@ -211,7 +214,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
 
-    def translate_types(self, types: List[Type]) -> List[Type]:
+    def translate_types(self, types: Iterable[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
 
     def translate_variables(self,
@@ -222,10 +225,8 @@ class TypeTranslator(TypeVisitor[Type]):
         items = []  # type: List[CallableType]
         for item in t.items():
             new = item.accept(self)
-            if isinstance(new, CallableType):
-                items.append(new)
-            else:
-                raise RuntimeError('CallableType expected, but got {}'.format(type(new)))
+            assert isinstance(new, CallableType)  # type: ignore
+            items.append(new)
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:

@@ -12,7 +12,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
-from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
@@ -234,12 +234,11 @@ class DataclassTransformer:
 
             # x: InitVar[int] is turned into x: int and is removed from the class.
             is_init_var = False
-            if (
-                    isinstance(node.type, Instance) and
-                    node.type.type.fullname() == 'dataclasses.InitVar'
-            ):
+            node_type = get_proper_type(node.type)
+            if (isinstance(node_type, Instance) and
+                    node_type.type.fullname() == 'dataclasses.InitVar'):
                 is_init_var = True
-                node.type = node.type.args[0]
+                node.type = node_type.args[0]
 
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 

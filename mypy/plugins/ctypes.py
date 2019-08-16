@@ -8,7 +8,8 @@ from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype
 from mypy.types import (
-    AnyType, CallableType, Instance, NoneType, Type, TypeOfAny, UnionType, union_items
+    AnyType, CallableType, Instance, NoneType, Type, TypeOfAny, UnionType,
+    union_items, ProperType, get_proper_type
 )
 
 
@@ -31,7 +32,7 @@ def _get_text_type(api: 'mypy.plugin.CheckerPluginInterface') -> Instance:
 
 
 def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInterface'
-                               ) -> Optional[Type]:
+                               ) -> Optional[ProperType]:
     """Try to find a parametrized _SimpleCData in tp's bases and return its single type argument.
 
     None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases.
@@ -40,7 +41,7 @@ def _find_simplecdata_base_arg(tp: Instance, api: 'mypy.plugin.CheckerPluginInte
         simplecdata_base = map_instance_to_supertype(tp,
             api.named_generic_type('ctypes._SimpleCData', [AnyType(TypeOfAny.special_form)]).type)
         assert len(simplecdata_base.args) == 1, '_SimpleCData takes exactly one type argument'
-        return simplecdata_base.args[0]
+        return get_proper_type(simplecdata_base.args[0])
     return None
 
 
@@ -78,13 +79,15 @@ def _autoconvertible_to_cdata(tp: Type, api: 'mypy.plugin.CheckerPluginInterface
     return UnionType.make_simplified_union(allowed_types)
 
 
-def _autounboxed_cdata(tp: Type) -> Type:
+def _autounboxed_cdata(tp: Type) -> ProperType:
     """Get the auto-unboxed version of a CData type, if applicable.
 
     For *direct* _SimpleCData subclasses, the only type argument of _SimpleCData in the bases list
     is returned.
     For all other CData types, including indirect _SimpleCData subclasses, tp is returned as-is.
     """
+    tp = get_proper_type(tp)
+
     if isinstance(tp, UnionType):
         return UnionType.make_simplified_union([_autounboxed_cdata(t) for t in tp.items])
     elif isinstance(tp, Instance):
@@ -93,18 +96,19 @@ def _autounboxed_cdata(tp: Type) -> Type:
                 # If tp has _SimpleCData as a direct base class,
                 # the auto-unboxed type is the single type argument of the _SimpleCData type.
                 assert len(base.args) == 1
-                return base.args[0]
+                return get_proper_type(base.args[0])
     # If tp is not a concrete type, or if there is no _SimpleCData in the bases,
     # the type is not auto-unboxed.
     return tp
 
 
-def _get_array_element_type(tp: Type) -> Optional[Type]:
+def _get_array_element_type(tp: Type) -> Optional[ProperType]:
     """Get the element type of the Array type tp, or None if not specified."""
+    tp = get_proper_type(tp)
     if isinstance(tp, Instance):
         assert tp.type.fullname() == 'ctypes.Array'
         if len(tp.args) == 1:
-            return tp.args[0]
+            return get_proper_type(tp.args[0])
     return None
 
 
@@ -145,7 +149,7 @@ def array_getitem_callback(ctx: 'mypy.plugin.MethodContext') -> Type:
             'The stub of ctypes.Array.__getitem__ should have exactly one parameter'
         assert len(ctx.arg_types[0]) == 1, \
             "ctypes.Array.__getitem__'s parameter should not be variadic"
-        index_type = ctx.arg_types[0][0]
+        index_type = get_proper_type(ctx.arg_types[0][0])
         if isinstance(index_type, Instance):
             if index_type.type.has_base('builtins.int'):
                 return unboxed
@@ -160,7 +164,7 @@ def array_setitem_callback(ctx: 'mypy.plugin.MethodSigContext') -> CallableType:
     if et is not None:
         allowed = _autoconvertible_to_cdata(et, ctx.api)
         assert len(ctx.default_signature.arg_types) == 2
-        index_type = ctx.default_signature.arg_types[0]
+        index_type = get_proper_type(ctx.default_signature.arg_types[0])
         if isinstance(index_type, Instance):
             arg_type = None
             if index_type.type.has_base('builtins.int'):

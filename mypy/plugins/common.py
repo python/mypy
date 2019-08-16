@@ -6,7 +6,10 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext
 from mypy.semanal import set_callable_name
-from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance, UnionType
+from mypy.types import (
+    CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance, UnionType,
+    get_proper_type, get_proper_types
+)
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 
@@ -55,7 +58,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     callee_node = call.callee.node
     if (isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES))
             and callee_node.type):
-        callee_node_type = callee_node.type
+        callee_node_type = get_proper_type(callee_node.type)
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.
             callee_type = callee_node_type.items()[-1]
@@ -141,18 +144,20 @@ def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]
     2. 'typ' is a LiteralType containing a string
     3. 'typ' is a UnionType containing only LiteralType of strings
     """
+    typ = get_proper_type(typ)
+
     if isinstance(expr, StrExpr):
         return [expr.value]
 
     if isinstance(typ, Instance) and typ.last_known_value is not None:
         possible_literals = [typ.last_known_value]  # type: List[Type]
     elif isinstance(typ, UnionType):
-        possible_literals = typ.items
+        possible_literals = list(typ.items)
     else:
         possible_literals = [typ]
 
     strings = []
-    for lit in possible_literals:
+    for lit in get_proper_types(possible_literals):
         if isinstance(lit, LiteralType) and lit.fallback.type.fullname() == 'builtins.str':
             val = lit.value
             assert isinstance(val, str)

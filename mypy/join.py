@@ -6,7 +6,8 @@ from typing import List, Optional
 from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
-    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny,
+    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny, get_proper_type,
+    ProperType, get_proper_types
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -18,8 +19,11 @@ import mypy.typeops
 from mypy import state
 
 
-def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
+def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
     """Return a simple least upper bound given the declared type."""
+    declaration = get_proper_type(declaration)
+    s = get_proper_type(s)
+    t = get_proper_type(t)
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
@@ -54,11 +58,14 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> Type:
     return declaration
 
 
-def join_types(s: Type, t: Type) -> Type:
+def join_types(s: Type, t: Type) -> ProperType:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
     """
+    s = get_proper_type(s)
+    t = get_proper_type(t)
+
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
         s = true_or_false(s)
@@ -83,29 +90,29 @@ def join_types(s: Type, t: Type) -> Type:
     return t.accept(TypeJoinVisitor(s))
 
 
-class TypeJoinVisitor(TypeVisitor[Type]):
+class TypeJoinVisitor(TypeVisitor[ProperType]):
     """Implementation of the least upper bound algorithm.
 
     Attributes:
       s: The other (left) type operand.
     """
 
-    def __init__(self, s: Type) -> None:
+    def __init__(self, s: ProperType) -> None:
         self.s = s
 
-    def visit_unbound_type(self, t: UnboundType) -> Type:
+    def visit_unbound_type(self, t: UnboundType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
-    def visit_union_type(self, t: UnionType) -> Type:
+    def visit_union_type(self, t: UnionType) -> ProperType:
         if is_subtype(self.s, t):
             return t
         else:
             return UnionType.make_simplified_union([self.s, t])
 
-    def visit_any(self, t: AnyType) -> Type:
+    def visit_any(self, t: AnyType) -> ProperType:
         return t
 
-    def visit_none_type(self, t: NoneType) -> Type:
+    def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
@@ -116,22 +123,22 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return self.s
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+    def visit_uninhabited_type(self, t: UninhabitedType) -> ProperType:
         return self.s
 
-    def visit_deleted_type(self, t: DeletedType) -> Type:
+    def visit_deleted_type(self, t: DeletedType) -> ProperType:
         return self.s
 
-    def visit_erased_type(self, t: ErasedType) -> Type:
+    def visit_erased_type(self, t: ErasedType) -> ProperType:
         return self.s
 
-    def visit_type_var(self, t: TypeVarType) -> Type:
+    def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
         else:
             return self.default(self.s)
 
-    def visit_instance(self, t: Instance) -> Type:
+    def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             nominal = join_instances(t, self.s)
             structural = None  # type: Optional[Instance]
@@ -160,12 +167,13 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> ProperType:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = join_similar_callables(t, self.s)
-            if any(isinstance(tp, (NoneType, UninhabitedType)) for tp in result.arg_types):
+            if any(isinstance(tp, (NoneType, UninhabitedType))
+                   for tp in get_proper_types(result.arg_types)):
                 # We don't want to return unusable Callable, attempt fallback instead.
                 return join_types(t.fallback, self.s)
             return result
@@ -178,7 +186,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return join_types(t, call)
         return join_types(t.fallback, self.s)
 
-    def visit_overloaded(self, t: Overloaded) -> Type:
+    def visit_overloaded(self, t: Overloaded) -> ProperType:
         # This is more complex than most other cases. Here are some
         # examples that illustrate how this works.
         #
@@ -231,7 +239,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return join_types(t, call)
         return join_types(t.fallback, s)
 
-    def visit_tuple_type(self, t: TupleType) -> Type:
+    def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
             items = []  # type: List[Type]
             for i in range(t.length()):
@@ -243,7 +251,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+    def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
             items = OrderedDict([
                 (item_name, s_item_type)
@@ -262,7 +270,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_literal_type(self, t: LiteralType) -> Type:
+    def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType):
             if t == self.s:
                 return t
@@ -271,12 +279,12 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return join_types(self.s, t.fallback)
 
-    def visit_partial_type(self, t: PartialType) -> Type:
+    def visit_partial_type(self, t: PartialType) -> ProperType:
         # We only have partial information so we can't decide the join result. We should
         # never get here.
         assert False, "Internal error"
 
-    def visit_type_type(self, t: TypeType) -> Type:
+    def visit_type_type(self, t: TypeType) -> ProperType:
         if isinstance(self.s, TypeType):
             return TypeType.make_normalized(self.join(t.item, self.s.item), line=t.line)
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
@@ -284,10 +292,11 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def join(self, s: Type, t: Type) -> Type:
+    def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)
 
-    def default(self, typ: Type) -> Type:
+    def default(self, typ: Type) -> ProperType:
+        typ = get_proper_type(typ)
         if isinstance(typ, Instance):
             return object_from_instance(typ)
         elif isinstance(typ, UnboundType):
@@ -304,7 +313,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return AnyType(TypeOfAny.special_form)
 
 
-def join_instances(t: Instance, s: Instance) -> Type:
+def join_instances(t: Instance, s: Instance) -> ProperType:
     """Calculate the join of two instance types.
     """
     if t.type == s.type:
@@ -328,7 +337,7 @@ def join_instances(t: Instance, s: Instance) -> Type:
         return join_instances_via_supertype(s, t)
 
 
-def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
+def join_instances_via_supertype(t: Instance, s: Instance) -> ProperType:
     # Give preference to joins via duck typing relationship, so that
     # join(int, float) == float, for example.
     if t.type._promote and is_subtype(t.type._promote, s):
@@ -338,7 +347,7 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
     # Compute the "best" supertype of t when joined with s.
     # The definition of "best" may evolve; for now it is the one with
     # the longest MRO.  Ties are broken by using the earlier base.
-    best = None  # type: Optional[Type]
+    best = None  # type: Optional[ProperType]
     for base in t.type.bases:
         mapped = map_instance_to_supertype(t, base.type)
         res = join_instances(mapped, s)
@@ -351,6 +360,9 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
 def is_better(t: Type, s: Type) -> bool:
     # Given two possible results from join_instances_via_supertype(),
     # indicate whether t is the better one.
+    t = get_proper_type(t)
+    s = get_proper_type(s)
+
     if isinstance(t, Instance):
         if not isinstance(s, Instance):
             return True

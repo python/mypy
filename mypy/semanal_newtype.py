@@ -7,7 +7,7 @@ from typing import Tuple, Optional
 
 from mypy.types import (
     Type, Instance, CallableType, NoneType, TupleType, AnyType, PlaceholderType,
-    TypeOfAny
+    TypeOfAny, get_proper_type
 )
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
@@ -19,6 +19,8 @@ from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder, format_type
+from mypy.errorcodes import ErrorCode
+from mypy import errorcodes as codes
 
 
 class NewTypeAnalyzer:
@@ -54,6 +56,7 @@ class NewTypeAnalyzer:
             self.api.add_symbol(name, placeholder, s, can_defer=False)
 
         old_type, should_defer = self.check_newtype_args(name, call, s)
+        old_type = get_proper_type(old_type)
         if not call.analyzed:
             call.analyzed = NewTypeExpr(name, old_type, line=call.line, column=call.column)
         if old_type is None:
@@ -74,7 +77,7 @@ class NewTypeAnalyzer:
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
-                self.fail(message.format(format_type(old_type)), s)
+                self.fail(message.format(format_type(old_type)), s, code=codes.VALID_NEWTYPE)
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type('__builtins__.object')
@@ -159,7 +162,8 @@ class NewTypeAnalyzer:
 
         # We want to use our custom error message (see above), so we suppress
         # the default error message for invalid types here.
-        old_type = self.api.anal_type(unanalyzed_type, report_invalid_types=False)
+        old_type = get_proper_type(self.api.anal_type(unanalyzed_type,
+                                                      report_invalid_types=False))
         should_defer = False
         if old_type is None or isinstance(old_type, PlaceholderType):
             should_defer = True
@@ -198,5 +202,5 @@ class NewTypeAnalyzer:
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+        self.api.fail(msg, ctx, code=code)
