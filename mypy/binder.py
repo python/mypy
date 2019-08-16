@@ -249,12 +249,12 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Optional[Type],
                     restrict_any: bool = False) -> None:
-        type = get_proper_type(type)
-        declared_type = get_proper_type(declared_type)
-
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
+
+        type = get_proper_type(type)
+        declared_type = get_proper_type(declared_type)
 
         if self.type_assignments is not None:
             # We are in a multiassign from union, defer the actual binding,
