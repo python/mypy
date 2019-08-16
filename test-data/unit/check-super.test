@@ -252,6 +252,12 @@ def g(b: B) -> None:
     super(B, b).f('42')
     super(B, b).f(42) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected "str"
 
+[case testSuperInInitSubclass]
+class A:
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+[builtins fixtures/__init_subclass__.pyi]
+
 
 -- Invalid uses of super()
 -- -----------------------

@@ -611,10 +611,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
             elif isinstance(functype, CallableType):
+                if func.name() == '__init_subclass__':
+                    func.is_class = True
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
                     leading_type = fill_typevars(info)  # type: Type
-                    if func.is_class or func.name() in ('__new__', '__init_subclass__'):
+                    if func.is_class or func.name() == '__new__':
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
