@@ -449,9 +449,9 @@ class FuncBase(Node):
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
         # something else for decorated functions.
-        self.type = None  # type: Optional[mypy.types.Type]
+        self.type = None  # type: Optional[mypy.types.ProperType]
         # Original, not semantically analyzed type (used for reprocessing)
-        self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
+        self.unanalyzed_type = None  # type: Optional[mypy.types.ProperType]
         # If method, reference to TypeInfo
         # TODO: Type should be Optional[TypeInfo]
         self.info = FUNC_NO_INFO
@@ -528,7 +528,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             if len(res.items) > 0:
                 res.set_line(res.impl.line)
         if data.get('type') is not None:
-            res.type = mypy.types.deserialize_type(data['type'])
+            typ = mypy.types.deserialize_type(data['type'])
+            assert isinstance(typ, mypy.types.ProperType)
+            res.type = typ
         res._fullname = data['fullname']
         set_flags(res, data['flags'])
         # NOTE: res.info will be set in the fixup phase.
@@ -3090,7 +3092,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
 
 
 deserialize_map = {
-    key: obj.deserialize  # type: ignore
+    key: obj.deserialize
     for key, obj in globals().items()
     if type(obj) is not FakeInfo
     and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode

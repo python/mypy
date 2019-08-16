@@ -18,7 +18,7 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    StarType, is_optional, remove_optional, is_generic_instance
+    StarType, is_optional, remove_optional, is_generic_instance, get_proper_type
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -587,6 +587,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply method plugin
             method_callback = self.plugin.get_method_hook(fullname)
             assert method_callback is not None  # Assume that caller ensures this
+            object_type = get_proper_type(object_type)
             return method_callback(
                 MethodContext(object_type, formal_arg_types, formal_arg_kinds,
                               callee.arg_names, formal_arg_names,
@@ -608,6 +609,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for formal, actuals in enumerate(formal_to_actual):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
+            object_type = get_proper_type(object_type)
             return signature_hook(
                 MethodSigContext(object_type, formal_arg_exprs, callee, context, self.chk))
         else:
@@ -2710,7 +2712,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             typ = self.accept(index)
             if isinstance(typ, UnionType):
-                key_types = typ.items
+                key_types = list(typ.items)  # type: List[Type]
             else:
                 key_types = [typ]
 
@@ -3549,7 +3551,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(typ, TypeType):
             # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
             # so we don't need to care about unions here.
-            item = typ.item
+            item = typ.item  # type: Type
             if isinstance(item, TypeVarType):
                 item = item.upper_bound
             if isinstance(item, TupleType):
@@ -3743,8 +3745,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         not is_overlapping_types(known_type, restriction,
                                                  prohibit_none_typevar_overlap=True)):
                     return None
-                ans = narrow_declared_type(known_type, restriction)
-                return ans
+                return narrow_declared_type(known_type, restriction)
         return known_type
 
 

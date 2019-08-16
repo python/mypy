@@ -8,7 +8,7 @@ operations, including subtype checks.
 from typing import List, Optional
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block
-from mypy.types import Type, Instance, TypeVarType, AnyType
+from mypy.types import Type, Instance, TypeVarType, AnyType, get_proper_types
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
@@ -72,7 +72,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
-        for actual in actuals:
+        for actual in get_proper_types(actuals):
             if (not isinstance(actual, AnyType) and
                     not any(is_same_type(actual, value)
                             for value in valids)):

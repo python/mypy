@@ -86,7 +86,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES
+    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType
 )
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -580,6 +580,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
                     self.defer(defn)
                     return
+                assert isinstance(result, ProperType)
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)

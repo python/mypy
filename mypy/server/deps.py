@@ -96,7 +96,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, Overloaded, TypeOfAny, LiteralType,
+    FunctionLike, Overloaded, TypeOfAny, LiteralType, get_proper_type, ProperType
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -387,7 +387,7 @@ class DependencyVisitor(TraverserVisitor):
             assert len(o.lvalues) == 1
             lvalue = o.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            typ = self.type_map.get(lvalue)
+            typ = get_proper_type(self.type_map.get(lvalue))
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
                 class_name = typ.type_object().fullname()
                 self.add_dependency(make_trigger(class_name + '.__init__'))
@@ -482,10 +482,10 @@ class DependencyVisitor(TraverserVisitor):
         if lvalue not in self.type_map:
             # Likely a block considered unreachable during type checking.
             return UninhabitedType()
-        lvalue_type = self.type_map[lvalue]
+        lvalue_type = get_proper_type(self.type_map[lvalue])
         if isinstance(lvalue_type, PartialType):
             if isinstance(lvalue.node, Var) and lvalue.node.type:
-                lvalue_type = lvalue.node.type
+                lvalue_type = get_proper_type(lvalue.node.type)
             else:
                 # Probably a secondary, non-definition assignment that doesn't
                 # result in a non-partial type. We won't be able to infer any
@@ -566,7 +566,7 @@ class DependencyVisitor(TraverserVisitor):
         # constructor.
         # IDEA: Avoid generating spurious dependencies for except statements,
         #       class attribute references, etc., if performance is a problem.
-        typ = self.type_map.get(o)
+        typ = get_proper_type(self.type_map.get(o))
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
@@ -602,7 +602,7 @@ class DependencyVisitor(TraverserVisitor):
                 # Special case: reference to a missing module attribute.
                 self.add_dependency(make_trigger(e.expr.node.fullname() + '.' + e.name))
                 return
-            typ = self.type_map[e.expr]
+            typ = get_proper_type(self.type_map[e.expr])
             self.add_attribute_dependency(typ, e.name)
             if self.use_logical_deps() and isinstance(typ, AnyType):
                 name = self.get_unimported_fullname(e, typ)
@@ -632,7 +632,7 @@ class DependencyVisitor(TraverserVisitor):
             e = e.expr
             if e.expr not in self.type_map:
                 return None
-            obj_type = self.type_map[e.expr]
+            obj_type = get_proper_type(self.type_map[e.expr])
             if not isinstance(obj_type, AnyType):
                 # Can't find the base reference to the unimported module.
                 return None
@@ -723,15 +723,15 @@ class DependencyVisitor(TraverserVisitor):
                     self.add_operator_method_dependency(right, rev_method)
 
     def add_operator_method_dependency(self, e: Expression, method: str) -> None:
-        typ = self.type_map.get(e)
+        typ = get_proper_type(self.type_map.get(e))
         if typ is not None:
             self.add_operator_method_dependency_for_type(typ, method)
 
-    def add_operator_method_dependency_for_type(self, typ: Type, method: str) -> None:
+    def add_operator_method_dependency_for_type(self, typ: ProperType, method: str) -> None:
         # Note that operator methods can't be (non-metaclass) methods of type objects
         # (that is, TypeType objects or Callables representing a type).
         if isinstance(typ, TypeVarType):
-            typ = typ.upper_bound
+            typ = get_proper_type(typ.upper_bound)
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
         if isinstance(typ, Instance):
@@ -811,8 +811,9 @@ class DependencyVisitor(TraverserVisitor):
 
     def attribute_triggers(self, typ: Type, name: str) -> List[str]:
         """Return all triggers associated with the attribute of a type."""
+        typ = get_proper_type(typ)
         if isinstance(typ, TypeVarType):
-            typ = typ.upper_bound
+            typ = get_proper_type(typ.upper_bound)
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
         if isinstance(typ, Instance):

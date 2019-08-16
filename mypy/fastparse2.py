@@ -409,7 +409,8 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)  # type: ignore
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):

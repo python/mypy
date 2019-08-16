@@ -7,7 +7,7 @@ from typing import Tuple, Optional
 
 from mypy.types import (
     Type, Instance, CallableType, NoneType, TupleType, AnyType, PlaceholderType,
-    TypeOfAny
+    TypeOfAny, get_proper_type
 )
 from mypy.nodes import (
     AssignmentStmt, NewTypeExpr, CallExpr, NameExpr, RefExpr, Context, StrExpr, BytesExpr,
@@ -56,6 +56,7 @@ class NewTypeAnalyzer:
             self.api.add_symbol(name, placeholder, s, can_defer=False)
 
         old_type, should_defer = self.check_newtype_args(name, call, s)
+        old_type = get_proper_type(old_type)
         if not call.analyzed:
             call.analyzed = NewTypeExpr(name, old_type, line=call.line, column=call.column)
         if old_type is None:
@@ -161,7 +162,8 @@ class NewTypeAnalyzer:
 
         # We want to use our custom error message (see above), so we suppress
         # the default error message for invalid types here.
-        old_type = self.api.anal_type(unanalyzed_type, report_invalid_types=False)
+        old_type = get_proper_type(self.api.anal_type(unanalyzed_type,
+                                                      report_invalid_types=False))
         should_defer = False
         if old_type is None or isinstance(old_type, PlaceholderType):
             should_defer = True

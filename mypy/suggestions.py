@@ -31,7 +31,7 @@ from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike,
     TypeStrVisitor, TypeTranslator,
-    is_optional,
+    is_optional, ProperType, get_proper_type, get_proper_types
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -137,6 +137,7 @@ def is_explicit_any(typ: AnyType) -> bool:
 
 
 def is_implicit_any(typ: Type) -> bool:
+    typ = get_proper_type(typ)
     return isinstance(typ, AnyType) and not is_explicit_any(typ)
 
 
@@ -419,12 +420,12 @@ class SuggestionEngine:
             typ = None
             if (isinstance(dec, RefExpr)
                     and isinstance(dec.node, FuncDef)):
-                typ = dec.node.type
+                typ = get_proper_type(dec.node.type)
             elif (isinstance(dec, CallExpr)
                     and isinstance(dec.callee, RefExpr)
                     and isinstance(dec.callee.node, FuncDef)
                     and isinstance(dec.callee.node.type, CallableType)):
-                typ = dec.callee.node.type.ret_type
+                typ = get_proper_type(dec.callee.node.type.ret_type)
 
             if not isinstance(typ, FunctionLike):
                 return None
@@ -436,7 +437,7 @@ class SuggestionEngine:
 
         return node.func
 
-    def try_type(self, func: FuncDef, typ: Type) -> List[str]:
+    def try_type(self, func: FuncDef, typ: ProperType) -> List[str]:
         """Recheck a function while assuming it has type typ.
 
         Return all error messages.
@@ -513,6 +514,7 @@ class SuggestionEngine:
 
         Lower is better, prefer non-union/non-any types. Don't penalize optionals.
         """
+        t = get_proper_type(t)
         if isinstance(t, AnyType):
             return 20
         if isinstance(t, UnionType):
@@ -610,7 +612,8 @@ def count_errors(msgs: List[str]) -> int:
 def callable_has_any(t: CallableType) -> int:
     # We count a bare None in argument position as Any, since
     # pyannotate turns it into Optional[Any]
-    return any(isinstance(at, NoneType) for at in t.arg_types) or has_any_type(t)
+    return (any(isinstance(at, NoneType) for at in get_proper_types(t.arg_types))
+            or has_any_type(t))
 
 
 T = TypeVar('T')

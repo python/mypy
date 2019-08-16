@@ -6,7 +6,7 @@ from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern
 from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
-    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny
+    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
@@ -137,7 +137,7 @@ class StringFormatterChecker:
         if checkers is None:
             return
 
-        rhs_type = self.accept(replacements)
+        rhs_type = get_proper_type(self.accept(replacements))
         rep_types = []  # type: List[Type]
         if isinstance(rhs_type, TupleType):
             rep_types = rhs_type.items
