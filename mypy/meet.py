@@ -302,6 +302,9 @@ def is_overlapping_types(left: Type,
             return False
 
         if len(left.args) == len(right.args):
+            if not left.args:
+                # We can get here if the instance is in fact a fallback from another type.
+                return True
             # Note: we don't really care about variance here, since the overlapping check
             # is symmetric and since we want to return 'True' even for partial overlaps.
             #
