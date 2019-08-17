@@ -22,7 +22,7 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType, TypeOfAny, UnboundType, PartialType,
+    UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -173,6 +173,9 @@ class MessageBuilder:
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
         """
+        original_type = get_proper_type(original_type)
+        typ = get_proper_type(typ)
+
         if (isinstance(original_type, Instance) and
                 original_type.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
@@ -312,6 +315,8 @@ class MessageBuilder:
         that corresponds to an operator, use the corresponding
         operator name in the messages.
         """
+        arg_type = get_proper_type(arg_type)
+
         target = ''
         callee_name = callable_name(callee)
         if callee_name is not None:
@@ -449,8 +454,9 @@ class MessageBuilder:
                 arg_label, target, quote_type_string(arg_type_str),
                 quote_type_string(expected_type_str))
             code = codes.ARG_TYPE
+            expected_type = get_proper_type(expected_type)
             if isinstance(expected_type, UnionType):
-                expected_types = list(expected_type.items)  # type: List[Type]
+                expected_types = list(expected_type.items)
             else:
                 expected_types = [expected_type]
             for type in expected_types:

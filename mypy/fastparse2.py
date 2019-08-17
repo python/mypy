@@ -41,6 +41,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
+    ProperType
 )
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
@@ -223,7 +224,8 @@ class ASTConverter:
             res.append(node)
         return res
 
-    def translate_type_comment(self, n: ast27.stmt, type_comment: Optional[str]) -> Optional[Type]:
+    def translate_type_comment(self, n: ast27.stmt,
+                               type_comment: Optional[str]) -> Optional[ProperType]:
         if type_comment is None:
             return None
         else:

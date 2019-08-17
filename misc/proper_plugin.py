@@ -8,13 +8,7 @@ import os.path
 from typing_extensions import Type as typing_Type
 from typing import Optional, Callable
 
-FILE_WHITELIST = [
-    'checker.py',
-    'checkexpr.py',
-    'checkmember.py',
-    'messages.py',
-    'semanal.py'
-]
+FILE_WHITELIST = []
 
 
 class ProperTypePlugin(Plugin):
