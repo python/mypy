@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType, get_proper_type
+    LiteralType, RawExpressionType, PlaceholderType, get_proper_type, ProperType
 )
 
 from mypy.nodes import (
@@ -973,7 +973,7 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
              % (exp_len, act_len), ctx)
         return set_any_tvars(target, alias_tvars or [],
                              ctx.line, ctx.column, from_error=True)
-    typ = replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)
+    typ = replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)  # type: Type
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
     if (isinstance(typ, Instance)  # type: ignore
             and typ.type.fullname() == 'mypy_extensions.FlexibleAlias'):
@@ -986,7 +986,7 @@ def set_any_tvars(tp: Type, vars: List[str],
                   from_error: bool = False,
                   disallow_any: bool = False,
                   fail: Optional[FailCallback] = None,
-                  unexpanded_type: Optional[Type] = None) -> Type:
+                  unexpanded_type: Optional[Type] = None) -> ProperType:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
     else:

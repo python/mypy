@@ -55,7 +55,9 @@ def is_special_target(right: ProperType) -> bool:
                                               'mypy.types.EllipsisType',
                                               'mypy.types.StarType',
                                               'mypy.types.TypeList',
-                                              'mypy.types.CallableArgument'):
+                                              'mypy.types.CallableArgument',
+                                              'mypy.types.PartialType',
+                                              'mypy.types.ErasedType'):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?
             return True

@@ -2288,7 +2288,7 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
 
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
-                        newline: int, newcolumn: int) -> Type:
+                        newline: int, newcolumn: int) -> ProperType:
     """Replace type variables in a generic type alias tp with substitutions subs
     resetting context. Length of subs should be already checked.
     """
@@ -2321,7 +2321,7 @@ def get_typ_args(tp: Type) -> List[Type]:
     return cast(List[Type], typ_args)
 
 
-def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
+def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> ProperType:
     """Return a copy of a parametrizable Type with arguments set to new_args."""
     tp = get_proper_type(tp)  # TODO: is this really needed?
 
