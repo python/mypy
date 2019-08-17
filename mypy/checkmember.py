@@ -789,7 +789,7 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     return t
 
 
-def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) -> Type:
+def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) -> ProperType:
     """Return the type of a type object.
 
     For a generic type G with type variables T and S the type is generally of form

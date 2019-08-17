@@ -855,11 +855,11 @@ class TypeVarType(ProperType):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
 
-    def erase_to_union_or_bound(self) -> Type:
+    def erase_to_union_or_bound(self) -> ProperType:
         if self.values:
             return UnionType.make_simplified_union(self.values)
         else:
-            return self.upper_bound
+            return get_proper_type(self.upper_bound)
 
     def __hash__(self) -> int:
         return hash(self.id)

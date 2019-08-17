@@ -18,7 +18,7 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    StarType, is_optional, remove_optional, is_generic_instance, get_proper_type
+    StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -342,6 +342,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Convert a method name to a fully qualified name, based on the type of the object that
         it is invoked on. Return `None` if the name of `object_type` cannot be determined.
         """
+        object_type = get_proper_type(object_type)
+
         if isinstance(object_type, CallableType) and object_type.is_type_obj():
             # For class method calls, object_type is a callable representing the class object.
             # We "unwrap" it to a regular type, as the class/instance method difference doesn't
@@ -734,6 +736,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 on which the method is being called
         """
         arg_messages = arg_messages or self.msg
+        callee = get_proper_type(callee)
 
         if isinstance(callee, CallableType):
             return self.check_callable_call(callee, args, arg_kinds, context, arg_names,
@@ -849,7 +852,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = callee.copy_modified(ret_type=ret_type)
         return callee.ret_type, callee
 
-    def analyze_type_type_callee(self, item: Type, context: Context) -> Type:
+    def analyze_type_type_callee(self, item: ProperType, context: Context) -> ProperType:
         """Analyze the callee X in X(...) where X is Type[item].
 
         Return a Y that we can pass to check_call(Y, ...).
@@ -869,15 +872,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # i.e. its constructor (a poor approximation for reality,
             # but better than AnyType...), but replace the return type
             # with typevar.
-            callee = self.analyze_type_type_callee(item.upper_bound,
-                                                   context)  # type: Optional[Type]
+            callee = self.analyze_type_type_callee(get_proper_type(item.upper_bound), context)
             if isinstance(callee, CallableType):
                 callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):
                 callee = Overloaded([c.copy_modified(ret_type=item)
                                      for c in callee.items()])
-            if callee:
-                return callee
+            return callee
         # We support Type of namedtuples but not of tuples in general
         if (isinstance(item, TupleType)
                 and tuple_fallback(item).type.fullname() != 'builtins.tuple'):
@@ -1295,6 +1296,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
+        caller_type = get_proper_type(caller_type)
+        original_caller_type = get_proper_type(original_caller_type)
+        callee_type = get_proper_type(callee_type)
+
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
@@ -1780,6 +1785,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def check_any_type_call(self, args: List[Expression], callee: Type) -> Tuple[Type, Type]:
         self.infer_arg_types_in_empty_context(args)
+        callee = get_proper_type(callee)
         if isinstance(callee, AnyType):
             return (AnyType(TypeOfAny.from_another_any, source_any=callee),
                     AnyType(TypeOfAny.from_another_any, source_any=callee))
@@ -2047,6 +2053,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.options.strict_equality:
             return False
+
+        left = get_proper_type(left)
+        right = get_proper_type(right)
+
         if self.chk.binder.is_unreachable_warning_suppressed():
             # We are inside a function that contains type variables with value restrictions in
             # its signature. In this case we just suppress all strict-equality checks to avoid
@@ -2227,6 +2237,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if cls.names.get(attr_name):
                     return cls.fullname()
             return None
+
+        left_type = get_proper_type(left_type)
+        right_type = get_proper_type(right_type)
 
         # If either the LHS or the RHS are Any, we can't really concluding anything
         # about the operation since the Any type may or may not define an
@@ -2586,12 +2599,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.visit_index_with_type(left_type, e)
 
     def visit_index_with_type(self, left_type: Type, e: IndexExpr,
-                              original_type: Optional[Type] = None) -> Type:
+                              original_type: Optional[ProperType] = None) -> Type:
         """Analyze type of an index expression for a given type of base expression.
 
         The 'original_type' is used for error messages (currently used for union types).
         """
         index = e.index
+        left_type = get_proper_type(left_type)
+
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
             return UnionType.make_simplified_union([self.visit_index_with_type(typ, e,
@@ -2676,7 +2691,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 operand = index.expr
                 if isinstance(operand, IntExpr):
                     return [-1 * operand.value]
-        typ = self.accept(index)
+        typ = get_proper_type(self.accept(index))
         if isinstance(typ, Instance) and typ.last_known_value is not None:
             typ = typ.last_known_value
         if isinstance(typ, LiteralType) and isinstance(typ.value, int):
@@ -2809,7 +2824,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return AnyType(TypeOfAny.from_error)
         # Type application of a normal generic class in runtime context.
         # This is typically used as `x = G[int]()`.
-        tp = self.accept(tapp.expr)
+        tp = get_proper_type(self.accept(tapp.expr))
         if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
                 self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
@@ -2850,7 +2865,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
-        if isinstance(target, Instance) and target.invalid:
+        if isinstance(target, Instance) and target.invalid:  # type: ignore
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.
@@ -2886,6 +2901,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         case this returns Any for non-callable types, because if type object type
         is not callable, then an error should be already reported.
         """
+        tp = get_proper_type(tp)
+
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(args):
                 self.msg.incompatible_type_application(len(tp.variables),
@@ -2935,7 +2952,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         # Try to determine type context for type inference.
-        type_context = self.type_context[-1]
+        type_context = get_proper_type(self.type_context[-1])
         type_context_items = None
         if isinstance(type_context, UnionType):
             tuples_in_context = [t for t in type_context.items
@@ -3059,6 +3076,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return rv
 
     def find_typeddict_context(self, context: Optional[Type]) -> Optional[TypedDictType]:
+        context = get_proper_type(context)
         if isinstance(context, TypedDictType):
             return context
         elif isinstance(context, UnionType):
@@ -3533,6 +3551,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Does type have member with the given name?"""
         # TODO: refactor this to use checkmember.analyze_member_access, otherwise
         # these two should be carefully kept in sync.
+        typ = get_proper_type(typ)
+
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -3551,9 +3571,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(typ, TypeType):
             # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
             # so we don't need to care about unions here.
-            item = typ.item  # type: Type
+            item = typ.item
             if isinstance(item, TypeVarType):
-                item = item.upper_bound
+                item = get_proper_type(item.upper_bound)
             if isinstance(item, TupleType):
                 item = tuple_fallback(item)
             if isinstance(item, Instance) and item.type.metaclass_type is not None:
@@ -3868,17 +3888,17 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
     this function to help us identify which alternative the user might have
     *meant* to match.
     """
+    actual = get_proper_type(actual)
+    formal = get_proper_type(formal)
 
     # Erase typevars: we'll consider them all to have the same "shape".
-
     if isinstance(actual, TypeVarType):
         actual = actual.erase_to_union_or_bound()
     if isinstance(formal, TypeVarType):
         formal = formal.erase_to_union_or_bound()
 
     # Callable or Type[...]-ish types
-
-    def is_typetype_like(typ: Type) -> bool:
+    def is_typetype_like(typ: ProperType) -> bool:
         return (isinstance(typ, TypeType)
                 or (isinstance(typ, FunctionLike) and typ.is_type_obj())
                 or (isinstance(typ, Instance) and typ.type.fullname() == "builtins.type"))
@@ -3890,14 +3910,12 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
         return True
 
     # Unions
-
     if isinstance(actual, UnionType):
         return any(arg_approximate_similarity(item, formal) for item in actual.relevant_items())
     if isinstance(formal, UnionType):
         return any(arg_approximate_similarity(actual, item) for item in formal.relevant_items())
 
     # TypedDicts
-
     if isinstance(actual, TypedDictType):
         if isinstance(formal, TypedDictType):
             return True
@@ -3905,7 +3923,6 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
 
     # Instances
     # For instances, we mostly defer to the existing is_subtype check.
-
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
             actual = actual.fallback
@@ -4022,6 +4039,7 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
     """Returns 'true' if the given type context is potentially either a LiteralType,
     a Union of LiteralType, or something similar.
     """
+    t = get_proper_type(t)
     if t is None:
         return False
     elif isinstance(t, LiteralType):
@@ -4056,6 +4074,7 @@ def is_expr_literal_type(node: Expression) -> bool:
 
 def custom_equality_method(typ: Type) -> bool:
     """Does this type have a custom __eq__() method?"""
+    typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         method = typ.type.get('__eq__')
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
@@ -4078,6 +4097,7 @@ def custom_equality_method(typ: Type) -> bool:
 
 def has_bytes_component(typ: Type) -> bool:
     """Is this the builtin bytes type, or a union that contains it?"""
+    typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         return any(has_bytes_component(t) for t in typ.items)
     if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
@@ -4087,7 +4107,7 @@ def has_bytes_component(typ: Type) -> bool:
 
 def type_info_from_type(typ: Type) -> Optional[TypeInfo]:
     """Gets the TypeInfo for a type, indirecting through things like type variables and tuples."""
-
+    typ = get_proper_type(typ)
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         return typ.type_object()
     if isinstance(typ, TypeType):
