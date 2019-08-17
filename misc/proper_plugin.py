@@ -1,5 +1,8 @@
 from mypy.plugin import Plugin, FunctionContext
-from mypy.types import Type, Instance, CallableType, UnionType, get_proper_type
+from mypy.types import (
+    Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
+    get_proper_types, TupleType
+)
 
 import os.path
 from typing_extensions import Type as typing_Type
@@ -10,8 +13,7 @@ FILE_WHITELIST = [
     'checkexpr.py',
     'checkmember.py',
     'messages.py',
-    'semanal.py',
-    'typeanal.py'
+    'semanal.py'
 ]
 
 
@@ -40,19 +42,32 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
     for arg in ctx.arg_types[0]:
         if is_improper_type(arg):
             right = get_proper_type(ctx.arg_types[1][0])
-            if isinstance(right, CallableType) and right.is_type_obj():
-                if right.type_object().fullname() in ('mypy.types.Type',
-                                                      'mypy.types.ProperType',
-                                                      'mypy.types.TypeAliasType'):
-                    # Special case: things like assert isinstance(typ, ProperType) are always OK.
-                    return ctx.default_return_type
-                if right.type_object().fullname() in ('mypy.types.UnboundType',
-                                                      'mypy.types.TypeVarType'):
-                    # Special case: these are not valid targets for a type alias and thus safe.
-                    return ctx.default_return_type
+            if is_special_target(right):
+                return ctx.default_return_type
             ctx.api.fail('Never apply isinstance() to unexpanded types;'
                          ' use mypy.types.get_proper_type() first', ctx.context)
     return ctx.default_return_type
+
+
+def is_special_target(right: ProperType) -> bool:
+    if isinstance(right, CallableType) and right.is_type_obj():
+        if right.type_object().fullname() in ('mypy.types.Type',
+                                              'mypy.types.ProperType',
+                                              'mypy.types.TypeAliasType'):
+            # Special case: things like assert isinstance(typ, ProperType) are always OK.
+            return True
+        if right.type_object().fullname() in ('mypy.types.UnboundType',
+                                              'mypy.types.TypeVarType',
+                                              'mypy.types.EllipsisType',
+                                              'mypy.types.StarType',
+                                              'mypy.types.TypeList',
+                                              'mypy.types.CallableArgument'):
+            # Special case: these are not valid targets for a type alias and thus safe.
+            # TODO: introduce a SyntheticType base to simplify this?
+            return True
+    elif isinstance(right, TupleType):
+        return all(is_special_target(t) for t in get_proper_types(right.items))
+    return False
 
 
 def is_improper_type(typ: Type) -> bool:
