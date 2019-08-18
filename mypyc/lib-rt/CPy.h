@@ -972,6 +972,17 @@ static PyObject *CPy_GetCoro(PyObject *obj)
     }
 }
 
+static PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl)
+{
+    PyObject *result = PyObject_GetAttr(v, name);
+    if (!result && PyErr_ExceptionMatches(PyExc_AttributeError)) {
+        PyErr_Clear();
+        Py_INCREF(defl);
+        result = defl;
+    }
+    return result;
+}
+
 // mypy lets ints silently coerce to floats, so a mypyc runtime float
 // might be an int also
 static inline bool CPyFloat_Check(PyObject *o) {

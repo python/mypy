@@ -273,6 +273,14 @@ py_getattr_op = func_op(
     emit=call_emit('PyObject_GetAttr')
 )
 
+func_op(
+    name='builtins.getattr',
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyObject_GetAttr3')
+)
+
 py_setattr_op = func_op(
     name='builtins.setattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
