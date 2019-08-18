@@ -1385,7 +1385,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def analyze_base_classes(
             self,
-            base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[ProperType, Expression]],
+            base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[ProperType,
+                                                                            Expression]],
                                                                  bool]]:
         """Analyze base class types.
 
