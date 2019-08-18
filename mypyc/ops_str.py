@@ -24,6 +24,15 @@ binary_op(op='+',
           error_kind=ERR_MAGIC,
           emit=simple_emit('{dest} = PyUnicode_Concat({args[0]}, {args[1]});'))
 
+# PyUnicodeAppend makes an effort to reuse the LHS when the refcount
+# is 1. This is super dodgy but oh well, the interpreter does it.
+binary_op(op='+=',
+          arg_types=[str_rprimitive, str_rprimitive],
+          steals=[True, False],
+          result_type=str_rprimitive,
+          error_kind=ERR_MAGIC,
+          emit=simple_emit('{dest} = {args[0]}; PyUnicode_Append(&{dest}, {args[1]});'))
+
 
 def emit_str_compare(comparison: str) -> Callable[[EmitterInterface, List[str], str], None]:
     def emit(emitter: EmitterInterface, args: List[str], dest: str) -> None:
