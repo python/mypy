@@ -1,8 +1,9 @@
 from mypy.plugin import Plugin, FunctionContext
 from mypy.types import (
     Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
-    get_proper_types, TupleType
+    get_proper_types, TupleType, NoneTyp
 )
+from mypy.nodes import TypeInfo
 from mypy.subtypes import is_proper_subtype
 
 import os.path
@@ -28,6 +29,10 @@ class ProperTypePlugin(Plugin):
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         if fullname == 'builtins.isinstance':
             return isinstance_proper_hook
+        if fullname == 'mypy.types.get_proper_type':
+            return proper_type_hook
+        if fullname == 'mypy.types.get_proper_types':
+            return proper_types_hook
         return None
 
 
@@ -45,6 +50,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
 
 
 def is_special_target(right: ProperType) -> bool:
+    """Whitelist some special cases for use in isinstance() with improper types."""
     if isinstance(right, CallableType) and right.is_type_obj():
         if right.type_object().fullname() == 'builtins.tuple':
             # Used with Union[Type, Tuple[Type, ...]].
@@ -79,6 +85,40 @@ def is_improper_type(typ: Type) -> bool:
     if isinstance(typ, UnionType):
         return any(is_improper_type(t) for t in typ.items)
     return False
+
+
+def proper_type_hook(ctx: FunctionContext) -> Type:
+    """Check if this get_proper_type() call is not redundant."""
+    arg_types = ctx.arg_types[0]
+    if arg_types:
+        arg_type = get_proper_type(arg_types[0])
+        proper_type = get_proper_type_instance(ctx)
+        if is_proper_subtype(arg_type, UnionType.make_union([NoneTyp(), proper_type])):
+            # Minimize amount of spurious errors from overload machinery.
+            # TODO: call the hook on the overload as a whole?
+            if isinstance(arg_type, (UnionType, Instance)):
+                ctx.api.fail('Redundant call to get_proper_type()', ctx.context)
+    return ctx.default_return_type
+
+
+def proper_types_hook(ctx: FunctionContext) -> Type:
+    """Check if this get_proper_types() call is not redundant."""
+    arg_types = ctx.arg_types[0]
+    if arg_types:
+        arg_type = arg_types[0]
+        proper_type = get_proper_type_instance(ctx)
+        item_type = UnionType.make_union([NoneTyp(), proper_type])
+        ok_type = ctx.api.named_generic_type('typing.Iterable', [item_type])
+        if is_proper_subtype(arg_type, ok_type):
+            ctx.api.fail('Redundant call to get_proper_types()', ctx.context)
+    return ctx.default_return_type
+
+
+def get_proper_type_instance(ctx: FunctionContext) -> Instance:
+    types = ctx.api.modules['mypy.types']  # type: ignore
+    proper_type_info = types.names['ProperType']
+    assert isinstance(proper_type_info.node, TypeInfo)
+    return Instance(proper_type_info.node, [])
 
 
 def plugin(version: str) -> typing_Type[ProperTypePlugin]:
