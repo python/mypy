@@ -1315,7 +1315,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.primitive_op(dict_set_item_op, [self.non_ext_info.dict, key_unicode, val], line)
 
     def add_non_ext_class_attr(self, lvalue: NameExpr,
-                               stmt: AssignmentStmt, class_ir: ClassIR) -> None:
+                               stmt: AssignmentStmt, cdef: ClassDef,
+                               attr_to_cache: List[Lvalue]) -> None:
         """
         Add a class attribute to __annotations__ of a non-extension class. If the
         attribute is assigned to a value, it is also added to __dict__.
@@ -1332,7 +1333,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Only add the attribute to the __dict__ if the assignment is of the form:
         # x: type = value (don't add attributes of the form 'x: type' to the __dict__).
         if not isinstance(stmt.rvalue, TempNode):
-            self.add_to_non_ext_dict(lvalue.name, self.accept(stmt.rvalue), stmt.line)
+            rvalue = self.accept(stmt.rvalue)
+            self.add_to_non_ext_dict(lvalue.name, rvalue, stmt.line)
+            # We cache enum attributes to speed up enum attribute lookup since they
+            # are final.
+            if cdef.info.bases and cdef.info.bases[0].type.fullname() == 'enum.Enum':
+                attr_to_cache.append(lvalue)
 
     def setup_non_ext_dict(self, cdef: ClassDef, bases: Value) -> Value:
         """
@@ -1367,6 +1373,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         return non_ext_dict
 
+    def cache_class_attrs(self, attrs_to_cache: List[Lvalue], cdef: ClassDef) -> None:
+        """Add class attributes to be cached to the global cache"""
+        typ = self.load_native_type_object(cdef.fullname)
+        for lval in attrs_to_cache:
+            assert isinstance(lval, NameExpr)
+            rval = self.py_get_attr(typ, lval.name, cdef.line)
+            self.init_final_static(lval, rval, cdef.fullname)
+
     def visit_class_def(self, cdef: ClassDef) -> None:
         ir = self.mapper.type_to_ir[cdef.info]
         # Currently, we only create non-extension classes for classes that are
@@ -1382,8 +1396,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # because dataclasses uses it to determine which attributes to compute on.
             # TODO: Maybe generate more precise types for annotations
             non_ext_anns = self.primitive_op(new_dict_op, [], cdef.line)
-
             self.non_ext_info = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns)
+
+            attrs_to_cache = []  # type: List[Lvalue]
 
         for stmt in cdef.defs.body:
             if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
@@ -1415,7 +1430,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                stmt.line)
                     continue
                 if not ir.is_ext_class:
-                    self.add_non_ext_class_attr(lvalue, stmt, ir)
+                    self.add_non_ext_class_attr(lvalue, stmt, cdef, attrs_to_cache)
                     continue
                 # Variable declaration with no body
                 if isinstance(stmt.rvalue, TempNode):
@@ -1450,6 +1465,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.primitive_op(dict_set_item_op,
                               [self.load_globals_dict(), self.load_static_unicode(cdef.name),
                                non_ext_class], cdef.line)
+
+            # Cache any cachable class attributes
+            self.cache_class_attrs(attrs_to_cache, cdef)
 
             # Set this attribute back to None until the next non-extension class is visited.
             self.non_ext_info = None
@@ -2724,10 +2742,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if isinstance(expr.expr, RefExpr) and isinstance(expr.expr.node, TypeInfo):
             # a class attribute
             sym = expr.expr.node.get(expr.name)
-            if sym and isinstance(sym.node, Var) and sym.node.is_final:
-                final_var = sym.node
-                fullname = '{}.{}'.format(sym.node.info.fullname(), final_var.name())
-                native = expr.expr.node.module_name in self.modules
+            if sym and isinstance(sym.node, Var):
+                # Enum attribute are treated as final since they are added to the global cache
+                expr_fullname = expr.expr.node.bases[0].type.fullname()
+                is_final = sym.node.is_final or expr_fullname == 'enum.Enum'
+                if is_final:
+                    final_var = sym.node
+                    fullname = '{}.{}'.format(sym.node.info.fullname(), final_var.name())
+                    native = expr.expr.node.module_name in self.modules
         elif self.is_module_member_expr(expr):
             # a module attribute
             if isinstance(expr.node, Var) and expr.node.is_final:
