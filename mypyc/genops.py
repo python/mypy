@@ -1100,7 +1100,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             # Set the callable object representing the decorated method as an attribute of the
             # extension class.
-            class_ir.attributes[name] = decorated_func.type
             self.primitive_op(py_setattr_op,
                               [typ, self.load_static_unicode(name), decorated_func], fdef.line)
 
@@ -3213,6 +3212,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 arg_values = self.native_args_to_positional(
                     arg_values, arg_kinds, arg_names, decl.bound_sig, line)
                 return self.add(MethodCall(base, name, arg_values, line))
+            elif base.type.class_ir.has_attr(name):
+                function = self.add(GetAttr(base, name, line))
+                return self.py_call(function, arg_values, line,
+                                    arg_kinds=arg_kinds, arg_names=arg_names)
+
         elif isinstance(base.type, RUnion):
             return self.union_method_call(base, base.type, name, arg_values, return_rtype, line,
                                           arg_kinds, arg_names)

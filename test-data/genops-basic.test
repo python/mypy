@@ -2136,16 +2136,15 @@ def DerivedProperty.next(self):
     self :: DerivedProperty
     r0 :: object
     r1 :: int
-    r2 :: str
-    r3, r4 :: object
+    r2, r3, r4 :: object
     r5 :: int
     r6 :: DerivedProperty
 L0:
     r0 = self._incr_func
     r1 = self.value
-    r2 = unicode_6 :: static  ('_incr_func')
+    r2 = self._incr_func
     r3 = box(int, r1)
-    r4 = py_method_call(self, r2, r3)
+    r4 = py_call(r2, r3)
     r5 = unbox(int, r4)
     r6 = DerivedProperty(r0, r5)
     return r6
@@ -2170,23 +2169,21 @@ def AgainProperty.next(self):
     self :: AgainProperty
     r0 :: object
     r1 :: int
-    r2 :: str
-    r3, r4 :: object
+    r2, r3, r4 :: object
     r5 :: int
-    r6 :: str
-    r7, r8 :: object
+    r6, r7, r8 :: object
     r9 :: int
     r10 :: AgainProperty
 L0:
     r0 = self._incr_func
     r1 = self.value
-    r2 = unicode_6 :: static  ('_incr_func')
+    r2 = self._incr_func
     r3 = box(int, r1)
-    r4 = py_method_call(self, r2, r3)
+    r4 = py_call(r2, r3)
     r5 = unbox(int, r4)
-    r6 = unicode_6 :: static  ('_incr_func')
+    r6 = self._incr_func
     r7 = box(int, r5)
-    r8 = py_method_call(self, r6, r7)
+    r8 = py_call(r6, r7)
     r9 = unbox(int, r8)
     r10 = AgainProperty(r0, r9)
     return r10
