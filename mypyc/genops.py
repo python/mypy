@@ -953,12 +953,12 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
     Just makes sure that sys.exc_info always gets restored when we leave.
     This is super annoying.
     """
-    def __init__(self, outer: NonlocalControl, saved: Value) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Union[Value, AssignmentTarget]) -> None:
         super().__init__(outer)
         self.saved = saved
 
     def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
-        builder.primitive_op(restore_exc_info_op, [self.saved], line)
+        builder.primitive_op(restore_exc_info_op, [builder.read(self.saved)], line)
 
 
 class FinallyNonlocalControl(CleanupNonlocalControl):
@@ -3550,7 +3550,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # exception is raised, based on the exception in exc_info.
         self.error_handlers.append(double_except_block)
         self.activate_block(except_entry)
-        old_exc = self.primitive_op(error_catch_op, [], line)
+        old_exc = self.maybe_spill(self.primitive_op(error_catch_op, [], line))
         # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
         self.nonlocal_control.append(
             ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
@@ -3583,14 +3583,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # restore the saved exc_info information and continue propagating
         # the exception if it exists.
         self.activate_block(cleanup_block)
-        self.primitive_op(restore_exc_info_op, [old_exc], line)
+        self.primitive_op(restore_exc_info_op, [self.read(old_exc)], line)
         self.goto(exit_block)
 
         # Cleanup for if we leave except through a raised exception:
         # restore the saved exc_info information and continue propagating
         # the exception.
         self.activate_block(double_except_block)
-        self.primitive_op(restore_exc_info_op, [old_exc], line)
+        self.primitive_op(restore_exc_info_op, [self.read(old_exc)], line)
         self.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
         self.add(Unreachable())
 
