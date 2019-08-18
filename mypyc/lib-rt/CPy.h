@@ -624,6 +624,10 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
     }
 }
 
+static CPyTagged CPyTagged_Id(PyObject *o) {
+    return CPyTagged_FromSsize_t((Py_ssize_t)o);
+}
+
 static PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     PyObject *result = PyList_GET_ITEM(list, n);

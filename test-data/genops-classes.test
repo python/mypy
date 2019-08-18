@@ -262,17 +262,11 @@ L0:
     return r1
 def C.foo(self, x):
     self :: C
-    x, r0 :: object
-    r1 :: str
-    r2, r3 :: object
-    r4 :: int
+    x :: object
+    r0 :: int
 L0:
-    r0 = builtins.module :: static
-    r1 = unicode_5 :: static  ('id')
-    r2 = getattr r0, r1
-    r3 = py_call(r2, x)
-    r4 = unbox(int, r3)
-    return r4
+    r0 = id x :: object
+    return r0
 def C.foo__B_glue(self, x):
     self :: C
     x :: object

@@ -48,6 +48,12 @@ name_ref_op(name='builtins.NotImplemented',
             emit=name_emit('Py_NotImplemented'),
             is_borrowed=True)
 
+func_op(name='builtins.id',
+        arg_types=[object_rprimitive],
+        result_type=int_rprimitive,
+        error_kind=ERR_NEVER,
+        emit=call_emit('CPyTagged_Id'))
+
 iter_op = func_op(name='builtins.iter',
                   arg_types=[object_rprimitive],
                   result_type=object_rprimitive,
