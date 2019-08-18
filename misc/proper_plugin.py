@@ -3,6 +3,7 @@ from mypy.types import (
     Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
     get_proper_types, TupleType
 )
+from mypy.subtypes import is_proper_subtype
 
 import os.path
 from typing_extensions import Type as typing_Type
@@ -45,6 +46,9 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
 
 def is_special_target(right: ProperType) -> bool:
     if isinstance(right, CallableType) and right.is_type_obj():
+        if right.type_object().fullname() == 'builtins.tuple':
+            # Used with Union[Type, Tuple[Type, ...]].
+            return True
         if right.type_object().fullname() in ('mypy.types.Type',
                                               'mypy.types.ProperType',
                                               'mypy.types.TypeAliasType'):
