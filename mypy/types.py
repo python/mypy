@@ -2295,7 +2295,7 @@ def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
     typ_args = get_typ_args(tp)
     new_args = typ_args[:]
     for i, arg in enumerate(typ_args):
-        if isinstance(arg, (UnboundType, TypeVarType)):  # type: ignore
+        if isinstance(arg, (UnboundType, TypeVarType)):
             tvar = arg.name  # type: Optional[str]
         else:
             tvar = None
