@@ -2551,11 +2551,9 @@ reveal_type(f(**{'x': 4, 'y': 4}))           # N: Revealed type is 'builtins.tup
 reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is 'builtins.tuple[builtins.int]'
 [builtins fixtures/dict.pyi]
 
-[case testOverloadKwargsSelectionWithTypedDict-skip]
-# TODO: Mypy doesn't seem to correctly destructure typed dicts in general.
-#       We should re-enable this once https://github.com/python/mypy/issues/5198 is resolved
+[case testOverloadKwargsSelectionWithTypedDict]
 from typing import overload, Tuple
-from mypy_extensions import TypedDict
+from typing_extensions import TypedDict
 @overload
 def f(*, x: int) -> Tuple[int]: ...
 @overload

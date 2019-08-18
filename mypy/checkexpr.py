@@ -1437,9 +1437,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         order."""
 
         def has_shape(typ: Type) -> bool:
-            # TODO: Once https://github.com/python/mypy/issues/5198 is fixed,
-            #       add 'isinstance(typ, TypedDictType)' somewhere below.
-            return (isinstance(typ, TupleType)
+            return (isinstance(typ, TupleType) or isinstance(typ, TypedDictType)
                     or (isinstance(typ, Instance) and typ.type.is_named_tuple))
 
         matches = []  # type: List[CallableType]
