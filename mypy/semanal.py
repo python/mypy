@@ -1871,10 +1871,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             continue
                     # In stub files, `from x import *` always reexports the symbols.
                     # In regular files, only if implicit reexports are enabled.
-                    module_public = (
-                        self.is_stub_file
-                        or self.options.implicit_reexport
-                    )
+                    module_public = self.is_stub_file or self.options.implicit_reexport
                     self.add_imported_symbol(name, node, i,
                                              module_public=module_public,
                                              module_hidden=not module_public)
