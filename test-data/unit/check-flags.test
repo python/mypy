@@ -1145,6 +1145,42 @@ from other_module_1 import a
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
+[case testNoImplicitReexportRespectsAll]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+from other_module_2 import b
+[file other_module_1.py]
+a = 5
+b = 6
+[file other_module_2.py]
+from other_module_1 import a, b
+__all__ = ('b',)
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportStarConsideredImplicit]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+[file other_module_1.py]
+a = 5
+[file other_module_2.py]
+from other_module_1 import *
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportStarCanBeReexportedWithAll]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+from other_module_2 import b
+[file other_module_1.py]
+a = 5
+b = 6
+[file other_module_2.py]
+from other_module_1 import *
+__all__ = ('b',)
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
 from other_module_2 import a

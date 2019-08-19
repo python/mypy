@@ -463,10 +463,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                     del tree.names[name]
 
     def adjust_public_exports(self) -> None:
-        """Make variables not in __all__ not be public"""
+        """Adjust the module visibility of globals due to __all__."""
         if '__all__' in self.globals:
             for name, g in self.globals.items():
-                if name not in self.all_exports:
+                # Being included in __all__ explicitly exports and makes public.
+                if name in self.all_exports:
+                    g.module_public = True
+                    g.module_hidden = False
+                # But when __all__ is defined, and a symbol is not included in it,
+                # it cannot be public.
+                else:
                     g.module_public = False
 
     @contextmanager
@@ -1863,7 +1869,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, node, i):
                             continue
-                    self.add_imported_symbol(name, node, i)
+                    # In stub files, `from x import *` always reexports the symbols.
+                    # In regular files, only if implicit reexports are enabled.
+                    module_public = self.is_stub_file or self.options.implicit_reexport
+                    self.add_imported_symbol(name, node, i,
+                                             module_public=module_public,
+                                             module_hidden=not module_public)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
