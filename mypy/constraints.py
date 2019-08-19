@@ -7,6 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
+    ProperType, get_proper_type
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -88,6 +89,8 @@ def infer_constraints(template: Type, actual: Type,
 
     The constraints are represented as Constraint objects.
     """
+    template = get_proper_type(template)
+    actual = get_proper_type(actual)
 
     # If the template is simply a type variable, emit a Constraint directly.
     # We need to handle this case before handling Unions for two reasons:
@@ -199,12 +202,12 @@ def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
             and mypy.sametypes.is_same_type(c1.target, c2.target))
 
 
-def simplify_away_incomplete_types(types: List[Type]) -> List[Type]:
+def simplify_away_incomplete_types(types: Iterable[Type]) -> List[Type]:
     complete = [typ for typ in types if is_complete_type(typ)]
     if complete:
         return complete
     else:
-        return types
+        return list(types)
 
 
 def is_complete_type(typ: Type) -> bool:
@@ -229,9 +232,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     # The type that is compared against a template
     # TODO: The value may be None. Is that actually correct?
-    actual = None  # type: Type
+    actual = None  # type: ProperType
 
-    def __init__(self, actual: Type, direction: int) -> None:
+    def __init__(self, actual: ProperType, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -298,7 +301,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)
-            assert isinstance(erased, Instance)
+            assert isinstance(erased, Instance)  # type: ignore
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if (self.direction == SUBTYPE_OF and

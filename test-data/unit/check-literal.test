@@ -3067,3 +3067,29 @@ reveal_type(Test3.FOO.name)  # N: Revealed type is 'builtins.str'
 reveal_type(Test4.FOO.name)  # N: Revealed type is 'builtins.str'
 reveal_type(Test5.FOO.name)  # N: Revealed type is 'builtins.str'
 [out]
+
+[case testLiteralBinderLastValueErased]
+# mypy: strict-equality
+
+from typing_extensions import Literal
+
+def takes_three(x: Literal[3]) -> None: ...
+x: object
+x = 3
+
+takes_three(x)  # E: Argument 1 to "takes_three" has incompatible type "int"; expected "Literal[3]"
+if x == 2:  # OK
+    ...
+[builtins fixtures/bool.pyi]
+
+[case testLiteralBinderLastValueErasedPartialTypes]
+# mypy: strict-equality
+
+def test() -> None:
+    x = None
+    if bool():
+        x = 1
+
+    if x == 2:  # OK
+        ...
+[builtins fixtures/bool.pyi]

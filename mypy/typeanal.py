@@ -7,13 +7,14 @@ from collections import OrderedDict
 
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
 from typing_extensions import Final
+from mypy_extensions import DefaultNamedArg
 
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
     LiteralType, RawExpressionType, PlaceholderType
 )
@@ -29,7 +30,8 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
-from mypy import nodes, message_registry
+from mypy.errorcodes import ErrorCode
+from mypy import nodes, message_registry, errorcodes as codes
 
 T = TypeVar('T')
 
@@ -430,7 +432,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                          ' inside a function)'.format(short, short))
         else:
             message = 'Cannot interpret reference "{}" as a type'
-        self.fail(message.format(name), t)
+        self.fail(message.format(name), t, code=codes.VALID_TYPE)
         for note in notes:
             self.note(note, t)
 
@@ -487,7 +489,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
-            self.fail('Syntax error in type annotation', t)
+            self.fail('Syntax error in type annotation', t, code=codes.SYNTAX)
             if len(t.items) == 1:
                 self.note('Suggestion: Is there a spurious trailing comma?', t)
             else:
@@ -542,7 +544,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # or just misspelled a regular type. So we avoid guessing.
                 msg = 'Invalid type comment or annotation'
 
-            self.fail(msg, t)
+            self.fail(msg, t, code=codes.VALID_TYPE)
             if t.note is not None:
                 self.note(t.note, t)
 
@@ -746,8 +748,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.fail_func(msg, ctx)
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+        self.fail_func(msg, ctx, code=code)
 
     def note(self, msg: str, ctx: Context) -> None:
         self.note_func(msg, ctx)
@@ -814,7 +816,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return False
         return self.tvar_scope.get_binding(tvar_node) is not None
 
-    def anal_array(self, a: List[Type], nested: bool = True) -> List[Type]:
+    def anal_array(self, a: Iterable[Type], nested: bool = True) -> List[Type]:
         res = []  # type: List[Type]
         for t in a:
             res.append(self.anal_type(t, nested))
@@ -869,27 +871,32 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
+# Mypyc doesn't support callback protocols yet.
+FailCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
 
-def get_omitted_any(disallow_any: bool, fail: Callable[[str, Context], None],
+
+def get_omitted_any(disallow_any: bool, fail: FailCallback,
                     typ: Type, fullname: Optional[str] = None,
                     unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
         if fullname in nongen_builtins:
             # We use a dedicated error message for builtin generics (as the most common case).
             alternative = nongen_builtins[fullname]
-            fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ)
+            fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ,
+                 code=codes.TYPE_ARG)
         else:
             typ = unexpanded_type or typ
             type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
 
-            fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ)
+            fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ,
+                 code=codes.TYPE_ARG)
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
         any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
     return any_type
 
 
-def fix_instance(t: Instance, fail: Callable[[str, Context], None],
+def fix_instance(t: Instance, fail: FailCallback,
                  disallow_any: bool, use_generic_error: bool = False,
                  unexpanded_type: Optional[Type] = None) -> None:
     """Fix a malformed instance by replacing all type arguments with Any.
@@ -915,7 +922,7 @@ def fix_instance(t: Instance, fail: Callable[[str, Context], None],
     if act == '0':
         act = 'none'
     fail('"{}" expects {}, but {} given'.format(
-        t.type.name(), s, act), t)
+        t.type.name(), s, act), t, code=codes.TYPE_ARG)
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
     # things to be right.
@@ -924,7 +931,7 @@ def fix_instance(t: Instance, fail: Callable[[str, Context], None],
 
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
-                      fail: Callable[[str, Context], None], no_args: bool, ctx: Context, *,
+                      fail: FailCallback, no_args: bool, ctx: Context, *,
                       unexpanded_type: Optional[Type] = None,
                       disallow_any: bool = False) -> Type:
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
@@ -968,32 +975,11 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
     return typ
 
 
-def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
-                        newline: int, newcolumn: int) -> Type:
-    """Replace type variables in a generic type alias tp with substitutions subs
-    resetting context. Length of subs should be already checked.
-    """
-    typ_args = get_typ_args(tp)
-    new_args = typ_args[:]
-    for i, arg in enumerate(typ_args):
-        if isinstance(arg, (UnboundType, TypeVarType)):
-            tvar = arg.name  # type: Optional[str]
-        else:
-            tvar = None
-        if tvar and tvar in vars:
-            # Perform actual substitution...
-            new_args[i] = subs[vars.index(tvar)]
-        else:
-            # ...recursively, if needed.
-            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
-    return set_typ_args(tp, new_args, newline, newcolumn)
-
-
 def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, *,
                   from_error: bool = False,
                   disallow_any: bool = False,
-                  fail: Optional[Callable[[str, Context], None]] = None,
+                  fail: Optional[FailCallback] = None,
                   unexpanded_type: Optional[Type] = None) -> Type:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
@@ -1005,7 +991,7 @@ def set_any_tvars(tp: Type, vars: List[str],
         type_str = otype.name if isinstance(otype, UnboundType) else format_type_bare(otype)
 
         fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
-             Context(newline, newcolumn))
+             Context(newline, newcolumn), code=codes.TYPE_ARG)
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
     return replace_alias_tvars(tp, vars, [any_type] * len(vars), newline, newcolumn)
 
@@ -1175,7 +1161,7 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> None:
+def fix_instance_types(t: Type, fail: FailCallback) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
@@ -1185,7 +1171,7 @@ def fix_instance_types(t: Type, fail: Callable[[str, Context], None]) -> None:
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: Callable[[str, Context], None]) -> None:
+    def __init__(self, fail: FailCallback) -> None:
         self.fail = fail
 
     def visit_instance(self, typ: Instance) -> None:

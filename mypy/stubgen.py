@@ -569,7 +569,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
-                if isinstance(o.unanalyzed_type, TupleType):
+                if isinstance(o.unanalyzed_type, TupleType):  # type: ignore
                     annotations = o.unanalyzed_type.items  # type: Iterable[Optional[Type]]
                 else:
                     annotations = [None] * len(items)

@@ -117,7 +117,7 @@ class SolveSuite(Suite):
                      ) -> None:
         res = []  # type: List[Optional[Type]]
         for r in results:
-            if isinstance(r, tuple):
+            if isinstance(r, tuple):  # type: ignore
                 res.append(r[0])
             else:
                 res.append(r)

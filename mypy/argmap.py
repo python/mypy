@@ -2,7 +2,9 @@
 
 from typing import List, Optional, Sequence, Callable, Set
 
-from mypy.types import Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType
+from mypy.types import (
+    Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, get_proper_type
+)
 from mypy import nodes
 
 
@@ -34,7 +36,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
                     formal_to_actual[fi].append(ai)
         elif actual_kind == nodes.ARG_STAR:
             # We need to know the actual type to map varargs.
-            actualt = actual_arg_type(ai)
+            actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
                 for _ in range(len(actualt.items)):
@@ -65,7 +67,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
         else:
             assert actual_kind == nodes.ARG_STAR2
-            actualt = actual_arg_type(ai)
+            actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TypedDictType):
                 for name, value in actualt.items.items():
                     if name in formal_names:
@@ -153,6 +155,7 @@ class ArgTypeExpander:
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
         """
+        actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance):
                 if actual_type.type.fullname() == 'builtins.list':

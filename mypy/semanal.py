@@ -86,7 +86,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES
+    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType
 )
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -463,10 +463,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                     del tree.names[name]
 
     def adjust_public_exports(self) -> None:
-        """Make variables not in __all__ not be public"""
+        """Adjust the module visibility of globals due to __all__."""
         if '__all__' in self.globals:
             for name, g in self.globals.items():
-                if name not in self.all_exports:
+                # Being included in __all__ explicitly exports and makes public.
+                if name in self.all_exports:
+                    g.module_public = True
+                    g.module_hidden = False
+                # But when __all__ is defined, and a symbol is not included in it,
+                # it cannot be public.
+                else:
                     g.module_public = False
 
     @contextmanager
@@ -580,6 +586,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
                     self.defer(defn)
                     return
+                assert isinstance(result, ProperType)
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
@@ -610,10 +617,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
             elif isinstance(functype, CallableType):
+                if func.name() == '__init_subclass__':
+                    func.is_class = True
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
                     leading_type = fill_typevars(info)  # type: Type
-                    if func.is_class or func.name() in ('__new__', '__init_subclass__'):
+                    if func.is_class or func.name() == '__new__':
                         leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
@@ -1784,7 +1793,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if matches:
                 suggestion = "; maybe {}?".format(pretty_or(matches))
                 message += "{}".format(suggestion)
-        self.fail(message, context)
+        self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(imported_id, context)
 
         if import_id == 'typing':
@@ -1860,7 +1869,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, node, i):
                             continue
-                    self.add_imported_symbol(name, node, i)
+                    # In stub files, `from x import *` always reexports the symbols.
+                    # In regular files, only if implicit reexports are enabled.
+                    module_public = self.is_stub_file or self.options.implicit_reexport
+                    self.add_imported_symbol(name, node, i,
+                                             module_public=module_public,
+                                             module_hidden=not module_public)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -4540,7 +4554,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx)
+        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx,
+                  code=codes.NO_REDEF)
 
     def name_already_defined(self,
                              name: str,

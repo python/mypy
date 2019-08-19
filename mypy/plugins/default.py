@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 
 from mypy import message_registry
 from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
@@ -9,7 +9,7 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
-    TypeVarType, TPDICT_FB_NAMES
+    TypeVarType, TPDICT_FB_NAMES, get_proper_type
 )
 from mypy.subtypes import is_subtype
 
@@ -111,7 +111,7 @@ def open_callback(ctx: FunctionContext) -> Type:
     elif isinstance(ctx.args[1][0], StrExpr):
         mode = ctx.args[1][0].value
     if mode is not None:
-        assert isinstance(ctx.default_return_type, Instance)
+        assert isinstance(ctx.default_return_type, Instance)  # type: ignore
         if 'b' in mode:
             return ctx.api.named_generic_type('typing.BinaryIO', [])
         else:
@@ -123,12 +123,13 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
     """Infer a better return type for 'contextlib.contextmanager'."""
     # Be defensive, just in case.
     if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = ctx.arg_types[0][0]
+        arg_type = get_proper_type(ctx.arg_types[0][0])
+        default_return = get_proper_type(ctx.default_return_type)
         if (isinstance(arg_type, CallableType)
-                and isinstance(ctx.default_return_type, CallableType)):
+                and isinstance(default_return, CallableType)):
             # The stub signature doesn't preserve information about arguments so
             # add them back here.
-            return ctx.default_return_type.copy_modified(
+            return default_return.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
                 arg_names=arg_type.arg_names,
@@ -152,7 +153,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             and len(signature.variables) == 1
             and len(ctx.args[1]) == 1):
         key = ctx.args[0][0].value
-        value_type = ctx.type.items.get(key)
+        value_type = get_proper_type(ctx.type.items.get(key))
         ret_type = signature.ret_type
         if value_type:
             default_arg = ctx.args[1][0]
@@ -181,9 +182,9 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
-        output_types = []
+        output_types = []  # type: List[Type]
         for key in keys:
-            value_type = ctx.type.items.get(key)
+            value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
                 return AnyType(TypeOfAny.from_error)
@@ -353,7 +354,7 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
     signature = ctx.default_signature
     if (isinstance(ctx.type, TypedDictType)
             and len(signature.arg_types) == 1):
-        arg_type = signature.arg_types[0]
+        arg_type = get_proper_type(signature.arg_types[0])
         assert isinstance(arg_type, TypedDictType)
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())

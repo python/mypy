@@ -6,7 +6,7 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType, UninhabitedType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, function_type, get_type_vars,
+    DeletedType, NoneType, TypeType, function_type, get_type_vars, get_proper_type
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
@@ -371,8 +371,8 @@ def analyze_member_var_access(name: str,
                         fullname = '{}.{}'.format(method.info.fullname(), name)
                         hook = mx.chk.plugin.get_attribute_hook(fullname)
                         if hook:
-                            result = hook(AttributeContext(mx.original_type, result,
-                                                           mx.context, mx.chk))
+                            result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                                           result, mx.context, mx.chk))
                         return result
         else:
             setattr_meth = info.get_method('__setattr__')
@@ -511,7 +511,7 @@ def analyze_var(name: str,
             mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
-        result = t
+        result = t  # type: Type
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
@@ -552,7 +552,8 @@ def analyze_var(name: str,
         result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                            mx.msg, mx.context, chk=mx.chk)
     if hook:
-        result = hook(AttributeContext(mx.original_type, result, mx.context, mx.chk))
+        result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                       result, mx.context, mx.chk))
     return result
 
 

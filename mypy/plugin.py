@@ -130,10 +130,11 @@ from mypy.nodes import (
     Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
 from mypy.tvar_scope import TypeVarScope
-from mypy.types import Type, Instance, CallableType, TypeList, UnboundType
+from mypy.types import Type, Instance, CallableType, TypeList, UnboundType, ProperType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
+from mypy.errorcodes import ErrorCode
 import mypy.interpreted_plugin
 
 
@@ -152,7 +153,7 @@ class TypeAnalyzerPluginInterface:
     options = None  # type: Options
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Emmit an error message at given location."""
         raise NotImplementedError
 
@@ -217,7 +218,7 @@ class CheckerPluginInterface:
     path = None  # type: str
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -255,7 +256,7 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False) -> None:
+             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
         """Emmit an error message at given location."""
         raise NotImplementedError
 
@@ -382,9 +383,10 @@ FunctionContext = NamedTuple(
 # A context for a method signature hook that infers a better signature for a
 # method.  Note that argument types aren't available yet.  If you need them,
 # you have to use a method hook instead.
+# TODO: document ProperType in the plugin changelog/update issue.
 MethodSigContext = NamedTuple(
     'MethodSigContext', [
-        ('type', Type),                       # Base object type for method call
+        ('type', ProperType),                       # Base object type for method call
         ('args', List[List[Expression]]),     # Actual expressions for each formal argument
         ('default_signature', CallableType),  # Original signature of the method
         ('context', Context),                 # Relevant location context (e.g. for error messages)
@@ -396,7 +398,7 @@ MethodSigContext = NamedTuple(
 # This is very similar to FunctionContext (only differences are documented).
 MethodContext = NamedTuple(
     'MethodContext', [
-        ('type', Type),                    # Base object type for method call
+        ('type', ProperType),                    # Base object type for method call
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         # see FunctionContext for details about names and kinds
         ('arg_kinds', List[List[int]]),
@@ -410,7 +412,7 @@ MethodContext = NamedTuple(
 # A context for an attribute type hook that infers the type of an attribute.
 AttributeContext = NamedTuple(
     'AttributeContext', [
-        ('type', Type),               # Type of object with attribute
+        ('type', ProperType),               # Type of object with attribute
         ('default_attr_type', Type),  # Original attribute type
         ('context', Context),         # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])

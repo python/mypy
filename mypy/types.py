@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence, Iterator,
+    Sequence, Iterator, overload
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 
@@ -19,6 +19,18 @@ from mypy.nodes import (
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper, replace_object_state
 from mypy.bogus_type import Bogus
+
+
+# Older versions of typing don't allow using overload outside stubs,
+# so provide a dummy.
+# mypyc doesn't like function declarations nested in if statements
+def _overload(x: Any) -> Any:
+    return x
+
+
+# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+if bool() or sys.version_info < (3, 6):
+    overload = _overload  # noqa
 
 T = TypeVar('T')
 
@@ -144,6 +156,102 @@ class Type(mypy.nodes.Context):
         raise NotImplementedError('Cannot deserialize {} instance'.format(cls.__name__))
 
 
+class TypeAliasType(Type):
+    """A type alias to another type.
+
+    NOTE: this is not being used yet, and the implementation is still incomplete.
+
+    To support recursive type aliases we don't immediately expand a type alias
+    during semantic analysis, but create an instance of this type that records the target alias
+    definition node (mypy.nodes.TypeAlias) and type arguments (for generic aliases).
+
+    This is very similar to how TypeInfo vs Instance interact.
+    """
+
+    def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
+                 line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.alias = alias
+        self.args = args
+        self.type_ref = None  # type: Optional[str]
+
+    def _expand_once(self) -> Type:
+        """Expand to the target type exactly once.
+
+        This doesn't do full expansion, i.e. the result can contain another
+        (or even this same) type alias. Use this internal helper only when really needed,
+        its public wrapper mypy.types.get_proper_type() is preferred.
+        """
+        assert self.alias is not None
+        return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
+                                   self.line, self.column)
+
+    def expand_all_if_possible(self) -> Optional['ProperType']:
+        """Attempt a full expansion of the type alias (including nested aliases).
+
+        If the expansion is not possible, i.e. the alias is (mutually-)recursive,
+        return None.
+        """
+        raise NotImplementedError('TODO')
+
+    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
+    @property
+    def can_be_true(self) -> bool:  # type: ignore
+        assert self.alias is not None
+        return self.alias.target.can_be_true
+
+    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
+    @property
+    def can_be_false(self) -> bool:  # type: ignore
+        assert self.alias is not None
+        return self.alias.target.can_be_false
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_alias_type(self)
+
+    def __hash__(self) -> int:
+        return hash((self.alias, tuple(self.args)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeAliasType):
+            return NotImplemented
+        return (self.alias == other.alias
+                and self.args == other.args)
+
+    def serialize(self) -> JsonDict:
+        assert self.alias is not None
+        data = {'.class': 'TypeAliasType',
+                'type_ref': self.alias.fullname(),
+                'args': [arg.serialize() for arg in self.args]}  # type: JsonDict
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeAliasType':
+        assert data['.class'] == 'TypeAliasType'
+        args = []  # type: List[Type]
+        if 'args' in data:
+            args_list = data['args']
+            assert isinstance(args_list, list)
+            args = [deserialize_type(arg) for arg in args_list]
+        alias = TypeAliasType(None, args)
+        alias.type_ref = data['type_ref']  # TODO: fix this up in fixup.py.
+        return alias
+
+    def copy_modified(self, *,
+                      args: Optional[List[Type]] = None) -> 'TypeAliasType':
+        return TypeAliasType(
+            self.alias,
+            args if args is not None else self.args.copy(),
+            self.line, self.column)
+
+
+class ProperType(Type):
+    """Not a type alias.
+
+    Every type except TypeAliasType must inherit from this type.
+    """
+
+
 class TypeVarId:
     # A type variable is uniquely identified by its raw id and meta level.
 
@@ -262,7 +370,7 @@ class TypeVarDef(mypy.nodes.Context):
                           )
 
 
-class UnboundType(Type):
+class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
 
     __slots__ = ('name', 'args', 'optional', 'empty_tuple_index',
@@ -351,7 +459,7 @@ class UnboundType(Type):
                            )
 
 
-class CallableArgument(Type):
+class CallableArgument(ProperType):
     """Represents a Arg(type, 'name') inside a Callable's type list.
 
     Note that this is a synthetic type for helping parse ASTs, not a real type.
@@ -375,7 +483,7 @@ class CallableArgument(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class TypeList(Type):
+class TypeList(ProperType):
     """Information about argument types and names [...].
 
     This is used for the arguments of a Callable type, i.e. for
@@ -398,7 +506,7 @@ class TypeList(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class AnyType(Type):
+class AnyType(ProperType):
     """The type 'Any'."""
 
     __slots__ = ('type_of_any', 'source_any', 'missing_import_name')
@@ -470,7 +578,7 @@ class AnyType(Type):
                        data['missing_import_name'])
 
 
-class UninhabitedType(Type):
+class UninhabitedType(ProperType):
     """This type has no members.
 
     This type is the bottom type.
@@ -519,7 +627,7 @@ class UninhabitedType(Type):
         return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
-class NoneType(Type):
+class NoneType(ProperType):
     """The type of 'None'.
 
     This type can be written by users as 'None'.
@@ -556,7 +664,7 @@ class NoneType(Type):
 NoneTyp = NoneType
 
 
-class ErasedType(Type):
+class ErasedType(ProperType):
     """Placeholder for an erased type.
 
     This is used during type inference. This has the special property that
@@ -567,7 +675,7 @@ class ErasedType(Type):
         return visitor.visit_erased_type(self)
 
 
-class DeletedType(Type):
+class DeletedType(ProperType):
     """Type of deleted variables.
 
     These can be used as lvalues but not rvalues.
@@ -596,7 +704,7 @@ class DeletedType(Type):
 NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')  # type: Final
 
 
-class Instance(Type):
+class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
     The list of type variables may be empty.
@@ -723,7 +831,7 @@ class Instance(Type):
         return self.type.has_readable_member(name)
 
 
-class TypeVarType(Type):
+class TypeVarType(ProperType):
     """A type variable type.
 
     This refers to either a class type variable (id > 0) or a function
@@ -784,7 +892,7 @@ class TypeVarType(Type):
         return TypeVarType(tvdef)
 
 
-class FunctionLike(Type):
+class FunctionLike(ProperType):
     """Abstract base class for function types."""
 
     __slots__ = ('fallback',)
@@ -847,7 +955,7 @@ class CallableType(FunctionLike):
                  )
 
     def __init__(self,
-                 arg_types: List[Type],
+                 arg_types: Sequence[Type],
                  arg_kinds: List[int],
                  arg_names: Sequence[Optional[str]],
                  ret_type: Type,
@@ -868,7 +976,7 @@ class CallableType(FunctionLike):
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
             variables = []
-        self.arg_types = arg_types
+        self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
@@ -899,7 +1007,7 @@ class CallableType(FunctionLike):
             self.def_extras = {}
 
     def copy_modified(self,
-                      arg_types: Bogus[List[Type]] = _dummy,
+                      arg_types: Bogus[Sequence[Type]] = _dummy,
                       arg_kinds: Bogus[List[int]] = _dummy,
                       arg_names: Bogus[List[Optional[str]]] = _dummy,
                       ret_type: Bogus[Type] = _dummy,
@@ -964,9 +1072,9 @@ class CallableType(FunctionLike):
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
-        ret = self.ret_type
+        ret = get_proper_type(self.ret_type)
         if isinstance(ret, TypeVarType):
-            ret = ret.upper_bound
+            ret = get_proper_type(ret.upper_bound)
         if isinstance(ret, TupleType):
             ret = ret.partial_fallback
         assert isinstance(ret, Instance)
@@ -1216,7 +1324,7 @@ class Overloaded(FunctionLike):
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
 
 
-class TupleType(Type):
+class TupleType(ProperType):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
 
     Instance variables:
@@ -1284,7 +1392,7 @@ class TupleType(Type):
                          self.line, self.column, self.implicit)
 
 
-class TypedDictType(Type):
+class TypedDictType(ProperType):
     """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
     A TypedDict object is a dictionary with specific string (literal) keys. Each
@@ -1398,7 +1506,7 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
-class RawExpressionType(Type):
+class RawExpressionType(ProperType):
     """A synthetic type representing some arbitrary expression that does not cleanly
     translate into a type.
 
@@ -1474,7 +1582,7 @@ class RawExpressionType(Type):
             return NotImplemented
 
 
-class LiteralType(Type):
+class LiteralType(ProperType):
     """The type of a Literal instance. Literal[Value]
 
     A Literal always consists of:
@@ -1556,7 +1664,7 @@ class LiteralType(Type):
         )
 
 
-class StarType(Type):
+class StarType(ProperType):
     """The star type *type_parameter.
 
     This is not a real type but a syntactic AST construct.
@@ -1576,14 +1684,14 @@ class StarType(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class UnionType(Type):
+class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
     __slots__ = ('items',)
 
-    def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.items = flatten_nested_unions(items)  # type: List[Type]
+        self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
 
@@ -1595,8 +1703,15 @@ class UnionType(Type):
             return NotImplemented
         return frozenset(self.items) == frozenset(other.items)
 
+    @overload
     @staticmethod
-    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
+    def make_union(items: List[ProperType], line: int = -1, column: int = -1) -> ProperType: ...
+    @overload  # noqa
+    @staticmethod
+    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type: ...
+
+    @staticmethod  # noqa
+    def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
         if len(items) > 1:
             return UnionType(items, line, column)
         elif len(items) == 1:
@@ -1605,7 +1720,8 @@ class UnionType(Type):
             return UninhabitedType()
 
     @staticmethod
-    def make_simplified_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
+    def make_simplified_union(items: Sequence[Type],
+                              line: int = -1, column: int = -1) -> ProperType:
         """Build union type with redundant union items removed.
 
         If only a single item remains, this may return a non-union type.
@@ -1623,9 +1739,9 @@ class UnionType(Type):
         """
         # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
         #       type operations are not static methods, so this is inconsistent.
-        items = list(items)
+        items = get_proper_types(items)
         while any(isinstance(typ, UnionType) for typ in items):
-            all_items = []  # type: List[Type]
+            all_items = []  # type: List[ProperType]
             for typ in items:
                 if isinstance(typ, UnionType):
                     all_items.extend(typ.items)
@@ -1671,7 +1787,7 @@ class UnionType(Type):
                    (isinstance(x, Instance) and x.type.has_readable_member(name))
                    for x in self.relevant_items())
 
-    def relevant_items(self) -> List[Type]:
+    def relevant_items(self) -> List[ProperType]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
         if state.strict_optional:
             return self.items
@@ -1689,7 +1805,7 @@ class UnionType(Type):
         return UnionType([deserialize_type(t) for t in data['items']])
 
 
-class PartialType(Type):
+class PartialType(ProperType):
     """Type such as List[?] where type arguments are unknown, or partial None type.
 
     These are used for inferring types in multiphase initialization such as this:
@@ -1722,7 +1838,7 @@ class PartialType(Type):
         return visitor.visit_partial_type(self)
 
 
-class EllipsisType(Type):
+class EllipsisType(ProperType):
     """The type ... (ellipsis).
 
     This is not a real type but a syntactic AST construct, used in Callable[..., T], for example.
@@ -1738,7 +1854,7 @@ class EllipsisType(Type):
         assert False, "Synthetic types don't serialize"
 
 
-class TypeType(Type):
+class TypeType(ProperType):
     """For types like Type[User].
 
     This annotates variables that are class objects, constrained by
@@ -1768,7 +1884,7 @@ class TypeType(Type):
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
-    item = None  # type: Type
+    item = None  # type: ProperType
 
     def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,
@@ -1780,7 +1896,8 @@ class TypeType(Type):
         self.item = item
 
     @staticmethod
-    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> Type:
+    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> ProperType:
+        item = get_proper_type(item)
         if isinstance(item, UnionType):
             return UnionType.make_union(
                 [TypeType.make_normalized(union_item) for union_item in item.items],
@@ -1808,7 +1925,7 @@ class TypeType(Type):
         return TypeType.make_normalized(deserialize_type(data['item']))
 
 
-class PlaceholderType(Type):
+class PlaceholderType(ProperType):
     """Temporary, yet-unknown type during semantic analysis.
 
     This is needed when there's a reference to a type before the real symbol
@@ -1942,7 +2059,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         s = '({})'.format(s)
 
-        if not isinstance(t.ret_type, NoneType):
+        if not isinstance(get_proper_type(t.ret_type), NoneType):
             s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
@@ -2019,7 +2136,12 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
         return '<placeholder {}>'.format(t.fullname)
 
-    def list_str(self, a: List[Type]) -> str:
+    def visit_type_alias_type(self, t: TypeAliasType) -> str:
+        if t.alias is not None:
+            return '<alias {}>'.format(t.alias.fullname())
+        return '<alias (unfixed)>'
+
+    def list_str(self, a: Iterable[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
         """
@@ -2029,9 +2151,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return ', '.join(res)
 
 
-def strip_type(typ: Type) -> Type:
+def strip_type(typ: Type) -> ProperType:
     """Make a copy of type without 'debugging info' (function name)."""
-
+    typ = get_proper_type(typ)
     if isinstance(typ, CallableType):
         return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
@@ -2042,10 +2164,14 @@ def strip_type(typ: Type) -> Type:
 
 
 def is_named_instance(t: Type, fullname: str) -> bool:
+    t = get_proper_type(t)
     return isinstance(t, Instance) and t.type.fullname() == fullname
 
 
-def copy_type(t: Type) -> Type:
+TP = TypeVar('TP', bound=Type)
+
+
+def copy_type(t: TP) -> TP:
     """
     Build a copy of the type; used to mutate the copy with truthiness information
     """
@@ -2058,10 +2184,12 @@ def copy_type(t: Type) -> Type:
     return nt
 
 
-def true_only(t: Type) -> Type:
+def true_only(t: Type) -> ProperType:
     """
     Restricted version of t with only True-ish values
     """
+    t = get_proper_type(t)
+
     if not t.can_be_true:
         # All values of t are False-ish, so there are no true values in it
         return UninhabitedType(line=t.line, column=t.column)
@@ -2078,10 +2206,12 @@ def true_only(t: Type) -> Type:
         return new_t
 
 
-def false_only(t: Type) -> Type:
+def false_only(t: Type) -> ProperType:
     """
     Restricted version of t with only False-ish values
     """
+    t = get_proper_type(t)
+
     if not t.can_be_false:
         if state.strict_optional:
             # All values of t are True-ish, so there are no false values in it
@@ -2103,10 +2233,12 @@ def false_only(t: Type) -> Type:
         return new_t
 
 
-def true_or_false(t: Type) -> Type:
+def true_or_false(t: Type) -> ProperType:
     """
     Unrestricted version of t with both True-ish and False-ish values
     """
+    t = get_proper_type(t)
+
     if isinstance(t, UnionType):
         new_items = [true_or_false(item) for item in t.items]
         return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
@@ -2155,18 +2287,44 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
     )
 
 
+def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
+                        newline: int, newcolumn: int) -> Type:
+    """Replace type variables in a generic type alias tp with substitutions subs
+    resetting context. Length of subs should be already checked.
+    """
+    typ_args = get_typ_args(tp)
+    new_args = typ_args[:]
+    for i, arg in enumerate(typ_args):
+        if isinstance(arg, (UnboundType, TypeVarType)):  # type: ignore
+            tvar = arg.name  # type: Optional[str]
+        else:
+            tvar = None
+        if tvar and tvar in vars:
+            # Perform actual substitution...
+            new_args[i] = subs[vars.index(tvar)]
+        else:
+            # ...recursively, if needed.
+            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
+    return set_typ_args(tp, new_args, newline, newcolumn)
+
+
 def get_typ_args(tp: Type) -> List[Type]:
     """Get all type arguments from a parametrizable Type."""
+    # TODO: replace this and related functions with proper visitors.
+    tp = get_proper_type(tp)  # TODO: is this really needed?
+
     if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
         return []
     typ_args = (tp.args if isinstance(tp, Instance) else
                 tp.items if not isinstance(tp, CallableType) else
                 tp.arg_types + [tp.ret_type])
-    return typ_args
+    return cast(List[Type], typ_args)
 
 
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
     """Return a copy of a parametrizable Type with arguments set to new_args."""
+    tp = get_proper_type(tp)  # TODO: is this really needed?
+
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
@@ -2200,10 +2358,13 @@ def get_type_vars(typ: Type) -> List[TypeVarType]:
     return tvars
 
 
-def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
+def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:
     """Flatten nested unions in a type list."""
-    flat_items = []  # type: List[Type]
-    for tp in types:
+    # This and similar functions on unions can cause infinite recursion
+    # if passed a "pathological" alias like A = Union[int, A] or similar.
+    # TODO: ban such aliases in semantic analyzer.
+    flat_items = []  # type: List[ProperType]
+    for tp in get_proper_types(types):
         if isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items))
         else:
@@ -2211,11 +2372,12 @@ def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
     return flat_items
 
 
-def union_items(typ: Type) -> List[Type]:
+def union_items(typ: Type) -> List[ProperType]:
     """Return the flattened items of a union type.
 
     For non-union types, return a list containing just the argument.
     """
+    typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         items = []
         for item in typ.items:
@@ -2226,24 +2388,52 @@ def union_items(typ: Type) -> List[Type]:
 
 
 def is_generic_instance(tp: Type) -> bool:
+    tp = get_proper_type(tp)
     return isinstance(tp, Instance) and bool(tp.args)
 
 
 def is_optional(t: Type) -> bool:
+    t = get_proper_type(t)
     return isinstance(t, UnionType) and any(isinstance(e, NoneType) for e in t.items)
 
 
-def remove_optional(typ: Type) -> Type:
+def remove_optional(typ: Type) -> ProperType:
+    typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
     else:
         return typ
 
 
+@overload
+def get_proper_type(typ: None) -> None: ...
+@overload  # noqa
+def get_proper_type(typ: Type) -> ProperType: ...
+
+
+def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:  # noqa
+    if typ is None:
+        return None
+    while isinstance(typ, TypeAliasType):
+        typ = typ._expand_once()
+    assert isinstance(typ, ProperType), typ
+    return typ
+
+
+@overload
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
+@overload  # noqa
+def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
+
+
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore  # noqa
+    return [get_proper_type(t) for t in it]
+
+
 names = globals().copy()  # type: Final
 names.pop('NOT_READY', None)
 deserialize_map = {
-    key: obj.deserialize  # type: ignore
+    key: obj.deserialize
     for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
 }  # type: Final
