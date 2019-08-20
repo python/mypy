@@ -6,7 +6,7 @@
 # nonsense.)
 # Usage: build-debug-python.sh <version> <install prefix> <venv location>
 #
-# Running it locally might look something like: mkdir -p ~/src/cpython && cd ~/src/cpython && ~/src/mypyc/scripts/build-debug-python.sh 3.6.6 ~/src/cpython ~/src/mypyc/env-debug
+# Running it locally might look something like: mkdir -p ~/tmp/cpython-debug && cd ~/tmp/cpython-debug && ~/src/mypyc/scripts/build-debug-python.sh 3.6.6 ~/tmp/cpython-debug ~/src/mypyc/env-debug
 
 VERSION=$1
 PREFIX=$2
@@ -29,6 +29,6 @@ cd Python-$VERSION
 CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug --prefix=$PREFIX
 make -j4
 make install
-$PREFIX/bin/pip3 install virtualenv
+$PREFIX/bin/python3 -m pip install virtualenv
 $PREFIX/bin/python3 -m virtualenv $VENV
 ln -s python3-config $PREFIX/bin/python-config
