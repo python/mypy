@@ -102,21 +102,21 @@ main:7: error: Missing return statement
 
 [case testNoReturnForExhaustiveGenerator]
 # flags: --warn-no-return
-from itertools import count, cycle
+from itertools import count, cycle, repeat
 def h() -> int:
-    for _i in count(1):
+    for _i in count(1): # count is non-exhaustive
         if bool():
             return 1
 
 def i() -> int:
-    for _i in range(3):
+    for _i in repeat(10, 3):
         if bool():
             return 1
         if bool():
             break
 
 def j() -> int:
-    for _i in cycle('ABC'):
+    for _i in cycle((1, 2, 3)): # cycle is non-exhaustive
         if bool():
             return 1
         if bool():
