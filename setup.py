@@ -36,7 +36,7 @@ types.
 '''.lstrip()
 
 
-def find_package_data(base, globs):
+def find_package_data(base, globs, root='mypy'):
     """Find all interesting data files, for setup(package_data=)
 
     Arguments:
@@ -52,7 +52,7 @@ def find_package_data(base, globs):
             files += glob.glob(os.path.join(rv_dir, pat))
         if not files:
             continue
-        rv.extend([f[5:] for f in files])
+        rv.extend([os.path.relpath(f, root) for f in files])
     return rv
 
 
@@ -85,7 +85,7 @@ if os.getenv('MYPY_USE_MYPYC', None) == '1':
     USE_MYPYC = True
 
 if USE_MYPYC:
-    MYPYC_BLACKLIST = (
+    MYPYC_BLACKLIST = tuple(os.path.join('mypy', x) for x in (
         # Need to be runnable as scripts
         '__main__.py',
         'sitepkgs.py',
@@ -103,20 +103,25 @@ if USE_MYPYC:
         # We don't populate __file__ properly at the top level or something?
         # Also I think there would be problems with how we generate version.py.
         'version.py',
-    )
+    ))
 
-    everything = find_package_data('mypy', ['*.py'])
+    everything = (
+        [os.path.join('mypy', x) for x in find_package_data('mypy', ['*.py'])] +
+        [os.path.join('mypyc', x) for x in find_package_data('mypyc', ['*.py'], root='mypyc')])
     # Start with all the .py files
-    all_real_pys = [x for x in everything if not x.startswith('typeshed' + os.sep)]
+    all_real_pys = [x for x in everything
+                    if not x.startswith(os.path.join('mypy', 'typeshed') + os.sep)]
     # Strip out anything in our blacklist
     mypyc_targets = [x for x in all_real_pys if x not in MYPYC_BLACKLIST]
     # Strip out any test code
-    mypyc_targets = [x for x in mypyc_targets if not x.startswith('test' + os.sep)]
+    mypyc_targets = [x for x in mypyc_targets
+                     if not x.startswith((os.path.join('mypy', 'test') + os.sep,
+                                          os.path.join('mypyc', 'test') + os.sep,
+                                          os.path.join('mypyc', 'test-data') + os.sep,
+                                          ))]
     # ... and add back in the one test module we need
-    mypyc_targets.append(os.path.join('test', 'visitors.py'))
+    mypyc_targets.append(os.path.join('mypy', 'test', 'visitors.py'))
 
-    # Fix the paths to be full
-    mypyc_targets = [os.path.join('mypy', x) for x in mypyc_targets]
     # The targets come out of file system apis in an unspecified
     # order. Sort them so that the mypyc output is deterministic.
     mypyc_targets.sort()
@@ -170,8 +175,10 @@ setup(name='mypy',
       ext_modules=ext_modules,
       packages=[
           'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
+          'mypyc', 'mypyc.test',
       ],
       package_data={'mypy': package_data},
+      scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
                                         'dmypy=mypy.dmypy.client:console_entry',

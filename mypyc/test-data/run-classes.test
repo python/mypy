@@ -1,0 +1,1033 @@
+[case testEmptyClass]
+class Empty: pass
+
+def f(e: Empty) -> Empty:
+    return e
+[file driver.py]
+from native import Empty, f
+
+print(isinstance(Empty, type))
+print(Empty)
+print(str(Empty())[:20])
+
+e = Empty()
+print(f(e) is e)
+[out]
+True
+<class 'native.Empty'>
+<native.Empty object
+True
+
+[case testClassWithFields]
+class C:
+    x: int
+    y: int
+    z: 'D'
+class D:
+    pass
+[file driver.py]
+from native import C
+
+c = C()
+assert not hasattr(c, 'x')
+assert not hasattr(c, 'y')
+c.x = 1
+c.y = 2
+print(c.x)
+print(c.y)
+c.x = 10**30
+print(c.x)
+c.x = 10**30+1
+print(c.x)
+assert hasattr(c, 'x')
+assert hasattr(c, 'y')
+assert not hasattr(c, 'z')
+del c.x
+assert not hasattr(c, 'x')
+assert hasattr(c, 'y')
+del c.y
+assert not hasattr(c, 'y')
+c.x = 10**30+2
+print(c.x)
+assert hasattr(c, 'x')
+[out]
+1
+2
+1000000000000000000000000000000
+1000000000000000000000000000001
+1000000000000000000000000000002
+
+[case testNonExtInheritance]
+from typing import Any
+
+def decorator(cls) -> Any:
+    return cls
+
+class C:
+    def __init__(self) -> None:
+        self.c = 3
+
+    def get_c(self) -> int:
+        return self.c
+
+class B(C):
+    def __init__(self) -> None:
+        super().__init__()
+        self.b = 2
+
+    def get_b(self) -> int:
+        return self.b
+
+@decorator
+class A(B):
+    def __init__(self) -> None:
+        super().__init__()
+        self.a = 1
+
+    @classmethod
+    def constant(cls) -> int:
+        return 4
+
+    def get_a(self) -> int:
+        return self.a
+
+[file driver.py]
+from native import A
+a = A()
+assert a.a == 1
+assert a.b == 2
+assert a.c == 3
+assert a.get_a() == 1
+assert a.get_b() == 2
+assert a.get_c() == 3
+assert A.constant() == 4
+
+[case testEnum]
+from enum import Enum
+
+class TestEnum(Enum):
+    a : int = 1
+    b : int = 2
+
+    @classmethod
+    def test(cls) -> int:
+        return 3
+
+assert TestEnum.test() == 3
+
+[file driver.py]
+from native import TestEnum
+assert TestEnum.a.name == 'a'
+assert TestEnum.a.value == 1
+assert TestEnum.b.name == 'b'
+assert TestEnum.b.value == 2
+
+[case testDataClass]
+from dataclasses import dataclass, field
+from typing import Set, List, Callable, Any
+
+@dataclass
+class Person1:
+    age : int
+    name : str
+
+    def __bool__(self) -> bool:
+        return self.name == 'robot'
+
+def testBool(p: Person1) -> bool:
+    if p:
+        return True
+    else:
+        return False
+
+@dataclass
+class Person2:
+    age : int
+    name : str = 'robot'
+
+@dataclass(order = True)
+class Person3:
+    age : int = field(default = 6)
+    friendIDs : List[int] = field(default_factory = list)
+
+    def get_age(self) -> int:
+        return (self.age)
+
+    def set_age(self, new_age : int) -> None:
+        self.age = new_age
+
+    def add_friendID(self, fid : int) -> None:
+        self.friendIDs.append(fid)
+
+    def get_friendIDs(self) -> List[int]:
+        return self.friendIDs
+
+def get_next_age(g: Callable[[Any], int]) -> Callable[[Any], int]:
+    def f(a: Any) -> int:
+        return g(a) + 1
+    return f
+
+@dataclass
+class Person4:
+    age : int
+    _name : str = 'Bot'
+
+    @get_next_age
+    def get_age(self) -> int:
+        return self.age
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+[file driver.py]
+import sys
+
+# Dataclasses introduced in 3.7
+version = sys.version_info[:2]
+if version[0] < 3 or version[1] < 7:
+    exit()
+
+from native import Person1, Person2, Person3, Person4, testBool
+i1 = Person1(age = 5, name = 'robot')
+assert i1.age == 5
+assert i1.name == 'robot'
+assert testBool(i1) == True
+assert testBool(Person1(age = 5, name = 'robo')) == False
+i2 = Person2(age = 5)
+assert i2.age == 5
+assert i2.name == 'robot'
+i3 = Person2(age = 5, name = 'new_robot')
+assert i3.age == 5
+assert i3.name == 'new_robot'
+i4 = Person3()
+assert i4.age == 6
+assert i4.friendIDs == []
+i5 = Person3(age = 5)
+assert i5.age == 5
+assert i5.friendIDs == []
+i6 = Person3(age = 5, friendIDs = [1,2,3])
+assert i6.age == 5
+assert i6.friendIDs == [1,2,3]
+assert i6.get_age() == 5
+i6.set_age(10)
+assert i6.get_age() == 10
+i6.add_friendID(4)
+assert i6.get_friendIDs() == [1,2,3,4]
+i7 = Person4(age = 5)
+assert i7.get_age() == 6
+i7.age += 3
+assert i7.age == 8
+assert i7.name == 'Bot'
+i8 = Person3(age = 1, friendIDs = [1,2])
+i9 = Person3(age = 1, friendIDs = [1,2])
+assert i8 == i9
+i8.age = 2
+assert i8 > i9
+
+[case testGetAttribute]
+class C:
+    x: int
+    y: int
+
+def getx(c: C) -> int:
+    return c.x
+
+def gety(c: C) -> int:
+    return c.y
+[file driver.py]
+from native import C, getx, gety
+c = C()
+c.x = 10**30
+c.y = 10**30 + 1
+print(getx(c))
+print(gety(c))
+[out]
+1000000000000000000000000000000
+1000000000000000000000000000001
+
+[case testSetAttribute]
+class C:
+    x: int
+    y: int
+
+def setx(c: C, v: int) -> None:
+    c.x = v
+
+def sety(c: C, v: int) -> None:
+    c.y = v
+[file driver.py]
+from native import C, setx, sety
+c = C()
+setx(c, 10**30)
+sety(c, 10**30 + 1)
+print(c.x)
+print(c.y)
+setx(c, 4)
+sety(c, 5)
+print(c.x, c.y)
+setx(c, 10**30 + 2)
+sety(c, 10**30 + 3)
+print(c.x)
+print(c.y)
+[out]
+1000000000000000000000000000000
+1000000000000000000000000000001
+4 5
+1000000000000000000000000000002
+1000000000000000000000000000003
+
+[case testAttributeTypes]
+from typing import List, Tuple
+class C:
+    a: List[int]
+    b: bool
+    c: C
+    d: object
+
+def setattrs(o: C, a: List[int], b: bool, c: C) -> None:
+    o.a = a
+    o.b = b
+    o.c = c
+
+def getattrs(o: C) -> Tuple[List[int], bool, C]:
+    return o.a, o.b, o.c
+[file driver.py]
+from native import C, setattrs, getattrs
+c1 = C()
+c2 = C()
+aa = [2]
+setattrs(c1, aa, True, c2)
+a, b, c = getattrs(c1)
+assert a is aa
+assert b is True
+assert c is c2
+
+o = object()
+c1.d = o
+assert c1.d is o
+
+[case testConstructClassWithDefaultConstructor]
+class C:
+    a: int
+    b: int
+
+def f() -> C:
+    c = C()
+    c.a = 13
+    return c
+[file driver.py]
+from native import f, C
+c = f()
+assert c.a == 13
+assert type(c) == C
+assert not hasattr(c, 'b')
+
+[case testListOfUserDefinedClass]
+class C:
+    x: int
+
+def f() -> int:
+    c = C()
+    c.x = 5
+    a = [c]
+    d = a[0]
+    return d.x + 1
+
+def g() -> int:
+    a = [C()]
+    a[0].x = 3
+    return a[0].x + 4
+[file driver.py]
+from native import f, g
+print(f())
+print(g())
+[out]
+6
+7
+
+[case testCastUserClass]
+from typing import List
+
+class C:
+    x: int
+
+def f(a: List[C]) -> C:
+    return a[0]
+[file driver.py]
+from native import f, C
+c = C()
+assert f([c]) is c
+
+[case testClass1]
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def foo(self) -> int:
+        return self.x+1
+def foo() -> int:
+    a = A(20)
+    return a.foo()
+[file driver.py]
+from native import A, foo
+a = A(10)
+assert a.foo() == 11
+assert foo() == 21
+
+[case testGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]):
+    x: T
+    def __init__(self, x: T) -> None:
+        self.x = x
+    def get(self) -> T:
+        return self.x
+    def set(self, y: T) -> None:
+        self.x = y
+
+def f(c: C[int]) -> int:
+    y = c.get()
+    d = C[int](2)
+    c.set(c.get() + 1 + d.get())
+    c.x = c.x + 2
+    return c.x
+
+[file driver.py]
+from native import C, f
+c = C(6)
+assert f(c) == 11
+c.x = 'x'
+assert c.x == 'x'
+c.set([1])
+assert c.x == [1]
+assert c.get() == [1]
+
+[case testSubclass1]
+from typing import Tuple
+
+class A:
+    def __init__(self) -> None:
+        self.x = 10
+    def hi(self, suffix: str) -> str:
+        return str(self.x) + suffix
+class B(A):
+    def __init__(self) -> None:
+        self.x = 20
+        self.y = 'world'
+    def hi(self, suffix: str) -> str:
+        return 'hello ' + str(self.y) + suffix
+
+def use_a(x: A) -> Tuple[int, str]:
+    return (x.x, x.hi(''))
+def use_b(x: B) -> str:
+    return x.hi('')
+
+[file driver.py]
+from native import A, B, use_a, use_b
+a = A()
+b = B()
+assert use_a(a) == (10, '10')
+assert use_a(b) == (20, 'hello world')
+assert a.x == 10
+assert b.x == 20
+assert b.y == 'world'
+assert a.hi('!') == '10!'
+assert b.hi('!') == 'hello world!'
+assert use_b(b) == 'hello world'
+
+[case testSubclassSpecialize1]
+class A:
+    def foo(self, x: int) -> object:
+        print('A')
+        return str(x)
+    def bar(self, x: int) -> None:
+        print(x + 1)
+class B(A):
+    def foo(self, x: object) -> int:
+        print('B')
+        return id(x)
+    def bar(self, x: object) -> None:
+        print(x)
+
+def use_a(x: A, y: int) -> object:
+    x.bar(10)
+    return x.foo(y)
+
+def use_b(x: B, y: object) -> int:
+    return x.foo(y)
+
+[file driver.py]
+from native import A, B, use_a, use_b
+a = A()
+b = B()
+o = object()
+i = 10
+assert a.foo(10) == '10'
+assert b.foo(o) == id(o)
+assert use_a(a, 10) == '10'
+assert use_b(b, o) == id(o)
+assert use_a(b, i) == id(i)
+[out]
+A
+B
+11
+A
+B
+10
+B
+
+[case testSubclassSpecialize2]
+class A:
+    def foo(self, x: int) -> object:
+        print('A')
+        return str(x)
+class B(A):
+    def foo(self, x: object) -> object:
+        print('B')
+        return x
+class C(B):
+    def foo(self, x: object) -> int:
+        print('C')
+        return id(x)
+
+def use_a(x: A, y: int) -> object:
+    return x.foo(y)
+
+def use_b(x: B, y: object) -> object:
+    return x.foo(y)
+
+def use_c(x: C, y: object) -> int:
+    return x.foo(y)
+
+[file driver.py]
+from native import A, B, C, use_a, use_b, use_c
+a = A()
+b = B()
+c = C()
+o = object()
+i = 10
+assert a.foo(10) == '10'
+assert b.foo(o) == o
+assert c.foo(o) == id(o)
+assert use_a(a, 10) == '10'
+assert use_a(b, i) is i
+assert use_a(c, i) == id(i)
+assert use_b(b, o) == o
+assert use_b(c, o) == id(o)
+assert use_c(c, o) == id(o)
+[out]
+A
+B
+C
+A
+B
+C
+B
+C
+C
+
+[case testIsInstance]
+from typing import Optional
+class X: pass
+class A(X): pass
+class B(A): pass
+
+def isa(x: object) -> bool:
+    return isinstance(x, A)
+def isint(x: object) -> bool:
+    return isinstance(x, int)
+def isstr(x: object) -> bool:
+    return isinstance(x, str)
+def islist(x: object) -> bool:
+    return isinstance(x, list)
+def ist(x: object, t: object) -> bool:  # TODO: Second argument should be 'type'
+    return isinstance(x, t)
+def pointless(x: Optional[X]) -> str:
+    if isinstance(x, A):
+        return str(x)
+    return ''
+[file driver.py]
+from native import X, A, B, isa, isint, isstr, islist, ist
+assert isa(1) == False
+assert isa(A()) == True
+assert isa(B()) == True
+assert isa(X()) == False
+
+assert isint(1) == True
+assert isint('') == False
+assert isint(A()) == False
+
+assert isstr(1) == False
+assert isstr('') == True
+
+assert islist(1) == False
+assert islist([]) == True
+
+assert ist(1, int) == True
+assert ist(1, str) == False
+try:
+    ist(1, 2)
+except TypeError:
+    pass
+else:
+    assert False
+
+[case testSubclassUninitAttr]
+class X:
+    x: int
+class A(X):
+    pass
+[file driver.py]
+import traceback
+from native import A
+try:
+    A().x
+except AttributeError:
+    traceback.print_exc()
+[out]
+Traceback (most recent call last):
+  File "driver.py", line 4, in <module>
+    A().x
+AttributeError: attribute 'x' of 'X' undefined
+
+[case testClassMethods]
+MYPY = False
+if MYPY:
+    from typing import ClassVar
+class C:
+    lurr: 'ClassVar[int]' = 9
+    @staticmethod
+    def foo(x: int) -> int: return 10 + x
+    @classmethod
+    def bar(cls, x: int) -> int: return cls.lurr + x
+    @staticmethod
+    def baz(x: int, y: int = 10) -> int: return y - x
+    @classmethod
+    def quux(cls, x: int, y: int = 10) -> int: return y - x
+
+class D(C):
+    def f(self) -> int:
+        return super().foo(1) + super().bar(2) + super().baz(10) + super().quux(10)
+
+def test1() -> int:
+    return C.foo(1) + C.bar(2) + C.baz(10) + C.quux(10) + C.quux(y=10, x=9)
+def test2() -> int:
+    c = C()
+    return c.foo(1) + c.bar(2) + c.baz(10)
+[file driver.py]
+from native import *
+assert C.foo(10) == 20
+assert C.bar(10) == 19
+c = C()
+assert c.foo(10) == 20
+assert c.bar(10) == 19
+
+assert test1() == 23
+assert test2() == 22
+
+d = D()
+assert d.f() == 22
+
+[case testSuper]
+from mypy_extensions import trait
+from typing import List
+
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class B(A):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y = y
+class C(B):
+    def __init__(self, x: int, y: int) -> None:
+        init = super(C, self).__init__
+        init(x, y+1)
+
+class X:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class Y(X):
+    pass
+class Z(Y):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y = y
+
+@trait
+class T:
+    def v_int(self, x: int) -> None: pass
+    def v_list(self, x: List[int]) -> None:
+        if x:
+            self.v_int(x[0])
+            self.v_list(x[1:])
+
+class PrintList(T):
+    def v_int(self, x: int) -> None:
+        print(x)
+    def v_list(self, x: List[int]) -> None:
+        print('yo!')
+        super().v_list(x)
+
+[file driver.py]
+import traceback
+from native import *
+b = B(10, 20)
+assert b.x == 10 and b.y == 20
+c = C(10, 20)
+assert c.x == 10 and c.y == 21
+z = Z(10, 20)
+assert z.x == 10 and z.y == 20
+
+PrintList().v_list([1,2,3])
+[out]
+yo!
+1
+yo!
+2
+yo!
+3
+yo!
+
+[case testSubclassException]
+class Failure(Exception):
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def foo() -> None:
+    raise Failure(10)
+
+def heyo() -> int:
+    try:
+        foo()
+    except Failure as e:
+        return e.x
+    return -1
+
+[file driver.py]
+from native import foo, heyo, Failure
+try:
+    foo()
+except Failure as e:
+    assert str(e) == '10'
+    assert e.x == 10
+heyo()
+
+[case testSubclassDict]
+from typing import Dict
+class WelpDict(Dict[str, int]):
+    def __init__(self) -> None:
+        self.emarhavil = 3
+    def foo(self) -> int:
+        return self.emarhavil
+
+def welp() -> int:
+    x = WelpDict()
+    x['a'] = 10
+    x['b'] = 15
+    x.emarhavil = 5
+    return x['a'] + x['b'] + x.emarhavil + x.foo()
+
+[file driver.py]
+from native import welp
+assert welp() == 35
+
+[case testSubclassPy]
+from b import B, V
+class A(B):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(y)
+        self.x = x
+
+    def foo(self, x: int) -> int:
+        print("hi", x)
+        return x+1
+
+class C(V[int]):
+    def f(self) -> int: return 10
+
+assert isinstance(C(), V)
+
+def f(x: A) -> None:
+    print(x.x)
+    print(x.y)
+    print(x.foo(20))
+
+[file b.py]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class B:
+    def __init__(self, y: int) -> None:
+        self.y = y
+    def foo(self, x: int) -> int:
+        print("parent!")
+        return x + self.y
+    def bar(self) -> None:
+        print("hello!", self.y)
+
+class V(Generic[T]):
+    def f(self) -> T:
+        raise Exception('unimplemented')
+[file driver.py]
+import native
+a = native.A(10, 20)
+a.foo(10)
+a.bar()
+native.f(a)
+[out]
+hi 10
+hello! 20
+10
+20
+hi 20
+21
+
+[case testDisallowSubclassFromPy]
+# We'll want to allow this at some point but right now we need to
+# disallow it because it doesn't work.
+class A:
+    pass
+[file b.py]
+from native import A
+
+# It would be better if we disallowed it at class decl time but it is
+# really easy to do in __new__
+
+class B(A):
+    pass
+
+[file driver.py]
+from b import B
+try:
+    B()
+except TypeError:
+    pass
+else:
+    assert False, "instantiating was supposed to fail"
+
+[case testClassVariable]
+MYPY = False
+if MYPY:
+    from typing import ClassVar
+class A:
+    x = 10  # type: ClassVar[int]
+
+def g(x: int) -> None:
+    A.x = 10
+def f() -> int:
+    return A.x
+[file driver.py]
+from native import A, f
+assert f() == 10
+A.x = 200
+assert f() == 200
+
+[case testDefaultVars]
+from typing import Optional
+class A:
+    x = 10
+    w: object = 10
+    def lol(self) -> None:
+        self.x = 100
+
+LOL = 'lol'
+class B(A):
+    y = LOL
+    z = None  # type: Optional[str]
+    b = True
+    bogus = None  # type: int
+
+def g() -> None:
+    a = A()
+    assert a.x == 10
+    a.x = 20
+    assert a.x == 20
+    b = B()
+    assert b.x == 10
+    b.x = 20
+    assert b.x == 20
+    assert b.y == 'lol'
+    b.y = 'rofl'
+    assert b.y == 'rofl'
+    assert b.z is None
+[file driver.py]
+from native import *
+g()
+
+a = A()
+assert a.x == 10
+a.x = 20
+assert a.x == 20
+b = B()
+assert b.x == 10
+b.x = 20
+assert b.x == 20
+assert b.y == 'lol'
+b.y = 'rofl'
+assert b.y == 'rofl'
+assert b.z is None
+# N.B: this doesn't match cpython
+assert not hasattr(b, 'bogus')
+
+[case testMethodOverrideDefault1]
+class A:
+    def foo(self, x: int) -> None:
+        pass
+class B(A):
+    def foo(self, x: int, y: int = 10) -> None:
+        print(x, y)
+
+def a(x: A) -> None:
+    x.foo(1)
+def b(x: B) -> None:
+    x.foo(2)
+    x.foo(2, 3)
+
+[file driver.py]
+from native import B, a, b
+a(B())
+b(B())
+[out]
+1 10
+2 10
+2 3
+
+[case testMethodOverrideDefault2]
+class A:
+    def foo(self, *, x: int = 0) -> None:
+        pass
+    def bar(self, *, x: int = 0, y: int = 0) -> None:
+        pass
+    def baz(self, x: int = 0) -> None:
+        pass
+class B(A):
+    def foo(self, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+    def bar(self, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+    def baz(self, x: int = 0, *, y: int = 0) -> None:
+        print(x, y)
+
+def a(x: A) -> None:
+    x.foo(x=1)
+    x.bar(x=1, y=2)
+    x.bar(x=2, y=1)
+    x.baz()
+    x.baz(1)
+    x.baz(x=2)
+
+[file driver.py]
+from native import B, a
+a(B())
+[out]
+1 0
+1 2
+2 1
+0 0
+1 0
+2 0
+
+[case testMethodOverrideDefault3]
+class A:
+    @classmethod
+    def foo(cls, *, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def bar(*, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def baz() -> object:
+        pass
+class B(A):
+    @classmethod
+    def foo(cls, *, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+        print(cls.__name__)  # type: ignore
+    @staticmethod
+    def bar(*, y: int = 0, x: int = 0) -> None:
+        print(x, y)
+    @staticmethod
+    def baz() -> int:
+        return 10
+
+# This is just to make sure that this stuff works even when the
+# methods might be overriden.
+class C(B):
+    @classmethod
+    def foo(cls, *, y: int = 0, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def bar(*, y: int = 0, x: int = 0) -> None:
+        pass
+    @staticmethod
+    def baz() -> int:
+        return 10
+
+def a(x: A) -> None:
+    x.foo(x=1)
+    x.bar(x=1)
+    print(x.baz())
+
+[file driver.py]
+from native import B, a
+a(B())
+[out]
+1 0
+B
+1 0
+10
+
+[case testOverride]
+class A:
+    def f(self) -> int:
+        return 0
+    def g(self) -> int:
+        return 1
+
+class B(A):
+    def g(self) -> int:
+        return 2
+
+class C(B):
+    def f(self) -> int:
+        return 3
+
+def test() -> None:
+    ba: A = B()
+    ca: A = C()
+    assert ba.f() == 0
+    assert ba.g() == 2
+    assert ca.f() == 3
+    assert ca.g() == 2
+    cc = C()
+    assert cc.f() == 3
+    assert cc.g() == 2
+    print('ok')
+[file driver.py]
+import native
+native.test()
+[out]
+ok
+
+[case testNoMetaclass]
+from foo import Base
+
+class Nothing(Base):  # type: ignore
+    pass
+
+[file foo.py]
+from typing import Any
+class Meta(type):
+    pass
+
+class _Base(metaclass=Meta):
+    pass
+Base = _Base  # type: Any
+
+[file driver.py]
+try:
+    import native
+except TypeError as e:
+    assert(str(e) == "mypyc classes can't have a metaclass")

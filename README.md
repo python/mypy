@@ -265,9 +265,10 @@ Compiled version of mypy
 ------------------------
 
 We have built an compiled version of mypy using the [mypyc
-compiler](https://github.com/mypyc/mypyc) for mypy-annotated Python
-code. It is approximately 4 times faster than interpreted mypy and is
-available (and the default) for 64-bit Windows, macOS, and Linux.
+compiler](https://github.com/python/mypy/files/mypyc) for
+mypy-annotated Python code. It is approximately 4 times faster than
+interpreted mypy and is available (and the default) for 64-bit
+Windows, macOS, and Linux.
 
 To install an interpreted mypy instead, use:
 
