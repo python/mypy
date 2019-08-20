@@ -1081,7 +1081,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Generate special function representing module top level.
         blocks, env, ret_type, _ = self.leave()
         sig = FuncSignature([], none_rprimitive)
-        func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env)
+        func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env,
+                         traceback_name="<module>")
         self.functions.append(func_ir)
 
     def handle_ext_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
@@ -1937,9 +1938,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if fn_info.is_decorated:
                 class_name = None if cdef is None else cdef.name
                 func_decl = FuncDecl(fn_info.name, class_name, self.module_name, sig)
-                func_ir = FuncIR(func_decl, blocks, env)
+                func_ir = FuncIR(func_decl, blocks, env, fn_info.fitem.line,
+                                 traceback_name=fn_info.fitem.name())
             else:
-                func_ir = FuncIR(self.mapper.func_to_decl[fn_info.fitem], blocks, env)
+                func_ir = FuncIR(self.mapper.func_to_decl[fn_info.fitem], blocks, env,
+                                 fn_info.fitem.line, traceback_name=fn_info.fitem.name())
         return (func_ir, func_reg)
 
     def load_decorated_func(self, fdef: FuncDef, orig_func_reg: Value) -> Value:
@@ -3233,7 +3236,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 return target
 
         # Fall back to Python method call
-        return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
+        return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
     def union_method_call(self,
                           base: Value,
@@ -4812,7 +4815,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """
         sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
         call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, self.module_name, sig)
-        call_fn_ir = FuncIR(call_fn_decl, blocks, env)
+        call_fn_ir = FuncIR(call_fn_decl, blocks, env,
+                            fn_info.fitem.line, traceback_name=fn_info.fitem.name())
         fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
         return call_fn_ir
 
@@ -4961,7 +4965,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                              ), sig.ret_type)
         helper_fn_decl = FuncDecl('__mypyc_generator_helper__', fn_info.generator_class.ir.name,
                                   self.module_name, sig)
-        helper_fn_ir = FuncIR(helper_fn_decl, blocks, env)
+        helper_fn_ir = FuncIR(helper_fn_decl, blocks, env,
+                              fn_info.fitem.line, traceback_name=fn_info.fitem.name())
         fn_info.generator_class.ir.methods['__mypyc_generator_helper__'] = helper_fn_ir
         self.functions.append(helper_fn_ir)
         return helper_fn_decl

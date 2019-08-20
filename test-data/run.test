@@ -3814,21 +3814,21 @@ with ctx_manager() as c:
     raise Exception('exception')
 
 [out]
-  File "native.py", line 10, in __mypyc_generator_helper__
+  File "native.py", line 10, in generator
     yield 3
-  File "native.py", line 9, in __mypyc_generator_helper__
+  File "native.py", line 9, in generator
     yield 2
-  File "native.py", line 8, in __mypyc_generator_helper__
+  File "native.py", line 8, in generator
     yield 1
   File "driver.py", line 31, in <module>
     raise Exception
-  File "native.py", line 10, in __mypyc_generator_helper__
+  File "native.py", line 10, in generator
     yield 3
-  File "native.py", line 30, in __mypyc_generator_helper__
+  File "native.py", line 30, in wrapper
     return (yield from x)
-  File "native.py", line 9, in __mypyc_generator_helper__
+  File "native.py", line 9, in generator
     yield 2
-  File "native.py", line 30, in __mypyc_generator_helper__
+  File "native.py", line 30, in wrapper
     return (yield from x)
 caught exception without value
 caught exception with value some string

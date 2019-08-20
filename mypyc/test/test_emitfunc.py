@@ -50,8 +50,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.context = EmitterContext(['mod'])
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
-        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'func', 'prog.py',
-                                              'prog')
+        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog')
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)),

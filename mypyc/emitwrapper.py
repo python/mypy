@@ -36,13 +36,28 @@ def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
     return '{}:{}'.format(main_format, func_name)
 
 
-def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
+def generate_wrapper_function(fn: FuncIR,
+                              emitter: Emitter,
+                              source_path: str,
+                              module_name: str) -> None:
     """Generates a CPython-compatible wrapper function for a native function.
 
     In particular, this handles unboxing the arguments, calling the native function, and
     then boxing the return value.
     """
     emitter.emit_line('{} {{'.format(wrapper_function_header(fn, emitter.names)))
+
+    # If we hit an error while processing arguments, then we emit a
+    # traceback frame to make it possible to debug where it happened.
+    # Unlike traceback frames added for exceptions seen in IR, we do this
+    # even if there is no `traceback_name`. This is because the error will
+    # have originated here and so we need it in the traceback.
+    globals_static = emitter.static_name('globals', module_name)
+    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
+        source_path.replace("\\", "\\\\"),
+        fn.traceback_name or fn.name,
+        fn.line,
+        globals_static)
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
@@ -77,7 +92,8 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         'return NULL;',
         '}')
     generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
-                          cleanups=cleanups)
+                          cleanups=cleanups,
+                          traceback_code=traceback_code)
 
     emitter.emit_line('}')
 
@@ -199,7 +215,8 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
                           optional_args: Optional[List[RuntimeArg]] = None,
                           arg_names: Optional[List[str]] = None,
-                          cleanups: Optional[List[str]] = None) -> None:
+                          cleanups: Optional[List[str]] = None,
+                          traceback_code: Optional[str] = None) -> None:
     """Generates the core part of a wrapper function for a native function.
     This expects each argument as a PyObject * named obj_{arg} as a precondition.
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
@@ -208,7 +225,8 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
 
     optional_args = optional_args or []
     cleanups = cleanups or []
-    error_code = 'return NULL;' if not cleanups else 'goto fail;'
+    use_goto = bool(cleanups or traceback_code)
+    error_code = 'return NULL;' if not use_goto else 'goto fail;'
 
     arg_names = arg_names or [arg.name for arg in fn.args]
     for arg_name, arg in zip(arg_names, fn.args):
@@ -216,18 +234,18 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
         typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
         generate_arg_check(arg_name, typ, emitter, error_code, arg in optional_args)
     native_args = ', '.join('arg_{}'.format(arg) for arg in arg_names)
-    if fn.ret_type.is_unboxed or cleanups:
+    if fn.ret_type.is_unboxed or use_goto:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
         #       Are they relevant?
         emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
                                                         NATIVE_PREFIX,
                                                         fn.cname(emitter.names),
                                                         native_args))
+        emitter.emit_lines(*cleanups)
         if fn.ret_type.is_unboxed:
-            emitter.emit_error_check('retval', fn.ret_type, error_code)
+            emitter.emit_error_check('retval', fn.ret_type, 'return NULL;')
             emitter.emit_box('retval', 'retbox', fn.ret_type, declare_dest=True)
 
-        emitter.emit_lines(*cleanups)
         emitter.emit_line('return {};'.format('retbox' if fn.ret_type.is_unboxed else 'retval'))
     else:
         emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
@@ -235,9 +253,11 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
                                                     native_args))
         # TODO: Tracebacks?
 
-    if cleanups:
+    if use_goto:
         emitter.emit_label('fail')
         emitter.emit_lines(*cleanups)
+        if traceback_code:
+            emitter.emit_lines(traceback_code)
         emitter.emit_lines('return NULL;')
 
 

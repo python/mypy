@@ -1428,10 +1428,17 @@ class FuncIR:
     def __init__(self,
                  decl: FuncDecl,
                  blocks: List[BasicBlock],
-                 env: Environment) -> None:
+                 env: Environment,
+                 line: int = -1,
+                 traceback_name: Optional[str] = None) -> None:
         self.decl = decl
         self.blocks = blocks
         self.env = env
+        self.line = line
+        # The name that should be displayed for tracebacks that
+        # include this function. Function will be omitted from
+        # tracebacks if None.
+        self.traceback_name = traceback_name
 
     @property
     def args(self) -> Sequence[RuntimeArg]:

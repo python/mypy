@@ -1,7 +1,7 @@
 """Code generation for native function bodies."""
 
 
-from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, TOP_LEVEL_NAME
+from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
@@ -53,7 +53,7 @@ def generate_native_function(fn: FuncIR,
                              module_name: str) -> None:
     declarations = Emitter(emitter.context, fn.env)
     body = Emitter(emitter.context, fn.env)
-    visitor = FunctionEmitterVisitor(body, declarations, fn.name, source_path, module_name)
+    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
     body.indent()
@@ -91,14 +91,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def __init__(self,
                  emitter: Emitter,
                  declarations: Emitter,
-                 func_name: str,
                  source_path: str,
                  module_name: str) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.env = self.emitter.env
-        self.func_name = func_name
         self.source_path = source_path
         self.module_name = module_name
 
@@ -139,13 +137,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
         if op.traceback_entry is not None:
             globals_static = self.emitter.static_name('globals', self.module_name)
-            func_name = self.func_name
-            if func_name == TOP_LEVEL_NAME:
-                func_name = '<module>'  # Like normal Python tracebacks
             self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
                 self.source_path.replace("\\", "\\\\"),
-                func_name,
-                op.line,
+                op.traceback_entry[0],
+                op.traceback_entry[1],
                 globals_static))
             if DEBUG_ERRORS:
                 self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')

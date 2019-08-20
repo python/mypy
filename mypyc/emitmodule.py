@@ -160,7 +160,8 @@ class ModuleGenerator:
                 generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
-                    generate_wrapper_function(fn, emitter)
+                    generate_wrapper_function(
+                        fn, emitter, self.source_paths[module_name], module_name)
 
             if multi_file:
                 name = ('__native_{}.c'.format(emitter.names.private_name(module_name)))
