@@ -31,7 +31,7 @@ from mypy.nodes import (
     IndexExpr, Block, Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue,
     BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
     TypeInfo, Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode,
-    PassStmt, PromoteExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr,
+    PassStmt, PromoteExpr, AssignmentExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr,
     ComplexExpr, Decorator, DelStmt, DictionaryComprehension, EllipsisExpr, EnumCallExpr, ExecStmt,
     FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
@@ -4363,6 +4363,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_await_expr(self, o: AwaitExpr) -> Value:
         return self.handle_yield_from_and_await(o)
+
+    # Unimplemented constructs
+    def visit_assignment_expr(self, o: AssignmentExpr) -> Value:
+        self.bail("I Am The Walrus (unimplemented)", o.line)
 
     # Unimplemented constructs that shouldn't come up because they are py2 only
     def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
