@@ -92,7 +92,7 @@ from mypyc.ops_misc import (
 from mypyc.ops_exc import (
     raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
     error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
-    get_exc_info_op, keep_propagating_op,
+    get_exc_info_op, keep_propagating_op, set_stop_iteration_value,
 )
 from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 from mypyc.rt_subtype import is_runtime_subtype
@@ -901,8 +901,13 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # StopIteration isn't caught by except blocks inside of the generator function.
         builder.error_handlers.append(None)
         builder.goto_new_block()
-        builder.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, value,
-                                       line))
+        # Skip creating a traceback frame when we raise here, because
+        # we don't care about the traceback frame and it is kind of
+        # expensive since raising StopIteration is an extremely common case.
+        # Also we call a special internal function to set StopIteration instead of
+        # using RaiseStandardError because the obvious thing doesn't work if the
+        # value is a tuple (???).
+        builder.primitive_op(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.error_handlers.pop()
 

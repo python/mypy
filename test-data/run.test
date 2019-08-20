@@ -3497,7 +3497,8 @@ else:
     assert False
 
 [case testYield]
-from typing import Generator, Iterable, Union
+from typing import Generator, Iterable, Union, Tuple
+
 def yield_three_times() -> Iterable[int]:
     yield 1
     yield 2
@@ -3567,8 +3568,12 @@ class A(object):
     def generator(self) -> Iterable[int]:
         yield self.x
 
+def return_tuple() -> Generator[int, None, Tuple[int, int]]:
+    yield 0
+    return 1, 2
+
 [file driver.py]
-from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, yield_with_default, A
+from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, yield_with_default, A, return_tuple
 from testutil import run_generator
 
 assert run_generator(yield_three_times()) == ((1, 2, 3), None)
@@ -3579,6 +3584,7 @@ assert run_generator(yield_with_except()) == ((10,), None)
 assert run_generator(complex_yield(5, 'foo', 1.0)) == (('2 foo', 3, '4 foo'), 1.0)
 assert run_generator(yield_with_default()) == ((), None)
 assert run_generator(A(0).generator()) == ((0,), None)
+assert run_generator(return_tuple()) == ((0,), (1, 2))
 
 for i in yield_twice_and_return():
     print(i)

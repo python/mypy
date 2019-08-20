@@ -328,6 +328,44 @@ _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 #define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
 #endif
 
+// Adapted from genobject.c in Python 3.7.2
+// Copied because it wasn't in 3.5.2 and it is undocumented anyways.
+/*
+ * Set StopIteration with specified value.  Value can be arbitrary object
+ * or NULL.
+ *
+ * Returns 0 if StopIteration is set and -1 if any other exception is set.
+ */
+static int
+CPyGen_SetStopIterationValue(PyObject *value)
+{
+    PyObject *e;
+
+    if (value == NULL ||
+        (!PyTuple_Check(value) && !PyExceptionInstance_Check(value)))
+    {
+        /* Delay exception instantiation if we can */
+        PyErr_SetObject(PyExc_StopIteration, value);
+        return 0;
+    }
+    /* Construct an exception instance manually with
+     * PyObject_CallFunctionObjArgs and pass it to PyErr_SetObject.
+     *
+     * We do this to handle a situation when "value" is a tuple, in which
+     * case PyErr_SetObject would set the value of StopIteration to
+     * the first element of the tuple.
+     *
+     * (See PyErr_SetObject/_PyErr_CreateException code for details.)
+     */
+    e = PyObject_CallFunctionObjArgs(PyExc_StopIteration, value, NULL);
+    if (e == NULL) {
+        return -1;
+    }
+    PyErr_SetObject(PyExc_StopIteration, e);
+    Py_DECREF(e);
+    return 0;
+}
+
 #ifdef __cplusplus
 }
 #endif
