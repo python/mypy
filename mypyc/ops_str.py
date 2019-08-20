@@ -3,7 +3,7 @@ from typing import List, Callable
 from mypyc.ops import (
     object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface
 )
-from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op
+from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op, method_op
 
 
 name_ref_op('builtins.str',
@@ -23,6 +23,13 @@ binary_op(op='+',
           result_type=str_rprimitive,
           error_kind=ERR_MAGIC,
           emit=simple_emit('{dest} = PyUnicode_Concat({args[0]}, {args[1]});'))
+
+method_op(
+    name='join',
+    arg_types=[str_rprimitive, object_rprimitive],
+    result_type=str_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
