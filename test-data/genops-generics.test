@@ -51,7 +51,7 @@ def f() -> None:
     2 + c.x
 [out]
 def f():
-    r0, c :: C
+    r0, c :: __main__.C
     r1 :: short_int
     r2 :: object
     r3 :: bool
@@ -89,7 +89,7 @@ def f(x: C[int]) -> None:
     x = C(2)
 [out]
 def C.__init__(self, x):
-    self :: C
+    self :: __main__.C
     x :: object
     r0 :: bool
     r1 :: None
@@ -98,13 +98,13 @@ L0:
     r1 = None
     return r1
 def C.get(self):
-    self :: C
+    self :: __main__.C
     r0 :: object
 L0:
     r0 = self.x
     return r0
 def C.set(self, y):
-    self :: C
+    self :: __main__.C
     y :: object
     r0 :: bool
     r1 :: None
@@ -113,7 +113,7 @@ L0:
     r1 = None
     return r1
 def f(x):
-    x :: C
+    x :: __main__.C
     r0 :: object
     r1, y :: int
     r2 :: short_int
@@ -122,7 +122,7 @@ def f(x):
     r5 :: None
     r6 :: short_int
     r7 :: object
-    r8 :: C
+    r8 :: __main__.C
     r9 :: None
 L0:
     r0 = x.get()
@@ -138,3 +138,4 @@ L0:
     x = r8
     r9 = None
     return r9
+

@@ -6,7 +6,7 @@ def f(a: A) -> int:
     return a.x
 [out]
 def f(a):
-    a :: A
+    a :: __main__.A
     r0 :: int
 L0:
     r0 = a.x
@@ -20,7 +20,7 @@ def f(a: A) -> None:
     a.x = 1
 [out]
 def f(a):
-    a :: A
+    a :: __main__.A
     r0 :: short_int
     r1 :: bool
     r2 :: None
@@ -42,13 +42,13 @@ def f() -> int:
     return d.x + 1
 [out]
 def f():
-    r0, c :: C
+    r0, c :: __main__.C
     r1 :: short_int
     r2 :: bool
     r3, a :: list
     r4 :: short_int
     r5 :: object
-    r6, d :: C
+    r6, d :: __main__.C
     r7 :: int
     r8 :: short_int
     r9 :: int
@@ -61,7 +61,7 @@ L0:
     a = r3
     r4 = 0
     r5 = a[r4] :: list
-    r6 = cast(C, r5)
+    r6 = cast(__main__.C, r5)
     d = r6
     r7 = d.x
     r8 = 1
@@ -77,7 +77,7 @@ def g(a: A) -> None:
     a.f(1, 'hi')
 [out]
 def A.f(self, x, y):
-    self :: A
+    self :: __main__.A
     x :: int
     y :: str
     r0 :: short_int
@@ -87,7 +87,7 @@ L0:
     r1 = x + r0 :: int
     return r1
 def g(a):
-    a :: A
+    a :: __main__.A
     r0 :: short_int
     r1 :: str
     r2 :: int
@@ -108,7 +108,7 @@ class A:
 
 [out]
 def g(a):
-    a :: A
+    a :: __main__.A
     r0 :: int
 L0:
     r0 = a.n
@@ -124,14 +124,14 @@ class Node:
         return 1
 [out]
 def Node.length(self):
-    self :: Node
-    r0 :: union[Node, None]
+    self :: __main__.Node
+    r0 :: union[__main__.Node, None]
     r1 :: None
     r2 :: object
     r3, r4 :: bool
     r5 :: short_int
-    r6 :: union[Node, None]
-    r7 :: Node
+    r6 :: union[__main__.Node, None]
+    r7 :: __main__.Node
     r8, r9 :: int
     r10 :: short_int
 L0:
@@ -144,7 +144,7 @@ L0:
 L1:
     r5 = 1
     r6 = self.next
-    r7 = cast(Node, r6)
+    r7 = cast(__main__.Node, r6)
     r8 = r7.length()
     r9 = r5 + r8 :: int
     return r9
@@ -162,7 +162,7 @@ class B(A):
         self.y = 30
 [out]
 def A.__init__(self):
-    self :: A
+    self :: __main__.A
     r0 :: short_int
     r1 :: bool
     r2 :: None
@@ -172,7 +172,7 @@ L0:
     r2 = None
     return r2
 def B.__init__(self):
-    self :: B
+    self :: __main__.B
     r0 :: short_int
     r1 :: bool
     r2 :: short_int
@@ -196,7 +196,7 @@ def increment(o: O) -> O:
     return o
 [out]
 def O.__init__(self):
-    self :: O
+    self :: __main__.O
     r0 :: short_int
     r1 :: bool
     r2 :: None
@@ -206,7 +206,7 @@ L0:
     r2 = None
     return r2
 def increment(o):
-    o :: O
+    o :: __main__.O
     r0 :: int
     r1 :: short_int
     r2 :: int
@@ -239,7 +239,7 @@ def use_c(x: C, y: object) -> int:
     return x.foo(y)
 [out]
 def A.foo(self, x):
-    self :: A
+    self :: __main__.A
     x :: int
     r0 :: object
     r1 :: str
@@ -248,12 +248,12 @@ L0:
     r1 = str r0 :: object
     return r1
 def B.foo(self, x):
-    self :: B
+    self :: __main__.B
     x :: object
 L0:
     return x
 def B.foo__A_glue(self, x):
-    self :: B
+    self :: __main__.B
     x :: int
     r0, r1 :: object
 L0:
@@ -261,14 +261,14 @@ L0:
     r1 = B.foo(self, r0)
     return r1
 def C.foo(self, x):
-    self :: C
+    self :: __main__.C
     x :: object
     r0 :: int
 L0:
     r0 = id x :: object
     return r0
 def C.foo__B_glue(self, x):
-    self :: C
+    self :: __main__.C
     x :: object
     r0 :: int
     r1 :: object
@@ -277,7 +277,7 @@ L0:
     r1 = box(int, r0)
     return r1
 def C.foo__A_glue(self, x):
-    self :: C
+    self :: __main__.C
     x :: int
     r0 :: object
     r1 :: int
@@ -288,20 +288,20 @@ L0:
     r2 = box(int, r1)
     return r2
 def use_a(x, y):
-    x :: A
+    x :: __main__.A
     y :: int
     r0 :: object
 L0:
     r0 = x.foo(y)
     return r0
 def use_b(x, y):
-    x :: B
+    x :: __main__.B
     y, r0 :: object
 L0:
     r0 = x.foo(y)
     return r0
 def use_c(x, y):
-    x :: C
+    x :: __main__.C
     y :: object
     r0 :: int
 L0:
@@ -486,16 +486,16 @@ def f(x: A) -> B:
     return B()
 [out]
 def f(x):
-    x :: A
+    x :: __main__.A
     r0 :: object
     r1 :: bool
-    r2, r3 :: B
+    r2, r3 :: __main__.B
 L0:
     r0 = __main__.B :: type
     r1 = type_is x, r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = cast(B, x)
+    r2 = cast(__main__.B, x)
     return r2
 L2:
     r3 = B()
@@ -514,13 +514,13 @@ def f(x: R) -> Union[A, B]:
     return A()
 [out]
 def f(x):
-    x :: R
+    x :: __main__.R
     r0 :: object
     r1, r2 :: bool
     r3 :: object
     r4 :: bool
-    r5 :: union[A, B]
-    r6 :: A
+    r5 :: union[__main__.A, __main__.B]
+    r6 :: __main__.A
 L0:
     r0 = __main__.A :: type
     r1 = type_is x, r0
@@ -535,7 +535,7 @@ L2:
 L3:
     if r2 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(union[A, B], x)
+    r5 = cast(union[__main__.A, __main__.B], x)
     return r5
 L5:
     r6 = A()
@@ -555,8 +555,8 @@ def f(x):
     r1, r2 :: bool
     r3 :: object
     r4 :: bool
-    r5 :: R
-    r6 :: A
+    r5 :: __main__.R
+    r6 :: __main__.A
 L0:
     r0 = __main__.A :: type
     r1 = type_is x, r0
@@ -571,7 +571,7 @@ L2:
 L3:
     if r2 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(R, x)
+    r5 = cast(__main__.R, x)
     return r5
 L5:
     r6 = A()
@@ -595,8 +595,8 @@ def f(x):
     r1, r2 :: bool
     r3 :: object
     r4 :: bool
-    r5 :: R
-    r6 :: A
+    r5 :: __main__.R
+    r6 :: __main__.A
 L0:
     r0 = __main__.A :: type
     r1 = type_is x, r0
@@ -611,12 +611,11 @@ L2:
 L3:
     if r2 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(R, x)
+    r5 = cast(__main__.R, x)
     return r5
 L5:
     r6 = A()
     return r6
-
 
 [case testIsInstanceManySubclasses]
 class R: pass
@@ -632,14 +631,14 @@ def f(x: object) -> R:
 def f(x):
     x, r0 :: object
     r1 :: bool
-    r2 :: R
-    r3 :: B
+    r2 :: __main__.R
+    r3 :: __main__.B
 L0:
     r0 = __main__.R :: type
     r1 = isinstance x, r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = cast(R, x)
+    r2 = cast(__main__.R, x)
     return r2
 L2:
     r3 = B()
@@ -655,7 +654,7 @@ class B(A):
         self.y = y
 [out]
 def A.__init__(self, x):
-    self :: A
+    self :: __main__.A
     x :: int
     r0 :: bool
     r1 :: None
@@ -664,7 +663,7 @@ L0:
     r1 = None
     return r1
 def B.__init__(self, x, y):
-    self :: B
+    self :: __main__.B
     x, y :: int
     r0 :: None
     r1 :: bool
@@ -727,7 +726,7 @@ class B(A):
         self.y = y
 [out]
 def A.__init__(self, x):
-    self :: A
+    self :: __main__.A
     x :: int
     r0 :: bool
     r1 :: None
@@ -736,7 +735,7 @@ L0:
     r1 = None
     return r1
 def B.__init__(self, x, y):
-    self :: B
+    self :: __main__.B
     x, y :: int
     r0 :: None
     r1 :: bool
@@ -758,13 +757,13 @@ class X(T):
         super().foo()
 [out]
 def T.foo(self):
-    self :: T
+    self :: __main__.T
     r0 :: None
 L0:
     r0 = None
     return r0
 def X.foo(self):
-    self :: X
+    self :: __main__.X
     r0, r1 :: None
 L0:
     r0 = T.foo(self)
@@ -804,13 +803,13 @@ def f2(a: A, b: A) -> bool:
 
 [out]
 def f(a, b):
-    a, b :: A
+    a, b :: __main__.A
     r0 :: bool
 L0:
     r0 = a is b
     return r0
 def f2(a, b):
-    a, b :: A
+    a, b :: __main__.A
     r0 :: bool
 L0:
     r0 = a is not b
@@ -838,7 +837,7 @@ def fOpt2(a: Derived, b: Derived) -> bool:
 
 [out]
 def Base.__eq__(self, other):
-    self :: Base
+    self :: __main__.Base
     other :: object
     r0 :: bool
     r1 :: object
@@ -847,7 +846,7 @@ L0:
     r1 = box(bool, r0)
     return r1
 def Base.__ne__(self, rhs):
-    self :: Base
+    self :: __main__.Base
     rhs, r0 :: object
     r1 :: bool
 L0:
@@ -855,7 +854,7 @@ L0:
     r1 = not r0
     return r1
 def Derived.__eq__(self, other):
-    self :: Derived
+    self :: __main__.Derived
     other :: object
     r0 :: bool
     r1 :: object
@@ -864,7 +863,7 @@ L0:
     r1 = box(bool, r0)
     return r1
 def f(a, b):
-    a, b :: Base
+    a, b :: __main__.Base
     r0 :: object
     r1 :: bool
 L0:
@@ -872,7 +871,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 def f2(a, b):
-    a, b :: Base
+    a, b :: __main__.Base
     r0 :: object
     r1 :: bool
 L0:
@@ -880,7 +879,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 def fOpt(a, b):
-    a, b :: Derived
+    a, b :: __main__.Derived
     r0 :: object
     r1 :: bool
 L0:
@@ -888,7 +887,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 def fOpt2(a, b):
-    a, b :: Derived
+    a, b :: __main__.Derived
     r0 :: bool
 L0:
     r0 = a.__ne__(b)
@@ -915,7 +914,7 @@ class Derived(Base):
 
 [out]
 def f(a, b):
-    a, b :: Base
+    a, b :: __main__.Base
     r0 :: object
     r1 :: bool
 L0:
@@ -923,7 +922,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 def f2(a, b):
-    a, b :: Base
+    a, b :: __main__.Base
     r0 :: object
     r1 :: bool
 L0:
@@ -931,7 +930,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 def fOpt(a, b):
-    a, b :: Derived
+    a, b :: __main__.Derived
     r0 :: object
     r1 :: bool
 L0:
@@ -939,7 +938,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 def fOpt2(a, b):
-    a, b :: Derived
+    a, b :: __main__.Derived
     r0 :: str
     r1 :: object
     r2 :: bool
@@ -949,7 +948,7 @@ L0:
     r2 = unbox(bool, r1)
     return r2
 def Derived.__eq__(self, other):
-    self :: Derived
+    self :: __main__.Derived
     other :: object
     r0 :: bool
     r1 :: object
@@ -958,7 +957,7 @@ L0:
     r1 = box(bool, r0)
     return r1
 def Derived.__ne__(self, rhs):
-    self :: Derived
+    self :: __main__.Derived
     rhs, r0 :: object
     r1 :: bool
 L0:
@@ -981,7 +980,7 @@ class B(A):
     bogus = None  # type: int
 [out]
 def A.lol(self):
-    self :: A
+    self :: __main__.A
     r0 :: short_int
     r1 :: bool
     r2 :: None
@@ -991,7 +990,7 @@ L0:
     r2 = None
     return r2
 def A.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: A
+    __mypyc_self__ :: __main__.A
     r0 :: short_int
     r1, r2 :: bool
 L0:
@@ -1000,7 +999,7 @@ L0:
     r2 = True
     return r2
 def B.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: B
+    __mypyc_self__ :: __main__.B
     r0 :: short_int
     r1 :: bool
     r2 :: dict

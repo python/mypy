@@ -773,7 +773,7 @@ def f(a: A, o: object) -> None:
     o = a.n
 [out]
 def f(a, o):
-    a :: A
+    a :: __main__.A
     o :: object
     r0 :: short_int
     r1 :: object
@@ -805,20 +805,20 @@ def f(x):
     x :: object
     r0, n :: int
     r1, b :: bool
-    r2, a :: A
+    r2, a :: __main__.A
     r3, l :: list
-    r4, t :: tuple[int, A]
+    r4, t :: tuple[int, __main__.A]
     r5 :: None
 L0:
     r0 = unbox(int, x)
     n = r0
     r1 = unbox(bool, x)
     b = r1
-    r2 = cast(A, x)
+    r2 = cast(__main__.A, x)
     a = r2
     r3 = cast(list, x)
     l = r3
-    r4 = unbox(tuple[int, A], x)
+    r4 = unbox(tuple[int, __main__.A], x)
     t = r4
     r5 = None
     return r5
@@ -833,17 +833,17 @@ def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
     t = tt
 [out]
 def f(o, n, t):
-    o :: union[A, None]
+    o :: union[__main__.A, None]
     n :: int
     t :: tuple
-    r0, a :: A
+    r0, a :: __main__.A
     r1 :: object
     r2, m :: bool
     tt :: tuple[int, int]
     r3 :: object
     r4 :: None
 L0:
-    r0 = cast(A, o)
+    r0 = cast(__main__.A, o)
     a = r0
     r1 = box(int, n)
     r2 = unbox(bool, r1)
@@ -878,12 +878,12 @@ def f(o: object,
 [out]
 def f(o, p, n, b, t, s, a, l, d):
     o :: object
-    p :: union[A, None]
+    p :: union[__main__.A, None]
     n :: int
     b :: bool
     t :: tuple
     s :: tuple[int, int]
-    a :: A
+    a :: __main__.A
     l :: list
     d :: dict
     r0 :: object
@@ -1271,7 +1271,7 @@ L3:
 L4:
     unreachable
 def opt_a(x):
-    x :: union[A, None]
+    x :: union[__main__.A, None]
     r0 :: object
     r1 :: bool
     r2, r3 :: short_int
@@ -1485,7 +1485,7 @@ def g(a: A) -> None:
     a.f(1, y='b')
 [out]
 def A.f(self, x, y):
-    self :: A
+    self :: __main__.A
     x :: int
     y :: str
     r0 :: None
@@ -1493,7 +1493,7 @@ L0:
     r0 = None
     return r0
 def g(a):
-    a :: A
+    a :: __main__.A
     r0 :: str
     r1 :: short_int
     r2 :: None
@@ -1727,7 +1727,7 @@ def g() -> None:
     a.f(y = 3, x = 6)
 [out]
 def A.f(self, x, y, z):
-    self :: A
+    self :: __main__.A
     x, y :: int
     z :: str
     r0 :: short_int
@@ -1747,7 +1747,7 @@ L4:
     r2 = None
     return r2
 def g():
-    r0, a :: A
+    r0, a :: __main__.A
     r1 :: short_int
     r2 :: int
     r3 :: str
@@ -1988,7 +1988,7 @@ class PropertyHolder:
         return 2 * self.value
 [out]
 def PropertyHolder.value(self):
-    self :: PropertyHolder
+    self :: __main__.PropertyHolder
     r0 :: bool
     r1, r2, r3, r4, r5, r6, r7 :: int
 L0:
@@ -2008,7 +2008,7 @@ L2:
 L3:
     return r1
 def PropertyHolder.__init__(self, left, right, is_add):
-    self :: PropertyHolder
+    self :: __main__.PropertyHolder
     left, right :: int
     is_add, r0, r1, r2 :: bool
     r3 :: None
@@ -2019,7 +2019,7 @@ L0:
     r3 = None
     return r3
 def PropertyHolder.twice_value(self):
-    self :: PropertyHolder
+    self :: __main__.PropertyHolder
     r0 :: short_int
     r1, r2 :: int
 L0:
@@ -2074,7 +2074,7 @@ class AgainProperty(DerivedProperty):
         return self._incrementer
 [out]
 def BaseProperty.value(self):
-    self :: BaseProperty
+    self :: __main__.BaseProperty
     r0 :: int
     r1 :: object
 L0:
@@ -2082,7 +2082,7 @@ L0:
     r1 = box(int, r0)
     return r1
 def BaseProperty.bad_value(self):
-    self :: BaseProperty
+    self :: __main__.BaseProperty
     r0 :: int
     r1 :: object
 L0:
@@ -2090,11 +2090,11 @@ L0:
     r1 = box(int, r0)
     return r1
 def BaseProperty.next(self):
-    self :: BaseProperty
+    self :: __main__.BaseProperty
     r0 :: int
     r1 :: short_int
     r2 :: int
-    r3 :: BaseProperty
+    r3 :: __main__.BaseProperty
 L0:
     r0 = self._incrementer
     r1 = 1
@@ -2102,7 +2102,7 @@ L0:
     r3 = BaseProperty(r2)
     return r3
 def BaseProperty.__init__(self, value):
-    self :: BaseProperty
+    self :: __main__.BaseProperty
     value :: int
     r0 :: bool
     r1 :: None
@@ -2111,13 +2111,13 @@ L0:
     r1 = None
     return r1
 def DerivedProperty.value(self):
-    self :: DerivedProperty
+    self :: __main__.DerivedProperty
     r0 :: int
 L0:
     r0 = self._incrementer
     return r0
 def DerivedProperty.value__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__ :: DerivedProperty
+    __mypyc_self__ :: __main__.DerivedProperty
     r0 :: int
     r1 :: object
 L0:
@@ -2125,7 +2125,7 @@ L0:
     r1 = box(int, r0)
     return r1
 def DerivedProperty.bad_value(self):
-    self :: DerivedProperty
+    self :: __main__.DerivedProperty
     r0 :: int
     r1 :: object
 L0:
@@ -2133,12 +2133,12 @@ L0:
     r1 = box(int, r0)
     return r1
 def DerivedProperty.next(self):
-    self :: DerivedProperty
+    self :: __main__.DerivedProperty
     r0 :: object
     r1 :: int
     r2, r3, r4 :: object
     r5 :: int
-    r6 :: DerivedProperty
+    r6 :: __main__.DerivedProperty
 L0:
     r0 = self._incr_func
     r1 = self.value
@@ -2149,12 +2149,12 @@ L0:
     r6 = DerivedProperty(r0, r5)
     return r6
 def DerivedProperty.next__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: DerivedProperty
+    __mypyc_self__, r0 :: __main__.DerivedProperty
 L0:
     r0 = __mypyc_self__.next
     return r0
 def DerivedProperty.__init__(self, incr_func, value):
-    self :: DerivedProperty
+    self :: __main__.DerivedProperty
     incr_func :: object
     value :: int
     r0 :: None
@@ -2166,14 +2166,14 @@ L0:
     r2 = None
     return r2
 def AgainProperty.next(self):
-    self :: AgainProperty
+    self :: __main__.AgainProperty
     r0 :: object
     r1 :: int
     r2, r3, r4 :: object
     r5 :: int
     r6, r7, r8 :: object
     r9 :: int
-    r10 :: AgainProperty
+    r10 :: __main__.AgainProperty
 L0:
     r0 = self._incr_func
     r1 = self.value
@@ -2188,23 +2188,23 @@ L0:
     r10 = AgainProperty(r0, r9)
     return r10
 def AgainProperty.next__DerivedProperty_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: AgainProperty
+    __mypyc_self__, r0 :: __main__.AgainProperty
 L0:
     r0 = __mypyc_self__.next
     return r0
 def AgainProperty.next__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: AgainProperty
+    __mypyc_self__, r0 :: __main__.AgainProperty
 L0:
     r0 = __mypyc_self__.next
     return r0
 def AgainProperty.bad_value(self):
-    self :: AgainProperty
+    self :: __main__.AgainProperty
     r0 :: int
 L0:
     r0 = self._incrementer
     return r0
 def AgainProperty.bad_value__DerivedProperty_glue(__mypyc_self__):
-    __mypyc_self__ :: AgainProperty
+    __mypyc_self__ :: __main__.AgainProperty
     r0 :: int
     r1 :: object
 L0:
@@ -2212,7 +2212,7 @@ L0:
     r1 = box(int, r0)
     return r1
 def AgainProperty.bad_value__BaseProperty_glue(__mypyc_self__):
-    __mypyc_self__ :: AgainProperty
+    __mypyc_self__ :: __main__.AgainProperty
     r0 :: int
     r1 :: object
 L0:
@@ -2242,11 +2242,11 @@ class DerivingObject(SubclassedTrait):
         return 5
 [out]
 def SubclassedTrait.this(self):
-    self :: SubclassedTrait
+    self :: __main__.SubclassedTrait
 L0:
     return self
 def SubclassedTrait.boxed(self):
-    self :: SubclassedTrait
+    self :: __main__.SubclassedTrait
     r0 :: short_int
     r1 :: object
 L0:
@@ -2254,22 +2254,22 @@ L0:
     r1 = box(short_int, r0)
     return r1
 def DerivingObject.this(self):
-    self :: DerivingObject
+    self :: __main__.DerivingObject
 L0:
     return self
 def DerivingObject.this__SubclassedTrait_glue(__mypyc_self__):
-    __mypyc_self__, r0 :: DerivingObject
+    __mypyc_self__, r0 :: __main__.DerivingObject
 L0:
     r0 = __mypyc_self__.this
     return r0
 def DerivingObject.boxed(self):
-    self :: DerivingObject
+    self :: __main__.DerivingObject
     r0 :: short_int
 L0:
     r0 = 5
     return r0
 def DerivingObject.boxed__SubclassedTrait_glue(__mypyc_self__):
-    __mypyc_self__ :: DerivingObject
+    __mypyc_self__ :: __main__.DerivingObject
     r0 :: int
     r1 :: object
 L0:
@@ -2286,12 +2286,12 @@ def g(a: A, b: List[int], c: int) -> int:
     return a[c] + b[c]
 [out]
 def A.__getitem__(self, index):
-    self :: A
+    self :: __main__.A
     index :: int
 L0:
     unreachable
 def g(a, b, c):
-    a :: A
+    a :: __main__.A
     b :: list
     c, r0 :: int
     r1 :: object
@@ -2517,13 +2517,13 @@ class A:
         return NotImplemented
 [out]
 def A.__eq__(self, x):
-    self :: A
+    self :: __main__.A
     x, r0 :: object
 L0:
     r0 = NotImplemented
     return r0
 def A.__ne__(self, rhs):
-    self :: A
+    self :: __main__.A
     rhs, r0 :: object
     r1 :: bool
 L0:
@@ -2573,8 +2573,8 @@ L2:
     r2 = method_new __mypyc_self__, instance
     return r2
 def g_a_obj.__call__(__mypyc_self__):
-    __mypyc_self__ :: g_a_obj
-    r0 :: a_env
+    __mypyc_self__ :: __main__.g_a_obj
+    r0 :: __main__.a_env
     r1, g :: object
     r2 :: str
     r3 :: object
@@ -2611,9 +2611,9 @@ L0:
     return r17
 def a(f):
     f :: object
-    r0 :: a_env
+    r0 :: __main__.a_env
     r1 :: bool
-    r2 :: g_a_obj
+    r2 :: __main__.g_a_obj
     r3, r4 :: bool
     r5 :: object
 L0:
@@ -2638,8 +2638,8 @@ L2:
     r2 = method_new __mypyc_self__, instance
     return r2
 def g_b_obj.__call__(__mypyc_self__):
-    __mypyc_self__ :: g_b_obj
-    r0 :: b_env
+    __mypyc_self__ :: __main__.g_b_obj
+    r0 :: __main__.b_env
     r1, g :: object
     r2 :: str
     r3 :: object
@@ -2676,9 +2676,9 @@ L0:
     return r17
 def b(f):
     f :: object
-    r0 :: b_env
+    r0 :: __main__.b_env
     r1 :: bool
-    r2 :: g_b_obj
+    r2 :: __main__.g_b_obj
     r3, r4 :: bool
     r5 :: object
 L0:
@@ -2703,8 +2703,8 @@ L2:
     r2 = method_new __mypyc_self__, instance
     return r2
 def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
-    __mypyc_self__ :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
-    r0 :: __mypyc_c_decorator_helper___env
+    __mypyc_self__ :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+    r0 :: __main__.__mypyc_c_decorator_helper___env
     r1, d :: object
     r2 :: str
     r3 :: object
@@ -2724,8 +2724,8 @@ L0:
     r8 = None
     return r8
 def __mypyc_c_decorator_helper__():
-    r0 :: __mypyc_c_decorator_helper___env
-    r1 :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+    r0 :: __main__.__mypyc_c_decorator_helper___env
+    r1 :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
     r2 :: bool
     r3 :: dict
     r4 :: str
@@ -2858,8 +2858,8 @@ L2:
     r2 = method_new __mypyc_self__, instance
     return r2
 def g_a_obj.__call__(__mypyc_self__):
-    __mypyc_self__ :: g_a_obj
-    r0 :: a_env
+    __mypyc_self__ :: __main__.g_a_obj
+    r0 :: __main__.a_env
     r1, g :: object
     r2 :: str
     r3 :: object
@@ -2896,9 +2896,9 @@ L0:
     return r17
 def a(f):
     f :: object
-    r0 :: a_env
+    r0 :: __main__.a_env
     r1 :: bool
-    r2 :: g_a_obj
+    r2 :: __main__.g_a_obj
     r3, r4 :: bool
     r5 :: object
 L0:
@@ -3139,7 +3139,7 @@ def f(a: bool) -> int:
         return C.y
 [out]
 def C.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: C
+    __mypyc_self__ :: __main__.C
     r0 :: short_int
     r1 :: bool
     r2 :: short_int
@@ -3275,19 +3275,19 @@ def lol(x: A) -> int:
 
 [out]
 def A.__bool__(self):
-    self :: A
+    self :: __main__.A
     r0 :: bool
 L0:
     r0 = True
     return r0
 def B.__bool__(self):
-    self :: B
+    self :: __main__.B
     r0 :: bool
 L0:
     r0 = False
     return r0
 def lol(x):
-    x :: A
+    x :: __main__.A
     r0 :: bool
     r1, r2 :: short_int
 L0:

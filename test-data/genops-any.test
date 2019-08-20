@@ -42,7 +42,7 @@ def f(a: Any, n: int, c: C) -> None:
 def f(a, n, c):
     a :: object
     n :: int
-    c :: C
+    c :: __main__.C
     r0 :: object
     r1 :: bool
     r2 :: int

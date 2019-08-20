@@ -11,7 +11,7 @@ from mypyc.ops import (
     Environment, BasicBlock, Value, RType, RTuple, RInstance,
     RUnion, RPrimitive,
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
-    short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
+    is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
     FuncDecl, int_rprimitive, is_optional_type, optional_value_type, all_concrete_classes
 )
@@ -259,11 +259,10 @@ class Emitter:
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
-        pretty_name = typ.name
         value_type = optional_value_type(typ)
         if value_type is not None:
-            pretty_name = '%s or None' % self.pretty_name(value_type)
-        return short_name(pretty_name)
+            return '%s or None' % self.pretty_name(value_type)
+        return str(typ)
 
     def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
                   custom_message: Optional[str] = None, optional: bool = False,
@@ -289,8 +288,7 @@ class Emitter:
         if custom_message is not None:
             err = custom_message
         else:
-            err = 'PyErr_SetString(PyExc_TypeError, "{} object expected");'.format(
-                self.pretty_name(typ))
+            err = 'CPy_TypeError("{}", {});'.format(self.pretty_name(typ), src)
 
         # Special case casting *from* optional
         if src_type and is_optional_type(src_type) and not is_object_rprimitive(typ):
@@ -498,10 +496,8 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             borrow: If True, create a borrowed reference
         """
-        # TODO: Raise exception on failure.
         # TODO: Verify refcount handling.
-        raise_exc = 'PyErr_SetString(PyExc_TypeError, "%s object expected");' % (
-            self.pretty_name(typ))
+        raise_exc = 'CPy_TypeError("{}", {});'.format(self.pretty_name(typ), src)
         if custom_failure is not None:
             failure = [raise_exc,
                        custom_failure]

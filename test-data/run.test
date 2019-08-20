@@ -2722,7 +2722,7 @@ Traceback (most recent call last):
     import native
   File "native.py", line 6, in <module>
     f(y)
-TypeError: int object expected
+TypeError: int object expected; got str
 
 [case testComprehensions]
 # A list comprehension
@@ -4599,3 +4599,39 @@ with assertRaises(TypeError, "varargs4() missing required keyword-only argument 
     varargs4(1, 2, 3)
 with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
     varargs4(y=20)
+
+[case testTypeErrorMessages]
+from typing import Tuple
+class A:
+    pass
+class B:
+    pass
+
+def f(x: B) -> None:
+    pass
+def g(x: Tuple[int, A]) -> None:
+    pass
+[file driver.py]
+from testutil import assertRaises
+from native import A, f, g
+
+class Busted:
+    pass
+Busted.__module__ = None
+
+with assertRaises(TypeError, "int"):
+    f(0)
+with assertRaises(TypeError, "native.A"):
+    f(A())
+with assertRaises(TypeError, "tuple[None, native.A]"):
+    f((None, A()))
+with assertRaises(TypeError, "tuple[tuple[int, str], native.A]"):
+    f(((1, "ha"), A()))
+with assertRaises(TypeError, "tuple[<50 items>]"):
+    f(tuple(range(50)))
+
+with assertRaises(TypeError, "errored formatting real type!"):
+    f(Busted())
+
+with assertRaises(TypeError, "tuple[int, native.A] object expected; got tuple[int, int]"):
+    g((20, 30))

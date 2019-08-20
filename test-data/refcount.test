@@ -662,7 +662,7 @@ def f() -> None:
     c.x = C()
 [out]
 def f():
-    r0, c, r1 :: C
+    r0, c, r1 :: __main__.C
     r2 :: bool
     r3 :: None
 L0:
@@ -682,11 +682,11 @@ def f() -> None:
     d = a[0]
 [out]
 def f():
-    r0 :: C
+    r0 :: __main__.C
     r1, a :: list
     r2 :: short_int
     r3 :: object
-    r4, d :: C
+    r4, d :: __main__.C
     r5 :: None
 L0:
     r0 = C()
@@ -695,7 +695,7 @@ L0:
     r2 = 0
     r3 = a[r2] :: list
     dec_ref a
-    r4 = cast(C, r3)
+    r4 = cast(__main__.C, r3)
     d = r4
     dec_ref d
     r5 = None

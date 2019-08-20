@@ -998,6 +998,84 @@ static PyObject *CPyLong_FromFloat(PyObject *o) {
     }
 }
 
+// Construct a nicely formatted type name based on __module__ and __name__.
+static PyObject *CPy_GetTypeName(PyObject *type) {
+    PyObject *module = NULL, *name = NULL;
+    PyObject *full = NULL;
+
+    module = PyObject_GetAttrString(type, "__module__");
+    if (!module) {
+        goto out;
+    }
+    name = PyObject_GetAttrString(type, "__qualname__");
+    if (!name) {
+        goto out;
+    }
+
+    if (PyUnicode_CompareWithASCIIString(module, "builtins") == 0) {
+        Py_INCREF(name);
+        full = name;
+    } else {
+        full = PyUnicode_FromFormat("%U.%U", module, name);
+    }
+
+out:
+    Py_XDECREF(module);
+    Py_XDECREF(name);
+    return full;
+}
+
+
+// Get the type of a value as a string, expanding tuples to include
+// all the element types.
+static PyObject *CPy_FormatTypeName(PyObject *value) {
+    if (value == Py_None) {
+        return PyUnicode_FromString("None");
+    }
+
+    if (!PyTuple_CheckExact(value)) {
+        return CPy_GetTypeName((PyObject *)Py_TYPE(value));
+    }
+
+    if (PyTuple_GET_SIZE(value) > 10) {
+        return PyUnicode_FromFormat("tuple[<%d items>]", PyTuple_GET_SIZE(value));
+    }
+
+    // Most of the logic is all for tuples, which is the only interesting case
+    PyObject *output = PyUnicode_FromString("tuple[");
+    if (!output) {
+        return NULL;
+    }
+    /* This is quadratic but if that ever matters something is really weird. */
+    for (int i = 0; i < PyTuple_GET_SIZE(value); i++) {
+        PyObject *s = CPy_FormatTypeName(PyTuple_GET_ITEM(value, i));
+        if (!s) {
+            Py_DECREF(output);
+            return NULL;
+        }
+        PyObject *next = PyUnicode_FromFormat("%U%U%s", output, s,
+                                              i + 1 == PyTuple_GET_SIZE(value) ? "]" : ", ");
+        Py_DECREF(output);
+        Py_DECREF(s);
+        if (!next) {
+            return NULL;
+        }
+        output = next;
+    }
+    return output;
+}
+
+static void CPy_TypeError(const char *expected, PyObject *value) {
+    PyObject *out = CPy_FormatTypeName(value);
+    if (out) {
+        PyErr_Format(PyExc_TypeError, "%s object expected; got %U", expected, out);
+        Py_DECREF(out);
+    } else {
+        PyErr_Format(PyExc_TypeError, "%s object expected; and errored formatting real type!",
+                     expected);
+    }
+}
+
 // These functions are basically exactly PyCode_NewEmpty and
 // _PyTraceback_Add which are available in all the versions we support.
 // We're continuing to use them because we'll probably optimize them later.

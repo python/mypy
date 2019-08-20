@@ -277,7 +277,9 @@ class RInstance(RType):
     is_unboxed = False
 
     def __init__(self, class_ir: 'ClassIR') -> None:
-        self.name = class_ir.name
+        # name is used for formatting the name in messages and debug output
+        # so we want the fullname for precision.
+        self.name = class_ir.fullname
         self.class_ir = class_ir
         self._ctype = 'PyObject *'
 
@@ -1590,6 +1592,10 @@ class ClassIR:
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
         self.builtin_base = None  # type: Optional[str]
+
+    @property
+    def fullname(self) -> str:
+        return "{}.{}".format(self.module_name, self.name)
 
     def real_base(self) -> Optional['ClassIR']:
         """Return the actual concrete base class, if there is one."""
