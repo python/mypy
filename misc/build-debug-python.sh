@@ -6,7 +6,7 @@
 # nonsense.)
 # Usage: build-debug-python.sh <version> <install prefix> <venv location>
 #
-# Running it locally might look something like: mkdir -p ~/tmp/cpython-debug && cd ~/tmp/cpython-debug && ~/src/mypyc/scripts/build-debug-python.sh 3.6.6 ~/tmp/cpython-debug ~/src/mypyc/env-debug
+# Running it locally might look something like: mkdir -p ~/tmp/cpython-debug && cd ~/tmp/cpython-debug && ~/src/mypy/misc/build-debug-python.sh 3.6.6 ~/tmp/cpython-debug ~/src/mypy/env-debug
 
 VERSION=$1
 PREFIX=$2

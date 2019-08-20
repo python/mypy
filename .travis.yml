@@ -40,7 +40,7 @@ before_install: |
     if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then
       PYTHONDIR=~/python-debug/python-$PYTHONVERSION
       VENV=$PYTHONDIR/env
-      scripts/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+      misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
       source $VENV/bin/activate
     fi
   elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
