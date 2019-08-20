@@ -1004,11 +1004,11 @@ static PyObject *CPy_GetTypeName(PyObject *type) {
     PyObject *full = NULL;
 
     module = PyObject_GetAttrString(type, "__module__");
-    if (!module) {
+    if (!module || !PyUnicode_Check(module)) {
         goto out;
     }
     name = PyObject_GetAttrString(type, "__qualname__");
-    if (!name) {
+    if (!name || !PyUnicode_Check(name)) {
         goto out;
     }
 
