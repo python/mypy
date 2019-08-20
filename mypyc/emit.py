@@ -1,7 +1,7 @@
 """Utilities for emitting C code."""
 
 from collections import OrderedDict
-from typing import List, Set, Dict, Optional, List, Callable, Union
+from typing import List, Set, Dict, Optional, Callable, Union
 
 from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,

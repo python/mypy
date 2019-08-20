@@ -24,7 +24,6 @@ from mypyc.analysis import (
     analyze_live_regs,
     analyze_borrowed_arguments,
     cleanup_cfg,
-    analyze_must_defined_regs,
     AnalysisDict
 )
 from mypyc.ops import (

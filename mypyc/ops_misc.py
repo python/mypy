@@ -8,7 +8,7 @@ from mypyc.ops import (
 )
 from mypyc.ops_primitive import (
     name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, custom_op,
-    simple_emit, negative_int_emit,
+    negative_int_emit,
     call_emit, name_emit, call_negative_bool_emit, call_negative_magic_emit,
 )
 
@@ -304,7 +304,7 @@ py_calc_meta_op = custom_op(
     format_str='{dest} = py_calc_metaclass({comma_args})',
     emit=simple_emit(
         '{dest} = (PyObject*) _PyType_CalculateMetaclass((PyTypeObject *){args[0]}, {args[1]});'),
-    is_borrowed = True
+    is_borrowed=True
 )
 
 py_delattr_op = func_op(

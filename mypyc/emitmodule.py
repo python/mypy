@@ -22,7 +22,6 @@ from mypyc.options import CompilerOptions
 from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
-from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.namegen import exported_name
 
 

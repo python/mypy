@@ -65,7 +65,7 @@ from mypyc.ops import (
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
     exc_rtuple,
-    PrimitiveOp, ControlOp, LoadErrorValue, OpDescription, RegisterOp,
+    PrimitiveOp, ControlOp, OpDescription, RegisterOp,
     is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
     FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
@@ -4502,10 +4502,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     @overload
     def accept(self, node: Expression) -> Value: ...
 
-    @overload
+    @overload  # noqa
     def accept(self, node: Statement) -> None: ...
 
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
+    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:  # noqa
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
                 try:
