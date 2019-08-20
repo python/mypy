@@ -100,6 +100,31 @@ def j() -> int:
 [out]
 main:7: error: Missing return statement
 
+[case testNoReturnForExhaustiveGenerator]
+# flags: --warn-no-return
+from itertools import count, cycle
+def h() -> int:
+    for _i in count(1):
+        if bool():
+            return 1
+
+def i() -> int:
+    for _i in range(3):
+        if bool():
+            return 1
+        if bool():
+            break
+
+def j() -> int:
+    for _i in cycle('ABC'):
+        if bool():
+            return 1
+        if bool():
+            continue
+[builtins fixtures/list.pyi]
+[out]
+main:8: error: Missing return statement
+
 [case testNoReturnExcept]
 # flags: --warn-no-return
 def f() -> int:
