@@ -2756,7 +2756,7 @@ from types import ModuleType
 def __getattr__(name: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
 
-[case testWeird]
+[case testAlwaysReportMissingAttributesOnFoundModules]
 # flags: --ignore-missing-imports
 import pack.mod as alias
 
