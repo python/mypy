@@ -45,6 +45,7 @@ from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
     TypeType, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
     LiteralType,
+    get_proper_type,
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.checkexpr import map_actuals_to_formals
@@ -368,6 +369,7 @@ class Mapper:
         if typ is None:
             return object_rprimitive
 
+        typ = get_proper_type(typ)
         if isinstance(typ, Instance):
             if typ.type.fullname() == 'builtins.int':
                 return int_rprimitive
@@ -2487,7 +2489,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if is_list_rprimitive(self.node_type(expr)):
             # Special case "for x in <list>".
             expr_reg = self.accept(expr)
-            target_list_type = self.types[expr]
+            target_list_type = get_proper_type(self.types[expr])
             assert isinstance(target_list_type, Instance)
             target_type = self.type_to_rtype(target_list_type.args[0])
 
@@ -2553,7 +2555,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     and is_list_rprimitive(self.node_type(expr.args[0]))):
                 # Special case "for x in reversed(<list>)".
                 expr_reg = self.accept(expr.args[0])
-                target_list_type = self.types[expr.args[0]]
+                target_list_type = get_proper_type(self.types[expr.args[0]])
                 assert isinstance(target_list_type, Instance)
                 target_type = self.type_to_rtype(target_list_type.args[0])
 
@@ -2572,7 +2574,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
         # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
-        iterable = self.types[expr]
+        iterable = get_proper_type(self.types[expr])
         echk = self.graph[self.module_name].type_checker().expr_checker
         iterator = echk.check_method_call_by_name('__iter__', iterable, [], [], expr)[0]
 
@@ -3847,7 +3849,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         generate(0)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
-        typ = self.types[expr]
+        typ = get_proper_type(self.types[expr])
         assert isinstance(typ, CallableType)
 
         runtime_args = []
