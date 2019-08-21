@@ -155,7 +155,8 @@ class TestRun(MypycDataSuite):
             # that the file is there.
             suffix = 'pyd' if sys.platform == 'win32' else 'so'
             if not glob.glob('native.*.{}'.format(suffix)):
-                show_c(cfiles)
+                if testcase.config.getoption('--mypyc-showc'):
+                    show_c(cfiles)
                 assert False, "Compilation failed"
 
             for p in to_delete:
@@ -183,7 +184,8 @@ class TestRun(MypycDataSuite):
             output = proc.communicate()[0].decode('utf8')
             outlines = output.splitlines()
 
-            show_c(cfiles)
+            if testcase.config.getoption('--mypyc-showc'):
+                show_c(cfiles)
             if proc.returncode != 0:
                 print()
                 print('*** Exit status: %d' % proc.returncode)
