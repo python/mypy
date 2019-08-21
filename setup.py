@@ -185,7 +185,7 @@ setup(name='mypy',
                                         ]},
       classifiers=classifiers,
       cmdclass=cmdclass,
-      # When changing this, also update test-requirements.txt.
+      # When changing this, also update mypy-requirements.txt.
       install_requires=['typed_ast >= 1.4.0, < 1.5.0',
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.0, < 0.5.0',
