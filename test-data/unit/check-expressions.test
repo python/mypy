@@ -1142,6 +1142,25 @@ i, o, s = None, None, None # type: (int, object, str)
 '%s %s %s' % (i, o, s)
 [builtins fixtures/primitives.pyi]
 
+[case testStringInterpolationSBytesVsStrErrorPy3]
+xb: bytes
+xs: str
+
+'%s' % xs   # OK
+'%s' % xb   # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
+[builtins fixtures/primitives.pyi]
+
+[case testStringInterpolationSBytesVsStrResultsPy2]
+# flags: --python-version 2.7
+xs = 'x'
+xu = u'x'
+
+reveal_type('%s' % xu)  # N: Revealed type is 'builtins.unicode'
+reveal_type('%s, %d' % (u'abc', 42))  # N: Revealed type is 'builtins.unicode'
+reveal_type('%r' % xu)  # N: Revealed type is 'builtins.str'
+reveal_type('%s' % xs)  # N: Revealed type is 'builtins.str'
+[builtins fixtures/primitives.pyi]
+
 [case testStringInterpolationCount]
 '%d %d' % 1  # E: Not enough arguments for format string
 '%d %d' % (1, 2)

@@ -6,7 +6,7 @@ from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern
 from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
-    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type
+    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
@@ -74,6 +74,9 @@ class StringFormatterChecker:
         self.chk = chk
         self.exprchk = exprchk
         self.msg = msg
+        # This flag is used to track Python 2 corner case where for example
+        # '%s, %d' % (u'abc', 42) returns u'abc, 42' (i.e. unicode, not a string).
+        self.unicode_upcast = False
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
@@ -91,6 +94,7 @@ class StringFormatterChecker:
                           replacements)
             return AnyType(TypeOfAny.from_error)
 
+        self.unicode_upcast = False
         if has_mapping_keys is None:
             pass  # Error was reported
         elif has_mapping_keys:
@@ -103,6 +107,8 @@ class StringFormatterChecker:
         elif isinstance(expr, UnicodeExpr):
             return self.named_type('builtins.unicode')
         elif isinstance(expr, StrExpr):
+            if self.unicode_upcast:
+                return self.named_type('builtins.unicode')
             return self.named_type('builtins.str')
         else:
             assert False
@@ -243,7 +249,7 @@ class StringFormatterChecker:
 
     def checkers_for_star(self, context: Context) -> Checkers:
         """Returns a tuple of check functions that check whether, respectively,
-        a node or a type is compatible with a star in a conversion specifier
+        a node or a type is compatible with a star in a conversion specifier.
         """
         expected = self.named_type('builtins.int')
 
@@ -261,17 +267,26 @@ class StringFormatterChecker:
                                   context: Context,
                                   expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
-        a node or a type is compatible with 'type'. Return None in case of an
+        a node or a type is compatible with 'type'. Return None in case of an error.
         """
         expected_type = self.conversion_type(type, context, expr)
         if expected_type is None:
             return None
 
-        def check_type(type: Type) -> None:
+        def check_type(typ: Type) -> None:
             assert expected_type is not None
-            self.chk.check_subtype(type, expected_type, context,
-                              message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                              'expression has type', 'placeholder has type')
+            self.chk.check_subtype(typ, expected_type, context,
+                                   message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                   'expression has type', 'placeholder has type')
+            if type == 's':
+                # Couple special cases.
+                if self.chk.options.python_version >= (3, 0):
+                    if has_type_component(typ, 'builtins.bytes'):
+                        self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
+                                      " use %r if this is a desired behavior", context)
+                if self.chk.options.python_version < (3, 0):
+                    if has_type_component(typ, 'builtins.unicode'):
+                        self.unicode_upcast = True
 
         def check_expr(expr: Expression) -> None:
             type = self.accept(expr, expected_type)
@@ -283,7 +298,7 @@ class StringFormatterChecker:
                             context: Context,
                             expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
-        a node or a type is compatible with 'type' that is a character type
+        a node or a type is compatible with 'type' that is a character type.
         """
         expected_type = self.conversion_type(type, context, expr)
         if expected_type is None:
@@ -292,8 +307,8 @@ class StringFormatterChecker:
         def check_type(type: Type) -> None:
             assert expected_type is not None
             self.chk.check_subtype(type, expected_type, context,
-                              message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                              'expression has type', 'placeholder has type')
+                                   message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                   'expression has type', 'placeholder has type')
 
         def check_expr(expr: Expression) -> None:
             """int, or str with length 1"""
@@ -305,8 +320,7 @@ class StringFormatterChecker:
         return check_expr, check_type
 
     def conversion_type(self, p: str, context: Context, expr: FormatStringExpr) -> Optional[Type]:
-        """Return the type that is accepted for a string interpolation
-        conversion specifier type.
+        """Return the type that is accepted for a string interpolation conversion specifier type.
 
         Note that both Python's float (e.g. %f) and integer (e.g. %d)
         specifier types accept both float and integers.
@@ -324,7 +338,7 @@ class StringFormatterChecker:
             if self.chk.options.python_version < (3, 0):
                 self.msg.fail("Format character 'a' is only supported in Python 3", context)
                 return None
-            # todo: return type object?
+            # TODO: return type object?
             return AnyType(TypeOfAny.special_form)
         elif p in ['s', 'r']:
             return AnyType(TypeOfAny.special_form)
@@ -353,3 +367,16 @@ class StringFormatterChecker:
     def accept(self, expr: Expression, context: Optional[Type] = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.expr_checker.accept(expr, context)
+
+
+def has_type_component(typ: Type, fullname: str) -> bool:
+    """Is this a specific instance type, or a union that contains it?"""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ.type.has_base(fullname)
+    elif isinstance(typ, TypeVarType):
+        return (has_type_component(typ.upper_bound, fullname) or
+                any(has_type_component(v, fullname) for v in typ.values))
+    elif isinstance(typ, UnionType):
+        return any(has_type_component(t, fullname) for t in typ.relevant_items())
+    return False
