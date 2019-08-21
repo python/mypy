@@ -2985,9 +2985,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         true_map, else_map = self.find_isinstance_check(s.expr)
         if s.msg is not None:
             with self.binder.frame_context(can_skip=False, fall_through=1):
-                self.push_type_map(else_map)
-                self.expr_checker.accept(s.msg)
-
+                self.expr_checker.analyze_cond_branch(else_map, s.msg, None)
         # If this is asserting some isinstance check, bind that type in the following code
         self.push_type_map(true_map)
 
