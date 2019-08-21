@@ -401,7 +401,7 @@ class Bar:
         bar(self)
 
 [file other.py]
-from typing import TYPE_CHECKING
+from typing_extensions import TYPE_CHECKING
 MYPY = False
 if MYPY:
     from native import Foo
@@ -431,7 +431,7 @@ def f(c: 'C') -> int:
     return c.x
 
 [file other.py]
-from typing import TYPE_CHECKING
+from typing_extensions import TYPE_CHECKING
 if TYPE_CHECKING:
     from native import D
 

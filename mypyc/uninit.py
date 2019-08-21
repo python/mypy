@@ -28,7 +28,7 @@ def insert_uninit_checks(ir: FuncIR) -> None:
 
 def split_blocks_at_uninits(env: Environment,
                             blocks: List[BasicBlock],
-                            pre_must_defined: AnalysisDict[Value]) -> List[BasicBlock]:
+                            pre_must_defined: 'AnalysisDict[Value]') -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
 
     # First split blocks on ops that may raise.

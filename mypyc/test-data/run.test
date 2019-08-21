@@ -3355,11 +3355,9 @@ internal_index_into()
 2 * 3 + 1
 
 [case testDummyTypes]
-from typing import Tuple, List, Dict, NewType, NamedTuple
-from mypy_extensions import TypedDict
-MYPY = False
-if MYPY:
-    from typing_extensions import Literal
+from typing import Tuple, List, Dict, NamedTuple
+from typing_extensions import Literal, TypedDict, NewType
+
 class A:
     pass
 

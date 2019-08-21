@@ -1,4 +1,7 @@
 from typing import TypeVar, Any, Mapping, Iterator, NoReturn, Dict, Type
+from typing import TYPE_CHECKING as TYPE_CHECKING
+from typing import NewType as NewType
+
 import sys
 
 _T = TypeVar('_T')

@@ -14,11 +14,9 @@ It would be translated to something that conceptually looks like this:
    return r3
 """
 from typing import (
-    TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast, overload,
+    TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast
 )
-MYPY = False
-if MYPY:
-    from typing import ClassVar, NoReturn
+from typing_extensions import overload, ClassVar, NoReturn
 from abc import abstractmethod
 import sys
 import importlib.util

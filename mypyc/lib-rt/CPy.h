@@ -1047,7 +1047,8 @@ static PyObject *CPy_FormatTypeName(PyObject *value) {
         return NULL;
     }
     /* This is quadratic but if that ever matters something is really weird. */
-    for (int i = 0; i < PyTuple_GET_SIZE(value); i++) {
+    int i;
+    for (i = 0; i < PyTuple_GET_SIZE(value); i++) {
         PyObject *s = CPy_FormatTypeName(PyTuple_GET_ITEM(value, i));
         if (!s) {
             Py_DECREF(output);

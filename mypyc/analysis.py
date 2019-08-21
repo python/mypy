@@ -127,7 +127,7 @@ AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
 
 
 class AnalysisResult(Generic[T]):
-    def __init__(self, before: AnalysisDict[T], after: AnalysisDict[T]) -> None:
+    def __init__(self, before: 'AnalysisDict[T]', after: 'AnalysisDict[T]') -> None:
         self.before = before
         self.after = after
 
