@@ -278,7 +278,7 @@ class StringFormatterChecker:
             self.chk.check_subtype(typ, expected_type, context,
                                    message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                    'expression has type', 'placeholder has type')
-            if type == 's':
+            if type == 's' and isinstance(expr, StrExpr):
                 # Couple special cases.
                 if self.chk.options.python_version >= (3, 0):
                     if has_type_component(typ, 'builtins.bytes'):
