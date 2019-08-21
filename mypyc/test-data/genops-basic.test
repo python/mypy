@@ -1,0 +1,3324 @@
+[case testTrivialFunction]
+def f() -> int:
+    return 1
+[out]
+def f():
+    r0 :: short_int
+L0:
+    r0 = 1
+    return r0
+
+[case testFunctionArgument]
+def f(x: int) -> int:
+    return x
+[out]
+def f(x):
+    x :: int
+L0:
+    return x
+
+[case testExplicitNoneReturn]
+def f() -> None:
+    return
+[out]
+def f():
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+
+[case testExplicitNoneReturn2]
+def f() -> None:
+    return None
+[out]
+def f():
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+
+[case testAssignment]
+def f() -> int:
+    x = 1
+    y = x
+    return y
+[out]
+def f():
+    r0 :: short_int
+    x, y :: int
+L0:
+    r0 = 1
+    x = r0
+    y = x
+    return y
+
+[case testAssignmentTwice]
+def f(x: int) -> None:
+    y = 1
+    y = x
+    return
+[out]
+def f(x):
+    x :: int
+    r0 :: short_int
+    y :: int
+    r1 :: None
+L0:
+    r0 = 1
+    y = r0
+    y = x
+    r1 = None
+    return r1
+
+[case testIntArithmetic]
+def f(x: int, y: int) -> int:
+    return x * (y + 1)
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: short_int
+    r1, r2 :: int
+L0:
+    r0 = 1
+    r1 = y + r0 :: int
+    r2 = x * r1 :: int
+    return r2
+
+[case testIf]
+def f(x: int, y: int) -> int:
+    if x < y:
+        x = 1
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: bool
+    r1 :: short_int
+L0:
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    x = r1
+L2:
+    return x
+
+[case testIfElse]
+def f(x: int, y: int) -> int:
+    if x < y:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: bool
+    r1, r2 :: short_int
+L0:
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    x = r1
+    goto L3
+L2:
+    r2 = 2
+    x = r2
+L3:
+    return x
+
+[case testAnd1]
+def f(x: int, y: int) -> int:
+    if x < y and x > y:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0, r1 :: bool
+    r2, r3 :: short_int
+L0:
+    r0 = x < y :: int
+    if r0 goto L1 else goto L3 :: bool
+L1:
+    r1 = x > y :: int
+    if r1 goto L2 else goto L3 :: bool
+L2:
+    r2 = 1
+    x = r2
+    goto L4
+L3:
+    r3 = 2
+    x = r3
+L4:
+    return x
+
+[case testAnd2]
+def f(x: object, y: object) -> str:
+    return str(x) or str(y)
+[out]
+def f(x, y):
+    x, y :: object
+    r0, r1 :: str
+    r2 :: bool
+    r3 :: str
+L0:
+    r1 = str x :: object
+    r2 = bool r1 :: object
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r0 = r1
+    goto L3
+L2:
+    r3 = str y :: object
+    r0 = r3
+L3:
+    return r0
+
+[case testOr]
+def f(x: int, y: int) -> int:
+    if x < y or x > y:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0, r1 :: bool
+    r2, r3 :: short_int
+L0:
+    r0 = x < y :: int
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    r1 = x > y :: int
+    if r1 goto L2 else goto L3 :: bool
+L2:
+    r2 = 1
+    x = r2
+    goto L4
+L3:
+    r3 = 2
+    x = r3
+L4:
+    return x
+
+[case testOr2]
+def f(x: object, y: object) -> str:
+    return str(x) and str(y)
+[out]
+def f(x, y):
+    x, y :: object
+    r0, r1 :: str
+    r2 :: bool
+    r3 :: str
+L0:
+    r1 = str x :: object
+    r2 = bool r1 :: object
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r0 = r1
+    goto L3
+L2:
+    r3 = str y :: object
+    r0 = r3
+L3:
+    return r0
+
+[case testSimpleNot]
+def f(x: int, y: int) -> int:
+    if not (x < y):
+        x = 1
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: bool
+    r1 :: short_int
+L0:
+    r0 = x < y :: int
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    r1 = 1
+    x = r1
+L2:
+    return x
+
+[case testNotAnd]
+def f(x: int, y: int) -> int:
+    if not (x < y and x > y):
+        x = 1
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0, r1 :: bool
+    r2 :: short_int
+L0:
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = x > y :: int
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = 1
+    x = r2
+L3:
+    return x
+
+[case testWhile]
+def f(x: int, y: int) -> int:
+    while x > y:
+        x = x - y
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: bool
+    r1 :: int
+L0:
+L1:
+    r0 = x > y :: int
+    if r0 goto L2 else goto L3 :: bool
+L2:
+    r1 = x - y :: int
+    x = r1
+    goto L1
+L3:
+    return x
+
+[case testWhile2]
+def f(x: int, y: int) -> int:
+    x = 1
+    while x > y:
+        x = x - y
+    return x
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: short_int
+    r1 :: bool
+    r2 :: int
+L0:
+    r0 = 1
+    x = r0
+L1:
+    r1 = x > y :: int
+    if r1 goto L2 else goto L3 :: bool
+L2:
+    r2 = x - y :: int
+    x = r2
+    goto L1
+L3:
+    return x
+
+[case testImplicitNoneReturn]
+def f() -> None:
+    pass
+[out]
+def f():
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+
+[case testImplicitNoneReturn2]
+def f() -> None:
+    x = 1
+[out]
+def f():
+    r0 :: short_int
+    x :: int
+    r1 :: None
+L0:
+    r0 = 1
+    x = r0
+    r1 = None
+    return r1
+
+[case testImplicitNoneReturnAndIf]
+def f(x: int, y: int) -> None:
+    if x < y:
+        x = 1
+    else:
+        y = 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: bool
+    r1, r2 :: short_int
+    r3 :: None
+L0:
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    x = r1
+    goto L3
+L2:
+    r2 = 2
+    y = r2
+L3:
+    r3 = None
+    return r3
+
+[case testRecursion]
+def f(n: int) -> int:
+    if n <= 1:
+        return 1
+    else:
+        return f(n - 1) + f(n - 2)
+[out]
+def f(n):
+    n :: int
+    r0 :: short_int
+    r1 :: bool
+    r2, r3 :: short_int
+    r4, r5 :: int
+    r6 :: short_int
+    r7, r8, r9 :: int
+L0:
+    r0 = 1
+    r1 = n <= r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    return r2
+L2:
+    r3 = 1
+    r4 = n - r3 :: int
+    r5 = f(r4)
+    r6 = 2
+    r7 = n - r6 :: int
+    r8 = f(r7)
+    r9 = r5 + r8 :: int
+    return r9
+L3:
+    unreachable
+
+[case testReportTypeCheckError]
+def f() -> None:
+    return 1 # E: No return value expected
+
+[case testReportSemanticaAnalysisError1]
+def f(x: List[int]) -> None: pass # E: Name 'List' is not defined \
+                                  # N: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
+
+[case testReportSemanticaAnalysisError2]
+def f() -> None:
+    x # E: Name 'x' is not defined
+
+[case testElif]
+def f(n: int) -> int:
+    if n < 0:
+        x = 1
+    elif n == 0:
+        x = 1
+    else:
+        x = 2
+    return x
+[out]
+def f(n):
+    n :: int
+    r0 :: short_int
+    r1 :: bool
+    r2 :: short_int
+    x :: int
+    r3 :: short_int
+    r4 :: bool
+    r5, r6 :: short_int
+L0:
+    r0 = 0
+    r1 = n < r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    x = r2
+    goto L6
+L2:
+    r3 = 0
+    r4 = n == r3 :: int
+    if r4 goto L3 else goto L4 :: bool
+L3:
+    r5 = 1
+    x = r5
+    goto L5
+L4:
+    r6 = 2
+    x = r6
+L5:
+L6:
+    return x
+
+[case testUnaryMinus]
+def f(n: int) -> int:
+    return -1
+[out]
+def f(n):
+    n :: int
+    r0 :: short_int
+    r1 :: int
+L0:
+    r0 = 1
+    r1 = -r0 :: int
+    return r1
+
+[case testConditionalExpr]
+def f(n: int) -> int:
+    return 0 if n == 0 else 1
+[out]
+def f(n):
+    n :: int
+    r0 :: short_int
+    r1 :: bool
+    r2 :: int
+    r3, r4 :: short_int
+L0:
+    r0 = 0
+    r1 = n == r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r3 = 0
+    r2 = r3
+    goto L3
+L2:
+    r4 = 1
+    r2 = r4
+L3:
+    return r2
+
+[case testOperatorAssignment]
+def f() -> int:
+    x = 0
+    x += 1
+    return x
+[out]
+def f():
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    r2 :: int
+L0:
+    r0 = 0
+    x = r0
+    r1 = 1
+    r2 = x += r1 :: int
+    x = r2
+    return x
+
+[case testTrue]
+def f() -> bool:
+    return True
+[out]
+def f():
+    r0 :: bool
+L0:
+    r0 = True
+    return r0
+
+[case testFalse]
+def f() -> bool:
+    return False
+[out]
+def f():
+    r0 :: bool
+L0:
+    r0 = False
+    return r0
+
+[case testBoolCond]
+def f(x: bool) -> bool:
+    if x:
+        return False
+    else:
+        return True
+[out]
+def f(x):
+    x, r0, r1 :: bool
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    r0 = False
+    return r0
+L2:
+    r1 = True
+    return r1
+L3:
+    unreachable
+
+[case testPycall]
+import testmodule
+
+def f(x: int) -> int:
+    return testmodule.factorial(x)
+[file testmodule.py]
+def factorial(x: int) -> int:
+    if x == 0:
+        return 1
+    else:
+        return x * factorial(x-1)
+[out]
+def f(x):
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
+L0:
+    r0 = testmodule.module :: static
+    r1 = unicode_2 :: static  ('factorial')
+    r2 = getattr r0, r1
+    r3 = box(int, x)
+    r4 = py_call(r2, r3)
+    r5 = unbox(int, r4)
+    return r5
+
+[case testFromImport]
+from testmodule import g
+
+def f(x: int) -> int:
+    return g(x)
+[file testmodule.py]
+def g(x: int) -> int:
+    return x + 1
+[out]
+def f(x):
+    x :: int
+    r0 :: dict
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
+L0:
+    r0 = __main__.globals :: static
+    r1 = unicode_2 :: static  ('g')
+    r2 = r0[r1] :: dict
+    r3 = box(int, x)
+    r4 = py_call(r2, r3)
+    r5 = unbox(int, r4)
+    return r5
+
+[case testPrintFullname]
+import builtins
+def f(x: int) -> None:
+    builtins.print(5)
+[out]
+def f(x):
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: short_int
+    r4, r5 :: object
+    r6, r7 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_1 :: static  ('print')
+    r2 = getattr r0, r1
+    r3 = 5
+    r4 = box(short_int, r3)
+    r5 = py_call(r2, r4)
+    r6 = unbox(None, r5)
+    r7 = None
+    return r7
+
+[case testPrint]
+import builtins
+def f(x: int) -> None:
+    print(5)
+[out]
+def f(x):
+    x :: int
+    r0 :: short_int
+    r1 :: object
+    r2 :: str
+    r3, r4, r5 :: object
+    r6, r7 :: None
+L0:
+    r0 = 5
+    r1 = builtins.module :: static
+    r2 = unicode_1 :: static  ('print')
+    r3 = getattr r1, r2
+    r4 = box(short_int, r0)
+    r5 = py_call(r3, r4)
+    r6 = unbox(None, r5)
+    r7 = None
+    return r7
+
+[case testUnicodeLiteral]
+def f() -> str:
+    x = "some string"
+    return "some other string"
+[out]
+def f():
+    r0, x, r1 :: str
+L0:
+    r0 = unicode_1 :: static  ('some string')
+    x = r0
+    r1 = unicode_2 :: static  ('some other string')
+    return r1
+
+[case testBytesLiteral]
+def f() -> bytes:
+    x = b'\xf0'
+    return b'1234'
+[out]
+def f():
+    r0, x, r1 :: object
+L0:
+    r0 = bytes_1 :: static  (b'\xf0')
+    x = r0
+    r1 = bytes_2 :: static  (b'1234')
+    return r1
+
+[case testPyMethodCall1]
+from typing import Any
+def f(x: Any) -> int:
+    y: int = x.pop()
+    return x.pop()
+[out]
+def f(x):
+    x :: object
+    r0 :: str
+    r1 :: object
+    y, r2 :: int
+    r3 :: str
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = unicode_3 :: static  ('pop')
+    r1 = py_method_call(x, r0)
+    r2 = unbox(int, r1)
+    y = r2
+    r3 = unicode_3 :: static  ('pop')
+    r4 = py_method_call(x, r3)
+    r5 = unbox(int, r4)
+    return r5
+
+[case testObjectType]
+def g(y: object) -> None:
+    g(y)
+    g([1])
+    g(None)
+[out]
+def g(y):
+    y :: object
+    r0 :: None
+    r1 :: short_int
+    r2 :: object
+    r3 :: list
+    r4, r5 :: None
+    r6 :: object
+    r7, r8 :: None
+L0:
+    r0 = g(y)
+    r1 = 1
+    r2 = box(short_int, r1)
+    r3 = [r2]
+    r4 = g(r3)
+    r5 = None
+    r6 = box(None, r5)
+    r7 = g(r6)
+    r8 = None
+    return r8
+
+[case testCoerceToObject1]
+def g(y: object) -> object:
+    g(1)
+    a = [y]
+    a[0] = (1, 2)
+    y = True
+    return 3
+[out]
+def g(y):
+    y :: object
+    r0 :: short_int
+    r1, r2 :: object
+    r3, a :: list
+    r4, r5 :: short_int
+    r6 :: tuple[int, int]
+    r7 :: short_int
+    r8 :: object
+    r9, r10 :: bool
+    r11 :: object
+    r12 :: short_int
+    r13 :: object
+L0:
+    r0 = 1
+    r1 = box(short_int, r0)
+    r2 = g(r1)
+    r3 = [y]
+    a = r3
+    r4 = 1
+    r5 = 2
+    r6 = (r4, r5)
+    r7 = 0
+    r8 = box(tuple[int, int], r6)
+    r9 = a.__setitem__(r7, r8) :: list
+    r10 = True
+    r11 = box(bool, r10)
+    y = r11
+    r12 = 3
+    r13 = box(short_int, r12)
+    return r13
+
+[case testCoerceToObject2]
+class A:
+    x: object
+    n: int
+def f(a: A, o: object) -> None:
+    a.x = 1
+    o = a.n
+[out]
+def f(a, o):
+    a :: __main__.A
+    o :: object
+    r0 :: short_int
+    r1 :: object
+    r2 :: bool
+    r3 :: int
+    r4 :: object
+    r5 :: None
+L0:
+    r0 = 1
+    r1 = box(short_int, r0)
+    a.x = r1; r2 = is_error
+    r3 = a.n
+    r4 = box(int, r3)
+    o = r4
+    r5 = None
+    return r5
+
+[case testDownCast]
+from typing import cast, List, Tuple
+class A: pass
+def f(x: object) -> None:
+    n = cast(int, x)
+    b = cast(bool, x)
+    a = cast(A, x)
+    l = cast(List[int], x)
+    t = cast(Tuple[int, A], x)
+[out]
+def f(x):
+    x :: object
+    r0, n :: int
+    r1, b :: bool
+    r2, a :: __main__.A
+    r3, l :: list
+    r4, t :: tuple[int, __main__.A]
+    r5 :: None
+L0:
+    r0 = unbox(int, x)
+    n = r0
+    r1 = unbox(bool, x)
+    b = r1
+    r2 = cast(__main__.A, x)
+    a = r2
+    r3 = cast(list, x)
+    l = r3
+    r4 = unbox(tuple[int, __main__.A], x)
+    t = r4
+    r5 = None
+    return r5
+
+[case testDownCastSpecialCases]
+from typing import cast, Optional, Tuple
+class A: pass
+def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
+    a = cast(A, o)
+    m = cast(bool, n)
+    tt: Tuple[int, int]
+    t = tt
+[out]
+def f(o, n, t):
+    o :: union[__main__.A, None]
+    n :: int
+    t :: tuple
+    r0, a :: __main__.A
+    r1 :: object
+    r2, m :: bool
+    tt :: tuple[int, int]
+    r3 :: object
+    r4 :: None
+L0:
+    r0 = cast(__main__.A, o)
+    a = r0
+    r1 = box(int, n)
+    r2 = unbox(bool, r1)
+    m = r2
+    r3 = box(tuple[int, int], tt)
+    t = r3
+    r4 = None
+    return r4
+
+[case testSuccessfulCast]
+from typing import cast, Optional, Tuple, List, Dict
+class A: pass
+def f(o: object,
+      p: Optional[A],
+      n: int,
+      b: bool,
+      t: Tuple[int, ...],
+      s: Tuple[int, int],
+      a: A,
+      l: List[A],
+      d: Dict[int, str]) -> None:
+    o = cast(object, o)
+    p = cast(Optional[A], p)
+    n = cast(int, n)
+    b = cast(bool, b)
+    t = cast(Tuple[int, ...], t)
+    s = cast(Tuple[int, int], s)
+    o = cast(object, n)
+    a = cast(A, a)
+    l2 = cast(List[object], l)
+    d2 = cast(Dict[object, str], d)
+[out]
+def f(o, p, n, b, t, s, a, l, d):
+    o :: object
+    p :: union[__main__.A, None]
+    n :: int
+    b :: bool
+    t :: tuple
+    s :: tuple[int, int]
+    a :: __main__.A
+    l :: list
+    d :: dict
+    r0 :: object
+    l2 :: list
+    d2 :: dict
+    r1 :: None
+L0:
+    o = o
+    p = p
+    n = n
+    b = b
+    t = t
+    s = s
+    r0 = box(int, n)
+    o = r0
+    a = a
+    l2 = l
+    d2 = d
+    r1 = None
+    return r1
+
+[case testGenericSetItem]
+from typing import Any
+def f(x: Any, y: Any, z: Any) -> None:
+    x[y] = z
+[out]
+def f(x, y, z):
+    x, y, z :: object
+    r0 :: bool
+    r1 :: None
+L0:
+    r0 = x.__setitem__(y, z) :: object
+    r1 = None
+    return r1
+
+[case testLoadFloatSum]
+def assign_and_return_float_sum() -> float:
+    f1 = 1.0
+    f2 = 2.0
+    f3 = 3.0
+    return f1 * f2 + f3
+[out]
+def assign_and_return_float_sum():
+    r0, f1, r1, f2, r2, f3 :: float
+    r3 :: object
+    r4 :: float
+    r5 :: object
+    r6 :: float
+L0:
+    r0 = float_1 :: static  (1.0)
+    f1 = r0
+    r1 = float_2 :: static  (2.0)
+    f2 = r1
+    r2 = float_3 :: static  (3.0)
+    f3 = r2
+    r3 = f1 * f2
+    r4 = cast(float, r3)
+    r5 = r4 + f3
+    r6 = cast(float, r5)
+    return r6
+
+[case testLoadComplex]
+def load() -> complex:
+    return 5j+1.0
+[out]
+def load():
+    r0 :: object
+    r1 :: float
+    r2 :: object
+L0:
+    r0 = complex_1 :: static  (5j)
+    r1 = float_2 :: static  (1.0)
+    r2 = r0 + r1
+    return r2
+
+[case testBigIntLiteral]
+def big_int() -> None:
+    a_62_bit = 4611686018427387902
+    max_62_bit = 4611686018427387903
+    b_63_bit = 4611686018427387904
+    c_63_bit = 9223372036854775806
+    max_63_bit = 9223372036854775807
+    d_64_bit = 9223372036854775808
+    max_32_bit = 2147483647
+    max_31_bit = 1073741823
+[out]
+def big_int():
+    r0, a_62_bit, r1, max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit, r6, max_32_bit :: int
+    r7 :: short_int
+    max_31_bit :: int
+    r8 :: None
+L0:
+    r0 = int_1 :: static  (4611686018427387902)
+    a_62_bit = r0
+    r1 = int_2 :: static  (4611686018427387903)
+    max_62_bit = r1
+    r2 = int_3 :: static  (4611686018427387904)
+    b_63_bit = r2
+    r3 = int_4 :: static  (9223372036854775806)
+    c_63_bit = r3
+    r4 = int_5 :: static  (9223372036854775807)
+    max_63_bit = r4
+    r5 = int_6 :: static  (9223372036854775808)
+    d_64_bit = r5
+    r6 = int_7 :: static  (2147483647)
+    max_32_bit = r6
+    r7 = 1073741823
+    max_31_bit = r7
+    r8 = None
+    return r8
+
+[case testCallableTypes]
+from typing import Callable
+def absolute_value(x: int) -> int:
+    return x if x > 0 else -x
+
+def call_native_function(x: int) -> int:
+    return absolute_value(x)
+
+def call_python_function(x: int) -> int:
+    return int(x)
+
+def return_float() -> float:
+    return 5.0
+
+def return_callable_type() -> Callable[[], float]:
+    return return_float
+
+def call_callable_type() -> float:
+    f = return_callable_type()
+    return f()
+[out]
+def absolute_value(x):
+    x :: int
+    r0 :: short_int
+    r1 :: bool
+    r2, r3 :: int
+L0:
+    r0 = 0
+    r1 = x > r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x
+    goto L3
+L2:
+    r3 = -x :: int
+    r2 = r3
+L3:
+    return r2
+def call_native_function(x):
+    x, r0 :: int
+L0:
+    r0 = absolute_value(x)
+    return r0
+def call_python_function(x):
+    x :: int
+    r0, r1, r2 :: object
+    r3 :: int
+L0:
+    r0 = int
+    r1 = box(int, x)
+    r2 = py_call(r0, r1)
+    r3 = unbox(int, r2)
+    return r3
+def return_float():
+    r0 :: float
+L0:
+    r0 = float_3 :: static  (5.0)
+    return r0
+def return_callable_type():
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+L0:
+    r0 = __main__.globals :: static
+    r1 = unicode_4 :: static  ('return_float')
+    r2 = r0[r1] :: dict
+    return r2
+def call_callable_type():
+    r0, f, r1 :: object
+    r2 :: float
+L0:
+    r0 = return_callable_type()
+    f = r0
+    r1 = py_call(f)
+    r2 = cast(float, r1)
+    return r2
+
+[case testCallableTypesWithKeywordArgs]
+from typing import List
+
+def call_python_function_with_keyword_arg(x: str) -> int:
+    return int(x, base=2)
+
+def call_python_method_with_keyword_args(xs: List[int], first: int, second: int) -> List[int]:
+    xs.insert(0, x=first)
+    xs.insert(x=second, i=1)
+    return xs
+
+[out]
+def call_python_function_with_keyword_arg(x):
+    x :: str
+    r0 :: short_int
+    r1 :: object
+    r2 :: str
+    r3 :: tuple
+    r4 :: object
+    r5 :: dict
+    r6 :: object
+    r7 :: int
+L0:
+    r0 = 2
+    r1 = int
+    r2 = unicode_3 :: static  ('base')
+    r3 = (x) :: tuple
+    r4 = box(short_int, r0)
+    r5 = {r2: r4}
+    r6 = py_call_with_kwargs(r1, r3, r5)
+    r7 = unbox(int, r6)
+    return r7
+def call_python_method_with_keyword_args(xs, first, second):
+    xs :: list
+    first, second :: int
+    r0 :: short_int
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object
+    r5 :: tuple
+    r6 :: object
+    r7 :: dict
+    r8 :: object
+    r9 :: None
+    r10 :: short_int
+    r11 :: str
+    r12 :: object
+    r13, r14 :: str
+    r15 :: tuple
+    r16, r17 :: object
+    r18 :: dict
+    r19 :: object
+    r20 :: None
+L0:
+    r0 = 0
+    r1 = unicode_4 :: static  ('insert')
+    r2 = getattr xs, r1
+    r3 = unicode_5 :: static  ('x')
+    r4 = box(short_int, r0)
+    r5 = (r4) :: tuple
+    r6 = box(int, first)
+    r7 = {r3: r6}
+    r8 = py_call_with_kwargs(r2, r5, r7)
+    r9 = unbox(None, r8)
+    r10 = 1
+    r11 = unicode_4 :: static  ('insert')
+    r12 = getattr xs, r11
+    r13 = unicode_5 :: static  ('x')
+    r14 = unicode_6 :: static  ('i')
+    r15 = () :: tuple
+    r16 = box(int, second)
+    r17 = box(short_int, r10)
+    r18 = {r13: r16, r14: r17}
+    r19 = py_call_with_kwargs(r12, r15, r18)
+    r20 = unbox(None, r19)
+    return xs
+
+[case testObjectAsBoolean]
+from typing import List
+
+def obj(x: object) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def num(x: int) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def lst(x: List[int]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+[out]
+def obj(x):
+    x :: object
+    r0 :: bool
+    r1, r2 :: short_int
+L0:
+    r0 = bool x :: object
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    return r1
+L2:
+    r2 = 0
+    return r2
+L3:
+    unreachable
+def num(x):
+    x :: int
+    r0 :: short_int
+    r1 :: bool
+    r2, r3 :: short_int
+L0:
+    r0 = 0
+    r1 = x != r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    return r2
+L2:
+    r3 = 0
+    return r3
+L3:
+    unreachable
+def lst(x):
+    x :: list
+    r0, r1 :: short_int
+    r2 :: bool
+    r3, r4 :: short_int
+L0:
+    r0 = len x :: list
+    r1 = 0
+    r2 = r0 != r1 :: short_int
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = 1
+    return r3
+L2:
+    r4 = 0
+    return r4
+L3:
+    unreachable
+
+[case testOptionalAsBoolean]
+from typing import Optional
+
+class A: pass
+
+def opt_int(x: Optional[int]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def opt_a(x: Optional[A]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def opt_o(x: Optional[object]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+[out]
+def opt_int(x):
+    x :: union[int, None]
+    r0 :: object
+    r1 :: bool
+    r2 :: int
+    r3 :: short_int
+    r4 :: bool
+    r5, r6 :: short_int
+L0:
+    r0 = builtins.None :: object
+    r1 = x is not r0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = unbox(int, x)
+    r3 = 0
+    r4 = r2 != r3 :: int
+    if r4 goto L2 else goto L3 :: bool
+L2:
+    r5 = 1
+    return r5
+L3:
+    r6 = 0
+    return r6
+L4:
+    unreachable
+def opt_a(x):
+    x :: union[__main__.A, None]
+    r0 :: object
+    r1 :: bool
+    r2, r3 :: short_int
+L0:
+    r0 = builtins.None :: object
+    r1 = x is not r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    return r2
+L2:
+    r3 = 0
+    return r3
+L3:
+    unreachable
+def opt_o(x):
+    x :: union[object, None]
+    r0 :: object
+    r1 :: bool
+    r2 :: object
+    r3 :: bool
+    r4, r5 :: short_int
+L0:
+    r0 = builtins.None :: object
+    r1 = x is not r0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = cast(object, x)
+    r3 = bool r2 :: object
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = 1
+    return r4
+L3:
+    r5 = 0
+    return r5
+L4:
+    unreachable
+
+[case testRaise]
+def foo() -> None:
+    raise Exception()
+
+def bar() -> None:
+    raise Exception
+[out]
+def foo():
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: bool
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_1 :: static  ('Exception')
+    r2 = getattr r0, r1
+    r3 = py_call(r2)
+    raise_exception(r3); r4 = 0
+    unreachable
+def bar():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_1 :: static  ('Exception')
+    r2 = getattr r0, r1
+    raise_exception(r2); r3 = 0
+    unreachable
+
+[case testModuleTopLevel_toplevel]
+x = 1
+print(x)
+
+def f() -> None:
+    print(x)
+[out]
+def f():
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4 :: object
+    r5 :: str
+    r6, r7, r8 :: object
+    r9, r10 :: None
+L0:
+    r0 = __main__.globals :: static
+    r1 = unicode_1 :: static  ('x')
+    r2 = r0[r1] :: dict
+    r3 = unbox(int, r2)
+    r4 = builtins.module :: static
+    r5 = unicode_2 :: static  ('print')
+    r6 = getattr r4, r5
+    r7 = box(int, r3)
+    r8 = py_call(r6, r7)
+    r9 = unbox(None, r8)
+    r10 = None
+    return r10
+def __top_level__():
+    r0, r1 :: object
+    r2 :: bool
+    r3 :: str
+    r4 :: object
+    r5 :: short_int
+    r6 :: dict
+    r7 :: str
+    r8 :: object
+    r9 :: bool
+    r10 :: dict
+    r11 :: str
+    r12 :: object
+    r13 :: int
+    r14 :: object
+    r15 :: str
+    r16, r17, r18 :: object
+    r19, r20 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = builtins.None :: object
+    r2 = r0 is not r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = unicode_0 :: static  ('builtins')
+    r4 = import r3 :: str
+    builtins.module = r4 :: static
+L2:
+    r5 = 1
+    r6 = __main__.globals :: static
+    r7 = unicode_1 :: static  ('x')
+    r8 = box(short_int, r5)
+    r9 = r6.__setitem__(r7, r8) :: dict
+    r10 = __main__.globals :: static
+    r11 = unicode_1 :: static  ('x')
+    r12 = r10[r11] :: dict
+    r13 = unbox(int, r12)
+    r14 = builtins.module :: static
+    r15 = unicode_2 :: static  ('print')
+    r16 = getattr r14, r15
+    r17 = box(int, r13)
+    r18 = py_call(r16, r17)
+    r19 = unbox(None, r18)
+    r20 = None
+    return r20
+
+[case testCallOverloaded]
+import m
+def f() -> str:
+    return m.f(1)
+[file m.pyi]
+from typing import overload
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> int: ...
+[out]
+def f():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: short_int
+    r4, r5 :: object
+    r6 :: str
+L0:
+    r0 = m.module :: static
+    r1 = unicode_2 :: static  ('f')
+    r2 = getattr r0, r1
+    r3 = 1
+    r4 = box(short_int, r3)
+    r5 = py_call(r2, r4)
+    r6 = cast(str, r5)
+    return r6
+
+[case testFunctionCallWithKeywordArgs]
+def f(x: int, y: str) -> None: pass
+
+def g() -> None:
+    f(y='a', x=0)
+    f(1, y='b')
+[out]
+def f(x, y):
+    x :: int
+    y :: str
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+def g():
+    r0 :: str
+    r1 :: short_int
+    r2 :: None
+    r3 :: short_int
+    r4 :: str
+    r5, r6 :: None
+L0:
+    r0 = unicode_1 :: static  ('a')
+    r1 = 0
+    r2 = f(r1, r0)
+    r3 = 1
+    r4 = unicode_2 :: static  ('b')
+    r5 = f(r3, r4)
+    r6 = None
+    return r6
+
+[case testMethodCallWithKeywordArgs]
+class A:
+    def f(self, x: int, y: str) -> None: pass
+
+def g(a: A) -> None:
+    a.f(y='a', x=0)
+    a.f(1, y='b')
+[out]
+def A.f(self, x, y):
+    self :: __main__.A
+    x :: int
+    y :: str
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+def g(a):
+    a :: __main__.A
+    r0 :: str
+    r1 :: short_int
+    r2 :: None
+    r3 :: short_int
+    r4 :: str
+    r5, r6 :: None
+L0:
+    r0 = unicode_3 :: static  ('a')
+    r1 = 0
+    r2 = a.f(r1, r0)
+    r3 = 1
+    r4 = unicode_4 :: static  ('b')
+    r5 = a.f(r3, r4)
+    r6 = None
+    return r6
+
+[case testStarArgs]
+from typing import Tuple
+def f(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+def g() -> Tuple[int, int, int]:
+    return f(*(1, 2, 3))
+def h() -> Tuple[int, int, int]:
+    return f(1, *(2, 3))
+[out]
+def f(a, b, c):
+    a, b, c :: int
+    r0 :: tuple[int, int, int]
+L0:
+    r0 = (a, b, c)
+    return r0
+def g():
+    r0, r1, r2 :: short_int
+    r3 :: tuple[int, int, int]
+    r4 :: dict
+    r5 :: str
+    r6 :: object
+    r7 :: list
+    r8, r9 :: object
+    r10 :: tuple
+    r11 :: dict
+    r12 :: object
+    r13 :: tuple[int, int, int]
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = (r0, r1, r2)
+    r4 = __main__.globals :: static
+    r5 = unicode_3 :: static  ('f')
+    r6 = r4[r5] :: dict
+    r7 = []
+    r8 = box(tuple[int, int, int], r3)
+    r9 = r7.extend(r8) :: list
+    r10 = tuple r7 :: list
+    r11 = {}
+    r12 = py_call_with_kwargs(r6, r10, r11)
+    r13 = unbox(tuple[int, int, int], r12)
+    return r13
+def h():
+    r0, r1, r2 :: short_int
+    r3 :: tuple[int, int]
+    r4 :: dict
+    r5 :: str
+    r6, r7 :: object
+    r8 :: list
+    r9, r10 :: object
+    r11 :: tuple
+    r12 :: dict
+    r13 :: object
+    r14 :: tuple[int, int, int]
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = (r1, r2)
+    r4 = __main__.globals :: static
+    r5 = unicode_3 :: static  ('f')
+    r6 = r4[r5] :: dict
+    r7 = box(short_int, r0)
+    r8 = [r7]
+    r9 = box(tuple[int, int], r3)
+    r10 = r8.extend(r9) :: list
+    r11 = tuple r8 :: list
+    r12 = {}
+    r13 = py_call_with_kwargs(r6, r11, r12)
+    r14 = unbox(tuple[int, int, int], r13)
+    return r14
+
+[case testStar2Args]
+from typing import Tuple
+def f(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+def g() -> Tuple[int, int, int]:
+    return f(**{'a': 1, 'b': 2, 'c': 3})
+def h() -> Tuple[int, int, int]:
+    return f(1, **{'b': 2, 'c': 3})
+[out]
+def f(a, b, c):
+    a, b, c :: int
+    r0 :: tuple[int, int, int]
+L0:
+    r0 = (a, b, c)
+    return r0
+def g():
+    r0 :: str
+    r1 :: short_int
+    r2 :: str
+    r3 :: short_int
+    r4 :: str
+    r5 :: short_int
+    r6, r7, r8 :: object
+    r9, r10 :: dict
+    r11 :: str
+    r12 :: object
+    r13 :: tuple
+    r14 :: dict
+    r15 :: bool
+    r16 :: object
+    r17 :: tuple[int, int, int]
+L0:
+    r0 = unicode_3 :: static  ('a')
+    r1 = 1
+    r2 = unicode_4 :: static  ('b')
+    r3 = 2
+    r4 = unicode_5 :: static  ('c')
+    r5 = 3
+    r6 = box(short_int, r1)
+    r7 = box(short_int, r3)
+    r8 = box(short_int, r5)
+    r9 = {r0: r6, r2: r7, r4: r8}
+    r10 = __main__.globals :: static
+    r11 = unicode_6 :: static  ('f')
+    r12 = r10[r11] :: dict
+    r13 = () :: tuple
+    r14 = {}
+    r15 = r14.update(r9) (display) :: dict
+    r16 = py_call_with_kwargs(r12, r13, r14)
+    r17 = unbox(tuple[int, int, int], r16)
+    return r17
+def h():
+    r0 :: short_int
+    r1 :: str
+    r2 :: short_int
+    r3 :: str
+    r4 :: short_int
+    r5, r6 :: object
+    r7, r8 :: dict
+    r9 :: str
+    r10, r11 :: object
+    r12 :: tuple
+    r13 :: dict
+    r14 :: bool
+    r15 :: object
+    r16 :: tuple[int, int, int]
+L0:
+    r0 = 1
+    r1 = unicode_4 :: static  ('b')
+    r2 = 2
+    r3 = unicode_5 :: static  ('c')
+    r4 = 3
+    r5 = box(short_int, r2)
+    r6 = box(short_int, r4)
+    r7 = {r1: r5, r3: r6}
+    r8 = __main__.globals :: static
+    r9 = unicode_6 :: static  ('f')
+    r10 = r8[r9] :: dict
+    r11 = box(short_int, r0)
+    r12 = (r11) :: tuple
+    r13 = {}
+    r14 = r13.update(r7) (display) :: dict
+    r15 = py_call_with_kwargs(r10, r12, r13)
+    r16 = unbox(tuple[int, int, int], r15)
+    return r16
+
+[case testFunctionCallWithDefaultArgs]
+def f(x: int, y: int = 3, z: str = "test") -> None:
+    return None
+
+def g() -> None:
+    f(2)
+    f(y = 3, x = 6)
+[out]
+def f(x, y, z):
+    x, y :: int
+    z :: str
+    r0 :: short_int
+    r1 :: str
+    r2 :: None
+L0:
+    if is_error(y) goto L1 else goto L2
+L1:
+    r0 = 3
+    y = r0
+L2:
+    if is_error(z) goto L3 else goto L4
+L3:
+    r1 = unicode_1 :: static  ('test')
+    z = r1
+L4:
+    r2 = None
+    return r2
+def g():
+    r0 :: short_int
+    r1 :: int
+    r2 :: str
+    r3 :: None
+    r4, r5 :: short_int
+    r6 :: str
+    r7, r8 :: None
+L0:
+    r0 = 2
+    r1 = <error> :: int
+    r2 = <error> :: str
+    r3 = f(r0, r1, r2)
+    r4 = 3
+    r5 = 6
+    r6 = <error> :: str
+    r7 = f(r5, r4, r6)
+    r8 = None
+    return r8
+
+[case testMethodCallWithDefaultArgs]
+class A:
+    def f(self, x: int, y: int = 3, z: str = "test") -> None:
+        return None
+
+def g() -> None:
+    a = A()
+    a.f(2)
+    a.f(y = 3, x = 6)
+[out]
+def A.f(self, x, y, z):
+    self :: __main__.A
+    x, y :: int
+    z :: str
+    r0 :: short_int
+    r1 :: str
+    r2 :: None
+L0:
+    if is_error(y) goto L1 else goto L2
+L1:
+    r0 = 3
+    y = r0
+L2:
+    if is_error(z) goto L3 else goto L4
+L3:
+    r1 = unicode_3 :: static  ('test')
+    z = r1
+L4:
+    r2 = None
+    return r2
+def g():
+    r0, a :: __main__.A
+    r1 :: short_int
+    r2 :: int
+    r3 :: str
+    r4 :: None
+    r5, r6 :: short_int
+    r7 :: str
+    r8, r9 :: None
+L0:
+    r0 = A()
+    a = r0
+    r1 = 2
+    r2 = <error> :: int
+    r3 = <error> :: str
+    r4 = a.f(r1, r2, r3)
+    r5 = 3
+    r6 = 6
+    r7 = <error> :: str
+    r8 = a.f(r6, r5, r7)
+    r9 = None
+    return r9
+
+[case testListComprehension]
+from typing import List
+
+def f() -> List[int]:
+    return [x*x for x in [1,2,3] if x != 2 if x != 3]
+[out]
+def f():
+    r0 :: list
+    r1, r2, r3 :: short_int
+    r4, r5, r6 :: object
+    r7 :: list
+    r8, r9, r10 :: short_int
+    r11 :: bool
+    r12 :: object
+    x, r13 :: int
+    r14 :: short_int
+    r15 :: bool
+    r16 :: short_int
+    r17 :: bool
+    r18 :: int
+    r19 :: object
+    r20 :: bool
+    r21, r22 :: short_int
+L0:
+    r0 = []
+    r1 = 1
+    r2 = 2
+    r3 = 3
+    r4 = box(short_int, r1)
+    r5 = box(short_int, r2)
+    r6 = box(short_int, r3)
+    r7 = [r4, r5, r6]
+    r8 = 0
+    r9 = r8
+L1:
+    r10 = len r7 :: list
+    r11 = r9 < r10 :: short_int
+    if r11 goto L2 else goto L8 :: bool
+L2:
+    r12 = r7[r9] :: unsafe list
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = 2
+    r15 = x != r14 :: int
+    if r15 goto L4 else goto L3 :: bool
+L3:
+    goto L7
+L4:
+    r16 = 3
+    r17 = x != r16 :: int
+    if r17 goto L6 else goto L5 :: bool
+L5:
+    goto L7
+L6:
+    r18 = x * x :: int
+    r19 = box(int, r18)
+    r20 = r0.append(r19) :: list
+L7:
+    r21 = 1
+    r22 = r9 + r21 :: short_int
+    r9 = r22
+    goto L1
+L8:
+    return r0
+
+[case testDictComprehension]
+from typing import Dict
+def f() -> Dict[int, int]:
+    return {x: x*x for x in [1,2,3] if x != 2 if x != 3}
+[out]
+def f():
+    r0 :: dict
+    r1, r2, r3 :: short_int
+    r4, r5, r6 :: object
+    r7 :: list
+    r8, r9, r10 :: short_int
+    r11 :: bool
+    r12 :: object
+    x, r13 :: int
+    r14 :: short_int
+    r15 :: bool
+    r16 :: short_int
+    r17 :: bool
+    r18 :: int
+    r19, r20 :: object
+    r21 :: bool
+    r22, r23 :: short_int
+L0:
+    r0 = {}
+    r1 = 1
+    r2 = 2
+    r3 = 3
+    r4 = box(short_int, r1)
+    r5 = box(short_int, r2)
+    r6 = box(short_int, r3)
+    r7 = [r4, r5, r6]
+    r8 = 0
+    r9 = r8
+L1:
+    r10 = len r7 :: list
+    r11 = r9 < r10 :: short_int
+    if r11 goto L2 else goto L8 :: bool
+L2:
+    r12 = r7[r9] :: unsafe list
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = 2
+    r15 = x != r14 :: int
+    if r15 goto L4 else goto L3 :: bool
+L3:
+    goto L7
+L4:
+    r16 = 3
+    r17 = x != r16 :: int
+    if r17 goto L6 else goto L5 :: bool
+L5:
+    goto L7
+L6:
+    r18 = x * x :: int
+    r19 = box(int, x)
+    r20 = box(int, r18)
+    r21 = r0.__setitem__(r19, r20) :: dict
+L7:
+    r22 = 1
+    r23 = r9 + r22 :: short_int
+    r9 = r23
+    goto L1
+L8:
+    return r0
+
+[case testLoopsMultipleAssign]
+from typing import List, Tuple
+def f(l: List[Tuple[int, int, int]]) -> List[int]:
+    for x, y, z in l:
+        pass
+    return [x+y+z for x, y, z in l]
+[out]
+def f(l):
+    l :: list
+    r0, r1, r2 :: short_int
+    r3 :: bool
+    r4 :: object
+    x, y, z :: int
+    r5 :: tuple[int, int, int]
+    r6, r7, r8 :: int
+    r9, r10 :: short_int
+    r11 :: list
+    r12, r13, r14 :: short_int
+    r15 :: bool
+    r16 :: object
+    x0, y0, z0 :: int
+    r17 :: tuple[int, int, int]
+    r18, r19, r20, r21, r22 :: int
+    r23 :: object
+    r24 :: bool
+    r25, r26 :: short_int
+L0:
+    r0 = 0
+    r1 = r0
+L1:
+    r2 = len l :: list
+    r3 = r1 < r2 :: short_int
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = l[r1] :: unsafe list
+    r5 = unbox(tuple[int, int, int], r4)
+    r6 = r5[0]
+    x = r6
+    r7 = r5[1]
+    y = r7
+    r8 = r5[2]
+    z = r8
+L3:
+    r9 = 1
+    r10 = r1 + r9 :: short_int
+    r1 = r10
+    goto L1
+L4:
+    r11 = []
+    r12 = 0
+    r13 = r12
+L5:
+    r14 = len l :: list
+    r15 = r13 < r14 :: short_int
+    if r15 goto L6 else goto L8 :: bool
+L6:
+    r16 = l[r13] :: unsafe list
+    r17 = unbox(tuple[int, int, int], r16)
+    r18 = r17[0]
+    x0 = r18
+    r19 = r17[1]
+    y0 = r19
+    r20 = r17[2]
+    z0 = r20
+    r21 = x0 + y0 :: int
+    r22 = r21 + z0 :: int
+    r23 = box(int, r22)
+    r24 = r11.append(r23) :: list
+L7:
+    r25 = 1
+    r26 = r13 + r25 :: short_int
+    r13 = r26
+    goto L5
+L8:
+    return r11
+
+[case testProperty]
+class PropertyHolder:
+    @property
+    def value(self) -> int:
+        return self.left + self.right if self.is_add else self.left - self.right
+    def __init__(self, left: int, right: int, is_add: bool) -> None:
+        self.left = left
+        self.right = right
+        self.is_add = is_add
+    def twice_value(self) -> int:
+        return 2 * self.value
+[out]
+def PropertyHolder.value(self):
+    self :: __main__.PropertyHolder
+    r0 :: bool
+    r1, r2, r3, r4, r5, r6, r7 :: int
+L0:
+    r0 = self.is_add
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r2 = self.left
+    r3 = self.right
+    r4 = r2 + r3 :: int
+    r1 = r4
+    goto L3
+L2:
+    r5 = self.left
+    r6 = self.right
+    r7 = r5 - r6 :: int
+    r1 = r7
+L3:
+    return r1
+def PropertyHolder.__init__(self, left, right, is_add):
+    self :: __main__.PropertyHolder
+    left, right :: int
+    is_add, r0, r1, r2 :: bool
+    r3 :: None
+L0:
+    self.left = left; r0 = is_error
+    self.right = right; r1 = is_error
+    self.is_add = is_add; r2 = is_error
+    r3 = None
+    return r3
+def PropertyHolder.twice_value(self):
+    self :: __main__.PropertyHolder
+    r0 :: short_int
+    r1, r2 :: int
+L0:
+    r0 = 2
+    r1 = self.value
+    r2 = r0 * r1 :: int
+    return r2
+
+[case testPropertyDerivedGen]
+from typing import Callable
+class BaseProperty:
+    @property
+    def value(self) -> object:
+        return self._incrementer
+
+    @property
+    def bad_value(self) -> object:
+        return self._incrementer
+
+    @property
+    def next(self) -> BaseProperty:
+        return BaseProperty(self._incrementer + 1)
+
+    def __init__(self, value: int) -> None:
+        self._incrementer = value
+
+class DerivedProperty(BaseProperty):
+    @property
+    def value(self) -> int:
+        return self._incrementer
+
+    @property
+    def bad_value(self) -> object:
+        return self._incrementer
+
+    @property
+    def next(self) -> DerivedProperty:
+        return DerivedProperty(self._incr_func, self._incr_func(self.value))
+
+    def __init__(self, incr_func: Callable[[int], int], value: int) -> None:
+        BaseProperty.__init__(self, value)
+        self._incr_func = incr_func
+
+
+class AgainProperty(DerivedProperty):
+    @property
+    def next(self) -> AgainProperty:
+        return AgainProperty(self._incr_func, self._incr_func(self._incr_func(self.value)))
+
+    @property
+    def bad_value(self) -> int:
+        return self._incrementer
+[out]
+def BaseProperty.value(self):
+    self :: __main__.BaseProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self._incrementer
+    r1 = box(int, r0)
+    return r1
+def BaseProperty.bad_value(self):
+    self :: __main__.BaseProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self._incrementer
+    r1 = box(int, r0)
+    return r1
+def BaseProperty.next(self):
+    self :: __main__.BaseProperty
+    r0 :: int
+    r1 :: short_int
+    r2 :: int
+    r3 :: __main__.BaseProperty
+L0:
+    r0 = self._incrementer
+    r1 = 1
+    r2 = r0 + r1 :: int
+    r3 = BaseProperty(r2)
+    return r3
+def BaseProperty.__init__(self, value):
+    self :: __main__.BaseProperty
+    value :: int
+    r0 :: bool
+    r1 :: None
+L0:
+    self._incrementer = value; r0 = is_error
+    r1 = None
+    return r1
+def DerivedProperty.value(self):
+    self :: __main__.DerivedProperty
+    r0 :: int
+L0:
+    r0 = self._incrementer
+    return r0
+def DerivedProperty.value__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__ :: __main__.DerivedProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = __mypyc_self__.value
+    r1 = box(int, r0)
+    return r1
+def DerivedProperty.bad_value(self):
+    self :: __main__.DerivedProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self._incrementer
+    r1 = box(int, r0)
+    return r1
+def DerivedProperty.next(self):
+    self :: __main__.DerivedProperty
+    r0 :: object
+    r1 :: int
+    r2, r3, r4 :: object
+    r5 :: int
+    r6 :: __main__.DerivedProperty
+L0:
+    r0 = self._incr_func
+    r1 = self.value
+    r2 = self._incr_func
+    r3 = box(int, r1)
+    r4 = py_call(r2, r3)
+    r5 = unbox(int, r4)
+    r6 = DerivedProperty(r0, r5)
+    return r6
+def DerivedProperty.next__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: __main__.DerivedProperty
+L0:
+    r0 = __mypyc_self__.next
+    return r0
+def DerivedProperty.__init__(self, incr_func, value):
+    self :: __main__.DerivedProperty
+    incr_func :: object
+    value :: int
+    r0 :: None
+    r1 :: bool
+    r2 :: None
+L0:
+    r0 = BaseProperty.__init__(self, value)
+    self._incr_func = incr_func; r1 = is_error
+    r2 = None
+    return r2
+def AgainProperty.next(self):
+    self :: __main__.AgainProperty
+    r0 :: object
+    r1 :: int
+    r2, r3, r4 :: object
+    r5 :: int
+    r6, r7, r8 :: object
+    r9 :: int
+    r10 :: __main__.AgainProperty
+L0:
+    r0 = self._incr_func
+    r1 = self.value
+    r2 = self._incr_func
+    r3 = box(int, r1)
+    r4 = py_call(r2, r3)
+    r5 = unbox(int, r4)
+    r6 = self._incr_func
+    r7 = box(int, r5)
+    r8 = py_call(r6, r7)
+    r9 = unbox(int, r8)
+    r10 = AgainProperty(r0, r9)
+    return r10
+def AgainProperty.next__DerivedProperty_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: __main__.AgainProperty
+L0:
+    r0 = __mypyc_self__.next
+    return r0
+def AgainProperty.next__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: __main__.AgainProperty
+L0:
+    r0 = __mypyc_self__.next
+    return r0
+def AgainProperty.bad_value(self):
+    self :: __main__.AgainProperty
+    r0 :: int
+L0:
+    r0 = self._incrementer
+    return r0
+def AgainProperty.bad_value__DerivedProperty_glue(__mypyc_self__):
+    __mypyc_self__ :: __main__.AgainProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = __mypyc_self__.bad_value
+    r1 = box(int, r0)
+    return r1
+def AgainProperty.bad_value__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__ :: __main__.AgainProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = __mypyc_self__.bad_value
+    r1 = box(int, r0)
+    return r1
+
+[case testPropertyTraitSubclassing]
+from mypy_extensions import trait
+@trait
+class SubclassedTrait:
+    @property
+    def this(self) -> SubclassedTrait:
+        return self
+
+    @property
+    def boxed(self) -> object:
+        return 3
+
+class DerivingObject(SubclassedTrait):
+    @property
+    def this(self) -> DerivingObject:
+        return self
+
+    @property
+    def boxed(self) -> int:
+        return 5
+[out]
+def SubclassedTrait.this(self):
+    self :: __main__.SubclassedTrait
+L0:
+    return self
+def SubclassedTrait.boxed(self):
+    self :: __main__.SubclassedTrait
+    r0 :: short_int
+    r1 :: object
+L0:
+    r0 = 3
+    r1 = box(short_int, r0)
+    return r1
+def DerivingObject.this(self):
+    self :: __main__.DerivingObject
+L0:
+    return self
+def DerivingObject.this__SubclassedTrait_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: __main__.DerivingObject
+L0:
+    r0 = __mypyc_self__.this
+    return r0
+def DerivingObject.boxed(self):
+    self :: __main__.DerivingObject
+    r0 :: short_int
+L0:
+    r0 = 5
+    return r0
+def DerivingObject.boxed__SubclassedTrait_glue(__mypyc_self__):
+    __mypyc_self__ :: __main__.DerivingObject
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = __mypyc_self__.boxed
+    r1 = box(int, r0)
+    return r1
+
+[case testNativeIndex]
+from typing import List
+class A:
+    def __getitem__(self, index: int) -> int: pass
+
+def g(a: A, b: List[int], c: int) -> int:
+    return a[c] + b[c]
+[out]
+def A.__getitem__(self, index):
+    self :: __main__.A
+    index :: int
+L0:
+    unreachable
+def g(a, b, c):
+    a :: __main__.A
+    b :: list
+    c, r0 :: int
+    r1 :: object
+    r2, r3 :: int
+L0:
+    r0 = a.__getitem__(c)
+    r1 = b[c] :: list
+    r2 = unbox(int, r1)
+    r3 = r0 + r2 :: int
+    return r3
+
+[case testTypeAlias_toplevel]
+from typing import List, NewType, NamedTuple
+Lol = NamedTuple('Lol', (('a', int), ('b', str)))
+x = Lol(1, '')
+Foo = List[int]
+Bar = NewType('Bar', Foo)
+y = Bar([1,2,3])
+[out]
+def __top_level__():
+    r0, r1 :: object
+    r2 :: bool
+    r3 :: str
+    r4, r5, r6 :: object
+    r7 :: bool
+    r8 :: str
+    r9, r10 :: object
+    r11 :: dict
+    r12 :: str
+    r13 :: object
+    r14 :: str
+    r15 :: bool
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19 :: bool
+    r20 :: str
+    r21 :: object
+    r22 :: str
+    r23 :: bool
+    r24, r25 :: str
+    r26 :: object
+    r27 :: tuple[str, object]
+    r28 :: object
+    r29 :: str
+    r30 :: object
+    r31 :: tuple[str, object]
+    r32 :: object
+    r33 :: tuple[object, object]
+    r34 :: object
+    r35 :: dict
+    r36 :: str
+    r37, r38 :: object
+    r39 :: dict
+    r40 :: str
+    r41 :: bool
+    r42 :: short_int
+    r43 :: str
+    r44 :: dict
+    r45 :: str
+    r46, r47, r48 :: object
+    r49 :: tuple
+    r50 :: dict
+    r51 :: str
+    r52 :: bool
+    r53 :: dict
+    r54 :: str
+    r55, r56, r57 :: object
+    r58 :: dict
+    r59 :: str
+    r60 :: bool
+    r61 :: str
+    r62 :: dict
+    r63 :: str
+    r64 :: object
+    r65 :: dict
+    r66 :: str
+    r67, r68 :: object
+    r69 :: dict
+    r70 :: str
+    r71 :: bool
+    r72, r73, r74 :: short_int
+    r75, r76, r77 :: object
+    r78 :: list
+    r79 :: dict
+    r80 :: str
+    r81, r82 :: object
+    r83 :: dict
+    r84 :: str
+    r85 :: bool
+    r86 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = builtins.None :: object
+    r2 = r0 is not r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = unicode_0 :: static  ('builtins')
+    r4 = import r3 :: str
+    builtins.module = r4 :: static
+L2:
+    r5 = typing.module :: static
+    r6 = builtins.None :: object
+    r7 = r5 is not r6
+    if r7 goto L4 else goto L3 :: bool
+L3:
+    r8 = unicode_1 :: static  ('typing')
+    r9 = import r8 :: str
+    typing.module = r9 :: static
+L4:
+    r10 = typing.module :: static
+    r11 = __main__.globals :: static
+    r12 = unicode_2 :: static  ('List')
+    r13 = getattr r10, r12
+    r14 = unicode_2 :: static  ('List')
+    r15 = r11.__setitem__(r14, r13) :: dict
+    r16 = unicode_3 :: static  ('NewType')
+    r17 = getattr r10, r16
+    r18 = unicode_3 :: static  ('NewType')
+    r19 = r11.__setitem__(r18, r17) :: dict
+    r20 = unicode_4 :: static  ('NamedTuple')
+    r21 = getattr r10, r20
+    r22 = unicode_4 :: static  ('NamedTuple')
+    r23 = r11.__setitem__(r22, r21) :: dict
+    r24 = unicode_5 :: static  ('Lol')
+    r25 = unicode_6 :: static  ('a')
+    r26 = int
+    r27 = (r25, r26)
+    r28 = box(tuple[str, object], r27)
+    r29 = unicode_7 :: static  ('b')
+    r30 = str
+    r31 = (r29, r30)
+    r32 = box(tuple[str, object], r31)
+    r33 = (r28, r32)
+    r34 = box(tuple[object, object], r33)
+    r35 = __main__.globals :: static
+    r36 = unicode_4 :: static  ('NamedTuple')
+    r37 = r35[r36] :: dict
+    r38 = py_call(r37, r24, r34)
+    r39 = __main__.globals :: static
+    r40 = unicode_5 :: static  ('Lol')
+    r41 = r39.__setitem__(r40, r38) :: dict
+    r42 = 1
+    r43 = unicode_8 :: static
+    r44 = __main__.globals :: static
+    r45 = unicode_5 :: static  ('Lol')
+    r46 = r44[r45] :: dict
+    r47 = box(short_int, r42)
+    r48 = py_call(r46, r47, r43)
+    r49 = cast(tuple, r48)
+    r50 = __main__.globals :: static
+    r51 = unicode_9 :: static  ('x')
+    r52 = r50.__setitem__(r51, r49) :: dict
+    r53 = __main__.globals :: static
+    r54 = unicode_2 :: static  ('List')
+    r55 = r53[r54] :: dict
+    r56 = int
+    r57 = r55[r56] :: object
+    r58 = __main__.globals :: static
+    r59 = unicode_10 :: static  ('Foo')
+    r60 = r58.__setitem__(r59, r57) :: dict
+    r61 = unicode_11 :: static  ('Bar')
+    r62 = __main__.globals :: static
+    r63 = unicode_10 :: static  ('Foo')
+    r64 = r62[r63] :: dict
+    r65 = __main__.globals :: static
+    r66 = unicode_3 :: static  ('NewType')
+    r67 = r65[r66] :: dict
+    r68 = py_call(r67, r61, r64)
+    r69 = __main__.globals :: static
+    r70 = unicode_11 :: static  ('Bar')
+    r71 = r69.__setitem__(r70, r68) :: dict
+    r72 = 1
+    r73 = 2
+    r74 = 3
+    r75 = box(short_int, r72)
+    r76 = box(short_int, r73)
+    r77 = box(short_int, r74)
+    r78 = [r75, r76, r77]
+    r79 = __main__.globals :: static
+    r80 = unicode_11 :: static  ('Bar')
+    r81 = r79[r80] :: dict
+    r82 = py_call(r81, r78)
+    r83 = __main__.globals :: static
+    r84 = unicode_12 :: static  ('y')
+    r85 = r83.__setitem__(r84, r82) :: dict
+    r86 = None
+    return r86
+
+[case testChainedConditional]
+def g(x: int) -> int:
+    return x
+def f(x: int, y: int, z: int) -> bool:
+    return g(x) < g(y) > g(z)
+[out]
+def g(x):
+    x :: int
+L0:
+    return x
+def f(x, y, z):
+    x, y, z, r0, r1 :: int
+    r2, r3 :: bool
+    r4 :: int
+    r5 :: bool
+L0:
+    r0 = g(x)
+    r1 = g(y)
+    r3 = r0 < r1 :: int
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r2 = r3
+    goto L3
+L2:
+    r4 = g(z)
+    r5 = r1 > r4 :: int
+    r2 = r5
+L3:
+    return r2
+
+[case testEq]
+class A:
+    def __eq__(self, x: object) -> bool:
+        return NotImplemented
+[out]
+def A.__eq__(self, x):
+    self :: __main__.A
+    x, r0 :: object
+L0:
+    r0 = NotImplemented
+    return r0
+def A.__ne__(self, rhs):
+    self :: __main__.A
+    rhs, r0 :: object
+    r1 :: bool
+L0:
+    r0 = self.__eq__(rhs)
+    r1 = not r0
+    return r1
+
+[case testDecorators_toplevel]
+from typing import Callable
+
+def a(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('Entering')
+        f()
+        print('Exited')
+    return g
+
+def b(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('---')
+        f()
+        print('---')
+    return g
+
+@a
+@b
+def c() -> None:
+    @a
+    @b
+    def d() -> None:
+        print('d')
+    print('c')
+    d()
+
+[out]
+def g_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def g_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __main__.g_a_obj
+    r0 :: __main__.a_env
+    r1, g :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5, r6 :: object
+    r7 :: None
+    r8, r9 :: object
+    r10 :: None
+    r11 :: str
+    r12 :: object
+    r13 :: str
+    r14, r15 :: object
+    r16, r17 :: None
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.g
+    g = r1
+    r2 = unicode_3 :: static  ('Entering')
+    r3 = builtins.module :: static
+    r4 = unicode_4 :: static  ('print')
+    r5 = getattr r3, r4
+    r6 = py_call(r5, r2)
+    r7 = unbox(None, r6)
+    r8 = r0.f
+    r9 = py_call(r8)
+    r10 = unbox(None, r9)
+    r11 = unicode_5 :: static  ('Exited')
+    r12 = builtins.module :: static
+    r13 = unicode_4 :: static  ('print')
+    r14 = getattr r12, r13
+    r15 = py_call(r14, r11)
+    r16 = unbox(None, r15)
+    r17 = None
+    return r17
+def a(f):
+    f :: object
+    r0 :: __main__.a_env
+    r1 :: bool
+    r2 :: __main__.g_a_obj
+    r3, r4 :: bool
+    r5 :: object
+L0:
+    r0 = a_env()
+    r0.f = f; r1 = is_error
+    r2 = g_a_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r0.g = r2; r4 = is_error
+    r5 = r0.g
+    return r5
+def g_b_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def g_b_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __main__.g_b_obj
+    r0 :: __main__.b_env
+    r1, g :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5, r6 :: object
+    r7 :: None
+    r8, r9 :: object
+    r10 :: None
+    r11 :: str
+    r12 :: object
+    r13 :: str
+    r14, r15 :: object
+    r16, r17 :: None
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.g
+    g = r1
+    r2 = unicode_6 :: static  ('---')
+    r3 = builtins.module :: static
+    r4 = unicode_4 :: static  ('print')
+    r5 = getattr r3, r4
+    r6 = py_call(r5, r2)
+    r7 = unbox(None, r6)
+    r8 = r0.f
+    r9 = py_call(r8)
+    r10 = unbox(None, r9)
+    r11 = unicode_6 :: static  ('---')
+    r12 = builtins.module :: static
+    r13 = unicode_4 :: static  ('print')
+    r14 = getattr r12, r13
+    r15 = py_call(r14, r11)
+    r16 = unbox(None, r15)
+    r17 = None
+    return r17
+def b(f):
+    f :: object
+    r0 :: __main__.b_env
+    r1 :: bool
+    r2 :: __main__.g_b_obj
+    r3, r4 :: bool
+    r5 :: object
+L0:
+    r0 = b_env()
+    r0.f = f; r1 = is_error
+    r2 = g_b_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r0.g = r2; r4 = is_error
+    r5 = r0.g
+    return r5
+def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+    r0 :: __main__.__mypyc_c_decorator_helper___env
+    r1, d :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5, r6 :: object
+    r7, r8 :: None
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.d
+    d = r1
+    r2 = unicode_7 :: static  ('d')
+    r3 = builtins.module :: static
+    r4 = unicode_4 :: static  ('print')
+    r5 = getattr r3, r4
+    r6 = py_call(r5, r2)
+    r7 = unbox(None, r6)
+    r8 = None
+    return r8
+def __mypyc_c_decorator_helper__():
+    r0 :: __main__.__mypyc_c_decorator_helper___env
+    r1 :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+    r2 :: bool
+    r3 :: dict
+    r4 :: str
+    r5, r6 :: object
+    r7 :: dict
+    r8 :: str
+    r9, r10 :: object
+    r11 :: bool
+    r12 :: str
+    r13 :: object
+    r14 :: str
+    r15, r16 :: object
+    r17 :: None
+    r18, r19 :: object
+    r20, r21 :: None
+L0:
+    r0 = __mypyc_c_decorator_helper___env()
+    r1 = __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = __main__.globals :: static
+    r4 = unicode_8 :: static  ('b')
+    r5 = r3[r4] :: dict
+    r6 = py_call(r5, r1)
+    r7 = __main__.globals :: static
+    r8 = unicode_9 :: static  ('a')
+    r9 = r7[r8] :: dict
+    r10 = py_call(r9, r6)
+    r0.d = r10; r11 = is_error
+    r12 = unicode_10 :: static  ('c')
+    r13 = builtins.module :: static
+    r14 = unicode_4 :: static  ('print')
+    r15 = getattr r13, r14
+    r16 = py_call(r15, r12)
+    r17 = unbox(None, r16)
+    r18 = r0.d
+    r19 = py_call(r18)
+    r20 = unbox(None, r19)
+    r21 = None
+    return r21
+def __top_level__():
+    r0, r1 :: object
+    r2 :: bool
+    r3 :: str
+    r4, r5, r6 :: object
+    r7 :: bool
+    r8 :: str
+    r9, r10 :: object
+    r11 :: dict
+    r12 :: str
+    r13 :: object
+    r14 :: str
+    r15 :: bool
+    r16 :: dict
+    r17 :: str
+    r18 :: object
+    r19 :: dict
+    r20 :: str
+    r21, r22 :: object
+    r23 :: dict
+    r24 :: str
+    r25, r26 :: object
+    r27 :: dict
+    r28 :: str
+    r29 :: bool
+    r30 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = builtins.None :: object
+    r2 = r0 is not r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = unicode_0 :: static  ('builtins')
+    r4 = import r3 :: str
+    builtins.module = r4 :: static
+L2:
+    r5 = typing.module :: static
+    r6 = builtins.None :: object
+    r7 = r5 is not r6
+    if r7 goto L4 else goto L3 :: bool
+L3:
+    r8 = unicode_1 :: static  ('typing')
+    r9 = import r8 :: str
+    typing.module = r9 :: static
+L4:
+    r10 = typing.module :: static
+    r11 = __main__.globals :: static
+    r12 = unicode_2 :: static  ('Callable')
+    r13 = getattr r10, r12
+    r14 = unicode_2 :: static  ('Callable')
+    r15 = r11.__setitem__(r14, r13) :: dict
+    r16 = __main__.globals :: static
+    r17 = unicode_11 :: static  ('__mypyc_c_decorator_helper__')
+    r18 = r16[r17] :: dict
+    r19 = __main__.globals :: static
+    r20 = unicode_8 :: static  ('b')
+    r21 = r19[r20] :: dict
+    r22 = py_call(r21, r18)
+    r23 = __main__.globals :: static
+    r24 = unicode_9 :: static  ('a')
+    r25 = r23[r24] :: dict
+    r26 = py_call(r25, r22)
+    r27 = __main__.globals :: static
+    r28 = unicode_10 :: static  ('c')
+    r29 = r27.__setitem__(r28, r26) :: dict
+    r30 = None
+    return r30
+
+[case testDecoratorsSimple_toplevel]
+from typing import Callable
+
+def a(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('Entering')
+        f()
+        print('Exited')
+    return g
+
+[out]
+def g_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def g_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __main__.g_a_obj
+    r0 :: __main__.a_env
+    r1, g :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5, r6 :: object
+    r7 :: None
+    r8, r9 :: object
+    r10 :: None
+    r11 :: str
+    r12 :: object
+    r13 :: str
+    r14, r15 :: object
+    r16, r17 :: None
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.g
+    g = r1
+    r2 = unicode_3 :: static  ('Entering')
+    r3 = builtins.module :: static
+    r4 = unicode_4 :: static  ('print')
+    r5 = getattr r3, r4
+    r6 = py_call(r5, r2)
+    r7 = unbox(None, r6)
+    r8 = r0.f
+    r9 = py_call(r8)
+    r10 = unbox(None, r9)
+    r11 = unicode_5 :: static  ('Exited')
+    r12 = builtins.module :: static
+    r13 = unicode_4 :: static  ('print')
+    r14 = getattr r12, r13
+    r15 = py_call(r14, r11)
+    r16 = unbox(None, r15)
+    r17 = None
+    return r17
+def a(f):
+    f :: object
+    r0 :: __main__.a_env
+    r1 :: bool
+    r2 :: __main__.g_a_obj
+    r3, r4 :: bool
+    r5 :: object
+L0:
+    r0 = a_env()
+    r0.f = f; r1 = is_error
+    r2 = g_a_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r0.g = r2; r4 = is_error
+    r5 = r0.g
+    return r5
+def __top_level__():
+    r0, r1 :: object
+    r2 :: bool
+    r3 :: str
+    r4, r5, r6 :: object
+    r7 :: bool
+    r8 :: str
+    r9, r10 :: object
+    r11 :: dict
+    r12 :: str
+    r13 :: object
+    r14 :: str
+    r15 :: bool
+    r16 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = builtins.None :: object
+    r2 = r0 is not r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = unicode_0 :: static  ('builtins')
+    r4 = import r3 :: str
+    builtins.module = r4 :: static
+L2:
+    r5 = typing.module :: static
+    r6 = builtins.None :: object
+    r7 = r5 is not r6
+    if r7 goto L4 else goto L3 :: bool
+L3:
+    r8 = unicode_1 :: static  ('typing')
+    r9 = import r8 :: str
+    typing.module = r9 :: static
+L4:
+    r10 = typing.module :: static
+    r11 = __main__.globals :: static
+    r12 = unicode_2 :: static  ('Callable')
+    r13 = getattr r10, r12
+    r14 = unicode_2 :: static  ('Callable')
+    r15 = r11.__setitem__(r14, r13) :: dict
+    r16 = None
+    return r16
+
+[case testAnyAllG]
+from typing import Iterable
+
+def call_any(l: Iterable[int]) -> bool:
+    return any(i == 0 for i in l)
+
+def call_all(l: Iterable[int]) -> bool:
+    return all(i == 0 for i in l)
+
+[out]
+def call_any(l):
+    l :: object
+    r0, r1 :: bool
+    r2, r3 :: object
+    r4, i :: int
+    r5 :: short_int
+    r6, r7, r8 :: bool
+L0:
+    r1 = False
+    r0 = r1
+    r2 = iter l :: object
+L1:
+    r3 = next r2 :: object
+    if is_error(r3) goto L6 else goto L2
+L2:
+    r4 = unbox(int, r3)
+    i = r4
+    r5 = 0
+    r6 = i == r5 :: int
+    if r6 goto L3 else goto L4 :: bool
+L3:
+    r7 = True
+    r0 = r7
+    goto L8
+L4:
+L5:
+    goto L1
+L6:
+    r8 = no_err_occurred
+L7:
+L8:
+    return r0
+def call_all(l):
+    l :: object
+    r0, r1 :: bool
+    r2, r3 :: object
+    r4, i :: int
+    r5 :: short_int
+    r6, r7, r8, r9 :: bool
+L0:
+    r1 = True
+    r0 = r1
+    r2 = iter l :: object
+L1:
+    r3 = next r2 :: object
+    if is_error(r3) goto L6 else goto L2
+L2:
+    r4 = unbox(int, r3)
+    i = r4
+    r5 = 0
+    r6 = i == r5 :: int
+    r7 = !r6
+    if r7 goto L3 else goto L4 :: bool
+L3:
+    r8 = False
+    r0 = r8
+    goto L8
+L4:
+L5:
+    goto L1
+L6:
+    r9 = no_err_occurred
+L7:
+L8:
+    return r0
+
+[case testSetAttr1]
+from typing import Any, Dict, List
+def lol(x: Any):
+    setattr(x, 'x', '5')
+
+[out]
+def lol(x):
+    x :: object
+    r0, r1 :: str
+    r2 :: bool
+    r3, r4 :: None
+    r5 :: object
+L0:
+    r0 = unicode_5 :: static  ('x')
+    r1 = unicode_6 :: static  ('5')
+    r2 = setattr x, r0, r1
+    r3 = None
+    r4 = None
+    r5 = box(None, r4)
+    return r5
+
+[case testFinalModuleInt]
+from typing import Final
+
+x: Final = 1
+y: Final = 2
+
+def f(a: bool) -> int:
+    if a:
+        return x
+    else:
+        return y
+[out]
+def f(a):
+    a :: bool
+    r0, r1 :: short_int
+L0:
+    if a goto L1 else goto L2 :: bool
+L1:
+    r0 = 1
+    return r0
+L2:
+    r1 = 2
+    return r1
+L3:
+    unreachable
+
+[case testFinalModuleStr]
+from typing import Final
+
+x: Final = 'x'
+y: Final = 'y'
+
+def f(a: bool) -> str:
+    if a:
+        return x
+    else:
+        return y
+[out]
+def f(a):
+    a :: bool
+    r0, r1 :: str
+L0:
+    if a goto L1 else goto L2 :: bool
+L1:
+    r0 = unicode_3 :: static  ('x')
+    return r0
+L2:
+    r1 = unicode_4 :: static  ('y')
+    return r1
+L3:
+    unreachable
+
+[case testFinalModuleBool]
+from typing import Final
+
+x: Final = True
+y: Final = False
+
+def f(a: bool) -> bool:
+    if a:
+        return x
+    else:
+        return y
+[out]
+def f(a):
+    a, r0, r1 :: bool
+L0:
+    if a goto L1 else goto L2 :: bool
+L1:
+    r0 = True
+    return r0
+L2:
+    r1 = False
+    return r1
+L3:
+    unreachable
+
+[case testFinalClass]
+from typing import Final
+
+class C:
+    x: Final = 1
+    y: Final = 2
+
+def f(a: bool) -> int:
+    if a:
+        return C.x
+    else:
+        return C.y
+[out]
+def C.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.C
+    r0 :: short_int
+    r1 :: bool
+    r2 :: short_int
+    r3, r4 :: bool
+L0:
+    r0 = 1
+    __mypyc_self__.x = r0; r1 = is_error
+    r2 = 2
+    __mypyc_self__.y = r2; r3 = is_error
+    r4 = True
+    return r4
+def f(a):
+    a :: bool
+    r0, r1 :: short_int
+L0:
+    if a goto L1 else goto L2 :: bool
+L1:
+    r0 = 1
+    return r0
+L2:
+    r1 = 2
+    return r1
+L3:
+    unreachable
+
+[case testFinalStaticList]
+from typing import Final
+
+x: Final = [1]
+
+def f() -> int:
+    return x[0]
+[out]
+def f():
+    r0 :: list
+    r1 :: bool
+    r2 :: short_int
+    r3 :: object
+    r4 :: int
+L0:
+    r0 = final.__main__.x :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    raise ValueError('value for final name "x" was not set')
+    unreachable
+L2:
+    r2 = 0
+    r3 = r0[r2] :: list
+    r4 = unbox(int, r3)
+    return r4
+
+
+[case testFinalStaticTuple]
+from typing import Final
+
+x: Final = (1, 2)
+
+def f() -> int:
+    return x[0]
+[out]
+def f():
+    r0 :: tuple[int, int]
+    r1 :: bool
+    r2 :: int
+L0:
+    r0 = final.__main__.x :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    raise ValueError('value for final name "x" was not set')
+    unreachable
+L2:
+    r2 = r0[0]
+    return r2
+
+[case testFinalStaticInt]
+from typing import Final
+
+x: Final = 1 + 1
+
+def f() -> int:
+    return x - 1
+[out]
+def f():
+    r0 :: int
+    r1 :: bool
+    r2 :: short_int
+    r3 :: int
+L0:
+    r0 = final.__main__.x :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    raise ValueError('value for final name "x" was not set')
+    unreachable
+L2:
+    r2 = 1
+    r3 = r0 - r2 :: int
+    return r3
+
+
+[case testFinalRestrictedTypeVar]
+from typing import TypeVar
+if False:
+    from typing import Final
+
+FOO = 10  # type: Final
+
+Targ = TypeVar('Targ', int, str)
+def foo(z: Targ) -> None:
+    FOO
+[out]
+def foo(z):
+    z :: object
+    r0 :: short_int
+    r1 :: None
+L0:
+    r0 = 10
+    r1 = None
+    return r1
+
+[case testDirectlyCall__bool__]
+class A:
+    def __bool__(self) -> bool:
+        return True
+class B(A):
+    def __bool__(self) -> bool:
+        return False
+
+def lol(x: A) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+[out]
+def A.__bool__(self):
+    self :: __main__.A
+    r0 :: bool
+L0:
+    r0 = True
+    return r0
+def B.__bool__(self):
+    self :: __main__.B
+    r0 :: bool
+L0:
+    r0 = False
+    return r0
+def lol(x):
+    x :: __main__.A
+    r0 :: bool
+    r1, r2 :: short_int
+L0:
+    r0 = x.__bool__()
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    return r1
+L2:
+    r2 = 0
+    return r2
+L3:
+    unreachable
+
+[case testRevealType]
+def f(x: int) -> None:
+    reveal_type(x)  # type: ignore
+[out]
+def f(x):
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
+    r6 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_1 :: static  ('reveal_type')
+    r2 = getattr r0, r1
+    r3 = box(int, x)
+    r4 = py_call(r2, r3)
+    r5 = unbox(int, r4)
+    r6 = None
+    return r6

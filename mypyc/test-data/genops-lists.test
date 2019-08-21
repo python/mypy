@@ -1,0 +1,229 @@
+[case testListGet]
+from typing import List
+def f(x: List[int]) -> int:
+    return x[0]
+[out]
+def f(x):
+    x :: list
+    r0 :: short_int
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = 0
+    r1 = x[r0] :: list
+    r2 = unbox(int, r1)
+    return r2
+
+[case testListOfListGet]
+from typing import List
+def f(x: List[List[int]]) -> List[int]:
+    return x[0]
+[out]
+def f(x):
+    x :: list
+    r0 :: short_int
+    r1 :: object
+    r2 :: list
+L0:
+    r0 = 0
+    r1 = x[r0] :: list
+    r2 = cast(list, r1)
+    return r2
+
+[case testListOfListGet2]
+from typing import List
+def f(x: List[List[int]]) -> int:
+    return x[0][1]
+[out]
+def f(x):
+    x :: list
+    r0 :: short_int
+    r1 :: object
+    r2 :: list
+    r3 :: short_int
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = 0
+    r1 = x[r0] :: list
+    r2 = cast(list, r1)
+    r3 = 1
+    r4 = r2[r3] :: list
+    r5 = unbox(int, r4)
+    return r5
+
+[case testListSet]
+from typing import List
+def f(x: List[int]) -> None:
+    x[0] = 1
+[out]
+def f(x):
+    x :: list
+    r0, r1 :: short_int
+    r2 :: object
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = 1
+    r1 = 0
+    r2 = box(short_int, r0)
+    r3 = x.__setitem__(r1, r2) :: list
+    r4 = None
+    return r4
+
+[case testNewListEmpty]
+from typing import List
+def f() -> None:
+    x = []  # type: List[int]
+[out]
+def f():
+    r0, x :: list
+    r1 :: None
+L0:
+    r0 = []
+    x = r0
+    r1 = None
+    return r1
+
+[case testNewListTwoItems]
+from typing import List
+def f() -> None:
+    x: List[int] = [1, 2]
+[out]
+def f():
+    r0, r1 :: short_int
+    r2, r3 :: object
+    r4, x :: list
+    r5 :: None
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = box(short_int, r0)
+    r3 = box(short_int, r1)
+    r4 = [r2, r3]
+    x = r4
+    r5 = None
+    return r5
+
+[case testListMultiply]
+from typing import List
+def f(a: List[int]) -> None:
+    b = a * 2
+    b = 3 * [4]
+[out]
+def f(a):
+    a :: list
+    r0 :: short_int
+    r1, b :: list
+    r2, r3 :: short_int
+    r4 :: object
+    r5, r6 :: list
+    r7 :: None
+L0:
+    r0 = 2
+    r1 = a * r0 :: list
+    b = r1
+    r2 = 3
+    r3 = 4
+    r4 = box(short_int, r3)
+    r5 = [r4]
+    r6 = r2 * r5 :: list
+    b = r6
+    r7 = None
+    return r7
+
+[case testListLen]
+from typing import List
+def f(a: List[int]) -> int:
+    return len(a)
+[out]
+def f(a):
+    a :: list
+    r0 :: short_int
+L0:
+    r0 = len a :: list
+    return r0
+
+[case testListAppend]
+from typing import List
+def f(a: List[int], x: int) -> None:
+    a.append(x)
+[out]
+def f(a, x):
+    a :: list
+    x :: int
+    r0 :: object
+    r1 :: bool
+    r2, r3 :: None
+L0:
+    r0 = box(int, x)
+    r1 = a.append(r0) :: list
+    r2 = None
+    r3 = None
+    return r3
+
+[case testIndexLvalue]
+from typing import List
+def increment(l: List[int]) -> List[int]:
+    for i in range(len(l)):
+        l[i] += 1
+    return l
+[out]
+def increment(l):
+    l :: list
+    r0, r1, r2 :: short_int
+    i :: int
+    r3 :: bool
+    r4 :: object
+    r5 :: short_int
+    r6, r7 :: object
+    r8 :: bool
+    r9, r10 :: short_int
+L0:
+    r0 = 0
+    r1 = len l :: list
+    r2 = r0
+    i = r2
+L1:
+    r3 = i < r1 :: int
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = l[i] :: list
+    r5 = 1
+    r6 = box(short_int, r5)
+    r7 = r4 += r6
+    r8 = l.__setitem__(i, r7) :: list
+L3:
+    r9 = 1
+    r10 = r2 + r9 :: short_int
+    r2 = r10
+    i = r10
+    goto L1
+L4:
+    return l
+
+[case testListDisplay]
+from typing import List
+def f(x: List[int], y: List[int]) -> List[int]:
+    return [1, 2, *x, *y, 3]
+[out]
+def f(x, y):
+    x, y :: list
+    r0, r1, r2 :: short_int
+    r3, r4 :: object
+    r5 :: list
+    r6, r7, r8 :: object
+    r9 :: bool
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = box(short_int, r0)
+    r4 = box(short_int, r1)
+    r5 = [r3, r4]
+    r6 = r5.extend(x) :: list
+    r7 = r5.extend(y) :: list
+    r8 = box(short_int, r2)
+    r9 = r5.append(r8) :: list
+    return r5
+
