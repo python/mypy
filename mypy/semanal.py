@@ -3982,7 +3982,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return sym
 
     def is_missing_module(self, module: str) -> bool:
-        return self.options.ignore_missing_imports or module in self.missing_modules
+        return module in self.missing_modules
 
     def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
                         source_type: AnyType) -> SymbolTableNode:
