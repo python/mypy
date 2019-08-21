@@ -13,10 +13,10 @@ can hold various things:
 from abc import abstractmethod
 from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
-    Union, Iterable, Type, Set
+    Union, Iterable, Set
 )
+from typing_extensions import Final, Type
 from collections import OrderedDict
-
 
 from mypy.nodes import ARG_NAMED_OPT, ARG_OPT, ARG_POS, Block, FuncDef, SymbolNode
 
@@ -25,8 +25,6 @@ from mypy_extensions import trait
 from mypyc.namegen import NameGenerator
 
 MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 T = TypeVar('T')
 
