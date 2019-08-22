@@ -43,3 +43,12 @@ include/
 
 .tox
 pip-wheel-metadata
+
+
+test_capi
+*.o
+*.a
+test_capi
+/.mypyc-flake8-cache.json
+/mypyc/lib-rt/build/
+/mypyc/lib-rt/*.so

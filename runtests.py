@@ -23,6 +23,9 @@ EVALUATION = 'PythonEvaluation'
 DAEMON = 'testdaemon'
 STUBGEN_CMD = 'StubgenCmdLine'
 STUBGEN_PY = 'StubgenPythonSuite'
+MYPYC_RUN = 'TestRun'
+MYPYC_RUN_MULTI = 'TestRunMultiFile'
+
 
 ALL_NON_FAST = [CMDLINE,
                 SAMPLES,
@@ -31,7 +34,9 @@ ALL_NON_FAST = [CMDLINE,
                 EVALUATION,
                 DAEMON,
                 STUBGEN_CMD,
-                STUBGEN_PY]
+                STUBGEN_PY,
+                MYPYC_RUN,
+                MYPYC_RUN_MULTI]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
@@ -49,7 +54,8 @@ cmds = {
                                                       STUBGEN_CMD,
                                                       STUBGEN_PY]),
     # Test cases that may take seconds to run each
-    'pytest-slow': 'pytest -k "%s"' % ' or '.join([SAMPLES, TYPESHED, PEP561, DAEMON]),
+    'pytest-slow': 'pytest -k "%s"' % ' or '.join(
+        [SAMPLES, TYPESHED, PEP561, DAEMON, MYPYC_RUN, MYPYC_RUN_MULTI]),
 }
 
 # Stop run immediately if these commands fail

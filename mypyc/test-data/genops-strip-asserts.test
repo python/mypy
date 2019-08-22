@@ -1,0 +1,18 @@
+[case testStripAssert1]
+def g():
+  x = 1 + 2
+  assert x < 5
+  return x
+[out]
+def g():
+    r0, r1 :: short_int
+    r2 :: int
+    r3, x :: object
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = r0 + r1 :: int
+    r3 = box(int, r2)
+    x = r3
+    return x
+

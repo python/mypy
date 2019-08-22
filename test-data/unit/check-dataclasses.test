@@ -698,3 +698,35 @@ C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib
 [builtins fixtures/bool.pyi]
+
+[case testDeferredDataclassInitSignature]
+from dataclasses import dataclass
+from typing import Optional, Type
+
+@dataclass
+class C:
+    x: Optional[int] = None
+    y: Type[Deferred] = Deferred
+
+    @classmethod
+    def default(cls) -> C:
+        return cls(x=None, y=None)
+
+class Deferred: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testDeferredDataclassInitSignatureSubclass]
+# flags: --strict-optional
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class B:
+    x: Optional[C]
+
+@dataclass
+class C(B):
+    y: str
+
+a = C(None, 'abc')
+[builtins fixtures/bool.pyi]

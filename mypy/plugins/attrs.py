@@ -84,7 +84,7 @@ class Attribute:
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
             # Get the type of the converter.
-            converter_type = None
+            converter_type = None  # type: Optional[Type]
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
                 converter_type = type_object_type(converter.node, ctx.api.builtin_type)

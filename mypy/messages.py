@@ -22,7 +22,8 @@ from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
-    UninhabitedType, TypeOfAny, UnboundType, PartialType,
+    UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
+    get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -173,6 +174,9 @@ class MessageBuilder:
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
         """
+        original_type = get_proper_type(original_type)
+        typ = get_proper_type(typ)
+
         if (isinstance(original_type, Instance) and
                 original_type.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
@@ -312,6 +316,8 @@ class MessageBuilder:
         that corresponds to an operator, use the corresponding
         operator name in the messages.
         """
+        arg_type = get_proper_type(arg_type)
+
         target = ''
         callee_name = callable_name(callee)
         if callee_name is not None:
@@ -449,8 +455,9 @@ class MessageBuilder:
                 arg_label, target, quote_type_string(arg_type_str),
                 quote_type_string(expected_type_str))
             code = codes.ARG_TYPE
+            expected_type = get_proper_type(expected_type)
             if isinstance(expected_type, UnionType):
-                expected_types = list(expected_type.items)  # type: List[Type]
+                expected_types = list(expected_type.items)
             else:
                 expected_types = [expected_type]
             for type in expected_types:
@@ -535,6 +542,7 @@ class MessageBuilder:
     def does_not_return_value(self, callee_type: Optional[Type], context: Context) -> None:
         """Report an error about use of an unusable type."""
         name = None  # type: Optional[str]
+        callee_type = get_proper_type(callee_type)
         if isinstance(callee_type, FunctionLike):
             name = callable_name(callee_type)
         if name is not None:
@@ -681,7 +689,7 @@ class MessageBuilder:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
 
-    def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
+    def alias_invalid_in_runtime_context(self, item: ProperType, ctx: Context) -> None:
         kind = (' to Callable' if isinstance(item, CallableType) else
                 ' to Tuple' if isinstance(item, TupleType) else
                 ' to Union' if isinstance(item, UnionType) else
@@ -701,6 +709,7 @@ class MessageBuilder:
         self.fail('List or tuple expected as variable arguments', context)
 
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
+        typ = get_proper_type(typ)
         if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
@@ -715,6 +724,7 @@ class MessageBuilder:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
+        actual = get_proper_type(actual)
         if isinstance(actual, Instance):
             # Don't include type of instance, because it can look confusingly like a type
             # object.
@@ -1027,6 +1037,7 @@ class MessageBuilder:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
 
     def disallowed_any_type(self, typ: Type, context: Context) -> None:
+        typ = get_proper_type(typ)
         if isinstance(typ, AnyType):
             message = 'Expression has type "Any"'
         else:
@@ -1039,6 +1050,7 @@ class MessageBuilder:
         self.fail(message, context, code=codes.NO_ANY_RETURN)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
+        typ = get_proper_type(typ)
         if isinstance(typ, AnyType):
             self.fail("Function is untyped after decorator transformation", context)
         else:
@@ -1129,7 +1141,7 @@ class MessageBuilder:
                       Instance: []}  # type: Dict[type, List[str]]
         if supertype.type.fullname() in exclusions[type(subtype)]:
             return
-        if any(isinstance(tp, UninhabitedType) for tp in supertype.args):
+        if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
             # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
             # This will be only confusing a user even more.
             return
@@ -1163,6 +1175,8 @@ class MessageBuilder:
             self.note('Following member(s) of {} have '
                       'conflicts:'.format(format_type(subtype)), context)
             for name, got, exp in conflict_types[:MAX_ITEMS]:
+                exp = get_proper_type(exp)
+                got = get_proper_type(got)
                 if (not isinstance(exp, (CallableType, Overloaded)) or
                         not isinstance(got, (CallableType, Overloaded))):
                     self.note('{}: expected {}, got {}'.format(name,
@@ -1276,6 +1290,9 @@ def format_type_inner(typ: Type,
     """
     def format(typ: Type) -> str:
         return format_type_inner(typ, verbosity, fullnames)
+
+    # TODO: show type alias names in errors.
+    typ = get_proper_type(typ)
 
     if isinstance(typ, Instance):
         itype = typ
@@ -1557,10 +1574,10 @@ def pretty_callable(tp: CallableType) -> str:
     if tp.variables:
         tvars = []
         for tvar in tp.variables:
-            if (tvar.upper_bound and isinstance(tvar.upper_bound, Instance) and
-                    tvar.upper_bound.type.fullname() != 'builtins.object'):
-                tvars.append('{} <: {}'.format(tvar.name,
-                                               format_type_bare(tvar.upper_bound)))
+            upper_bound = get_proper_type(tvar.upper_bound)
+            if (isinstance(upper_bound, Instance) and
+                    upper_bound.type.fullname() != 'builtins.object'):
+                tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
             elif tvar.values:
                 tvars.append('{} in ({})'
                              .format(tvar.name, ', '.join([format_type_bare(tp)
@@ -1784,6 +1801,8 @@ def make_inferred_type_note(context: Context, subtype: Type,
     of relying on the inferred type.
     """
     from mypy.subtypes import is_subtype
+    subtype = get_proper_type(subtype)
+    supertype = get_proper_type(supertype)
     if (isinstance(subtype, Instance) and
             isinstance(supertype, Instance) and
             subtype.type.fullname() == supertype.type.fullname() and
