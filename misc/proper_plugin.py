@@ -1,16 +1,13 @@
 from mypy.plugin import Plugin, FunctionContext
 from mypy.types import (
     Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
-    get_proper_types, TupleType, NoneTyp
+    get_proper_types, TupleType, NoneTyp, AnyType
 )
 from mypy.nodes import TypeInfo
 from mypy.subtypes import is_proper_subtype
 
-import os.path
 from typing_extensions import Type as typing_Type
 from typing import Optional, Callable
-
-FILE_WHITELIST = []
 
 
 class ProperTypePlugin(Plugin):
@@ -37,11 +34,10 @@ class ProperTypePlugin(Plugin):
 
 
 def isinstance_proper_hook(ctx: FunctionContext) -> Type:
-    if os.path.split(ctx.api.path)[-1] in FILE_WHITELIST:
-        return ctx.default_return_type
+    right = get_proper_type(ctx.arg_types[1][0])
     for arg in ctx.arg_types[0]:
-        if is_improper_type(arg):
-            right = get_proper_type(ctx.arg_types[1][0])
+        if (is_improper_type(arg) or
+                isinstance(get_proper_type(arg), AnyType) and is_dangerous_target(right)):
             if is_special_target(right):
                 return ctx.default_return_type
             ctx.api.fail('Never apply isinstance() to unexpanded types;'
@@ -62,6 +58,7 @@ def is_special_target(right: ProperType) -> bool:
             return True
         if right.type_object().fullname() in ('mypy.types.UnboundType',
                                               'mypy.types.TypeVarType',
+                                              'mypy.types.RawExpressionType',
                                               'mypy.types.EllipsisType',
                                               'mypy.types.StarType',
                                               'mypy.types.TypeList',
@@ -84,6 +81,15 @@ def is_improper_type(typ: Type) -> bool:
         return info.has_base('mypy.types.Type') and not info.has_base('mypy.types.ProperType')
     if isinstance(typ, UnionType):
         return any(is_improper_type(t) for t in typ.items)
+    return False
+
+
+def is_dangerous_target(typ: ProperType) -> bool:
+    """Is this a dangerous target (right argument) for an isinstance() check?"""
+    if isinstance(typ, TupleType):
+        return any(is_dangerous_target(get_proper_type(t)) for t in typ.items)
+    if isinstance(typ, CallableType) and typ.is_type_obj():
+        return typ.type_object().has_base('mypy.types.Type')
     return False
 
 
