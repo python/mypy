@@ -840,8 +840,7 @@ class LinePrecisionReporter(AbstractReporter):
         width = max(4, max(len(info.module) for info in output_files))
         titles = ('Lines', 'Precise', 'Imprecise', 'Any', 'Empty', 'Unanalyzed')
         widths = (width,) + tuple(len(t) for t in titles)
-        # TODO: Need mypyc mypy pin move
-        fmt = '{:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}\n' % widths  # type: ignore
+        fmt = '{:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}\n' % widths
         with open(report_file, 'w') as f:
             f.write(
                 fmt.format('Name', *titles))

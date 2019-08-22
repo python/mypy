@@ -196,7 +196,7 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
         else:
             return sig.with_name(fdef.name())
     else:
-        return get_proper_type(sig)
+        return sig
 
 
 def calculate_tuple_fallback(typ: TupleType) -> None:

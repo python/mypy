@@ -86,7 +86,8 @@ from mypy import message_registry, errorcodes as codes
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType
+    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
+    get_proper_type, get_proper_types
 )
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -568,7 +569,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             defn.info = self.type
             if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
                 assert isinstance(defn.type, CallableType)
-                if isinstance(defn.type.ret_type, AnyType):
+                if isinstance(get_proper_type(defn.type.ret_type), AnyType):
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
 
@@ -619,7 +620,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(functype, CallableType):
                 if func.name() == '__init_subclass__':
                     func.is_class = True
-                self_type = functype.arg_types[0]
+                self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
                     leading_type = fill_typevars(info)  # type: Type
                     if func.is_class or func.name() == '__new__':
@@ -913,14 +914,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.leave()
             self.function_stack.pop()
 
-    def check_classvar_in_signature(self, typ: Type) -> None:
+    def check_classvar_in_signature(self, typ: ProperType) -> None:
         if isinstance(typ, Overloaded):
-            for t in typ.items():  # type: Type
+            for t in typ.items():  # type: ProperType
                 self.check_classvar_in_signature(t)
             return
         if not isinstance(typ, CallableType):
             return
-        for t in typ.arg_types + [typ.ret_type]:
+        for t in get_proper_types(typ.arg_types) + [get_proper_type(typ.ret_type)]:
             if self.is_classvar(t):
                 self.fail_invalid_classvar(t)
                 # Show only one error per signature
@@ -1390,7 +1391,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def analyze_base_classes(
             self,
-            base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[Type, Expression]],
+            base_type_exprs: List[Expression]) -> Optional[Tuple[List[Tuple[ProperType,
+                                                                            Expression]],
                                                                  bool]]:
         """Analyze base class types.
 
@@ -1423,12 +1425,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 continue
             if base is None:
                 return None
+            base = get_proper_type(base)
             bases.append((base, base_expr))
         return bases, is_error
 
     def configure_base_classes(self,
                                defn: ClassDef,
-                               bases: List[Tuple[Type, Expression]]) -> None:
+                               bases: List[Tuple[ProperType, Expression]]) -> None:
         """Set up base classes.
 
         This computes several attributes on the corresponding TypeInfo defn.info
@@ -1627,7 +1630,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
-            if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
+            if isinstance(sym.node, Var) and isinstance(get_proper_type(sym.node.type), AnyType):
                 # 'Any' metaclass -- just ignore it.
                 #
                 # TODO: A better approach would be to record this information
@@ -2478,7 +2481,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
-        no_args = isinstance(res, Instance) and not res.args
+        no_args = isinstance(res, Instance) and not res.args  # type: ignore
         fix_instance_types(res, self.fail)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
@@ -2772,6 +2775,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 var.is_ready = True
             # If node is not a variable, we'll catch it elsewhere.
         elif isinstance(lvalue, TupleExpr):
+            typ = get_proper_type(typ)
             if isinstance(typ, TupleType):
                 if len(lvalue.items) != len(typ.items):
                     self.fail('Incompatible number of tuple items', lvalue)
@@ -2950,7 +2954,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         #     class Custom(Generic[T]):
                         #         ...
                         analyzed = PlaceholderType(None, [], context.line)
-                    upper_bound = analyzed
+                    upper_bound = get_proper_type(analyzed)
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
                         self.fail("TypeVar 'bound' must be a type", param_value)
                         # Note: we do not return 'None' here -- we want to continue
@@ -3242,6 +3246,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         types = []  # type: List[Type]
 
         if s.unanalyzed_type:
+            assert isinstance(s.unanalyzed_type, ProperType)
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
@@ -3581,6 +3586,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                     if formal_arg and formal_arg.pos == 0:
                         type_info = self.type
             elif isinstance(base.node, TypeAlias) and base.node.no_args:
+                assert isinstance(base.node.target, ProperType)
+                # TODO: support chained aliases.
                 if isinstance(base.node.target, Instance):
                     type_info = base.node.target.type
 
@@ -3643,8 +3650,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         # subscripted either via type alias...
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
             alias = base.node
-            if isinstance(alias.target, Instance):
-                name = alias.target.type.fullname()
+            target = get_proper_type(alias.target)
+            if isinstance(target, Instance):
+                name = target.type.fullname()
                 if (alias.no_args and  # this avoids bogus errors for already reported aliases
                         name in nongen_builtins and not alias.normalized):
                     self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
@@ -3928,9 +3936,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 elif isinstance(node, PlaceholderNode):
                     return sym
                 else:
-                    if isinstance(node, Var) and isinstance(node.type, AnyType):
-                        # Allow access through Var with Any type without error.
-                        return self.implicit_symbol(sym, name, parts[i:], node.type)
+                    if isinstance(node, Var):
+                        typ = get_proper_type(node.type)
+                        if isinstance(typ, AnyType):
+                            # Allow access through Var with Any type without error.
+                            return self.implicit_symbol(sym, name, parts[i:], typ)
                     # Lookup through invalid node, such as variable or function
                     nextsym = None
                 if not nextsym or nextsym.module_hidden:
@@ -4013,8 +4023,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         avoid.
         """
         if isinstance(getattr_defn.node, (FuncDef, Var)):
-            if isinstance(getattr_defn.node.type, CallableType):
-                typ = getattr_defn.node.type.ret_type
+            node_type = get_proper_type(getattr_defn.node.type)
+            if isinstance(node_type, CallableType):
+                typ = node_type.ret_type
             else:
                 typ = AnyType(TypeOfAny.from_error)
             v = Var(name, type=typ)
@@ -4092,7 +4103,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return None
         node = sym.node
         if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)
+            assert isinstance(node.target, Instance)  # type: ignore
             node = node.target.type
         assert isinstance(node, TypeInfo), node
         if args is not None:
@@ -4787,9 +4798,13 @@ def refers_to_fullname(node: Expression, fullname: str) -> bool:
     """Is node a name or member expression with the given full name?"""
     if not isinstance(node, RefExpr):
         return False
-    return (node.fullname == fullname or
-            isinstance(node.node, TypeAlias) and isinstance(node.node.target, Instance)
-            and node.node.target.type.fullname() == fullname)
+    if node.fullname == fullname:
+        return True
+    if isinstance(node.node, TypeAlias):
+        target = get_proper_type(node.node.target)
+        if isinstance(target, Instance) and target.type.fullname() == fullname:
+            return True
+    return False
 
 
 def refers_to_class_or_function(node: Expression) -> bool:

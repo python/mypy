@@ -420,7 +420,7 @@ class SuggestionEngine:
             typ = None
             if (isinstance(dec, RefExpr)
                     and isinstance(dec.node, FuncDef)):
-                typ = get_proper_type(dec.node.type)
+                typ = dec.node.type
             elif (isinstance(dec, CallExpr)
                     and isinstance(dec.callee, RefExpr)
                     and isinstance(dec.callee.node, FuncDef)
