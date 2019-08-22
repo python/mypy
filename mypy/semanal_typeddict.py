@@ -1,7 +1,7 @@
 """Semantic analysis of TypedDict definitions."""
 
 from collections import OrderedDict
-from typing import Optional, List, Set, Tuple, cast
+from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 
 from mypy.types import Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES
@@ -191,12 +191,11 @@ class TypedDictAnalyzer:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
             return True, None
-        items, types, total, ok = res
+        name, items, types, total, ok = res
         if not ok:
             # Error. Construct dummy return value.
             info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
         else:
-            name = cast(StrExpr, call.args[0]).value
             if var_name is not None and name != var_name:
                 self.fail(
                     "First argument '{}' to TypedDict() does not match variable name '{}'".format(
@@ -216,7 +215,7 @@ class TypedDictAnalyzer:
         call.analyzed.set_line(call.line, call.column)
         return True, info
 
-    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[List[str], List[Type],
+    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[str, List[str], List[Type],
                                                                      bool, bool]]:
         """Parse typed dict call expression.
 
@@ -262,7 +261,7 @@ class TypedDictAnalyzer:
                 if has_any_from_unimported_type(t):
                     self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         assert total is not None
-        return items, types, total, ok
+        return args[0].value, items, types, total, ok
 
     def parse_typeddict_fields_with_types(
             self,
@@ -293,9 +292,9 @@ class TypedDictAnalyzer:
         return items, types, True
 
     def fail_typeddict_arg(self, message: str,
-                           context: Context) -> Tuple[List[str], List[Type], bool, bool]:
+                           context: Context) -> Tuple[str, List[str], List[Type], bool, bool]:
         self.fail(message, context)
-        return [], [], True, False
+        return '', [], [], True, False
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type],
