@@ -13,10 +13,10 @@ from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
-    CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
+    CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType, get_proper_type, ProperType
+    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType
 )
 
 from mypy.nodes import (
@@ -456,6 +456,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
+    def visit_erased_type(self, t: ErasedType) -> Type:
+        # This type should exist only temporarily during type inference
+        assert False, "Internal error: Unexpected erased type"
+
     def visit_deleted_type(self, t: DeletedType) -> Type:
         return t
 
@@ -489,6 +493,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                             else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables))
         return ret
+
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        # Overloaded types are manually constructed in semanal.py by analyzing the
+        # AST and combining together the Callable types this visitor converts.
+        #
+        # So if we're ever asked to reanalyze an Overloaded type, we know it's
+        # fine to just return it as-is.
+        return t
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll

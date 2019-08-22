@@ -96,7 +96,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, Overloaded, TypeOfAny, LiteralType, get_proper_type, ProperType
+    FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -900,6 +900,10 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         for item in typ.items():
             triggers.extend(self.get_type_triggers(item))
         return triggers
+
+    def visit_erased_type(self, t: ErasedType) -> List[str]:
+        # This type should exist only temporarily during type inference
+        assert False, "Should not see an erased type here"
 
     def visit_deleted_type(self, typ: DeletedType) -> List[str]:
         return []
