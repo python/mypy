@@ -2331,3 +2331,22 @@ def f(x: any) -> None:  # E: Name 'any' is not defined \
 def f(x: Optional[str]) -> None:  # E: Name 'Optional' is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Optional")
     pass
+
+[case testAssertionLazilyWithIsNone]
+from typing import Optional, List
+li: Optional[List] = []
+assert li is None, li[0]
+[builtins fixtures/list.pyi]
+
+
+[case testAssertionLazilyWithIsInstance]
+from typing import Optional, List
+li: Optional[List] = []
+assert not isinstance(li,list), li[0]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testAssertCurrentFrameIsNotUnreachable]
+def f() -> int:  # E: Missing return statement
+    x: int
+    assert isinstance(x, int), '...'
+[builtins fixtures/isinstance.pyi]

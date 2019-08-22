@@ -2979,14 +2979,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         self.expr_checker.accept(s.expr)
 
-        if s.msg is not None:
-            self.expr_checker.accept(s.msg)
-
         if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
             self.fail(message_registry.MALFORMED_ASSERT, s)
 
         # If this is asserting some isinstance check, bind that type in the following code
-        true_map, _ = self.find_isinstance_check(s.expr)
+        true_map, else_map = self.find_isinstance_check(s.expr)
+        if s.msg is not None:
+            self.expr_checker.analyze_cond_branch(else_map, s.msg, None)
         self.push_type_map(true_map)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
