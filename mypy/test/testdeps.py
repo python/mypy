@@ -45,6 +45,7 @@ class GetDependenciesSuite(DataSuite):
         options.cache_dir = os.devnull
         options.python_version = python_version
         options.export_types = True
+        options.preserve_asts = True
         messages, files, type_map = self.build(src, options)
         a = messages
         if files is None or type_map is None:
@@ -65,7 +66,7 @@ class GetDependenciesSuite(DataSuite):
             TypeState.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
-                if source.startswith('<enum.'):
+                if source.startswith(('<enum', '<typing', '<mypy')):
                     # Remove noise.
                     continue
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))

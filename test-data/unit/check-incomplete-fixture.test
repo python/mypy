@@ -36,14 +36,6 @@ main:1: error: Module 'typing' has no attribute 'Set'
 main:1: note: Maybe your test fixture does not define "builtins.set"?
 main:1: note: Consider adding [builtins fixtures/set.pyi] to your test description
 
-[case testBoolMissingFromStubs]
-# flags: --no-new-semantic-analyzer
-x: bool  # This always works with the new semantic analyzer
-[out]
-main:2: error: Name 'bool' is not defined
-main:2: note: Maybe your test fixture does not define "builtins.bool"?
-main:2: note: Consider adding [builtins fixtures/bool.pyi] to your test description
-
 [case testBaseExceptionMissingFromStubs]
 e: BaseException
 [out]

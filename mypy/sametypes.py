@@ -4,12 +4,15 @@ from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
+    ProperType, get_proper_type
 )
 from mypy.typeops import tuple_fallback
 
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+    left = get_proper_type(left)
+    right = get_proper_type(right)
 
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
@@ -29,7 +32,8 @@ def is_same_type(left: Type, right: Type) -> bool:
         return left.accept(SameTypeVisitor(right))
 
 
-def simplify_union(t: Type) -> Type:
+def simplify_union(t: Type) -> ProperType:
+    t = get_proper_type(t)
     if isinstance(t, UnionType):
         return UnionType.make_simplified_union(t.items)
     return t
@@ -47,7 +51,7 @@ def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:
 class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
 
-    def __init__(self, right: Type) -> None:
+    def __init__(self, right: ProperType) -> None:
         self.right = right
 
     # visit_x(left) means: is left (which is an instance of X) the same type as

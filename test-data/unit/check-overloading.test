@@ -1,6 +1,6 @@
 -- Test cases for function overloading
 [case testOverloadNotImportedNoCrash]
-# flags: --new-semantic-analyzer
+
 @overload
 def f(a): pass
 @overload
@@ -1522,7 +1522,7 @@ f(0)  # E: No overload variant of "f" matches argument type "int" \
       # N:     def f(a: str) -> None
 
 [case testCustomRedefinitionDecorator]
-# flags: --new-semantic-analyzer
+
 from typing import Any, Callable, Type
 
 class Chain(object):
@@ -2551,11 +2551,9 @@ reveal_type(f(**{'x': 4, 'y': 4}))           # N: Revealed type is 'builtins.tup
 reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is 'builtins.tuple[builtins.int]'
 [builtins fixtures/dict.pyi]
 
-[case testOverloadKwargsSelectionWithTypedDict-skip]
-# TODO: Mypy doesn't seem to correctly destructure typed dicts in general.
-#       We should re-enable this once https://github.com/python/mypy/issues/5198 is resolved
+[case testOverloadKwargsSelectionWithTypedDict]
 from typing import overload, Tuple
-from mypy_extensions import TypedDict
+from typing_extensions import TypedDict
 @overload
 def f(*, x: int) -> Tuple[int]: ...
 @overload
@@ -5028,3 +5026,48 @@ def asdf() -> None:
 @dec
 def lol(x: int, y: int) -> int:
     pass
+
+[case testVeryBrokenOverload]
+import lib
+reveal_type(lib.func)
+[file lib.pyi]
+@overload
+def func(x: int) -> int: ...
+
+def func(x):
+    return x
+[out]
+tmp/lib.pyi:1: error: Name 'overload' is not defined
+tmp/lib.pyi:4: error: Name 'func' already defined on line 1
+main:2: note: Revealed type is 'Any'
+
+-- Order of errors is different
+[case testVeryBrokenOverload2]
+
+import lib
+reveal_type(lib.func)
+[file lib.pyi]
+@overload
+def func(x: int) -> int: ...
+@overload
+def func(x: str) -> str: ...
+[out]
+tmp/lib.pyi:1: error: Name 'overload' is not defined
+tmp/lib.pyi:3: error: Name 'func' already defined on line 1
+tmp/lib.pyi:3: error: Name 'overload' is not defined
+main:3: note: Revealed type is 'Any'
+
+[case testLiteralSubtypeOverlap]
+from typing import overload
+from typing_extensions import Literal
+
+class MyInt(int): ...
+
+# Strictly speaking we can't prove this is unsafe (this depends on the implementation),
+# but such APIs seem like an anti-pattern anyways.
+@overload
+def foo(x: Literal[0]) -> None: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo(x: MyInt) -> int: ...
+def foo(x):
+    ...

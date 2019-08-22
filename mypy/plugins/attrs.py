@@ -20,7 +20,7 @@ from mypy.plugins.common import (
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
-    Overloaded, UnionType, FunctionLike
+    Overloaded, UnionType, FunctionLike, get_proper_type
 )
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
@@ -84,7 +84,7 @@ class Attribute:
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
             # Get the type of the converter.
-            converter_type = None
+            converter_type = None  # type: Optional[Type]
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
                 converter_type = type_object_type(converter.node, ctx.api.builtin_type)
@@ -94,6 +94,7 @@ class Attribute:
                 converter_type = converter.type
 
             init_type = None
+            converter_type = get_proper_type(converter_type)
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
@@ -209,17 +210,16 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
-    if ctx.api.options.new_semantic_analyzer:
-        # Check if attribute types are ready.
-        for attr in attributes:
-            node = info.get(attr.name)
-            if node is None:
-                # This name is likely blocked by a star import. We don't need to defer because
-                # defer() is already called by mark_incomplete().
-                return
-            if node.type is None and not ctx.api.final_iteration:
-                ctx.api.defer()
-                return
+    # Check if attribute types are ready.
+    for attr in attributes:
+        node = info.get(attr.name)
+        if node is None:
+            # This name is likely blocked by a star import. We don't need to defer because
+            # defer() is already called by mark_incomplete().
+            return
+        if node.type is None and not ctx.api.final_iteration:
+            ctx.api.defer()
+            return
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {

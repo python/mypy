@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import os
 import re
 import pprint
 import sys
@@ -54,7 +53,7 @@ PER_MODULE_OPTIONS = {
 }  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"platform", "bazel", "plugins", "new_semantic_analyzer"})
+                            {"platform", "bazel", "plugins"})
                            - {"debug_cache"})  # type: Final
 
 
@@ -85,9 +84,6 @@ class Options:
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
         self.namespace_packages = False
-
-        # Use the new semantic analyzer
-        self.new_semantic_analyzer = bool(os.getenv('NEWSEMANAL'))
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -211,6 +207,12 @@ class Options:
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False
 
+        # Disable the memory optimization of freeing ASTs when
+        # possible. This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like mypyc.)
+        self.preserve_asts = False
+
         # Paths of user plugins
         self.plugins = []  # type: List[str]
 
@@ -237,6 +239,7 @@ class Options:
         # -- experimental options --
         self.shadow_file = None  # type: Optional[List[List[str]]]
         self.show_column_numbers = False  # type: bool
+        self.show_error_codes = False
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False
@@ -252,6 +255,11 @@ class Options:
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = False
+
+    # To avoid breaking plugin compatability, keep providing new_semantic_analyzer
+    @property
+    def new_semantic_analyzer(self) -> bool:
+        return True
 
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""

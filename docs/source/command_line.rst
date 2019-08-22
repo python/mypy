@@ -392,14 +392,14 @@ potentially problematic or redundant in some way.
         throws an error or terminates the program in some way.
     2.  When the unreachable statement was *intentionally* marked as unreachable
         using :ref:`version_and_platform_checks`.
-    
+
     .. note::
 
         Mypy currently cannot detect and report unreachable or redundant code
         inside any functions using :ref:`type-variable-value-restriction`.
 
         This limitation will be removed in future releases of mypy.
-        
+
 
 Miscellaneous strictness flags
 ******************************
@@ -429,8 +429,8 @@ of the above sections.
 ``--no-implicit-reexport``
     By default, imported values to a module are treated as exported and mypy allows
     other modules to import them. This flag changes the behavior to not re-export unless
-    the item is imported using from-as. Note this is always treated as enabled for
-    stub files. For example:
+    the item is imported using from-as or is included in ``__all__``. Note this is
+    always treated as enabled for stub files. For example:
 
     .. code-block:: python
 
@@ -438,6 +438,9 @@ of the above sections.
        from foo import bar
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+       # This will also re-export bar
+       from foo import bar
+       __all__ = ['bar']
 
 
 ``--strict-equality``
@@ -658,19 +661,6 @@ Miscellaneous
     (The default ``__main__`` is technically more correct, but if you
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
-
-``--new-semantic-analyzer``
-    This flag switches to an improved, experimental implementation of
-    the *semantic analyzer* (the part of mypy that binds Python
-    names to definitions). The old and the new semantic analyzers
-    mostly behave identically. The new semantic analyzer is better at
-    handling import cycles and forward references to definitions. It
-    also fixes inconsistencies between the daemon and non-daemon modes,
-    and it detects additional error conditions.
-
-    Likely, the next mypy release will use the new semantic analyzer by
-    default, and the old semantic analyzer will be removed in the next
-    release after that.
 
 .. _PEP 420: https://www.python.org/dev/peps/pep-0420/
 

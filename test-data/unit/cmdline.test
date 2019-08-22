@@ -836,9 +836,9 @@ def h(s) -> Tuple[str, str]:  # no error
     return 'a', 'b'
 x: Tuple = ()  # error
 [out]
-m.py:3: error: Missing type parameters for generic type
-m.py:4: error: Missing type parameters for generic type
-m.py:8: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "Tuple"
+m.py:4: error: Missing type parameters for generic type "Tuple"
+m.py:8: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
 # cmd: mypy m.py
@@ -853,7 +853,7 @@ from typing import Tuple, List
 def f(s: List[Tuple]) -> None: pass  # error
 def g(s: List[Tuple[str, str]]) -> None: pass  # no error
 [out]
-m.py:3: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "Tuple"
 
 [case testDisallowAnyGenericsTypeType]
 # cmd: mypy --python-version=3.6 m.py
@@ -872,8 +872,8 @@ def h(s) -> Type[str]:  # no error
     return s
 x: Type = g(0)  # error
 [out]
-m.py:4: error: Missing type parameters for generic type
-m.py:8: error: Missing type parameters for generic type
+m.py:4: error: Missing type parameters for generic type "Type"
+m.py:8: error: Missing type parameters for generic type "Type"
 
 [case testDisallowAnyGenericsAliasGenericType]
 # cmd: mypy m.py
@@ -890,7 +890,7 @@ L = List  # no error
 def f(l: L) -> None: pass  # error
 def g(l: L[str]) -> None: pass  # no error
 [out]
-m.py:5: error: Missing type parameters for generic type
+m.py:5: error: Missing type parameters for generic type "L"
 
 [case testDisallowAnyGenericsGenericAlias]
 # cmd: mypy --python-version=3.6 m.py
@@ -912,9 +912,9 @@ def h(s) -> A[str]:  # no error
     return 'a', 'b', 'c'
 x: A = ('a', 'b', 1)  # error
 [out]
-m.py:6: error: Missing type parameters for generic type
-m.py:7: error: Missing type parameters for generic type
-m.py:11: error: Missing type parameters for generic type
+m.py:6: error: Missing type parameters for generic type "A"
+m.py:7: error: Missing type parameters for generic type "A"
+m.py:11: error: Missing type parameters for generic type "A"
 
 [case testDisallowAnyGenericsPlainList]
 # cmd: mypy --python-version=3.6 m.py
@@ -934,11 +934,11 @@ def i(l: List[List[List[List]]]) -> None: pass  # error
 x = []  # error: need type annotation
 y: List = []  # error
 [out]
-m.py:3: error: Missing type parameters for generic type
-m.py:5: error: Missing type parameters for generic type
-m.py:6: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "List"
+m.py:5: error: Missing type parameters for generic type "List"
+m.py:6: error: Missing type parameters for generic type "List"
 m.py:8: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
-m.py:9: error: Missing type parameters for generic type
+m.py:9: error: Missing type parameters for generic type "List"
 
 [case testDisallowAnyGenericsCustomGenericClass]
 # cmd: mypy --python-version=3.6 m.py
@@ -960,8 +960,8 @@ x: G[Any] = G()  # no error
 y: G = x  # error
 
 [out]
-m.py:6: error: Missing type parameters for generic type
-m.py:10: error: Missing type parameters for generic type
+m.py:6: error: Missing type parameters for generic type "G"
+m.py:10: error: Missing type parameters for generic type "G"
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -1001,11 +1001,11 @@ def h(s: Dict) -> None: pass
 def i(s: Set) -> None: pass
 def j(s: FrozenSet) -> None: pass
 [out]
-m.py:3: error: Missing type parameters for generic type
-m.py:4: error: Missing type parameters for generic type
-m.py:5: error: Missing type parameters for generic type
-m.py:6: error: Missing type parameters for generic type
-m.py:7: error: Missing type parameters for generic type
+m.py:3: error: Missing type parameters for generic type "Tuple"
+m.py:4: error: Missing type parameters for generic type "List"
+m.py:5: error: Missing type parameters for generic type "Dict"
+m.py:6: error: Missing type parameters for generic type "Set"
+m.py:7: error: Missing type parameters for generic type "FrozenSet"
 
 [case testDisallowSubclassingAny]
 # cmd: mypy m.py y.py
@@ -1063,7 +1063,7 @@ strict_optional = True
 [[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
-a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type
+a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
 [case testDisallowUntypedDefsAndGenerics]
@@ -1123,6 +1123,19 @@ p.b.bar("wrong")
 p/a.py:4: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 p/b/__init__.py:5: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
+[case testSrcPEP420Packages]
+# cmd: mypy -p anamespace --namespace-packages
+[file mypy.ini]
+[[mypy]]
+mypy_path = src
+[file src/setup.cfg]
+[file src/anamespace/foo/__init__.py]
+[file src/anamespace/foo/bar.py]
+def bar(a: int, b: int) -> str:
+    return a + b
+[out]
+src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py

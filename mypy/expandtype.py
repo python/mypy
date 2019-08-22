@@ -4,11 +4,11 @@ from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef, LiteralType,
+    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType
 )
 
 
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> ProperType:
     """Substitute any type variable references in a type given by a type
     environment.
     """
@@ -16,9 +16,10 @@ def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     return typ.accept(ExpandTypeVisitor(env))
 
 
-def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
+def expand_type_by_instance(typ: Type, instance: Instance) -> ProperType:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
+    typ = get_proper_type(typ)
 
     if instance.args == []:
         return typ
@@ -52,7 +53,7 @@ def freshen_function_type_vars(callee: F) -> F:
         return cast(F, fresh_overload)
 
 
-class ExpandTypeVisitor(TypeVisitor[Type]):
+class ExpandTypeVisitor(TypeVisitor[ProperType]):
     """Visitor that substitutes type variables with values."""
 
     variables = None  # type: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
@@ -60,31 +61,31 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
 
-    def visit_unbound_type(self, t: UnboundType) -> Type:
+    def visit_unbound_type(self, t: UnboundType) -> ProperType:
         return t
 
-    def visit_any(self, t: AnyType) -> Type:
+    def visit_any(self, t: AnyType) -> ProperType:
         return t
 
-    def visit_none_type(self, t: NoneType) -> Type:
+    def visit_none_type(self, t: NoneType) -> ProperType:
         return t
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+    def visit_uninhabited_type(self, t: UninhabitedType) -> ProperType:
         return t
 
-    def visit_deleted_type(self, t: DeletedType) -> Type:
+    def visit_deleted_type(self, t: DeletedType) -> ProperType:
         return t
 
-    def visit_erased_type(self, t: ErasedType) -> Type:
+    def visit_erased_type(self, t: ErasedType) -> ProperType:
         # Should not get here.
         raise RuntimeError()
 
-    def visit_instance(self, t: Instance) -> Type:
+    def visit_instance(self, t: Instance) -> ProperType:
         args = self.expand_types(t.args)
         return Instance(t.type, args, t.line, t.column)
 
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        repl = self.variables.get(t.id, t)
+    def visit_type_var(self, t: TypeVarType) -> ProperType:
+        repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
             # Return copy of instance with type erasure flag on.
@@ -93,11 +94,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         else:
             return repl
 
-    def visit_callable_type(self, t: CallableType) -> Type:
+    def visit_callable_type(self, t: CallableType) -> ProperType:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
                                ret_type=t.ret_type.accept(self))
 
-    def visit_overloaded(self, t: Overloaded) -> Type:
+    def visit_overloaded(self, t: Overloaded) -> ProperType:
         items = []  # type: List[CallableType]
         for item in t.items():
             new_item = item.accept(self)
@@ -105,25 +106,25 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             items.append(new_item)
         return Overloaded(items)
 
-    def visit_tuple_type(self, t: TupleType) -> Type:
+    def visit_tuple_type(self, t: TupleType) -> ProperType:
         return t.copy_modified(items=self.expand_types(t.items))
 
-    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+    def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         return t.copy_modified(item_types=self.expand_types(t.items.values()))
 
-    def visit_literal_type(self, t: LiteralType) -> Type:
+    def visit_literal_type(self, t: LiteralType) -> ProperType:
         # TODO: Verify this implementation is correct
         return t
 
-    def visit_union_type(self, t: UnionType) -> Type:
+    def visit_union_type(self, t: UnionType) -> ProperType:
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
         return UnionType.make_simplified_union(self.expand_types(t.items), t.line, t.column)
 
-    def visit_partial_type(self, t: PartialType) -> Type:
+    def visit_partial_type(self, t: PartialType) -> ProperType:
         return t
 
-    def visit_type_type(self, t: TypeType) -> Type:
+    def visit_type_type(self, t: TypeType) -> ProperType:
         # TODO: Verify that the new item type is valid (instance or
         # union of instances or Any).  Sadly we can't report errors
         # here yet.

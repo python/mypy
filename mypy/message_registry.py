@@ -51,6 +51,8 @@ TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
 CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
+NON_INSTANCE_NEW_TYPE = '"__new__" must return a class instance (got {})'  # type: Final
+INVALID_NEW_TYPE = 'Incompatible return type for "__new__"'  # type: Final
 BAD_CONSTRUCTOR_TYPE = 'Unsupported decorated constructor type'  # type: Final
 CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
@@ -86,7 +88,7 @@ MODULE_LEVEL_GETATTRIBUTE = '__getattribute__ is not valid at the module level' 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
-BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
+BARE_GENERIC = 'Missing type parameters for generic type {}'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
     'Implicit generic "Any". Use "{}" and specify generic parameters'  # type: Final
 

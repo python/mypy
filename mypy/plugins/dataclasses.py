@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -12,7 +12,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method, _get_decorator_bool_argument
-from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
@@ -79,12 +79,13 @@ class DataclassTransformer:
         ctx = self._ctx
         info = self._ctx.cls.info
         attributes = self.collect_attributes()
-        if ctx.api.options.new_semantic_analyzer:
-            # Check if attribute types are ready.
-            for attr in attributes:
-                if info[attr.name].type is None:
-                    ctx.api.defer()
-                    return
+        if attributes is None:
+            # Some definitions are not ready, defer() should be already called.
+            return
+        for attr in attributes:
+            if info[attr.name].type is None:
+                ctx.api.defer()
+                return
         decorator_arguments = {
             'init': _get_decorator_bool_argument(self._ctx, 'init', True),
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
@@ -92,7 +93,13 @@ class DataclassTransformer:
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
         }
 
-        if decorator_arguments['init']:
+        # If there are no attributes, it may be that the new semantic analyzer has not
+        # processed them yet. In order to work around this, we can simply skip generating
+        # __init__ if there are no attributes, because if the user truly did not define any,
+        # then the object default __init__ with an empty signature will be present anyway.
+        if (decorator_arguments['init'] and
+                ('__init__' not in info.names or info.names['__init__'].plugin_generated) and
+                attributes):
             add_method(
                 ctx,
                 '__init__',
@@ -186,7 +193,7 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
-    def collect_attributes(self) -> List[DataclassAttribute]:
+    def collect_attributes(self) -> Optional[List[DataclassAttribute]]:
         """Collect all attributes declared in the dataclass and its parents.
 
         All assignments of the form
@@ -217,13 +224,12 @@ class DataclassTransformer:
             if sym is None:
                 # This name is likely blocked by a star import. We don't need to defer because
                 # defer() is already called by mark_incomplete().
-                assert ctx.api.options.new_semantic_analyzer
                 continue
 
             node = sym.node
             if isinstance(node, PlaceholderNode):
                 # This node is not ready yet.
-                continue
+                return None
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.
@@ -232,12 +238,11 @@ class DataclassTransformer:
 
             # x: InitVar[int] is turned into x: int and is removed from the class.
             is_init_var = False
-            if (
-                    isinstance(node.type, Instance) and
-                    node.type.type.fullname() == 'dataclasses.InitVar'
-            ):
+            node_type = get_proper_type(node.type)
+            if (isinstance(node_type, Instance) and
+                    node_type.type.fullname() == 'dataclasses.InitVar'):
                 is_init_var = True
-                node.type = node.type.args[0]
+                node.type = node_type.args[0]
 
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 

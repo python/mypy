@@ -34,7 +34,7 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
         if hasattr(obj, '__dict__'):
             # Keep track of which class a particular __dict__ is associated with.
             inferred[id(obj.__dict__)] = '%s (__dict__)' % n
-        if isinstance(obj, (Node, Type)):
+        if isinstance(obj, (Node, Type)):  # type: ignore
             if hasattr(obj, '__dict__'):
                 for x in obj.__dict__.values():
                     if isinstance(x, list):

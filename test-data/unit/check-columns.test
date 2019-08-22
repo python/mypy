@@ -69,32 +69,34 @@ if int():
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
 [case testColumnInvalidType]
+
 from typing import Iterable
 
 bad = 0
 
-def f(x: bad): # E:10: Invalid type "__main__.bad"
-    y: bad # E:8: Invalid type "__main__.bad"
+def f(x: bad): # E:10: Variable "__main__.bad" is not valid as a type
+    y: bad # E:8: Variable "__main__.bad" is not valid as a type
 
 if int():
-    def g(x): # E:5: Invalid type "__main__.bad"
+    def g(x): # E:5: Variable "__main__.bad" is not valid as a type
         # type: (bad) -> None
-        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
+        y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type
 
-z: Iterable[bad] # E:13: Invalid type "__main__.bad"
-h: bad[int] # E:4: Invalid type "__main__.bad"
+z: Iterable[bad] # E:13: Variable "__main__.bad" is not valid as a type
+h: bad[int] # E:4: Variable "__main__.bad" is not valid as a type
 
 [case testColumnInvalidType_python2]
+
 from typing import Iterable
 
 bad = 0
 
 if int():
-    def g(x): # E:5: Invalid type "__main__.bad"
+    def g(x): # E:5: Variable "__main__.bad" is not valid as a type
         # type: (bad) -> None
-        y = 0  # type: bad  # E:9: Invalid type "__main__.bad"
+        y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type
 
-    z = ()  # type: Iterable[bad] # E:5: Invalid type "__main__.bad"
+    z = ()  # type: Iterable[bad] # E:5: Variable "__main__.bad" is not valid as a type
 
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs
@@ -173,10 +175,10 @@ class D(A):
 [case testColumnMissingTypeParameters]
 # flags: --disallow-any-generics
 from typing import List, Callable
-def f(x: List) -> None: pass # E:10: Missing type parameters for generic type
+def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
 def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
 if int():
-    c: Callable # E:8: Missing type parameters for generic type
+    c: Callable # E:8: Missing type parameters for generic type "Callable"
 [builtins fixtures/list.pyi]
 
 [case testColumnIncompatibleDefault]
@@ -201,7 +203,7 @@ if int():
       # N:5:     y
 
 [case testColumnRedundantCast]
-# flags: --warn-redundant-casts --new-semantic-analyzer
+# flags: --warn-redundant-casts
 from typing import cast
 y = 1
 x = cast(int, y) # E:5: Redundant cast to "int"
@@ -224,12 +226,12 @@ if int():
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
-if 1 == '': # E:4: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+if 1 == '': # E:4: Non-overlapping equality check (left operand type: "Literal[1]", right operand type: "Literal['']")
     pass
 [builtins fixtures/bool.pyi]
 
 [case testColumnValueOfTypeVariableCannotBe]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic
 
 T = TypeVar('T', int, str)

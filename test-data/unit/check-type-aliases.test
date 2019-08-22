@@ -4,6 +4,7 @@ i = int
 def f(x: i) -> None: pass
 f(1)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+[targets __main__, __main__.f]
 
 [case testUnionTypeAlias]
 from typing import Union
@@ -12,6 +13,7 @@ def f(x: U) -> None: pass
 f(1)
 f('')
 f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+[targets __main__, __main__.f]
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -19,6 +21,7 @@ T = Tuple[int, str]
 def f(x: T) -> None: pass
 f((1, 'x'))
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
+[targets __main__, __main__.f]
 
 [case testCallableTypeAlias]
 from typing import Callable
@@ -26,6 +29,7 @@ A = Callable[[int], None]
 f = None  # type: A
 f(1)
 f('') # E: Argument 1 has incompatible type "str"; expected "int"
+[targets __main__]
 
 [case testListTypeAlias]
 from typing import List
@@ -34,7 +38,7 @@ def f(x: A) -> None: pass
 f([1])
 f(['x']) # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
-[out]
+[targets __main__, __main__.f]
 
 [case testAnyTypeAlias]
 from typing import Any
@@ -85,14 +89,15 @@ if int():
 [out]
 
 [case testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes]
+
 from typing import TypeVar, Sequence, Type
 T = TypeVar('T')
 
 A: Type[float] = int
 if int():
     A = float  # OK
-x: A  # E: Invalid type "__main__.A"
-def bad(tp: A) -> None:  # E: Invalid type "__main__.A"
+x: A  # E: Variable "__main__.A" is not valid as a type
+def bad(tp: A) -> None:  # E: Variable "__main__.A" is not valid as a type
     pass
 
 Alias = int
@@ -178,7 +183,7 @@ Alias = Tuple[int, T]
 [out]
 
 [case testRecursiveAliasesErrors1]
-# flags: --new-semantic-analyzer
+
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -187,7 +192,7 @@ B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
 C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
-# flags: --new-semantic-analyzer
+
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -224,7 +229,7 @@ reveal_type(x[0].x) # N: Revealed type is 'builtins.str'
 [out]
 
 [case testJSONAliasApproximation]
-# flags: --new-semantic-analyzer
+
 # Recursive aliases are not supported yet.
 from typing import List, Union, Dict
 x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
@@ -236,7 +241,7 @@ if isinstance(x, list):
 [out]
 
 [case testForwardRefToTypeVar]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, List
 reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.int]'
 a: A[int]
@@ -246,7 +251,7 @@ T = TypeVar('T')
 [out]
 
 [case testFunctionForwardRefAlias]
-# flags: --new-semantic-analyzer
+
 from typing import List, TypeVar
 
 T = TypeVar('T')
@@ -261,7 +266,7 @@ A = List[T]
 [out]
 
 [case testFunctionForwardRefAlias2]
-# flags: --new-semantic-analyzer
+
 from typing import List, TypeVar
 
 def f() -> None:
@@ -479,7 +484,7 @@ class Parameter:
 
 [case testAliasInImportCycle3]
 # cmd: mypy -m t t2
-# flags: --new-semantic-analyzer
+
 [file t.py]
 MYPY = False
 if MYPY:
@@ -615,7 +620,7 @@ class C:
 [out]
 
 [case testConditionalExceptionAlias]
-# flags: --no-new-semantic-analyzer
+
 try:
     E = E
 except BaseException:

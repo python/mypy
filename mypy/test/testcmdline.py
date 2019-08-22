@@ -12,10 +12,10 @@ import sys
 from typing import List
 
 from mypy.test.config import test_temp_dir, PREFIX
-from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
-import mypy.version
+from mypy.test.helpers import (
+    assert_string_arrays_equal, normalize_error_messages, check_test_output_files
+)
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -79,25 +79,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
                 'Expected zero status and empty stderr%s, got %d and\n%s' %
                 (' on step %d' % step if testcase.output2 else '',
                  result, '\n'.join(err + out)))
-        for path, expected_content in testcase.output_files:
-            if not os.path.exists(path):
-                raise AssertionError(
-                    'Expected file {} was not produced by test case{}'.format(
-                        path, ' on step %d' % step if testcase.output2 else ''))
-            with open(path, 'r', encoding='utf8') as output_file:
-                actual_output_content = output_file.read().splitlines()
-            normalized_output = normalize_file_output(actual_output_content,
-                                                      os.path.abspath(test_temp_dir))
-            # We always normalize things like timestamp, but only handle operating-system
-            # specific things if requested.
-            if testcase.normalize_output:
-                if testcase.suite.native_sep and os.path.sep == '\\':
-                    normalized_output = [fix_cobertura_filename(line)
-                                         for line in normalized_output]
-                normalized_output = normalize_error_messages(normalized_output)
-            assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
-                                       'Output file {} did not match its expected output{}'.format(
-                                           path, ' on step %d' % step if testcase.output2 else ''))
+        check_test_output_files(testcase, step)
     else:
         if testcase.normalize_output:
             out = normalize_error_messages(err + out)
@@ -126,17 +108,3 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
-
-
-def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
-    """Normalize file output for comparison."""
-    timestamp_regex = re.compile(r'\d{10}')
-    result = [x.replace(current_abs_path, '$PWD') for x in content]
-    version = mypy.version.__version__
-    result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
-    # We generate a new mypy.version when building mypy wheels that
-    # lacks base_version, so handle that case.
-    base_version = getattr(mypy.version, 'base_version', version)
-    result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
-    result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
-    return result

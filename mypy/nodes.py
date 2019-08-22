@@ -243,8 +243,10 @@ class MypyFile(SymbolNode):
     names = None  # type: SymbolTable
     # All import nodes within the file (also ones within functions etc.)
     imports = None  # type: List[ImportBase]
-    # Lines to ignore when checking
-    ignored_lines = None  # type: Set[int]
+    # Lines on which to ignore certain errors when checking.
+    # If the value is empty, ignore all errors; otherwise, the list contains all
+    # error codes to ignore.
+    ignored_lines = None  # type: Dict[int, List[str]]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -260,7 +262,7 @@ class MypyFile(SymbolNode):
                  defs: List[Statement],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
-                 ignored_lines: Optional[Set[int]] = None) -> None:
+                 ignored_lines: Optional[Dict[int, List[str]]] = None) -> None:
         super().__init__()
         self.defs = defs
         self.line = 1  # Dummy line number
@@ -271,7 +273,7 @@ class MypyFile(SymbolNode):
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
-            self.ignored_lines = set()
+            self.ignored_lines = {}
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -368,6 +370,7 @@ class ImportAll(ImportBase):
     """from m import *"""
     id = None  # type: str
     relative = None  # type: int
+    # NOTE: Only filled and used by old semantic analyzer.
     imported_names = None  # type: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
@@ -436,7 +439,7 @@ class FuncBase(Node):
                  'unanalyzed_type',
                  'info',
                  'is_property',
-                 'is_class',        # Uses "@classmethod"
+                 'is_class',        # Uses "@classmethod" (explicit or implicit)
                  'is_static',       # Uses "@staticmethod"
                  'is_final',        # Uses "@final"
                  '_fullname',
@@ -446,9 +449,9 @@ class FuncBase(Node):
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
         # something else for decorated functions.
-        self.type = None  # type: Optional[mypy.types.Type]
+        self.type = None  # type: Optional[mypy.types.ProperType]
         # Original, not semantically analyzed type (used for reprocessing)
-        self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
+        self.unanalyzed_type = None  # type: Optional[mypy.types.ProperType]
         # If method, reference to TypeInfo
         # TODO: Type should be Optional[TypeInfo]
         self.info = FUNC_NO_INFO
@@ -525,7 +528,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             if len(res.items) > 0:
                 res.set_line(res.impl.line)
         if data.get('type') is not None:
-            res.type = mypy.types.deserialize_type(data['type'])
+            typ = mypy.types.deserialize_type(data['type'])
+            assert isinstance(typ, mypy.types.ProperType)
+            res.type = typ
         res._fullname = data['fullname']
         set_flags(res, data['flags'])
         # NOTE: res.info will be set in the fixup phase.
@@ -1588,6 +1593,17 @@ class UnaryExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
+
+
+class AssignmentExpr(Expression):
+    """Assignment expressions in Python 3.8+, like "a := 2"."""
+    def __init__(self, target: Expression, value: Expression) -> None:
+        super().__init__()
+        self.target = target
+        self.value = value
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_assignment_expr(self)
 
 
 # Map from binary operator id to related method name (in Python 3).
@@ -3084,7 +3100,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
 
 
 deserialize_map = {
-    key: obj.deserialize  # type: ignore
+    key: obj.deserialize
     for key, obj in globals().items()
     if type(obj) is not FakeInfo
     and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode

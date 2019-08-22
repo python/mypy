@@ -29,12 +29,9 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
-from mypy.semanal_pass1 import SemanticAnalyzerPass1
-from mypy.newsemanal.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
-from mypy.semanal_pass3 import SemanticAnalyzerPass3
-from mypy.newsemanal.semanal import NewSemanticAnalyzer
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
+from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.semanal import SemanticAnalyzer
+from mypy.semanal_main import semantic_analysis_for_scc
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
@@ -59,6 +56,8 @@ from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadat
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
+from mypy.freetree import free_tree
+from mypy import errorcodes as codes
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -198,7 +197,9 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
-    errors = Errors(options.show_error_context, options.show_column_numbers)
+    errors = Errors(options.show_error_context,
+                    options.show_column_numbers,
+                    options.show_error_codes)
     plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
@@ -471,6 +472,7 @@ class BuildManager:
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
+      fg_deps:         A fine-grained dependency map
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       plugins_snapshot:
@@ -523,25 +525,24 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
+        # fg_deps holds the dependencies of every module that has been
+        # processed. We store this in BuildManager so that we can compute
+        # dependencies as we go, which allows us to free ASTs and type information,
+        # saving a ton of memory on net.
+        self.fg_deps = {}  # type: Dict[str, Set[str]]
         # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
-        if options.new_semantic_analyzer:
-            # Set of namespaces (module or class) that are being populated during semantic
-            # analysis and may have missing definitions.
-            self.incomplete_namespaces = set()  # type: Set[str]
-            self.new_semantic_analyzer = NewSemanticAnalyzer(
-                self.modules,
-                self.missing_modules,
-                self.incomplete_namespaces,
-                self.errors,
-                self.plugin)
-        else:
-            self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
-                                                           self.errors, self.plugin)
-            self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
-                                                                 self.semantic_analyzer)
+        # Set of namespaces (module or class) that are being populated during semantic
+        # analysis and may have missing definitions.
+        self.incomplete_namespaces = set()  # type: Set[str]
+        self.semantic_analyzer = SemanticAnalyzer(
+            self.modules,
+            self.missing_modules,
+            self.incomplete_namespaces,
+            self.errors,
+            self.plugin)
         self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -748,7 +749,7 @@ class BuildManager:
                     type_map: Dict[Expression, Type],
                     options: Options) -> None:
         if self.reports is not None and self.source_set.is_source(file):
-            self.reports.file(file, type_map, options)
+            self.reports.file(file, self.modules, type_map, options)
 
     def verbosity(self) -> int:
         return self.options.verbosity
@@ -894,15 +895,13 @@ def invert_deps(deps: Dict[str, Set[str]],
     return rdeps
 
 
-def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
-                            manager: BuildManager,
+def generate_deps_for_cache(manager: BuildManager,
                             graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
     """Generate fine-grained dependencies into a form suitable for serializing.
 
-    This does a few things:
-    1. Computes all fine grained deps from modules that were processed
-    2. Splits fine-grained deps based on the module of the trigger
-    3. For each module we generated fine-grained deps for, load any previous
+    This does a couple things:
+    1. Splits fine-grained deps based on the module of the trigger
+    2. For each module we generated fine-grained deps for, load any previous
        deps and merge them in.
 
     Returns a dictionary from module ids to all dependencies on that
@@ -910,16 +909,10 @@ def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
     associated with the nearest parent module that is in the build, or the
     fake module FAKE_ROOT_MODULE if none are.
     """
-    from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
-
-    # Compute the full set of dependencies from everything we've processed.
-    deps = {}  # type: Dict[str, Set[str]]
-    things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
-    for st_deps in things:
-        merge_dependencies(st_deps, deps)
+    from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
     # Split the dependencies out into based on the module that is depended on.
-    rdeps = invert_deps(deps, graph)
+    rdeps = invert_deps(manager.fg_deps, graph)
 
     # We can't just clobber existing dependency information, so we
     # load the deps for every module we've generated new dependencies
@@ -1626,8 +1619,14 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
+    # We keep both a list and set of dependencies. A set because it makes it efficient to
+    # prevent duplicates and the list because I am afraid of changing the order of
+    # iteration over dependencies.
+    # They should be managed with add_dependency and suppress_dependency.
     dependencies = None  # type: List[str]  # Modules directly imported by the module
+    dependencies_set = None  # type: Set[str]  # The same but as a set for deduplication purposes
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
+    suppressed_set = None  # type: Set[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
 
     # Map each dependency to the line number where it is first imported
@@ -1735,7 +1734,9 @@ class State:
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
             self.dependencies = list(self.meta.dependencies)
+            self.dependencies_set = set(self.dependencies)
             self.suppressed = list(self.meta.suppressed)
+            self.suppressed_set = set(self.suppressed)
             all_deps = self.dependencies + self.suppressed
             assert len(all_deps) == len(self.meta.dep_prios)
             self.priorities = {id: pri
@@ -1876,26 +1877,6 @@ class State:
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
-    def patch_dependency_parents(self) -> None:
-        """
-        In Python, if a and a.b are both modules, running `import a.b` will
-        modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
-        details.
-
-        However, this patching process can occur after `a` has been parsed and
-        serialized during incremental mode. Consequently, we need to repeat this
-        patch when deserializing a cached file.
-
-        This function should be called only when processing fresh SCCs -- the
-        semantic analyzer will perform this patch for us when processing stale
-        SCCs.
-        """
-        if not self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.semantic_analyzer
-            for dep in self.dependencies:
-                analyzer.add_submodules_to_parent_modules(dep, True)
-
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
         """Corrects whether dependencies are considered stale in silent mode.
 
@@ -1925,13 +1906,15 @@ class State:
         new_dependencies = []
         entry_points = self.manager.source_set.source_modules
         for dep in self.dependencies + self.suppressed:
-            ignored = dep in self.suppressed and dep not in entry_points
+            ignored = dep in self.suppressed_set and dep not in entry_points
             if ignored or dep not in graph:
                 new_suppressed.append(dep)
             else:
                 new_dependencies.append(dep)
         self.dependencies = new_dependencies
+        self.dependencies_set = set(new_dependencies)
         self.suppressed = new_suppressed
+        self.suppressed_set = set(new_suppressed)
 
     # Methods for processing modules from source code.
 
@@ -1988,12 +1971,6 @@ class State:
 
         self.semantic_analysis_pass1()
 
-        if not self.options.new_semantic_analyzer:
-            # Initialize module symbol table, which was populated by the
-            # semantic analyzer.
-            # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
-            self.tree.names = manager.semantic_analyzer.globals
-
         self.check_blockers()
 
     def parse_inline_configuration(self, source: str) -> None:
@@ -2013,31 +1990,37 @@ class State:
         """
         options = self.options
         assert self.tree is not None
-        if options.new_semantic_analyzer:
-            # Do the first pass of semantic analysis: analyze the reachability
-            # of blocks and import statements. We must do this before
-            # processing imports, since this may mark some import statements as
-            # unreachable.
-            #
-            # TODO: Once we remove the old semantic analyzer, this no longer should
-            #     be considered as a semantic analysis pass -- it's an independent
-            #     pass.
-            analyzer = SemanticAnalyzerPreAnalysis()
-            with self.wrap_context():
-                analyzer.visit_file(self.tree, self.xpath, self.id, options)
-            # TODO: Do this while contructing the AST?
-            self.tree.names = SymbolTable()
-            if options.allow_redefinition:
-                # Perform renaming across the AST to allow variable redefinitions
-                self.tree.accept(VariableRenameVisitor())
-        else:
-            # Do the first pass of semantic analysis: add top-level
-            # definitions in the file to the symbol table.  We must do
-            # this before processing imports, since this may mark some
-            # import statements as unreachable.
-            first = SemanticAnalyzerPass1(self.manager.semantic_analyzer)
-            with self.wrap_context():
-                first.visit_file(self.tree, self.xpath, self.id, options)
+        # Do the first pass of semantic analysis: analyze the reachability
+        # of blocks and import statements. We must do this before
+        # processing imports, since this may mark some import statements as
+        # unreachable.
+        #
+        # TODO: This should not be considered as a semantic analysis
+        #     pass -- it's an independent pass.
+        analyzer = SemanticAnalyzerPreAnalysis()
+        with self.wrap_context():
+            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        # TODO: Do this while contructing the AST?
+        self.tree.names = SymbolTable()
+        if options.allow_redefinition:
+            # Perform renaming across the AST to allow variable redefinitions
+            self.tree.accept(VariableRenameVisitor())
+
+    def add_dependency(self, dep: str) -> None:
+        if dep not in self.dependencies_set:
+            self.dependencies.append(dep)
+            self.dependencies_set.add(dep)
+        if dep in self.suppressed_set:
+            self.suppressed.remove(dep)
+            self.suppressed_set.remove(dep)
+
+    def suppress_dependency(self, dep: str) -> None:
+        if dep in self.dependencies_set:
+            self.dependencies.remove(dep)
+            self.dependencies_set.remove(dep)
+        if dep not in self.suppressed_set:
+            self.suppressed.append(dep)
+            self.suppressed_set.add(dep)
 
     def compute_dependencies(self) -> None:
         """Compute a module's dependencies after parsing it.
@@ -2052,54 +2035,29 @@ class State:
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
         # Also keep track of each dependency's source line.
-        dependencies = []
-        priorities = {}  # type: Dict[str, int]  # id -> priority
-        dep_line_map = {}  # type: Dict[str, int]  # id -> line
+        # Missing dependencies will be moved from dependencies to
+        # suppressed when they fail to be loaded in load_graph.
+
+        self.dependencies = []
+        self.dependencies_set = set()
+        self.suppressed = []
+        self.suppressed_set = set()
+        self.priorities = {}  # id -> priority
+        self.dep_line_map = {}  # id -> line
         dep_entries = (manager.all_imported_modules_in_file(self.tree) +
                        self.manager.plugin.get_additional_deps(self.tree))
         for pri, id, line in dep_entries:
-            priorities[id] = min(pri, priorities.get(id, PRI_ALL))
+            self.priorities[id] = min(pri, self.priorities.get(id, PRI_ALL))
             if id == self.id:
                 continue
-            if id not in dep_line_map:
-                dependencies.append(id)
-                dep_line_map[id] = line
+            self.add_dependency(id)
+            if id not in self.dep_line_map:
+                self.dep_line_map[id] = line
         # Every module implicitly depends on builtins.
-        if self.id != 'builtins' and 'builtins' not in dep_line_map:
-            dependencies.append('builtins')
-
-        # Missing dependencies will be moved from dependencies to
-        # suppressed when they fail to be loaded in load_graph.
-        self.dependencies = dependencies
-        self.suppressed = []
-        self.priorities = priorities
-        self.dep_line_map = dep_line_map
+        if self.id != 'builtins':
+            self.add_dependency('builtins')
 
         self.check_blockers()  # Can fail due to bogus relative imports
-
-    def semantic_analysis(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        self.manager.semantic_analyzer.imports.clear()
-        with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
-        self.patches = patches
-        for dep in self.manager.semantic_analyzer.imports:
-            self.dependencies.append(dep)
-            self.priorities[dep] = PRI_LOW
-
-    def semantic_analysis_pass_three(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
-                                                            self.options, patches)
-            if self.options.dump_type_stats:
-                dump_type_stats(self.tree, self.xpath)
-        self.patches = patches + self.patches
-
-    def semantic_analysis_apply_patches(self) -> None:
-        apply_semantic_analyzer_patches(self.patches)
 
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
@@ -2140,9 +2098,22 @@ class State:
             self._patch_indirect_dependencies(self.type_checker().module_refs, self.type_map())
 
             if self.options.dump_inference_stats:
-                dump_type_stats(self.tree, self.xpath, inferred=True,
+                dump_type_stats(self.tree,
+                                self.xpath,
+                                modules=self.manager.modules,
+                                inferred=True,
                                 typemap=self.type_map())
             manager.report_file(self.tree, self.type_map(), self.options)
+
+            self.update_fine_grained_deps(self.manager.fg_deps)
+            self.free_state()
+            if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
+                free_tree(self.tree)
+
+    def free_state(self) -> None:
+        if self._type_checker:
+            self._type_checker.reset()
+            self._type_checker = None
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
@@ -2157,11 +2128,11 @@ class State:
         for dep in sorted(extra):
             if dep not in self.manager.modules:
                 continue
-            if dep not in self.suppressed and dep not in self.manager.missing_modules:
-                self.dependencies.append(dep)
+            if dep not in self.suppressed_set and dep not in self.manager.missing_modules:
+                self.add_dependency(dep)
                 self.priorities[dep] = PRI_INDIRECT
-            elif dep not in self.suppressed and dep in self.manager.missing_modules:
-                self.suppressed.append(dep)
+            elif dep not in self.suppressed_set and dep in self.manager.missing_modules:
+                self.suppress_dependency(dep)
 
     def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
         assert self.tree is not None
@@ -2177,6 +2148,13 @@ class State:
                                 type_map=self.type_map(),
                                 python_version=self.options.python_version,
                                 options=self.manager.options)
+
+    def update_fine_grained_deps(self, deps: Dict[str, Set[str]]) -> None:
+        options = self.manager.options
+        if options.cache_fine_grained or options.fine_grained_incremental:
+            from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
+            merge_dependencies(self.compute_fine_grained_deps(), deps)
+            TypeState.update_protocol_deps(deps)
 
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
@@ -2204,6 +2182,8 @@ class State:
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
         assert self.source_hash is not None
+        assert len(set(self.dependencies)) == len(self.dependencies), (
+            "Duplicates in dependencies list for {} ({})".format(self.id, self.dependencies))
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
@@ -2367,7 +2347,7 @@ def find_module_and_diagnose(manager: BuildManager,
 
 
 def exist_added_packages(suppressed: List[str],
-                        manager: BuildManager, options: Options) -> bool:
+                         manager: BuildManager, options: Options) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
     Exclude everything not in build for follow-imports=skip.
@@ -2443,14 +2423,16 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
           or (manager.options.python_version[0] >= 3
               and moduleinfo.is_py3_std_lib_module(target))):
         errors.report(
-            line, 0, "No library stub file for standard library module '{}'".format(target))
+            line, 0, "No library stub file for standard library module '{}'".format(target),
+            code=codes.IMPORT)
         errors.report(line, 0, stub_msg, severity='note', only_once=True)
     elif moduleinfo.is_third_party_module(target):
-        errors.report(line, 0, "No library stub file for module '{}'".format(target))
+        errors.report(line, 0, "No library stub file for module '{}'".format(target),
+                      code=codes.IMPORT)
         errors.report(line, 0, stub_msg, severity='note', only_once=True)
     else:
         note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
-        errors.report(line, 0, "Cannot find module named '{}'".format(target))
+        errors.report(line, 0, "Cannot find module named '{}'".format(target), code=codes.IMPORT)
         errors.report(line, 0, note, severity='note', only_once=True)
     errors.set_import_context(save_import_context)
 
@@ -2496,6 +2478,7 @@ def log_configuration(manager: BuildManager) -> None:
         ("Configured Executable", manager.options.python_executable),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
+        ("Compiled", str(not __file__.endswith(".py"))),
     )
 
     for conf_name, conf_value in configuration_vars:
@@ -2585,10 +2568,9 @@ def dispatch(sources: List[BuildSource],
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.update_protocol_deps()
+            TypeState.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
-                proto_deps = TypeState.proto_deps or {}
-                rdeps = generate_deps_for_cache(proto_deps, manager, graph)
+                rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)
 
     if manager.options.dump_deps:
@@ -2733,7 +2715,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             # comment about this in `State.__init__()`.
             added = []
         for dep in st.ancestors + dependencies + st.suppressed:
-            ignored = dep in st.suppressed and dep not in entry_points
+            ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
             elif dep not in graph:
@@ -2747,20 +2729,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         newst = State(id=dep, path=None, source=None, manager=manager,
                                       caller_state=st, caller_line=st.dep_line_map.get(dep, 1))
                 except ModuleNotFound:
-                    if dep in st.dependencies:
-                        st.dependencies.remove(dep)
-                        st.suppressed.append(dep)
+                    if dep in st.dependencies_set:
+                        st.suppress_dependency(dep)
                 else:
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
             if dep in st.ancestors and dep in graph:
                 graph[dep].child_modules.add(st.id)
-            if dep in graph and dep in st.suppressed:
+            if dep in graph and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
-                if dep in st.suppressed:
-                    st.suppressed.remove(dep)
-                    st.dependencies.append(dep)
+                st.add_dependency(dep)
     manager.plugin.set_modules(manager.modules)
     return graph
 
@@ -2961,8 +2940,6 @@ def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManage
     t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
-    for id in modules:
-        graph[id].patch_dependency_parents()
     t2 = time.time()
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
@@ -2984,34 +2961,30 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-        if not manager.options.new_semantic_analyzer:
-            manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc, manager.errors)
-    else:
-        for id in stale:
-            graph[id].semantic_analysis()
-        for id in stale:
-            graph[id].semantic_analysis_pass_three()
-        for id in stale:
-            graph[id].semantic_analysis_apply_patches()
+    semantic_analysis_for_scc(graph, scc, manager.errors)
+
+    # Track what modules aren't yet done so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
     for id in stale:
         graph[id].type_check_first_pass()
-    more = True
-    while more:
-        more = False
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+
+    while unfinished_modules:
         for id in stale:
-            if graph[id].type_check_second_pass():
-                more = True
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+                graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        graph[id].finish_passes()
-        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            graph[id].compute_fine_grained_deps()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()

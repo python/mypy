@@ -324,7 +324,7 @@ main:2: error: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
 # Error messages differ with the new analyzer
-# flags: --new-semantic-analyzer
+
 import xab  # E: Cannot find module named 'xab'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 def xab(): pass  # E: Name 'xab' already defined (possibly by an import)
 
@@ -578,10 +578,11 @@ x = 1
 x = 1
 
 [case testAssignToFuncDefViaImport]
+# flags: --strict-optional
+
 # Errors differ with the new analyzer. (Old analyzer gave error on the
 # input, which is maybe better, but no error about f, which seems
 # wrong)
-# flags: --new-semantic-analyzer
 from m import *
 f = None  # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[], Any]")
 x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -807,6 +808,7 @@ import m.a
 [out]
 
 [case testCheckDecoratedFuncAsAnnotWithImportCycle]
+
 import a
 [file a.py]
 from typing import TypeVar
@@ -823,7 +825,8 @@ MYPY = False
 if MYPY:
     from a import Session
 
-def f(self, session: Session) -> None:  # E: Invalid type "a.Session"
+def f(self, session: Session) -> None:  # E: Function "a.Session" is not valid as a type \
+                                        # N: Perhaps you need "Callable[...]" or a callback protocol?
     pass
 [builtins fixtures/bool.pyi]
 
@@ -2100,7 +2103,7 @@ def __getattr__(name: str) -> Any: ...
 [builtins fixtures/module.pyi]
 
 [case testModuleLevelGetattrImportFromAsTwice]
-# flags: --new-semantic-analyzer
+
 from has_attr import name
 from has_attr import name
 from has_attr import x
@@ -2342,19 +2345,6 @@ def __getattr__(attr: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
 [out]
 
-
-[case testModuleGetattrInit5b]
-# This likely won't be supported by the new semantic analyzer.
-# flags: --no-new-semantic-analyzer
-from a.b import f
-
-x = f()
-[file a/__init__.pyi]
-def __getattr__(attr: str) -> int: ...
-[builtins fixtures/module.pyi]
-[out]
-main:3: error: Cannot find module named 'a.b'
-main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit8]
 import a.b.c.d
@@ -2765,3 +2755,13 @@ roles.role = 1  # E: Incompatible types in assignment (expression has type "int"
 from types import ModuleType
 def __getattr__(name: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
+
+[case testAlwaysReportMissingAttributesOnFoundModules]
+# flags: --ignore-missing-imports
+import pack.mod as alias
+
+x: alias.NonExistent  # E: Name 'alias.NonExistent' is not defined
+
+[file pack/__init__.py]
+[file pack/mod.py]
+class Existent: pass

@@ -8,11 +8,12 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 # TODO: Move more type operations here
 
 from mypy.types import TupleType, Instance
-from mypy.join import join_type_list
 
 
 def tuple_fallback(typ: TupleType) -> Instance:
     """Return fallback type for a tuple."""
+    from mypy.join import join_type_list
+
     info = typ.partial_fallback.type
     if info.fullname() != 'builtins.tuple':
         return typ.partial_fallback

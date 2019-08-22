@@ -3,7 +3,7 @@ import sys
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload, Set
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
 from typing_extensions import Final, Literal
 
@@ -20,7 +20,7 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, LambdaExpr, ComparisonExpr,
+    UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
@@ -30,10 +30,10 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType,
+    TypeOfAny, Instance, RawExpressionType, ProperType
 )
 from mypy import defaults
-from mypy import message_registry
+from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
@@ -124,7 +124,7 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*($|#)')
+TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(\[[^[#]*\]\s*)?($|#)')
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -173,8 +173,8 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True)
-        tree = MypyFile([], [], False, set())
+        errors.report(e.lineno, e.offset, e.msg, blocker=True, code=codes.SYNTAX)
+        tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
         errors.raise_error()
@@ -182,34 +182,54 @@ def parse(source: Union[str, bytes],
     return tree
 
 
+def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
+    # TODO: Implement proper parsing and error checking
+    if not tag:
+        return []
+    m = re.match(r'\[([^#]*)\]', tag)
+    if m is None:
+        return []
+    return [code.strip() for code in m.group(1).split(',')]
+
+
 def parse_type_comment(type_comment: str,
                        line: int,
                        column: int,
                        errors: Optional[Errors],
                        assume_str_is_unicode: bool = True,
-                       ) -> Tuple[bool, Optional[Type]]:
+                       ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
+    """Parse type portion of a type comment (+ optional type ignore).
+
+    Return (ignore info, parsed type).
+    """
     try:
         typ = ast3_parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
             err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
-            errors.report(line, e.offset, err_msg, blocker=True)
-            return False, None
+            errors.report(line, e.offset, err_msg, blocker=True, code=codes.SYNTAX)
+            return None, None
         else:
             raise
     else:
-        extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment) is not None
+        extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
+        if extra_ignore:
+            # Typeshed has a non-optional return type for group!
+            tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
+            ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
+        else:
+            ignored = None
         assert isinstance(typ, ast3_Expression)
         converted = TypeConverter(errors,
                                   line=line,
                                   override_column=column,
                                   assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
-        return extra_ignore, converted
+        return ignored, converted
 
 
 def parse_type_string(expr_string: str, expr_fallback_name: str,
-                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> ProperType:
     """Parses a type that was originally present inside of an explicit string,
     byte string, or unicode string.
 
@@ -261,7 +281,7 @@ class ASTConverter:
         self.is_stub = is_stub
         self.errors = errors
 
-        self.type_ignores = set()  # type: Set[int]
+        self.type_ignores = {}  # type: Dict[int, List[str]]
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
@@ -269,9 +289,13 @@ class ASTConverter:
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note')
 
-    def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
+    def fail(self,
+             msg: str,
+             line: int,
+             column: int,
+             blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker)
+            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -321,6 +345,21 @@ class ASTConverter:
             res.append(node)
 
         return res
+
+    def translate_type_comment(self,
+                               n: Union[ast3.stmt, ast3.arg],
+                               type_comment: Optional[str]) -> Optional[ProperType]:
+        if type_comment is None:
+            return None
+        else:
+            lineno = n.lineno
+            extra_ignore, typ = parse_type_comment(type_comment,
+                                                   lineno,
+                                                   n.col_offset,
+                                                   self.errors)
+            if extra_ignore is not None:
+                self.type_ignores[lineno] = extra_ignore
+            return typ
 
     op_map = {
         ast3.Add: '+',
@@ -424,7 +463,8 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno for ti in mod.type_ignores}
+        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore
+                             for ti in mod.type_ignores}
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
@@ -515,7 +555,8 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
@@ -639,12 +680,8 @@ class ASTConverter:
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
-            elif type_comment is not None:
-                extra_ignore, arg_type = parse_type_comment(type_comment, arg.lineno,
-                                                            arg.col_offset, self.errors)
-                if extra_ignore:
-                    self.type_ignores.add(arg.lineno)
-
+            else:
+                arg_type = self.translate_type_comment(arg, type_comment)
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
@@ -698,13 +735,7 @@ class ASTConverter:
     def visit_Assign(self, n: ast3.Assign) -> AssignmentStmt:
         lvalues = self.translate_expr_list(n.targets)
         rvalue = self.visit(n.value)
-        if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment, n.lineno, n.col_offset,
-                                                   self.errors)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            typ = None
+        typ = self.translate_type_comment(n, n.type_comment)
         s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
         return self.set_line(s, n)
 
@@ -727,19 +758,9 @@ class ASTConverter:
                                    self.visit(n.value))
         return self.set_line(s, n)
 
-    def visit_NamedExpr(self, n: NamedExpr) -> None:
-        self.fail("assignment expressions are not yet supported", n.lineno, n.col_offset)
-        return None
-
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
-        if n.type_comment is not None:
-            extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, n.col_offset,
-                                                           self.errors)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         node = ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_required_block(n.body, n.lineno),
@@ -749,13 +770,7 @@ class ASTConverter:
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_AsyncFor(self, n: ast3.AsyncFor) -> ForStmt:
-        if n.type_comment is not None:
-            extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno, n.col_offset,
-                                                           self.errors)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         node = ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_required_block(n.body, n.lineno),
@@ -781,13 +796,7 @@ class ASTConverter:
 
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast3.With) -> WithStmt:
-        if n.type_comment is not None:
-            extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno,
-                                                           n.col_offset, self.errors)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         node = WithStmt([self.visit(i.context_expr) for i in n.items],
                         [self.visit(i.optional_vars) for i in n.items],
                         self.as_required_block(n.body, n.lineno),
@@ -796,13 +805,7 @@ class ASTConverter:
 
     # AsyncWith(withitem* items, stmt* body, string? type_comment)
     def visit_AsyncWith(self, n: ast3.AsyncWith) -> WithStmt:
-        if n.type_comment is not None:
-            extra_ignore, target_type = parse_type_comment(n.type_comment, n.lineno,
-                                                           n.col_offset, self.errors)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         s = WithStmt([self.visit(i.context_expr) for i in n.items],
                      [self.visit(i.optional_vars) for i in n.items],
                      self.as_required_block(n.body, n.lineno),
@@ -895,6 +898,10 @@ class ASTConverter:
         return self.set_line(s, n)
 
     # --- expr ---
+
+    def visit_NamedExpr(self, n: NamedExpr) -> AssignmentExpr:
+        s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
+        return self.set_line(s, n)
 
     # BoolOp(boolop op, expr* values)
     def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
@@ -1261,12 +1268,12 @@ class TypeConverter:
         )
 
     @overload
-    def visit(self, node: ast3.expr) -> Type: ...
+    def visit(self, node: ast3.expr) -> ProperType: ...
 
     @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[Type]: ...  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...  # noqa
 
-    def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1289,7 +1296,7 @@ class TypeConverter:
 
     def fail(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, blocker=True)
+            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
@@ -1454,7 +1461,7 @@ class TypeConverter:
 
         # Do an ignore because the field doesn't exist in 3.8 (where
         # this method doesn't actually ever run.)
-        kind = n.kind  # type: str  # type: ignore
+        kind = n.kind  # type: str
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,

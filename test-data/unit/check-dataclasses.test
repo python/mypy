@@ -16,6 +16,21 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassesCustomInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+    def __init__(self, a: str) -> None:
+        pass
+
+A('1')
+
+[builtins fixtures/list.pyi]
+
 [case testDataclassesBasicInheritance]
 # flags: --python-version 3.6
 from dataclasses import dataclass
@@ -521,7 +536,7 @@ app.database_name  # E: "SpecializedApplication" has no attribute "database_name
 [builtins fixtures/list.pyi]
 
 [case testDataclassesInitVarsAndDefer]
-# flags: --new-semantic-analyzer
+
 from dataclasses import InitVar, dataclass
 
 defer: Yes
@@ -626,7 +641,7 @@ class C:
 [builtins fixtures/dict.pyi]
 
 [case testDataclassOrderingDeferred]
-# flags: --python-version 3.6 --new-semantic-analyzer
+# flags: --python-version 3.6
 from dataclasses import dataclass
 
 defer: Yes
@@ -682,4 +697,36 @@ C()  # E: Too few arguments for "C"
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib
+[builtins fixtures/bool.pyi]
+
+[case testDeferredDataclassInitSignature]
+from dataclasses import dataclass
+from typing import Optional, Type
+
+@dataclass
+class C:
+    x: Optional[int] = None
+    y: Type[Deferred] = Deferred
+
+    @classmethod
+    def default(cls) -> C:
+        return cls(x=None, y=None)
+
+class Deferred: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testDeferredDataclassInitSignatureSubclass]
+# flags: --strict-optional
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class B:
+    x: Optional[C]
+
+@dataclass
+class C(B):
+    y: str
+
+a = C(None, 'abc')
 [builtins fixtures/bool.pyi]

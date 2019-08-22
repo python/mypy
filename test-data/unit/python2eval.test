@@ -303,7 +303,7 @@ print 4j / 2.0
 from typing import Dict, Any
 class MyType(type):
     def __new__(cls, name, bases, namespace):
-        # type: (str, tuple, Dict[str, Any]) -> type
+        # type: (str, tuple, Dict[str, Any]) -> Any
         return super(MyType, cls).__new__(cls, name + 'x', bases, namespace)
 class A(object):
     __metaclass__ = MyType

@@ -6,7 +6,7 @@ from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern
 from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
-    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny
+    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
@@ -137,12 +137,15 @@ class StringFormatterChecker:
         if checkers is None:
             return
 
-        rhs_type = self.accept(replacements)
+        rhs_type = get_proper_type(self.accept(replacements))
         rep_types = []  # type: List[Type]
         if isinstance(rhs_type, TupleType):
             rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
             return
+        elif isinstance(rhs_type, Instance) and rhs_type.type.fullname() == 'builtins.tuple':
+            # Assume that an arbitrary-length tuple has the right number of items.
+            rep_types = [rhs_type.args[0]] * len(checkers)
         else:
             rep_types = [rhs_type]
 
@@ -171,11 +174,11 @@ class StringFormatterChecker:
                                         replacements: Expression,
                                         expr: FormatStringExpr) -> None:
         if (isinstance(replacements, DictExpr) and
-                all(isinstance(k, (StrExpr, BytesExpr))
+                all(isinstance(k, (StrExpr, BytesExpr, UnicodeExpr))
                     for k, v in replacements.items)):
             mapping = {}  # type: Dict[str, Type]
             for k, v in replacements.items:
-                key_str = cast(StrExpr, k).value
+                key_str = cast(FormatStringExpr, k).value
                 mapping[key_str] = self.accept(v)
 
             for specifier in specifiers:

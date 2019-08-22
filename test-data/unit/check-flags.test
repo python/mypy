@@ -1053,7 +1053,7 @@ always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
 [case testCheckDisallowAnyGenericsNamedTuple]
-# flags: --disallow-any-generics --new-semantic-analyzer
+# flags: --disallow-any-generics
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)])  # type: ignore
@@ -1061,7 +1061,7 @@ n: N
 [out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
-# flags: --disallow-any-generics --new-semantic-analyzer
+# flags: --disallow-any-generics
 from typing import Dict, Any, Optional
 from mypy_extensions import TypedDict
 
@@ -1105,7 +1105,7 @@ from typing import TypeVar, Callable
 T = TypeVar('T')
 C = Callable[[], T]
 
-def f(c: C):  # E: Missing type parameters for generic type
+def f(c: C):  # E: Missing type parameters for generic type "C"
     pass
 [out]
 
@@ -1118,14 +1118,14 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-def f(c: A) -> None:  # E: Missing type parameters for generic type
+def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
     pass
 [out]
 
 [case testStrictEqualityPerFile]
 # flags: --config-file tmp/mypy.ini
 import b
-42 == 'no'  # E: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+42 == 'no'  # E: Non-overlapping equality check (left operand type: "Literal[42]", right operand type: "Literal['no']")
 [file b.py]
 42 == 'no'
 [file mypy.ini]
@@ -1142,6 +1142,42 @@ from other_module_2 import a
 a = 5
 [file other_module_2.py]
 from other_module_1 import a
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportRespectsAll]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+from other_module_2 import b
+[file other_module_1.py]
+a = 5
+b = 6
+[file other_module_2.py]
+from other_module_1 import a, b
+__all__ = ('b',)
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportStarConsideredImplicit]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+[file other_module_1.py]
+a = 5
+[file other_module_2.py]
+from other_module_1 import *
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testNoImplicitReexportStarCanBeReexportedWithAll]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+from other_module_2 import b
+[file other_module_1.py]
+a = 5
+b = 6
+[file other_module_2.py]
+from other_module_1 import *
+__all__ = ('b',)
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
@@ -1168,6 +1204,6 @@ main:2: error: Module 'other_module_2' has no attribute 'a'
 from typing import List
 
 A = List  # OK
-B = List[A]  # E:10: Missing type parameters for generic type
-x: A  # E:4: Missing type parameters for generic type
+B = List[A]  # E:10: Missing type parameters for generic type "A"
+x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]

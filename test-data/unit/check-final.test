@@ -59,7 +59,7 @@ reveal_type(C().x)  # N: Revealed type is 'builtins.float'
 [out]
 
 [case testFinalInvalidDefinitions]
-# flags: --new-semantic-analyzer
+
 # Errors are shown in a different order with the new analyzer.
 from typing import Final, Any
 
@@ -338,7 +338,7 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
-# flags: --allow-redefinition --new-semantic-analyzer
+# flags: --allow-redefinition
 from typing import Final
 
 x: Final = 1
@@ -382,7 +382,7 @@ y
 y: Final = 3  # E: Cannot redefine an existing name as final
 
 [case testFinalReassignModuleVar3]
-# flags: --disallow-redefinition --new-semantic-analyzer
+# flags: --disallow-redefinition
 # Error formatting is subtly different with new analyzer.
 from typing import Final
 
@@ -410,7 +410,7 @@ z: Final = 2  # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
 
 [case testFinalReassignModuleReexport]
-# flags: --new-semantic-analyzer
+
 # Error formatting is subtly different with the new analyzer.
 from typing import Final
 
@@ -484,7 +484,7 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
-# flags: --new-semantic-analyzer
+
 from typing import Final
 
 class C:
@@ -797,7 +797,7 @@ class B:
     def __new__(cls) -> B: ...
 class C(B):
     def __init__(self) -> None: ...  # E: Cannot override final attribute "__init__" (previously declared in base class "B")
-    def __new__(cls) -> B: ...  # E: Cannot override final attribute "__new__" (previously declared in base class "B")
+    def __new__(cls) -> C: ...  # E: Cannot override final attribute "__new__" (previously declared in base class "B")
 [out]
 
 [case testFinalOverridingMethodWithVar]
@@ -1064,3 +1064,11 @@ class B:
     def __init__(self) -> None:
         self.x = self.y = 1
 [out]
+
+[case testFinalInDeferredMethod]
+from typing_extensions import Final
+
+class A:
+    def __init__(self) -> None:
+        self.x = 10  # type: Final
+        undefined  # type: ignore

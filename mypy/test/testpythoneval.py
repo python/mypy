@@ -58,8 +58,6 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         '--no-strict-optional',
         '--no-silence-site-packages',
     ]
-    if testcase.name.lower().endswith('_newsemanal'):
-        mypy_cmdline.append('--new-semantic-analyzer')
     py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')

@@ -444,7 +444,7 @@ from pack import *
 from . import *
 
 [case testNoCrashOnImportFromStarNested]
-# flags: --new-semantic-analyzer
+
 import blamodule
 [file blamodule/__init__.py]
 from . import command

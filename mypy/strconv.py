@@ -425,6 +425,9 @@ class StrConv(NodeVisitor[str]):
             # REVEAL_LOCALS
             return self.dump([o.local_nodes], o)
 
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> str:
+        return self.dump([o.target, o.value], o)
+
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> str:
         return self.dump([o.op, o.expr], o)
 

@@ -1,4 +1,7 @@
 from typing import TypeVar, Any, Mapping, Iterator, NoReturn, Dict, Type
+from typing import TYPE_CHECKING as TYPE_CHECKING
+from typing import NewType as NewType
+
 import sys
 
 _T = TypeVar('_T')
@@ -15,6 +18,8 @@ Final: _SpecialForm = ...
 def final(x: _T) -> _T: pass
 
 Literal: _SpecialForm = ...
+
+Annotated: _SpecialForm = ...
 
 
 # Fallback type for all typed dicts (does not exist at runtime).

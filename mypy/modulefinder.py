@@ -64,7 +64,8 @@ class FindModuleCache:
     def __init__(self,
                  search_paths: SearchPaths,
                  fscache: Optional[FileSystemCache] = None,
-                 options: Optional[Options] = None) -> None:
+                 options: Optional[Options] = None,
+                 ns_packages: Optional[List[str]] = None) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
@@ -74,6 +75,7 @@ class FindModuleCache:
         self.results = {}  # type: Dict[str, Optional[str]]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
+        self.ns_packages = ns_packages or []  # type: List[str]
 
     def clear(self) -> None:
         self.results.clear()
@@ -307,6 +309,13 @@ class FindModuleCache:
                     if mod not in hits:
                         hits.add(mod)
                         result += self.find_modules_recursive(module + '.' + mod)
+        elif os.path.isdir(module_path) and module in self.ns_packages:
+            # Even more subtler: handle recursive decent into PEP 420
+            # namespace packages that are explicitly listed on the command
+            # line with -p/--packages.
+            for item in sorted(self.fscache.listdir(module_path)):
+                if os.path.isdir(os.path.join(module_path, item)):
+                    result += self.find_modules_recursive(module + '.' + item)
         return result
 
 
