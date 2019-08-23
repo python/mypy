@@ -196,13 +196,13 @@ class TypeAliasType(Type):
 
     # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
-    def can_be_true(self) -> bool:  # type: ignore
+    def can_be_true(self) -> bool:  # type: ignore[override]
         assert self.alias is not None
         return self.alias.target.can_be_true
 
     # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
-    def can_be_false(self) -> bool:  # type: ignore
+    def can_be_false(self) -> bool:  # type: ignore[override]
         assert self.alias is not None
         return self.alias.target.can_be_false
 
@@ -1903,7 +1903,7 @@ class TypeType(ProperType):
                 [TypeType.make_normalized(union_item) for union_item in item.items],
                 line=line, column=column
             )
-        return TypeType(item, line=line, column=column)  # type: ignore
+        return TypeType(item, line=line, column=column)  # type: ignore[arg-type]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)

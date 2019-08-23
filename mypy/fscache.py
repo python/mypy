@@ -137,7 +137,7 @@ class FileSystemCache:
         st = self.stat(dirname)  # May raise OSError
         # Get stat result as a sequence so we can modify it.
         # (Alas, typeshed's os.stat_result is not a sequence yet.)
-        tpl = tuple(st)  # type: ignore
+        tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
         seq = list(tpl)  # type: List[float]
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
