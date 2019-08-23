@@ -254,8 +254,8 @@ be used in ``with`` and ``async with`` statements.
 Simple user-defined protocols
 *****************************
 
-You can define your own protocol class by inheriting the special
-``typing_extensions.Protocol`` class:
+You can define your own protocol class by inheriting the special ``Protocol``
+class:
 
 .. code-block:: python
 
@@ -284,10 +284,9 @@ similarly compatible with the protocol, as they support ``close()``.
 
 .. note::
 
-   The ``Protocol`` base class is currently provided in the ``typing_extensions``
-   package. Once structural subtyping is mature and
-   `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ has been accepted,
-   ``Protocol`` will be included in the ``typing`` module.
+   The ``Protocol`` base class is provided in the ``typing_extensions``
+   package for Python 2.7 and 3.4-3.7. Starting with Python 3.8, ``Protocol``
+   is included in the ``typing`` module.
 
 Defining subprotocols and subclassing protocols
 ***********************************************
@@ -319,8 +318,8 @@ and merged using multiple inheritance. Example:
 Note that inheriting from an existing protocol does not automatically
 turn the subclass into a protocol -- it just creates a regular
 (non-protocol) class or ABC that implements the given protocol (or
-protocols). The ``typing_extensions.Protocol`` base class must always
-be explicitly present if you are defining a protocol:
+protocols). The ``Protocol`` base class must always be explicitly
+present if you are defining a protocol:
 
 .. code-block:: python
 
@@ -383,14 +382,14 @@ Using ``isinstance()`` with protocols
 *************************************
 
 You can use a protocol class with ``isinstance()`` if you decorate it
-with the ``typing_extensions.runtime`` class decorator. The decorator
-adds support for basic runtime structural checks:
+with the ``@runtime_checkable`` class decorator. The decorator adds
+support for basic runtime structural checks:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol, runtime
+   from typing_extensions import Protocol, runtime_checkable
 
-   @runtime
+   @runtime_checkable
    class Portable(Protocol):
        handles: int
 
