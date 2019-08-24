@@ -5,7 +5,7 @@ Final names, methods and classes
 
 This section introduces these related features:
 
-1. *Final names* are variables or attributes that should not reassigned after
+1. *Final names* are variables or attributes that should not be reassigned after
    initialization. They are useful for declaring constants.
 2. *Final methods* should not be overridden in a subclass.
 3. *Final classes* should not be subclassed.
