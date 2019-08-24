@@ -28,7 +28,7 @@ try:
     # mypyc doesn't properly handle import from of submodules that we
     # don't have stubs for, hence the hacky double import
     import lxml.etree  # type: ignore  # noqa: F401
-    from lxml import etree  # type: ignore
+    from lxml import etree
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False

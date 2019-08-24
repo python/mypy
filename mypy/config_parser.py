@@ -214,7 +214,7 @@ def parse_section(prefix: str, template: Options,
         v = None  # type: Any
         try:
             if ct is bool:
-                v = section.getboolean(key)  # type: ignore  # Until better stub
+                v = section.getboolean(key)  # type: ignore[attr-defined]  # Until better stub
                 if invert:
                     v = not v
             elif callable(ct):
