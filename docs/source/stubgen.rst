@@ -23,9 +23,9 @@ For example, consider this source file:
 
    class Window:
        parent = dynamic()
-       def __init__(self, width, hight):
+       def __init__(self, width, height):
            self.width = width
-           self.hight = hight
+           self.height = height
 
    def create_empty() -> Window:
        return Window(0, 0)
