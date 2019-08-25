@@ -98,8 +98,9 @@ class TypeVisitor(Generic[T]):
     def visit_type_type(self, t: TypeType) -> T:
         pass
 
+    @abstractmethod
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
-        raise NotImplementedError('TODO')
+        pass
 
 
 @trait
@@ -231,6 +232,14 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
+
+    @abstractmethod
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # This method doesn't have a default implementation for type translators,
+        # because type aliases are special: some information is contained in the
+        # TypeAlias node, and we normally don't generate new nodes. Every subclass
+        # must implement this depending on its semantics.
+        pass
 
 
 @trait
