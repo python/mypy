@@ -47,7 +47,7 @@ Stubgen can generate this stub file based on the above file:
    def create_empty() -> Window: ...
 
 Stubgen generates *draft* stubs. The auto-generated stub files often
-require some some manual updates, and most types will default to ``Any``.
+require some manual updates, and most types will default to ``Any``.
 The stubs will be much more useful if you add more precise type annotations,
 at least for the most commonly used functionality.
 
