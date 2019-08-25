@@ -439,7 +439,7 @@ class FuncBase(Node):
                  'unanalyzed_type',
                  'info',
                  'is_property',
-                 'is_class',        # Uses "@classmethod"
+                 'is_class',        # Uses "@classmethod" (explicit or implicit)
                  'is_static',       # Uses "@staticmethod"
                  'is_final',        # Uses "@final"
                  '_fullname',

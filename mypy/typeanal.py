@@ -13,10 +13,10 @@ from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
-    CallableType, NoneType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
+    CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType
+    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType
 )
 
 from mypy.nodes import (
@@ -216,6 +216,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                         disallow_any=disallow_any)
                 # The only case where expand_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
+                # TODO: this is not really needed, since with the new logic we will not expand
+                #       aliases immediately.
+                res = get_proper_type(res)
                 if (isinstance(res, Instance) and len(res.args) != len(res.type.type_vars) and
                         not self.defining_alias):
                     fix_instance(res, self.fail, disallow_any=disallow_any, use_generic_error=True,
@@ -374,9 +377,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # context. This is slightly problematic as it allows using the type 'Any'
         # as a base class -- however, this will fail soon at runtime so the problem
         # is pretty minor.
-        if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
-            return AnyType(TypeOfAny.from_unimported_type,
-                           missing_import_name=sym.node.type.missing_import_name)
+        if isinstance(sym.node, Var):
+            typ = get_proper_type(sym.node.type)
+            if isinstance(typ, AnyType):
+                return AnyType(TypeOfAny.from_unimported_type,
+                               missing_import_name=typ.missing_import_name)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
@@ -451,6 +456,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
+    def visit_erased_type(self, t: ErasedType) -> Type:
+        # This type should exist only temporarily during type inference
+        assert False, "Internal error: Unexpected erased type"
+
     def visit_deleted_type(self, t: DeletedType) -> Type:
         return t
 
@@ -484,6 +493,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                             else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables))
         return ret
+
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        # Overloaded types are manually constructed in semanal.py by analyzing the
+        # AST and combining together the Callable types this visitor converts.
+        #
+        # So if we're ever asked to reanalyze an Overloaded type, we know it's
+        # fine to just return it as-is.
+        return t
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
@@ -694,6 +711,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         # Literal[...] cannot contain Any. Give up and add an error message
         # (if we haven't already).
+        arg = get_proper_type(arg)
         if isinstance(arg, AnyType):
             # Note: We can encounter Literals containing 'Any' under three circumstances:
             #
@@ -954,10 +972,10 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
                              unexpanded_type=unexpanded_type)
     if exp_len == 0 and act_len == 0:
         if no_args:
-            assert isinstance(target, Instance)
+            assert isinstance(target, Instance)  # type: ignore
             return Instance(target.type, [], line=ctx.line, column=ctx.column)
         return target
-    if exp_len == 0 and act_len > 0 and isinstance(target, Instance) and no_args:
+    if exp_len == 0 and act_len > 0 and isinstance(target, Instance) and no_args:  # type: ignore
         tp = Instance(target.type, args)
         tp.line = ctx.line
         tp.column = ctx.column
@@ -967,9 +985,9 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
              % (exp_len, act_len), ctx)
         return set_any_tvars(target, alias_tvars or [],
                              ctx.line, ctx.column, from_error=True)
-    typ = replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)
+    typ = replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)  # type: Type
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
-    if (isinstance(typ, Instance)
+    if (isinstance(typ, Instance)  # type: ignore
             and typ.type.fullname() == 'mypy_extensions.FlexibleAlias'):
         typ = typ.args[-1]
     return typ
@@ -980,7 +998,7 @@ def set_any_tvars(tp: Type, vars: List[str],
                   from_error: bool = False,
                   disallow_any: bool = False,
                   fail: Optional[FailCallback] = None,
-                  unexpanded_type: Optional[Type] = None) -> Type:
+                  unexpanded_type: Optional[Type] = None) -> ProperType:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
     else:
@@ -1151,6 +1169,7 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
+    t = get_proper_type(t)
     if isinstance(t, NoneType):
         return t
     elif isinstance(t, UnionType):

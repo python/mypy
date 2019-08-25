@@ -670,6 +670,12 @@ p: TaggedPoint
 p['z']  # E: TypedDict "TaggedPoint" has no key 'z'
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithUnicodeName]
+# flags: --python-version 2.7
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict(u'TaggedPoint', {'type': str, 'x': int, 'y': int})
+[builtins fixtures/dict.pyi]
+
 [case testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey]
 from typing import TypeVar
 from mypy_extensions import TypedDict

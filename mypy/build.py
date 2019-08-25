@@ -2347,7 +2347,7 @@ def find_module_and_diagnose(manager: BuildManager,
 
 
 def exist_added_packages(suppressed: List[str],
-                        manager: BuildManager, options: Options) -> bool:
+                         manager: BuildManager, options: Options) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
     Exclude everything not in build for follow-imports=skip.

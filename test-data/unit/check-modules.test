@@ -2755,3 +2755,13 @@ roles.role = 1  # E: Incompatible types in assignment (expression has type "int"
 from types import ModuleType
 def __getattr__(name: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
+
+[case testAlwaysReportMissingAttributesOnFoundModules]
+# flags: --ignore-missing-imports
+import pack.mod as alias
+
+x: alias.NonExistent  # E: Name 'alias.NonExistent' is not defined
+
+[file pack/__init__.py]
+[file pack/mod.py]
+class Existent: pass

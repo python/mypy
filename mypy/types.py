@@ -196,13 +196,13 @@ class TypeAliasType(Type):
 
     # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
-    def can_be_true(self) -> bool:  # type: ignore
+    def can_be_true(self) -> bool:  # type: ignore[override]
         assert self.alias is not None
         return self.alias.target.can_be_true
 
     # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
-    def can_be_false(self) -> bool:  # type: ignore
+    def can_be_false(self) -> bool:  # type: ignore[override]
         assert self.alias is not None
         return self.alias.target.can_be_false
 
@@ -855,11 +855,11 @@ class TypeVarType(ProperType):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
 
-    def erase_to_union_or_bound(self) -> Type:
+    def erase_to_union_or_bound(self) -> ProperType:
         if self.values:
             return UnionType.make_simplified_union(self.values)
         else:
-            return self.upper_bound
+            return get_proper_type(self.upper_bound)
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -1903,7 +1903,7 @@ class TypeType(ProperType):
                 [TypeType.make_normalized(union_item) for union_item in item.items],
                 line=line, column=column
             )
-        return TypeType(item, line=line, column=column)  # type: ignore
+        return TypeType(item, line=line, column=column)  # type: ignore[arg-type]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
@@ -1947,6 +1947,7 @@ class PlaceholderType(ProperType):
         self.args = args
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_placeholder_type(self)
 
     def serialize(self) -> str:
@@ -2288,14 +2289,14 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
 
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
-                        newline: int, newcolumn: int) -> Type:
+                        newline: int, newcolumn: int) -> ProperType:
     """Replace type variables in a generic type alias tp with substitutions subs
     resetting context. Length of subs should be already checked.
     """
     typ_args = get_typ_args(tp)
     new_args = typ_args[:]
     for i, arg in enumerate(typ_args):
-        if isinstance(arg, (UnboundType, TypeVarType)):  # type: ignore
+        if isinstance(arg, (UnboundType, TypeVarType)):
             tvar = arg.name  # type: Optional[str]
         else:
             tvar = None
@@ -2321,7 +2322,7 @@ def get_typ_args(tp: Type) -> List[Type]:
     return cast(List[Type], typ_args)
 
 
-def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
+def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> ProperType:
     """Return a copy of a parametrizable Type with arguments set to new_args."""
     tp = get_proper_type(tp)  # TODO: is this really needed?
 

@@ -429,8 +429,8 @@ of the above sections.
 ``--no-implicit-reexport``
     By default, imported values to a module are treated as exported and mypy allows
     other modules to import them. This flag changes the behavior to not re-export unless
-    the item is imported using from-as. Note this is always treated as enabled for
-    stub files. For example:
+    the item is imported using from-as or is included in ``__all__``. Note this is
+    always treated as enabled for stub files. For example:
 
     .. code-block:: python
 
@@ -438,6 +438,9 @@ of the above sections.
        from foo import bar
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+       # This will also re-export bar
+       from foo import bar
+       __all__ = ['bar']
 
 
 ``--strict-equality``

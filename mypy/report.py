@@ -28,7 +28,7 @@ try:
     # mypyc doesn't properly handle import from of submodules that we
     # don't have stubs for, hence the hacky double import
     import lxml.etree  # type: ignore  # noqa: F401
-    from lxml import etree  # type: ignore
+    from lxml import etree
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
@@ -840,8 +840,7 @@ class LinePrecisionReporter(AbstractReporter):
         width = max(4, max(len(info.module) for info in output_files))
         titles = ('Lines', 'Precise', 'Imprecise', 'Any', 'Empty', 'Unanalyzed')
         widths = (width,) + tuple(len(t) for t in titles)
-        # TODO: Need mypyc mypy pin move
-        fmt = '{:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}\n' % widths  # type: ignore
+        fmt = '{:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}\n' % widths
         with open(report_file, 'w') as f:
             f.write(
                 fmt.format('Name', *titles))

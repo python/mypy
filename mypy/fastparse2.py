@@ -41,6 +41,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
+    ProperType
 )
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
@@ -64,7 +65,7 @@ try:
     from mypy.fastparse import ast3, ast3_parse
 except ImportError:
     try:
-        from typed_ast import ast35  # type: ignore  # noqa: F401
+        from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
               'You can install it with `python3 -m pip install typed-ast`.',
@@ -223,7 +224,8 @@ class ASTConverter:
             res.append(node)
         return res
 
-    def translate_type_comment(self, n: ast27.stmt, type_comment: Optional[str]) -> Optional[Type]:
+    def translate_type_comment(self, n: ast27.stmt,
+                               type_comment: Optional[str]) -> Optional[ProperType]:
         if type_comment is None:
             return None
         else:
@@ -340,7 +342,7 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore
+        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
                              for ti in mod.type_ignores}
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
         return MypyFile(body,
@@ -409,7 +411,7 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)  # type: ignore
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
                                            for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
