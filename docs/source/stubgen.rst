@@ -23,9 +23,9 @@ For example, consider this source file:
 
    class Window:
        parent = dynamic()
-       def __init__(self, width, hight):
+       def __init__(self, width, height):
            self.width = width
-           self.hight = hight
+           self.height = height
 
    def create_empty() -> Window:
        return Window(0, 0)
@@ -47,7 +47,7 @@ Stubgen can generate this stub file based on the above file:
    def create_empty() -> Window: ...
 
 Stubgen generates *draft* stubs. The auto-generated stub files often
-require some some manual updates, and most types will default to ``Any``.
+require some manual updates, and most types will default to ``Any``.
 The stubs will be much more useful if you add more precise type annotations,
 at least for the most commonly used functionality.
 
