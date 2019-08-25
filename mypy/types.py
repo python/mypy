@@ -2406,6 +2406,17 @@ def remove_optional(typ: Type) -> ProperType:
         return typ
 
 
+def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue) -> bool:
+    """Check if this type is a LiteralType with the given fallback type and value."""
+    if isinstance(typ, Instance) and typ.last_known_value:
+        typ = typ.last_known_value
+    if not isinstance(typ, LiteralType):
+        return False
+    if typ.fallback.type.fullname() != fallback_fullname:
+        return False
+    return typ.value == value
+
+
 @overload
 def get_proper_type(typ: None) -> None: ...
 @overload  # noqa

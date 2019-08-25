@@ -1405,3 +1405,46 @@ _testStrictEqualityWhitelist.py:5: error: Non-overlapping equality check (left o
 _testStrictEqualityWhitelist.py:11: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "Set[str]")
 _testStrictEqualityWhitelist.py:12: error: Non-overlapping equality check (left operand type: "ValuesView[int]", right operand type: "Set[int]")
 _testStrictEqualityWhitelist.py:13: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "List[int]")
+
+[case testUnreachableWithStdlibContextManagers]
+# mypy: warn-unreachable, strict-optional
+
+from contextlib import suppress
+
+# This test overlaps with some of the warn-unreachable tests in check-unreachable-code,
+# but 'open(...)' is a very common function so we want to make sure we don't regress
+# against it specifically
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# contextlib.suppress is less common, but it's a fairly prominent example of an
+# exception-suppressing context manager, so it'd be good to double-check.
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagers.py:11: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagers.py:15: error: Missing return statement
+
+[case testUnreachableWithStdlibContextManagersNoStrictOptional]
+# mypy: warn-unreachable, no-strict-optional
+
+from contextlib import suppress
+
+# When strict-optional is disabled, 'open' should still behave in the same way as before
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# ...but unfortunately, we can't
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
