@@ -16,7 +16,8 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType
+    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType,
+    TypeAliasType
 )
 
 from mypy.nodes import (
@@ -473,6 +474,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return AnyType(TypeOfAny.from_error)
 
     def visit_instance(self, t: Instance) -> Type:
+        return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         return t
 
     def visit_type_var(self, t: TypeVarType) -> Type:

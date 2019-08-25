@@ -23,7 +23,7 @@ from mypy.types import (
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType
+    PlaceholderType, TypeAliasType, get_proper_type
 )
 
 
@@ -321,6 +321,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_placeholder_type(self, t: PlaceholderType) -> T:
         return self.query_types(t.args)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
         """Perform a query for a list of types.
