@@ -3312,14 +3312,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 exit_ret_type = self.check_async_with_item(expr, target, s.unanalyzed_type is None)
             else:
                 exit_ret_type = self.check_with_item(expr, target, s.unanalyzed_type is None)
+
+            # Based on the return type, determine if this context manager 'swallows'
+            # exceptions or not. We determine this using a heuristic based on the
+            # return type of the __exit__ method -- see the discussion in
+            # https://github.com/python/mypy/issues/7214 and the section about context managers
+            # in https://github.com/python/typeshed/blob/master/CONTRIBUTING.md#conventions
+            # for more details.
+
+            exit_ret_type = get_proper_type(exit_ret_type)
             if is_literal_type(exit_ret_type, "builtins.bool", False):
                 continue
-            if is_literal_type(exit_ret_type, "builtins.bool", True):
+
+            if (is_literal_type(exit_ret_type, "builtins.bool", True)
+                    or (isinstance(exit_ret_type, Instance)
+                        and exit_ret_type.type.fullname() == 'builtins.bool'
+                        and state.strict_optional)):
+                # Note: if strict-optional is disabled, this bool instance
+                # could actually be an Optional[bool].
                 exceptions_maybe_suppressed = True
-            elif (isinstance(exit_ret_type, Instance)
-                    and exit_ret_type.type.fullname() == 'builtins.bool'):
-                exceptions_maybe_suppressed = True
+
         if exceptions_maybe_suppressed:
+            # Treat this 'with' block in the same way we'd treat a 'try: BODY; except: pass'
+            # block. This means control flow can continue after the 'with' even if the 'with'
+            # block immediately returns.
             with self.binder.frame_context(can_skip=True, try_frame=True):
                 self.accept(s.body)
         else:
