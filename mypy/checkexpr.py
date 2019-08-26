@@ -59,7 +59,9 @@ from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
-from mypy.typeops import tuple_fallback, make_simplified_union, true_only, false_only
+from mypy.typeops import (
+    tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
+)
 import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
@@ -3919,9 +3921,9 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
 
     # Erase typevars: we'll consider them all to have the same "shape".
     if isinstance(actual, TypeVarType):
-        actual = actual.erase_to_union_or_bound()
+        actual = erase_to_union_or_bound(actual)
     if isinstance(formal, TypeVarType):
-        formal = formal.erase_to_union_or_bound()
+        formal = erase_to_union_or_bound(formal)
 
     # Callable or Type[...]-ish types
     def is_typetype_like(typ: ProperType) -> bool:

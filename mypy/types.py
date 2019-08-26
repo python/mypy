@@ -333,14 +333,6 @@ class TypeVarDef(mypy.nodes.Context):
         return TypeVarDef(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
-    def erase_to_union_or_bound(self) -> Type:
-        from mypy.typeops import make_simplified_union
-
-        if self.values:
-            return make_simplified_union(self.values)
-        else:
-            return self.upper_bound
-
     def __repr__(self) -> str:
         if self.values:
             return '{} in {}'.format(self.name, tuple(self.values))
@@ -856,13 +848,6 @@ class TypeVarType(ProperType):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
-
-    def erase_to_union_or_bound(self) -> ProperType:
-        from mypy.typeops import make_simplified_union
-        if self.values:
-            return make_simplified_union(self.values)
-        else:
-            return get_proper_type(self.upper_bound)
 
     def __hash__(self) -> int:
         return hash(self.id)

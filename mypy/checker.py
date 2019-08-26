@@ -49,6 +49,7 @@ from mypy.checkmember import (
 )
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
+    erase_def_to_union_or_bound, erase_to_union_or_bound,
     true_only, false_only,
 )
 from mypy import message_registry
@@ -3527,7 +3528,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # do better.
             # If it is possible for the false branch to execute, return the original
             # type to avoid losing type information.
-            callables, uncallables = self.partition_by_callable(typ.erase_to_union_or_bound(),
+            callables, uncallables = self.partition_by_callable(erase_to_union_or_bound(typ),
                                                                 unsound_partition)
             uncallables = [typ] if len(uncallables) else []
             return callables, uncallables
@@ -4438,7 +4439,7 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
     # the below subtype check and (surprisingly?) `is_proper_subtype(Any, Any)`
     # returns `True`.
     # TODO: find a cleaner solution instead of this ad-hoc erasure.
-    exp_signature = expand_type(signature, {tvar.id: tvar.erase_to_union_or_bound()
+    exp_signature = expand_type(signature, {tvar.id: erase_def_to_union_or_bound(tvar)
                                 for tvar in signature.variables})
     assert isinstance(exp_signature, CallableType)
     return is_callable_compatible(exp_signature, other,

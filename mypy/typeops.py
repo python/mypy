@@ -1,11 +1,9 @@
-"""Miscellaneuus type operations and helpers for use during type checking.
+"""Miscellaneous type operations and helpers for use during type checking.
 
 NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       cycles. These must not be called from the semantic analysis main pass
       since these may assume that MROs are ready.
 """
-
-# TODO: Move more type operations here
 
 from typing import cast, Optional, List, Sequence, Set
 
@@ -309,7 +307,6 @@ def true_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The true version of a union type is the union of the true versions of its components
         new_items = [true_only(item) for item in t.items]
-        from mypy.typeops import make_simplified_union
         return make_simplified_union(new_items, line=t.line, column=t.column)
     else:
         new_t = copy_type(t)
@@ -337,7 +334,6 @@ def false_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The false version of a union type is the union of the false versions of its components
         new_items = [false_only(item) for item in t.items]
-        from mypy.typeops import make_simplified_union
         return make_simplified_union(new_items, line=t.line, column=t.column)
     else:
         new_t = copy_type(t)
@@ -353,10 +349,23 @@ def true_or_false(t: Type) -> ProperType:
 
     if isinstance(t, UnionType):
         new_items = [true_or_false(item) for item in t.items]
-        from mypy.typeops import make_simplified_union
         return make_simplified_union(new_items, line=t.line, column=t.column)
 
     new_t = copy_type(t)
     new_t.can_be_true = new_t.can_be_true_default()
     new_t.can_be_false = new_t.can_be_false_default()
     return new_t
+
+
+def erase_def_to_union_or_bound(tdef: TypeVarDef) -> Type:
+    if tdef.values:
+        return make_simplified_union(tdef.values)
+    else:
+        return tdef.upper_bound
+
+
+def erase_to_union_or_bound(typ: TypeVarType) -> ProperType:
+    if typ.values:
+        return make_simplified_union(typ.values)
+    else:
+        return get_proper_type(typ.upper_bound)
