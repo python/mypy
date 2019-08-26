@@ -261,10 +261,12 @@ class StringFormatterChecker:
                 bytes_type = self.chk.named_generic_type('builtins.bytes', [])
                 return self.chk.named_generic_type('typing.Mapping',
                                                    [bytes_type, any_type])
-            if isinstance(expr, StrExpr):
+            elif isinstance(expr, StrExpr):
                 str_type = self.chk.named_generic_type('builtins.str', [])
                 return self.chk.named_generic_type('typing.Mapping',
                                                    [str_type, any_type])
+            else:
+                assert False, "There should not be UnicodeExpr on Python 3"
         else:
             str_type = self.chk.named_generic_type('builtins.str', [])
             unicode_type = self.chk.named_generic_type('builtins.unicode', [])
@@ -442,7 +444,13 @@ class StringFormatterChecker:
 
 
 def has_type_component(typ: Type, fullname: str) -> bool:
-    """Is this a specific instance type, or a union that contains it?"""
+    """Is this a specific instance type, or a union that contains it?
+
+    We use this ad-hoc function instead of a proper visitor or subtype check
+    because some str vs bytes errors are strictly speaking not runtime errors,
+    but rather highly counter-intuitive behavior. This is similar to what is used for
+    --strict-equality.
+    """
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         return typ.type.has_base(fullname)
