@@ -11,7 +11,7 @@ from typing import cast, Optional, List
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
-    TypeVarType, TypeType, UninhabitedType,
+    TypeVarType, TypeType, UninhabitedType, FormalArgument,
     get_proper_type,
 )
 from mypy.nodes import (
@@ -210,3 +210,30 @@ def erase_to_bound(t: Type) -> Type:
         if isinstance(t.item, TypeVarType):
             return TypeType.make_normalized(t.item.upper_bound)
     return t
+
+
+def callable_corresponding_argument(typ: CallableType,
+                                    model: FormalArgument) -> Optional[FormalArgument]:
+    """Return the argument a function that corresponds to `model`"""
+
+    by_name = typ.argument_by_name(model.name)
+    by_pos = typ.argument_by_position(model.pos)
+    if by_name is None and by_pos is None:
+        return None
+    if by_name is not None and by_pos is not None:
+        if by_name == by_pos:
+            return by_name
+        # If we're dealing with an optional pos-only and an optional
+        # name-only arg, merge them.  This is the case for all functions
+        # taking both *args and **args, or a pair of functions like so:
+
+        # def right(a: int = ...) -> None: ...
+        # def left(__a: int = ..., *, a: int = ...) -> None: ...
+        from mypy.subtypes import is_equivalent
+
+        if (not (by_name.required or by_pos.required)
+                and by_pos.name is None
+                and by_name.pos is None
+                and is_equivalent(by_name.typ, by_pos.typ)):
+            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+    return by_name if by_name is not None else by_pos

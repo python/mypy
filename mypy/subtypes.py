@@ -842,7 +842,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     #           also accept. The only exception is if we are allowing partial
     #           partial overlaps: in that case, we ignore optional args on the right.
     for right_arg in right.formal_arguments():
-        left_arg = left.corresponding_argument(right_arg)
+        left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
         if left_arg is None:
             if allow_partial_overlap and not right_arg.required:
                 continue
