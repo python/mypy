@@ -43,7 +43,7 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
         return s
 
     if isinstance(declaration, UnionType):
-        return UnionType.make_simplified_union([s, t])
+        return mypy.typeops.make_simplified_union([s, t])
 
     if isinstance(s, NoneType) and not isinstance(t, NoneType):
         s, t = t, s
@@ -107,7 +107,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if is_subtype(self.s, t):
             return t
         else:
-            return UnionType.make_simplified_union([self.s, t])
+            return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
         return t
@@ -119,7 +119,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             elif isinstance(self.s, UnboundType):
                 return AnyType(TypeOfAny.special_form)
             else:
-                return UnionType.make_simplified_union([self.s, t])
+                return mypy.typeops.make_simplified_union([self.s, t])
         else:
             return self.s
 

@@ -25,7 +25,8 @@ from mypy import message_registry
 from mypy import subtypes
 from mypy import meet
 from mypy.typeops import (
-    tuple_fallback, bind_self, erase_to_bound, class_callable, type_object_type_from_function
+    tuple_fallback, bind_self, erase_to_bound, class_callable, type_object_type_from_function,
+    make_simplified_union,
 )
 
 if TYPE_CHECKING:  # import for forward declaration only
@@ -292,7 +293,7 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
         item_mx = mx.copy_modified(self_type=subtype)
         results.append(_analyze_member_access(name, subtype, item_mx))
     mx.msg.disable_type_names -= 1
-    return UnionType.make_simplified_union(results)
+    return make_simplified_union(results)
 
 
 def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
@@ -435,7 +436,7 @@ def analyze_descriptor_access(instance_type: Type,
 
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
-        return UnionType.make_simplified_union([
+        return make_simplified_union([
             analyze_descriptor_access(instance_type, typ, builtin_type,
                                       msg, context, chk=chk)
             for typ in descriptor_type.items

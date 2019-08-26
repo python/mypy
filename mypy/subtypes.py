@@ -241,7 +241,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
-        if left.values and self._is_subtype(UnionType.make_simplified_union(left.values), right):
+        if left.values and self._is_subtype(
+                mypy.typeops.make_simplified_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
@@ -1167,8 +1168,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         if isinstance(self.right, TypeVarType) and left.id == self.right.id:
             return True
-        if left.values and self._is_proper_subtype(UnionType.make_simplified_union(left.values),
-                                                   self.right):
+        if left.values and self._is_proper_subtype(
+                mypy.typeops.make_simplified_union(left.values), self.right):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 

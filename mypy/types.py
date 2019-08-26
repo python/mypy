@@ -334,8 +334,10 @@ class TypeVarDef(mypy.nodes.Context):
                           old.upper_bound, old.variance, old.line, old.column)
 
     def erase_to_union_or_bound(self) -> Type:
+        from mypy.typeops import make_simplified_union
+
         if self.values:
-            return UnionType.make_simplified_union(self.values)
+            return make_simplified_union(self.values)
         else:
             return self.upper_bound
 
@@ -856,8 +858,9 @@ class TypeVarType(ProperType):
         return visitor.visit_type_var(self)
 
     def erase_to_union_or_bound(self) -> ProperType:
+        from mypy.typeops import make_simplified_union
         if self.values:
-            return UnionType.make_simplified_union(self.values)
+            return make_simplified_union(self.values)
         else:
             return get_proper_type(self.upper_bound)
 
@@ -1695,59 +1698,6 @@ class UnionType(ProperType):
         else:
             return UninhabitedType()
 
-    @staticmethod
-    def make_simplified_union(items: Sequence[Type],
-                              line: int = -1, column: int = -1) -> ProperType:
-        """Build union type with redundant union items removed.
-
-        If only a single item remains, this may return a non-union type.
-
-        Examples:
-
-        * [int, str] -> Union[int, str]
-        * [int, object] -> object
-        * [int, int] -> int
-        * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
-        * [Any, Any] -> Any
-
-        Note: This must NOT be used during semantic analysis, since TypeInfos may not
-              be fully initialized.
-        """
-        # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
-        #       type operations are not static methods, so this is inconsistent.
-        items = get_proper_types(items)
-        while any(isinstance(typ, UnionType) for typ in items):
-            all_items = []  # type: List[ProperType]
-            for typ in items:
-                if isinstance(typ, UnionType):
-                    all_items.extend(typ.items)
-                else:
-                    all_items.append(typ)
-            items = all_items
-
-        # from mypy.subtypes import is_proper_subtype
-        is_proper_subtype = __import__('mypy.subtypes').subtypes.is_proper_subtype  # type: ignore
-
-        removed = set()  # type: Set[int]
-        for i, ti in enumerate(items):
-            if i in removed: continue
-            # Keep track of the truishness info for deleted subtypes which can be relevant
-            cbt = cbf = False
-            for j, tj in enumerate(items):
-                if i != j and is_proper_subtype(tj, ti):
-                    # We found a redundant item in the union.
-                    removed.add(j)
-                    cbt = cbt or tj.can_be_true
-                    cbf = cbf or tj.can_be_false
-            # if deleted subtypes had more general truthiness, use that
-            if not ti.can_be_true and cbt:
-                items[i] = true_or_false(ti)
-            elif not ti.can_be_false and cbf:
-                items[i] = true_or_false(ti)
-
-        simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-        return UnionType.make_union(simplified_set, line, column)
-
     def length(self) -> int:
         return len(self.items)
 
@@ -2177,7 +2127,8 @@ def true_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The true version of a union type is the union of the true versions of its components
         new_items = [true_only(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
+        from mypy.typeops import make_simplified_union
+        return make_simplified_union(new_items, line=t.line, column=t.column)
     else:
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -2204,7 +2155,8 @@ def false_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The false version of a union type is the union of the false versions of its components
         new_items = [false_only(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
+        from mypy.typeops import make_simplified_union
+        return make_simplified_union(new_items, line=t.line, column=t.column)
     else:
         new_t = copy_type(t)
         new_t.can_be_true = False
@@ -2219,7 +2171,8 @@ def true_or_false(t: Type) -> ProperType:
 
     if isinstance(t, UnionType):
         new_items = [true_or_false(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
+        from mypy.typeops import make_simplified_union
+        return make_simplified_union(new_items, line=t.line, column=t.column)
 
     new_t = copy_type(t)
     new_t.can_be_true = new_t.can_be_true_default()

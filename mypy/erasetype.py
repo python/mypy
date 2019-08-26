@@ -9,6 +9,7 @@ from mypy.types import (
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
 
+
 def erase_type(typ: Type) -> ProperType:
     """Erase any type variables from a type.
 
@@ -87,7 +88,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
-        return UnionType.make_simplified_union(erased_items)
+        from mypy.typeops import make_simplified_union  # asdf
+        # XXX: does this need to be simplified?
+        return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)
