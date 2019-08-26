@@ -609,7 +609,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
-    from mypy.checkmember import bind_self
+    from mypy.typeops import bind_self
+
     if isinstance(node, FuncBase):
         typ = function_type(node,
                             fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]

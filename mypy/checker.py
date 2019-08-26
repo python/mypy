@@ -45,8 +45,10 @@ from mypy.messages import (
 )
 import mypy.checkexpr
 from mypy.checkmember import (
-    map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
-    analyze_descriptor_access,
+    analyze_descriptor_access, type_object_type,
+)
+from mypy.typeops import (
+    map_type_from_supertype, bind_self, erase_to_bound,
 )
 from mypy import message_registry
 from mypy.subtypes import (
