@@ -37,6 +37,41 @@ def compile_format_re() -> Pattern[str]:
 FORMAT_RE = compile_format_re()  # type: Final
 
 
+def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
+    # After https://docs.python.org/3/library/string.html#formatspec
+    # TODO: write a more precise regexp for identifiers (currently \w+).
+    # TODO: support nested formatting like '{0:{fill}{align}16}'.format(x, fill=y, align=z).
+
+    # Field (optional) is an integer/identifier possibly followed by several .attr and [index].
+    field = r'(?P<field>(?P<arg_name>\w+)(\.\w+|\[[^]?$]+\])*)?'
+
+    # Conversion (optional) is ! followed by one of letters for forced repr(), str(), or ascii().
+    conversion = r'(?P<conversion>![rsa])?'
+
+    # Format specification (optional) follows its own mini-language:
+    # Fill and align is valid for all types.
+    fill_align = r'(?P<fill_align>.?[<>=^])?'
+    # Number formatting options are only valid for int, float, complex, and Decimal,
+    # except if only width is given (it is valid for all types).
+    # This contains sign, alternate markers (# and/or 0), width, grouping (_ or ,) and precision.
+    num_spec = r'(?P<num_spec>[+\- ]?#?0?(?P<width>\d+)?[_,]?(\.\d+)?)?'
+    # The last element is type.
+    type = r'(?P<type>[bcdeEfFgGnosxX%])?'
+    format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
+
+    # Custom types can define their own form_spec using __format__().
+    format_spec_custom = r'(?P<format_spec>:.*)?'
+
+    format_re = r'{' + field + conversion + format_spec + r'}'
+    format_re_custom = r'{' + field + conversion + format_spec_custom + r'}'
+    return re.compile(format_re), re.compile(format_re_custom)
+
+
+_compiled_specs_new = compile_new_format_re()
+FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
+FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
+
+
 class ConversionSpecifier:
     def __init__(self, key: Optional[str],
                  flags: str, width: str, precision: str, type: str) -> None:
