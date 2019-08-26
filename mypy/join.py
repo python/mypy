@@ -6,7 +6,7 @@ from typing import List, Optional
 from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
-    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny, get_proper_type,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
     ProperType, get_proper_types
 )
 from mypy.maptype import map_instance_to_supertype
@@ -27,8 +27,8 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
-        s = true_or_false(s)
-        t = true_or_false(t)
+        s = mypy.typeops.true_or_false(s)
+        t = mypy.typeops.true_or_false(t)
 
     if isinstance(s, AnyType):
         return s
@@ -68,8 +68,8 @@ def join_types(s: Type, t: Type) -> ProperType:
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
-        s = true_or_false(s)
-        t = true_or_false(t)
+        s = mypy.typeops.true_or_false(s)
+        t = mypy.typeops.true_or_false(t)
 
     if isinstance(s, AnyType):
         return s

@@ -17,7 +17,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
-    true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
+    is_named_instance, function_type, callable_type, FunctionLike,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
     get_proper_types
 )
@@ -59,7 +59,7 @@ from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
-from mypy.typeops import tuple_fallback, make_simplified_union
+from mypy.typeops import tuple_fallback, make_simplified_union, true_only, false_only
 import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See

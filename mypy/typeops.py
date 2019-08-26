@@ -11,8 +11,8 @@ from typing import cast, Optional, List, Sequence, Set
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
-    TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, true_or_false,
-    ProperType, get_proper_type, get_proper_types,
+    TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, NoneType,
+    ProperType, get_proper_type, get_proper_types, copy_type
 )
 from mypy.nodes import (
     TypeInfo, TypeVar, ARG_STAR,
@@ -21,6 +21,9 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
 
 from mypy.typevars import fill_typevars
+
+from mypy import state
+
 
 def tuple_fallback(typ: TupleType) -> Instance:
     """Return fallback type for a tuple."""
@@ -289,3 +292,71 @@ def make_simplified_union(items: Sequence[Type],
 
     simplified_set = [items[i] for i in range(len(items)) if i not in removed]
     return UnionType.make_union(simplified_set, line, column)
+
+
+def true_only(t: Type) -> ProperType:
+    """
+    Restricted version of t with only True-ish values
+    """
+    t = get_proper_type(t)
+
+    if not t.can_be_true:
+        # All values of t are False-ish, so there are no true values in it
+        return UninhabitedType(line=t.line, column=t.column)
+    elif not t.can_be_false:
+        # All values of t are already True-ish, so true_only is idempotent in this case
+        return t
+    elif isinstance(t, UnionType):
+        # The true version of a union type is the union of the true versions of its components
+        new_items = [true_only(item) for item in t.items]
+        from mypy.typeops import make_simplified_union
+        return make_simplified_union(new_items, line=t.line, column=t.column)
+    else:
+        new_t = copy_type(t)
+        new_t.can_be_false = False
+        return new_t
+
+
+def false_only(t: Type) -> ProperType:
+    """
+    Restricted version of t with only False-ish values
+    """
+    t = get_proper_type(t)
+
+    if not t.can_be_false:
+        if state.strict_optional:
+            # All values of t are True-ish, so there are no false values in it
+            return UninhabitedType(line=t.line)
+        else:
+            # When strict optional checking is disabled, everything can be
+            # False-ish since anything can be None
+            return NoneType(line=t.line)
+    elif not t.can_be_true:
+        # All values of t are already False-ish, so false_only is idempotent in this case
+        return t
+    elif isinstance(t, UnionType):
+        # The false version of a union type is the union of the false versions of its components
+        new_items = [false_only(item) for item in t.items]
+        from mypy.typeops import make_simplified_union
+        return make_simplified_union(new_items, line=t.line, column=t.column)
+    else:
+        new_t = copy_type(t)
+        new_t.can_be_true = False
+        return new_t
+
+
+def true_or_false(t: Type) -> ProperType:
+    """
+    Unrestricted version of t with both True-ish and False-ish values
+    """
+    t = get_proper_type(t)
+
+    if isinstance(t, UnionType):
+        new_items = [true_or_false(item) for item in t.items]
+        from mypy.typeops import make_simplified_union
+        return make_simplified_union(new_items, line=t.line, column=t.column)
+
+    new_t = copy_type(t)
+    new_t.can_be_true = new_t.can_be_true_default()
+    new_t.can_be_false = new_t.can_be_false_default()
+    return new_t
