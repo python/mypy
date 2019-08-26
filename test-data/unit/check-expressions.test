@@ -1259,17 +1259,19 @@ b'%(x)s' % {b'x': b'data'}
 from typing import Any, Dict
 a = None # type: Any
 ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
-'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "Dict[Any, Any]")
+'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "Mapping[str, Any]")
 '%()d' % a
 '%()d' % ds
-'%()d' % do
+'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "Mapping[str, Any]")
+b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "Mapping[bytes, Any]")
 [builtins fixtures/dict.pyi]
 
-[case testStringInterpolationMappingInvalidDictTypes-skip]
+[case testStringInterpolationMappingInvalidDictTypesPy2]
+# flags: --py2 --no-strict-optional
 from typing import Any, Dict
 di = None # type: Dict[int, int]
-'%()d' % di  # E: Format requires a mapping (expression has type Dict[int, int], expected type for mapping is Dict[str, Any])
-[builtins fixtures/dict.pyi]
+'%()d' % di  # E: Format requires a mapping (expression has type "Dict[int, int]", expected type for mapping is "Union[Mapping[str, Any], Mapping[unicode, Any]]")
+[builtins_py2 fixtures/dict.pyi]
 
 [case testStringInterpolationMappingInvalidSpecifiers]
 '%(a)d %d' % 1  # E: String interpolation mixes specifier with and without mapping keys

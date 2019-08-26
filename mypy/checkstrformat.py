@@ -248,12 +248,31 @@ class StringFormatterChecker:
                     self.check_s_special_cases(expr, rep_type, expr)
         else:
             rep_type = self.accept(replacements)
-            any_type = AnyType(TypeOfAny.special_form)
-            dict_type = self.chk.named_generic_type('builtins.dict',
-                                                    [any_type, any_type])
+            dict_type = self.build_dict_type(expr)
             self.chk.check_subtype(rep_type, dict_type, replacements,
                                    message_registry.FORMAT_REQUIRES_MAPPING,
                                    'expression has type', 'expected type for mapping is')
+
+    def build_dict_type(self, expr: FormatStringExpr) -> Type:
+        """Build expected mapping type for right operand in % formatting."""
+        any_type = AnyType(TypeOfAny.special_form)
+        if self.chk.options.python_version >= (3, 0):
+            if isinstance(expr, BytesExpr):
+                bytes_type = self.chk.named_generic_type('builtins.bytes', [])
+                return self.chk.named_generic_type('typing.Mapping',
+                                                   [bytes_type, any_type])
+            if isinstance(expr, StrExpr):
+                str_type = self.chk.named_generic_type('builtins.str', [])
+                return self.chk.named_generic_type('typing.Mapping',
+                                                   [str_type, any_type])
+        else:
+            str_type = self.chk.named_generic_type('builtins.str', [])
+            unicode_type = self.chk.named_generic_type('builtins.unicode', [])
+            str_map = self.chk.named_generic_type('typing.Mapping',
+                                                  [str_type, any_type])
+            unicode_map = self.chk.named_generic_type('typing.Mapping',
+                                                      [unicode_type, any_type])
+            return UnionType.make_union([str_map, unicode_map])
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
                                    context: Context, expr: FormatStringExpr
