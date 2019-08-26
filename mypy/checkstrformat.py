@@ -70,6 +70,7 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
 _compiled_specs_new = compile_new_format_re()
 FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
 FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
+FORMAT_RE_NEW_EVERYTHING = re.compile(r'{.*}')  # type: Final
 
 
 class ConversionSpecifier:
@@ -219,6 +220,11 @@ class StringFormatterChecker:
                     for k, v in replacements.items)):
             mapping = {}  # type: Dict[str, Type]
             for k, v in replacements.items:
+                if self.chk.options.python_version >= (3, 0) and isinstance(expr, BytesExpr):
+                    # Special case: for bytes formatting keys must be bytes.
+                    if not isinstance(k, BytesExpr):
+                        self.msg.fail('Dictionary keys in bytes formatting must be bytes,'
+                                      ' not strings', expr)
                 key_str = cast(FormatStringExpr, k).value
                 mapping[key_str] = self.accept(v)
 
@@ -238,6 +244,8 @@ class StringFormatterChecker:
                                        message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                        'expression has type',
                                        'placeholder with key \'%s\' has type' % specifier.key)
+                if specifier.type == 's':
+                    self.check_s_special_cases(expr, rep_type, expr)
         else:
             rep_type = self.accept(replacements)
             any_type = AnyType(TypeOfAny.special_form)
@@ -313,21 +321,31 @@ class StringFormatterChecker:
             self.chk.check_subtype(typ, expected_type, context,
                                    message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                    'expression has type', 'placeholder has type')
-            if type == 's' and isinstance(expr, StrExpr):
-                # Couple special cases.
-                if self.chk.options.python_version >= (3, 0):
-                    if has_type_component(typ, 'builtins.bytes'):
-                        self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
-                                      " use %r if this is a desired behavior", context)
-                if self.chk.options.python_version < (3, 0):
-                    if has_type_component(typ, 'builtins.unicode'):
-                        self.unicode_upcast = True
+            if type == 's':
+                self.check_s_special_cases(expr, typ, context)
 
         def check_expr(expr: Expression) -> None:
             type = self.accept(expr, expected_type)
             check_type(type)
 
         return check_expr, check_type
+
+    def check_s_special_cases(self, expr: FormatStringExpr, typ: Type, context: Context) -> None:
+        """Additional special cases for %s in bytes vs string context."""
+        if isinstance(expr, StrExpr):
+            # Couple special cases for string formatting.
+            if self.chk.options.python_version >= (3, 0):
+                if has_type_component(typ, 'builtins.bytes'):
+                    self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
+                                  " use %r if this is a desired behavior", context)
+            if self.chk.options.python_version < (3, 0):
+                if has_type_component(typ, 'builtins.unicode'):
+                    self.unicode_upcast = True
+        if isinstance(expr, BytesExpr):
+            # A special case for bytes formatting: b'%s' actually requires bytes on Python 3.
+            if self.chk.options.python_version >= (3, 0):
+                if has_type_component(typ, 'builtins.str'):
+                    self.msg.fail("On Python 3 b'%s' requires bytes, not string", context)
 
     def checkers_for_c_type(self, type: str,
                             context: Context,

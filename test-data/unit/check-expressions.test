@@ -1148,6 +1148,7 @@ xs: str
 
 '%s' % xs   # OK
 '%s' % xb   # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
+'%(name)s' % {'name': b'value'}  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationSBytesVsStrResultsPy2]
@@ -1157,6 +1158,7 @@ xu = u'x'
 
 reveal_type('%s' % xu)  # N: Revealed type is 'builtins.unicode'
 reveal_type('%s, %d' % (u'abc', 42))  # N: Revealed type is 'builtins.unicode'
+reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is 'builtins.unicode'
 reveal_type('%r' % xu)  # N: Revealed type is 'builtins.str'
 reveal_type('%s' % xs)  # N: Revealed type is 'builtins.str'
 [builtins fixtures/primitives.pyi]
@@ -1304,7 +1306,8 @@ x = (1, 2)
 
 [case testBytePercentInterpolationSupported]
 b'%s' % (b'xyz',)
-b'%(name)s' % {'name': 'jane'}
+b'%(name)s' % {'name': b'jane'}  # E: Dictionary keys in bytes formatting must be bytes, not strings
+b'%(name)s' % {b'name': 'jane'}  # E: On Python 3 b'%s' requires bytes, not string
 b'%c' % (123)
 
 [case testUnicodeInterpolation_python2]
