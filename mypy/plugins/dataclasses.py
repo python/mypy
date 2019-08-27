@@ -83,9 +83,8 @@ class DataclassTransformer:
             # Some definitions are not ready, defer() should be already called.
             return
         for attr in attributes:
-            try:
-                node = info[attr.name]
-            except KeyError:
+            node = info.get(attr.name)
+            if node is None:
                 # Nodes of superclass InitVars not used in __init__ cannot be reached.
                 assert attr.is_init_var and not attr.is_in_init
                 continue
@@ -190,9 +189,9 @@ class DataclassTransformer:
         """Remove init-only vars from the class and reset init var declarations."""
         for attr in attributes:
             if attr.is_init_var:
-                try:
+                if attr.name in info.names:
                     del info.names[attr.name]
-                except KeyError:
+                else:
                     # Nodes of superclass InitVars not used in __init__ cannot be reached.
                     assert attr.is_init_var and not attr.is_in_init
                 for stmt in info.defn.defs.body:
