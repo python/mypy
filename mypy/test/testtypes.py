@@ -19,6 +19,7 @@ from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 from mypy.state import strict_optional_set
 from mypy.typeops import true_only, false_only
 
+
 class TypesSuite(Suite):
     def setUp(self) -> None:
         self.x = UnboundType('X')  # Helpers

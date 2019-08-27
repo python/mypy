@@ -8,7 +8,7 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
+    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
     TypeVarType, TPDICT_FB_NAMES, get_proper_type
 )
 from mypy.subtypes import is_subtype

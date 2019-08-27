@@ -1380,8 +1380,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
                     # we don't want to introduce internal inconsistencies.
                     unioned_result = (make_simplified_union(list(returns),
-                                                                      context.line,
-                                                                      context.column),
+                                                            context.line,
+                                                            context.column),
                                       self.combine_function_signatures(inferred_types))
 
         # Step 3: We try checking each branch one-by-one.
@@ -2629,8 +2629,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
             return make_simplified_union([self.visit_index_with_type(typ, e,
-                                                                               original_type)
-                                                    for typ in left_type.relevant_items()])
+                                                                     original_type)
+                                          for typ in left_type.relevant_items()])
         elif isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They return a more specific type when
             # indexed by an integer literal.

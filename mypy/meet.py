@@ -42,7 +42,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return declared
     if isinstance(declared, UnionType):
         return make_simplified_union([narrow_declared_type(x, narrowed)
-                                                for x in declared.relevant_items()])
+                                      for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed,
                                   prohibit_none_typevar_overlap=True):
         if state.strict_optional:
@@ -51,7 +51,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             return NoneType()
     elif isinstance(narrowed, UnionType):
         return make_simplified_union([narrow_declared_type(declared, x)
-                                                for x in narrowed.relevant_items()])
+                                      for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):

@@ -9,7 +9,6 @@ from mypy.types import (
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
 
-
 def erase_type(typ: Type) -> ProperType:
     """Erase any type variables from a type.
 
