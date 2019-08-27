@@ -7,7 +7,7 @@ import subprocess
 import contextlib
 import shutil
 import sys
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional, List, cast
 
 from mypy import build
 from mypy.test.data import DataDrivenTestCase
@@ -23,8 +23,6 @@ from mypyc.test.testutil import (
     use_custom_builtins, MypycDataSuite, assert_test_output,
     show_c
 )
-
-from distutils.core import run_setup
 
 files = [
     'run-functions.test',
@@ -44,6 +42,43 @@ setup(name='test_run_output',
       ext_modules=mypycify({}, skip_cgen=True, strip_asserts=False),
 )
 """
+
+
+def run_setup(script_name: str, script_args: List[str]) -> bool:
+    """Run a setup script in a somewhat controlled environment.
+
+    This is adapted from code in distutils and our goal here is that is
+    faster to not need to spin up a python interpreter to run it.
+
+    We had to fork it because the real run_setup swallows errors
+    and KeyboardInterrupt with no way to recover them (!).
+    The real version has some extra features that we removed since
+    we weren't using them.
+
+    Returns whether the setup succeeded.
+    """
+    save_argv = sys.argv.copy()
+    g = {'__file__': script_name}
+    try:
+        try:
+            sys.argv[0] = script_name
+            sys.argv[1:] = script_args
+            with open(script_name, 'rb') as f:
+                exec(f.read(), g)
+        finally:
+            sys.argv = save_argv
+    except SystemExit as e:
+        # typeshed reports code as being an int but that is wrong
+        code = cast(Any, e).code
+        # distutils converts KeyboardInterrupt into a SystemExit with
+        # "interrupted" as the argument. Convert it back so that
+        # pytest will exit instead of just failing the test.
+        if code == "interrupted":
+            raise KeyboardInterrupt
+
+        return code == 0 or code is None
+
+    return True
 
 
 @contextlib.contextmanager
@@ -150,14 +185,14 @@ class TestRun(MypycDataSuite):
             with open(setup_file, 'w') as f:
                 f.write(setup_format.format(module_paths))
 
-            run_setup(setup_file, ['build_ext', '--inplace'])
-            # Oh argh run_setup doesn't propagate failure. For now we'll just assert
-            # that the file is there.
-            suffix = 'pyd' if sys.platform == 'win32' else 'so'
-            if not glob.glob('native.*.{}'.format(suffix)):
+            if not run_setup(setup_file, ['build_ext', '--inplace']):
                 if testcase.config.getoption('--mypyc-showc'):
                     show_c(cfiles)
                 assert False, "Compilation failed"
+
+            # Assert that an output file got created
+            suffix = 'pyd' if sys.platform == 'win32' else 'so'
+            assert glob.glob('native.*.{}'.format(suffix))
 
             for p in to_delete:
                 os.remove(p)
