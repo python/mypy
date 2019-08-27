@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from typing import List, Optional, Callable, Tuple, Iterator, Set, Union, cast
+from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast
 from typing_extensions import Final
 
 from mypy.types import (
@@ -16,7 +16,6 @@ import mypy.sametypes
 from mypy.erasetype import erase_type
 # Circular import; done in the function instead.
 # import mypy.solve
-from mypy import messages
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
@@ -1008,10 +1007,15 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)
-    msg = messages.temp_message_builder()
-    applied = mypy.applytype.apply_generic_arguments(type, non_none_inferred_vars, msg,
+    had_errors = False
+
+    def report(*args: Any) -> None:
+        nonlocal had_errors
+        had_errors = True
+
+    applied = mypy.applytype.apply_generic_arguments(type, non_none_inferred_vars, report,
                                                      context=target)
-    if msg.is_errors():
+    if had_errors:
         return None
     return applied
 
