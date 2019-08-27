@@ -33,7 +33,7 @@ from mypy.nodes import (
     CallExpr
 )
 from mypy.subtypes import (
-    is_subtype, find_member, is_subtype, get_member_flags,
+    is_subtype, find_member, get_member_flags,
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
 )
 from mypy.sametypes import is_same_type
