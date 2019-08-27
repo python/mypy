@@ -555,6 +555,22 @@ app.database_name  # E: "Application" has no attribute "database_name"
 class Yes: ...
 [builtins fixtures/list.pyi]
 
+[case testDataclassesNoInitInitVarInheritance]
+from dataclasses import dataclass, field, InitVar
+
+@dataclass
+class Super:
+    foo: InitVar = field(init=False)
+
+@dataclass
+class Sub(Super):
+    bar: int
+
+sub = Sub(5)
+sub.foo  # E: "Sub" has no attribute "foo"
+sub.bar
+[builtins fixtures/bool.pyi]
+
 [case testDataclassFactory]
 from typing import Type, TypeVar
 from dataclasses import dataclass
