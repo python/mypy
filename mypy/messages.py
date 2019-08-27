@@ -32,6 +32,11 @@ from mypy.nodes import (
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
 )
+from mypy.subtypes import (
+    is_subtype, find_member, get_member_flags,
+    IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
+)
+from mypy.sametypes import is_same_type
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
@@ -376,7 +381,6 @@ class MessageBuilder:
             expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
 
             # don't increase verbosity unless there is need to do so
-            from mypy.subtypes import is_subtype
             if is_subtype(key_type, expected_key_type):
                 key_type_str = format_type(key_type)
                 expected_key_type_str = format_type(expected_key_type)
@@ -1130,7 +1134,6 @@ class MessageBuilder:
         attribute flags, such as settable vs read-only or class variable vs
         instance variable.
         """
-        from mypy.subtypes import is_subtype, IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # note: 'Cls' is missing following 'Proto' members:
         # note:     method, attr
@@ -1601,7 +1604,6 @@ def get_missing_protocol_members(left: Instance, right: Instance) -> List[str]:
     """Find all protocol members of 'right' that are not implemented
     (i.e. completely missing) in 'left'.
     """
-    from mypy.subtypes import find_member
     assert right.type.is_protocol
     missing = []  # type: List[str]
     for member in right.type.protocol_members:
@@ -1614,7 +1616,6 @@ def get_conflict_protocol_types(left: Instance, right: Instance) -> List[Tuple[s
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected').
     """
-    from mypy.subtypes import find_member, is_subtype, get_member_flags, IS_SETTABLE
     assert right.type.is_protocol
     conflicts = []  # type: List[Tuple[str, Type, Type]]
     for member in right.type.protocol_members:
@@ -1638,8 +1639,6 @@ def get_bad_protocol_flags(left: Instance, right: Instance
     """Return all incompatible attribute flags for members that are present in both
     'left' and 'right'.
     """
-    from mypy.subtypes import (find_member, get_member_flags,
-                               IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC)
     assert right.type.is_protocol
     all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
     for member in right.type.protocol_members:
@@ -1767,8 +1766,6 @@ def pretty_or(args: List[str]) -> str:
 def append_invariance_notes(notes: List[str], arg_type: Instance,
                             expected_type: Instance) -> List[str]:
     """Explain that the type is invariant and give notes for how to solve the issue."""
-    from mypy.subtypes import is_subtype
-    from mypy.sametypes import is_same_type
     invariant_type = ''
     covariant_suggestion = ''
     if (arg_type.type.fullname() == 'builtins.list' and
@@ -1800,7 +1797,6 @@ def make_inferred_type_note(context: Context, subtype: Type,
     return type. This note suggests that they add a type annotation with the return type instead
     of relying on the inferred type.
     """
-    from mypy.subtypes import is_subtype
     subtype = get_proper_type(subtype)
     supertype = get_proper_type(supertype)
     if (isinstance(subtype, Instance) and

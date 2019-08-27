@@ -1796,7 +1796,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def apply_generic_arguments(self, callable: CallableType, types: Sequence[Optional[Type]],
                                 context: Context, skip_unsatisfied: bool = False) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
-        return applytype.apply_generic_arguments(callable, types, self.msg, context,
+        return applytype.apply_generic_arguments(callable, types,
+                                                 self.msg.incompatible_typevar_value, context,
                                                  skip_unsatisfied=skip_unsatisfied)
 
     def check_any_type_call(self, args: List[Expression], callee: Type) -> Tuple[Type, Type]:
