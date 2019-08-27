@@ -1233,6 +1233,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, kind in enumerate(actual_kinds):
             if i not in all_actuals and (
                     kind != nodes.ARG_STAR or
+                    # We accept the other iterables than tuple (including Any)
+                    # as star arguments because they could be empty, resulting no arguments.
                     is_non_empty_tuple(actual_types[i])):
                 # Extra actual: not matched by a formal argument.
                 ok = False
