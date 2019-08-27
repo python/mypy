@@ -214,3 +214,12 @@ def custom_op(arg_types: List[RType],
     assert format_str is not None
     return OpDescription('<custom>', arg_types, result_type, is_var_arg, error_kind, format_str,
                          emit, steals, is_borrowed, 0)
+
+
+# Import various modules that set up global state.
+import mypyc.ops_int  # noqa
+import mypyc.ops_str  # noqa
+import mypyc.ops_list  # noqa
+import mypyc.ops_dict  # noqa
+import mypyc.ops_tuple  # noqa
+import mypyc.ops_misc  # noqa

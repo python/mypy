@@ -31,7 +31,7 @@ from mypy_extensions import TypedDict
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.semanal import SemanticAnalyzer
-from mypy.semanal_main import semantic_analysis_for_scc
+import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
@@ -2961,7 +2961,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-    semantic_analysis_for_scc(graph, scc, manager.errors)
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
     # Track what modules aren't yet done so we can finish them as soon
     # as possible, saving memory.

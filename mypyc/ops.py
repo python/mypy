@@ -1866,10 +1866,5 @@ def all_concrete_classes(class_ir: ClassIR) -> List[ClassIR]:
     return concrete
 
 
-# Import various modules that set up global state.
-import mypyc.ops_int  # noqa
-import mypyc.ops_str  # noqa
-import mypyc.ops_list  # noqa
-import mypyc.ops_dict  # noqa
-import mypyc.ops_tuple  # noqa
-import mypyc.ops_misc  # noqa
+# Import ops_primitive that will set up set up global primitives tables.
+import mypyc.ops_primitive  # noqa
