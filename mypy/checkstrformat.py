@@ -2,7 +2,7 @@
 
 import re
 
-from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern
+from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Iterator
 from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
@@ -11,6 +11,7 @@ from mypy.types import (
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
 )
+import mypy.errorcodes as codes
 
 if TYPE_CHECKING:
     # break import cycle only needed for mypy
@@ -43,7 +44,7 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     # TODO: support nested formatting like '{0:{fill}{align}16}'.format(x, fill=y, align=z).
 
     # Field (optional) is an integer/identifier possibly followed by several .attr and [index].
-    field = r'(?P<field>(?P<arg_name>\w+)(\.\w+|\[[^]?$]+\])*)?'
+    field = r'(?P<field>(?P<key>\w+)(\.\w+|\[[^]?$]+\])*)?'
 
     # Conversion (optional) is ! followed by one of letters for forced repr(), str(), or ascii().
     conversion = r'(?P<conversion>![rsa])?'
@@ -53,10 +54,10 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     fill_align = r'(?P<fill_align>.?[<>=^])?'
     # Number formatting options are only valid for int, float, complex, and Decimal,
     # except if only width is given (it is valid for all types).
-    # This contains sign, alternate markers (# and/or 0), width, grouping (_ or ,) and precision.
-    num_spec = r'(?P<num_spec>[+\- ]?#?0?(?P<width>\d+)?[_,]?(\.\d+)?)?'
+    # This contains sign, flags (sign, # and/or 0), width, grouping (_ or ,) and precision.
+    num_spec = r'(?P<flags>[+\- #0]+)?(?P<width>\d+)?[_,]?(?P<precision>\.\d+)?'
     # The last element is type.
-    type = r'(?P<type>[bcdeEfFgGnosxX%])?'
+    type = r'(?P<type>.)?'  # only some are supported, but we want to give a better error
     format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
 
     # Custom types can define their own form_spec using __format__().
@@ -67,20 +68,43 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     return re.compile(format_re), re.compile(format_re_custom)
 
 
+# Format types supported by str.format() for builtin classes.
+SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
+                       'g', 'G', 'n', 'o', 's', 'x', 'X', '%']  # type: Final
+
 _compiled_specs_new = compile_new_format_re()
 FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
 FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
 FORMAT_RE_NEW_EVERYTHING = re.compile(r'{.*}')  # type: Final
 
 
+def filter_escaped_braces(format_value: str, matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
+    for match in matches:
+        if (match.pos > 0 and format_value[match.pos - 1] == '{' and
+                match.endpos < len(format_value) - 1 and format_value[match.endpos + 1] == '}'):
+            # Formatting can be escaped using escapes like "{formatted} {{not formatted}}".
+            continue
+        yield match
+
+
 class ConversionSpecifier:
     def __init__(self, key: Optional[str],
-                 flags: str, width: str, precision: str, type: str) -> None:
+                 flags: str, width: str, precision: str, type: str,
+                 format_spec: Optional[str] = None,
+                 conversion: Optional[str] = None,
+                 field: Optional[str] = None) -> None:
         self.key = key
         self.flags = flags
         self.width = width
         self.precision = precision
         self.type = type
+        # Used only for str.format() calls (it may be custom for types with __format__()).
+        self.format_spec = format_spec
+        # Used only for str.format() calls.
+        self.conversion = conversion
+        # Full formatted expression (i.e. key plus following attributes and/or indexes).
+        # Used only for str.format() calls.
+        self.field = field
 
     def has_key(self) -> bool:
         return self.key is not None
@@ -127,7 +151,7 @@ class StringFormatterChecker:
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
             self.msg.fail('Bytes formatting is only supported in Python 3.5 and later',
-                          replacements)
+                          replacements, code=codes.STRING_FORMATTING)
             return AnyType(TypeOfAny.from_error)
 
         self.unicode_upcast = False
@@ -224,7 +248,7 @@ class StringFormatterChecker:
                     # Special case: for bytes formatting keys must be bytes.
                     if not isinstance(k, BytesExpr):
                         self.msg.fail('Dictionary keys in bytes formatting must be bytes,'
-                                      ' not strings', expr)
+                                      ' not strings', expr, code=codes.STRING_FORMATTING)
                 key_str = cast(FormatStringExpr, k).value
                 mapping[key_str] = self.accept(v)
 
@@ -243,7 +267,8 @@ class StringFormatterChecker:
                 self.chk.check_subtype(rep_type, expected_type, replacements,
                                        message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                        'expression has type',
-                                       'placeholder with key \'%s\' has type' % specifier.key)
+                                       'placeholder with key \'%s\' has type' % specifier.key,
+                                       code=codes.STRING_FORMATTING)
                 if specifier.type == 's':
                     self.check_s_special_cases(expr, rep_type, expr)
         else:
@@ -358,7 +383,8 @@ class StringFormatterChecker:
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(typ, 'builtins.bytes'):
                     self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
-                                  " use %r if this is a desired behavior", context)
+                                  " use %r if this is a desired behavior", context,
+                                  code=codes.STRING_FORMATTING)
             if self.chk.options.python_version < (3, 0):
                 if has_type_component(typ, 'builtins.unicode'):
                     self.unicode_upcast = True
@@ -366,7 +392,8 @@ class StringFormatterChecker:
             # A special case for bytes formatting: b'%s' actually requires bytes on Python 3.
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(typ, 'builtins.str'):
-                    self.msg.fail("On Python 3 b'%s' requires bytes, not string", context)
+                    self.msg.fail("On Python 3 b'%s' requires bytes, not string", context,
+                                  code=codes.STRING_FORMATTING)
 
     def checkers_for_c_type(self, type: str,
                             context: Context,
@@ -402,15 +429,17 @@ class StringFormatterChecker:
         if p == 'b':
             if self.chk.options.python_version < (3, 5):
                 self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
-                              context)
+                              context, code=codes.STRING_FORMATTING)
                 return None
             if not isinstance(expr, BytesExpr):
-                self.msg.fail("Format character 'b' is only supported on bytes patterns", context)
+                self.msg.fail("Format character 'b' is only supported on bytes patterns", context,
+                              code=codes.STRING_FORMATTING)
                 return None
             return self.named_type('builtins.bytes')
         elif p == 'a':
             if self.chk.options.python_version < (3, 0):
-                self.msg.fail("Format character 'a' is only supported in Python 3", context)
+                self.msg.fail("Format character 'a' is only supported in Python 3", context,
+                              code=codes.STRING_FORMATTING)
                 return None
             # TODO: return type object?
             return AnyType(TypeOfAny.special_form)
