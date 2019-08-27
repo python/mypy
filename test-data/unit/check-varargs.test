@@ -457,6 +457,12 @@ lst: List[int] = []
 foo(*lst)
 [builtins fixtures/list.pyi]
 
+[case testVarArgsEmptyTuple]
+def foo() -> None:
+    pass
+
+foo(*())
+
 -- Overloads + varargs
 -- -------------------
 
