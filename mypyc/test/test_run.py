@@ -7,7 +7,7 @@ import subprocess
 import contextlib
 import shutil
 import sys
-from typing import Iterator, Optional, List
+from typing import Any, Iterator, Optional, List, cast
 
 from mypy import build
 from mypy.test.data import DataDrivenTestCase
@@ -54,6 +54,8 @@ def run_setup(script_name: str, script_args: List[str]) -> bool:
     and KeyboardInterrupt with no way to recover them (!).
     The real version has some extra features that we removed since
     we weren't using them.
+
+    Returns whether the setup succeeded.
     """
     save_argv = sys.argv.copy()
     g = {'__file__': script_name}
@@ -66,13 +68,15 @@ def run_setup(script_name: str, script_args: List[str]) -> bool:
         finally:
             sys.argv = save_argv
     except SystemExit as e:
+        # typeshed reports code as being an int but that is wrong
+        code = cast(Any, e).code
         # distutils converts KeyboardInterrupt into a SystemExit with
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
-        if e.args == ("interrupted",):
+        if code == "interrupted":
             raise KeyboardInterrupt
 
-        return False
+        return code == 0 or code is None
 
     return True
 
