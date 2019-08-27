@@ -10,13 +10,14 @@ from mypy.meet import meet_types, narrow_declared_type
 from mypy.sametypes import is_same_type
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny,
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
     LiteralType,
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 from mypy.state import strict_optional_set
+from mypy.typeops import true_only, false_only
 
 
 class TypesSuite(Suite):

@@ -241,7 +241,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
-        if left.values and self._is_subtype(UnionType.make_simplified_union(left.values), right):
+        if left.values and self._is_subtype(
+                mypy.typeops.make_simplified_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
@@ -609,7 +610,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
-    from mypy.checkmember import bind_self
+    from mypy.typeops import bind_self
+
     if isinstance(node, FuncBase):
         typ = function_type(node,
                             fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
@@ -841,7 +843,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     #           also accept. The only exception is if we are allowing partial
     #           partial overlaps: in that case, we ignore optional args on the right.
     for right_arg in right.formal_arguments():
-        left_arg = left.corresponding_argument(right_arg)
+        left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
         if left_arg is None:
             if allow_partial_overlap and not right_arg.required:
                 continue
@@ -981,13 +983,17 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 def unify_generic_callable(type: CallableType, target: CallableType,
                            ignore_return: bool,
-                           return_constraint_direction: int = mypy.constraints.SUBTYPE_OF,
+                           return_constraint_direction: Optional[int] = None,
                            ) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
     """
     import mypy.solve
+
+    if return_constraint_direction is None:
+        return_constraint_direction = mypy.constraints.SUBTYPE_OF
+
     constraints = []  # type: List[mypy.constraints.Constraint]
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
@@ -1166,8 +1172,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         if isinstance(self.right, TypeVarType) and left.id == self.right.id:
             return True
-        if left.values and self._is_proper_subtype(UnionType.make_simplified_union(left.values),
-                                                   self.right):
+        if left.values and self._is_proper_subtype(
+                mypy.typeops.make_simplified_union(left.values), self.right):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 

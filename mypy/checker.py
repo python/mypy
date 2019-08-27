@@ -34,7 +34,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery, LiteralType,
+    function_type, is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type
 )
@@ -45,8 +45,12 @@ from mypy.messages import (
 )
 import mypy.checkexpr
 from mypy.checkmember import (
-    map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
-    analyze_descriptor_access,
+    analyze_descriptor_access, type_object_type,
+)
+from mypy.typeops import (
+    map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
+    erase_def_to_union_or_bound, erase_to_union_or_bound,
+    true_only, false_only,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -1539,7 +1543,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             raw_items = [self.get_op_other_domain(it) for it in tp.items()]
             items = [it for it in raw_items if it]
             if items:
-                return UnionType.make_simplified_union(items)
+                return make_simplified_union(items)
             return None
         else:
             assert False, "Need to check all FunctionLike subtypes here"
@@ -1973,7 +1977,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if not self.current_node_deferred:
                                 # Partial type can't be final, so strip any literal values.
                                 rvalue_type = remove_instance_last_known_values(rvalue_type)
-                                inferred_type = UnionType.make_simplified_union(
+                                inferred_type = make_simplified_union(
                                     [rvalue_type, NoneType()])
                                 self.set_inferred_type(var, lvalue, inferred_type)
                             else:
@@ -2417,7 +2421,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                             rv_type=item, undefined_rvalue=True)
                 for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     t.append(self.type_map.pop(lv, AnyType(TypeOfAny.special_form)))
-        union_types = tuple(UnionType.make_simplified_union(col) for col in transposed)
+        union_types = tuple(make_simplified_union(col) for col in transposed)
         for expr, items in assignments.items():
             # Bind a union of types collected in 'assignments' to every expression.
             if isinstance(expr, StarExpr):
@@ -2432,8 +2436,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             types, declared_types = zip(*clean_items)
             self.binder.assign_type(expr,
-                                    UnionType.make_simplified_union(list(types)),
-                                    UnionType.make_simplified_union(list(declared_types)),
+                                    make_simplified_union(list(types)),
+                                    make_simplified_union(list(declared_types)),
                                     False)
         for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.
@@ -2856,9 +2860,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # TODO: Don't infer things twice.
                     key_type = self.expr_checker.accept(lvalue.index)
                     value_type = self.expr_checker.accept(rvalue)
-                    full_key_type = UnionType.make_simplified_union(
+                    full_key_type = make_simplified_union(
                         [key_type, var.type.inner_types[0]])
-                    full_value_type = UnionType.make_simplified_union(
+                    full_value_type = make_simplified_union(
                         [value_type, var.type.inner_types[1]])
                     if (is_valid_inferred_type(full_key_type) and
                             is_valid_inferred_type(full_value_type)):
@@ -3176,7 +3180,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             all_types.append(exc_type)
 
-        return UnionType.make_simplified_union(all_types)
+        return make_simplified_union(all_types)
 
     def get_types_from_except_handler(self, typ: Type, n: Expression) -> List[Type]:
         """Helper for check_except_handler_test to retrieve handler types."""
@@ -3524,7 +3528,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # do better.
             # If it is possible for the false branch to execute, return the original
             # type to avoid losing type information.
-            callables, uncallables = self.partition_by_callable(typ.erase_to_union_or_bound(),
+            callables, uncallables = self.partition_by_callable(erase_to_union_or_bound(typ),
                                                                 unsound_partition)
             uncallables = [typ] if len(uncallables) else []
             return callables, uncallables
@@ -4087,7 +4091,7 @@ def conditional_type_map(expr: Expression,
     if it was not the proposed type, if any. None means bot, {} means top"""
     if proposed_type_ranges:
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = UnionType.make_simplified_union(proposed_items)
+        proposed_type = make_simplified_union(proposed_items)
         if current_type:
             if isinstance(proposed_type, AnyType):
                 # We don't really know much about the proposed type, so we shouldn't
@@ -4170,7 +4174,7 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
                 return tp.args[0]
     elif isinstance(tp, TupleType) and all(not isinstance(it, AnyType)
                                            for it in get_proper_types(tp.items)):
-        return UnionType.make_simplified_union(tp.items)  # this type is not externally visible
+        return make_simplified_union(tp.items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
         # TypedDict always has non-optional string keys. Find the key type from the Mapping
         # base class.
@@ -4221,7 +4225,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     for n1 in m1:
         for n2 in m2:
             if literal_hash(n1) == literal_hash(n2):
-                result[n1] = UnionType.make_simplified_union([m1[n1], m2[n2]])
+                result[n1] = make_simplified_union([m1[n1], m2[n2]])
     return result
 
 
@@ -4435,7 +4439,7 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
     # the below subtype check and (surprisingly?) `is_proper_subtype(Any, Any)`
     # returns `True`.
     # TODO: find a cleaner solution instead of this ad-hoc erasure.
-    exp_signature = expand_type(signature, {tvar.id: tvar.erase_to_union_or_bound()
+    exp_signature = expand_type(signature, {tvar.id: erase_def_to_union_or_bound(tvar)
                                 for tvar in signature.variables})
     assert isinstance(exp_signature, CallableType)
     return is_callable_compatible(exp_signature, other,
@@ -4689,7 +4693,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
 
     if isinstance(typ, UnionType):
         items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
-        return UnionType.make_simplified_union(items)
+        return make_simplified_union(items)
     elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname() == target_fullname:
         new_items = []
         for name, symbol in typ.type.names.items():
@@ -4704,7 +4708,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
         # only using CPython, but we might as well for the sake of full correctness.
         if sys.version_info < (3, 7):
             new_items.sort(key=lambda lit: lit.value)
-        return UnionType.make_simplified_union(new_items)
+        return make_simplified_union(new_items)
     else:
         return typ
 
@@ -4716,7 +4720,7 @@ def coerce_to_literal(typ: Type) -> ProperType:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         new_items = [coerce_to_literal(item) for item in typ.items]
-        return UnionType.make_simplified_union(new_items)
+        return make_simplified_union(new_items)
     elif isinstance(typ, Instance) and typ.last_known_value:
         return typ.last_known_value
     else:

@@ -17,7 +17,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
-    true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
+    is_named_instance, function_type, callable_type, FunctionLike,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
     get_proper_types
 )
@@ -59,7 +59,9 @@ from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
-from mypy.typeops import tuple_fallback
+from mypy.typeops import (
+    tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
+)
 import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
@@ -528,7 +530,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (typename in self.item_args and methodname in self.item_args[typename]
                         and e.arg_kinds == [ARG_POS]):
                     item_type = self.accept(e.args[0])
-                    full_item_type = UnionType.make_simplified_union(
+                    full_item_type = make_simplified_union(
                         [item_type, partial_type.inner_types[0]])
                     if mypy.checker.is_valid_inferred_type(full_item_type):
                         var.type = self.chk.named_generic_type(typename, [full_item_type])
@@ -541,7 +543,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         arg_typename = arg_type.type.fullname()
                         if arg_typename in self.container_args[typename][methodname]:
                             full_item_types = [
-                                UnionType.make_simplified_union([item_type, prev_type])
+                                make_simplified_union([item_type, prev_type])
                                 for item_type, prev_type
                                 in zip(arg_type.args, partial_type.inner_types)
                             ]
@@ -713,7 +715,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item_object_type = typ if callable_name else None
             res.append(self.check_call_expr_with_callee_type(narrowed, e, callable_name,
                                                              item_object_type))
-        return UnionType.make_simplified_union(res)
+        return make_simplified_union(res)
 
     def check_call(self,
                    callee: Type,
@@ -1377,9 +1379,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
                     # we don't want to introduce internal inconsistencies.
-                    unioned_result = (UnionType.make_simplified_union(list(returns),
-                                                                      context.line,
-                                                                      context.column),
+                    unioned_result = (make_simplified_union(list(returns),
+                                                            context.line,
+                                                            context.column),
                                       self.combine_function_signatures(inferred_types))
 
         # Step 3: We try checking each branch one-by-one.
@@ -1736,7 +1738,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 new_args[i].append(arg)
             new_returns.append(target.ret_type)
 
-        union_return = UnionType.make_simplified_union(new_returns)
+        union_return = make_simplified_union(new_returns)
         if too_complex:
             any = AnyType(TypeOfAny.special_form)
             return callables[0].copy_modified(
@@ -1749,7 +1751,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         final_args = []
         for args_list in new_args:
-            new_type = UnionType.make_simplified_union(args_list)
+            new_type = make_simplified_union(args_list)
             final_args.append(new_type)
 
         return callables[0].copy_modified(
@@ -1818,7 +1820,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    arg_messages=arg_messages)
                    for subtype in callee.relevant_items()]
         self.msg.disable_type_names -= 1
-        return (UnionType.make_simplified_union([res[0] for res in results]),
+        return (make_simplified_union([res[0] for res in results]),
                 callee)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
@@ -2168,7 +2170,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             local_errors.disable_type_names -= 1
             res.append(item)
             meth_res.append(meth_item)
-        return UnionType.make_simplified_union(res), UnionType.make_simplified_union(meth_res)
+        return make_simplified_union(res), make_simplified_union(meth_res)
 
     def check_method_call(self,
                           method_name: str,
@@ -2425,8 +2427,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 all_inferred.append(inferred)
 
             if not msg.is_errors():
-                results_final = UnionType.make_simplified_union(all_results)
-                inferred_final = UnionType.make_simplified_union(all_inferred)
+                results_final = make_simplified_union(all_results)
+                inferred_final = make_simplified_union(all_inferred)
                 return results_final, inferred_final
 
             # Step 2: If that fails, we try again but also destructure the right argument.
@@ -2475,7 +2477,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # See the comment in 'check_overload_call' for more details on why
             # we call 'combine_function_signature' instead of just unioning the inferred
             # callable types.
-            results_final = UnionType.make_simplified_union(all_results)
+            results_final = make_simplified_union(all_results)
             inferred_final = self.combine_function_signatures(all_inferred)
             return results_final, inferred_final
         else:
@@ -2560,7 +2562,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # The left operand is always the result
             return left_type
         else:
-            return UnionType.make_simplified_union([restricted_left_type, right_type])
+            return make_simplified_union([restricted_left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
@@ -2626,9 +2628,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
-            return UnionType.make_simplified_union([self.visit_index_with_type(typ, e,
-                                                                               original_type)
-                                                    for typ in left_type.relevant_items()])
+            return make_simplified_union([self.visit_index_with_type(typ, e,
+                                                                     original_type)
+                                          for typ in left_type.relevant_items()])
         elif isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They return a more specific type when
             # indexed by an integer literal.
@@ -2646,7 +2648,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     else:
                         self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
                         return AnyType(TypeOfAny.from_error)
-                return UnionType.make_simplified_union(out)
+                return make_simplified_union(out)
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
@@ -2687,7 +2689,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         items = []  # type: List[Type]
         for b, e, s in itertools.product(begin, end, stride):
             items.append(left_type.slice(b, e, s))
-        return UnionType.make_simplified_union(items)
+        return make_simplified_union(items)
 
     def try_getting_int_literals(self, index: Expression) -> Optional[List[int]]:
         """If the given expression or type corresponds to an int literal
@@ -2732,7 +2734,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       'actual type', 'expected type'):
             return AnyType(TypeOfAny.from_error)
         else:
-            union = UnionType.make_simplified_union(left_type.items)
+            union = make_simplified_union(left_type.items)
             if isinstance(index, SliceExpr):
                 return self.chk.named_generic_type('builtins.tuple', [union])
             else:
@@ -2767,7 +2769,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return AnyType(TypeOfAny.from_error)
             else:
                 value_types.append(value_type)
-        return UnionType.make_simplified_union(value_types)
+        return make_simplified_union(value_types)
 
     def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,
                               context: Context) -> Type:
@@ -3471,7 +3473,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #
         # TODO: Always create a union or at least in more cases?
         if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res = UnionType.make_simplified_union([if_type, else_type])
+            res = make_simplified_union([if_type, else_type])
         else:
             res = join.join_types(if_type, else_type)
 
@@ -3919,9 +3921,9 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
 
     # Erase typevars: we'll consider them all to have the same "shape".
     if isinstance(actual, TypeVarType):
-        actual = actual.erase_to_union_or_bound()
+        actual = erase_to_union_or_bound(actual)
     if isinstance(formal, TypeVarType):
-        formal = formal.erase_to_union_or_bound()
+        formal = erase_to_union_or_bound(formal)
 
     # Callable or Type[...]-ish types
     def is_typetype_like(typ: ProperType) -> bool:

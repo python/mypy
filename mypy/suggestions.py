@@ -48,6 +48,7 @@ from mypy.checkexpr import has_any_type
 
 from mypy.join import join_type_list
 from mypy.sametypes import is_same_type
+from mypy.typeops import make_simplified_union
 
 from contextlib import contextmanager
 
@@ -598,7 +599,7 @@ def generate_type_combinations(types: List[Type]) -> List[Type]:
     and unioning the types. We try both.
     """
     joined_type = join_type_list(types)
-    union_type = UnionType.make_simplified_union(types)
+    union_type = make_simplified_union(types)
     if is_same_type(joined_type, union_type):
         return [joined_type]
     else:
