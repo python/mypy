@@ -1233,7 +1233,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, kind in enumerate(actual_kinds):
             if i not in all_actuals and (
                     kind != nodes.ARG_STAR or
-                    is_not_empty_tuple(actual_types[i])):
+                    is_non_empty_tuple(actual_types[i])):
                 # Extra actual: not matched by a formal argument.
                 ok = False
                 if kind != nodes.ARG_NAMED:
@@ -3833,7 +3833,7 @@ def is_async_def(t: Type) -> bool:
     return isinstance(t, Instance) and t.type.fullname() == 'typing.Coroutine'
 
 
-def is_not_empty_tuple(t: Type) -> bool:
+def is_non_empty_tuple(t: Type) -> bool:
     t = get_proper_type(t)
     return isinstance(t, TupleType) and bool(t.items)
 
