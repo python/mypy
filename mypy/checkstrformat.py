@@ -6,10 +6,13 @@ from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, 
 from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
-    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType
+    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
+    CallableType
 )
 from mypy.nodes import (
-    StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
+    StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
+    IndexExpr, MemberExpr, TempNode, ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, SYMBOL_FUNCBASE_TYPES,
+    Decorator, Var
 )
 import mypy.errorcodes as codes
 
@@ -19,9 +22,13 @@ if TYPE_CHECKING:
     import mypy.checkexpr
 from mypy import message_registry
 from mypy.messages import MessageBuilder
+from mypy.maptype import map_instance_to_supertype
+from mypy.typeops import tuple_fallback
+from mypy.subtypes import is_subtype
 
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
 Checkers = Tuple[Callable[[Expression], None], Callable[[Type], None]]
+MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:
@@ -61,7 +68,7 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
 
     # Custom types can define their own form_spec using __format__().
-    format_spec_custom = r'(?P<format_spec>:.*)?'
+    format_spec_custom = r'(?P<format_spec>:.*?)?'
 
     format_re = r'{' + field + conversion + format_spec + r'}'
     format_re_custom = r'{' + field + conversion + format_spec_custom + r'}'
@@ -75,16 +82,24 @@ SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
 _compiled_specs_new = compile_new_format_re()
 FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
 FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
-FORMAT_RE_NEW_EVERYTHING = re.compile(r'{.*}')  # type: Final
 
 
 def filter_escaped_braces(format_value: str, matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
+    """Keep only specifiers of the form {...}, but not {{...}}."""
     for match in matches:
-        if (match.pos > 0 and format_value[match.pos - 1] == '{' and
-                match.endpos < len(format_value) - 1 and format_value[match.endpos + 1] == '}'):
+        if (match.start() > 0 and format_value[match.start() - 1] == '{' and
+                match.end() < len(format_value) and format_value[match.end()] == '}'):
             # Formatting can be escaped using escapes like "{formatted} {{not formatted}}".
             continue
         yield match
+
+
+def collect_brace_matches(format_value: str, pattern: Pattern[str]) -> MatchMap:
+    """Organize match objects for a given format string by their span."""
+    result = {}  # type: MatchMap
+    for match in filter_escaped_braces(format_value, pattern.finditer(format_value)):
+        result[(match.start(), match.end())] = match
+    return result
 
 
 class ConversionSpecifier:
@@ -100,11 +115,30 @@ class ConversionSpecifier:
         self.type = type
         # Used only for str.format() calls (it may be custom for types with __format__()).
         self.format_spec = format_spec
+        self.non_standard_format_spec = False
         # Used only for str.format() calls.
         self.conversion = conversion
         # Full formatted expression (i.e. key plus following attributes and/or indexes).
         # Used only for str.format() calls.
         self.field = field
+
+    @classmethod
+    def from_match(cls, match: Match[str],
+                   non_standard_spec: bool = False) -> 'ConversionSpecifier':
+        """Construct specifier from match object resulted from parsing str.format() call."""
+        if non_standard_spec:
+            spec = cls(match.group('key'),
+                       flags='', width='', precision='', type='',
+                       format_spec=match.group('format_spec'),
+                       conversion=match.group('conversion'),
+                       field=match.group('field'))
+            spec.non_standard_format_spec = True
+            return spec
+        return cls(match.group('key'),
+                   flags=match.group('flags'), width=match.group('width'),
+                   precision=match.group('precision'), type=match.group('type'),
+                   format_spec=match.group('format_spec'),
+                   conversion=match.group('conversion'), field=match.group('field'))
 
     def has_key(self) -> bool:
         return self.key is not None
@@ -137,6 +171,197 @@ class StringFormatterChecker:
         # This flag is used to track Python 2 corner case where for example
         # '%s, %d' % (u'abc', 42) returns u'abc, 42' (i.e. unicode, not a string).
         self.unicode_upcast = False
+
+    def check_str_format_call(self, call: CallExpr, format_value: str) -> None:
+        """Perform more precise checks for str.format() calls when possible.
+
+        Currently the checks are performed for:
+          * Actual string literals
+          * Literal types with string values
+          * Final names with string values
+
+        The checks that we currently perform:
+          * Verify consistency of auto-numbering
+          * Verify that replacements can be found for all conversion specifiers
+          * Non-standard format specs are only allowed for types with custom __format__
+          * Verify that specifier type is known and matches replacement type
+          * Perform special checks for some specifier types:
+            - 'c' requires a single character string
+            - 's' must not accept bytes
+            - non-empty flags are only allowed for numeric types
+        """
+        # First find potential specifiers by matching to various level of precision.
+        found_standard = collect_brace_matches(format_value, FORMAT_RE_NEW)
+        found_custom = collect_brace_matches(format_value, FORMAT_RE_NEW_CUSTOM)
+        found_custom = {span: match for span, match in found_custom.items()
+                        if span not in found_standard}
+
+        # Convert the found specifiers from match objects to ConversionSpecifier objects.
+        standard_specs = {span: ConversionSpecifier.from_match(match)
+                          for span, match in found_standard.items()}
+        custom_specs = {span: ConversionSpecifier.from_match(match, non_standard_spec=True)
+                        for span, match in found_custom.items()}
+
+        # Sort the parsed specifiers by order of appearance in format string.
+        all_spans = sorted(list(standard_specs.keys()) + list(custom_specs.keys()))
+        ordered_specs = [standard_specs.get(span) or custom_specs[span]
+                         for span in all_spans]  # type: List[ConversionSpecifier]
+
+        if not self.auto_generate_keys(ordered_specs, call):
+            return
+        self.check_specs_in_format_call(call, ordered_specs)
+
+    def check_specs_in_format_call(self, call: CallExpr,
+                                   specs: List[ConversionSpecifier]) -> None:
+        """Perform pairwise checks for conversion specifiers vs their replacements.
+
+        The core logic for format checking is implemented in this method.
+        """
+        assert all(s.key for s in specs), "Keys must be auto-generated first!"
+        replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
+        assert len(replacements) == len(specs)
+        for spec, repl in zip(specs, replacements):
+            # TODO: !!! Apply .attr[key] to replacements.
+            actual_type = repl.type if isinstance(repl, TempNode) else self.chk.type_map.get(repl)
+            assert actual_type is not None
+
+            # Special case custom formatting.
+            # TODO: add support for some custom specs like datetime?
+            if spec.non_standard_format_spec:
+                if not custom_special_method(actual_type, '__format__') and not spec.conversion:
+                    self.msg.fail('Unrecognized format'
+                                  ' specification "{}"'.format(spec.format_spec),
+                                  call, code=codes.STRING_FORMATTING)
+                    continue
+            # Adjust expected and actual types.
+            if not spec.type:
+                expected_type = AnyType(TypeOfAny.special_form)  # type: Optional[Type]
+            else:
+                assert isinstance(call.callee, MemberExpr)
+                assert isinstance(call.callee.expr, (StrExpr, UnicodeExpr))
+                expected_type = self.conversion_type(spec.type, call, call.callee.expr)
+            if spec.conversion is not None:
+                # If the explicit conversion is given, then explicit conversion is called _first_.
+                actual_type = self.named_type('builtins.str')
+
+            # Perform the checks for given types.
+            if expected_type is None:
+                continue
+            self.check_placeholder_type(actual_type, expected_type, call)
+            self.perform_special_format_checks(spec, call, repl, actual_type)
+
+    def perform_special_format_checks(self, spec: ConversionSpecifier, call: CallExpr,
+                                      repl: Expression, actual_type: Type) -> None:
+        # TODO: try refactoring to combine this logic with % formatting.
+        if spec.type == 'c':
+            if isinstance(repl, (StrExpr, BytesExpr)) and len(cast(StrExpr, repl).value) != 1:
+                self.msg.requires_int_or_char(call)
+        if (not spec.type or spec.type == 's') and not spec.conversion:
+            if self.chk.options.python_version >= (3, 0):
+                if has_type_component(actual_type, 'builtins.bytes'):
+                    self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
+                                  " use %r if this is a desired behavior", call,
+                                  code=codes.STRING_FORMATTING)
+        if spec.flags:
+            numeric_types = UnionType([self.named_type('builtins.int'),
+                                       self.named_type('builtins.float')])
+            if not is_subtype(actual_type, numeric_types):
+                self.msg.fail('Numeric flags are only allowed for numeric types', call,
+                              code=codes.STRING_FORMATTING)
+
+    def find_replacements_in_call(self, call: CallExpr,
+                                  keys: List[str]) -> List[Expression]:
+        """Find replacement expression for every specifier in str.format() call.
+
+        In case of an error use TempNode(AnyType).
+        """
+        result = []  # type: List[Expression]
+        for key in keys:
+            if key.isdecimal():
+                expr = self.get_expr_by_position(int(key), call)
+                if not expr:
+                    self.msg.fail('Cannot find replacement for positional'
+                                  ' format specifier {}'.format(key), call,
+                                  code=codes.STRING_FORMATTING)
+                    expr = TempNode(AnyType(TypeOfAny.from_error))
+            else:
+                expr = self.get_expr_by_name(key, call)
+                if not expr:
+                    self.msg.fail('Cannot find replacement for named'
+                                  ' format specifier "{}"'.format(key), call,
+                                  code=codes.STRING_FORMATTING)
+                    expr = TempNode(AnyType(TypeOfAny.from_error))
+            result.append(expr)
+        return result
+
+    def get_expr_by_position(self, pos: int, call: CallExpr) -> Optional[Expression]:
+        """Get positional replacement expression from '{0}, {1}'.format(x, y, ...) call.
+
+        If the type is from *args, return TempNode(<item type>). Return None in case of
+        an error.
+        """
+        pos_args = [arg for arg, kind in zip(call.args, call.arg_kinds) if kind == ARG_POS]
+        if pos < len(pos_args):
+            return pos_args[pos]
+        star_args = [arg for arg, kind in zip(call.args, call.arg_kinds) if kind == ARG_STAR]
+        if not star_args:
+            return None
+
+        # Fall back to *args when present in call.
+        star_arg = star_args[0]
+        varargs_type = get_proper_type(self.chk.type_map[star_arg])
+        if (not isinstance(varargs_type, Instance) or not
+                varargs_type.type.has_base('typing.Iterable')):
+            # Error should be already reported.
+            return TempNode(AnyType(TypeOfAny.special_form))
+        iter_info = self.chk.named_generic_type('typing.Iterable',
+                                                [AnyType(TypeOfAny.special_form)]).type
+        return TempNode(map_instance_to_supertype(varargs_type, iter_info).args[0])
+
+    def get_expr_by_name(self, key: str, call: CallExpr) -> Optional[Expression]:
+        """Get named replacement expression from '{name}'.format(name=...) call.
+
+        If the type is from **kwargs, return TempNode(<item type>). Return None in case of
+        an error.
+        """
+        named_args = [arg for arg, kind, name in zip(call.args, call.arg_kinds, call.arg_names)
+                      if kind == ARG_NAMED and name == key]
+        if named_args:
+            return named_args[0]
+        star_args_2 = [arg for arg, kind in zip(call.args, call.arg_kinds) if kind == ARG_STAR2]
+        if not star_args_2:
+            return None
+        star_arg_2 = star_args_2[0]
+        kwargs_type = get_proper_type(self.chk.type_map[star_arg_2])
+        if (not isinstance(kwargs_type, Instance) or not
+                kwargs_type.type.has_base('typing.Mapping')):
+            # Error should be already reported.
+            return TempNode(AnyType(TypeOfAny.special_form))
+        any_type = AnyType(TypeOfAny.special_form)
+        mapping_info = self.chk.named_generic_type('typing.Mapping',
+                                                   [any_type, any_type]).type
+        return TempNode(map_instance_to_supertype(kwargs_type, mapping_info).args[1])
+
+    def auto_generate_keys(self, all_specs: List[ConversionSpecifier],
+                           ctx: Context) -> bool:
+        """Translate '{} {name} {}' to '{0} {name} {1}'.
+
+        Return True if generation was successful, otherwise report an error and return false.
+        """
+        some_defined = any(s.key and s.key.isdecimal() for s in all_specs)
+        all_defined = all(bool(s.key) for s in all_specs)
+        if some_defined and not all_defined:
+            self.msg.fail('Cannot combine automatic field numbering and'
+                          ' manual field specification', ctx, code=codes.STRING_FORMATTING)
+            return False
+        if all_defined:
+            return True
+        next_index = 0
+        for spec in all_specs:
+            if not spec.key:
+                spec.key = str(next_index)
+                next_index += 1
+        return True
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
@@ -276,7 +501,8 @@ class StringFormatterChecker:
             dict_type = self.build_dict_type(expr)
             self.chk.check_subtype(rep_type, dict_type, replacements,
                                    message_registry.FORMAT_REQUIRES_MAPPING,
-                                   'expression has type', 'expected type for mapping is')
+                                   'expression has type', 'expected type for mapping is',
+                                   code=codes.STRING_FORMATTING)
 
     def build_dict_type(self, expr: FormatStringExpr) -> Type:
         """Build expected mapping type for right operand in % formatting."""
@@ -344,13 +570,20 @@ class StringFormatterChecker:
 
         def check_type(type: Type) -> None:
             expected = self.named_type('builtins.int')
-            self.chk.check_subtype(type, expected, context, '* wants int')
+            self.chk.check_subtype(type, expected, context, '* wants int',
+                                   code=codes.STRING_FORMATTING)
 
         def check_expr(expr: Expression) -> None:
             type = self.accept(expr, expected)
             check_type(type)
 
         return check_expr, check_type
+
+    def check_placeholder_type(self, typ: Type, expected_type: Type, context: Context) -> None:
+        self.chk.check_subtype(typ, expected_type, context,
+                               message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                               'expression has type', 'placeholder has type',
+                               code=codes.STRING_FORMATTING)
 
     def checkers_for_regular_type(self, type: str,
                                   context: Context,
@@ -364,9 +597,7 @@ class StringFormatterChecker:
 
         def check_type(typ: Type) -> None:
             assert expected_type is not None
-            self.chk.check_subtype(typ, expected_type, context,
-                                   message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                                   'expression has type', 'placeholder has type')
+            self.check_placeholder_type(typ, expected_type, context)
             if type == 's':
                 self.check_s_special_cases(expr, typ, context)
 
@@ -407,9 +638,7 @@ class StringFormatterChecker:
 
         def check_type(type: Type) -> None:
             assert expected_type is not None
-            self.chk.check_subtype(type, expected_type, context,
-                                   message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                                   'expression has type', 'placeholder has type')
+            self.check_placeholder_type(type, expected_type, context)
 
         def check_expr(expr: Expression) -> None:
             """int, or str with length 1"""
@@ -426,6 +655,7 @@ class StringFormatterChecker:
         Note that both Python's float (e.g. %f) and integer (e.g. %d)
         specifier types accept both float and integers.
         """
+        # TODO: few of the rules are different for % and format().
         if p == 'b':
             if self.chk.options.python_version < (3, 5):
                 self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
@@ -488,4 +718,27 @@ def has_type_component(typ: Type, fullname: str) -> bool:
                 any(has_type_component(v, fullname) for v in typ.values))
     elif isinstance(typ, UnionType):
         return any(has_type_component(t, fullname) for t in typ.relevant_items())
+    return False
+
+
+def custom_special_method(typ: Type, name: str) -> bool:
+    """Does this type have a custom special method such as __format__() or __eq__()?"""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        method = typ.type.get(name)
+        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
+            if method.node.info:
+                return not method.node.info.fullname().startswith('builtins.')
+        return False
+    if isinstance(typ, UnionType):
+        return any(custom_special_method(t, name) for t in typ.items)
+    if isinstance(typ, TupleType):
+        return custom_special_method(tuple_fallback(typ), name)
+    if isinstance(typ, CallableType) and typ.is_type_obj():
+        # Look up __method__ on the metaclass for class objects.
+        return custom_special_method(typ.fallback, name)
+    if isinstance(typ, AnyType):
+        # Avoid false positives in uncertain cases.
+        return True
+    # TODO: support other types (see ExpressionChecker.has_member())?
     return False

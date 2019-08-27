@@ -1323,6 +1323,19 @@ def f(t: Tuple[int, ...]) -> None:
 [builtins fixtures/primitives.pyi]
 
 
+-- str.format() calls
+-- ------------------
+
+[case testFormatCallBasic]
+from typing import Mapping, Iterable
+args: Iterable[int]
+kwargs: Mapping[str, str]
+'{}, {name}, {{}}, {:s} {} {} {stuff}'.format(1, 2, *args, name=3, **kwargs)
+
+42 + 'test'
+[builtins fixtures/primitives.pyi]
+
+
 -- Lambdas
 -- -------
 
