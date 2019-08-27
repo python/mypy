@@ -211,14 +211,15 @@ ints or strings, but no other types. You can express this using the :py:data:`~t
 
    from typing import Union
 
-   def normalize_id(user_id: Union[int, str]) -> str:
+   def normalize_id(user_id: int | str) -> str:
+   # or def normalize_id(user_id: Union[int, str]) -> str:
        if isinstance(user_id, int):
            return 'user-{}'.format(100000 + user_id)
        else:
            return user_id
 
 Similarly, suppose that you want the function to accept only strings or ``None``. You can
-again use :py:data:`~typing.Union` and use ``Union[str, None]`` -- or alternatively, use the type
+again use :py:data:`~typing.Union` and use ``str | None`` (or ``Union[str, None]``) -- or alternatively, use the type
 ``Optional[str]``. These two types are identical and interchangeable: ``Optional[str]``
 is just a shorthand or *alias* for ``Union[str, None]``. It exists mostly as a convenience
 to help function signatures look a little cleaner:

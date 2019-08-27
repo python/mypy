@@ -31,8 +31,8 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType, ProperType
-)
+    TypeOfAny, Instance, RawExpressionType, ProperType,
+    UnionType)
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
@@ -1421,6 +1421,22 @@ class TypeConverter:
 
     def visit_Name(self, n: Name) -> Type:
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
+
+    def visit_BinOp(self, n: ast3.BinOp) -> Type:
+        if not isinstance(n.op, ast3.BitOr):
+            # invalid_type
+            return RawExpressionType(
+                None,
+                'typing.Any',
+                line=self.line,
+                column=getattr(n, 'col_offset', -1)
+            )
+
+        left = self.visit(n.left)
+        right = self.visit(n.right)
+        return UnionType([left, right],
+                         line=self.line,
+                         column=self.convert_column(n.col_offset))
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):

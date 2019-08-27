@@ -443,7 +443,8 @@ will reject this function:
 
 .. code-block:: python
 
-   def union_concat(x: Union[str, bytes], y: Union[str, bytes]) -> Union[str, bytes]:
+   def union_concat(x: str | bytes, y: str | bytes) -> str | bytes:
+   # or def union_concat(x: Union[str, bytes], y: Union[str, bytes]) -> Union[str, bytes]:
        return x + y  # Error: can't concatenate str and bytes
 
 Another interesting special case is calling ``concat()`` with a
