@@ -76,6 +76,7 @@ class NodeFixer(NodeVisitor[None]):
                     stnode = lookup_qualified_stnode(self.modules, cross_ref,
                                                      self.allow_missing)
                     if stnode is not None:
+                        assert stnode.node is not None
                         value.node = stnode.node
                     elif not self.allow_missing:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
