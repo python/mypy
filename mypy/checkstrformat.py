@@ -2,7 +2,9 @@
 
 import re
 
-from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Iterator
+from typing import (
+    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Iterator, Set
+)
 from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
@@ -12,7 +14,7 @@ from mypy.types import (
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
     IndexExpr, MemberExpr, TempNode, ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, SYMBOL_FUNCBASE_TYPES,
-    Decorator, Var
+    Decorator, Var, Node, MypyFile, ExpressionStmt, NameExpr, IntExpr
 )
 import mypy.errorcodes as codes
 
@@ -25,6 +27,7 @@ from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback
 from mypy.subtypes import is_subtype
+from mypy.parse import parse
 
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
 Checkers = Tuple[Callable[[Expression], None], Callable[[Type], None]]
@@ -47,7 +50,6 @@ FORMAT_RE = compile_format_re()  # type: Final
 
 def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     # After https://docs.python.org/3/library/string.html#formatspec
-    # TODO: write a more precise regexp for identifiers (currently \w+).
     # TODO: support nested formatting like '{0:{fill}{align}16}'.format(x, fill=y, align=z).
 
     # Field (optional) is an integer/identifier possibly followed by several .attr and [index].
@@ -82,6 +84,7 @@ SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
 _compiled_specs_new = compile_new_format_re()
 FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
 FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
+DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 
 
 def filter_escaped_braces(format_value: str, matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
@@ -181,9 +184,11 @@ class StringFormatterChecker:
           * Final names with string values
 
         The checks that we currently perform:
-          * Verify consistency of auto-numbering
-          * Verify that replacements can be found for all conversion specifiers
+          * Check consistency of specifiers' auto-numbering
+          * Verify that replacements can be found for all conversion specifiers,
+            and all arguments were used
           * Non-standard format specs are only allowed for types with custom __format__
+          * Type check replacements with accessors applied (if any).
           * Verify that specifier type is known and matches replacement type
           * Perform special checks for some specifier types:
             - 'c' requires a single character string
@@ -209,10 +214,10 @@ class StringFormatterChecker:
 
         if not self.auto_generate_keys(ordered_specs, call):
             return
-        self.check_specs_in_format_call(call, ordered_specs)
+        self.check_specs_in_format_call(call, ordered_specs, format_value)
 
     def check_specs_in_format_call(self, call: CallExpr,
-                                   specs: List[ConversionSpecifier]) -> None:
+                                   specs: List[ConversionSpecifier], format_value: str) -> None:
         """Perform pairwise checks for conversion specifiers vs their replacements.
 
         The core logic for format checking is implemented in this method.
@@ -221,7 +226,7 @@ class StringFormatterChecker:
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
         for spec, repl in zip(specs, replacements):
-            # TODO: !!! Apply .attr[key] to replacements.
+            repl = self.apply_field_accessors(spec, repl, ctx=call)
             actual_type = repl.type if isinstance(repl, TempNode) else self.chk.type_map.get(repl)
             assert actual_type is not None
 
@@ -238,8 +243,11 @@ class StringFormatterChecker:
                 expected_type = AnyType(TypeOfAny.special_form)  # type: Optional[Type]
             else:
                 assert isinstance(call.callee, MemberExpr)
-                assert isinstance(call.callee.expr, (StrExpr, UnicodeExpr))
-                expected_type = self.conversion_type(spec.type, call, call.callee.expr)
+                if isinstance(call.callee.expr, (StrExpr, UnicodeExpr)):
+                    format_str = call.callee.expr
+                else:
+                    format_str = StrExpr(format_value)
+                expected_type = self.conversion_type(spec.type, call, format_str)
             if spec.conversion is not None:
                 # If the explicit conversion is given, then explicit conversion is called _first_.
                 actual_type = self.named_type('builtins.str')
@@ -276,6 +284,7 @@ class StringFormatterChecker:
         In case of an error use TempNode(AnyType).
         """
         result = []  # type: List[Expression]
+        used = set()  # type: Set[Expression]
         for key in keys:
             if key.isdecimal():
                 expr = self.get_expr_by_position(int(key), call)
@@ -292,6 +301,13 @@ class StringFormatterChecker:
                                   code=codes.STRING_FORMATTING)
                     expr = TempNode(AnyType(TypeOfAny.from_error))
             result.append(expr)
+            if not isinstance(expr, TempNode):
+                used.add(expr)
+        # Strictly speaking not using all replacements is not a type error, but most likely
+        # a typo in user code, so we show an error like we do for % formatting.
+        total_explicit = len([kind for kind in call.arg_kinds if kind in (ARG_POS, ARG_NAMED)])
+        if len(used) < total_explicit:
+            self.msg.too_many_string_formatting_arguments(call)
         return result
 
     def get_expr_by_position(self, pos: int, call: CallExpr) -> Optional[Expression]:
@@ -359,9 +375,86 @@ class StringFormatterChecker:
         next_index = 0
         for spec in all_specs:
             if not spec.key:
-                spec.key = str(next_index)
+                str_index = str(next_index)
+                spec.key = str_index
+                # Update also the full field (i.e. turn {.x} into {0.x}).
+                if not spec.field:
+                    spec.field = str_index
+                else:
+                    spec.field = str_index + spec.field
                 next_index += 1
         return True
+
+    def apply_field_accessors(self, spec: ConversionSpecifier, repl: Expression,
+                              ctx: Context) -> Expression:
+        """Transform and validate expr in '{.attr[item]}'.format(expr) into expr.attr['item'].
+
+        If validation fails, return TempNode(AnyType).
+        """
+        assert spec.key, "Keys must be auto-generated first!"
+        if spec.field == spec.key:
+            return repl
+        assert spec.field  # XXX: this is redundant
+
+        # This is a bit of a dirty trick, but it looks like this is the simplest way.
+        temp_errors = self.msg.clean_copy().errors
+        dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key):]
+        temp_ast = parse(dummy, fnam='<format>', module=None,
+                         options=self.chk.options, errors=temp_errors)  # type: Node
+        if temp_errors.is_errors():
+            self.msg.fail('Syntax error in format specifier "{}"'.format(spec.field),
+                          ctx, code=codes.STRING_FORMATTING)
+            return TempNode(AnyType(TypeOfAny.from_error))
+
+        # These asserts are guaranteed by the original regexp.
+        assert isinstance(temp_ast, MypyFile)
+        temp_ast = temp_ast.defs[0]
+        assert isinstance(temp_ast, ExpressionStmt)
+        temp_ast = temp_ast.expr
+        if not self.validate_and_transform_accessors(temp_ast, repl, spec, ctx=ctx):
+            return TempNode(AnyType(TypeOfAny.from_error))
+
+        # Check if there are any other errors (like missing members).
+        # TODO: fix column to point to actual start of the format specifier _within_ string.
+        temp_ast.line = ctx.line
+        temp_ast.column = ctx.column
+        self.exprchk.accept(temp_ast)
+        return temp_ast
+
+    def validate_and_transform_accessors(self, temp_ast: Expression, original_repl: Expression,
+                                         spec: ConversionSpecifier, ctx: Context) -> bool:
+        """Validate and transform (in-place) format field accessors.
+
+        On error, report it and return False.
+        """
+        if not isinstance(temp_ast, (MemberExpr, IndexExpr)):
+            # TODO: currently regexp is too strict, so we can't trigger this.
+            self.msg.fail('Only index and member expressions are allowed in'
+                          ' format field accessors; got "{}"'.format(spec.field),
+                          ctx, code=codes.STRING_FORMATTING)
+            return False
+        if isinstance(temp_ast, MemberExpr):
+            node = temp_ast.expr
+        else:
+            node = temp_ast.base
+            if not isinstance(temp_ast.index, (NameExpr, IntExpr)):
+                self.msg.fail('Invalid index expression in format field'
+                              ' accessor "{}"'.format(spec.field), ctx,
+                              code=codes.STRING_FORMATTING)
+                return False
+            if isinstance(temp_ast.index, NameExpr):
+                temp_ast.index = StrExpr(temp_ast.index.name)
+        if isinstance(node, NameExpr) and node.name == DUMMY_FIELD_NAME:
+            # Replace it with the actual replacement expression.
+            assert isinstance(temp_ast, (IndexExpr, MemberExpr))  # XXX: this is redundant
+            if isinstance(temp_ast, IndexExpr):
+                temp_ast.base = original_repl
+            else:
+                temp_ast.expr = original_repl
+            return True
+        node.line = ctx.line
+        return self.validate_and_transform_accessors(node, original_repl=original_repl,
+                                                     spec=spec, ctx=ctx)
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
@@ -369,7 +462,7 @@ class StringFormatterChecker:
                                 expr: FormatStringExpr,
                                 replacements: Expression) -> Type:
         """Check the types of the 'replacements' in a string interpolation
-        expression: str % replacements
+        expression: str % replacements.
         """
         self.exprchk.accept(expr)
         specifiers = self.parse_conversion_specifiers(expr.value)
@@ -424,6 +517,7 @@ class StringFormatterChecker:
 
     def check_simple_str_interpolation(self, specifiers: List[ConversionSpecifier],
                                        replacements: Expression, expr: FormatStringExpr) -> None:
+        """Check % string interpolation with positional specifiers '%s, %d' % ('yes, 42')."""
         checkers = self.build_replacement_checkers(specifiers, replacements, expr)
         if checkers is None:
             return
@@ -464,6 +558,7 @@ class StringFormatterChecker:
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
                                         replacements: Expression,
                                         expr: FormatStringExpr) -> None:
+        """Check % string interpolation with names specifiers '%(name)s' % {'name': 'John'}."""
         if (isinstance(replacements, DictExpr) and
                 all(isinstance(k, (StrExpr, BytesExpr, UnicodeExpr))
                     for k, v in replacements.items)):

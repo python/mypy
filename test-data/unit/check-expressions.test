@@ -1330,8 +1330,13 @@ def f(t: Tuple[int, ...]) -> None:
 from typing import Mapping, Iterable
 args: Iterable[int]
 kwargs: Mapping[str, str]
-'{}, {name}, {{}}, {:s} {} {} {stuff}'.format(1, 2, *args, name=3, **kwargs)
+'{}, {name.x[test]:.2f}, {{}}, {:s} {} {} {stuff}'.format(1, 2, *args, name=C(), **kwargs)
+'{}'.format(1, 2)
+'{name}'.format(name=1, stuff=2)
+'{}'.format(1, *args)
 
+class C:
+    y: Mapping[str, float]
 42 + 'test'
 [builtins fixtures/primitives.pyi]
 
