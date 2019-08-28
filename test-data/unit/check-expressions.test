@@ -1326,22 +1326,85 @@ def f(t: Tuple[int, ...]) -> None:
 -- str.format() calls
 -- ------------------
 
-[case testFormatCallBasic]
-'{{}}'.format(1)
-'{{{}}}'.format(2)
-'{{{{}}}}'.format(3)
-'{{{{{}}}}}'.format(4)
-from typing import Mapping, Iterable
-args: Iterable[int]
-kwargs: Mapping[str, str]
-'{}, {name.x[test]:.2f}, {{}}, {:s} {} {} {stuff}'.format(1, 2, *args, name=C(), **kwargs)
-'{}'.format(1, 2)
-'{name}'.format(name=1, stuff=2)
-'{}'.format(1, *args)
+[case testFormatCallEscaping]
+'{}'.format()  # E: Cannot find replacement for positional format specifier 0
+'{}'.format(0)  # OK
 
-class C:
-    y: Mapping[str, float]
-42 + 'test'
+'{{}}'.format()  # OK
+'{{}}'.format(0)  # E: Not all arguments converted during string formatting
+
+'{{{}}}'.format()  # E: Cannot find replacement for positional format specifier 0
+'{{{}}}'.format(0)  # OK
+
+'{{}} {:d} {{}} {:d}'.format('a', 'b')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+
+'foo({}, {}) == {{}} ({{}} expected)'.format(0)  # E: Cannot find replacement for positional format specifier 1
+'foo({}, {}) == {{}} ({{}} expected)'.format(0, 1)  # OK
+'foo({}, {}) == {{}} ({{}} expected)'.format(0, 1, 2)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAutoNumbering]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingPositional]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingNamed]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingVarArg]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingKwArg]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallCustomFormatSpec]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypes]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypesChar]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypesBytes]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFinal]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFinalChar]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallForcedConversions]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAccessorsBasic]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAccessorsIndices]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAccessorsSyntaxError]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFlags]
+
 [builtins fixtures/primitives.pyi]
 
 

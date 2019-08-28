@@ -9,7 +9,7 @@ from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
-    CallableType
+    CallableType, LiteralType
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
@@ -269,6 +269,12 @@ class StringFormatterChecker:
         if spec.type == 'c':
             if isinstance(repl, (StrExpr, BytesExpr)) and len(cast(StrExpr, repl).value) != 1:
                 self.msg.requires_int_or_char(call)
+            c_typ = get_proper_type(self.chk.type_map[repl])
+            if isinstance(c_typ, Instance) and c_typ.last_known_value:
+                c_typ = c_typ.last_known_value
+            if isinstance(c_typ, LiteralType) and isinstance(c_typ.value, str):
+                if len(c_typ.value) != 1:
+                    self.msg.requires_int_or_char(call)
         if (not spec.type or spec.type == 's') and not spec.conversion:
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(actual_type, 'builtins.bytes'):
