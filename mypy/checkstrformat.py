@@ -88,10 +88,15 @@ DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 
 
 def filter_escaped_braces(format_value: str, matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
-    """Keep only specifiers of the form {...}, but not {{...}}."""
+    """Keep only specifiers of the form {...}, but not {{...}} (even number of braces)."""
     for match in matches:
-        if (match.start() > 0 and format_value[match.start() - 1] == '{' and
-                match.end() < len(format_value) and format_value[match.end()] == '}'):
+        first_open = match.start()
+        last_closed = match.end() - 1
+        while first_open > 0 and format_value[first_open - 1] == '{':
+            first_open -= 1
+        while last_closed < len(format_value) - 1 and format_value[last_closed + 1] == '}':
+            last_closed += 1
+        if (match.start() - first_open) % 2 and (last_closed - match.end() + 1) % 2:
             # Formatting can be escaped using escapes like "{formatted} {{not formatted}}".
             continue
         yield match

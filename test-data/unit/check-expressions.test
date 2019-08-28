@@ -1327,6 +1327,10 @@ def f(t: Tuple[int, ...]) -> None:
 -- ------------------
 
 [case testFormatCallBasic]
+'{{}}'.format(1)
+'{{{}}}'.format(2)
+'{{{{}}}}'.format(3)
+'{{{{{}}}}}'.format(4)
 from typing import Mapping, Iterable
 args: Iterable[int]
 kwargs: Mapping[str, str]
