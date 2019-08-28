@@ -13,8 +13,8 @@ from mypy.types import (
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
-    IndexExpr, MemberExpr, TempNode, ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2, SYMBOL_FUNCBASE_TYPES,
-    Decorator, Var, Node, MypyFile, ExpressionStmt, NameExpr, IntExpr
+    IndexExpr, MemberExpr, TempNode, ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2,
+    SYMBOL_FUNCBASE_TYPES, Decorator, Var, Node, MypyFile, ExpressionStmt, NameExpr, IntExpr
 )
 import mypy.errorcodes as codes
 
@@ -87,7 +87,8 @@ FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
 DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 
 
-def filter_escaped_braces(format_value: str, matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
+def filter_escaped_braces(format_value: str,
+                          matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
     """Keep only specifiers of the form {...}, but not {{...}} (even number of braces)."""
     for match in matches:
         first_open = match.start()
