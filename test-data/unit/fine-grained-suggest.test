@@ -484,3 +484,65 @@ def bar() -> None:
 (int, Any) -> int
 (int, Any) -> int
 ==
+
+[case testSuggestFlexAny]
+# flags: --strict-optional
+# suggest: --flex-any=0.4 m.foo
+# suggest: --flex-any=0.7 m.foo
+# suggest: --flex-any=0.4 m.bar
+# suggest: --flex-any=0.6 m.bar
+# suggest: --flex-any=0.5 m.baz
+# suggest: --flex-any=0.5 m.F.foo
+# suggest: --flex-any=0.7 m.F.foo
+# suggest: --flex-any=0.7 m.noargs
+# suggest2: --flex-any=0.4 m.foo
+# suggest2: --flex-any=0.7 m.foo
+[file m.py]
+from typing import Any
+any: Any
+
+def foo(arg):
+    return 0
+def bar(x, y):
+    return any
+
+def baz(x):
+    pass
+
+class F:
+    def foo(self, x):
+        return 0
+
+def noargs():
+    pass
+
+[file n.py]
+from typing import Any
+any: Any
+
+from m import foo, bar
+def wtvr() -> None:
+    foo(any)
+    bar(1, 2)
+
+[file n.py.2]
+from typing import Any
+any: Any
+
+from m import foo, bar
+def wtvr() -> None:
+    foo([any])
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Any) -> int
+No guesses that match criteria!
+(int, int) -> Any
+No guesses that match criteria!
+No guesses that match criteria!
+(Any) -> int
+No guesses that match criteria!
+() -> None
+==
+(typing.List[Any]) -> int
+(typing.List[Any]) -> int
