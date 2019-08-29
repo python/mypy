@@ -90,6 +90,8 @@ DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 # Format types supported by str.format() for builtin classes.
 SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
                        'g', 'G', 'n', 'o', 's', 'x', 'X', '%']  # type: Final
+NUMERIC_TYPES_NEW = ['d', 'o', 'x', 'X', 'e', 'E',
+                     'f', 'F', 'g', 'G']  # type: Final
 
 
 class ConversionSpecifier:
@@ -302,10 +304,10 @@ class StringFormatterChecker:
             if (spec.format_spec and spec.non_standard_format_spec and
                     # Exclude "dynamic" specifiers (i.e. containing nested formatting).
                     not ('{' in spec.format_spec or '}' in spec.format_spec)):
-                if not custom_special_method(actual_type, '__format__') and not spec.conversion:
+                if not custom_special_method(actual_type, '__format__') or spec.conversion:
                     # TODO: add support for some custom specs like datetime?
                     self.msg.fail('Unrecognized format'
-                                  ' specification "{}"'.format(spec.format_spec),
+                                  ' specification "{}"'.format(spec.format_spec[1:]),
                                   call, code=codes.STRING_FORMATTING)
                     continue
             # Adjust expected and actual types.
@@ -354,7 +356,8 @@ class StringFormatterChecker:
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
                                        self.named_type('builtins.float')])
-            if not is_subtype(expected_type, numeric_types):
+            if (spec.type and spec.type not in NUMERIC_TYPES_NEW or
+                    not spec.type and not is_subtype(actual_type, numeric_types)):
                 self.msg.fail('Numeric flags are only allowed for numeric types', call,
                               code=codes.STRING_FORMATTING)
 
@@ -520,7 +523,7 @@ class StringFormatterChecker:
             node = temp_ast.base
             if not isinstance(temp_ast.index, (NameExpr, IntExpr)):
                 self.msg.fail('Invalid index expression in format field'
-                              ' accessor "{}"'.format(spec.field), ctx,
+                              ' accessor "{}"'.format(spec.field[len(spec.key):]), ctx,
                               code=codes.STRING_FORMATTING)
                 return False
             if isinstance(temp_ast.index, NameExpr):
