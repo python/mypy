@@ -1,4 +1,4 @@
-"""Expression type checker. This file is conceptually part of ExpressionChecker and TypeChecker."""
+"""Format expression type checker. This file is conceptually part of ExpressionChecker and TypeChecker."""
 
 import re
 
@@ -35,6 +35,11 @@ MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:
+    """Construct regexp to match format conversion specifiers in % interpolation.
+
+    See https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
+    The regexp is intentionally a bit wider to report better errors.
+    """
     key_re = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters.
     flags_re = r'([#0\-+ ]*)'  # (optional) sequence of flags.
     width_re = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers).
@@ -45,12 +50,13 @@ def compile_format_re() -> Pattern[str]:
     return re.compile(format_re)
 
 
-FORMAT_RE = compile_format_re()  # type: Final
+def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
+    """Construct regexps to match format conversion specifiers in str.format() calls.
 
-
-def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
-    # After https://docs.python.org/3/library/string.html#formatspec
-    # TODO: support nested formatting like '{0:{fill}{align}16}'.format(x, fill=y, align=z).
+    See After https://docs.python.org/3/library/string.html#formatspec for
+    specifications. The regexps are intentionally wider, to report better errors,
+    instead of just not matching.
+    """
 
     # Field (optional) is an integer/identifier possibly followed by several .attr and [index].
     field = r'(?P<field>(?P<key>[^.[!:]*)([^:!]+)?)'
@@ -59,91 +65,31 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     conversion = r'(?P<conversion>![^:])?'
 
     # Format specification (optional) follows its own mini-language:
-    # Fill and align is valid for all types.
-    fill_align = r'(?P<fill_align>.?[<>=^])?'
-    # Number formatting options are only valid for int, float, complex, and Decimal,
-    # except if only width is given (it is valid for all types).
-    # This contains sign, flags (sign, # and/or 0), width, grouping (_ or ,) and precision.
-    num_spec = r'(?P<flags>[+\- ]?#?0?)(?P<width>\d+)?[_,]?(?P<precision>\.\d+)?'
-    # The last element is type.
-    type = r'(?P<type>.)?'  # only some are supported, but we want to give a better error
-    format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
+    if not custom_spec:
+        # Fill and align is valid for all builtin types.
+        fill_align = r'(?P<fill_align>.?[<>=^])?'
+        # Number formatting options are only valid for int, float, complex, and Decimal,
+        # except if only width is given (it is valid for all types).
+        # This contains sign, flags (sign, # and/or 0), width, grouping (_ or ,) and precision.
+        num_spec = r'(?P<flags>[+\- ]?#?0?)(?P<width>\d+)?[_,]?(?P<precision>\.\d+)?'
+        # The last element is type.
+        type = r'(?P<type>.)?'  # only some are supported, but we want to give a better error
+        format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
+    else:
+        # Custom types can define their own form_spec using __format__().
+        format_spec = r'(?P<format_spec>:.*)?'
 
-    # Custom types can define their own form_spec using __format__().
-    format_spec_custom = r'(?P<format_spec>:.*)?'
+    return re.compile(field + conversion + format_spec)
 
-    format_re = field + conversion + format_spec
-    format_re_custom = field + conversion + format_spec_custom
-    return re.compile(format_re), re.compile(format_re_custom)
 
+FORMAT_RE = compile_format_re()  # type: Final
+FORMAT_RE_NEW = compile_new_format_re(False)  # type: Final
+FORMAT_RE_NEW_CUSTOM = compile_new_format_re(True)  # type: Final
+DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 
 # Format types supported by str.format() for builtin classes.
 SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
                        'g', 'G', 'n', 'o', 's', 'x', 'X', '%']  # type: Final
-
-_compiled_specs_new = compile_new_format_re()
-FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
-FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
-DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
-
-
-def find_non_escaped_matches(format_value: str) -> List[str]:
-    """Return list of raw (un-parsed) format specifiers in format string.
-
-    Format specifiers don't include enclosing braces. We don't use regexp for
-    this because they don't work well with recursive/nested/repeated patterns
-    (both greedy and non-greedy), and these are heavily used internally for
-    representation of f-strings.
-    """
-    result = []
-    next_spec = ''
-    pos = 0
-    nesting = 0
-    while pos < len(format_value):
-        c = format_value[pos]
-        if not nesting:
-            # Skip any paired '{{' and '}}', enter nesting on '{', report error on '}'.
-            if c == '{':
-                if pos < len(format_value) - 1 and format_value[pos + 1] == '{':
-                    pos += 1
-                else:
-                    nesting = 1
-            if c == '}':
-                if pos < len(format_value) - 1 and format_value[pos + 1] == '}':
-                    pos += 1
-                else:
-                    raise ValueError('Unmatched }')
-        if nesting:
-            # Adjust nesting level, then either continue adding chars or move on.
-            if c == '{':
-                nesting += 1
-            if c == '}':
-                nesting -= 1
-            if nesting:
-                next_spec += c
-            else:
-                result.append(next_spec)
-                next_spec = ''
-        pos += 1
-    if nesting:
-        raise ValueError('Unmatched {')
-    return result
-
-
-def filter_escaped_braces(format_value: str,
-                          matches: Iterator[Match[str]]) -> Iterator[Match[str]]:
-    """Keep only specifiers of the form {...}, but not {{...}} (even number of braces)."""
-    for match in matches:
-        first_open = match.start()
-        last_closed = match.end() - 1
-        while first_open > 0 and format_value[first_open - 1] == '{':
-            first_open -= 1
-        while last_closed < len(format_value) - 1 and format_value[last_closed + 1] == '}':
-            last_closed += 1
-        if (match.start() - first_open) % 2 and (last_closed - match.end() + 1) % 2:
-            # Formatting can be escaped using escapes like "{formatted} {{not formatted}}".
-            continue
-        yield match
 
 
 class ConversionSpecifier:
@@ -225,6 +171,7 @@ class StringFormatterChecker:
           * Final names with string values
 
         The checks that we currently perform:
+          * Check generic validity (e.g. unmatched { or }, and {} in invalid positions)
           * Check consistency of specifiers' auto-numbering
           * Verify that replacements can be found for all conversion specifiers,
             and all arguments were used
@@ -236,26 +183,107 @@ class StringFormatterChecker:
             - 's' must not accept bytes
             - non-empty flags are only allowed for numeric types
         """
-        # First find potential specifiers by matching to various level of precision.
-        found_standard = collect_brace_matches(format_value, FORMAT_RE_NEW)
-        found_custom = collect_brace_matches(format_value, FORMAT_RE_NEW_CUSTOM)
-        found_custom = {span: match for span, match in found_custom.items()
-                        if span not in found_standard}
-
-        # Convert the found specifiers from match objects to ConversionSpecifier objects.
-        standard_specs = {span: ConversionSpecifier.from_match(match)
-                          for span, match in found_standard.items()}
-        custom_specs = {span: ConversionSpecifier.from_match(match, non_standard_spec=True)
-                        for span, match in found_custom.items()}
-
-        # Sort the parsed specifiers by order of appearance in format string.
-        all_spans = sorted(list(standard_specs.keys()) + list(custom_specs.keys()))
-        ordered_specs = [standard_specs.get(span) or custom_specs[span]
-                         for span in all_spans]  # type: List[ConversionSpecifier]
-
-        if not self.auto_generate_keys(ordered_specs, call):
+        conv_specs = self.parse_format_value(format_value, call)
+        if conv_specs is None:
             return
-        self.check_specs_in_format_call(call, ordered_specs, format_value)
+        if not self.auto_generate_keys(conv_specs, call):
+            return
+        self.check_specs_in_format_call(call, conv_specs, format_value)
+
+    def parse_format_value(self, format_value: str, ctx: Context,
+                           nested: bool = False) -> Optional[List[ConversionSpecifier]]:
+        """Parse format string into list of conversion specifiers.
+
+        The specifiers may be nested (two levels maximum), in this case they are ordered as
+        '{0:{1}}, {2:{3}{4}}'. Return None in case of an error.
+        """
+        top_targets = self.find_non_escaped_targets(format_value, ctx)
+        if top_targets is None:
+            return None
+
+        result = []  # type: List[ConversionSpecifier]
+        for target in top_targets:
+            match = FORMAT_RE_NEW.fullmatch(target)
+            if match:
+                conv_spec = ConversionSpecifier.from_match(match)
+            else:
+                custom_match = FORMAT_RE_NEW_CUSTOM.fullmatch(target)
+                if custom_match:
+                    conv_spec = ConversionSpecifier.from_match(custom_match,
+                                                               non_standard_spec=True)
+                else:
+                    self.msg.fail('Invalid conversion specifier in format string',
+                                  ctx, code=codes.STRING_FORMATTING)
+                    return None
+
+            if conv_spec.key and ('{' in conv_spec.key or '}' in conv_spec.key):
+                self.msg.fail('Conversion value must not contain { or }',
+                              ctx, code=codes.STRING_FORMATTING)
+                return None
+            result.append(conv_spec)
+
+            # Parse nested conversions that are allowed in format specifier.
+            if (conv_spec.format_spec and conv_spec.non_standard_format_spec and
+                    ('{' in conv_spec.format_spec or '}' in conv_spec.format_spec)):
+                if nested:
+                    self.msg.fail('Formatting nesting must be at most two levels deep',
+                                  ctx, code=codes.STRING_FORMATTING)
+                    return None
+                sub_conv_specs = self.parse_format_value(conv_spec.format_spec[1:], ctx=ctx,
+                                                         nested=True)
+                if not sub_conv_specs:
+                    return None
+                result.extend(sub_conv_specs)
+        return result
+
+    def find_non_escaped_targets(self, format_value: str, ctx: Context) -> Optional[List[str]]:
+        """Return list of raw (un-parsed) format specifiers in format string.
+
+        Format specifiers don't include enclosing braces. We don't use regexp for
+        this because they don't work well with recursive/nested/repeated patterns
+        (both greedy and non-greedy), and these are heavily used internally for
+        representation of f-strings.
+
+        Return None in case of an error.
+        """
+        result = []
+        next_spec = ''
+        pos = 0
+        nesting = 0
+        while pos < len(format_value):
+            print(pos, format_value)
+            c = format_value[pos]
+            if not nesting:
+                # Skip any paired '{{' and '}}', enter nesting on '{', report error on '}'.
+                if c == '{':
+                    if pos < len(format_value) - 1 and format_value[pos + 1] == '{':
+                        pos += 1
+                    else:
+                        nesting = 1
+                if c == '}':
+                    if pos < len(format_value) - 1 and format_value[pos + 1] == '}':
+                        pos += 1
+                    else:
+                        self.msg.fail('Invalid conversion specifier in format string:'
+                                      ' unmatched }', ctx, code=codes.STRING_FORMATTING)
+                        return None
+            else:
+                # Adjust nesting level, then either continue adding chars or move on.
+                if c == '{':
+                    nesting += 1
+                if c == '}':
+                    nesting -= 1
+                if nesting:
+                    next_spec += c
+                else:
+                    result.append(next_spec)
+                    next_spec = ''
+            pos += 1
+        if nesting:
+            self.msg.fail('Invalid conversion specifier in format string:'
+                          ' unmatched {', ctx, code=codes.STRING_FORMATTING)
+            return None
+        return result
 
     def check_specs_in_format_call(self, call: CallExpr,
                                    specs: List[ConversionSpecifier], format_value: str) -> None:
@@ -273,7 +301,9 @@ class StringFormatterChecker:
 
             # Special case custom formatting.
             # TODO: add support for some custom specs like datetime?
-            if spec.non_standard_format_spec:
+            if (spec.format_spec and spec.non_standard_format_spec and
+                    # Exclude "dynamic" specifiers (i.e. containing nested formatting).
+                    not ('{' in spec.format_spec or '}' in spec.format_spec)):
                 if not custom_special_method(actual_type, '__format__') and not spec.conversion:
                     self.msg.fail('Unrecognized format'
                                   ' specification "{}"'.format(spec.format_spec),
@@ -291,6 +321,10 @@ class StringFormatterChecker:
                 expected_type = self.conversion_type(spec.type, call, format_str)
             if spec.conversion is not None:
                 # If the explicit conversion is given, then explicit conversion is called _first_.
+                if spec.conversion[1] not in 'rsa':
+                    self.msg.fail('Invalid conversion type "{}",'
+                                  ' must be one of "r", "s" or "a"'.format(spec.conversion[1]),
+                                  call, code=codes.STRING_FORMATTING)
                 actual_type = self.named_type('builtins.str')
 
             # Perform the checks for given types.
@@ -500,6 +534,7 @@ class StringFormatterChecker:
                 temp_ast.expr = original_repl
             return True
         node.line = ctx.line
+        node.column = ctx.column
         return self.validate_and_transform_accessors(node, original_repl=original_repl,
                                                      spec=spec, ctx=ctx)
 
