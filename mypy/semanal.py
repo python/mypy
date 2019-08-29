@@ -3118,6 +3118,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
                             lnode.kind = self.current_symbol_kind()
+                            assert rnode.node is not None
                             lnode.node = rnode.node
 
     def process__all__(self, s: AssignmentStmt) -> None:
