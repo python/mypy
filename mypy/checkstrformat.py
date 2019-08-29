@@ -530,7 +530,6 @@ class StringFormatterChecker:
         On error, report it and return False.
         """
         if not isinstance(temp_ast, (MemberExpr, IndexExpr)):
-            # TODO: currently regexp is too strict, so we can't trigger this.
             self.msg.fail('Only index and member expressions are allowed in'
                           ' format field accessors; got "{}"'.format(spec.field),
                           ctx, code=codes.STRING_FORMATTING)
