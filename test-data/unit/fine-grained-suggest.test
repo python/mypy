@@ -324,6 +324,24 @@ def bar() -> None:
 (str) -> str
 ==
 
+[case testSuggestCallable]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def foo(f):
+    return f(0, "lol")
+[file bar.py]
+from foo import foo
+
+def whatever(x: int, y: str) -> int:
+    return 0
+
+def bar() -> None:
+    foo(whatever)
+[out]
+(Callable[[int, str], int]) -> int
+==
+
 [case testSuggestNewSemanal]
 # flags: --strict-optional
 # suggest: foo.Foo.foo

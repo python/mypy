@@ -623,6 +623,24 @@ class TypeFormatter(TypeStrVisitor):
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
 
+    def visit_callable_type(self, t: CallableType) -> str:
+        args = []
+        for kind, name, typ in zip(t.arg_kinds, t.arg_names, t.arg_types):
+            arg = typ.accept(self)
+            if kind == ARG_STAR:
+                arg = '*' + arg
+            elif kind == ARG_STAR2:
+                arg = '**' + arg
+            # ARG_NAMED we just mishandle, whatever
+            args.append(arg)
+
+        if t.is_ellipsis_args:
+            arg_str = "..."
+        else:
+            arg_str = "[{}]".format(", ".join(args))
+
+        return "Callable[{}, {}]".format(arg_str, t.ret_type.accept(self))
+
 
 class StrToText(TypeTranslator):
     def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
