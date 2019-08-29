@@ -143,10 +143,11 @@ class ConversionSpecifier:
             return spec
         # Replace unmatched optional groups with empty matches (for convenience).
         return cls(match.group('key'),
-                   flags=match.group('flags'), width=match.group('width') or '',
+                   flags=match.group('flags') or '', width=match.group('width') or '',
                    precision=match.group('precision') or '', type=match.group('type') or '',
                    format_spec=match.group('format_spec'),
-                   conversion=match.group('conversion'), field=match.group('field'))
+                   conversion=match.group('conversion'),
+                   field=match.group('field'))
 
     def has_key(self) -> bool:
         return self.key is not None
