@@ -53,10 +53,10 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     # TODO: support nested formatting like '{0:{fill}{align}16}'.format(x, fill=y, align=z).
 
     # Field (optional) is an integer/identifier possibly followed by several .attr and [index].
-    field = r'(?P<field>(?P<key>\w+)(\.\w+|\[[^]?$]+\])*)?'
+    field = r'(?P<field>(?P<key>[^.[!:]*)([^:!]+)?)'
 
     # Conversion (optional) is ! followed by one of letters for forced repr(), str(), or ascii().
-    conversion = r'(?P<conversion>![rsa])?'
+    conversion = r'(?P<conversion>![^:])?'
 
     # Format specification (optional) follows its own mini-language:
     # Fill and align is valid for all types.
@@ -64,16 +64,16 @@ def compile_new_format_re() -> Tuple[Pattern[str], Pattern[str]]:
     # Number formatting options are only valid for int, float, complex, and Decimal,
     # except if only width is given (it is valid for all types).
     # This contains sign, flags (sign, # and/or 0), width, grouping (_ or ,) and precision.
-    num_spec = r'(?P<flags>[+\- #0]+)?(?P<width>\d+)?[_,]?(?P<precision>\.\d+)?'
+    num_spec = r'(?P<flags>[+\- ]?#?0?)(?P<width>\d+)?[_,]?(?P<precision>\.\d+)?'
     # The last element is type.
     type = r'(?P<type>.)?'  # only some are supported, but we want to give a better error
     format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
 
     # Custom types can define their own form_spec using __format__().
-    format_spec_custom = r'(?P<format_spec>:.*?)?'
+    format_spec_custom = r'(?P<format_spec>:.*)?'
 
-    format_re = r'{' + field + conversion + format_spec + r'}'
-    format_re_custom = r'{' + field + conversion + format_spec_custom + r'}'
+    format_re = field + conversion + format_spec
+    format_re_custom = field + conversion + format_spec_custom
     return re.compile(format_re), re.compile(format_re_custom)
 
 
@@ -85,6 +85,49 @@ _compiled_specs_new = compile_new_format_re()
 FORMAT_RE_NEW = _compiled_specs_new[0]  # type: Final
 FORMAT_RE_NEW_CUSTOM = _compiled_specs_new[1]  # type: Final
 DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
+
+
+def find_non_escaped_matches(format_value: str) -> List[str]:
+    """Return list of raw (un-parsed) format specifiers in format string.
+
+    Format specifiers don't include enclosing braces. We don't use regexp for
+    this because they don't work well with recursive/nested/repeated patterns
+    (both greedy and non-greedy), and these are heavily used internally for
+    representation of f-strings.
+    """
+    result = []
+    next_spec = ''
+    pos = 0
+    nesting = 0
+    while pos < len(format_value):
+        c = format_value[pos]
+        if not nesting:
+            # Skip any paired '{{' and '}}', enter nesting on '{', report error on '}'.
+            if c == '{':
+                if pos < len(format_value) - 1 and format_value[pos + 1] == '{':
+                    pos += 1
+                else:
+                    nesting = 1
+            if c == '}':
+                if pos < len(format_value) - 1 and format_value[pos + 1] == '}':
+                    pos += 1
+                else:
+                    raise ValueError('Unmatched }')
+        if nesting:
+            # Adjust nesting level, then either continue adding chars or move on.
+            if c == '{':
+                nesting += 1
+            if c == '}':
+                nesting -= 1
+            if nesting:
+                next_spec += c
+            else:
+                result.append(next_spec)
+                next_spec = ''
+        pos += 1
+    if nesting:
+        raise ValueError('Unmatched {')
+    return result
 
 
 def filter_escaped_braces(format_value: str,
@@ -101,14 +144,6 @@ def filter_escaped_braces(format_value: str,
             # Formatting can be escaped using escapes like "{formatted} {{not formatted}}".
             continue
         yield match
-
-
-def collect_brace_matches(format_value: str, pattern: Pattern[str]) -> MatchMap:
-    """Organize match objects for a given format string by their span."""
-    result = {}  # type: MatchMap
-    for match in filter_escaped_braces(format_value, pattern.finditer(format_value)):
-        result[(match.start(), match.end())] = match
-    return result
 
 
 class ConversionSpecifier:
