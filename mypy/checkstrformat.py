@@ -13,7 +13,7 @@ implementation simple.
 import re
 
 from typing import (
-    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
+    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set, Any
 )
 from typing_extensions import Final, TYPE_CHECKING
 
@@ -129,9 +129,10 @@ class ConversionSpecifier:
         self.field = field
 
     @classmethod
-    def from_match(cls, match: Match[str],
+    def from_match(cls, match_obj: Match[str],
                    non_standard_spec: bool = False) -> 'ConversionSpecifier':
         """Construct specifier from match object resulted from parsing str.format() call."""
+        match = cast(Any, match_obj)  # TODO: remove this once typeshed is fixed.
         if non_standard_spec:
             spec = cls(match.group('key'),
                        flags='', width='', precision='', type='',
@@ -140,7 +141,7 @@ class ConversionSpecifier:
                        field=match.group('field'))
             spec.non_standard_format_spec = True
             return spec
-        # Replace unmatched optional groups with empty matches.
+        # Replace unmatched optional groups with empty matches (for convenience).
         return cls(match.group('key'),
                    flags=match.group('flags'), width=match.group('width') or '',
                    precision=match.group('precision') or '', type=match.group('type') or '',
