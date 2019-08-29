@@ -1327,11 +1327,31 @@ def f(t: Tuple[int, ...]) -> None:
 -- ------------------
 
 [case testFormatCallParseErrors]
+'}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+'{'.format()  # E: Invalid conversion specifier in format string: unmatched {
 
+'}}'.format()  # OK
+'{{'.format()  # OK
+
+'{{}}}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+'{{{}}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+
+'{}}{{}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+'{{{}:{}}}'.format(0)  # E: Cannot find replacement for positional format specifier 1
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallValidationErrors]
+'{!}}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+'{!x}'.format(0)  # E: Invalid conversion type "x", must be one of "r", "s" or "a"
+'{!:}'.format(0)  # E: Invalid conversion specifier in format string
 
+'{{}:s}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+'{{}.attr}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+'{{}[key]}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+
+'{ {}:s}'.format()  # E: Conversion value must not contain { or }
+'{ {}.attr}'.format()  # E: Conversion value must not contain { or }
+'{ {}[key]}'.format()  # E: Conversion value must not contain { or }
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallEscaping]
@@ -1344,6 +1364,7 @@ def f(t: Tuple[int, ...]) -> None:
 '{{{}}}'.format()  # E: Cannot find replacement for positional format specifier 0
 '{{{}}}'.format(0)  # OK
 
+'{{}} {} {{}}'.format(0)  # OK
 '{{}} {:d} {{}} {:d}'.format('a', 'b')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 
 'foo({}, {}) == {{}} ({{}} expected)'.format(0)  # E: Cannot find replacement for positional format specifier 1
@@ -1352,19 +1373,44 @@ def f(t: Tuple[int, ...]) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallNestedFormats]
+'{:{}{}}'.format(42, '*')  # E: Cannot find replacement for positional format specifier 2
+'{:{}{}}'.format(42, '*', '^')  # OK
+'{:{}{}}'.format(42, '*', '^', 0)  # E: Not all arguments converted during string formatting
 
+# NOTE: we don't check format specifiers that contain { or } at all
+'{:{{}}}'.format()  # E: Cannot find replacement for positional format specifier 0
+
+'{:{:{}}}'.format()  # E: Formatting nesting must be at most two levels deep
+'{:{{}:{}}}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+
+'{!s:{fill:d}{align}}'.format(42, fill='*', align='^')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallAutoNumbering]
+'{}, {{}}, {0}'.format()  # E: Cannot combine automatic field numbering and manual field specification
+'{0}, {1}, {}'.format()  # E: Cannot combine automatic field numbering and manual field specification
 
+'{0}, {1}, {0}'.format(1, 2, 3)  # E: Not all arguments converted during string formatting
+'{}, {other:+d}, {}'.format(1, 2, other='no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+'{0}, {other}, {}'.format()  # E: Cannot combine automatic field numbering and manual field specification
+
+'{:{}}, {:{:.5d}{}}'.format(1, 2, 3, 'a', 5)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallMatchingPositional]
-
+'{}'.format(positional='no')  # E: Cannot find replacement for positional format specifier 0 \
+                              # E: Not all arguments converted during string formatting
+'{.x}, {}, {}'.format(1, 'two', 'three')  # E: "int" has no attribute "x"
+'Reverse {2.x}, {1}, {0}'.format(1, 2, 'three')  # E: "str" has no attribute "x"
+''.format(1, 2)  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallMatchingNamed]
-
+'{named}'.format(0)  # E: Cannot find replacement for named format specifier "named" \
+                     # E: Not all arguments converted during string formatting
+'{one.x}, {two}'.format(one=1, two='two')  # E: "int" has no attribute "x"
+'{one}, {two}, {.x}'.format(1, one='two', two='three')  # E: "int" has no attribute "x"
+''.format(stuff='yes')  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallMatchingVarArg]

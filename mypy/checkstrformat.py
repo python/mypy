@@ -231,7 +231,7 @@ class StringFormatterChecker:
                     return None
                 sub_conv_specs = self.parse_format_value(conv_spec.format_spec[1:], ctx=ctx,
                                                          nested=True)
-                if not sub_conv_specs:
+                if sub_conv_specs is None:
                     return None
                 result.extend(sub_conv_specs)
         return result
@@ -264,7 +264,7 @@ class StringFormatterChecker:
                         pos += 1
                     else:
                         self.msg.fail('Invalid conversion specifier in format string:'
-                                      ' unmatched }', ctx, code=codes.STRING_FORMATTING)
+                                      ' unexpected }', ctx, code=codes.STRING_FORMATTING)
                         return None
             else:
                 # Adjust nesting level, then either continue adding chars or move on.
@@ -330,10 +330,11 @@ class StringFormatterChecker:
             if expected_type is None:
                 continue
             self.check_placeholder_type(actual_type, expected_type, call)
-            self.perform_special_format_checks(spec, call, repl, actual_type)
+            self.perform_special_format_checks(spec, call, repl, actual_type, expected_type)
 
     def perform_special_format_checks(self, spec: ConversionSpecifier, call: CallExpr,
-                                      repl: Expression, actual_type: Type) -> None:
+                                      repl: Expression, actual_type: Type,
+                                      expected_type: Type) -> None:
         # TODO: try refactoring to combine this logic with % formatting.
         if spec.type == 'c':
             if isinstance(repl, (StrExpr, BytesExpr)) and len(cast(StrExpr, repl).value) != 1:
@@ -353,7 +354,7 @@ class StringFormatterChecker:
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
                                        self.named_type('builtins.float')])
-            if not is_subtype(actual_type, numeric_types):
+            if not is_subtype(expected_type, numeric_types):
                 self.msg.fail('Numeric flags are only allowed for numeric types', call,
                               code=codes.STRING_FORMATTING)
 
