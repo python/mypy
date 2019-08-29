@@ -262,7 +262,7 @@ class Errors:
             line: line number of error
             column: column number of error
             message: message to report
-            code: error code (defaults to 'misc' for 'error' severity)
+            code: error code (defaults to 'misc'; not shown for notes)
             blocker: if True, don't continue analysis after this error
             severity: 'error' or 'note'
             file: if non-None, override current file as context
@@ -292,8 +292,7 @@ class Errors:
         if end_line is None:
             end_line = origin_line
 
-        if severity == 'error' and code is None:
-            code = codes.MISC
+        code = code or codes.MISC
 
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          function, line, column, severity, message, code,
@@ -423,7 +422,9 @@ class Errors:
                 s = '{}: {}: {}'.format(srcloc, severity, message)
             else:
                 s = message
-            if self.show_error_codes and code:
+            if self.show_error_codes and code and severity != 'note':
+                # If note has an error code, it is related to a previous error. Avoid
+                # displaying duplicate error codes.
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
         return a

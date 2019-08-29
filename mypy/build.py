@@ -2425,15 +2425,15 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.report(
             line, 0, "No library stub file for standard library module '{}'".format(target),
             code=codes.IMPORT)
-        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+        errors.report(line, 0, stub_msg, severity='note', only_once=True, code=codes.IMPORT)
     elif moduleinfo.is_third_party_module(target):
         errors.report(line, 0, "No library stub file for module '{}'".format(target),
                       code=codes.IMPORT)
-        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+        errors.report(line, 0, stub_msg, severity='note', only_once=True, code=codes.IMPORT)
     else:
         note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         errors.report(line, 0, "Cannot find module named '{}'".format(target), code=codes.IMPORT)
-        errors.report(line, 0, note, severity='note', only_once=True)
+        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     errors.set_import_context(save_import_context)
 
 

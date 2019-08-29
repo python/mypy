@@ -133,6 +133,14 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name
     # type () -> None
     pass
 
+[case testErrorCodeIgnoreWithNote]
+import nostub  # type: ignore[import]
+from defusedxml import xyz  # type: ignore[import]
+
+[case testErrorCodeIgnoreWithNote_python2]
+import nostub  # type: ignore[import]
+from defusedxml import xyz  # type: ignore[import]
+
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
 f()  # E: Too few arguments for "f"  [call-arg]
@@ -502,3 +510,9 @@ def f(): pass
 
 def g() -> int:
     return f()  # E: Returning Any from function declared to return "int"  [no-any-return]
+
+[case testErrorCodeIgnoreNamedDefinedNote]
+x: List[int]  # type: ignore[name-defined]
+
+[case testErrorCodeIgnoreMiscNote]
+x: [int]  # type: ignore[misc]
