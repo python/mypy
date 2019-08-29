@@ -333,12 +333,6 @@ class TypeVarDef(mypy.nodes.Context):
         return TypeVarDef(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
-    def erase_to_union_or_bound(self) -> Type:
-        if self.values:
-            return UnionType.make_simplified_union(self.values)
-        else:
-            return self.upper_bound
-
     def __repr__(self) -> str:
         if self.values:
             return '{} in {}'.format(self.name, tuple(self.values))
@@ -855,12 +849,6 @@ class TypeVarType(ProperType):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
 
-    def erase_to_union_or_bound(self) -> ProperType:
-        if self.values:
-            return UnionType.make_simplified_union(self.values)
-        else:
-            return get_proper_type(self.upper_bound)
-
     def __hash__(self) -> int:
         return hash(self.id)
 
@@ -1122,30 +1110,6 @@ class CallableType(FunctionLike):
                 pos,
                 self.arg_types[i],
                 required)
-
-    def corresponding_argument(self, model: FormalArgument) -> Optional[FormalArgument]:
-        """Return the argument in this function that corresponds to `model`"""
-
-        by_name = self.argument_by_name(model.name)
-        by_pos = self.argument_by_position(model.pos)
-        if by_name is None and by_pos is None:
-            return None
-        if by_name is not None and by_pos is not None:
-            if by_name == by_pos:
-                return by_name
-            # If we're dealing with an optional pos-only and an optional
-            # name-only arg, merge them.  This is the case for all functions
-            # taking both *args and **args, or a pair of functions like so:
-
-            # def right(a: int = ...) -> None: ...
-            # def left(__a: int = ..., *, a: int = ...) -> None: ...
-            from mypy.subtypes import is_equivalent
-            if (not (by_name.required or by_pos.required)
-                    and by_pos.name is None
-                    and by_name.pos is None
-                    and is_equivalent(by_name.typ, by_pos.typ)):
-                return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
-        return by_name if by_name is not None else by_pos
 
     def argument_by_name(self, name: Optional[str]) -> Optional[FormalArgument]:
         if name is None:
@@ -1719,58 +1683,6 @@ class UnionType(ProperType):
         else:
             return UninhabitedType()
 
-    @staticmethod
-    def make_simplified_union(items: Sequence[Type],
-                              line: int = -1, column: int = -1) -> ProperType:
-        """Build union type with redundant union items removed.
-
-        If only a single item remains, this may return a non-union type.
-
-        Examples:
-
-        * [int, str] -> Union[int, str]
-        * [int, object] -> object
-        * [int, int] -> int
-        * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
-        * [Any, Any] -> Any
-
-        Note: This must NOT be used during semantic analysis, since TypeInfos may not
-              be fully initialized.
-        """
-        # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
-        #       type operations are not static methods, so this is inconsistent.
-        items = get_proper_types(items)
-        while any(isinstance(typ, UnionType) for typ in items):
-            all_items = []  # type: List[ProperType]
-            for typ in items:
-                if isinstance(typ, UnionType):
-                    all_items.extend(typ.items)
-                else:
-                    all_items.append(typ)
-            items = all_items
-
-        from mypy.subtypes import is_proper_subtype
-
-        removed = set()  # type: Set[int]
-        for i, ti in enumerate(items):
-            if i in removed: continue
-            # Keep track of the truishness info for deleted subtypes which can be relevant
-            cbt = cbf = False
-            for j, tj in enumerate(items):
-                if i != j and is_proper_subtype(tj, ti):
-                    # We found a redundant item in the union.
-                    removed.add(j)
-                    cbt = cbt or tj.can_be_true
-                    cbf = cbf or tj.can_be_false
-            # if deleted subtypes had more general truthiness, use that
-            if not ti.can_be_true and cbt:
-                items[i] = true_or_false(ti)
-            elif not ti.can_be_false and cbf:
-                items[i] = true_or_false(ti)
-
-        simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-        return UnionType.make_union(simplified_set, line, column)
-
     def length(self) -> int:
         return len(self.items)
 
@@ -2183,71 +2095,6 @@ def copy_type(t: TP) -> TP:
     nt = typ.__new__(typ)
     replace_object_state(nt, t, copy_dict=True)
     return nt
-
-
-def true_only(t: Type) -> ProperType:
-    """
-    Restricted version of t with only True-ish values
-    """
-    t = get_proper_type(t)
-
-    if not t.can_be_true:
-        # All values of t are False-ish, so there are no true values in it
-        return UninhabitedType(line=t.line, column=t.column)
-    elif not t.can_be_false:
-        # All values of t are already True-ish, so true_only is idempotent in this case
-        return t
-    elif isinstance(t, UnionType):
-        # The true version of a union type is the union of the true versions of its components
-        new_items = [true_only(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
-    else:
-        new_t = copy_type(t)
-        new_t.can_be_false = False
-        return new_t
-
-
-def false_only(t: Type) -> ProperType:
-    """
-    Restricted version of t with only False-ish values
-    """
-    t = get_proper_type(t)
-
-    if not t.can_be_false:
-        if state.strict_optional:
-            # All values of t are True-ish, so there are no false values in it
-            return UninhabitedType(line=t.line)
-        else:
-            # When strict optional checking is disabled, everything can be
-            # False-ish since anything can be None
-            return NoneType(line=t.line)
-    elif not t.can_be_true:
-        # All values of t are already False-ish, so false_only is idempotent in this case
-        return t
-    elif isinstance(t, UnionType):
-        # The false version of a union type is the union of the false versions of its components
-        new_items = [false_only(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
-    else:
-        new_t = copy_type(t)
-        new_t.can_be_true = False
-        return new_t
-
-
-def true_or_false(t: Type) -> ProperType:
-    """
-    Unrestricted version of t with both True-ish and False-ish values
-    """
-    t = get_proper_type(t)
-
-    if isinstance(t, UnionType):
-        new_items = [true_or_false(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
-
-    new_t = copy_type(t)
-    new_t.can_be_true = new_t.can_be_true_default()
-    new_t.can_be_false = new_t.can_be_false_default()
-    return new_t
 
 
 def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:

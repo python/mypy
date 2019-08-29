@@ -6,6 +6,7 @@ such special case.
 """
 
 from typing import Union, List
+from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import Lvalue, Expression
 from mypyc.ops import (
@@ -16,7 +17,9 @@ from mypyc.ops_int import unsafe_short_add
 from mypyc.ops_list import list_len_op, list_get_item_unsafe_op
 from mypyc.ops_misc import iter_op, next_op
 from mypyc.ops_exc import no_err_occurred_op
-import mypyc.genops
+
+if TYPE_CHECKING:
+    import mypyc.genops
 
 
 class ForGenerator:

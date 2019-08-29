@@ -13,7 +13,7 @@ from mypy.types import (
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.typeops import tuple_fallback
+from mypy.typeops import tuple_fallback, make_simplified_union
 from mypy import state
 
 # TODO Describe this module.
@@ -41,8 +41,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if declared == narrowed:
         return declared
     if isinstance(declared, UnionType):
-        return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
-                                                for x in declared.relevant_items()])
+        return make_simplified_union([narrow_declared_type(x, narrowed)
+                                      for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed,
                                   prohibit_none_typevar_overlap=True):
         if state.strict_optional:
@@ -50,8 +50,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         else:
             return NoneType()
     elif isinstance(narrowed, UnionType):
-        return UnionType.make_simplified_union([narrow_declared_type(declared, x)
-                                                for x in narrowed.relevant_items()])
+        return make_simplified_union([narrow_declared_type(declared, x)
+                                      for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
@@ -425,7 +425,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         else:
             meets = [meet_types(x, self.s)
                      for x in t.items]
-        return UnionType.make_simplified_union(meets)
+        return make_simplified_union(meets)
 
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:

@@ -22,6 +22,7 @@ from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
     Overloaded, UnionType, FunctionLike, get_proper_type
 )
+from mypy.typeops import make_simplified_union
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
@@ -109,7 +110,7 @@ class Attribute:
                     types.append(item.arg_types[0])
                 # Make a union of all the valid types.
                 if types:
-                    args = UnionType.make_simplified_union(types)
+                    args = make_simplified_union(types)
                     init_type = ctx.api.anal_type(args)
 
             if self.converter.is_attr_converters_optional and init_type:

@@ -8,10 +8,11 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
+    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
     TypeVarType, TPDICT_FB_NAMES, get_proper_type
 )
 from mypy.subtypes import is_subtype
+from mypy.typeops import make_simplified_union
 
 
 class DefaultPlugin(Plugin):
@@ -168,7 +169,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             tv = TypeVarType(signature.variables[0])
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0],
-                           UnionType.make_simplified_union([value_type, tv])],
+                           make_simplified_union([value_type, tv])],
                 ret_type=ret_type)
     return signature
 
@@ -205,7 +206,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if len(ctx.arg_types) == 1:
             output_types.append(NoneType())
 
-        return UnionType.make_simplified_union(output_types)
+        return make_simplified_union(output_types)
     return ctx.default_return_type
 
 
@@ -231,7 +232,7 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
             tv = TypeVarType(signature.variables[0])
-            typ = UnionType.make_simplified_union([value_type, tv])
+            typ = make_simplified_union([value_type, tv])
             return signature.copy_modified(
                 arg_types=[str_type, typ],
                 ret_type=typ)
@@ -261,10 +262,10 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
                 return AnyType(TypeOfAny.from_error)
 
         if len(ctx.args[1]) == 0:
-            return UnionType.make_simplified_union(value_types)
+            return make_simplified_union(value_types)
         elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
               and len(ctx.args[1]) == 1):
-            return UnionType.make_simplified_union([*value_types, ctx.arg_types[1][0]])
+            return make_simplified_union([*value_types, ctx.arg_types[1][0]])
     return ctx.default_return_type
 
 
@@ -321,7 +322,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
             value_types.append(value_type)
 
-        return UnionType.make_simplified_union(value_types)
+        return make_simplified_union(value_types)
     return ctx.default_return_type
 
 

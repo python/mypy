@@ -83,7 +83,12 @@ class DataclassTransformer:
             # Some definitions are not ready, defer() should be already called.
             return
         for attr in attributes:
-            if info[attr.name].type is None:
+            node = info.get(attr.name)
+            if node is None:
+                # Nodes of superclass InitVars not used in __init__ cannot be reached.
+                assert attr.is_init_var and not attr.is_in_init
+                continue
+            if node.type is None:
                 ctx.api.defer()
                 return
         decorator_arguments = {
@@ -184,7 +189,11 @@ class DataclassTransformer:
         """Remove init-only vars from the class and reset init var declarations."""
         for attr in attributes:
             if attr.is_init_var:
-                del info.names[attr.name]
+                if attr.name in info.names:
+                    del info.names[attr.name]
+                else:
+                    # Nodes of superclass InitVars not used in __init__ cannot be reached.
+                    assert attr.is_init_var and not attr.is_in_init
                 for stmt in info.defn.defs.body:
                     if isinstance(stmt, AssignmentStmt) and stmt.unanalyzed_type:
                         lvalue = stmt.lvalues[0]
