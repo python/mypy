@@ -1253,7 +1253,7 @@ b'%(x)s' % {b'x': b'data'}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
 '%(a)d %%' % {'a': 1}
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingDictTypes]
 from typing import Any, Dict
@@ -1264,14 +1264,14 @@ ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[in
 '%()d' % ds
 '%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "Mapping[str, Any]")
 b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "Mapping[bytes, Any]")
-[builtins fixtures/dict.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingInvalidDictTypesPy2]
 # flags: --py2 --no-strict-optional
 from typing import Any, Dict
 di = None # type: Dict[int, int]
 '%()d' % di  # E: Format requires a mapping (expression has type "Dict[int, int]", expected type for mapping is "Union[Mapping[str, Any], Mapping[unicode, Any]]")
-[builtins_py2 fixtures/dict.pyi]
+[builtins_py2 fixtures/python2.pyi]
 
 [case testStringInterpolationMappingInvalidSpecifiers]
 '%(a)d %d' % 1  # E: String interpolation mixes specifier with and without mapping keys
@@ -1282,7 +1282,7 @@ di = None # type: Dict[int, int]
 '%(a)1d' % {'a': 1}
 '%(a).1d' % {'a': 1}
 '%(a)#1.1ld' % {'a': 1}
-[builtins fixtures/dict.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationFloatPrecision]
 '%.f' % 1.2
