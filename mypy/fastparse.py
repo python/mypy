@@ -1459,9 +1459,11 @@ class TypeConverter:
         # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
 
-        # Do an ignore because the field doesn't exist in 3.8 (where
-        # this method doesn't actually ever run.)
-        kind = n.kind  # type: str
+        # Do a getattr because the field doesn't exist in 3.8 (where
+        # this method doesn't actually ever run.) We can't just do
+        # an attribute access with a `# type: ignore` because it would be
+        # unused on < 3.8.
+        kind = getattr(n, 'kind')  # type: str  # noqa
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,

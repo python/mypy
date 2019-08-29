@@ -3770,11 +3770,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     @overload
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
 
-    @overload  # noqa
+    @overload
     def narrow_type_from_binder(self, expr: Expression, known_type: Type,
                                 skip_non_overlapping: bool) -> Optional[Type]: ...
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type,  # noqa
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,
                                 skip_non_overlapping: bool = False) -> Optional[Type]:
         """Narrow down a known type of expression using information in conditional type binder.
 
