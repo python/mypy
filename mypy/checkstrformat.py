@@ -1,9 +1,19 @@
-"""Format expression type checker. This file is conceptually part of ExpressionChecker and TypeChecker."""
+"""
+Format expression type checker.
+
+This file is conceptually part of ExpressionChecker and TypeChecker. Main functionality
+is located in StringFormatterChecker.check_str_format_call() for '{}'.format(), and in
+StringFormatterChecker.check_str_interpolation() for printf-style % interpolation.
+
+Note that although at runtime format strings are parsed using custom parsers,
+here we use a regerx-based approach. This way we 99% match runtime behaviour while keeping
+implementation simple.
+"""
 
 import re
 
 from typing import (
-    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Iterator, Set
+    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
 )
 from typing_extensions import Final, TYPE_CHECKING
 
@@ -522,6 +532,8 @@ class StringFormatterChecker:
         else:
             node = temp_ast.base
             if not isinstance(temp_ast.index, (NameExpr, IntExpr)):
+                assert spec.key, "Call this method only after auto-generating keys!"
+                assert spec.field
                 self.msg.fail('Invalid index expression in format field'
                               ' accessor "{}"'.format(spec.field[len(spec.key):]), ctx,
                               code=codes.STRING_FORMATTING)
