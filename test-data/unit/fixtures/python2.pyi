@@ -11,11 +11,16 @@ class type:
 class function: pass
 
 class int: pass
-class str: pass
-class unicode: pass
+class str:
+    def format(self, *args, **kwars) -> str: ...
+class unicode:
+    def format(self, *args, **kwars) -> unicode: ...
 class bool: pass
 
 T = TypeVar('T')
+S = TypeVar('S')
 class list(Iterable[T], Generic[T]): pass
+class tuple(Iterable[T]): pass
+class dict(Generic[T, S]): pass
 
 # Definition of None is implicit

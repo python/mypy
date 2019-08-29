@@ -749,8 +749,10 @@ class MessageBuilder:
         self.fail('String interpolation contains both stars and mapping keys', context,
                   code=codes.STRING_FORMATTING)
 
-    def requires_int_or_char(self, context: Context) -> None:
-        self.fail('%c requires int or char', context, code=codes.STRING_FORMATTING)
+    def requires_int_or_char(self, context: Context,
+                             format_call: bool = False) -> None:
+        self.fail('"{}c" requires int or char'.format(':' if format_call else '%'),
+                  context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
         self.fail('Key \'%s\' not found in mapping' % key, context,

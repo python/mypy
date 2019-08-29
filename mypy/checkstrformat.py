@@ -340,13 +340,13 @@ class StringFormatterChecker:
         # TODO: try refactoring to combine this logic with % formatting.
         if spec.type == 'c':
             if isinstance(repl, (StrExpr, BytesExpr)) and len(cast(StrExpr, repl).value) != 1:
-                self.msg.requires_int_or_char(call)
+                self.msg.requires_int_or_char(call, format_call=True)
             c_typ = get_proper_type(self.chk.type_map[repl])
             if isinstance(c_typ, Instance) and c_typ.last_known_value:
                 c_typ = c_typ.last_known_value
             if isinstance(c_typ, LiteralType) and isinstance(c_typ.value, str):
                 if len(c_typ.value) != 1:
-                    self.msg.requires_int_or_char(call)
+                    self.msg.requires_int_or_char(call, format_call=True)
         if (not spec.type or spec.type == 's') and not spec.conversion:
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(actual_type, 'builtins.bytes'):
