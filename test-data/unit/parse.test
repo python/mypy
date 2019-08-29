@@ -3345,7 +3345,8 @@ MypyFile:1(
               StrExpr({:{}})    
               format)           
             Args(               
-              NameExpr(x))))))))
+              NameExpr(x)
+              StrExpr())))))))
 
 [case testFStringWithConversion]
 x = 'mypy'
@@ -3368,7 +3369,8 @@ MypyFile:1(
               StrExpr({!r:{}})  
               format)           
             Args(               
-              NameExpr(x))))))))
+              NameExpr(x)
+              StrExpr())))))))
 
 [case testFStringWithOnlyFormatSpecifier]
 x = 'mypy'
@@ -3391,7 +3393,8 @@ MypyFile:1(
               StrExpr({:{}})    
               format)           
             Args(               
-              NameExpr(x))))))))
+              NameExpr(x)
+              StrExpr(<30))))))))
 
 [case testFStringWithFormatSpecifierAndConversion]
 x = 'mypy'
@@ -3414,7 +3417,8 @@ MypyFile:1(
               StrExpr({!s:{}})  
               format)           
             Args(               
-              NameExpr(x))))))))
+              NameExpr(x)
+              StrExpr(<30))))))))
 
 [case testFStringWithFormatSpecifierExpression]
 x = 'mypy'
@@ -3441,4 +3445,21 @@ MypyFile:1(
               StrExpr({!s:{}})  
               format)           
             Args(               
-              NameExpr(x))))))))
+              NameExpr(x)
+              CallExpr:3(
+                MemberExpr:3(
+                  StrExpr()
+                  join)
+                Args(
+                  ListExpr:3(
+                    StrExpr(<)
+                    CallExpr:3(
+                      MemberExpr:3(
+                        StrExpr({:{}})
+                        format)
+                      Args(
+                        OpExpr:3(
+                          +
+                          NameExpr(y)
+                          NameExpr(y))
+                        StrExpr()))))))))))))

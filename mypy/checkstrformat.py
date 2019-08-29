@@ -240,7 +240,7 @@ class StringFormatterChecker:
         """Return list of raw (un-parsed) format specifiers in format string.
 
         Format specifiers don't include enclosing braces. We don't use regexp for
-        this because they don't work well with recursive/nested/repeated patterns
+        this because they don't work well with nested/repeated patterns
         (both greedy and non-greedy), and these are heavily used internally for
         representation of f-strings.
 
@@ -299,11 +299,11 @@ class StringFormatterChecker:
             assert actual_type is not None
 
             # Special case custom formatting.
-            # TODO: add support for some custom specs like datetime?
             if (spec.format_spec and spec.non_standard_format_spec and
                     # Exclude "dynamic" specifiers (i.e. containing nested formatting).
                     not ('{' in spec.format_spec or '}' in spec.format_spec)):
                 if not custom_special_method(actual_type, '__format__') and not spec.conversion:
+                    # TODO: add support for some custom specs like datetime?
                     self.msg.fail('Unrecognized format'
                                   ' specification "{}"'.format(spec.format_spec),
                                   call, code=codes.STRING_FORMATTING)
