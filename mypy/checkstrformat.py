@@ -251,7 +251,6 @@ class StringFormatterChecker:
         pos = 0
         nesting = 0
         while pos < len(format_value):
-            print(pos, format_value)
             c = format_value[pos]
             if not nesting:
                 # Skip any paired '{{' and '}}', enter nesting on '{', report error on '}'.

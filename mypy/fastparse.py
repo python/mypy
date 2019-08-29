@@ -1146,8 +1146,8 @@ class ASTConverter:
         format_method.set_line(format_string)
         result_expression = CallExpr(format_method,
                                      [val_exp, format_spec_exp],
-                                     [ARG_POS],
-                                     [None])
+                                     [ARG_POS, ARG_POS],
+                                     [None, None])
         return self.set_line(result_expression, n)
 
     # Bytes(bytes s)

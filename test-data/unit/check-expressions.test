@@ -1326,6 +1326,14 @@ def f(t: Tuple[int, ...]) -> None:
 -- str.format() calls
 -- ------------------
 
+[case testFormatCallParseErrors]
+
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallValidationErrors]
+
+[builtins fixtures/primitives.pyi]
+
 [case testFormatCallEscaping]
 '{}'.format()  # E: Cannot find replacement for positional format specifier 0
 '{}'.format(0)  # OK
@@ -1341,6 +1349,10 @@ def f(t: Tuple[int, ...]) -> None:
 'foo({}, {}) == {{}} ({{}} expected)'.format(0)  # E: Cannot find replacement for positional format specifier 1
 'foo({}, {}) == {{}} ({{}} expected)'.format(0, 1)  # OK
 'foo({}, {}) == {{}} ({{}} expected)'.format(0, 1, 2)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallNestedFormats]
+
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallAutoNumbering]
