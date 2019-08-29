@@ -622,7 +622,7 @@ class Emitter:
                     inner_name = self.temp_name()
                     self.emit_box('{}.f{}'.format(src, i), inner_name, typ.types[i],
                                   declare_dest=True)
-                    self.emit_line('PyTuple_SET_ITEM({}, {}, {});'.format(dest, i, inner_name, i))
+                    self.emit_line('PyTuple_SET_ITEM({}, {}, {});'.format(dest, i, inner_name))
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
