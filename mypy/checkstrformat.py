@@ -140,9 +140,10 @@ class ConversionSpecifier:
                        field=match.group('field'))
             spec.non_standard_format_spec = True
             return spec
+        # Replace unmatched optional groups with empty matches.
         return cls(match.group('key'),
-                   flags=match.group('flags'), width=match.group('width'),
-                   precision=match.group('precision'), type=match.group('type'),
+                   flags=match.group('flags'), width=match.group('width') or '',
+                   precision=match.group('precision') or '', type=match.group('type') or '',
                    format_spec=match.group('format_spec'),
                    conversion=match.group('conversion'), field=match.group('field'))
 
@@ -493,7 +494,7 @@ class StringFormatterChecker:
         assert spec.key, "Keys must be auto-generated first!"
         if spec.field == spec.key:
             return repl
-        assert spec.field  # XXX: this is redundant
+        assert spec.field
 
         # This is a bit of a dirty trick, but it looks like this is the simplest way.
         temp_errors = self.msg.clean_copy().errors
