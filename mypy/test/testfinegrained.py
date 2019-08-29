@@ -276,10 +276,12 @@ class FineGrainedSuite(DataSuite):
             no_any = '--no-any' in flags
             no_errors = '--no-errors' in flags
             try_text = '--try-text' in flags
+            m = re.match('--flex-any=([0-9.]+)', flags)
+            flex_any = float(m.group(1)) if m else None
             res = cast(Dict[str, Any],
                        server.cmd_suggest(
                            target.strip(), json=json, no_any=no_any, no_errors=no_errors,
-                           try_text=try_text,
+                           try_text=try_text, flex_any=flex_any,
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             output.extend(val.strip().split('\n'))
@@ -288,7 +290,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./?^ ]+ )*([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
+        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
