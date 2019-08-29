@@ -38,6 +38,9 @@ class Sequence(Iterable[T_co]):
 class Mapping(Generic[T, T_co]):
     def __getitem__(self, key: T) -> T_co: pass
 
+class SupportsInt(Protocol):
+    def __int__(self) -> int: pass
+
 # This is an unofficial extension.
 def final(meth: T) -> T: pass
 

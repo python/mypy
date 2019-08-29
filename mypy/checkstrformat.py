@@ -100,8 +100,12 @@ DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 # Format types supported by str.format() for builtin classes.
 SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
                        'g', 'G', 'n', 'o', 's', 'x', 'X', '%']  # type: Final
-NUMERIC_TYPES_NEW = ['d', 'o', 'x', 'X', 'e', 'E',
-                     'f', 'F', 'g', 'G']  # type: Final
+
+# Types that require int, float, or SupportsInt.
+NUMERIC_TYPES_OLD = ['d', 'i', 'o', 'u', 'x', 'X',
+                     'e', 'E', 'f', 'F', 'g', 'G']  # type: Final
+NUMERIC_TYPES_NEW = ['b', 'd', 'o', 'e', 'E', 'f', 'F',
+                     'g', 'G', 'x', 'X', '%']  # type: Final
 
 
 class ConversionSpecifier:
@@ -329,7 +333,8 @@ class StringFormatterChecker:
                     format_str = call.callee.expr
                 else:
                     format_str = StrExpr(format_value)
-                expected_type = self.conversion_type(spec.type, call, format_str)
+                expected_type = self.conversion_type(spec.type, call, format_str,
+                                                     format_call=True)
             if spec.conversion is not None:
                 # If the explicit conversion is given, then explicit conversion is called _first_.
                 if spec.conversion[1] not in 'rsa':
@@ -841,14 +846,18 @@ class StringFormatterChecker:
 
         return check_expr, check_type
 
-    def conversion_type(self, p: str, context: Context, expr: FormatStringExpr) -> Optional[Type]:
+    def conversion_type(self, p: str, context: Context, expr: FormatStringExpr,
+                        format_call: bool = False) -> Optional[Type]:
         """Return the type that is accepted for a string interpolation conversion specifier type.
 
         Note that both Python's float (e.g. %f) and integer (e.g. %d)
         specifier types accept both float and integers.
+
+        The 'format_call' argument indicates whether this type came from % interpolation or from
+        a str.format() call, the meaning of few formatting types are different.
         """
-        # TODO: few of the rules are different for % and format().
-        if p == 'b':
+        NUMERIC_TYPES = NUMERIC_TYPES_NEW if format_call else NUMERIC_TYPES_OLD
+        if p == 'b' and not format_call:
             if self.chk.options.python_version < (3, 5):
                 self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
                               context, code=codes.STRING_FORMATTING)
@@ -867,10 +876,10 @@ class StringFormatterChecker:
             return AnyType(TypeOfAny.special_form)
         elif p in ['s', 'r']:
             return AnyType(TypeOfAny.special_form)
-        elif p in ['d', 'i', 'o', 'u', 'x', 'X',
-                   'e', 'E', 'f', 'F', 'g', 'G']:
+        elif p in NUMERIC_TYPES:
             return UnionType([self.named_type('builtins.int'),
-                              self.named_type('builtins.float')])
+                              self.named_type('builtins.float'),
+                              self.named_type('typing.SupportsInt')])
         elif p in ['c']:
             return UnionType([self.named_type('builtins.int'),
                               self.named_type('builtins.float'),
