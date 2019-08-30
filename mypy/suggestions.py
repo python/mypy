@@ -650,9 +650,6 @@ class TypeFormatter(TypeStrVisitor):
         else:
             return super().visit_union_type(t)
 
-    def visit_type_var(self, t: TypeVarType) -> str:
-        return t.name
-
 
 class StrToText(TypeTranslator):
     def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
