@@ -1328,16 +1328,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
-            messages.incompatible_argument(n, m, callee, original_caller_type,
-                                           caller_kind, context)
-            if (isinstance(original_caller_type, (Instance, TupleType, TypedDictType)) and
-                    isinstance(callee_type, Instance) and callee_type.type.is_protocol):
-                self.msg.report_protocol_problems(original_caller_type, callee_type, context)
-            if (isinstance(callee_type, CallableType) and
-                    isinstance(original_caller_type, Instance)):
-                call = find_member('__call__', original_caller_type, original_caller_type)
-                if call:
-                    self.msg.note_call(original_caller_type, call, context)
+            code = messages.incompatible_argument(n, m, callee, original_caller_type,
+                                                  caller_kind, context)
+            messages.incompatible_argument_note(original_caller_type, callee_type, context,
+                                                code=code)
 
     def check_overload_call(self,
                             callee: Overloaded,
