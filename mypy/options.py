@@ -138,6 +138,10 @@ class Options:
         # Show "note: In function "foo":" messages.
         self.show_error_context = False
 
+        # Use nicer output (when possible).
+        self.color_output = True
+        self.error_summary = True
+
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]

@@ -4,9 +4,10 @@ import pathlib
 import re
 import subprocess
 import sys
+import curses
 
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container
-from typing_extensions import Final, Type
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
+from typing_extensions import Final, Type, Literal
 
 T = TypeVar('T')
 
@@ -313,3 +314,79 @@ def check_python_version(program: str) -> None:
     if sys.version_info[:3] == (3, 5, 0):
         sys.exit("Running {name} with Python 3.5.0 is not supported; "
                  "please upgrade to 3.5.1 or newer".format(name=program))
+
+
+def count_stats(errors: List[str]) -> Tuple[int, int]:
+    """Count total number of errors and files in error list."""
+    errors = [e for e in errors if ': error:' in e]
+    files = {e.split(':')[0] for e in errors}
+    return len(errors), len(files)
+
+
+class FancyFormatter:
+    """Apply color and bold font to terminal output.
+
+    This currently only works on Linus an Mac.
+    """
+    def __init__(self, f_out: IO[str], f_err: IO[str],
+                 show_error_codes: bool) -> None:
+        self.show_error_codes = show_error_codes
+        # Check if we are in a human-facing terminal on a supported platform.
+        if sys.platform not in ('linux', 'darwin'):
+            self.dummy_term = True
+            return
+        if not f_out.isatty() or not f_err.isatty():
+            self.dummy_term = True
+            return
+
+        # We in a human-facing terminal, check if it supports enough styling.
+        curses.setupterm()
+        bold = curses.tigetstr('bold')
+        setaf = curses.tigetstr('setaf')
+        self.dummy_term = not (bold and setaf)
+        if self.dummy_term:
+            return
+
+        self.BOLD = bold.decode()
+        self.BLUE = curses.tparm(setaf, curses.COLOR_BLUE).decode()
+        self.GREEN = curses.tparm(setaf, curses.COLOR_GREEN).decode()
+        self.RED = curses.tparm(setaf, curses.COLOR_RED).decode()
+        self.YELLOW = curses.tparm(setaf, curses.COLOR_YELLOW).decode()
+        self.NORMAL = curses.tigetstr('sgr0').decode()
+        self.colors = {'red': self.RED, 'green': self.GREEN,
+                       'blue': self.BLUE, 'yellow': self.YELLOW}
+
+    def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow'],
+              bold: bool = False) -> str:
+        if self.dummy_term:
+            return text
+        if bold:
+            start = self.BOLD
+        else:
+            start = ''
+        return start + self.colors[color] + text + self.NORMAL
+
+    def colorize(self, error: str) -> str:
+        """Colorize an output line by highlighting the status and error code."""
+        if ': error:' in error:
+            loc, msg = error.split('error:', maxsplit=1)
+            if not self.show_error_codes:
+                return loc + self.style('error:', 'red') + msg
+            codepos = msg.rfind('[')
+            code = msg[codepos:]
+            msg = msg[:codepos]
+            return loc + self.style('error:', 'red') + msg + self.style(code, 'red',
+                                                                        bold=True)
+        elif ': note:' in error:
+            loc, msg = error.split('note:', maxsplit=1)
+            return loc + self.style('note:', 'blue') + msg
+        else:
+            return error
+
+    def format_success(self) -> str:
+        return self.style('Success: no issues found', 'green', bold=True)
+
+    def format_error(self, n_errors: int, n_files: int) -> str:
+        msg = 'Found {} error{} in {} file{}'.format(n_errors, 's' if n_errors > 1 else '',
+                                                     n_files, 's' if n_files > 1 else '')
+        return self.style(msg, 'red', bold=True)
