@@ -8,6 +8,12 @@ import sys
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
 from typing_extensions import Final, Type, Literal
 
+try:
+    import curses
+    CURSES_ENABLED = True
+except ImportError:
+    CURSES_ENABLED = False
+
 T = TypeVar('T')
 
 ENCODING_RE = \
@@ -339,9 +345,7 @@ class FancyFormatter:
             return
 
         # We in a human-facing terminal, check if it supports enough styling.
-        try:
-            import curses
-        except ImportError:
+        if not CURSES_ENABLED:
             self.dummy_term = True
             return
         try:
