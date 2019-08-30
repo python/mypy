@@ -472,15 +472,14 @@ class F:
         return x
 
 [file bar.py]
-from typing import Any
-any: Any
-
 from foo import F
-def bar() -> None:
-    F.bar(0, any)
-    F.baz(0, any)
+def bar(iany) -> None:
+    F.bar(0, iany)
+    F().bar(0, 5)
+    F.baz('lol', iany)
+    F().baz('lol', 10)
 [builtins fixtures/classmethod.pyi]
 [out]
-(int, Any) -> int
-(int, Any) -> int
+(int, int) -> int
+(str, int) -> str
 ==
