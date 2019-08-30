@@ -1952,9 +1952,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         proper_left_type = get_proper_type(left_type)
         if isinstance(proper_left_type, TupleType) and e.op == '+':
-            proper_right_type = get_proper_type(self.accept(e.right))
-            if isinstance(proper_right_type, TupleType):
-                return self.concat_tuples(proper_left_type, proper_right_type)
+            left_add_method = proper_left_type.partial_fallback.type.get('__add__')
+            if left_add_method and left_add_method.fullname == 'builtins.tuple.__add__':
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if isinstance(proper_right_type, TupleType):
+                    right_radd_method = proper_right_type.partial_fallback.type.get('__radd__')
+                    if right_radd_method is None:
+                        return self.concat_tuples(proper_left_type, proper_right_type)
 
         if e.op in nodes.op_methods:
             method = self.get_operator_method(e.op)

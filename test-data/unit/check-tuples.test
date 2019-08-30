@@ -1239,3 +1239,5 @@ a = (1, "foo", 3)
 b = ("bar", 7)
 
 reveal_type(a + b)  # N: Revealed type is 'Tuple[builtins.int, builtins.str, builtins.int, builtins.str, builtins.int]'
+
+[builtins fixtures/tuple.pyi]
