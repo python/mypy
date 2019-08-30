@@ -530,3 +530,9 @@ def g(p: P) -> None: pass
 
 p: A
 g(p)  # type: ignore[arg-type]
+
+[case testErrorCodeNoneReturnNoteIgnore]
+# flags: --disallow-untyped-defs
+
+def f():  # type: ignore[no-untyped-def]
+    pass
