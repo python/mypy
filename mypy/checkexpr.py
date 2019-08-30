@@ -1888,10 +1888,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
         """Concatenate two fixed length tuples."""
-        result = TupleType(items=left.items + right.items,
-                           fallback=self.named_type('builtins.tuple'))
-        result.partial_fallback = tuple_fallback(result)
-        return result
+        return TupleType(items=left.items + right.items,
+                         fallback=self.named_type('builtins.tuple'))
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
