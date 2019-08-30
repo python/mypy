@@ -156,7 +156,7 @@ class MessageBuilder:
              code: Optional[ErrorCode] = None) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin,
-                    offset=offset)
+                    offset=offset, code=code)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
                        origin: Optional[Context] = None, offset: int = 0,
@@ -1235,13 +1235,13 @@ class MessageBuilder:
                               offset=OFFSET,
                               code=code)
                 else:
-                    self.note('Expected:', context, offset=OFFSET)
+                    self.note('Expected:', context, offset=OFFSET, code=code)
                     if isinstance(exp, CallableType):
                         self.note(pretty_callable(exp), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(exp, Overloaded)
                         self.pretty_overload(exp, context, OFFSET, MAX_ITEMS, code=code)
-                    self.note('Got:', context, offset=OFFSET)
+                    self.note('Got:', context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(pretty_callable(got), context, offset=2 * OFFSET, code=code)
                     else:
