@@ -4,7 +4,6 @@ import pathlib
 import re
 import subprocess
 import sys
-import curses
 
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
 from typing_extensions import Final, Type, Literal
@@ -340,7 +339,17 @@ class FancyFormatter:
             return
 
         # We in a human-facing terminal, check if it supports enough styling.
-        curses.setupterm()
+        try:
+            import curses
+        except ImportError:
+            self.dummy_term = True
+            return
+        try:
+            curses.setupterm()
+        except curses.error:
+            # Most likely terminfo not found.
+            self.dummy_term = True
+            return
         bold = curses.tigetstr('bold')
         setaf = curses.tigetstr('setaf')
         self.dummy_term = not (bold and setaf)
