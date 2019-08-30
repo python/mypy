@@ -296,7 +296,7 @@ class SuggestionEngine:
         Currently the only option is filtering based on Any prevalance."""
         return [
             t for t in guesses
-            if self.flex_any is None or self.any_score_callable(t, is_method) >= self.flex_any
+            if self.flex_any is None or any_score_callable(t, is_method) >= self.flex_any
         ]
 
     def find_best(self, func: FuncDef, guesses: List[CallableType]) -> Tuple[CallableType, int]:
@@ -537,37 +537,39 @@ class SuggestionEngine:
         return (sum([self.score_type(x, arg_pos=True) for x in t.arg_types]) +
                 self.score_type(t.ret_type, arg_pos=False))
 
-    def any_score_type(self, ut: Type, arg_pos: bool) -> float:
-        """Generate a very made up number representing the Anyness of a type.
 
-        Higher is better, 1.0 is max
-        """
-        t = get_proper_type(ut)
-        if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.special_form:
-            return 0
-        if isinstance(t, NoneType) and arg_pos:
+def any_score_type(ut: Type, arg_pos: bool) -> float:
+    """Generate a very made up number representing the Anyness of a type.
+
+    Higher is better, 1.0 is max
+    """
+    t = get_proper_type(ut)
+    if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.special_form:
+        return 0
+    if isinstance(t, NoneType) and arg_pos:
+        return 0.5
+    if isinstance(t, UnionType):
+        if any(isinstance(x, AnyType) for x in t.items):
             return 0.5
-        if isinstance(t, UnionType):
-            if any(isinstance(x, AnyType) for x in t.items):
-                return 0.5
-            if any(has_any_type(x) for x in t.items):
-                return 0.25
-        if has_any_type(t):
-            return 0.5
+        if any(has_any_type(x) for x in t.items):
+            return 0.25
+    if has_any_type(t):
+        return 0.5
 
-        return 1.0
+    return 1.0
 
-    def any_score_callable(self, t: CallableType, is_method: bool) -> float:
-        # Ignore the first argument of methods
-        scores = [self.any_score_type(x, arg_pos=True) for x in t.arg_types[int(is_method):]]
-        # Return type counts twice (since it spreads type information), unless it is
-        # None in which case it does not count at all. (Though it *does* still count
-        # if there are no arguments.)
-        if not isinstance(get_proper_type(t.ret_type), NoneType) or not scores:
-            ret = self.any_score_type(t.ret_type, arg_pos=False)
-            scores += [ret, ret]
 
-        return sum(scores) / len(scores)
+def any_score_callable(t: CallableType, is_method: bool) -> float:
+    # Ignore the first argument of methods
+    scores = [any_score_type(x, arg_pos=True) for x in t.arg_types[int(is_method):]]
+    # Return type counts twice (since it spreads type information), unless it is
+    # None in which case it does not count at all. (Though it *does* still count
+    # if there are no arguments.)
+    if not isinstance(get_proper_type(t.ret_type), NoneType) or not scores:
+        ret = any_score_type(t.ret_type, arg_pos=False)
+        scores += [ret, ret]
+
+    return sum(scores) / len(scores)
 
 
 class TypeFormatter(TypeStrVisitor):
