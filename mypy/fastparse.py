@@ -186,7 +186,7 @@ def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
     # TODO: Implement proper parsing and error checking
     if not tag:
         return []
-    m = re.match(r'\[([^#]*)\]', tag)
+    m = re.match(r'\s*\[([^#]*)\]', tag)
     if m is None:
         return []
     return [code.strip() for code in m.group(1).split(',')]
