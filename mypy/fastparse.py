@@ -5,7 +5,7 @@ import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
     Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
-from typing_extensions import Final, Literal
+from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -125,18 +125,6 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
 TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(\[[^[#]*\]\s*)?($|#)')
-
-
-# Older versions of typing don't allow using overload outside stubs,
-# so provide a dummy.
-# mypyc doesn't like function declarations nested in if statements
-def _overload(x: Any) -> Any:
-    return x
-
-
-# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-if bool() or sys.version_info < (3, 6):
-    overload = _overload  # noqa
 
 
 def parse(source: Union[str, bytes],

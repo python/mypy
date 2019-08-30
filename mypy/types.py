@@ -8,7 +8,7 @@ from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
     Sequence, Iterator, overload
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
 
 import mypy.nodes
 from mypy import state
@@ -20,17 +20,6 @@ from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper, replace_object_state
 from mypy.bogus_type import Bogus
 
-
-# Older versions of typing don't allow using overload outside stubs,
-# so provide a dummy.
-# mypyc doesn't like function declarations nested in if statements
-def _overload(x: Any) -> Any:
-    return x
-
-
-# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-if bool() or sys.version_info < (3, 6):
-    overload = _overload  # noqa
 
 T = TypeVar('T')
 
