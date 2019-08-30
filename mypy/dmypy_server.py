@@ -515,7 +515,7 @@ class Server:
     def cmd_suggest(self,
                     function: str,
                     callsites: bool,
-                    **kwargs: bool) -> Dict[str, object]:
+                    **kwargs: Any) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
             return {'error': "Command 'suggest' is only valid after a 'check' command"}

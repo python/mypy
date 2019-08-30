@@ -31,7 +31,7 @@ from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike,
     TypeStrVisitor, TypeTranslator,
-    is_optional, ProperType, get_proper_type, get_proper_types
+    is_optional, ProperType, get_proper_type,
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -146,10 +146,12 @@ class SuggestionEngine:
     """Engine for finding call sites and suggesting signatures."""
 
     def __init__(self, fgmanager: FineGrainedBuildManager,
+                 *,
                  json: bool,
                  no_errors: bool = False,
                  no_any: bool = False,
-                 try_text: bool = False) -> None:
+                 try_text: bool = False,
+                 flex_any: Optional[float] = None) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
@@ -157,8 +159,10 @@ class SuggestionEngine:
 
         self.give_json = json
         self.no_errors = no_errors
-        self.no_any = no_any
         self.try_text = try_text
+        self.flex_any = flex_any
+        if no_any:
+            self.flex_any = 1.0
 
         self.max_guesses = 16
 
@@ -286,13 +290,13 @@ class SuggestionEngine:
 
         return collector_plugin.mystery_hits, errors
 
-    def filter_options(self, guesses: List[CallableType]) -> List[CallableType]:
+    def filter_options(self, guesses: List[CallableType], is_method: bool) -> List[CallableType]:
         """Apply any configured filters to the possible guesses.
 
-        Currently the only option is disabling Anys."""
+        Currently the only option is filtering based on Any prevalance."""
         return [
             t for t in guesses
-            if not self.no_any or not callable_has_any(t)
+            if self.flex_any is None or any_score_callable(t, is_method) >= self.flex_any
         ]
 
     def find_best(self, func: FuncDef, guesses: List[CallableType]) -> Tuple[CallableType, int]:
@@ -330,7 +334,7 @@ class SuggestionEngine:
                 self.get_trivial_type(node),
                 self.get_default_arg_types(graph[mod], node),
                 callsites)
-        guesses = self.filter_options(guesses)
+        guesses = self.filter_options(guesses, is_method)
         if len(guesses) > self.max_guesses:
             raise SuggestionFailure("Too many possibilities!")
         best, _ = self.find_best(node, guesses)
@@ -345,7 +349,7 @@ class SuggestionEngine:
                 ret_types = [NoneType()]
 
         guesses = [best.copy_modified(ret_type=t) for t in ret_types]
-        guesses = self.filter_options(guesses)
+        guesses = self.filter_options(guesses, is_method)
         best, errors = self.find_best(node, guesses)
 
         if self.no_errors and errors:
@@ -512,13 +516,15 @@ class SuggestionEngine:
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
         return typ.accept(TypeFormatter(cur_module, self.graph))
 
-    def score_type(self, t: Type) -> int:
+    def score_type(self, t: Type, arg_pos: bool) -> int:
         """Generate a score for a type that we use to pick which type to use.
 
         Lower is better, prefer non-union/non-any types. Don't penalize optionals.
         """
         t = get_proper_type(t)
         if isinstance(t, AnyType):
+            return 20
+        if arg_pos and isinstance(t, NoneType):
             return 20
         if isinstance(t, UnionType):
             if any(isinstance(x, AnyType) for x in t.items):
@@ -530,7 +536,42 @@ class SuggestionEngine:
         return 0
 
     def score_callable(self, t: CallableType) -> int:
-        return sum([self.score_type(x) for x in t.arg_types])
+        return (sum([self.score_type(x, arg_pos=True) for x in t.arg_types]) +
+                self.score_type(t.ret_type, arg_pos=False))
+
+
+def any_score_type(ut: Type, arg_pos: bool) -> float:
+    """Generate a very made up number representing the Anyness of a type.
+
+    Higher is better, 1.0 is max
+    """
+    t = get_proper_type(ut)
+    if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.special_form:
+        return 0
+    if isinstance(t, NoneType) and arg_pos:
+        return 0.5
+    if isinstance(t, UnionType):
+        if any(isinstance(x, AnyType) for x in t.items):
+            return 0.5
+        if any(has_any_type(x) for x in t.items):
+            return 0.25
+    if has_any_type(t):
+        return 0.5
+
+    return 1.0
+
+
+def any_score_callable(t: CallableType, is_method: bool) -> float:
+    # Ignore the first argument of methods
+    scores = [any_score_type(x, arg_pos=True) for x in t.arg_types[int(is_method):]]
+    # Return type counts twice (since it spreads type information), unless it is
+    # None in which case it does not count at all. (Though it *does* still count
+    # if there are no arguments.)
+    if not isinstance(get_proper_type(t.ret_type), NoneType) or not scores:
+        ret = any_score_type(t.ret_type, arg_pos=False)
+        scores += [ret, ret]
+
+    return sum(scores) / len(scores)
 
 
 class TypeFormatter(TypeStrVisitor):
@@ -610,13 +651,6 @@ def generate_type_combinations(types: List[Type]) -> List[Type]:
 
 def count_errors(msgs: List[str]) -> int:
     return len([x for x in msgs if ' error: ' in x])
-
-
-def callable_has_any(t: CallableType) -> int:
-    # We count a bare None in argument position as Any, since
-    # pyannotate turns it into Optional[Any]
-    return (any(isinstance(at, NoneType) for at in get_proper_types(t.arg_types))
-            or has_any_type(t))
 
 
 T = TypeVar('T')
