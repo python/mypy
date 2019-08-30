@@ -456,3 +456,30 @@ def bar() -> None:
 [out]
 (str) -> str
 ==
+
+[case testSuggestInferClassMethod]
+# flags: --strict-optional
+# suggest: foo.F.bar
+# suggest: foo.F.baz
+[file foo.py]
+class F:
+    @classmethod
+    def bar(cls, x, y):
+        return x
+
+    @staticmethod
+    def baz(x, y):
+        return x
+
+[file bar.py]
+from foo import F
+def bar(iany) -> None:
+    F.bar(0, iany)
+    F().bar(0, 5)
+    F.baz('lol', iany)
+    F().baz('lol', 10)
+[builtins fixtures/classmethod.pyi]
+[out]
+(int, int) -> int
+(str, int) -> str
+==

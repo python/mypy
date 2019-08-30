@@ -319,8 +319,7 @@ class SuggestionEngine:
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
 
-        # FIXME: what about static and class methods?
-        is_method = bool(node.info)
+        is_method = bool(node.info) and not node.is_static
 
         if len(node.arg_names) >= 10:
             raise SuggestionFailure("Too many arguments")
@@ -483,6 +482,9 @@ class SuggestionEngine:
     def json_suggestion(self, function: str, suggestion: str) -> str:
         """Produce a json blob for a suggestion suitable for application by pyannotate."""
         mod, func_name, node = self.find_node(function)
+        # pyannotate irritatingly drops class names for class and static methods
+        if node.is_class or node.is_static:
+            func_name = func_name.split('.', 1)[-1]
 
         # pyannotate works with either paths relative to where the
         # module is rooted or with absolute paths. We produce absolute
