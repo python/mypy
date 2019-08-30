@@ -41,6 +41,9 @@ class Mapping(Generic[T, T_co]):
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
 
+class SupportsFloat(Protocol):
+    def __float__(self) -> float: pass
+
 # This is an unofficial extension.
 def final(meth: T) -> T: pass
 

@@ -98,14 +98,18 @@ FORMAT_RE_NEW_CUSTOM = compile_new_format_re(True)  # type: Final
 DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 
 # Format types supported by str.format() for builtin classes.
-SUPPORTED_TYPES_NEW = ['b', 'c', 'd', 'e', 'E', 'f', 'F',
-                       'g', 'G', 'n', 'o', 's', 'x', 'X', '%']  # type: Final
+SUPPORTED_TYPES_NEW = {'b', 'c', 'd', 'e', 'E', 'f', 'F',
+                       'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}  # type: Final
 
-# Types that require int, float, or SupportsInt.
-NUMERIC_TYPES_OLD = ['d', 'i', 'o', 'u', 'x', 'X',
-                     'e', 'E', 'f', 'F', 'g', 'G']  # type: Final
-NUMERIC_TYPES_NEW = ['b', 'd', 'o', 'e', 'E', 'f', 'F',
-                     'g', 'G', 'x', 'X', '%']  # type: Final
+# Types that require int or float.
+NUMERIC_TYPES_OLD = {'d', 'i', 'o', 'u', 'x', 'X',
+                     'e', 'E', 'f', 'F', 'g', 'G'}  # type: Final
+NUMERIC_TYPES_NEW = {'b', 'd', 'o', 'e', 'E', 'f', 'F',
+                     'g', 'G', 'x', 'X', '%'}  # type: Final
+
+# These types accept only int (or SupportsInt for %)
+REQUIRE_INT_OLD = {'o', 'x', 'X'}  # type: Final
+REQUIRE_INT_NEW = {'b', 'd', 'o', 'x', 'X'}  # type: Final
 
 
 class ConversionSpecifier:
@@ -370,12 +374,13 @@ class StringFormatterChecker:
                 if has_type_component(actual_type, 'builtins.bytes'):
                     self.msg.fail("On Python 3 '{}'.format(b'abc') produces \"b'abc'\";"
                                   " use !r if this is a desired behavior", call,
-                                  code=codes.STRING_FORMATTING)
+                                  code=codes.STR_BYTES_PY3)
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
                                        self.named_type('builtins.float')])
             if (spec.type and spec.type not in NUMERIC_TYPES_NEW or
-                    not spec.type and not is_subtype(actual_type, numeric_types)):
+                    not spec.type and not is_subtype(actual_type, numeric_types) and
+                    not custom_special_method(actual_type, '__format__')):
                 self.msg.fail('Numeric flags are only allowed for numeric types', call,
                               code=codes.STRING_FORMATTING)
 
@@ -429,10 +434,10 @@ class StringFormatterChecker:
         star_arg = star_args[0]
         varargs_type = get_proper_type(self.chk.type_map[star_arg])
         if (not isinstance(varargs_type, Instance) or not
-                varargs_type.type.has_base('typing.Iterable')):
+                varargs_type.type.has_base('typing.Sequence')):
             # Error should be already reported.
             return TempNode(AnyType(TypeOfAny.special_form))
-        iter_info = self.chk.named_generic_type('typing.Iterable',
+        iter_info = self.chk.named_generic_type('typing.Sequence',
                                                 [AnyType(TypeOfAny.special_form)]).type
         return TempNode(map_instance_to_supertype(varargs_type, iter_info).args[0])
 
@@ -814,7 +819,7 @@ class StringFormatterChecker:
                 if has_type_component(typ, 'builtins.bytes'):
                     self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
                                   " use %r if this is a desired behavior", context,
-                                  code=codes.STRING_FORMATTING)
+                                  code=codes.STR_BYTES_PY3)
             if self.chk.options.python_version < (3, 0):
                 if has_type_component(typ, 'builtins.unicode'):
                     self.unicode_upcast = True
@@ -859,6 +864,7 @@ class StringFormatterChecker:
         a str.format() call, the meaning of few formatting types are different.
         """
         NUMERIC_TYPES = NUMERIC_TYPES_NEW if format_call else NUMERIC_TYPES_OLD
+        INT_TYPES = REQUIRE_INT_NEW if format_call else REQUIRE_INT_OLD
         if p == 'b' and not format_call:
             if self.chk.options.python_version < (3, 5):
                 self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
@@ -878,10 +884,17 @@ class StringFormatterChecker:
             return AnyType(TypeOfAny.special_form)
         elif p in ['s', 'r']:
             return AnyType(TypeOfAny.special_form)
+        elif p in INT_TYPES:
+            numeric_types = [self.named_type('builtins.int')]
+            if not format_call:
+                numeric_types.append(self.named_type('typing.SupportsInt'))
+            return UnionType(numeric_types)
         elif p in NUMERIC_TYPES:
-            return UnionType([self.named_type('builtins.int'),
-                              self.named_type('builtins.float'),
-                              self.named_type('typing.SupportsInt')])
+            numeric_types = [self.named_type('builtins.int'),
+                             self.named_type('builtins.float')]
+            if not format_call:
+                numeric_types.append(self.named_type('typing.SupportsFloat'))
+            return UnionType(numeric_types)
         elif p in ['c']:
             return UnionType([self.named_type('builtins.int'),
                               self.named_type('builtins.float'),

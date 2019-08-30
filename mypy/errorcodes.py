@@ -80,6 +80,9 @@ VALID_NEWTYPE = ErrorCode(
 STRING_FORMATTING = ErrorCode(
     'str-format', "Check that string formatting/interpolation is type-safe",
     'General')  # type: Final
+STR_BYTES_PY3 = ErrorCode(
+    'str-bytes-safe', "Warn about dangerous coercions related to bytes and string types",
+    'General')  # type: Final
 
 # These error codes aren't enable by default.
 NO_UNTYPED_DEF = ErrorCode(
