@@ -536,3 +536,10 @@ g(p)  # type: ignore[arg-type]
 
 def f():  # type: ignore[no-untyped-def]
     pass
+
+[case testErrorCodeVarianceNoteIgnore]
+from typing import List
+def f(x: List[object]) -> None: pass
+a = [1]
+f(a)  # type: ignore[arg-type]
+[builtins fixtures/list.pyi]
