@@ -9160,3 +9160,27 @@ Data = Tuple[User, File]
 [typing fixtures/typing-full.pyi]
 [out]
 ==
+
+[case testClassRedef]
+# An issue involved serializing these caused crashes in the past
+
+[file a.py]
+class A:
+    pass
+
+x = 0
+
+[file a.py.2]
+class A:
+    a = A()
+
+x = '0'
+
+[file b.py]
+from a import A, x
+
+class A: # type: ignore
+    pass
+
+[out]
+==
