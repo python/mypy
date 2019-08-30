@@ -46,9 +46,7 @@ from mypy import message_registry
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type, is_overlapping_types
-from mypy.subtypes import (
-    is_subtype, is_proper_subtype, is_equivalent, find_member, non_method_protocol_members,
-)
+from mypy.subtypes import is_subtype, is_proper_subtype, is_equivalent, non_method_protocol_members
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
