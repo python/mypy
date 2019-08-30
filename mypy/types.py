@@ -1670,11 +1670,11 @@ class UnionType(ProperType):
     @overload
     @staticmethod
     def make_union(items: List[ProperType], line: int = -1, column: int = -1) -> ProperType: ...
-    @overload  # noqa
+    @overload
     @staticmethod
     def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type: ...
 
-    @staticmethod  # noqa
+    @staticmethod
     def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
         if len(items) > 1:
             return UnionType(items, line, column)
@@ -2266,11 +2266,11 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
 
 @overload
 def get_proper_type(typ: None) -> None: ...
-@overload  # noqa
+@overload
 def get_proper_type(typ: Type) -> ProperType: ...
 
 
-def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:  # noqa
+def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
     if typ is None:
         return None
     while isinstance(typ, TypeAliasType):
@@ -2281,11 +2281,11 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:  # noqa
 
 @overload
 def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
-@overload  # noqa
+@overload
 def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
 
 
-def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore  # noqa
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
     return [get_proper_type(t) for t in it]
 
 

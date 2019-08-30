@@ -121,11 +121,12 @@ math
 
 [case testSpecialAttributes]
 import typing
-class A: pass
-print(object().__doc__)
+class A:
+    """A docstring!"""
+print(A().__doc__)
 print(A().__class__)
 [out]
-The most base type
+A docstring!
 <class '__main__.A'>
 
 [case testFunctionAttributes]

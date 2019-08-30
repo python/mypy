@@ -4502,10 +4502,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     @overload
     def accept(self, node: Expression) -> Value: ...
 
-    @overload  # noqa
+    @overload
     def accept(self, node: Statement) -> None: ...
 
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:  # noqa
+    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
                 try:
