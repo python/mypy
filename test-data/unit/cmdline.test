@@ -1322,7 +1322,6 @@ fail
 a/b.py:1: error: Name 'fail' is not defined
 c.py:1: error: Name 'fail' is not defined
 
-
 [case testIniFilesCmdlineOverridesConfig]
 # cmd: mypy override.py
 [file mypy.ini]
@@ -1337,7 +1336,7 @@ mypy: can't read file 'override.py': No such file or directory
 [file good.py]
 x = 2 + 2
 [out]
-Success: no issues found
+Success: no issues found in 1 source file
 == Return code: 0
 
 [case testErrorSummaryOnFail]
@@ -1346,30 +1345,31 @@ Success: no issues found
 42 + 'no'
 [out]
 bad.py:1: error: Unsupported operand types for + ("int" and "str")
-Found 1 error in 1 file
+Found 1 error in 1 file (checked 1 source file)
 
 [case testErrorSummaryOnFailNotes]
 # cmd: mypy --error-summary bad.py
 [file bad.py]
 from typing import List
-x: List[float]
-y: List[int]
+x = []  # type: List[float]
+y = []  # type: List[int]
 x = y
 [out]
 bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
 bad.py:4: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
 bad.py:4: note: Consider using "Sequence" instead, which is covariant
-Found 1 error in 1 file
+Found 1 error in 1 file (checked 1 source file)
 
 [case testErrorSummaryOnFailTwoErrors]
-# cmd: mypy --error-summary bad.py
+# cmd: mypy --error-summary bad.py foo.py
 [file bad.py]
 42 + 'no'
 42 + 'no'
+[file foo.py]
 [out]
 bad.py:1: error: Unsupported operand types for + ("int" and "str")
 bad.py:2: error: Unsupported operand types for + ("int" and "str")
-Found 2 errors in 1 file
+Found 2 errors in 1 file (checked 2 source files)
 
 [case testErrorSummaryOnFailTwoFiles]
 # cmd: mypy --error-summary bad.py bad2.py
@@ -1380,7 +1380,7 @@ Found 2 errors in 1 file
 [out]
 bad2.py:1: error: Unsupported operand types for + ("int" and "str")
 bad.py:1: error: Unsupported operand types for + ("int" and "str")
-Found 2 errors in 2 files
+Found 2 errors in 2 files (checked 2 source files)
 
 [case testErrorSummaryOnBadUsage]
 # cmd: mypy --error-summary missing.py
