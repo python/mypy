@@ -332,7 +332,7 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
-    This currently only works on Linus an Mac.
+    This currently only works on Linux and Mac.
     """
     def __init__(self, f_out: IO[str], f_err: IO[str],
                  show_error_codes: bool) -> None:
@@ -341,7 +341,8 @@ class FancyFormatter:
         if sys.platform not in ('linux', 'darwin'):
             self.dummy_term = True
             return
-        if not f_out.isatty() or not f_err.isatty():
+        force_color = int(os.getenv('MYPY_FORCE_COLOR', '0'))
+        if not force_color and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
 
@@ -417,7 +418,7 @@ class FancyFormatter:
         return out
 
     def underline_link(self, note: str) -> str:
-        match = re.search(r'http://\S*', note)
+        match = re.search(r'https?://\S*', note)
         if not match:
             return note
         start = match.start()
