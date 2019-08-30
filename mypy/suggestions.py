@@ -23,8 +23,9 @@ Other things:
 """
 
 from typing import (
-    Any, List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator,
+    List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator,
 )
+from typing_extensions import TypedDict
 
 from mypy.state import strict_optional_set
 from mypy.types import (
@@ -55,6 +56,11 @@ from contextlib import contextmanager
 import itertools
 import json
 import os
+
+
+PyAnnotateSignature = TypedDict('PyAnnotateSignature',
+                                {'return_type': str, 'arg_types': List[str]})
+
 
 Callsite = NamedTuple(
     'Callsite',
@@ -101,10 +107,6 @@ class SuggestionPlugin(Plugin):
             ctx.arg_names,
             ctx.arg_types))
         return ctx.default_return_type
-
-
-# TODO: typed dict?
-PyAnnotateSignature = Dict[str, Any]
 
 
 # NOTE: We could make this a bunch faster by implementing a StatementVisitor that skips
