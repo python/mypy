@@ -400,6 +400,6 @@ class FancyFormatter:
         return self.style('Success: no issues found', 'green', bold=True)
 
     def format_error(self, n_errors: int, n_files: int) -> str:
-        msg = 'Found {} error{} in {} file{}'.format(n_errors, 's' if n_errors > 1 else '',
-                                                     n_files, 's' if n_files > 1 else '')
+        msg = 'Found {} error{} in {} file{}'.format(n_errors, 's' if n_errors != 1 else '',
+                                                     n_files, 's' if n_files != 1 else '')
         return self.style(msg, 'red', bold=True)

@@ -57,6 +57,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         '--no-site-packages',
         '--no-strict-optional',
         '--no-silence-site-packages',
+        '--no-error-summary',
     ]
     py2 = testcase.name.lower().endswith('python2')
     if py2:

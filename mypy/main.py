@@ -111,7 +111,8 @@ def main(script_path: Optional[str],
     if options.error_summary:
         if messages:
             n_errors, n_files = util.count_stats(messages)
-            stdout.write(formatter.format_error(n_errors, n_files) + '\n')
+            if n_errors:
+                stdout.write(formatter.format_error(n_errors, n_files) + '\n')
         else:
             stdout.write(formatter.format_success() + '\n')
         stdout.flush()
