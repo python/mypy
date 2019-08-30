@@ -47,6 +47,12 @@ for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
+[case testErrorCodeSyntaxErrorIgnoreNote]
+# This is a bit inconsistent -- syntax error would be more logical?
+x: 'a b'  # type: ignore[valid-type]
+for v in x:  # type: int, int  # type: ignore[syntax]
+    pass
+
 [case testErrorCodeSyntaxError_python2]
 1 '' # E: invalid syntax  [syntax]
 
@@ -495,6 +501,18 @@ f(1, 1)  # E: No overload variant of "f" matches argument types "int", "int"  [c
   # N: Possible overload variants: \
   # N:     def f(x: int) -> int \
   # N:     def f(x: str) -> str
+
+[case testErrorCodeOverloadVariantIgnore]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x):
+    return x
+
+f(object())  # type: ignore[call-overload]
 
 [case testErrorCodeAnyFromUnfollowedImport]
 # flags: --disallow-any-unimported
