@@ -455,7 +455,7 @@ class FancyFormatter:
                        'none': ''}
 
     def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
-              bold: bool = False, underline: bool = False) -> str:
+              bold: bool = False, underline: bool = False, dim: bool = False) -> str:
         """Apply simple color and style (underlined or bold)."""
         if self.dummy_term:
             return text
@@ -465,6 +465,8 @@ class FancyFormatter:
             start = ''
         if underline:
             start += self.UNDER
+        if dim:
+            start += self.DIM
         return start + self.colors[color] + text + self.NORMAL
 
     def colorize(self, error: str) -> str:
@@ -489,7 +491,7 @@ class FancyFormatter:
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
         elif self.show_source_code and error.startswith(' ' * 4):
             if WIGGLY_LINE not in error:
-                return self.style(self.DIM + error, 'none')
+                return self.style(error, 'none', dim=True)
             return self.style(error, 'yellow')
         else:
             return error
