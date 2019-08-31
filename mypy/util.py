@@ -26,7 +26,7 @@ DEFAULT_SOURCE_OFFSET = 4  # type: Final
 WIGGLY_LINE = '^~~~~~~~'  # type: Final
 DEFAULT_COLUMNS = 80
 
-# At least these number of columns will be shown on each side of
+# At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
 MINIMUM_WIDTH = 20
 
@@ -492,7 +492,7 @@ class FancyFormatter:
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
-        elif self.show_source_code and error.startswith(' ' * 4):
+        elif self.show_source_code and error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
             if WIGGLY_LINE not in error:
                 return self.style(error, 'none', dim=True)
             return self.style(error, 'yellow')
