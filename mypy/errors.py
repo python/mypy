@@ -11,7 +11,10 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
-from mypy.util import decode_python_encoding, DecodeError, trim_source_line
+from mypy.util import (
+    decode_python_encoding, DecodeError, trim_source_line, DEFAULT_SOURCE_OFFSET,
+    WIGGLY_LINE, DEFAULT_COLUMNS, MINIMUM_WIDTH
+)
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -410,7 +413,9 @@ class Errors:
                         add_snippets: bool = False) -> List[str]:
         """Return a string list that represents the error messages.
 
-        Use a form suitable for displaying to the user.
+        Use a form suitable for displaying to the user. If add_snippets
+        is True also append a relevant trimmed source code line (only for
+        severity 'error').
         """
         a = []  # type: List[str]
         errors = self.render_messages(self.sort_messages(error_info))
@@ -427,15 +432,18 @@ class Errors:
                 s = '{}: {}: {}'.format(srcloc, severity, message)
             else:
                 s = message
+            # If we show source code snippet, the error code is shown under it
+            # (with a pointer to error location), instead of after the error message.
             if self.show_error_codes and code and not add_snippets:
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
             if add_snippets:
                 if severity == 'error' and file in self.source_cache and line > 0:
-                    source_line = self.source_cache[file][line - 1]
-                    source_line, offset = trim_source_line(source_line, 80, column, 20)
-                    a.append(' ' * 4 + source_line)
-                    a.append(' ' * (4 + column - offset) + '^~~~~~~~' +
+                    source_line, offset = trim_source_line(self.source_cache[file][line - 1],
+                                                           DEFAULT_COLUMNS, column, MINIMUM_WIDTH)
+                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
+                    # Also append a marker pointing to the error start location.
+                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + WIGGLY_LINE +
                              ' [{}]'.format(code.code) if code else '')
         return a
 
@@ -444,7 +452,8 @@ class Errors:
                       pyversion: Optional[Tuple[int, int]] = None) -> List[str]:
         """Return a string list of new error messages from a given file.
 
-        Use a form suitable for displaying to the user.
+        Use a form suitable for displaying to the user. If add_snippets is True,
+        then one must also pass the source code and Python version.
         """
         if path not in self.error_info_map:
             return []

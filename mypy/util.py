@@ -21,6 +21,15 @@ T = TypeVar('T')
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
+PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
+DEFAULT_SOURCE_OFFSET = 4  # type: Final
+WIGGLY_LINE = '^~~~~~~~'  # type: Final
+DEFAULT_COLUMNS = 80
+
+# At least these number of columns will be shown on each side of
+# error location when printing source code snippet.
+MINIMUM_WIDTH = 20
+
 default_python2_interpreter = \
     ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
 
@@ -111,6 +120,15 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
 
 
 def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
+    """Trim a line of source code to fit into max_len.
+
+    Show 'min_width' of characters around 'col' (an error location). If either
+    start or end is trimmed, this is indicated by adding '...' there.
+    A typical result looks like this:
+        ...some_variable = function_to_call(one_arg, other_arg) or...
+
+    Return the trimmed string and the column offset to to adjust error location.
+    """
     if len(line) < max_len:
         return line, 0
     if col < max_len - min_width:
@@ -339,6 +357,7 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
 
 
 def split_words(msg: str) -> List[str]:
+    """Split line of text into words (but not within quoted groups)."""
     next_word = ''
     res = []  # type: List[str]
     allow_break = True
@@ -354,21 +373,33 @@ def split_words(msg: str) -> List[str]:
     return res
 
 
+def get_term_columns() -> int:
+    try:
+        cols, _ = os.get_terminal_size()
+        return cols
+    except OSError:
+        return DEFAULT_COLUMNS
+
+
 def soft_wrap(msg: str, max_len: int, pad: int) -> str:
+    """Wrap a long error message into few lines.
+
+    Breaks will only happen between words, and never inside a quoted group
+    (to avoid breaking types such as "Union[int, str]"). Pad every next line
+    with 'pad' spaces. Every line will be at most 'max_len' characters (before
+    padding), except if it is a single word or quoted group.
+    """
     words = split_words(msg)
     next_line = words.pop(0)
     lines = []  # type: List[str]
     while words:
-        if len(next_line) > max_len:
-            lines.append(next_line)
-            next_line = words.pop(0)
-            continue
-        next_word = words[0]
+        next_word = words.pop(0)
+        # Add 1 to account for space between words.
         if len(next_line) + len(next_word) + 1 < max_len:
-            next_line += ' ' + words.pop(0)
+            next_line += ' ' + next_word
         else:
             lines.append(next_line)
-            next_line = words.pop(0)
+            next_line = next_word
     lines.append(next_line)
     padding = '\n' + ' ' * pad
     return padding.join(lines)
@@ -412,7 +443,8 @@ class FancyFormatter:
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
         dim = curses.tigetstr('dim')
-        self.DIM = dim.decode() if dim else ''
+        # TODO: more reliable way to get gray color good for both dark and light schemes.
+        self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
         self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
@@ -424,6 +456,7 @@ class FancyFormatter:
 
     def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
               bold: bool = False, underline: bool = False) -> str:
+        """Apply simple color and style (underlined or bold)."""
         if self.dummy_term:
             return text
         if bold:
@@ -438,14 +471,11 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
-            try:
-                cols, _ = os.get_terminal_size()
-            except OSError:
-                cols = 9000
             pad = len(loc) + len('error: ')
-            cols = max(80, cols)
-            max_len = cols - pad - 1
+            max_len = get_term_columns() - pad - 1  # compensate for space after 'error:'
             msg = soft_wrap(msg, max_len, pad)
+            # If show_source_code is true, the error code is shown on a separate line,
+            # see the last branch below.
             if not self.show_error_codes or self.show_source_code:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
@@ -458,13 +488,17 @@ class FancyFormatter:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
         elif self.show_source_code and error.startswith(' ' * 4):
-            if '^~~~' not in error:
+            if WIGGLY_LINE not in error:
                 return self.style(self.DIM + error, 'none')
             return self.style(error, 'yellow')
         else:
             return error
 
     def highlight_quote_groups(self, msg: str) -> str:
+        """Make groups quoted with double quotes bold (including quotes).
+
+        This is used to highlight types, attribute names etc.
+        """
         if msg.count('"') % 2:
             # Broken error message, don't do any formatting.
             return msg
@@ -478,6 +512,10 @@ class FancyFormatter:
         return out
 
     def underline_link(self, note: str) -> str:
+        """Underline a link in a note message (if any).
+
+        This assumes there is at most one link in the message.
+        """
         match = re.search(r'https?://\S*', note)
         if not match:
             return note
@@ -488,11 +526,17 @@ class FancyFormatter:
                 note[end:])
 
     def format_success(self, n_sources: int) -> str:
+        """Format short summary in case of success.
+
+        n_sources is total number of files passed directly on command line,
+        i.e. excluding stubs and followed imports.
+        """
         return self.style('Success: no issues found in {}'
                           ' source file{}'.format(n_sources, 's' if n_sources != 1 else ''),
                           'green', bold=True)
 
     def format_error(self, n_errors: int, n_files: int, n_sources: int) -> str:
+        """Format a short summary in case of errors."""
         msg = 'Found {} error{} in {} file{}' \
               ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
                                                    n_files, 's' if n_files != 1 else '',
