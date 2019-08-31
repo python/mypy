@@ -895,7 +895,7 @@ class ClassDef(Statement):
     defs = None  # type: Block
     type_vars = None  # type: List[mypy.types.TypeVarDef]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
-    base_type_exprs = None  # type: List[Expression]
+    base_type_exprs = None  # type: List[Node]
     # Special base classes like Generic[...] get moved here during semantic analysis
     removed_base_type_exprs = None  # type: List[Expression]
     info = None  # type: TypeInfo  # Related TypeInfo

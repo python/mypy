@@ -11,6 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
+from mypy.util import decode_python_encoding, DecodeError, trim_source_line
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -161,6 +162,8 @@ class Errors:
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
         self.initialize()
+        # Source code lines for given path.
+        self.source_cache = {}  # type: Dict[str, List[str]]
 
     def initialize(self) -> None:
         self.error_info_map = OrderedDict()
@@ -403,7 +406,8 @@ class Errors:
                            use_stdout=True,
                            module_with_blocker=self.blocker_module())
 
-    def format_messages(self, error_info: List[ErrorInfo]) -> List[str]:
+    def format_messages(self, error_info: List[ErrorInfo],
+                        add_snippets: bool = False) -> List[str]:
         """Return a string list that represents the error messages.
 
         Use a form suitable for displaying to the user.
@@ -423,12 +427,21 @@ class Errors:
                 s = '{}: {}: {}'.format(srcloc, severity, message)
             else:
                 s = message
-            if self.show_error_codes and code:
+            if self.show_error_codes and code and not add_snippets:
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
+            if add_snippets:
+                if severity == 'error' and file in self.source_cache and line > 0:
+                    source_line = self.source_cache[file][line - 1]
+                    source_line, offset = trim_source_line(source_line, 80, column, 20)
+                    a.append(' ' * 4 + source_line)
+                    a.append(' ' * (4 + column - offset) + '^~~~~~~~' +
+                             ' [{}]'.format(code.code) if code else '')
         return a
 
-    def file_messages(self, path: str) -> List[str]:
+    def file_messages(self, path: str, source: Optional[bytes] = None,
+                      add_snippets: bool = False,
+                      pyversion: Optional[Tuple[int, int]] = None) -> List[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
@@ -436,7 +449,16 @@ class Errors:
         if path not in self.error_info_map:
             return []
         self.flushed_files.add(path)
-        return self.format_messages(self.error_info_map[path])
+        if add_snippets:
+            short_path = remove_path_prefix(path, self.ignore_prefix)
+            if short_path not in self.source_cache and source is not None:
+                assert pyversion is not None
+                try:
+                    self.source_cache[short_path] = decode_python_encoding(source,
+                                                                           pyversion).splitlines()
+                except DecodeError:
+                    pass
+        return self.format_messages(self.error_info_map[path], add_snippets)
 
     def new_messages(self) -> List[str]:
         """Return a string list of new error messages.

@@ -4,6 +4,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import os
 
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
 from typing_extensions import Final, Type, Literal
@@ -92,8 +93,7 @@ class DecodeError(Exception):
 def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
-    Returns:
-      A tuple: the source as a string, and the hash calculated from the binary representation.
+    Returns the source as a string.
     """
     # check for BOM UTF-8 encoding and strip it out if present
     if source.startswith(b'\xef\xbb\xbf'):
@@ -108,6 +108,15 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     except LookupError as lookuperr:
         raise DecodeError(str(lookuperr))
     return source_text
+
+
+def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
+    if len(line) < max_len:
+        return line, 0
+    if col < max_len - min_width:
+        return line[:max_len] + '...', 0
+    offset = col - max_len + min_width
+    return '...' + line[offset:col + min_width] + '...', offset - 3
 
 
 def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
@@ -329,14 +338,51 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
     return len(errors), len(files)
 
 
+def split_words(msg: str) -> List[str]:
+    next_word = ''
+    res = []  # type: List[str]
+    allow_break = True
+    for c in msg:
+        if c == ' ' and allow_break:
+            res.append(next_word)
+            next_word = ''
+            continue
+        if c == '"':
+            allow_break = not allow_break
+        next_word += c
+    res.append(next_word)
+    return res
+
+
+def soft_wrap(msg: str, max_len: int, pad: int) -> str:
+    words = split_words(msg)
+    next_line = words.pop(0)
+    lines = []  # type: List[str]
+    while words:
+        if len(next_line) > max_len:
+            lines.append(next_line)
+            next_line = words.pop(0)
+            continue
+        next_word = words[0]
+        if len(next_line) + len(next_word) + 1 < max_len:
+            next_line += ' ' + words.pop(0)
+        else:
+            lines.append(next_line)
+            next_line = words.pop(0)
+    lines.append(next_line)
+    padding = '\n' + ' ' * pad
+    return padding.join(lines)
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
     This currently only works on Linux and Mac.
     """
     def __init__(self, f_out: IO[str], f_err: IO[str],
-                 show_error_codes: bool) -> None:
+                 show_error_codes: bool, show_source_code: bool) -> None:
         self.show_error_codes = show_error_codes
+        self.show_source_code = show_source_code
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ('linux', 'darwin'):
             self.dummy_term = True
@@ -365,6 +411,8 @@ class FancyFormatter:
 
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
+        dim = curses.tigetstr('dim')
+        self.DIM = dim.decode() if dim else ''
         self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
@@ -390,7 +438,15 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
-            if not self.show_error_codes:
+            try:
+                cols, _ = os.get_terminal_size()
+            except OSError:
+                cols = 9000
+            pad = len(loc) + len('error: ')
+            cols = max(80, cols)
+            max_len = cols - pad - 1
+            msg = soft_wrap(msg, max_len, pad)
+            if not self.show_error_codes or self.show_source_code:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
             codepos = msg.rfind('[')
@@ -401,6 +457,10 @@ class FancyFormatter:
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
+        elif self.show_source_code and error.startswith(' ' * 4):
+            if '^~~~' not in error:
+                return self.style(self.DIM + error, 'none')
+            return self.style(error, 'yellow')
         else:
             return error
 

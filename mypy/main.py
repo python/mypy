@@ -63,7 +63,8 @@ def main(script_path: Optional[str],
                                        fscache=fscache)
 
     messages = []
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes,
+                                    options.show_source_code)
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         messages.extend(new_messages)
@@ -578,6 +579,9 @@ def process_options(args: List[str],
                         group=error_group)
     add_invertible_flag('--show-error-codes', default=False,
                         help="Show error codes in error messages",
+                        group=error_group)
+    add_invertible_flag('--show-source-code', default=False,
+                        help="Show source code snippets in error messages",
                         group=error_group)
     add_invertible_flag('--no-color-output', dest='color_output', default=True,
                         help="Do not colorize error messages",

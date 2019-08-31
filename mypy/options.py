@@ -244,6 +244,7 @@ class Options:
         self.shadow_file = None  # type: Optional[List[List[str]]]
         self.show_column_numbers = False  # type: bool
         self.show_error_codes = False
+        self.show_source_code = False
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False
