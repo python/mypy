@@ -6,7 +6,7 @@ is located in StringFormatterChecker.check_str_format_call() for '{}'.format(), 
 StringFormatterChecker.check_str_interpolation() for printf-style % interpolation.
 
 Note that although at runtime format strings are parsed using custom parsers,
-here we use a regerx-based approach. This way we 99% match runtime behaviour while keeping
+here we use a regexp-based approach. This way we 99% match runtime behaviour while keeping
 implementation simple.
 """
 
@@ -101,15 +101,18 @@ DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
 SUPPORTED_TYPES_NEW = {'b', 'c', 'd', 'e', 'E', 'f', 'F',
                        'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}  # type: Final
 
-# Types that require int or float.
+# Types that require either int or float.
 NUMERIC_TYPES_OLD = {'d', 'i', 'o', 'u', 'x', 'X',
                      'e', 'E', 'f', 'F', 'g', 'G'}  # type: Final
 NUMERIC_TYPES_NEW = {'b', 'd', 'o', 'e', 'E', 'f', 'F',
-                     'g', 'G', 'x', 'X', '%'}  # type: Final
+                     'g', 'G', 'n', 'x', 'X', '%'}  # type: Final
 
-# These types accept only int (or SupportsInt for %)
+# These types accept _only_ int.
 REQUIRE_INT_OLD = {'o', 'x', 'X'}  # type: Final
 REQUIRE_INT_NEW = {'b', 'd', 'o', 'x', 'X'}  # type: Final
+
+# These types fall back to SupportsFloat with % (other fall back to SupportsInt)
+FLOAT_TYPES = {'e', 'E', 'f', 'F', 'g', 'G'}  # type: Final
 
 
 class ConversionSpecifier:
@@ -252,7 +255,7 @@ class StringFormatterChecker:
                     self.msg.fail('Formatting nesting must be at most two levels deep',
                                   ctx, code=codes.STRING_FORMATTING)
                     return None
-                sub_conv_specs = self.parse_format_value(conv_spec.format_spec[1:], ctx=ctx,
+                sub_conv_specs = self.parse_format_value(conv_spec.format_spec, ctx=ctx,
                                                          nested=True)
                 if sub_conv_specs is None:
                     return None
@@ -325,7 +328,8 @@ class StringFormatterChecker:
             if (spec.format_spec and spec.non_standard_format_spec and
                     # Exclude "dynamic" specifiers (i.e. containing nested formatting).
                     not ('{' in spec.format_spec or '}' in spec.format_spec)):
-                if not custom_special_method(actual_type, '__format__') or spec.conversion:
+                if (not custom_special_method(actual_type, '__format__', check_all=True) or
+                        spec.conversion):
                     # TODO: add support for some custom specs like datetime?
                     self.msg.fail('Unrecognized format'
                                   ' specification "{}"'.format(spec.format_spec[1:]),
@@ -353,15 +357,21 @@ class StringFormatterChecker:
             # Perform the checks for given types.
             if expected_type is None:
                 continue
-            self.check_placeholder_type(actual_type, expected_type, call)
-            self.perform_special_format_checks(spec, call, repl, actual_type, expected_type)
+
+            a_type = get_proper_type(actual_type)
+            actual_items = a_type.items if isinstance(a_type, UnionType) else [a_type]
+            for a_type in actual_items:
+                if custom_special_method(a_type, '__format__'):
+                    continue
+                self.check_placeholder_type(a_type, expected_type, call)
+                self.perform_special_format_checks(spec, call, repl, a_type, expected_type)
 
     def perform_special_format_checks(self, spec: ConversionSpecifier, call: CallExpr,
                                       repl: Expression, actual_type: Type,
                                       expected_type: Type) -> None:
         # TODO: try refactoring to combine this logic with % formatting.
         if spec.type == 'c':
-            if isinstance(repl, (StrExpr, BytesExpr)) and len(cast(StrExpr, repl).value) != 1:
+            if isinstance(repl, (StrExpr, BytesExpr)) and len(repl.value) != 1:
                 self.msg.requires_int_or_char(call, format_call=True)
             c_typ = get_proper_type(self.chk.type_map[repl])
             if isinstance(c_typ, Instance) and c_typ.last_known_value:
@@ -532,7 +542,15 @@ class StringFormatterChecker:
                                          spec: ConversionSpecifier, ctx: Context) -> bool:
         """Validate and transform (in-place) format field accessors.
 
-        On error, report it and return False.
+        On error, report it and return False. The transformations include replacing the dummy
+        variable with actual replacement expression and translating any name expressions in an
+        index into strings, so that this will work:
+
+            class User(TypedDict):
+                name: str
+                id: int
+            u: User
+            '{[id]:d} -> {[name]}'.format(u)
         """
         if not isinstance(temp_ast, (MemberExpr, IndexExpr)):
             self.msg.fail('Only index and member expressions are allowed in'
@@ -884,17 +902,18 @@ class StringFormatterChecker:
             return AnyType(TypeOfAny.special_form)
         elif p in ['s', 'r']:
             return AnyType(TypeOfAny.special_form)
-        elif p in INT_TYPES:
-            numeric_types = [self.named_type('builtins.int')]
-            if not format_call:
-                numeric_types.append(self.named_type('typing.SupportsInt'))
-            return UnionType(numeric_types)
         elif p in NUMERIC_TYPES:
-            numeric_types = [self.named_type('builtins.int'),
-                             self.named_type('builtins.float')]
-            if not format_call:
-                numeric_types.append(self.named_type('typing.SupportsFloat'))
-            return UnionType(numeric_types)
+            if p in INT_TYPES:
+                numeric_types = [self.named_type('builtins.int')]
+            else:
+                numeric_types = [self.named_type('builtins.int'),
+                                 self.named_type('builtins.float')]
+                if not format_call:
+                    if p in FLOAT_TYPES:
+                        numeric_types.append(self.named_type('typing.SupportsFloat'))
+                    else:
+                        numeric_types.append(self.named_type('typing.SupportsInt'))
+            return UnionType.make_union(numeric_types)
         elif p in ['c']:
             return UnionType([self.named_type('builtins.int'),
                               self.named_type('builtins.float'),
@@ -937,8 +956,12 @@ def has_type_component(typ: Type, fullname: str) -> bool:
     return False
 
 
-def custom_special_method(typ: Type, name: str) -> bool:
-    """Does this type have a custom special method such as __format__() or __eq__()?"""
+def custom_special_method(typ: Type, name: str,
+                          check_all: bool = False) -> bool:
+    """Does this type have a custom special method such as __format__() or __eq__()?
+
+    If check_all is True ensure all items of a union have a custom method, not just some.
+    """
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         method = typ.type.get(name)
@@ -947,7 +970,8 @@ def custom_special_method(typ: Type, name: str) -> bool:
                 return not method.node.info.fullname().startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
-        return any(custom_special_method(t, name) for t in typ.items)
+        check = all if check_all else any
+        return check(custom_special_method(t, name) for t in typ.items)
     if isinstance(typ, TupleType):
         return custom_special_method(tuple_fallback(typ), name)
     if isinstance(typ, CallableType) and typ.is_type_obj():
