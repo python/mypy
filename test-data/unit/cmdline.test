@@ -1389,7 +1389,7 @@ mypy: can't read file 'missing.py': No such file or directory
 == Return code: 2
 
 [case testShowSourceCodeSnippetsDefaultFormatting]
-# cmd: mypy --show-source-code --no-color-output some_file.py
+# cmd: mypy --show-source-code --no-color-output --python-version=3.6 some_file.py
 [file some_file.py]
 from typing import Union
 
@@ -1414,7 +1414,7 @@ some_file.py:11: error: Argument 1 to "some_interesting_method" of "OneCustomCla
                                                                    ^~~~~~~~ [arg-type]
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
-# cmd: mypy --show-source-code some_file.py
+# cmd: mypy --show-source-code --python-version=3.6 some_file.py
 [file some_file.py]
 from typing import Union
 
