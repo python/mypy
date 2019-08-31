@@ -114,6 +114,7 @@ class ExampleProg(object):
             old_dir = os.getcwd()
             os.chdir(venv_dir)
         try:
+            cmd_line.append('--no-error-summary')
             if python_executable != sys.executable:
                 cmd_line.append('--python-executable={}'.format(python_executable))
             out, err, returncode = mypy.api.run(cmd_line)

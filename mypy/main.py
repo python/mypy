@@ -63,12 +63,15 @@ def main(script_path: Optional[str],
                                        fscache=fscache)
 
     messages = []
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         messages.extend(new_messages)
         f = stderr if serious else stdout
         try:
             for msg in new_messages:
+                if options.color_output:
+                    msg = formatter.colorize(msg)
                 f.write(msg + '\n')
             f.flush()
         except BrokenPipeError:
@@ -105,6 +108,14 @@ def main(script_path: Optional[str],
     code = 0
     if messages:
         code = 2 if blockers else 1
+    if options.error_summary:
+        if messages:
+            n_errors, n_files = util.count_stats(messages)
+            if n_errors:
+                stdout.write(formatter.format_error(n_errors, n_files, len(sources)) + '\n')
+        else:
+            stdout.write(formatter.format_success(len(sources)) + '\n')
+        stdout.flush()
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #
@@ -567,6 +578,12 @@ def process_options(args: List[str],
                         group=error_group)
     add_invertible_flag('--show-error-codes', default=False,
                         help="Show error codes in error messages",
+                        group=error_group)
+    add_invertible_flag('--no-color-output', dest='color_output', default=True,
+                        help="Do not colorize error messages",
+                        group=error_group)
+    add_invertible_flag('--no-error-summary', dest='error_summary', default=True,
+                        help="Do not show error stats summary",
                         group=error_group)
 
     strict_help = "Strict mode; enables the following flags: {}".format(

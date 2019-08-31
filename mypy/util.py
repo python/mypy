@@ -5,8 +5,15 @@ import re
 import subprocess
 import sys
 
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container
-from typing_extensions import Final, Type
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
+from typing_extensions import Final, Type, Literal
+
+try:
+    import curses
+    import _curses  # noqa
+    CURSES_ENABLED = True
+except ImportError:
+    CURSES_ENABLED = False
 
 T = TypeVar('T')
 
@@ -313,3 +320,121 @@ def check_python_version(program: str) -> None:
     if sys.version_info[:3] == (3, 5, 0):
         sys.exit("Running {name} with Python 3.5.0 is not supported; "
                  "please upgrade to 3.5.1 or newer".format(name=program))
+
+
+def count_stats(errors: List[str]) -> Tuple[int, int]:
+    """Count total number of errors and files in error list."""
+    errors = [e for e in errors if ': error:' in e]
+    files = {e.split(':')[0] for e in errors}
+    return len(errors), len(files)
+
+
+class FancyFormatter:
+    """Apply color and bold font to terminal output.
+
+    This currently only works on Linux and Mac.
+    """
+    def __init__(self, f_out: IO[str], f_err: IO[str],
+                 show_error_codes: bool) -> None:
+        self.show_error_codes = show_error_codes
+        # Check if we are in a human-facing terminal on a supported platform.
+        if sys.platform not in ('linux', 'darwin'):
+            self.dummy_term = True
+            return
+        force_color = int(os.getenv('MYPY_FORCE_COLOR', '0'))
+        if not force_color and (not f_out.isatty() or not f_err.isatty()):
+            self.dummy_term = True
+            return
+
+        # We in a human-facing terminal, check if it supports enough styling.
+        if not CURSES_ENABLED:
+            self.dummy_term = True
+            return
+        try:
+            curses.setupterm()
+        except curses.error:
+            # Most likely terminfo not found.
+            self.dummy_term = True
+            return
+        bold = curses.tigetstr('bold')
+        under = curses.tigetstr('smul')
+        set_color = curses.tigetstr('setaf')
+        self.dummy_term = not (bold and under and set_color)
+        if self.dummy_term:
+            return
+
+        self.BOLD = bold.decode()
+        self.UNDER = under.decode()
+        self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
+        self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
+        self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
+        self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
+        self.NORMAL = curses.tigetstr('sgr0').decode()
+        self.colors = {'red': self.RED, 'green': self.GREEN,
+                       'blue': self.BLUE, 'yellow': self.YELLOW,
+                       'none': ''}
+
+    def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
+              bold: bool = False, underline: bool = False) -> str:
+        if self.dummy_term:
+            return text
+        if bold:
+            start = self.BOLD
+        else:
+            start = ''
+        if underline:
+            start += self.UNDER
+        return start + self.colors[color] + text + self.NORMAL
+
+    def colorize(self, error: str) -> str:
+        """Colorize an output line by highlighting the status and error code."""
+        if ': error:' in error:
+            loc, msg = error.split('error:', maxsplit=1)
+            if not self.show_error_codes:
+                return (loc + self.style('error:', 'red', bold=True) +
+                        self.highlight_quote_groups(msg))
+            codepos = msg.rfind('[')
+            code = msg[codepos:]
+            msg = msg[:codepos]
+            return (loc + self.style('error:', 'red', bold=True) +
+                    self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
+        elif ': note:' in error:
+            loc, msg = error.split('note:', maxsplit=1)
+            return loc + self.style('note:', 'blue') + self.underline_link(msg)
+        else:
+            return error
+
+    def highlight_quote_groups(self, msg: str) -> str:
+        if msg.count('"') % 2:
+            # Broken error message, don't do any formatting.
+            return msg
+        parts = msg.split('"')
+        out = ''
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                out += self.style(part, 'none')
+            else:
+                out += self.style('"' + part + '"', 'none', bold=True)
+        return out
+
+    def underline_link(self, note: str) -> str:
+        match = re.search(r'https?://\S*', note)
+        if not match:
+            return note
+        start = match.start()
+        end = match.end()
+        return (note[:start] +
+                self.style(note[start:end], 'none', underline=True) +
+                note[end:])
+
+    def format_success(self, n_sources: int) -> str:
+        return self.style('Success: no issues found in {}'
+                          ' source file{}'.format(n_sources, 's' if n_sources != 1 else ''),
+                          'green', bold=True)
+
+    def format_error(self, n_errors: int, n_files: int, n_sources: int) -> str:
+        msg = 'Found {} error{} in {} file{}' \
+              ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
+                                                   n_files, 's' if n_files != 1 else '',
+                                                   n_sources, 's' if n_sources != 1 else '')
+        return self.style(msg, 'red', bold=True)
