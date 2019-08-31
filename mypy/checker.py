@@ -2758,12 +2758,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
                 isinstance(instance_type, TypeType)):
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context,
+                                                       code=codes.ASSIGNMENT)
             return rvalue_type, attribute_type, True
 
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context,
+                                                       code=codes.ASSIGNMENT)
             return rvalue_type, attribute_type, True
 
         get_type = analyze_descriptor_access(
@@ -2774,7 +2776,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
+            rvalue_type = self.check_simple_assignment(get_type, rvalue, context,
+                                                       code=codes.ASSIGNMENT)
             return rvalue_type, get_type, True
 
         dunder_set = attribute_type.type.get_method('__set__')
@@ -2814,7 +2817,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
+        rvalue_type = self.check_simple_assignment(set_type, rvalue, context,
+                                                   code=codes.ASSIGNMENT)
         infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
 

@@ -2986,8 +2986,10 @@ class SymbolTableNode:
             assert self.node is not None, '%s:%s' % (prefix, name)
             if prefix is not None:
                 fullname = self.node.fullname()
-                if (fullname is not None and '.' in fullname and
-                        fullname != prefix + '.' + name
+                if (fullname is not None and '.' in fullname
+                        and fullname != prefix + '.' + name
+                        # If it only doesn't match because of -redefinition, that is OK
+                        and fullname != prefix + '.' + name.split('-redefinition')[0]
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
                     data['cross_ref'] = fullname

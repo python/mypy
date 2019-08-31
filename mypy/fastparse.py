@@ -5,7 +5,7 @@ import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
     Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
-from typing_extensions import Final, Literal
+from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -127,18 +127,6 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(\[[^[#]*\]\s*)?($|#)')
 
 
-# Older versions of typing don't allow using overload outside stubs,
-# so provide a dummy.
-# mypyc doesn't like function declarations nested in if statements
-def _overload(x: Any) -> Any:
-    return x
-
-
-# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-if bool() or sys.version_info < (3, 6):
-    overload = _overload  # noqa
-
-
 def parse(source: Union[str, bytes],
           fnam: str,
           module: Optional[str],
@@ -186,7 +174,7 @@ def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
     # TODO: Implement proper parsing and error checking
     if not tag:
         return []
-    m = re.match(r'\[([^#]*)\]', tag)
+    m = re.match(r'\s*\[([^#]*)\]', tag)
     if m is None:
         return []
     return [code.strip() for code in m.group(1).split(',')]
@@ -1270,10 +1258,10 @@ class TypeConverter:
     @overload
     def visit(self, node: ast3.expr) -> ProperType: ...
 
-    @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...  # noqa
+    @overload
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...
 
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1459,9 +1447,11 @@ class TypeConverter:
         # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
 
-        # Do an ignore because the field doesn't exist in 3.8 (where
-        # this method doesn't actually ever run.)
-        kind = n.kind  # type: str
+        # Do a getattr because the field doesn't exist in 3.8 (where
+        # this method doesn't actually ever run.) We can't just do
+        # an attribute access with a `# type: ignore` because it would be
+        # unused on < 3.8.
+        kind = getattr(n, 'kind')  # type: str  # noqa
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
