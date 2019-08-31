@@ -440,16 +440,18 @@ class FancyFormatter:
         if self.dummy_term:
             return
 
+        self.NORMAL = curses.tigetstr('sgr0').decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
         dim = curses.tigetstr('dim')
         # TODO: more reliable way to get gray color good for both dark and light schemes.
         self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
+
         self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
         self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
-        self.NORMAL = curses.tigetstr('sgr0').decode()
+
         self.colors = {'red': self.RED, 'green': self.GREEN,
                        'blue': self.BLUE, 'yellow': self.YELLOW,
                        'none': ''}
@@ -473,11 +475,12 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
-            pad = len(loc) + len('error: ')
-            max_len = get_term_columns() - pad - 1  # compensate for space after 'error:'
-            msg = soft_wrap(msg, max_len, pad)
-            # If show_source_code is true, the error code is shown on a separate line,
-            # see the last branch below.
+            if self.show_source_code:
+                # Improve readability by wrapping lines when showing source code.
+                pad = len(loc) + len('error: ')
+                max_len = get_term_columns() - pad - 1  # compensate for space after 'error:'
+                msg = soft_wrap(msg, max_len, pad)
+            # If show_source_code is true, the error code is shown on a separate line.
             if not self.show_error_codes or self.show_source_code:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
