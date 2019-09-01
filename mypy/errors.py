@@ -457,8 +457,8 @@ class Errors:
         if path not in self.error_info_map:
             return []
         self.flushed_files.add(path)
+        source_lines = None
         if self.options and self.options.show_source_code:
-            source_lines = None
             if self.fscache:
                 try:
                     source = self.fscache.read(path)
