@@ -271,7 +271,8 @@ def do_run(args: argparse.Namespace) -> None:
     if 'restart' in response:
         print('Restarting: {}'.format(response['restart']))
         restart_server(args, allow_sources=True)
-        response = request(args.status_file, 'run', version=__version__, args=args.flags)
+        response = request(args.status_file, 'run', version=__version__, args=args.flags,
+                           no_tty=not sys.stdout.isatty())
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
