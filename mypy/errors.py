@@ -15,6 +15,7 @@ from mypy.util import (
     decode_python_encoding, DecodeError, trim_source_line, DEFAULT_SOURCE_OFFSET,
     WIGGLY_LINE, DEFAULT_COLUMNS, MINIMUM_WIDTH
 )
+from mypy.fscache import FileSystemCache
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -157,16 +158,15 @@ class Errors:
     target_module = None  # type: Optional[str]
     scope = None  # type: Optional[Scope]
 
-    def __init__(self,
-                 show_error_context: bool = False,
-                 show_column_numbers: bool = False,
-                 show_error_codes: bool = False) -> None:
-        self.show_error_context = show_error_context
-        self.show_column_numbers = show_column_numbers
-        self.show_error_codes = show_error_codes
+    def __init__(self, fscache: Optional[FileSystemCache] = None,
+                 options: Optional[Options] = None) -> None:
+        self.show_error_context = options.show_error_context if options else False
+        self.show_column_numbers = options.show_column_numbers if options else False
+        self.show_error_codes = options.show_error_codes if options else False
+        # We use fscache to read source code when showing snippets.
+        self.fscache = fscache
+        self.options = options
         self.initialize()
-        # Source code lines for given path.
-        self.source_cache = {}  # type: Dict[str, List[str]]
 
     def initialize(self) -> None:
         self.error_info_map = OrderedDict()
@@ -185,7 +185,7 @@ class Errors:
         self.initialize()
 
     def copy(self) -> 'Errors':
-        new = Errors(self.show_error_context, self.show_column_numbers)
+        new = Errors(self.fscache, self.options)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -410,7 +410,7 @@ class Errors:
                            module_with_blocker=self.blocker_module())
 
     def format_messages(self, error_info: List[ErrorInfo],
-                        add_snippets: bool = False) -> List[str]:
+                        source_lines: Optional[List[str]]) -> List[str]:
         """Return a string list that represents the error messages.
 
         Use a form suitable for displaying to the user. If add_snippets
@@ -420,6 +420,7 @@ class Errors:
         a = []  # type: List[str]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
+        add_snippets = self.options and self.options.show_source_code
         for file, line, column, severity, message, code in errors:
             s = ''
             if file is not None:
@@ -438,8 +439,8 @@ class Errors:
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
             if add_snippets:
-                if severity == 'error' and file in self.source_cache and line > 0:
-                    source_line, offset = trim_source_line(self.source_cache[file][line - 1],
+                if severity == 'error' and source_lines and line > 0:
+                    source_line, offset = trim_source_line(source_lines[line - 1],
                                                            DEFAULT_COLUMNS, column, MINIMUM_WIDTH)
                     a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
                     # Also append a marker pointing to the error start location.
@@ -447,9 +448,7 @@ class Errors:
                              ' [{}]'.format(code.code) if code else '')
         return a
 
-    def file_messages(self, path: str, source: Optional[bytes] = None,
-                      add_snippets: bool = False,
-                      pyversion: Optional[Tuple[int, int]] = None) -> List[str]:
+    def file_messages(self, path: str) -> List[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user. If add_snippets is True,
@@ -458,16 +457,20 @@ class Errors:
         if path not in self.error_info_map:
             return []
         self.flushed_files.add(path)
-        if add_snippets:
-            short_path = remove_path_prefix(path, self.ignore_prefix)
-            if short_path not in self.source_cache and source is not None:
-                assert pyversion is not None
+        if self.options and self.options.show_source_code:
+            source_lines = None
+            if self.fscache:
                 try:
-                    self.source_cache[short_path] = decode_python_encoding(source,
-                                                                           pyversion).splitlines()
-                except DecodeError:
+                    source = self.fscache.read(path)
+                except OSError:
                     pass
-        return self.format_messages(self.error_info_map[path], add_snippets)
+                else:
+                    try:
+                        source_lines = decode_python_encoding(
+                            source, self.options.python_version).splitlines()
+                    except DecodeError:
+                        pass
+        return self.format_messages(self.error_info_map[path], source_lines)
 
     def new_messages(self) -> List[str]:
         """Return a string list of new error messages.

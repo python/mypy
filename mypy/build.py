@@ -197,9 +197,7 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
-    errors = Errors(options.show_error_context,
-                    options.show_column_numbers,
-                    options.show_error_codes)
+    errors = Errors(fscache, options)
     plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
@@ -2985,11 +2983,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(manager.errors.file_messages(
-            graph[id].xpath,
-            manager.fscache.read_cache.get(graph[id].xpath),
-            manager.options.show_source_code,
-            manager.options.python_version), False)
+        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
