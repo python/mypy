@@ -265,7 +265,8 @@ def do_run(args: argparse.Namespace) -> None:
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
     t0 = time.time()
-    response = request(args.status_file, 'run', version=__version__, args=args.flags)
+    response = request(args.status_file, 'run', version=__version__, args=args.flags,
+                       no_tty=not sys.stdout.isatty())
     # If the daemon signals that a restart is necessary, do it
     if 'restart' in response:
         print('Restarting: {}'.format(response['restart']))
@@ -327,7 +328,8 @@ def do_kill(args: argparse.Namespace) -> None:
 def do_check(args: argparse.Namespace) -> None:
     """Ask the daemon to check a list of files."""
     t0 = time.time()
-    response = request(args.status_file, 'check', files=args.files)
+    response = request(args.status_file, 'check', files=args.files,
+                       no_tty=not sys.stdout.isatty())
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -350,9 +352,10 @@ def do_recheck(args: argparse.Namespace) -> None:
     """
     t0 = time.time()
     if args.remove is not None or args.update is not None:
-        response = request(args.status_file, 'recheck', remove=args.remove, update=args.update)
+        response = request(args.status_file, 'recheck', remove=args.remove, update=args.update,
+                           no_tty=not sys.stdout.isatty())
     else:
-        response = request(args.status_file, 'recheck')
+        response = request(args.status_file, 'recheck', no_tty=not sys.stdout.isatty())
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
