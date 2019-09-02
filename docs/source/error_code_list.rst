@@ -33,7 +33,29 @@ Example:
 Check that attribute exists in each union item [union-attr]
 -----------------------------------------------------------
 
-TODO
+If you access the attribute of a value with a union type, mypy checks
+that the attribute is defined for every union item. Otherwise the
+operation can fail at runtime.
+
+Example:
+
+.. code-block:: python
+
+   from typing import Union
+
+   class Cat:
+       def sleep(self) -> None: ...
+       def miaow(self) -> None: ...
+
+   class Dog:
+       def sleep(self) -> None: ...
+       def follow_me(self) -> None: ...
+
+   def f(animal: Union[Cat, Dog]) -> None:
+       # OK: 'sleep' is defined for both Cat and Dog
+       animal.sleep()
+       # Error: Item "Cat" of "Union[Cat, Dog]" has no attribute "follow_me"  [union-attr]
+       animal.follow_me()
 
 Check that name is defined [name-defined]
 -----------------------------------------
@@ -89,17 +111,51 @@ Example:
 Check calls to overloaded functions [call-overload]
 ---------------------------------------------------
 
-TODO
+When you call an overloaded function, mypy checks that at least one of
+the signatures of the overload items match the argument types in the
+call.
 
-Check validity of type annotations [valid-type]
------------------------------------------------
+Check validity of types [valid-type]
+------------------------------------
 
-TODO
+Mypy checks that each type annotation and any expression that
+represents a type is a valid type. Examples of valid types include
+classes, union types, callable types, type aliases, and literal types.
+Examples of invalid types include bare integer literals, functions,
+variables, and undefined names.
 
 Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
 
-TODO
+In some cases mypy can't infer the type of a variable without an
+explicit annotation. Mypy treats this as an error. This often happens
+when you initialize a variable with an empty collection, and mypy
+can't infer the collection item type. Mypy replaces any parts of the
+type it couldn't infer with ``Any``.
+
+Example with an error:
+
+.. code-block:: python
+
+   class Bundle:
+       def __init__(self) -> None:
+           # Error: Need type annotation for 'items'
+           # (hint: "items: List[<type>] = ...")  [var-annotated]
+           self.items = []
+
+   reveal_type(Bundle().items)  # list[Any]
+
+In this example we have an explicit annotation to silence the error:
+
+.. code-block:: python
+
+   from typing import List
+
+   class Bundle:
+       def __init__(self) -> None:
+           self.items: List[str] = []  # OK
+
+   reveal_type(Bundle().items)  # list[str]
 
 Check validity of overrides [override]
 --------------------------------------
@@ -205,27 +261,78 @@ TODO
 Check that called functions return a value [func-returns-value]
 ---------------------------------------------------------------
 
-TODO
+Mypy reports an error if you call a function with a ``None``
+return type and don't ignore the return value, as this is
+usually (but not always) a programming error. For example,
+the ``if f()`` check is always false since ``f`` returns
+``None``:
+
+.. code-block:: python
+
+   def f() -> None:
+       ...
+
+   # "f" does not return a value  [func-returns-value]
+   if f():
+        print("not false")
 
 Check instantiation of abstract classes [abstract]
 --------------------------------------------------
 
-TODO
+Mypy generates an error if you try to instantiate an abstract base
+class (ABC). An abtract base class is a class with at least once
+abstract method or attribute. (See also `Python
+abc module documentation <https://docs.python.org/3/library/abc.html>`_.)
+
+Sometimes a class is accidentally abstract, due to an
+unimplemented abstract method, for example. In a case like this you
+need to provide an implementation for the method to make the class
+concrete (non-abstract).
+
+Example:
+
+.. code-block:: python
+
+    from abc import ABCMeta, abstractmethod
+
+    class Persistable(metaclass=ABCMeta):
+        @abstractmethod
+        def save(self) -> None: ...
+
+    class Thing(Persistable):
+        def __init__(self) -> None:
+            ...
+
+        ...  # No "save" method
+
+    # Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
+    t = Thing()
 
 Check the target of NewType [valid-newtype]
 -------------------------------------------
 
-TODO
+The target of a ``NewType`` definition must be a class type. It can't
+be a union type, ``Any``, or various other special types.
+
+You can also get this error also if the target has been imported from
+a module mypy can't find the source for, since any such definitions
+are treated by mypy as values with ``Any`` types.
 
 Report syntax errors [syntax]
 -----------------------------
 
-TODO
+If the code being checked is not syntactically valid, mypy issues a
+syntax error. Most, but not all, syntax errors are *blocking errors*:
+they can't be ignored with a ``# type: ignore`` comment.
 
 Miscellaneous checks [misc]
 ---------------------------
 
-Mypy performs numerous other, more rarely failing checks that don't
-have a specific error codes. These use the ``misc`` error code. This
-error code is not special. For example, you can ignore all errors in
-this category by using ``# type: ignore[misc]`` comment.
+Mypy performs numerous other, less commonly failing checks that don't
+have specific error codes. These use the ``misc`` error code. Other
+than being used for multiple unrelated errors, the ``misc`` error code
+is not special in other ways. For example, you can ignore all errors
+in this category by using ``# type: ignore[misc]`` comment. Since these
+errors are not expected to be common, it's unlikely that you'll see
+two *different* errors with the ``misc`` code on a single line -- though this
+can certainly happen once in a while.
