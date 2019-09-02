@@ -439,7 +439,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             message = 'Cannot interpret reference "{}" as a type'
         self.fail(message.format(name), t, code=codes.VALID_TYPE)
         for note in notes:
-            self.note(note, t)
+            self.note(note, t, code=codes.VALID_TYPE)
 
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages
@@ -508,9 +508,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if t.implicit and not self.allow_tuple_literal:
             self.fail('Syntax error in type annotation', t, code=codes.SYNTAX)
             if len(t.items) == 1:
-                self.note('Suggestion: Is there a spurious trailing comma?', t)
+                self.note('Suggestion: Is there a spurious trailing comma?', t, code=codes.SYNTAX)
             else:
-                self.note('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t)
+                self.note('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t,
+                          code=codes.SYNTAX)
             return AnyType(TypeOfAny.from_error)
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:
@@ -563,7 +564,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
             self.fail(msg, t, code=codes.VALID_TYPE)
             if t.note is not None:
-                self.note(t.note, t)
+                self.note(t.note, t, code=codes.VALID_TYPE)
 
         return AnyType(TypeOfAny.from_error, line=t.line, column=t.column)
 
@@ -769,8 +770,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         self.fail_func(msg, ctx, code=code)
 
-    def note(self, msg: str, ctx: Context) -> None:
-        self.note_func(msg, ctx)
+    def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+        self.note_func(msg, ctx, code=code)
 
     @contextmanager
     def tvar_scope_frame(self) -> Iterator[None]:
