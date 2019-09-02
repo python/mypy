@@ -66,6 +66,7 @@ Mypy is a static type checker for Python 3 and Python 2.7.
 
    error_codes
    error_code_list
+   error_code_list2
    common_issues
    supported_python_features
    python36

@@ -1,11 +1,12 @@
-List of error codes
-===================
+.. _error-code-list:
 
-This section documents various errors codes that mypy can generate.
-See :ref:`error-codes` for general documentation about error codes.
+List of error codes (default checks)
+====================================
 
-Checks enabled by default
-*************************
+This section documents various errors codes that mypy can generate
+with default options. See :ref:`error-codes` for general documentation
+about error codes. See :ref:`error-codes-optional` for additional
+error codes that you can enable.
 
 Check that attribute exists [attr-defined]
 ------------------------------------------
@@ -228,13 +229,3 @@ Mypy performs numerous other, more rarely failing checks that don't
 have a specific error codes. These use the ``misc`` error code. This
 error code is not special. For example, you can ignore all errors in
 this category by using ``# type: ignore[misc]`` comment.
-
-Optional checks
-***************
-
-* no-untyped-def
-* no-untyped-call
-* redundant-cast
-* comparison-overlap
-* no-any-unimported
-* no-any-return

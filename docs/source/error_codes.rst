@@ -3,13 +3,14 @@
 Error codes
 ===========
 
-Mypy can optionally display an error code after a message. Error
-codes serve two purposes:
+Mypy can optionally display an error code such as ``[attr-defined]``
+after error messages. Error codes serve two purposes:
 
 1. It's possible to silence specific error codes on a line using
    ``# type: ignore[code]``.
-2. The error code can be looked up here in the documentation to provide
-   additional context.
+2. The error code can be used to find documentation about the error.
+
+The next two topics document the various error codes mypy can report.
 
 Displaying error codes
 ----------------------
@@ -25,10 +26,11 @@ to display error codes. Error codes are shown inside square brackets:
 Silencing errors based on error codes
 -------------------------------------
 
-You can use ``# type: ignore[code, ...]`` to ignore all errors with
-specific codes on a line.  This can be used even if you have not
-configured mypy to show error codes. Currently it's only possible to
-disable arbitrary error codes on individual lines using this comment.
+You can use a special comment ``# type: ignore[code, ...]`` to only
+ignore errors with a specific error code (or codes) on a particular
+line.  This can be used even if you have not configured mypy to show
+error codes. Currently it's only possible to disable arbitrary error
+codes on individual lines using this comment.
 
 .. note::
 
@@ -36,8 +38,8 @@ disable arbitrary error codes on individual lines using this comment.
   certain optional error codes, such as ``--disallow-untype-defs``,
   which enables the ``no-untyped-def`` error code.
 
-Here is how we ignore an error about an imported name mypy thinks is
-undefined:
+This example shows how to ignore an error about an imported name mypy
+thinks is undefined:
 
 .. code-block:: python
 
