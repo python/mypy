@@ -577,3 +577,11 @@ def f(x: List[object]) -> None: pass
 a = [1]
 f(a)  # type: ignore[arg-type]
 [builtins fixtures/list.pyi]
+
+[case testErrorCodeAssignToMethod]
+class A:
+    def f(self) -> None: pass
+
+def g(self: A) -> None: pass
+
+A.f = g  # E: Cannot assign to a method  [assignment]

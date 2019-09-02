@@ -829,7 +829,8 @@ class MessageBuilder:
                       name, base1.name(), base2.name()), context)
 
     def cant_assign_to_method(self, context: Context) -> None:
-        self.fail(message_registry.CANNOT_ASSIGN_TO_METHOD, context)
+        self.fail(message_registry.CANNOT_ASSIGN_TO_METHOD, context,
+                  code=codes.ASSIGNMENT)
 
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
