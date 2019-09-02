@@ -738,7 +738,7 @@ class C: pass
 
 a = None # type: A
 
-(a, a) + a  # E: Unsupported left operand type for + ("Tuple[A, A]")
+(a, a) + a  # E: Unsupported operand types for + ("Tuple[A, A]" and "A")
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
 (a, a).foo  # E: "Tuple[A, A]" has no attribute "foo"
