@@ -427,14 +427,19 @@ class FancyFormatter:
                 self.style(note[start:end], 'none', underline=True) +
                 note[end:])
 
-    def format_success(self, n_sources: int) -> str:
-        return self.style('Success: no issues found in {}'
-                          ' source file{}'.format(n_sources, 's' if n_sources != 1 else ''),
-                          'green', bold=True)
+    def format_success(self, n_sources: int, use_color: bool = True) -> str:
+        msg = 'Success: no issues found in {}' \
+              ' source file{}'.format(n_sources, 's' if n_sources != 1 else '')
+        if not use_color:
+            return msg
+        return self.style(msg, 'green', bold=True)
 
-    def format_error(self, n_errors: int, n_files: int, n_sources: int) -> str:
+    def format_error(self, n_errors: int, n_files: int, n_sources: int,
+                     use_color: bool = True) -> str:
         msg = 'Found {} error{} in {} file{}' \
               ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
                                                    n_files, 's' if n_files != 1 else '',
                                                    n_sources, 's' if n_sources != 1 else '')
+        if not use_color:
+            return msg
         return self.style(msg, 'red', bold=True)
