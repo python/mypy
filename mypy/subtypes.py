@@ -229,8 +229,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return is_named_instance(item, 'builtins.object')
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
-            call = find_member('__call__', left, left)
-            if call:
+            call = get_proper_type(find_member('__call__', left, left))
+            if isinstance(call, CallableType):
                 return self._is_subtype(call, right)
             return False
         else:
@@ -1167,8 +1167,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         if isinstance(right, CallableType):
-            call = find_member('__call__', left, left)
-            if call:
+            call = get_proper_type(find_member('__call__', left, left))
+            if isinstance(call, CallableType):
                 return self._is_proper_subtype(call, right)
             return False
         return False
