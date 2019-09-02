@@ -191,7 +191,8 @@ class Server:
 
         # Since the object is created in the parent process we can check
         # the output terminal options here.
-        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
+        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes,
+                                        options.show_source_code)
 
     def _response_metadata(self) -> Dict[str, str]:
         py_version = '{}_{}'.format(self.options.python_version[0], self.options.python_version[1])

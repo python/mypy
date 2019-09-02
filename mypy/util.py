@@ -6,7 +6,9 @@ import subprocess
 import sys
 import os
 
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
+from typing import (
+    TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
+)
 from typing_extensions import Final, Type, Literal
 
 try:
@@ -23,8 +25,7 @@ ENCODING_RE = \
 
 PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
-WIGGLY_LINE = '^~~~~~~~'  # type: Final
-DEFAULT_COLUMNS = 80
+DEFAULT_COLUMNS = 80   # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -117,6 +118,24 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     except LookupError as lookuperr:
         raise DecodeError(str(lookuperr))
     return source_text
+
+
+def read_py_file(path: str, read: Callable[[str], bytes],
+                 pyversion: Tuple[int, int]) -> Optional[List[str]]:
+    """Try reading a Python file as list of source lines.
+
+    Return None if something goes wrong.
+    """
+    try:
+        source = read(path)
+    except (IOError, OSError):
+        return None
+    else:
+        try:
+            source_lines = decode_python_encoding(source, pyversion).splitlines()
+        except DecodeError:
+            return None
+        return source_lines
 
 
 def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
@@ -481,7 +500,7 @@ class FancyFormatter:
                 max_len = get_term_columns() - pad - 1  # compensate for space after 'error:'
                 msg = soft_wrap(msg, max_len, pad)
             # If show_source_code is true, the error code is shown on a separate line.
-            if not self.show_error_codes or self.show_source_code:
+            if not self.show_error_codes:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
             codepos = msg.rfind('[')
@@ -493,9 +512,9 @@ class FancyFormatter:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
         elif self.show_source_code and error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
-            if WIGGLY_LINE not in error:
+            if '^' not in error:
                 return self.style(error, 'none', dim=True)
-            return self.style(error, 'yellow')
+            return self.style(error, 'red')
         else:
             return error
 

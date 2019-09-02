@@ -3,7 +3,7 @@ import sys
 import traceback
 from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
 from typing_extensions import Final
 
 from mypy.scope import Scope
@@ -11,11 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
-from mypy.util import (
-    decode_python_encoding, DecodeError, trim_source_line, DEFAULT_SOURCE_OFFSET,
-    WIGGLY_LINE, DEFAULT_COLUMNS, MINIMUM_WIDTH
-)
-from mypy.fscache import FileSystemCache
+from mypy.util import trim_source_line, DEFAULT_SOURCE_OFFSET, DEFAULT_COLUMNS, MINIMUM_WIDTH
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -158,14 +154,18 @@ class Errors:
     target_module = None  # type: Optional[str]
     scope = None  # type: Optional[Scope]
 
-    def __init__(self, fscache: Optional[FileSystemCache] = None,
-                 options: Optional[Options] = None) -> None:
-        self.show_error_context = options.show_error_context if options else False
-        self.show_column_numbers = options.show_column_numbers if options else False
-        self.show_error_codes = options.show_error_codes if options else False
+    def __init__(self,
+                 show_error_context: bool = False,
+                 show_column_numbers: bool = False,
+                 show_error_codes: bool = False,
+                 show_source_code: bool = False,
+                 read_source: Optional[Callable[[str], Optional[List[str]]]] = None) -> None:
+        self.show_error_context = show_error_context
+        self.show_column_numbers = show_column_numbers
+        self.show_error_codes = show_error_codes
+        self.show_source_code = show_source_code
         # We use fscache to read source code when showing snippets.
-        self.fscache = fscache
-        self.options = options
+        self.read_source = read_source
         self.initialize()
 
     def initialize(self) -> None:
@@ -185,7 +185,11 @@ class Errors:
         self.initialize()
 
     def copy(self) -> 'Errors':
-        new = Errors(self.fscache, self.options)
+        new = Errors(self.show_error_context,
+                     self.show_column_numbers,
+                     self.show_error_codes,
+                     self.show_source_code,
+                     self.read_source)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -419,7 +423,6 @@ class Errors:
         a = []  # type: List[str]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
-        add_snippets = self.options and self.options.show_source_code
         for file, line, column, severity, message, code in errors:
             s = ''
             if file is not None:
@@ -432,21 +435,18 @@ class Errors:
                 s = '{}: {}: {}'.format(srcloc, severity, message)
             else:
                 s = message
-            # If we show source code snippet, the error code is shown under it
-            # (with a pointer to error location), instead of after the error message.
-            if self.show_error_codes and code and not add_snippets and severity != 'note':
+            if self.show_error_codes and code and severity != 'note':
                 # If note has an error code, it is related to a previous error. Avoid
                 # displaying duplicate error codes.
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
-            if add_snippets:
+            if self.show_source_code:
                 if severity == 'error' and source_lines and line > 0:
                     source_line, offset = trim_source_line(source_lines[line - 1],
                                                            DEFAULT_COLUMNS, column, MINIMUM_WIDTH)
                     a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
                     # Also append a marker pointing to the error start location.
-                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + WIGGLY_LINE +
-                             ' [{}]'.format(code.code) if code else '')
+                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + '^')
         return a
 
     def file_messages(self, path: str) -> List[str]:
@@ -459,18 +459,9 @@ class Errors:
             return []
         self.flushed_files.add(path)
         source_lines = None
-        if self.options and self.options.show_source_code:
-            if self.fscache:
-                try:
-                    source = self.fscache.read(path)
-                except OSError:
-                    pass
-                else:
-                    try:
-                        source_lines = decode_python_encoding(
-                            source, self.options.python_version).splitlines()
-                    except DecodeError:
-                        pass
+        if self.show_source_code:
+            assert self.read_source
+            source_lines = self.read_source(path)
         return self.format_messages(self.error_info_map[path], source_lines)
 
     def new_messages(self) -> List[str]:
