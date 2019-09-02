@@ -461,6 +461,10 @@ def f(): # E: Name 'f' already defined on line 4  [no-redef]
 def f() -> int:  # E: Missing return statement  [return]
     x = 0
 
+[case testErrorCodeReturnValueNotExpected]
+def f() -> None:
+    return 1  # E: No return value expected  [return-value]
+
 [case testErrorCodeFunctionDoesNotReturnValue]
 from typing import Callable
 
