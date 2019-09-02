@@ -51,7 +51,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def note(self, msg: str, ctx: Context) -> None:
+    def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         raise NotImplementedError
 
     @abstractmethod

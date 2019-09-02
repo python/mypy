@@ -47,6 +47,12 @@ for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
+[case testErrorCodeSyntaxErrorIgnoreNote]
+# This is a bit inconsistent -- syntax error would be more logical?
+x: 'a b'  # type: ignore[valid-type]
+for v in x:  # type: int, int  # type: ignore[syntax]
+    pass
+
 [case testErrorCodeSyntaxError_python2]
 1 '' # E: invalid syntax  [syntax]
 
@@ -148,6 +154,14 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name
       ):
     # type () -> None
     pass
+
+[case testErrorCodeIgnoreWithNote]
+import nostub  # type: ignore[import]
+from defusedxml import xyz  # type: ignore[import]
+
+[case testErrorCodeIgnoreWithNote_python2]
+import nostub  # type: ignore[import]
+from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
@@ -504,6 +518,18 @@ f(1, 1)  # E: No overload variant of "f" matches argument types "int", "int"  [c
   # N:     def f(x: int) -> int \
   # N:     def f(x: str) -> str
 
+[case testErrorCodeOverloadVariantIgnore]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x):
+    return x
+
+f(object())  # type: ignore[call-overload]
+
 [case testErrorCodeAnyFromUnfollowedImport]
 # flags: --disallow-any-unimported
 from m import C  # type: ignore
@@ -518,3 +544,36 @@ def f(): pass
 
 def g() -> int:
     return f()  # E: Returning Any from function declared to return "int"  [no-any-return]
+
+[case testErrorCodeIgnoreNamedDefinedNote]
+x: List[int]  # type: ignore[name-defined]
+
+[case testErrorCodeIgnoreMiscNote]
+x: [int]  # type: ignore[misc]
+
+[case testErrorCodeProtocolProblemsIgnore]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    def f(self, x: str) -> None: ...
+
+class A:
+    def f(self, x: int) -> None: ...
+
+def g(p: P) -> None: pass
+
+p: A
+g(p)  # type: ignore[arg-type]
+
+[case testErrorCodeNoneReturnNoteIgnore]
+# flags: --disallow-untyped-defs
+
+def f():  # type: ignore[no-untyped-def]
+    pass
+
+[case testErrorCodeVarianceNoteIgnore]
+from typing import List
+def f(x: List[object]) -> None: pass
+a = [1]
+f(a)  # type: ignore[arg-type]
+[builtins fixtures/list.pyi]
