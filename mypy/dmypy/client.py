@@ -466,6 +466,9 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args['command'] = command
+    # Tell the server whether this request was initiated from a human-facing terminal,
+    # so that it can format the type checking output accordingly.
+    args['is_tty'] = sys.stdout.isatty()
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:

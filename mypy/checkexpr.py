@@ -1880,6 +1880,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 column=typ.column,
             ))
 
+    def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
+        """Concatenate two fixed length tuples."""
+        return TupleType(items=left.items + right.items,
+                         fallback=self.named_type('builtins.tuple'))
+
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
         return self.infer_literal_expr_type(e.value, 'builtins.int')
@@ -1938,6 +1943,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
+
+        proper_left_type = get_proper_type(left_type)
+        if isinstance(proper_left_type, TupleType) and e.op == '+':
+            left_add_method = proper_left_type.partial_fallback.type.get('__add__')
+            if left_add_method and left_add_method.fullname == 'builtins.tuple.__add__':
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if isinstance(proper_right_type, TupleType):
+                    right_radd_method = proper_right_type.partial_fallback.type.get('__radd__')
+                    if right_radd_method is None:
+                        return self.concat_tuples(proper_left_type, proper_right_type)
 
         if e.op in nodes.op_methods:
             method = self.get_operator_method(e.op)
