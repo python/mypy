@@ -113,10 +113,10 @@ def main(script_path: Optional[str],
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
                 stdout.write(formatter.format_error(n_errors, n_files, len(sources),
-                                                    not options.color_output) + '\n')
+                                                    options.color_output) + '\n')
         else:
             stdout.write(formatter.format_success(len(sources),
-                                                  not options.color_output) + '\n')
+                                                  options.color_output) + '\n')
         stdout.flush()
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.

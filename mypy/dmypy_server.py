@@ -285,7 +285,7 @@ class Server:
         os.unlink(self.status_file)
         return {}
 
-    def cmd_run(self, version: str, args: Sequence[str], no_tty: bool) -> Dict[str, object]:
+    def cmd_run(self, version: str, args: Sequence[str], is_tty: bool) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
             # Process options can exit on improper arguments, so we need to catch that and
@@ -318,18 +318,18 @@ class Server:
             return {'out': '', 'err': str(err), 'status': 2}
         except SystemExit as e:
             return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
-        return self.check(sources, no_tty)
+        return self.check(sources, is_tty)
 
-    def cmd_check(self, files: Sequence[str], no_tty: bool) -> Dict[str, object]:
+    def cmd_check(self, files: Sequence[str], is_tty: bool) -> Dict[str, object]:
         """Check a list of files."""
         try:
             sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(sources, no_tty)
+        return self.check(sources, is_tty)
 
     def cmd_recheck(self,
-                    no_tty: bool,
+                    is_tty: bool,
                     remove: Optional[List[str]] = None,
                     update: Optional[List[str]] = None) -> Dict[str, object]:
         """Check the same list of files we checked most recently.
@@ -355,17 +355,21 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
-        res = self.fine_grained_increment(sources, no_tty, remove, update)
+        res = self.fine_grained_increment(sources, is_tty, remove, update)
         self.fscache.flush()
         self.update_stats(res)
         return res
 
-    def check(self, sources: List[BuildSource], no_tty: bool) -> Dict[str, Any]:
-        """Check using fine-grained incremental mode."""
+    def check(self, sources: List[BuildSource], is_tty: bool) -> Dict[str, Any]:
+        """Check using fine-grained incremental mode.
+
+        If is_tty is True format the output nicely with colors and summary line
+        (unless disabled in self.options).
+        """
         if not self.fine_grained_manager:
-            res = self.initialize_fine_grained(sources, no_tty)
+            res = self.initialize_fine_grained(sources, is_tty)
         else:
-            res = self.fine_grained_increment(sources, no_tty)
+            res = self.fine_grained_increment(sources, is_tty)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -378,7 +382,7 @@ class Server:
             manager.stats = {}
 
     def initialize_fine_grained(self, sources: List[BuildSource],
-                                no_tty: bool) -> Dict[str, Any]:
+                                is_tty: bool) -> Dict[str, Any]:
         self.fswatcher = FileSystemWatcher(self.fscache)
         t0 = time.time()
         self.update_sources(sources)
@@ -440,12 +444,12 @@ class Server:
             print_memory_profile(run_gc=False)
 
         status = 1 if messages else 0
-        messages = self.pretty_messages(messages, len(sources), no_tty)
+        messages = self.pretty_messages(messages, len(sources), is_tty)
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self,
                                sources: List[BuildSource],
-                               no_tty: bool,
+                               is_tty: bool,
                                remove: Optional[List[str]] = None,
                                update: Optional[List[str]] = None,
                                ) -> Dict[str, Any]:
@@ -475,25 +479,25 @@ class Server:
 
         status = 1 if messages else 0
         self.previous_sources = sources
-        messages = self.pretty_messages(messages, len(sources), no_tty)
+        messages = self.pretty_messages(messages, len(sources), is_tty)
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def pretty_messages(self, messages: List[str], n_sources: int,
-                        no_tty: bool = False) -> List[str]:
+                        is_tty: bool = False) -> List[str]:
+        use_color = self.options.color_output and is_tty
         if self.options.error_summary:
             summary = None  # type: Optional[str]
             if messages:
                 n_errors, n_files = count_stats(messages)
                 if n_errors:
                     summary = self.formatter.format_error(n_errors, n_files, n_sources,
-                                                          not self.options.color_output or no_tty)
+                                                          use_color)
             else:
-                summary = self.formatter.format_success(n_sources,
-                                                        not self.options.color_output or no_tty)
+                summary = self.formatter.format_success(n_sources, use_color)
             if summary:
                 # Create new list to avoid appending multiple summaries on successive runs.
                 messages = messages + [summary]
-        if self.options.color_output and not no_tty:
+        if use_color:
             messages = [self.formatter.colorize(m) for m in messages]
         return messages
 

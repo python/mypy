@@ -197,7 +197,7 @@ class FineGrainedSuite(DataSuite):
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
-        response = server.check(sources, no_tty=True)
+        response = server.check(sources, is_tty=False)
         out = cast(str, response['out'] or response['err'])
         return out.splitlines()
 

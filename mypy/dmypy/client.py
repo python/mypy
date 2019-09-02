@@ -265,14 +265,12 @@ def do_run(args: argparse.Namespace) -> None:
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
     t0 = time.time()
-    response = request(args.status_file, 'run', version=__version__, args=args.flags,
-                       no_tty=not sys.stdout.isatty())
+    response = request(args.status_file, 'run', version=__version__, args=args.flags)
     # If the daemon signals that a restart is necessary, do it
     if 'restart' in response:
         print('Restarting: {}'.format(response['restart']))
         restart_server(args, allow_sources=True)
-        response = request(args.status_file, 'run', version=__version__, args=args.flags,
-                           no_tty=not sys.stdout.isatty())
+        response = request(args.status_file, 'run', version=__version__, args=args.flags)
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
@@ -329,8 +327,7 @@ def do_kill(args: argparse.Namespace) -> None:
 def do_check(args: argparse.Namespace) -> None:
     """Ask the daemon to check a list of files."""
     t0 = time.time()
-    response = request(args.status_file, 'check', files=args.files,
-                       no_tty=not sys.stdout.isatty())
+    response = request(args.status_file, 'check', files=args.files)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -353,10 +350,9 @@ def do_recheck(args: argparse.Namespace) -> None:
     """
     t0 = time.time()
     if args.remove is not None or args.update is not None:
-        response = request(args.status_file, 'recheck', remove=args.remove, update=args.update,
-                           no_tty=not sys.stdout.isatty())
+        response = request(args.status_file, 'recheck', remove=args.remove, update=args.update)
     else:
-        response = request(args.status_file, 'recheck', no_tty=not sys.stdout.isatty())
+        response = request(args.status_file, 'recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -470,6 +466,9 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args['command'] = command
+    # Tell the server whether this request was initiated from a human-facing terminal,
+    # so that it can format the type checking output accordingly.
+    args['is_tty'] = sys.stdout.isatty()
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:
