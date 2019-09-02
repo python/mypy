@@ -4,9 +4,11 @@ List of error codes
 This section documents various errors codes that mypy can generate.
 See :ref:`error-codes` for general documentation about error codes.
 
+Checks enabled by default
+*************************
 
-Checking that attribute exists [attr-defined]
----------------------------------------------
+Check that attribute exists [attr-defined]
+------------------------------------------
 
 Mypy that an attribute is defined in the target class or module. This
 applies to reading an attribute and setting an attribute. Attribute
@@ -27,9 +29,13 @@ Example:
    print(r.id)  # "Resource" has no attribute "id"  [attr-defined]
    r.id = 5  # "Resource" has no attribute "id"  [attr-defined]
 
+Check that attribute exists in each union item [union-attr]
+-----------------------------------------------------------
 
-Checking that name is defined [name-defined]
---------------------------------------------
+TODO
+
+Check that name is defined [name-defined]
+-----------------------------------------
 
 Mypy expects that all name references contain a definitinon, such as
 an assignment, function definition or an import. This can catch missing
@@ -41,8 +47,8 @@ Example:
 
     x = func(1)  # Name 'func' is not defined  [name-defined]
 
-Checking arguments in calls [call-arg]
---------------------------------------
+Check arguments in calls [call-arg]
+-----------------------------------
 
 Mypy expects that the number and names of arguments match the called function.
 Note that argument type checks have a separate error code ``arg-type``.
@@ -59,8 +65,8 @@ Example:
     greet('jack')  # OK
     greet('hi', 'jack')  # Too many arguments for "greet"  [call-arg]
 
-Checking argument types [arg-type]
-----------------------------------
+Check argument types [arg-type]
+-------------------------------
 
 Mypy checks that argument types in a call match the declared argument
 types in the signature.
@@ -79,9 +85,23 @@ Example:
    # expected "List[int]"  [arg-type]
    print(first(t))
 
+Check calls to overloaded functions [call-overload]
+---------------------------------------------------
 
-Checking validity of overrides [override]
------------------------------------------
+TODO
+
+Check validity of type annotations [valid-type]
+-----------------------------------------------
+
+TODO
+
+Require annotation if variable type is unclear [var-annotated]
+--------------------------------------------------------------
+
+TODO
+
+Check validity of overrides [override]
+--------------------------------------
 
 Mypy checks that an overridden method or attribute is compatible with
 the base class.  A method in a subclass must accept all arguments
@@ -115,6 +135,92 @@ Example:
                   arg: bool) -> int:
            ...
 
+Check that function returns a value [return]
+--------------------------------------------
+
+TODO
+
+
+Check that return value is compatible [return-value]
+----------------------------------------------------
+
+TODO
+
+Check compatibility of assignment statement [assignment]
+--------------------------------------------------------
+
+TODO
+
+Check that type arguments exist [type-arg]
+------------------------------------------
+
+TODO
+
+Check type variable values [type-var]
+-------------------------------------
+
+TODO
+
+Check indexing operations [index]
+---------------------------------
+
+TODO
+
+Check uses of various operators [operator]
+------------------------------------------
+
+TODO
+
+Check list items [list-item]
+----------------------------
+
+TODO
+
+Check dict items [dict-item]
+----------------------------
+
+TODO
+
+Check TypedDict items [typeddict-item]
+--------------------------------------
+
+TODO
+
+Check that type of target is known [has-type]
+---------------------------------------------
+
+TODO
+
+Check that import target can be found [import]
+----------------------------------------------
+
+TODO
+
+Check that each name is defined once [no-redef]
+-----------------------------------------------
+
+TODO
+
+Check that called functions return a value [func-returns-value]
+---------------------------------------------------------------
+
+TODO
+
+Check instantiation of abstract classes [abstract]
+--------------------------------------------------
+
+TODO
+
+Check the target of NewType [valid-newtype]
+-------------------------------------------
+
+TODO
+
+Report syntax errors [syntax]
+-----------------------------
+
+TODO
+
 Miscellaneous checks [misc]
 ---------------------------
 
@@ -122,3 +228,13 @@ Mypy performs numerous other, more rarely failing checks that don't
 have a specific error codes. These use the ``misc`` error code. This
 error code is not special. For example, you can ignore all errors in
 this category by using ``# type: ignore[misc]`` comment.
+
+Optional checks
+***************
+
+* no-untyped-def
+* no-untyped-call
+* redundant-cast
+* comparison-overlap
+* no-any-unimported
+* no-any-return
