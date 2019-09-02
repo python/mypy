@@ -244,7 +244,8 @@ command line flags. For more details, see:
 """  # type: Final
 
 FOOTER = """Environment variables:
-  Define MYPYPATH for additional module search path entries."""  # type: Final
+  Define MYPYPATH for additional module search path entries.
+  Define MYPY_CACHE_DIR to override configuration cache_dir path."""  # type: Final
 
 
 def process_options(args: List[str],
@@ -703,6 +704,11 @@ def process_options(args: List[str],
     if getattr(dummy, 'special-opts:strict'):  # noqa
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
+
+    # Override cache_dir if provided in the environment
+    environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
+    if environ_cache_dir.strip():
+        options.cache_dir = environ_cache_dir
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
