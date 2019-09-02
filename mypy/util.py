@@ -440,6 +440,6 @@ class FancyFormatter:
               ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
                                                    n_files, 's' if n_files != 1 else '',
                                                    n_sources, 's' if n_sources != 1 else '')
-        if use_color:
+        if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)

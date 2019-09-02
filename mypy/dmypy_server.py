@@ -16,7 +16,7 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
-from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple
 from typing_extensions import Final
 
 import mypy.build
@@ -253,13 +253,16 @@ class Server:
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
 
-    def run_command(self, command: str, data: Mapping[str, object]) -> Dict[str, object]:
+    def run_command(self, command: str, data: Dict[str, object]) -> Dict[str, object]:
         """Run a specific command from the registry."""
         key = 'cmd_' + command
         method = getattr(self.__class__, key, None)
         if method is None:
             return {'error': "Unrecognized command '%s'" % command}
         else:
+            if command not in {'check', 'recheck', 'run'}:
+                # Only the above commands use some error formatting.
+                del data['is_tty']
             return method(self, **data)
 
     # Command functions (run in the server via RPC).
