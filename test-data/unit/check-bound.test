@@ -177,6 +177,7 @@ class A(NamedTuple):
 
 T = TypeVar('T', bound=A)
 def f(x: Type[T]) -> None:
+    reveal_type(x.foo)  # N: Revealed type is 'def ()'
     x.foo()
 [builtins fixtures/classmethod.pyi]
 
