@@ -27,8 +27,18 @@ Example:
 
    r = Resouce('x')
    print(r.name)  # OK
-   print(r.id)  # "Resource" has no attribute "id"  [attr-defined]
-   r.id = 5  # "Resource" has no attribute "id"  [attr-defined]
+   print(r.id)  # Error: "Resource" has no attribute "id"  [attr-defined]
+   r.id = 5  # Error: "Resource" has no attribute "id"  [attr-defined]
+
+This error code is also generated if the imported name is not defined
+in a ``from ... import`` statement (as long as the target module can
+be found):
+
+.. code-block:: python
+
+    # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
+    from os import non_existent
+
 
 Check that attribute exists in each union item [union-attr]
 -----------------------------------------------------------
@@ -195,68 +205,192 @@ Example:
 Check that function returns a value [return]
 --------------------------------------------
 
-TODO
+If a function has a non-``None`` return type, mypy expects that the
+function always explicitly returns a value (or raises an exception).
+The function should not fall off the end of the function, since this
+is often a bug.
 
+Example:
+
+.. code-block:: python
+
+    # Error: Missing return statement  [return]
+    def show(x: int) -> int:
+        print(x)
+
+    # Error: Missing return statement  [return]
+    def pred1(x: int) -> int:
+        if x > 0:
+            return x - 1
+
+    # OK
+    def pred2(x: int) -> int:
+        if x > 0:
+            return x - 1
+        else:
+            raise ValueError('not defined for zero')
 
 Check that return value is compatible [return-value]
 ----------------------------------------------------
 
-TODO
+Mypy checks that the returned value is compatible with the type
+signature of the function.
 
-Check compatibility of assignment statement [assignment]
---------------------------------------------------------
+Example:
 
-TODO
+.. code-block:: python
 
-Check that type arguments exist [type-arg]
-------------------------------------------
+   def func(x: int) -> str:
+       # Error: Incompatible return value type (got "int", expected "str")  [return-value]
+       return x + 1
 
-TODO
+Check types in assignment statement [assignment]
+------------------------------------------------
+
+Mypy checks that the assigned expression (or expressions) is compatible
+with the assignment target (or targets).
+
+Example:
+
+.. code-block:: python
+
+    class Resource:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    r = Resource('a')
+
+    r.name = 'b'  # OK
+
+    # Error: Incompatible types in assignment (expression has type "int",
+    # variable has type "str")  [assignment]
+    r.name = 5
 
 Check type variable values [type-var]
 -------------------------------------
 
-TODO
-
-Check indexing operations [index]
----------------------------------
-
-TODO
+Mypy checks that value of a type variable is compatible with a value
+restriction or the upper bound type.
 
 Check uses of various operators [operator]
 ------------------------------------------
 
-TODO
+Mypy checks that operands support each binary or unary operation. Indexing
+operations are so common that they have their own error code ``[index]``
+(see below).
+
+Check indexing operations [index]
+---------------------------------
+
+Mypy checks that the value in indexing operation such as ``x[y]`` supports
+indexing, and that the index expression has a valid type.
 
 Check list items [list-item]
 ----------------------------
 
-TODO
+When constructing a list using ``[item, ...]``, mypy checks that each item
+is compatible with the list type that is inferred from the surrounding
+context.
+
+Example:
+
+.. code-block:: python
+
+    from typing import List
+
+    # Error: List item 0 has incompatible type "int"; expected "str"  [list-item]
+    a: List[str] = [0]
 
 Check dict items [dict-item]
 ----------------------------
 
-TODO
+When constructing a dictionary using ``{key: value, ...]`` or ``dict(key=value, ...)``,
+mypy checks that each key and value is compatible with the dictionary type that is
+inferred from the surrounding context.
+
+Example:
+
+.. code-block:: python
+
+    from typing import Dict
+
+    # Error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
+    d: Dict[str, int] = {'key': 'value'}
 
 Check TypedDict items [typeddict-item]
 --------------------------------------
 
-TODO
+When constructing a TypedDict object, mypy checks that each key and value is compatible
+with the TypedDict type that is inferred from the surrounding context.
+
+Example:
+
+.. code-block:: python
+
+    from typing_extensions import TypedDict
+
+    class Point(TypedDict):
+        x: int
+        y: int
+
+    # Error: Incompatible types (expression has type "float",
+    #        TypedDict item "x" has type "int")  [typeddict-item]
+    p: Point = {'x': 1.2, 'y': 4}
+
 
 Check that type of target is known [has-type]
 ---------------------------------------------
 
-TODO
+Mypy may generate an error when mypy hasn't inferred any type for a
+variable being referenced. This can happen for forward references and
+references across modules that form an import cycle. When this
+happens, the reference gets an implicit ``Any`` type.
+
+To work around this issue, you can add an explicit type annotation to
+the target variable or attribute. Sometimes you can also reorganize the
+code so that the definition of the variable is placed earlier than the
+reference in a source file. Untangling cyclic imports may also help.
 
 Check that import target can be found [import]
 ----------------------------------------------
 
-TODO
+Mypy generates an error if it can't find the source code or a stub file
+of an imported module.
+
+Example:
+
+.. code-block:: python
+
+    # Error: Cannot find module named 'acme'  [import]
+    import acme
+
+See :ref:`ignore-missing-imports` for how to work around these errors.
 
 Check that each name is defined once [no-redef]
 -----------------------------------------------
 
-TODO
+Mypy may generate an error if you have multiple definitions for a name.
+The reason for this that this is often an error (the second definition
+may overwrite the first one). Also, mypy often can't be able to determine
+whether references point to the first or the second definition, which
+would compromise type checking.
+
+If you ignore this error, each reference to the defined name refers to
+the *first* definition.
+
+Example:
+
+.. code-block:: python
+
+   class A:
+       def __init__(self, x: int) -> None: ...
+
+   class A:  # Error: Name 'A' already defined on line 1  [no-redef]
+       def __init__(self, x: str) -> None: ...
+
+   # Argument 1 to "A" has incompatible type "str"; expected "int"
+   # (the first definition wins!)
+   A('x')
 
 Check that called functions return a value [func-returns-value]
 ---------------------------------------------------------------

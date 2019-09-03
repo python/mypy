@@ -8,6 +8,11 @@ you enable certain options. See :ref:`error-codes` for general
 documentation about error codes. :ref:`error-code-list` documents
 error codes that are enabled by default.
 
+Check that type arguments exist [type-arg]
+------------------------------------------
+
+TODO
+
 Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
 
