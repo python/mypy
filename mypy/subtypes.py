@@ -345,7 +345,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if right.type.is_protocol and right.type.protocol_members == ['__call__']:
                 # same as for CallableType
-                call = find_member('__call__', right, left)
+                call = find_member('__call__', right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
