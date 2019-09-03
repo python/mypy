@@ -1660,7 +1660,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             call_expr = CallExpr(callee, args, arg_kinds, arg_names)
                             call_expr.line = defn.line
                             call_expr.end_line = defn.end_line
-                            self.expr_checker.accept(call_expr, allow_none_return=True, always_allow_any=True)
+                            self.expr_checker.accept(call_expr,
+                                                     allow_none_return=True,
+                                                     always_allow_any=True)
                             break
 
             if not defn.has_incompatible_baseclass:
