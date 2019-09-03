@@ -342,8 +342,13 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
-                             for ti in mod.type_ignores}
+        self.type_ignores = {}
+        for ti in mod.type_ignores:
+            parsed = parse_type_ignore_tag(ti.tag)
+            if parsed is not None:
+                self.type_ignores[ti.lineno] = parsed
+            else:
+                self.fail('Invalid "type: ignore" comment', ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
         return MypyFile(body,
                         self.imports,
