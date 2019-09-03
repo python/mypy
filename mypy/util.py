@@ -510,26 +510,27 @@ class FancyFormatter:
         return start + self.colors[color] + text + self.NORMAL
 
     def fit_in_terminal(self, messages: List[str],
-                        fixed_terminal_width: Optional[int] = None) -> None:
-        """Improve readability by wrapping lines when showing source code."""
+                        fixed_terminal_width: Optional[int] = None) -> List[str]:
+        """Improve readability by wrapping error messages and trimming source code."""
         width = fixed_terminal_width or get_terminal_width()
-        for i, error in enumerate(messages.copy()):
+        new_messages = messages.copy()
+        for i, error in enumerate(messages):
             if ': error:' in error:
                 loc, msg = error.split('error:', maxsplit=1)
                 msg = soft_wrap(msg, width, first_offset=len(loc) + len('error: '))
-                messages[i] = loc + 'error:' + msg
+                new_messages[i] = loc + 'error:' + msg
             if not error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
                 # TODO: detecting source code highlights through an indent can be surprising.
                 continue
             if '^' not in error:
+                column = messages[i+1].index('^') - DEFAULT_SOURCE_OFFSET
                 # Let source have some space also on the right side.
-                width -= DEFAULT_SOURCE_OFFSET
-                column = messages[i+1][:DEFAULT_SOURCE_OFFSET].index('^')
-                source_line, offset = trim_source_line(error[:DEFAULT_SOURCE_OFFSET],
-                                                       width, column, MINIMUM_WIDTH)
-                messages[i] = source_line
+                source_line, offset = trim_source_line(error, width - DEFAULT_SOURCE_OFFSET,
+                                                       column, MINIMUM_WIDTH)
+                new_messages[i] = source_line
                 # Also adjust the error marker position.
-                messages[i+1] = messages[i+1][offset:]
+                new_messages[i+1] = messages[i+1][offset:]
+        return new_messages
 
     def colorize(self, error: str) -> str:
         """Colorize an output line by highlighting the status and error code.

@@ -191,8 +191,7 @@ class Server:
 
         # Since the object is created in the parent process we can check
         # the output terminal options here.
-        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes,
-                                        options.pretty)
+        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
 
     def _response_metadata(self) -> Dict[str, str]:
         py_version = '{}_{}'.format(self.options.python_version[0], self.options.python_version[1])
@@ -498,6 +497,10 @@ class Server:
     def pretty_messages(self, messages: List[str], n_sources: int,
                         is_tty: bool = False, terminal_width: Optional[int] = None) -> List[str]:
         use_color = self.options.color_output and is_tty
+        fit_width = self.options.pretty and is_tty
+        if fit_width:
+            messages = self.formatter.fit_in_terminal(messages,
+                                                      fixed_terminal_width=terminal_width)
         if self.options.error_summary:
             summary = None  # type: Optional[str]
             if messages:
