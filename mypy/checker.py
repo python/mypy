@@ -1652,7 +1652,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     for method_name, method_symbol_node in base.defn.info.names.items():
                         if method_name == '__init_subclass__':
                             name_expr = NameExpr(defn.name)
-                            name_expr.node = typ
+                            name_expr.node = base
                             callee = MemberExpr(name_expr, '__init_subclass__')
                             args = list(defn.keywords.values())
                             arg_names = list(defn.keywords.keys())
