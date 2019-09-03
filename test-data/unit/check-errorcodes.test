@@ -461,6 +461,10 @@ def f(): # E: Name 'f' already defined on line 4  [no-redef]
 def f() -> int:  # E: Missing return statement  [return]
     x = 0
 
+[case testErrorCodeReturnValueNotExpected]
+def f() -> None:
+    return 1  # E: No return value expected  [return-value]
+
 [case testErrorCodeFunctionDoesNotReturnValue]
 from typing import Callable
 
@@ -577,3 +581,11 @@ def f(x: List[object]) -> None: pass
 a = [1]
 f(a)  # type: ignore[arg-type]
 [builtins fixtures/list.pyi]
+
+[case testErrorCodeAssignToMethod]
+class A:
+    def f(self) -> None: pass
+
+def g(self: A) -> None: pass
+
+A.f = g  # E: Cannot assign to a method  [assignment]
