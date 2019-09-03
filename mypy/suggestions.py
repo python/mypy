@@ -531,6 +531,8 @@ class SuggestionEngine:
                 return 20
             if not is_optional(t):
                 return 10
+        if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
+            return 10
         if self.try_text and isinstance(t, Instance) and t.type.fullname() == 'builtins.str':
             return 1
         return 0
@@ -555,6 +557,8 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
             return 0.5
         if any(has_any_type(x) for x in t.items):
             return 0.25
+    if isinstance(t, CallableType) and is_tricky_callable(t):
+        return 0.5
     if has_any_type(t):
         return 0.5
 
@@ -574,11 +578,16 @@ def any_score_callable(t: CallableType, is_method: bool) -> float:
     return sum(scores) / len(scores)
 
 
+def is_tricky_callable(t: CallableType) -> bool:
+    """Is t a callable that we need to put a ... in for syntax reasons?"""
+    return t.is_ellipsis_args or any(
+        k in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT) for k in t.arg_kinds)
+
+
 class TypeFormatter(TypeStrVisitor):
     """Visitor used to format types
     """
-    # TODO: Generate valid string representation for callable types.
-    # TODO: Probably a bunch more
+    # TODO: Probably a lot
     def __init__(self, module: Optional[str], graph: Graph) -> None:
         super().__init__()
         self.module = module
@@ -622,6 +631,20 @@ class TypeFormatter(TypeStrVisitor):
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
+
+    def visit_callable_type(self, t: CallableType) -> str:
+        # TODO: use extended callables?
+        if is_tricky_callable(t):
+            arg_str = "..."
+        else:
+            # Note: for default arguments, we just assume that they
+            # are required.  This isn't right, but neither is the
+            # other thing, and I suspect this will produce more better
+            # results than falling back to `...`
+            args = [typ.accept(self) for typ in t.arg_types]
+            arg_str = "[{}]".format(", ".join(args))
+
+        return "Callable[{}, {}]".format(arg_str, t.ret_type.accept(self))
 
 
 class StrToText(TypeTranslator):

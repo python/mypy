@@ -324,6 +324,53 @@ def bar() -> None:
 (str) -> str
 ==
 
+[case testSuggestCallable]
+# flags: --strict-optional
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: --flex-any=0.9 foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+[file foo.py]
+def foo(f):
+    return f(0, "lol")
+def bar(f):
+    return f(0, "lol", 100)
+def baz(f):
+    return f(y=1) + f(x=10, y=1)
+def quux(f):
+    return f(1)
+[file bar.py]
+from typing import Any
+from foo import foo, bar, baz, quux
+
+def whatever(x: int, y: str) -> int:
+    return 0
+
+def starargs(*args: Any) -> int:
+    return 0
+
+def named(*, x: int = 0, y: int) -> str:
+    return '0'
+
+# we don't properly handle default really. we just assume it is
+# actually required.
+def default(x: int = 0) -> str:
+    return '0'
+
+def test() -> None:
+    foo(whatever)
+    bar(starargs)
+    baz(named)
+    quux(default)
+[out]
+(Callable[[int, str], int]) -> int
+(Callable[..., int]) -> int
+No guesses that match criteria!
+(Callable[..., str]) -> str
+(Callable[[int], str]) -> str
+==
+
 [case testSuggestNewSemanal]
 # flags: --strict-optional
 # suggest: foo.Foo.foo
