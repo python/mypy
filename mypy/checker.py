@@ -1655,7 +1655,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             name_expr.node = base
                             callee = MemberExpr(name_expr, '__init_subclass__')
                             args = list(defn.keywords.values())
-                            arg_names = list(defn.keywords.keys())
+                            arg_names = list(defn.keywords.keys())  # type: List[Optional[str]]
                             arg_kinds = [ARG_NAMED] * len(args)
                             call_expr = CallExpr(callee, args, arg_kinds, arg_names)
                             call_expr.line = defn.line
