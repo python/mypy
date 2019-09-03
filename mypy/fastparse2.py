@@ -557,6 +557,7 @@ class ASTConverter:
                 extra_ignore = TYPE_IGNORE_PATTERN.match(comment)
                 if extra_ignore:
                     tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
+                    assert tag is not None
                     if not tag.strip().startswith('#'):
                         ignored = parse_type_ignore_tag(tag)
                     else:

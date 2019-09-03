@@ -208,6 +208,7 @@ def parse_type_comment(type_comment: str,
         if extra_ignore:
             # Typeshed has a non-optional return type for group!
             tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
+            assert tag is not None
             if not tag.strip().startswith('#'):
                 ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
             else:
