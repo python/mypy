@@ -1,7 +1,7 @@
 .. _error-codes-optional:
 
-List of error codes (optional checks)
-=====================================
+Error codes for optional checks
+===============================
 
 This section documents various errors codes that mypy generates only
 if you enable certain options. See :ref:`error-codes` for general

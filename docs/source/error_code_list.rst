@@ -1,20 +1,21 @@
 .. _error-code-list:
 
-List of error codes (default checks)
-====================================
+Error codes enabled by default
+==============================
 
 This section documents various errors codes that mypy can generate
 with default options. See :ref:`error-codes` for general documentation
-about error codes. See :ref:`error-codes-optional` for additional
+about error codes. :ref:`error-codes-optional` documents additional
 error codes that you can enable.
 
 Check that attribute exists [attr-defined]
 ------------------------------------------
 
-Mypy that an attribute is defined in the target class or module. This
-applies to reading an attribute and setting an attribute. Attribute
-assignments in a class body or through the ``self`` argument are
-considered to define new attributes. Mypy doesn't allow defining
+Mypy checks that an attribute is defined in the target class or module
+when using the dot operator. This applies to both getting and setting
+an attribute. Attribute assignments in the class body or through the
+``self`` argument in a method define new attributes, and they don't
+generate ``attr-defined`` errors. Mypy doesn't allow defining
 attributes outside a class definition.
 
 Example:
@@ -30,22 +31,21 @@ Example:
    print(r.id)  # Error: "Resource" has no attribute "id"  [attr-defined]
    r.id = 5  # Error: "Resource" has no attribute "id"  [attr-defined]
 
-This error code is also generated if the imported name is not defined
-in a ``from ... import`` statement (as long as the target module can
-be found):
+This error code is also generated if an imported name is not defined
+in the module in a ``from ... import`` statement (as long as the
+target module can be found):
 
 .. code-block:: python
 
     # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
     from os import non_existent
 
-
 Check that attribute exists in each union item [union-attr]
 -----------------------------------------------------------
 
 If you access the attribute of a value with a union type, mypy checks
-that the attribute is defined for every union item. Otherwise the
-operation can fail at runtime.
+that the attribute is defined for *every* union item type. Otherwise the
+operation can fail at runtime. This also applies to optional types.
 
 Example:
 
@@ -61,24 +61,41 @@ Example:
        def sleep(self) -> None: ...
        def follow_me(self) -> None: ...
 
-   def f(animal: Union[Cat, Dog]) -> None:
+   def func(animal: Union[Cat, Dog]) -> None:
        # OK: 'sleep' is defined for both Cat and Dog
        animal.sleep()
        # Error: Item "Cat" of "Union[Cat, Dog]" has no attribute "follow_me"  [union-attr]
        animal.follow_me()
 
-Check that name is defined [name-defined]
------------------------------------------
-
-Mypy expects that all name references contain a definitinon, such as
-an assignment, function definition or an import. This can catch missing
-definitions, missing imports, and typos.
+You can often work around these errors by using ``assert isinstance(obj, ClassName)``
+or ``assert obj is not None`` to tell mypy that you know that the type is more specific
+than what mypy thinks. Alternatively, you can cast to the target type:
 
 Example:
 
 .. code-block:: python
 
-    x = func(1)  # Name 'func' is not defined  [name-defined]
+   from typing import Union, cast
+
+   ...  # Definitions of Cat and Dog omitted
+
+   def func(animal: Union[Cat, Dog]) -> None:
+       animal.sleep()  # OK
+       cast(Dog, animal).follow_me()  # OK
+
+Check that name is defined [name-defined]
+-----------------------------------------
+
+Mypy expects that all references to names have a corresponding
+definition in an active scope, such as an assignment, function
+definition or an import. This can catch missing definitions, missing
+imports, and typos.
+
+This example accidentally calls ``sort()`` instead of ``sorted()``:
+
+.. code-block:: python
+
+    x = sort([3, 2, 4])  # Error: Name 'sort' is not defined  [name-defined]
 
 Check arguments in calls [call-arg]
 -----------------------------------
@@ -96,13 +113,13 @@ Example:
          print('hello', name)
 
     greet('jack')  # OK
-    greet('hi', 'jack')  # Too many arguments for "greet"  [call-arg]
+    greet('jill', 'jack')  # Error: Too many arguments for "greet"  [call-arg]
 
 Check argument types [arg-type]
 -------------------------------
 
 Mypy checks that argument types in a call match the declared argument
-types in the signature.
+types in the signature of the called function (if one exists).
 
 Example:
 
@@ -114,8 +131,8 @@ Example:
         return x[0] if x else 0
 
    t = (5, 4)
-   # Argument 1 to "first" has incompatible type "Tuple[int, int]";
-   # expected "List[int]"  [arg-type]
+   # Error: Argument 1 to "first" has incompatible type "Tuple[int, int]";
+   #        expected "List[int]"  [arg-type]
    print(first(t))
 
 Check calls to overloaded functions [call-overload]
@@ -132,7 +149,7 @@ Mypy checks that each type annotation and any expression that
 represents a type is a valid type. Examples of valid types include
 classes, union types, callable types, type aliases, and literal types.
 Examples of invalid types include bare integer literals, functions,
-variables, and undefined names.
+variables, and modules.
 
 Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
@@ -150,7 +167,7 @@ Example with an error:
    class Bundle:
        def __init__(self) -> None:
            # Error: Need type annotation for 'items'
-           # (hint: "items: List[<type>] = ...")  [var-annotated]
+           #        (hint: "items: List[<type>] = ...")  [var-annotated]
            self.items = []
 
    reveal_type(Bundle().items)  # list[Any]
@@ -173,12 +190,13 @@ Check validity of overrides [override]
 Mypy checks that an overridden method or attribute is compatible with
 the base class.  A method in a subclass must accept all arguments
 that the base class method accepts, and the return type must conform
-to the return type in the base class.
+to the return type in the base class (Liskov substitution principle).
 
 Argument typess can be more general is a subclass (i.e., they can vary
-contravariantly).  Return type can be narrowed in a subclass (i.e., it
-can vary covariantly).  It's okay to define additional arguments in
-a subclass method, as long all extra arguments can be left out.
+contravariantly).  The return type can be narrowed in a subclass
+(i.e., it can vary covariantly).  It's okay to define additional
+arguments in a subclass method, as long all extra arguments have default
+values or can be left out.
 
 Example:
 
@@ -197,7 +215,7 @@ Example:
            ...
 
    class DerivedBad(Base):
-       # Argument 1 of "method" is incompatible with "Base"  [override]
+       # Error: Argument 1 of "method" is incompatible with "Base"  [override]
        def method(self,
                   arg: bool) -> int:
            ...
