@@ -23,7 +23,14 @@ T = TypeVar('T')
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
+# This works in most default terminals works (because it is ANSI standard). The problem
+# this tries to solve is that although it is a basic ANSI "feature", terminfo files
+# for most default terminals don't have dim termcap entry, so curses doesn't report it.
+# Potentially, we can choose a grey color that would look good on both white and black
+# background, but it is not easy, and again most default terminals are 8-color, not 256-color,
+# so we can't get the color code from curses.
 PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
+
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
 DEFAULT_COLUMNS = 80   # type: Final
 
@@ -392,7 +399,8 @@ def split_words(msg: str) -> List[str]:
     return res
 
 
-def get_term_columns() -> int:
+def get_terminal_width() -> int:
+    """Get current terminal width if possible, otherwise return the default one."""
     try:
         cols, _ = os.get_terminal_size()
         return cols
@@ -400,27 +408,40 @@ def get_term_columns() -> int:
         return DEFAULT_COLUMNS
 
 
-def soft_wrap(msg: str, max_len: int, pad: int) -> str:
+def soft_wrap(msg: str, max_len: int, first_offset: int,
+              num_indent: int = 0) -> str:
     """Wrap a long error message into few lines.
 
     Breaks will only happen between words, and never inside a quoted group
-    (to avoid breaking types such as "Union[int, str]"). Pad every next line
-    with 'pad' spaces. Every line will be at most 'max_len' characters (before
-    padding), except if it is a single word or quoted group.
+    (to avoid breaking types such as "Union[int, str]"). The 'first_offset' is
+    the width before the start of first line.
+
+    Pad every next line with 'num_indent' spaces. Every line will be at most 'max_len'
+    characters, except if it is a single word or quoted group.
+
+    For example:
+               first_offset
+        ------------------------
+        path/to/file: error: 58: Some very long error message
+            that needs to be split in separate lines.
+            "Long[Type, Names]" are never split.
+        ^^^^--------------------------------------------------
+        num_indent           max_len
     """
     words = split_words(msg)
     next_line = words.pop(0)
     lines = []  # type: List[str]
     while words:
         next_word = words.pop(0)
+        max_line_len = max_len - num_indent if lines else max_len - first_offset
         # Add 1 to account for space between words.
-        if len(next_line) + len(next_word) + 1 < max_len:
+        if len(next_line) + len(next_word) + 1 < max_line_len:
             next_line += ' ' + next_word
         else:
             lines.append(next_line)
             next_line = next_word
     lines.append(next_line)
-    padding = '\n' + ' ' * pad
+    padding = '\n' + ' ' * num_indent
     return padding.join(lines)
 
 
@@ -430,9 +451,9 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
     def __init__(self, f_out: IO[str], f_err: IO[str],
-                 show_error_codes: bool, show_source_code: bool) -> None:
+                 show_error_codes: bool, pretty: bool) -> None:
         self.show_error_codes = show_error_codes
-        self.show_source_code = show_source_code
+        self.pretty = pretty
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ('linux', 'darwin'):
             self.dummy_term = True
@@ -490,16 +511,19 @@ class FancyFormatter:
             start += self.DIM
         return start + self.colors[color] + text + self.NORMAL
 
-    def colorize(self, error: str) -> str:
-        """Colorize an output line by highlighting the status and error code."""
+    def colorize(self, error: str, fixed_terminal_width: Optional[int] = None) -> str:
+        """Colorize an output line by highlighting the status and error code.
+
+        If fixed_terminal_width is given, use it instead of calling get_terminal_width()
+        (used by the daemon).
+        """
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
-            if self.show_source_code:
+            if self.pretty:
                 # Improve readability by wrapping lines when showing source code.
-                pad = len(loc) + len('error: ')
-                max_len = get_term_columns() - pad - 1  # compensate for space after 'error:'
-                msg = soft_wrap(msg, max_len, pad)
-            # If show_source_code is true, the error code is shown on a separate line.
+                max_len = (fixed_terminal_width or get_terminal_width())
+                # -1 to compensate for space after 'error:'
+                msg = soft_wrap(msg, max_len - 1, first_offset=len(loc) + len('error: '))
             if not self.show_error_codes:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
@@ -511,7 +535,8 @@ class FancyFormatter:
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
-        elif self.show_source_code and error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
+        elif self.pretty and error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
+            # TODO: detecting source code highlights through an indent can be surprising.
             if '^' not in error:
                 return self.style(error, 'none', dim=True)
             return self.style(error, 'red')

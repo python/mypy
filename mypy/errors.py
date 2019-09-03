@@ -11,7 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
-from mypy.util import trim_source_line, DEFAULT_SOURCE_OFFSET, DEFAULT_COLUMNS, MINIMUM_WIDTH
+from mypy.util import trim_source_line, DEFAULT_SOURCE_OFFSET, get_terminal_width, MINIMUM_WIDTH
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -158,14 +158,17 @@ class Errors:
                  show_error_context: bool = False,
                  show_column_numbers: bool = False,
                  show_error_codes: bool = False,
-                 show_source_code: bool = False,
+                 pretty: bool = False,
                  read_source: Optional[Callable[[str], Optional[List[str]]]] = None) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
-        self.show_source_code = show_source_code
+        self.pretty = pretty
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
+        # If this is not None, don't try calling get_terminal_width().
+        # This is used by the daemon, where the call may return a wrong value.
+        self.fixed_terminal_width = None  # type: Optional[int]
         self.initialize()
 
     def initialize(self) -> None:
@@ -188,7 +191,7 @@ class Errors:
         new = Errors(self.show_error_context,
                      self.show_column_numbers,
                      self.show_error_codes,
-                     self.show_source_code,
+                     self.pretty,
                      self.read_source)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
@@ -196,6 +199,7 @@ class Errors:
         new.function_or_member = self.function_or_member[:]
         new.target_module = self.target_module
         new.scope = self.scope
+        new.fixed_terminal_width = self.fixed_terminal_width
         return new
 
     def total_errors(self) -> int:
@@ -440,10 +444,16 @@ class Errors:
                 # displaying duplicate error codes.
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
-            if self.show_source_code:
+            if self.pretty:
+                # Add source code fragment and a location marker.
                 if severity == 'error' and source_lines and line > 0:
+                    width = self.fixed_terminal_width or get_terminal_width()
+                    # Let source have some space also on the right side.
+                    width -= DEFAULT_SOURCE_OFFSET
                     source_line, offset = trim_source_line(source_lines[line - 1],
-                                                           DEFAULT_COLUMNS, column, MINIMUM_WIDTH)
+                                                           width, column, MINIMUM_WIDTH)
+                    # Note, currently coloring uses the offset to detect source snippets,
+                    # so these offsets should not be arbitrary.
                     a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
                     # Also append a marker pointing to the error start location.
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + '^')
@@ -459,7 +469,7 @@ class Errors:
             return []
         self.flushed_files.add(path)
         source_lines = None
-        if self.show_source_code:
+        if self.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
         return self.format_messages(self.error_info_map[path], source_lines)

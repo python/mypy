@@ -202,7 +202,7 @@ def _build(sources: List[BuildSource],
     errors = Errors(options.show_error_context,
                     options.show_column_numbers,
                     options.show_error_codes,
-                    options.show_source_code,
+                    options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version))
     plugin, snapshot = load_plugins(options, errors, stdout)
 
