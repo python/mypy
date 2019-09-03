@@ -63,11 +63,13 @@ def main(script_path: Optional[str],
                                        fscache=fscache)
 
     messages = []
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes, options.pretty)
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         messages.extend(new_messages)
         f = stderr if serious else stdout
+        if options.pretty:
+            formatter.fit_in_terminal(messages)
         try:
             for msg in new_messages:
                 if options.color_output:

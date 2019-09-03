@@ -11,7 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
-from mypy.util import trim_source_line, DEFAULT_SOURCE_OFFSET, get_terminal_width, MINIMUM_WIDTH
+from mypy.util import DEFAULT_SOURCE_OFFSET
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -166,9 +166,6 @@ class Errors:
         self.pretty = pretty
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        # If this is not None, don't try calling get_terminal_width().
-        # This is used by the daemon, where the call may return a wrong value.
-        self.fixed_terminal_width = None  # type: Optional[int]
         self.initialize()
 
     def initialize(self) -> None:
@@ -199,7 +196,6 @@ class Errors:
         new.function_or_member = self.function_or_member[:]
         new.target_module = self.target_module
         new.scope = self.scope
-        new.fixed_terminal_width = self.fixed_terminal_width
         return new
 
     def total_errors(self) -> int:
@@ -447,16 +443,10 @@ class Errors:
             if self.pretty:
                 # Add source code fragment and a location marker.
                 if severity == 'error' and source_lines and line > 0:
-                    width = self.fixed_terminal_width or get_terminal_width()
-                    # Let source have some space also on the right side.
-                    width -= DEFAULT_SOURCE_OFFSET
-                    source_line, offset = trim_source_line(source_lines[line - 1],
-                                                           width, column, MINIMUM_WIDTH)
                     # Note, currently coloring uses the offset to detect source snippets,
                     # so these offsets should not be arbitrary.
-                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
-                    # Also append a marker pointing to the error start location.
-                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + '^')
+                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_lines[line - 1])
+                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
     def file_messages(self, path: str) -> List[str]:

@@ -450,10 +450,8 @@ class FancyFormatter:
 
     This currently only works on Linux and Mac.
     """
-    def __init__(self, f_out: IO[str], f_err: IO[str],
-                 show_error_codes: bool, pretty: bool) -> None:
+    def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
         self.show_error_codes = show_error_codes
-        self.pretty = pretty
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ('linux', 'darwin'):
             self.dummy_term = True
@@ -511,7 +509,29 @@ class FancyFormatter:
             start += self.DIM
         return start + self.colors[color] + text + self.NORMAL
 
-    def colorize(self, error: str, fixed_terminal_width: Optional[int] = None) -> str:
+    def fit_in_terminal(self, messages: List[str],
+                        fixed_terminal_width: Optional[int] = None) -> None:
+        """Improve readability by wrapping lines when showing source code."""
+        width = fixed_terminal_width or get_terminal_width()
+        for i, error in enumerate(messages.copy()):
+            if ': error:' in error:
+                loc, msg = error.split('error:', maxsplit=1)
+                msg = soft_wrap(msg, width, first_offset=len(loc) + len('error: '))
+                messages[i] = loc + 'error:' + msg
+            if not error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
+                # TODO: detecting source code highlights through an indent can be surprising.
+                continue
+            if '^' not in error:
+                # Let source have some space also on the right side.
+                width -= DEFAULT_SOURCE_OFFSET
+                column = messages[i+1][:DEFAULT_SOURCE_OFFSET].index('^')
+                source_line, offset = trim_source_line(error[:DEFAULT_SOURCE_OFFSET],
+                                                       width, column, MINIMUM_WIDTH)
+                messages[i] = source_line
+                # Also adjust the error marker position.
+                messages[i+1] = messages[i+1][offset:]
+
+    def colorize(self, error: str) -> str:
         """Colorize an output line by highlighting the status and error code.
 
         If fixed_terminal_width is given, use it instead of calling get_terminal_width()
@@ -519,11 +539,6 @@ class FancyFormatter:
         """
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
-            if self.pretty:
-                # Improve readability by wrapping lines when showing source code.
-                max_len = (fixed_terminal_width or get_terminal_width())
-                # -1 to compensate for space after 'error:'
-                msg = soft_wrap(msg, max_len - 1, first_offset=len(loc) + len('error: '))
             if not self.show_error_codes:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
@@ -535,7 +550,7 @@ class FancyFormatter:
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
-        elif self.pretty and error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
+        elif error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
             # TODO: detecting source code highlights through an indent can be surprising.
             if '^' not in error:
                 return self.style(error, 'none', dim=True)

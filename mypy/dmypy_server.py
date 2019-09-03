@@ -511,7 +511,7 @@ class Server:
                 # Create new list to avoid appending multiple summaries on successive runs.
                 messages = messages + [summary]
         if use_color:
-            messages = [self.formatter.colorize(m, terminal_width) for m in messages]
+            messages = [self.formatter.colorize(m) for m in messages]
         return messages
 
     def update_sources(self, sources: List[BuildSource]) -> None:
