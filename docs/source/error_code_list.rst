@@ -265,8 +265,8 @@ Example:
 Check types in assignment statement [assignment]
 ------------------------------------------------
 
-Mypy checks that the assigned expression (or expressions) is compatible
-with the assignment target (or targets).
+Mypy checks that the assigned expression is compatible with the
+assignment target (or targets).
 
 Example:
 
@@ -276,12 +276,12 @@ Example:
         def __init__(self, name: str) -> None:
             self.name = name
 
-    r = Resource('a')
+    r = Resource('A')
 
-    r.name = 'b'  # OK
+    r.name = 'B'  # OK
 
     # Error: Incompatible types in assignment (expression has type "int",
-    # variable has type "str")  [assignment]
+    #        variable has type "str")  [assignment]
     r.name = 5
 
 Check type variable values [type-var]
@@ -293,15 +293,16 @@ restriction or the upper bound type.
 Check uses of various operators [operator]
 ------------------------------------------
 
-Mypy checks that operands support each binary or unary operation. Indexing
-operations are so common that they have their own error code ``[index]``
-(see below).
+Mypy checks that operands support a binary or unary operation, such as
+``+`` or ``~``. Indexing operations are so common that they have their
+own error code ``index`` (see below).
 
 Check indexing operations [index]
 ---------------------------------
 
-Mypy checks that the value in indexing operation such as ``x[y]`` supports
-indexing, and that the index expression has a valid type.
+Mypy checks that the indexed value in indexing operation such as
+``x[y]`` supports indexing, and that the index expression has a valid
+type.
 
 Check list items [list-item]
 ----------------------------
@@ -322,7 +323,7 @@ Example:
 Check dict items [dict-item]
 ----------------------------
 
-When constructing a dictionary using ``{key: value, ...]`` or ``dict(key=value, ...)``,
+When constructing a dictionary using ``{key: value, ...}`` or ``dict(key=value, ...)``,
 mypy checks that each key and value is compatible with the dictionary type that is
 inferred from the surrounding context.
 
@@ -359,21 +360,23 @@ Example:
 Check that type of target is known [has-type]
 ---------------------------------------------
 
-Mypy may generate an error when mypy hasn't inferred any type for a
-variable being referenced. This can happen for forward references and
-references across modules that form an import cycle. When this
-happens, the reference gets an implicit ``Any`` type.
+Mypy sometimes generates an error when it hasn't inferred any type for
+a variable being referenced. This can happen for references to
+variables that have not been initialized yet, and for references
+across modules that form an import cycle. When this happens, the
+reference gets an implicit ``Any`` type.
 
-To work around this issue, you can add an explicit type annotation to
-the target variable or attribute. Sometimes you can also reorganize the
-code so that the definition of the variable is placed earlier than the
-reference in a source file. Untangling cyclic imports may also help.
+To work around this error, you can add an explicit type annotation to
+the target variable or attribute. Sometimes you can also reorganize
+the code so that the definition of the variable is placed earlier than
+the reference to the variable in a source file. Untangling cyclic
+imports may also help.
 
 Check that import target can be found [import]
 ----------------------------------------------
 
 Mypy generates an error if it can't find the source code or a stub file
-of an imported module.
+for an imported module.
 
 Example:
 
@@ -387,11 +390,11 @@ See :ref:`ignore-missing-imports` for how to work around these errors.
 Check that each name is defined once [no-redef]
 -----------------------------------------------
 
-Mypy may generate an error if you have multiple definitions for a name.
-The reason for this that this is often an error (the second definition
-may overwrite the first one). Also, mypy often can't be able to determine
-whether references point to the first or the second definition, which
-would compromise type checking.
+Mypy may generate an error if you have multiple definitions for a name
+in the same namespace.  The reason is that this is often an error, as
+the second definition may overwrite the first one. Also, mypy often
+can't be able to determine whether references point to the first or
+the second definition, which would compromise type checking.
 
 If you ignore this error, each reference to the defined name refers to
 the *first* definition.
@@ -406,8 +409,8 @@ Example:
    class A:  # Error: Name 'A' already defined on line 1  [no-redef]
        def __init__(self, x: str) -> None: ...
 
-   # Argument 1 to "A" has incompatible type "str"; expected "int"
-   # (the first definition wins!)
+   # Error: Argument 1 to "A" has incompatible type "str"; expected "int"
+   #        (the first definition wins!)
    A('x')
 
 Check that called functions return a value [func-returns-value]
@@ -415,16 +418,20 @@ Check that called functions return a value [func-returns-value]
 
 Mypy reports an error if you call a function with a ``None``
 return type and don't ignore the return value, as this is
-usually (but not always) a programming error. For example,
-the ``if f()`` check is always false since ``f`` returns
-``None``:
+usually (but not always) a programming error.
+
+In this example, the ``if f()`` check is always false since ``f``
+returns ``None``:
 
 .. code-block:: python
 
    def f() -> None:
        ...
 
-   # "f" does not return a value  [func-returns-value]
+   # OK: we don't do anything with the return value
+   f()
+
+   # Error: "f" does not return a value  [func-returns-value]
    if f():
         print("not false")
 
@@ -432,14 +439,14 @@ Check instantiation of abstract classes [abstract]
 --------------------------------------------------
 
 Mypy generates an error if you try to instantiate an abstract base
-class (ABC). An abtract base class is a class with at least once
+class (ABC). An abtract base class is a class with at least one
 abstract method or attribute. (See also `Python
 abc module documentation <https://docs.python.org/3/library/abc.html>`_.)
 
-Sometimes a class is accidentally abstract, due to an
-unimplemented abstract method, for example. In a case like this you
-need to provide an implementation for the method to make the class
-concrete (non-abstract).
+Sometimes a class is made accidentally abstract, often due to an
+unimplemented abstract method. In a case like this you need to provide
+an implementation for the method to make the class concrete
+(non-abstract).
 
 Example:
 
@@ -447,17 +454,17 @@ Example:
 
     from abc import ABCMeta, abstractmethod
 
-    class Persistable(metaclass=ABCMeta):
+    class Persistent(metaclass=ABCMeta):
         @abstractmethod
         def save(self) -> None: ...
 
-    class Thing(Persistable):
+    class Thing(Persistent):
         def __init__(self) -> None:
             ...
 
         ...  # No "save" method
 
-    # Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
+    # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
     t = Thing()
 
 Check the target of NewType [valid-newtype]
@@ -466,9 +473,9 @@ Check the target of NewType [valid-newtype]
 The target of a ``NewType`` definition must be a class type. It can't
 be a union type, ``Any``, or various other special types.
 
-You can also get this error also if the target has been imported from
-a module mypy can't find the source for, since any such definitions
-are treated by mypy as values with ``Any`` types.
+You can also get this error if the target has been imported from a
+module mypy can't find the source for, since any such definitions are
+treated by mypy as values with ``Any`` types.
 
 Report syntax errors [syntax]
 -----------------------------
@@ -488,3 +495,8 @@ in this category by using ``# type: ignore[misc]`` comment. Since these
 errors are not expected to be common, it's unlikely that you'll see
 two *different* errors with the ``misc`` code on a single line -- though this
 can certainly happen once in a while.
+
+.. note::
+
+    Future mypy versions will likely add new error codes for some errors
+    that currently use the ``misc`` error code.

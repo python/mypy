@@ -8,6 +8,13 @@ if you enable certain options. See :ref:`error-codes` for general
 documentation about error codes. :ref:`error-code-list` documents
 error codes that are enabled by default.
 
+.. note::
+
+   The examples in this section use :ref:`inline configuration
+   <inline-config>` to specify mypy options. You can also set the same
+   options by using a :ref:`configuration file <config-file>` or
+   :ref:`command-line options <command-line>`.
+
 Check that type arguments exist [type-arg]
 ------------------------------------------
 
@@ -22,6 +29,7 @@ Example:
 .. code-block:: python
 
     # mypy: disallow-any-generics
+
     from typing import List
 
     # Error: Missing type parameters for generic type "List"  [type-arg]
@@ -43,7 +51,7 @@ Example:
     def inc(x):  # Error: Function is missing a type annotation  [no-untyped-def]
         return x + 1
 
-    def inc(x: int) -> int:  # OK
+    def inc_ok(x: int) -> int:  # OK
         return x + 1
 
     class Counter:
@@ -51,7 +59,7 @@ Example:
          def __init__(self):
              self.value = 0
 
-    class Counter2:
+    class CounterOk:
          # OK: An explicit "-> None" is needed if "__init__" takes no arguments
          def __init__(self) -> None:
              self.value = 0
@@ -67,6 +75,7 @@ Example:
 .. code-block:: python
 
     # mypy: warn-redundant-casts
+
     from typing import cast
 
     Count = int
@@ -75,14 +84,15 @@ Example:
         # Error: Redundant cast to "int"  [redundant-cast]
         return cast(int, x)
 
-Check that comparisons can be true [comparison-overlap]
--------------------------------------------------------
+Check that comparisons are overlapping [comparison-overlap]
+-----------------------------------------------------------
 
-If you use ``--strict-equality``, mypy will generate an error if it thinks that
-a comparison operation is always true or false. These are often bugs. Sometimes
-mypy is too picky and the test can actually succeed. Instead of disabling strict
-equality checking everywhere, you can use ``# type: ignore[comparison-overlap]``
-to ignore the issue on a particular line only.
+If you use ``--strict-equality``, mypy will generate an error if it
+thinks that a comparison operation is always true or false. These are
+often bugs. Sometimes mypy is too picky and the comparison can
+actually be useful. Instead of disabling strict equality checking
+everywhere, you can use ``# type: ignore[comparison-overlap]`` to
+ignore the issue on a particular line only.
 
 Example:
 
@@ -99,7 +109,7 @@ Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------
 
 If you use ``--disallow-untyped-calls``, mypy generates an error when you
-calle an unannotated function in an annotated function.
+call an unannotated function in an annotated function.
 
 Example:
 
@@ -139,9 +149,10 @@ Check that types have no Any components due to missing imports [no-any-unimporte
 ----------------------------------------------------------------------------------
 
 If you use ``--disallow-any-unimported``, mypy generates an error if a component of
-a type becomes ``Any`` because mypy couldn't resolve an import.
+a type becomes ``Any`` because mypy couldn't resolve an import. These "stealth"
+``Any`` types can be surprising and accidentally cause imprecise type checking.
 
-In this example, we assume that mypy can't find module ``animals``, which means
+In this example, we assume that mypy can't find the module ``animals``, which means
 that ``Cat`` falls back to ``Any`` in a type annotation:
 
 .. code-block:: python
