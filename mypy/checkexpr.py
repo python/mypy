@@ -46,9 +46,7 @@ from mypy import message_registry
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type, is_overlapping_types
-from mypy.subtypes import (
-    is_subtype, is_proper_subtype, is_equivalent, find_member, non_method_protocol_members,
-)
+from mypy.subtypes import is_subtype, is_proper_subtype, is_equivalent, non_method_protocol_members
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
@@ -1328,16 +1326,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
-            messages.incompatible_argument(n, m, callee, original_caller_type,
-                                           caller_kind, context)
-            if (isinstance(original_caller_type, (Instance, TupleType, TypedDictType)) and
-                    isinstance(callee_type, Instance) and callee_type.type.is_protocol):
-                self.msg.report_protocol_problems(original_caller_type, callee_type, context)
-            if (isinstance(callee_type, CallableType) and
-                    isinstance(original_caller_type, Instance)):
-                call = find_member('__call__', original_caller_type, original_caller_type)
-                if call:
-                    self.msg.note_call(original_caller_type, call, context)
+            code = messages.incompatible_argument(n, m, callee, original_caller_type,
+                                                  caller_kind, context)
+            messages.incompatible_argument_note(original_caller_type, callee_type, context,
+                                                code=code)
 
     def check_overload_call(self,
                             callee: Overloaded,
@@ -1888,6 +1880,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 column=typ.column,
             ))
 
+    def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
+        """Concatenate two fixed length tuples."""
+        return TupleType(items=left.items + right.items,
+                         fallback=self.named_type('builtins.tuple'))
+
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
         return self.infer_literal_expr_type(e.value, 'builtins.int')
@@ -1946,6 +1943,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
+
+        proper_left_type = get_proper_type(left_type)
+        if isinstance(proper_left_type, TupleType) and e.op == '+':
+            left_add_method = proper_left_type.partial_fallback.type.get('__add__')
+            if left_add_method and left_add_method.fullname == 'builtins.tuple.__add__':
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if isinstance(proper_right_type, TupleType):
+                    right_radd_method = proper_right_type.partial_fallback.type.get('__radd__')
+                    if right_radd_method is None:
+                        return self.concat_tuples(proper_left_type, proper_right_type)
 
         if e.op in nodes.op_methods:
             method = self.get_operator_method(e.op)
@@ -3770,11 +3777,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     @overload
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
 
-    @overload  # noqa
+    @overload
     def narrow_type_from_binder(self, expr: Expression, known_type: Type,
                                 skip_non_overlapping: bool) -> Optional[Type]: ...
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type,  # noqa
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type,
                                 skip_non_overlapping: bool = False) -> Optional[Type]:
         """Narrow down a known type of expression using information in conditional type binder.
 

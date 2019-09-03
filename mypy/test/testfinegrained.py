@@ -181,6 +181,7 @@ class FineGrainedSuite(DataSuite):
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.error_summary = False
         options.fine_grained_incremental = not build_cache
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
@@ -196,7 +197,7 @@ class FineGrainedSuite(DataSuite):
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
-        response = server.check(sources)
+        response = server.check(sources, is_tty=False)
         out = cast(str, response['out'] or response['err'])
         return out.splitlines()
 

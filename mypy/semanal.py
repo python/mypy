@@ -4541,7 +4541,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 'Did you forget to import it from "{module}"?'
                 ' (Suggestion: "from {module} import {name}")'
             ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
-            self.note(hint, ctx)
+            self.note(hint, ctx, code=codes.NAME_DEFINED)
 
     def already_defined(self,
                         name: str,
@@ -4606,12 +4606,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
 
-    def note(self, msg: str, ctx: Context) -> None:
+    def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if (not self.options.check_untyped_defs and
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note')
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note', code=code)
 
     def accept(self, node: Node) -> None:
         try:

@@ -57,6 +57,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         '--no-site-packages',
         '--no-strict-optional',
         '--no-silence-site-packages',
+        '--no-error-summary',
     ]
     py2 = testcase.name.lower().endswith('python2')
     if py2:
@@ -90,7 +91,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
-        proc = subprocess.run([interpreter, program], cwd=test_temp_dir, stdout=PIPE, stderr=PIPE)
+        proc = subprocess.run([interpreter, '-Wignore', program],
+                              cwd=test_temp_dir, stdout=PIPE, stderr=PIPE)
         output.extend(split_lines(proc.stdout, proc.stderr))
     # Remove temp file.
     os.remove(program_path)

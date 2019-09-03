@@ -1445,6 +1445,93 @@ L0:
     r6 = cast(str, r5)
     return r6
 
+[case testCallOverloadedNative]
+from typing import overload, Union
+
+@overload
+def foo(x: int) -> int: ...
+
+@overload
+def foo(x: str) -> str: ...
+
+def foo(x: Union[int, str]) -> Union[int, str]:
+    return x
+
+def main() -> None:
+    x = foo(0)
+[out]
+def foo(x):
+    x :: union[int, str]
+L0:
+    return x
+def main():
+    r0 :: short_int
+    r1 :: object
+    r2 :: union[int, str]
+    r3, x :: int
+    r4 :: None
+L0:
+    r0 = 0
+    r1 = box(short_int, r0)
+    r2 = foo(r1)
+    r3 = unbox(int, r2)
+    x = r3
+    r4 = None
+    return r4
+
+[case testCallOverloadedNativeSubclass]
+from typing import overload, Union
+
+class A:
+    x: int
+class B(A):
+    y: int
+
+@overload
+def foo(x: int) -> B: ...
+
+@overload
+def foo(x: Union[int, str]) -> A: ...
+
+def foo(x: Union[int, str]) -> A:
+    if isinstance(x, int):
+        return B()
+    return A()
+
+def main() -> None:
+    x = foo(0)
+[out]
+def foo(x):
+    x :: union[int, str]
+    r0 :: object
+    r1 :: bool
+    r2 :: __main__.B
+    r3 :: __main__.A
+L0:
+    r0 = int
+    r1 = isinstance x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = B()
+    return r2
+L2:
+    r3 = A()
+    return r3
+def main():
+    r0 :: short_int
+    r1 :: object
+    r2 :: __main__.A
+    r3, x :: __main__.B
+    r4 :: None
+L0:
+    r0 = 0
+    r1 = box(short_int, r0)
+    r2 = foo(r1)
+    r3 = cast(__main__.B, r2)
+    x = r3
+    r4 = None
+    return r4
+
 [case testFunctionCallWithKeywordArgs]
 def f(x: int, y: str) -> None: pass
 

@@ -1033,7 +1033,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
                               code=codes.NO_UNTYPED_DEF)
                     if not has_return_statement(fdef) and not fdef.is_generator:
-                        self.note('Use "-> None" if function does not return a value', fdef)
+                        self.note('Use "-> None" if function does not return a value', fdef,
+                                  code=codes.NO_UNTYPED_DEF)
                 else:
                     self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef,
                               code=codes.NO_UNTYPED_DEF)
@@ -1653,7 +1654,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     name, name_in_super, supertype, node)
             if op_method_wider_note:
                 self.note("Overloaded operator methods can't have wider argument types"
-                          " in overrides", node)
+                          " in overrides", node, code=codes.OVERRIDE)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
@@ -2937,7 +2938,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Functions returning a value of type None are allowed to have a None return.
                     if is_lambda or isinstance(typ, NoneType):
                         return
-                    self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
+                    self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s,
+                              code=codes.RETURN_VALUE)
                 else:
                     self.check_subtype(
                         subtype_label='got',
@@ -2958,7 +2960,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
 
                 if self.in_checked_function():
-                    self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
+                    self.fail(message_registry.RETURN_VALUE_EXPECTED, s, code=codes.RETURN_VALUE)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         """Type check an if statement."""
@@ -3793,21 +3795,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             msg += ' (' + ', '.join(extra_info) + ')'
         self.fail(msg, context, code=code)
         for note in notes:
-            self.msg.note(note, context)
+            self.msg.note(note, context, code=code)
         if note_msg:
-            self.note(note_msg, context)
+            self.note(note_msg, context, code=code)
         if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
-            self.msg.report_protocol_problems(subtype, supertype, context)
+            self.msg.report_protocol_problems(subtype, supertype, context, code=code)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
             call = find_member('__call__', subtype, subtype)
             if call:
-                self.msg.note_call(subtype, call, context)
+                self.msg.note_call(subtype, call, context, code=code)
         if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
             if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
                 call = find_member('__call__', supertype, subtype)
                 assert call is not None
-                self.msg.note_call(supertype, call, context)
+                self.msg.note_call(supertype, call, context, code=code)
         return False
 
     def contains_none(self, t: Type) -> bool:
@@ -4048,9 +4050,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Produce an error message."""
         self.msg.fail(msg, context, code=code)
 
-    def note(self, msg: str, context: Context, offset: int = 0) -> None:
+    def note(self,
+             msg: str,
+             context: Context,
+             offset: int = 0,
+             *,
+             code: Optional[ErrorCode] = None) -> None:
         """Produce a note."""
-        self.msg.note(msg, context, offset=offset)
+        self.msg.note(msg, context, offset=offset, code=code)
 
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(

@@ -533,6 +533,9 @@ beyond what incremental mode can offer, try running mypy in
     change this folder. This flag can also be useful for controlling
     cache use when using :ref:`remote caching <remote-cache>`.
 
+    This setting will override the ``MYPY_CACHE_DIR`` environment
+    variable if it is set.
+
     Mypy will also always write to the cache even when incremental
     mode is disabled so it can "warm up" the cache. To disable
     writing to the cache, use ``--cache-dir=/dev/null`` (UNIX)
