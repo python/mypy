@@ -148,7 +148,7 @@ def read_py_file(path: str, read: Callable[[str], bytes],
 def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
     """Trim a line of source code to fit into max_len.
 
-    Show 'min_width' of characters around 'col' (an error location). If either
+    Show 'min_width' characters on each side of 'col' (an error location). If either
     start or end is trimmed, this is indicated by adding '...' there.
     A typical result looks like this:
         ...some_variable = function_to_call(one_arg, other_arg) or...
@@ -533,17 +533,20 @@ class FancyFormatter:
                 loc, msg = error.split('error:', maxsplit=1)
                 msg = soft_wrap(msg, width, first_offset=len(loc) + len('error: '))
                 new_messages[i] = loc + 'error:' + msg
-            if not error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
+            if error.startswith(' ' * DEFAULT_SOURCE_OFFSET) and '^' not in error:
                 # TODO: detecting source code highlights through an indent can be surprising.
-                continue
-            if '^' not in error:
+                # Restore original error message and error location.
+                error = error[DEFAULT_SOURCE_OFFSET:]
                 column = messages[i+1].index('^') - DEFAULT_SOURCE_OFFSET
-                # Let source have some space also on the right side.
-                source_line, offset = trim_source_line(error, width - DEFAULT_SOURCE_OFFSET,
-                                                       column, MINIMUM_WIDTH)
-                new_messages[i] = source_line
+
+                # Let source have some space also on the right side, plus 6
+                # to accommodate ... on each side.
+                max_len = width - DEFAULT_SOURCE_OFFSET - 6
+                source_line, offset = trim_source_line(error, max_len, column, MINIMUM_WIDTH)
+
+                new_messages[i] = ' ' * DEFAULT_SOURCE_OFFSET + source_line
                 # Also adjust the error marker position.
-                new_messages[i+1] = messages[i+1][offset:]
+                new_messages[i+1] = ' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + '^'
         return new_messages
 
     def colorize(self, error: str) -> str:

@@ -375,7 +375,7 @@ class Server:
         """Check using fine-grained incremental mode.
 
         If is_tty is True format the output nicely with colors and summary line
-        (unless disabled in self.options). Also path the terminal_width to formatter.
+        (unless disabled in self.options). Also pass the terminal_width to formatter.
         """
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)

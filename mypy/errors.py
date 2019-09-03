@@ -416,7 +416,7 @@ class Errors:
                         source_lines: Optional[List[str]]) -> List[str]:
         """Return a string list that represents the error messages.
 
-        Use a form suitable for displaying to the user. If add_snippets
+        Use a form suitable for displaying to the user. If self.pretty
         is True also append a relevant trimmed source code line (only for
         severity 'error').
         """
@@ -443,17 +443,20 @@ class Errors:
             if self.pretty:
                 # Add source code fragment and a location marker.
                 if severity == 'error' and source_lines and line > 0:
+                    source_line = source_lines[line - 1]
+                    if column < 0:
+                        # Something went wrong, take first non-empty column.
+                        column = len(source_line) - len(source_line.lstrip())
                     # Note, currently coloring uses the offset to detect source snippets,
                     # so these offsets should not be arbitrary.
-                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_lines[line - 1])
+                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
     def file_messages(self, path: str) -> List[str]:
         """Return a string list of new error messages from a given file.
 
-        Use a form suitable for displaying to the user. If add_snippets is True,
-        then one must also pass the source code and Python version.
+        Use a form suitable for displaying to the user.
         """
         if path not in self.error_info_map:
             return []
