@@ -64,7 +64,7 @@ def untyped(x) -> None:
     foo(x)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> None
+(Union[str, int, None], Optional[int]) -> None
 ==
 
 [case testSuggestInferFunc2]
@@ -100,7 +100,7 @@ from foo import bar
 bar(None)
 [out]
 (Any) -> Any
-(None) -> None
+(Optional[Any]) -> None
 ==
 
 [case testSuggestInferFuncAny2]
@@ -185,7 +185,7 @@ def foo(s):
 from foo import foo
 foo('lol')
 [out]
-(unicode) -> unicode
+(Text) -> Text
 ==
 
 [case testSuggestInferMethod1]
@@ -211,7 +211,7 @@ def bar() -> None:
     x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> object
+(Union[str, int, None], Optional[int]) -> object
 ==
 
 [case testSuggestInferMethod2]
@@ -238,7 +238,7 @@ def bar() -> None:
     a: Union[str, int] = x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> Union[int, str]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
 ==
 
 [case testSuggestInferMethod3]
@@ -259,7 +259,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, None]) -> None
+(Optional[str]) -> None
 
 [case testSuggestInferFunctionUnreachable]
 # flags: --strict-optional
@@ -304,7 +304,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, int, None], Union[int, None]) -> Union[int, str]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
 
 [case testSuggestInferNestedMethod]
 # flags: --strict-optional
@@ -405,8 +405,8 @@ def baz() -> None:
     foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> object
-(Union[str, int, None], Union[int, None]) -> None
+(Union[str, int, None], Optional[int]) -> object
+(Union[str, int, None], Optional[int]) -> None
 ==
 
 [case testSuggestInferFuncDecorator1]
