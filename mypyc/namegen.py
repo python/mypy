@@ -35,7 +35,8 @@ class NameGenerator:
     though not very usable.
     """
 
-    def __init__(self, module_names: Optional[List[str]] = None) -> None:
+    def __init__(self, module_names: List[str],
+                 *, is_separate: bool) -> None:
         """Initialize with names of all modules in the compilation unit.
 
         The names of modules are used to shorten names referring to
@@ -44,7 +45,7 @@ class NameGenerator:
         compilation unit will use long names.
         """
         module_names = module_names or []
-        self.module_map = make_module_translation_map(module_names)
+        self.module_map = make_module_translation_map(module_names, is_separate)
         self.translations = {}  # type: Dict[Tuple[str, str], str]
         self.used_names = set()  # type: Set[str]
 
@@ -88,14 +89,14 @@ def exported_name(fullname: str) -> str:
     return fullname.replace('___', '___3_').replace('.', '___')
 
 
-def make_module_translation_map(names: List[str]) -> Dict[str, str]:
+def make_module_translation_map(names: List[str], is_separate: bool = False) -> Dict[str, str]:
     num_instances = {}  # type: Dict[str, int]
     for name in names:
-        for suffix in candidate_suffixes(name):
+        for suffix in candidate_suffixes(name, is_separate):
             num_instances[suffix] = num_instances.get(suffix, 0) + 1
     result = {}
     for name in names:
-        for suffix in candidate_suffixes(name):
+        for suffix in candidate_suffixes(name, is_separate):
             if num_instances[suffix] == 1:
                 result[name] = suffix
                 break
@@ -104,9 +105,9 @@ def make_module_translation_map(names: List[str]) -> Dict[str, str]:
     return result
 
 
-def candidate_suffixes(fullname: str) -> List[str]:
+def candidate_suffixes(fullname: str, is_separate: bool = False) -> List[str]:
     components = fullname.split('.')
     result = ['']
     for i in range(len(components)):
         result.append('.'.join(components[-i - 1:]) + '.')
-    return result
+    return result if not is_separate else [result[-1]]

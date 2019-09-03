@@ -58,7 +58,7 @@ class EmitterContext:
                  group_map: Optional[Dict[str, Optional[str]]] = None,
                  shared_lib_name: Optional[str] = None) -> None:
         self.temp_counter = 0
-        self.names = NameGenerator(module_names)
+        self.names = NameGenerator(module_names, is_separate=group_map is not None)
         self.group_map = group_map or {}
         self.shared_lib_name = shared_lib_name
         self.library_deps = set()  # type: Set[str]
