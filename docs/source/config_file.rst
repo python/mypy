@@ -401,6 +401,11 @@ section of the command line docs.
 ``show_column_numbers`` (bool, default False)
     Shows column numbers in error messages.
 
+``color_output`` (bool, default True)
+    Shows error messages with color enabled.
+
+``error_summary`` (bool, default True)
+    Shows error messages with any stats summary.
 
 Advanced options
 ----------------
