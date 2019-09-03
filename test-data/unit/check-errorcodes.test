@@ -252,6 +252,10 @@ class OO(O):
 def f() -> int:
     return ''  # E: Incompatible return value type (got "str", expected "int")  [return-value]
 
+[case testErrorCodeMissingReturnValueInReturnStatement]
+def f() -> int:
+    return  # E: Return value expected  [return-value]
+
 [case testErrorCodeAssignment]
 x: str = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
 
