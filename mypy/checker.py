@@ -26,7 +26,7 @@ from mypy.nodes import (
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
-)
+    ARG_NAMED)
 from mypy import nodes
 from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
@@ -1647,6 +1647,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
             self.binder = old_binder
+            for base in typ.mro[1:]:
+                if base.name() != 'object' and base.defn.info:
+                    for method_name, method_symbol_node in base.defn.info.names.items():
+                        if method_name == '__init_subclass__':
+                            name_expr = NameExpr(defn.name)
+                            name_expr.node = typ
+                            callee = MemberExpr(name_expr, '__init_subclass__')
+                            args = list(defn.keywords.values())
+                            arg_names = list(defn.keywords.keys())
+                            arg_kinds = [ARG_NAMED] * len(args)
+                            call_expr = CallExpr(callee, args, arg_kinds, arg_names)
+                            call_expr.line = defn.line
+                            call_expr.end_line = defn.end_line
+                            self.expr_checker.accept(call_expr, allow_none_return=True, always_allow_any=True)
+                            break
+
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
