@@ -163,6 +163,29 @@ from defusedxml import xyz  # type: ignore[import]
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
+[case testErrorCodeBadIgnore]
+import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo]]  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo][bar]  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo] [bar]  # E: Invalid "type: ignore" comment  [syntax]
+
+x = 0  # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+
+[case testErrorCodeBadIgnoreNoExtraComment]
+# Omit the E: ... comments, as they affect parsing
+import nostub # type: ignore xyz
+import nostub # type: ignore[xyz
+import nostub # type: ignore[xyz][xyz]
+x = 0  # type: ignore[
+[out]
+main:2: error: Invalid "type: ignore" comment  [syntax]
+main:3: error: Invalid "type: ignore" comment  [syntax]
+main:4: error: Invalid "type: ignore" comment  [syntax]
+main:5: error: Invalid "type: ignore" comment  [syntax]
+
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
 f()  # E: Too few arguments for "f"  [call-arg]

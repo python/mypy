@@ -170,13 +170,16 @@ def parse(source: Union[str, bytes],
     return tree
 
 
-def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
-    # TODO: Implement proper parsing and error checking
+def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
     if not tag:
         return []
-    m = re.match(r'\s*\[([^#]*)\]', tag)
+    m = re.match(r'\s*\[([^]#]*)\]\s*(#.*)?$', tag)
     if m is None:
-        return []
+        if tag.strip() == '':
+            return []
+        else:
+            # Invalid "# type: ignore" comment.
+            return None
     return [code.strip() for code in m.group(1).split(',')]
 
 
@@ -206,6 +209,9 @@ def parse_type_comment(type_comment: str,
             # Typeshed has a non-optional return type for group!
             tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
             ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
+            if ignored is None:
+                errors.report(line, e.offset, 'Invalid "# type: ignore" comment',
+                              code=codes.SYNTAX)
         else:
             ignored = None
         assert isinstance(typ, ast3_Expression)
@@ -451,8 +457,13 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
-                             for ti in mod.type_ignores}
+        self.type_ignores = {}
+        for ti in mod.type_ignores:
+            parsed = parse_type_ignore_tag(ti.tag)
+            if parsed is not None:
+                self.type_ignores[ti.lineno] = parsed
+            else:
+                self.fail('Invalid "type: ignore" comment', ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
