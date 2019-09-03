@@ -379,7 +379,7 @@ class B(A):
 [case testOverride__init_subclass__WithDifferentSignature]
 class A:
     def __init_subclass__(cls, x: int) -> None: pass
-class B(A):
+class B(A):  # E: Too few arguments for "__init_subclass__" of "A"
     def __init_subclass__(cls) -> None: pass
 
 [case testOverrideWithDecorator]
