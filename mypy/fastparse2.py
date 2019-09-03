@@ -344,7 +344,7 @@ class ASTConverter:
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
         self.type_ignores = {}
         for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)
+            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
@@ -557,8 +557,14 @@ class ASTConverter:
                 extra_ignore = TYPE_IGNORE_PATTERN.match(comment)
                 if extra_ignore:
                     tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
-                    ignored = parse_type_ignore_tag(tag)
-                    self.type_ignores[converter.line] = ignored
+                    if not tag.strip().startswith('#'):
+                        ignored = parse_type_ignore_tag(tag)
+                    else:
+                        ignored = []
+                    if ignored is None:
+                        self.fail('Invalid "type: ignore" comment', converter.line, -1)
+                    else:
+                        self.type_ignores[converter.line] = ignored
                 return typ
         return None
 

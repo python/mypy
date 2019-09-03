@@ -124,7 +124,7 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(\[[^[#]*\]\s*)?($|#)')
+TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*\b(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -208,10 +208,16 @@ def parse_type_comment(type_comment: str,
         if extra_ignore:
             # Typeshed has a non-optional return type for group!
             tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
-            ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
+            if not tag.strip().startswith('#'):
+                ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
+            else:
+                ignored = []  # Ignore everything
             if ignored is None:
-                errors.report(line, e.offset, 'Invalid "# type: ignore" comment',
-                              code=codes.SYNTAX)
+                if errors is not None:
+                    errors.report(line, column, 'Invalid "type: ignore" comment',
+                                  code=codes.SYNTAX)
+                else:
+                    raise SyntaxError
         else:
             ignored = None
         assert isinstance(typ, ast3_Expression)
@@ -459,7 +465,7 @@ class ASTConverter:
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
         for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)
+            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
