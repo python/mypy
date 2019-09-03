@@ -435,7 +435,7 @@ def soft_wrap(msg: str, max_len: int, first_offset: int,
         next_word = words.pop(0)
         max_line_len = max_len - num_indent if lines else max_len - first_offset
         # Add 1 to account for space between words.
-        if len(next_line) + len(next_word) + 1 < max_line_len:
+        if len(next_line) + len(next_word) + 1 <= max_line_len:
             next_line += ' ' + next_word
         else:
             lines.append(next_line)

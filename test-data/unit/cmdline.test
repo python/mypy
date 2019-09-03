@@ -1388,33 +1388,8 @@ Found 2 errors in 2 files (checked 2 source files)
 mypy: can't read file 'missing.py': No such file or directory
 == Return code: 2
 
-[case testShowSourceCodeSnippetsDefaultFormatting]
-# cmd: mypy --show-source-code --no-color-output --python-version=3.6 some_file.py
-[file some_file.py]
-from typing import Union
-
-42 + 'no way'
-
-class OneCustomClassName:
-    def some_interesting_method(self, arg: AnotherCustomClassDefinedBelow) -> AnotherCustomClassDefinedBelow:
-        ...
-
-class AnotherCustomClassDefinedBelow:
-    def another_even_more_interesting_method(self, arg: Union[int, str, float]) -> None:
-        self.very_important_attribute_with_long_name: OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
-[out]
-some_file.py:3: error: Unsupported operand types for + ("int" and "str")
-    42 + 'no way'
-    ^~~~~~~~ [operator]
-some_file.py:11: error: Incompatible types in assignment (expression has type "AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
-            self.very_important_attribute_with_long_name: OneCustomClassName = OneCu...
-            ^~~~~~~~ [assignment]
-some_file.py:11: error: Argument 1 to "some_interesting_method" of "OneCustomClassName" has incompatible type "Union[int, str, float]"; expected "AnotherCustomClassDefinedBelow"
-    ...ry_important_attribute_with_long_name: OneCustomClassName = OneCustomClassName()...
-                                                                   ^~~~~~~~ [arg-type]
-
 [case testShowSourceCodeSnippetsWrappedFormatting]
-# cmd: mypy --show-source-code --python-version=3.6 some_file.py
+# cmd: mypy --pretty --python-version=3.6 some_file.py
 [file some_file.py]
 from typing import Union
 
@@ -1430,25 +1405,23 @@ class AnotherCustomClassDefinedBelow:
 [out]
 some_file.py:3: error: Unsupported operand types for + ("int" and "str")
     42 + 'no way'
-    ^~~~~~~~ [operator]
+    ^
 some_file.py:11: error: Incompatible types in assignment (expression has type
-                        "AnotherCustomClassDefinedBelow", variable has type
-                        "OneCustomClassName")
-            self.very_important_attribute_with_long_name: OneCustomClassName = OneCu...
-            ^~~~~~~~ [assignment]
+"AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
+            self.very_important_attribute_with_long_name: OneCustomClassName...
+            ^
 some_file.py:11: error: Argument 1 to "some_interesting_method" of
-                        "OneCustomClassName" has incompatible type
-                        "Union[int, str, float]"; expected
-                        "AnotherCustomClassDefinedBelow"
-    ...ry_important_attribute_with_long_name: OneCustomClassName = OneCustomClassName()...
-                                                                   ^~~~~~~~ [arg-type]
+"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"AnotherCustomClassDefinedBelow"
+...ry_important_attribute_with_long_name: OneCustomClassName = OneCustomClassNa...
+                                                               ^
 
 [case testShowSourceCodeSnippetsBlockingError]
-# cmd: mypy --show-source-code some_file.py
+# cmd: mypy --pretty --show-error-codes some_file.py
 [file some_file.py]
 it_looks_like_we_started_typing_something_but_then. = did_not_notice(an_extra_dot)
 [out]
-some_file.py:1: error: invalid syntax
-    it_looks_like_we_started_typing_something_but_then. = did_not_notice(an_extra_do...
-                                                         ^~~~~~~~ [syntax]
+some_file.py:1: error: invalid syntax  [syntax]
+    it_looks_like_we_started_typing_something_but_then. = did_not_notice(an_...
+                                                         ^
 == Return code: 2
