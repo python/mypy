@@ -6,14 +6,19 @@ Error codes
 Mypy can optionally display an error code such as ``[attr-defined]``
 after each error message. Error codes serve two purposes:
 
-1. It's possible to silence specific error codes on a line using
-   ``# type: ignore[code]``.
+1. It's possible to silence specific error codes on a line using ``#
+   type: ignore[code]``. This way you won't accidentally ignore other,
+   potentially more serious errors.
+
 2. The error code can be used to find documentation about the error.
+   The next two topics (:ref:`error-code-list` and
+   :ref:`error-codes-optional`) document the various error codes
+   mypy can report.
 
 Most error codes are shared between multiple related error messages.
 Error codes may change in future mypy releases.
 
-The next two topics document the various error codes mypy can report.
+
 
 Displaying error codes
 ----------------------
