@@ -6184,3 +6184,14 @@ class Base:
 class Child(Base, thing=5, default_name=""):
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithMetaclassOK]
+class Base(type):
+    thing: int
+
+    def __init_subclass__(cls, thing: int):
+        cls.thing = thing
+
+
+class Child(Base, metaclass=Base, thing=0):
+    pass
