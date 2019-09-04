@@ -275,7 +275,7 @@ class ASTConverter:
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
     def note(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg, severity='note')
+        self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def fail(self,
              msg: str,
@@ -1288,7 +1288,7 @@ class TypeConverter:
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, severity='note')
+            self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]

@@ -261,6 +261,8 @@ def analyze_type_type_member_access(name: str,
         upper_bound = get_proper_type(typ.item.upper_bound)
         if isinstance(upper_bound, Instance):
             item = upper_bound
+        elif isinstance(upper_bound, TupleType):
+            item = tuple_fallback(upper_bound)
     elif isinstance(typ.item, TupleType):
         item = tuple_fallback(typ.item)
     elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():

@@ -416,6 +416,8 @@ section of the command line docs.
 ``cache_dir`` (string, default ``.mypy_cache``)
     Specifies the location where mypy stores incremental cache info.
     User home directory and environment variables will be expanded.
+    This setting will be overridden by the ``MYPY_CACHE_DIR`` environment
+    variable.
 
     Note that the cache is only read when incremental mode is enabled
     but is always written to, unless the value is set to ``/dev/nul``
@@ -439,6 +441,11 @@ section of the command line docs.
 ``show_column_numbers`` (bool, default False)
     Shows column numbers in error messages.
 
+``color_output`` (bool, default True)
+    Shows error messages with color enabled.
+
+``error_summary`` (bool, default True)
+    Shows a short summary line after error messages.
 
 Advanced options
 ----------------

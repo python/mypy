@@ -738,7 +738,7 @@ class C: pass
 
 a = None # type: A
 
-(a, a) + a  # E: Unsupported left operand type for + ("Tuple[A, A]")
+(a, a) + a  # E: Unsupported operand types for + ("Tuple[A, A]" and "A")
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
 (a, a).foo  # E: "Tuple[A, A]" has no attribute "foo"
@@ -1231,5 +1231,13 @@ reveal_type(tup[1])  # N: Revealed type is 'Union[builtins.str, builtins.int*]'
 reveal_type(tup[2])  # N: Revealed type is 'Union[Any, builtins.int*]' \
                      # E: Tuple index out of range
 reveal_type(tup[:])  # N: Revealed type is 'Union[Tuple[builtins.int, builtins.str], builtins.list[builtins.int*]]'
+
+[builtins fixtures/tuple.pyi]
+
+[case testFixedLengthTupleConcatenation]
+a = (1, "foo", 3)
+b = ("bar", 7)
+
+reveal_type(a + b)  # N: Revealed type is 'Tuple[builtins.int, builtins.str, builtins.int, builtins.str, builtins.int]'
 
 [builtins fixtures/tuple.pyi]

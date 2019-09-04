@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
 from mypy.dmypy_os import alive, kill
-from mypy.util import check_python_version
+from mypy.util import check_python_version, get_terminal_width
 
 from mypy.version import __version__
 
@@ -466,6 +466,10 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args['command'] = command
+    # Tell the server whether this request was initiated from a human-facing terminal,
+    # so that it can format the type checking output accordingly.
+    args['is_tty'] = sys.stdout.isatty()
+    args['terminal_width'] = get_terminal_width()
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:

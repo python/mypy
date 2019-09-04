@@ -64,7 +64,7 @@ def untyped(x) -> None:
     foo(x)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> None
+(Union[str, int, None], Optional[int]) -> None
 ==
 
 [case testSuggestInferFunc2]
@@ -100,7 +100,7 @@ from foo import bar
 bar(None)
 [out]
 (Any) -> Any
-(None) -> None
+(Optional[Any]) -> None
 ==
 
 [case testSuggestInferFuncAny2]
@@ -185,7 +185,7 @@ def foo(s):
 from foo import foo
 foo('lol')
 [out]
-(unicode) -> unicode
+(Text) -> Text
 ==
 
 [case testSuggestInferMethod1]
@@ -211,7 +211,7 @@ def bar() -> None:
     x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> object
+(Union[str, int, None], Optional[int]) -> object
 ==
 
 [case testSuggestInferMethod2]
@@ -238,7 +238,7 @@ def bar() -> None:
     a: Union[str, int] = x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> Union[int, str]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
 ==
 
 [case testSuggestInferMethod3]
@@ -259,7 +259,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, None]) -> None
+(Optional[str]) -> None
 
 [case testSuggestInferFunctionUnreachable]
 # flags: --strict-optional
@@ -304,7 +304,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, int, None], Union[int, None]) -> Union[int, str]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
 
 [case testSuggestInferNestedMethod]
 # flags: --strict-optional
@@ -322,6 +322,53 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (str) -> str
+==
+
+[case testSuggestCallable]
+# flags: --strict-optional
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: --flex-any=0.9 foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+[file foo.py]
+def foo(f):
+    return f(0, "lol")
+def bar(f):
+    return f(0, "lol", 100)
+def baz(f):
+    return f(y=1) + f(x=10, y=1)
+def quux(f):
+    return f(1)
+[file bar.py]
+from typing import Any
+from foo import foo, bar, baz, quux
+
+def whatever(x: int, y: str) -> int:
+    return 0
+
+def starargs(*args: Any) -> int:
+    return 0
+
+def named(*, x: int = 0, y: int) -> str:
+    return '0'
+
+# we don't properly handle default really. we just assume it is
+# actually required.
+def default(x: int = 0) -> str:
+    return '0'
+
+def test() -> None:
+    foo(whatever)
+    bar(starargs)
+    baz(named)
+    quux(default)
+[out]
+(Callable[[int, str], int]) -> int
+(Callable[..., int]) -> int
+No guesses that match criteria!
+(Callable[..., str]) -> str
+(Callable[[int], str]) -> str
 ==
 
 [case testSuggestNewSemanal]
@@ -358,8 +405,8 @@ def baz() -> None:
     foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> object
-(Union[str, int, None], Union[int, None]) -> None
+(Union[str, int, None], Optional[int]) -> object
+(Union[str, int, None], Optional[int]) -> None
 ==
 
 [case testSuggestInferFuncDecorator1]

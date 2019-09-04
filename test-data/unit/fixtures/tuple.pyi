@@ -1,6 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple
 
 Tco = TypeVar('Tco', covariant=True)
 
@@ -15,6 +15,7 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, x: int) -> Tco: pass
     def __rmul__(self, n: int) -> tuple: pass
+    def __add__(self, x: Tuple[Tco, ...]) -> Tuple[Tco, ...]: pass
     def count(self, obj: Any) -> int: pass
 class function: pass
 class ellipsis: pass

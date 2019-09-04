@@ -3084,12 +3084,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Standard native call if signature and fullname are good and all arguments are positional
         # or named.
-        if (callee.node is not None
+        callee_node = callee.node
+        if isinstance(callee_node, OverloadedFuncDef):
+            callee_node = callee_node.impl
+        if (callee_node is not None
                 and callee.fullname is not None
-                and callee.node in self.mapper.func_to_decl
+                and callee_node in self.mapper.func_to_decl
                 and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)):
-            decl = self.mapper.func_to_decl[callee.node]
-
+            decl = self.mapper.func_to_decl[callee_node]
             return self.call(decl, arg_values, expr.arg_kinds, expr.arg_names, expr.line)
 
         # Fall back to a Python call
