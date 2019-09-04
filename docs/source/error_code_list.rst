@@ -39,6 +39,10 @@ target module can be found):
     # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
     from os import non_existent
 
+A reference to a missing attribute is given the ``Any`` type. In the
+above example, the type of ``non_existent`` will be ``Any``, which can
+be important if you silence the error.
+
 Check that attribute exists in each union item [union-attr]
 -----------------------------------------------------------
 
