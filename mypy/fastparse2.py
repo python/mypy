@@ -47,7 +47,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
     TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
-    TYPE_IGNORE_PATTERN
+    TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
 )
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
@@ -348,7 +348,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail('Invalid "type: ignore" comment', ti.lineno, -1)
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
         return MypyFile(body,
                         self.imports,
@@ -563,7 +563,7 @@ class ASTConverter:
                     else:
                         ignored = []
                     if ignored is None:
-                        self.fail('Invalid "type: ignore" comment', converter.line, -1)
+                        self.fail(INVALID_TYPE_IGNORE, converter.line, -1)
                     else:
                         self.type_ignores[converter.line] = ignored
                 return typ

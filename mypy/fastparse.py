@@ -124,6 +124,8 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
+INVALID_TYPE_IGNORE = 'Invalid "type: ignore" comment'  # type: Final
+
 TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*\b(.*)')
 
 
@@ -215,8 +217,7 @@ def parse_type_comment(type_comment: str,
                 ignored = []  # Ignore everything
             if ignored is None:
                 if errors is not None:
-                    errors.report(line, column, 'Invalid "type: ignore" comment',
-                                  code=codes.SYNTAX)
+                    errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
                 else:
                     raise SyntaxError
         else:
@@ -470,7 +471,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail('Invalid "type: ignore" comment', ti.lineno, -1)
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
