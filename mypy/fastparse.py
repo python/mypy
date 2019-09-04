@@ -174,6 +174,7 @@ def parse(source: Union[str, bytes],
 
 def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
     if not tag or tag.strip() == '' or tag.strip().startswith('#'):
+        # No tag -- ignore all errors.
         return []
     m = re.match(r'\s*\[([^]#]*)\]\s*(#.*)?$', tag)
     if m is None:
