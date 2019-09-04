@@ -24,6 +24,29 @@ a.py:1: error: invalid syntax
 main:2: error: Too few arguments for "f"
 ==
 
+[case testParseErrorShowSource]
+# flags: --pretty --show-error-codes
+import a
+a.f()
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+def f(x: int) ->
+[file a.py.3]
+def f(x: int) -> None: pass
+[file a.py.4]
+def f() -> None: pass
+[out]
+==
+a.py:1: error: invalid syntax  [syntax]
+    def f(x: int) ->
+                     ^
+==
+main:3: error: Too few arguments for "f"  [call-arg]
+    a.f()
+    ^
+==
+
 [case testParseErrorMultipleTimes]
 import a
 a.f()
