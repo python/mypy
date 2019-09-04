@@ -66,6 +66,8 @@ def main(script_path: Optional[str],
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
+        if options.pretty:
+            new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
         f = stderr if serious else stdout
         try:
@@ -581,6 +583,11 @@ def process_options(args: List[str],
                         group=error_group)
     add_invertible_flag('--show-error-codes', default=False,
                         help="Show error codes in error messages",
+                        group=error_group)
+    add_invertible_flag('--pretty', default=False,
+                        help="Use visually nicer output in error messages:"
+                             " Use soft word wrap, show source code snippets,"
+                             " and error location markers",
                         group=error_group)
     add_invertible_flag('--no-color-output', dest='color_output', default=True,
                         help="Do not colorize error messages",
