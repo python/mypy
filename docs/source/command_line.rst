@@ -449,6 +449,22 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
+``--no-color-output``
+    This flag will disable color output in error messages, enabled by default.
+
+``--error-summary``
+    This flag will show error messages with stats summary,
+    for example, the following indicates an error summary::
+        from typing import List
+        x = []  # type: List[float]
+        y = []  # type: List[int]
+        x = y
+        bad.py:4: error: Incompatible types in assignment (expression has type
+        "List[int]", variable has type "List[float]")
+        bad.py:4: note: "List" is invariant -- see
+        http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+        bad.py:4: note: Consider using "Sequence" instead, which is covariant
+        Found 1 error in 1 file (checked 1 source file)
 
 .. _incremental:
 
