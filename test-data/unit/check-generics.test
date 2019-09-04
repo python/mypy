@@ -2060,3 +2060,5 @@ class A:
     def __iter__(self) -> Any: ...
 
 x, y = A()
+reveal_type(x)  # N: Revealed type is 'Any'
+reveal_type(y)  # N: Revealed type is 'Any'
