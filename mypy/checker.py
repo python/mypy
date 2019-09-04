@@ -1677,7 +1677,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
 
-    def check_init_subclass(self, defn: ClassDef):
+    def check_init_subclass(self, defn: ClassDef) -> None:
         """
         Check that the number of args to __init_subclass__, as well as typing are  both correct
         In this example:
@@ -1726,6 +1726,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # we are only interested in the first Base having __init_subclass__
                         # all other (highest) bases have already been checked
                         break
+        return
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
