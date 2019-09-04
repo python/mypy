@@ -100,10 +100,20 @@ Example:
 
     # mypy: strict-equality
 
-    def is_magic(x: int) -> bool:
-        # Error: Non-overlapping equality check (left operand type: "int",
+    def is_magic(x: bytes) -> bool:
+        # Error: Non-overlapping equality check (left operand type: "bytes",
         #        right operand type: "str")  [comparison-overlap]
         return x == 'magic'
+
+We can fix the error by changing the string literal to a bytes
+literal:
+
+.. code-block:: python
+
+    # mypy: strict-equality
+
+    def is_magic(x: bytes) -> bool:
+        return x == b'magic'  # OK
 
 Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------

@@ -134,6 +134,30 @@ When you call an overloaded function, mypy checks that at least one of
 the signatures of the overload items match the argument types in the
 call.
 
+Example:
+
+.. code-block:: python
+
+   from typing import overload, Optional
+
+   @overload
+   def inc_maybe(x: None) -> None: ...
+
+   @overload
+   def inc_maybe(x: int) -> int: ...
+
+   def inc_maybe(x: Optional[int]) -> Optional[int]:
+        if x is None:
+            return None
+        else:
+            return x + 1
+
+   inc_maybe(None)  # OK
+   inc_maybe(5)  # OK
+
+   # Error: No overload variant of "inc_maybe" matches argument type "float"  [call-overload]
+   inc_maybe(1.2)
+
 Check validity of types [valid-type]
 ------------------------------------
 
@@ -142,6 +166,31 @@ represents a type is a valid type. Examples of valid types include
 classes, union types, callable types, type aliases, and literal types.
 Examples of invalid types include bare integer literals, functions,
 variables, and modules.
+
+This example incorrectly uses the function ``log`` as a type:
+
+.. code-block:: python
+
+   from typing import List
+
+   def log(x: object) -> None:
+       print('log:', repr(x))
+
+   # Error: Function "t.log" is not valid as a type  [valid-type]
+   def log_all(objs: List[object], f: log) -> None:
+       for x in objs:
+           f(x)
+
+You can use ``Callable`` as the type for callable objects:
+
+.. code-block:: python
+
+   from typing import List, Callable
+
+   # OK
+   def log_all(objs: List[object], f: Callable[[object], None]) -> None:
+       for x in objs:
+           f(x)
 
 Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
@@ -365,21 +414,44 @@ Example:
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
 
-
 Check that type of target is known [has-type]
 ---------------------------------------------
 
 Mypy sometimes generates an error when it hasn't inferred any type for
 a variable being referenced. This can happen for references to
-variables that have not been initialized yet, and for references
-across modules that form an import cycle. When this happens, the
-reference gets an implicit ``Any`` type.
+variables that are initialized later in the source file, and for
+references across modules that form an import cycle. When this
+happens, the reference gets an implicit ``Any`` type.
+
+In this example the definitions of ``x`` and ``y`` are circular:
+
+.. code-block:: python
+
+   class Problem:
+       def set_x(self) -> None:
+           # Error: Cannot determine type of 'y'  [has-type]
+           self.x = self.y
+
+       def set_y(self) -> None:
+           self.y = self.x
 
 To work around this error, you can add an explicit type annotation to
 the target variable or attribute. Sometimes you can also reorganize
 the code so that the definition of the variable is placed earlier than
 the reference to the variable in a source file. Untangling cyclic
 imports may also help.
+
+We add an explicit annotation to the ``y`` attribute to work around
+the issue:
+
+.. code-block:: python
+
+   class Problem:
+       def set_x(self) -> None:
+           self.x = self.y  # OK
+
+       def set_y(self) -> None:
+           self.y: int = self.x  # Added annotation here
 
 Check that import target can be found [import]
 ----------------------------------------------
