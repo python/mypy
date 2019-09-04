@@ -173,7 +173,7 @@ def parse(source: Union[str, bytes],
 
 
 def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
-    if not tag or tag.strip() == '':
+    if not tag or tag.strip() == '' or tag.strip().startswith('#'):
         return []
     m = re.match(r'\s*\[([^]#]*)\]\s*(#.*)?$', tag)
     if m is None:
@@ -207,11 +207,7 @@ def parse_type_comment(type_comment: str,
         if extra_ignore:
             # Typeshed has a non-optional return type for group!
             tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
-            assert tag is not None
-            if not tag.strip().startswith('#'):
-                ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
-            else:
-                ignored = []  # Ignore everything
+            ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
             if ignored is None:
                 if errors is not None:
                     errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
