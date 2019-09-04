@@ -52,6 +52,32 @@ Daemon stopped
 [file foo.py]
 def f(): pass
 
+[case testDaemonRunRestartPretty]
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Success: no issues found in 1 source file
+$ {python} -c "print('[mypy]')" >mypy.ini
+$ {python} -c "print('disallow_untyped_defs = True')" >>mypy.ini
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Restarting: configuration changed
+Daemon stopped
+Daemon started
+foo.py:1: error: Function is missing a return type annotation
+    def f(): pass
+    ^
+foo.py:1: note: Use "-> None" if function does not return a value
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ {python} -c "print('def f() -> None: pass')" >foo.py
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
 [case testDaemonRunRestartPluginVersion]
 $ dmypy run -- foo.py --no-error-summary
 Daemon started
