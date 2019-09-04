@@ -64,7 +64,16 @@ import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
-ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, MessageBuilder],
+ArgChecker = Callable[[Type,
+                       Type,
+                       int,
+                       Type,
+                       int,
+                       int,
+                       CallableType,
+                       Context,
+                       Context,
+                       MessageBuilder],
                       None]
 
 # Maximum nesting level for math union in overloads, setting this to large values
@@ -1304,12 +1313,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee.arg_names[i], callee.arg_kinds[i])
                 check_arg(expanded_actual, actual_type, arg_kinds[actual],
                           callee.arg_types[i],
-                          actual + 1, i + 1, callee, args[actual], messages)
+                          actual + 1, i + 1, callee, args[actual], context, messages)
 
-    def check_arg(self, caller_type: Type, original_caller_type: Type,
+    def check_arg(self,
+                  caller_type: Type,
+                  original_caller_type: Type,
                   caller_kind: int,
-                  callee_type: Type, n: int, m: int, callee: CallableType,
-                  context: Context, messages: MessageBuilder) -> None:
+                  callee_type: Type,
+                  n: int,
+                  m: int,
+                  callee: CallableType,
+                  context: Context,
+                  outer_context: Context,
+                  messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
         caller_type = get_proper_type(caller_type)
         original_caller_type = get_proper_type(original_caller_type)
@@ -1327,8 +1343,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
-            code = messages.incompatible_argument(n, m, callee, original_caller_type,
-                                                  caller_kind, context)
+            code = messages.incompatible_argument(n,
+                                                  m,
+                                                  callee,
+                                                  original_caller_type,
+                                                  caller_kind,
+                                                  context=context,
+                                                  outer_context=outer_context)
             messages.incompatible_argument_note(original_caller_type, callee_type, context,
                                                 code=code)
 
@@ -1778,9 +1799,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Too few or many arguments -> no match.
             return False
 
-        def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,
-                      callee_type: Type, n: int, m: int, callee: CallableType,
-                      context: Context, messages: MessageBuilder) -> None:
+        def check_arg(caller_type: Type,
+                      original_ccaller_type: Type,
+                      caller_kind: int,
+                      callee_type: Type,
+                      n: int,
+                      m: int,
+                      callee: CallableType,
+                      context: Context,
+                      outer_context: Context,
+                      messages: MessageBuilder) -> None:
             if not arg_approximate_similarity(caller_type, callee_type):
                 # No match -- exit early since none of the remaining work can change
                 # the result.
