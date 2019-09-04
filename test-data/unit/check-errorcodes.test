@@ -642,3 +642,19 @@ class A:
 def g(self: A) -> None: pass
 
 A.f = g  # E: Cannot assign to a method  [assignment]
+
+[case testErrorCodeTypeIgnoreMisspelled1]
+x = y  # type: ignored[foo]
+xx = y  # type: ignored [foo]
+[out]
+main:1: error: Name 'ignored' is not defined  [name-defined]
+main:1: error: Name 'y' is not defined  [name-defined]
+main:2: error: Name 'ignored' is not defined  [name-defined]
+main:2: error: Name 'y' is not defined  [name-defined]
+
+[case testErrorCodeTypeIgnoreMisspelled2]
+x = y  # type: int  # type: ignored[foo]
+x = y  # type: int  # type: ignored [foo]
+[out]
+main:1: error: syntax error in type comment 'int'  [syntax]
+main:2: error: syntax error in type comment 'int'  [syntax]

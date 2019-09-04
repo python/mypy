@@ -126,7 +126,7 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
 INVALID_TYPE_IGNORE = 'Invalid "type: ignore" comment'  # type: Final
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*\b(.*)')
+TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
