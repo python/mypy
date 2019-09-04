@@ -355,12 +355,33 @@ Mypy checks that operands support a binary or unary operation, such as
 ``+`` or ``~``. Indexing operations are so common that they have their
 own error code ``index`` (see below).
 
+Example:
+
+.. code-block:: python
+
+   # Error: Unsupported operand types for + ("int" and "str")  [operator]
+   1 + 'x'
+
 Check indexing operations [index]
 ---------------------------------
 
 Mypy checks that the indexed value in indexing operation such as
 ``x[y]`` supports indexing, and that the index expression has a valid
 type.
+
+Example:
+
+.. code-block:: python
+
+   a = {'x': 1, 'y': 2}
+
+   a['x']  # OK
+
+   # Error: Invalid index type "int" for "Dict[str, int]"; expected type "str"  [index]
+   print(a[1])
+
+   # Error: Invalid index type "bytes" for "Dict[str, int]"; expected type "str"  [index]
+   a[b'x'] = 4
 
 Check list items [list-item]
 ----------------------------
@@ -556,7 +577,21 @@ be a union type, ``Any``, or various other special types.
 
 You can also get this error if the target has been imported from a
 module whose source mypy cannot find, since any such definitions are
-treated by mypy as values with ``Any`` types.
+treated by mypy as values with ``Any`` types. Example:
+
+.. code-block:: python
+
+   from typing import NewType
+
+   # The source for "acme" is not available for mypy
+   from acme import Entity  # type: ignore
+
+   # Error: Argument 2 to NewType(...) must be subclassable (got "Any")  [valid-newtype]
+   UserEntity = NewType('UserEntity', Entity)
+
+To work around the issue, you can either give mypy access to the sources
+for ``acme`` or create a stub file for the module.  See :ref:`ignore-missing-imports`
+for more information.
 
 Report syntax errors [syntax]
 -----------------------------
