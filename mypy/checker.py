@@ -4075,7 +4075,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(ret_type, Instance):
                 iterator = map_instance_to_supertype(ret_type,
                                                      self.lookup_typeinfo('typing.Iterator'))
-            item_type = iterator.args[0]
+                item_type = iterator.args[0]
         return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:
