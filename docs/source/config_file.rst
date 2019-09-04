@@ -405,7 +405,7 @@ section of the command line docs.
     Shows error messages with color enabled.
 
 ``error_summary`` (bool, default True)
-    Shows error messages with any stats summary.
+    Shows a short summary line after error messages.
 
 Advanced options
 ----------------
