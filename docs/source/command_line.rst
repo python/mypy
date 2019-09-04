@@ -453,9 +453,9 @@ in error messages.
     This flag will disable color output in error messages, enabled by default.
 
 ``--no-error-summary``
-    This flag will show error messages with stats summary, enabled by default.
-    By default mypy shows a summary line including total number of errors,
-    number of files with errors, and number of files checked.
+    This flag will disable error summary. By default mypy shows a summary line
+    including total number of errors, number of files with errors, and number
+    of files checked.
 
 .. _incremental:
 
