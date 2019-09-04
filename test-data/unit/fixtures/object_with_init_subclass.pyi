@@ -1,9 +1,8 @@
 from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic
 
-
 class object:
-    def __init__(self) -> None: pass
-    def __init_subclass__(cls, **kwargs) -> None: pass
+    def __init__(self) -> None: ...
+    def __init_subclass__(cls) -> None: ...
 
 T = TypeVar('T')
 KT = TypeVar('KT')
