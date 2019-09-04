@@ -39,8 +39,8 @@ Example:
 Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
 
-If you use ``--disallow-untyped-defs``, mypy requires that each function
-has an annotation (either a Python 3 annotation or a type comment).
+If you use ``--disallow-untyped-defs``, mypy requires that all functions
+have annotations (either a Python 3 annotation or a type comment).
 
 Example:
 

@@ -4,11 +4,14 @@ Error codes
 ===========
 
 Mypy can optionally display an error code such as ``[attr-defined]``
-after error messages. Error codes serve two purposes:
+after each error message. Error codes serve two purposes:
 
 1. It's possible to silence specific error codes on a line using
    ``# type: ignore[code]``.
 2. The error code can be used to find documentation about the error.
+
+Most error codes are shared between multiple related error messages.
+Error codes may change in future mypy releases.
 
 The next two topics document the various error codes mypy can report.
 
@@ -43,7 +46,6 @@ thinks is undefined:
 
 .. code-block:: python
 
-   # Assume 'foo' is defined in 'foolib', even though mypy
-   # can't see the definition.
-
+   # 'foo' is defined in 'foolib', even though mypy can't see the
+   # definition.
    from foolib import foo  # type: ignore[attr-defined]

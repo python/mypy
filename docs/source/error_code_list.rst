@@ -13,10 +13,9 @@ Check that attribute exists [attr-defined]
 
 Mypy checks that an attribute is defined in the target class or module
 when using the dot operator. This applies to both getting and setting
-an attribute. Attribute assignments in the class body or through the
-``self`` argument in a method define new attributes, and they don't
-generate ``attr-defined`` errors. Mypy doesn't allow defining
-attributes outside a class definition.
+an attribute. New attributes are defined by assignments in the class
+body, or assignments to ``self.x`` in methods. These assignments don't
+generate ``attr-defined`` errors.
 
 Example:
 
@@ -44,8 +43,9 @@ Check that attribute exists in each union item [union-attr]
 -----------------------------------------------------------
 
 If you access the attribute of a value with a union type, mypy checks
-that the attribute is defined for *every* union item type. Otherwise the
-operation can fail at runtime. This also applies to optional types.
+that the attribute is defined for *every* type in that
+union. Otherwise the operation can fail at runtime. This also applies
+to optional types.
 
 Example:
 
@@ -69,19 +69,7 @@ Example:
 
 You can often work around these errors by using ``assert isinstance(obj, ClassName)``
 or ``assert obj is not None`` to tell mypy that you know that the type is more specific
-than what mypy thinks. Alternatively, you can cast to the target type:
-
-Example:
-
-.. code-block:: python
-
-   from typing import Union, cast
-
-   ...  # Definitions of Cat and Dog omitted
-
-   def func(animal: Union[Cat, Dog]) -> None:
-       animal.sleep()  # OK
-       cast(Dog, animal).follow_me()  # OK
+than what mypy thinks.
 
 Check that name is defined [name-defined]
 -----------------------------------------
@@ -155,10 +143,11 @@ Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
 
 In some cases mypy can't infer the type of a variable without an
-explicit annotation. Mypy treats this as an error. This often happens
-when you initialize a variable with an empty collection, and mypy
-can't infer the collection item type. Mypy replaces any parts of the
-type it couldn't infer with ``Any``.
+explicit annotation. Mypy treats this as an error. This typically
+happens when you initialize a variable with an empty collection or
+``None``.  If mypy can't infer the collection item type, mypy replaces
+any parts of the type it couldn't infer with ``Any`` and generates an
+error.
 
 Example with an error:
 
@@ -172,7 +161,7 @@ Example with an error:
 
    reveal_type(Bundle().items)  # list[Any]
 
-In this example we have an explicit annotation to silence the error:
+To address this, we add an explicit annotation:
 
 .. code-block:: python
 
@@ -192,11 +181,11 @@ the base class.  A method in a subclass must accept all arguments
 that the base class method accepts, and the return type must conform
 to the return type in the base class (Liskov substitution principle).
 
-Argument typess can be more general is a subclass (i.e., they can vary
+Argument types can be more general is a subclass (i.e., they can vary
 contravariantly).  The return type can be narrowed in a subclass
 (i.e., it can vary covariantly).  It's okay to define additional
 arguments in a subclass method, as long all extra arguments have default
-values or can be left out.
+values or can be left out (``*args``, for example).
 
 Example:
 
@@ -289,6 +278,22 @@ Check type variable values [type-var]
 
 Mypy checks that value of a type variable is compatible with a value
 restriction or the upper bound type.
+
+Example:
+
+.. code-block:: python
+
+    from typing import TypeVar
+
+    T1 = TypeVar('T1', int, float)
+
+    def add(x: T1, y: T1) -> T1:
+        return x + y
+
+    add(4, 5.5)  # OK
+
+    # Error: Value of type variable "T1" of "add" cannot be "str"  [type-var]
+    add('x', 'y')
 
 Check uses of various operators [operator]
 ------------------------------------------
@@ -396,7 +401,7 @@ the second definition may overwrite the first one. Also, mypy often
 can't be able to determine whether references point to the first or
 the second definition, which would compromise type checking.
 
-If you ignore this error, each reference to the defined name refers to
+If you silence this error, all references to the defined name refer to
 the *first* definition.
 
 Example:
@@ -413,7 +418,7 @@ Example:
    #        (the first definition wins!)
    A('x')
 
-Check that called functions return a value [func-returns-value]
+Check that called function returns a value [func-returns-value]
 ---------------------------------------------------------------
 
 Mypy reports an error if you call a function with a ``None``
@@ -474,7 +479,7 @@ The target of a ``NewType`` definition must be a class type. It can't
 be a union type, ``Any``, or various other special types.
 
 You can also get this error if the target has been imported from a
-module mypy can't find the source for, since any such definitions are
+module whose source mypy cannot find, since any such definitions are
 treated by mypy as values with ``Any`` types.
 
 Report syntax errors [syntax]
@@ -490,11 +495,11 @@ Miscellaneous checks [misc]
 Mypy performs numerous other, less commonly failing checks that don't
 have specific error codes. These use the ``misc`` error code. Other
 than being used for multiple unrelated errors, the ``misc`` error code
-is not special in other ways. For example, you can ignore all errors
-in this category by using ``# type: ignore[misc]`` comment. Since these
-errors are not expected to be common, it's unlikely that you'll see
-two *different* errors with the ``misc`` code on a single line -- though this
-can certainly happen once in a while.
+is not special. For example, you can ignore all errors in this
+category by using ``# type: ignore[misc]`` comment. Since these errors
+are not expected to be common, it's unlikely that you'll see two
+*different* errors with the ``misc`` code on a single line -- though
+this can certainly happen once in a while.
 
 .. note::
 

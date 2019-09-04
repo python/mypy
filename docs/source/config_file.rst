@@ -441,6 +441,9 @@ section of the command line docs.
 ``show_column_numbers`` (bool, default False)
     Shows column numbers in error messages.
 
+``show_error_codes`` (bool, default False)
+    Shows error codes in error messages. See :ref:`error-codes` for more information.
+
 
 Advanced options
 ----------------
