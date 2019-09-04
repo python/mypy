@@ -97,3 +97,19 @@ def m() -> None: ...  # E: Name 'm' already defined (possibly by an import)
 def f() -> None: ...  # E: Name 'f' already defined (possibly by an import)
 
 [out]
+
+[case testRuntimeProtoTwoBases]
+from typing_extensions import Protocol, runtime_checkable
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+@runtime_checkable
+class P(Protocol, Generic[T]):
+    attr: T
+
+class C:
+    attr: int
+
+x: P[int] = C()
+[out]

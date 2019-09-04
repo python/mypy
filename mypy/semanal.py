@@ -1227,7 +1227,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if declared_tvars:
                     self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
-                tvars, is_protocol = result
+                tvars = result[0]
+                is_protocol |= result[1]
                 declared_tvars.extend(tvars)
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
