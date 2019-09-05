@@ -280,12 +280,40 @@ def write_file(path: str, contents: str) -> None:
             f.write(contents)
 
 
+def construct_groups(
+    sources: List[BuildSource],
+    separate: Union[bool, List[Tuple[List[str], Optional[str]]]],
+    use_shared_lib: bool,
+) -> List[Tuple[List[BuildSource], Optional[str]]]:
+    if separate is True:
+        groups = [
+            ([source], None) for source in sources
+        ]  # type: List[Tuple[List[BuildSource], Optional[str]]]
+    elif isinstance(separate, list):
+        groups = []
+        for files, name in separate:
+            groups.append((
+                [src for src in sources if src.path in files],
+                name))
+    else:
+        groups = [(sources, None)]
+
+    # Generate missing names
+    groups = [
+        (group,
+         name or (
+             shared_lib_name([source.module for source in group]) if use_shared_lib else None))
+        for group, name in groups]
+
+    return groups
+
+
 def mypycify(
     paths: List[str],
     mypy_options: Optional[List[str]] = None,
     opt_level: str = '3',
     multi_file: bool = False,
-    skip_cgen: bool = False,
+    skip_cgen_input: Optional[Any] = None,
     verbose: bool = False,
     strip_asserts: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
@@ -328,46 +356,28 @@ def mypycify(
     # around with making the single module code handle packages.)
     use_shared_lib = len(sources) > 1 or any('.' in x.module for x in sources)
 
-    if separate is True:
-        groups = [  # type: List[Tuple[List[BuildSource], Optional[str]]]
-            ([source], None) for source in sources
-        ]
-    elif isinstance(separate, list):
-        groups = []
-        for files, name in separate:
-            groups.append((
-                [src for src in sources if src.path in files],
-                name))
-    else:
-        groups = [(sources, None)]
+    groups = construct_groups(sources, separate, use_shared_lib)
 
-    # Generate missing names
-    groups = [
-        (group,
-         name or (
-             shared_lib_name([source.module for source in group]) if use_shared_lib else None))
-        for group, name in groups]
-
-    # We let the test harness make us skip doing the full compilation
+    # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
-    # TODO: Be able to do this based on file mtimes?
-    if not skip_cgen:
+    if not skip_cgen_input:
         group_cfiles, ops_text = generate_c(sources, options, groups,
                                             compiler_options=compiler_options)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)
-        group_cfilenames = []  # type: List[List[str]]
-        for cfiles in group_cfiles:
-            group_cfilenames.append([])
-            for cfile, ctext in cfiles:
-                cfile = os.path.join(build_dir, cfile)
-                write_file(cfile, ctext)
-                if os.path.splitext(cfile)[1] == '.c':
-                    group_cfilenames[-1].append(cfile)
     else:
-        assert len(groups) == 1
-        group_cfilenames = [glob.glob(os.path.join(build_dir, '*.c'))]
+        group_cfiles = skip_cgen_input
+
+    # Write out the generated C and collect the files for each group
+    group_cfilenames = []  # type: List[List[str]]
+    for cfiles in group_cfiles:
+        group_cfilenames.append([])
+        for cfile, ctext in cfiles:
+            cfile = os.path.join(build_dir, cfile)
+            write_file(cfile, ctext)
+            if os.path.splitext(cfile)[1] == '.c':
+                group_cfilenames[-1].append(cfile)
 
     cflags = []  # type: List[str]
     if compiler.compiler_type == 'unix':

@@ -7,7 +7,7 @@ import subprocess
 import contextlib
 import shutil
 import sys
-from typing import Any, Iterator, Optional, List, cast
+from typing import Any, Iterator, List, cast
 
 from mypy import build
 from mypy.test.data import DataDrivenTestCase
@@ -18,7 +18,7 @@ from mypy.options import Options
 from mypyc import emitmodule
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.build import shared_lib_name
+from mypyc.build import construct_groups
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
     use_custom_builtins, MypycDataSuite, assert_test_output,
@@ -40,7 +40,7 @@ from distutils.core import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
-      ext_modules=mypycify({}, skip_cgen=True, strip_asserts=False),
+      ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False),
 )
 """
 
@@ -98,6 +98,7 @@ class TestRun(MypycDataSuite):
     base_path = test_temp_dir
     optional_out = True
     multi_file = False
+    separate = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
@@ -158,10 +159,7 @@ class TestRun(MypycDataSuite):
             for source in sources:
                 options.per_module_options.setdefault(source.module, {})['mypyc'] = True
 
-            if len(module_names) == 1:
-                lib_name = None  # type: Optional[str]
-            else:
-                lib_name = shared_lib_name([source.module for source in sources])
+            groups = construct_groups(sources, self.separate, len(module_names) > 1)
 
             try:
                 result = emitmodule.parse_and_typecheck(
@@ -170,7 +168,6 @@ class TestRun(MypycDataSuite):
                     alt_lib_path='.')
                 errors = Errors()
                 compiler_options = CompilerOptions(multi_file=self.multi_file)
-                groups = [(sources, lib_name)]
                 cfiles = emitmodule.compile_modules_to_c(
                     result,
                     compiler_options=compiler_options,
@@ -185,18 +182,14 @@ class TestRun(MypycDataSuite):
                     print(line)
                 assert False, 'Compile error'
 
-            assert len(cfiles) == 1
-            for cfile, ctext in cfiles[0]:
-                with open(os.path.join(workdir, cfile), 'w', encoding='utf-8') as f:
-                    f.write(ctext)
-
             setup_file = os.path.abspath(os.path.join(workdir, 'setup.py'))
+            # We pass the C file information to the build script via setup.py unfortunately
             with open(setup_file, 'w') as f:
-                f.write(setup_format.format(module_paths))
+                f.write(setup_format.format(module_paths, self.separate, cfiles))
 
             if not run_setup(setup_file, ['build_ext', '--inplace']):
                 if testcase.config.getoption('--mypyc-showc'):
-                    show_c(cfiles[0])
+                    show_c(cfiles)
                 assert False, "Compilation failed"
 
             # Assert that an output file got created
@@ -229,7 +222,7 @@ class TestRun(MypycDataSuite):
             outlines = output.splitlines()
 
             if testcase.config.getoption('--mypyc-showc'):
-                show_c(cfiles[0])
+                show_c(cfiles)
             if proc.returncode != 0:
                 print()
                 print('*** Exit status: %d' % proc.returncode)
@@ -248,6 +241,16 @@ class TestRun(MypycDataSuite):
 class TestRunMultiFile(TestRun):
     multi_file = True
     test_name_suffix = '_multi'
+    files = [
+        'run-multimodule.test',
+        'run-mypy-sim.test',
+    ]
+
+
+# Run the main multi-module tests in separate compliation mode
+class TestRunSeparate(TestRun):
+    separate = True
+    test_name_suffix = '_separate'
     files = [
         'run-multimodule.test',
         'run-mypy-sim.test',
