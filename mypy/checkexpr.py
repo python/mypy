@@ -2103,8 +2103,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             right = remove_optional(right)
         if (original_container and has_bytes_component(original_container) and
                 has_bytes_component(left)):
-            # We need to special case bytes, because both 97 in b'abc' and b'a' in b'abc'
-            # return True (and we want to show the error only if the check can _never_ be True).
+            # We need to special case bytes and bytearray, because 97 in b'abc', b'a' in b'abc',
+            # b'a' in bytearray(b'abc') etc. all return True (and we want to show the error only
+            # if the check can _never_ be True).
             return False
         if isinstance(left, Instance) and isinstance(right, Instance):
             # Special case some builtin implementations of AbstractSet.
@@ -4136,11 +4137,12 @@ def custom_equality_method(typ: Type) -> bool:
 
 
 def has_bytes_component(typ: Type) -> bool:
-    """Is this the builtin bytes type, or a union that contains it?"""
+    """Is this one of builtin byte types, or a union that contains it?"""
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         return any(has_bytes_component(t) for t in typ.items)
-    if isinstance(typ, Instance) and typ.type.fullname() == 'builtins.bytes':
+    if isinstance(typ, Instance) and typ.type.fullname() in {'builtins.bytes',
+                                                             'builtins.bytearray'}:
         return True
     return False
 
