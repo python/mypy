@@ -38,6 +38,13 @@ DEFAULT_COLUMNS = 80   # type: Final
 # error location when printing source code snippet.
 MINIMUM_WIDTH = 20
 
+# VT100 color code processing was added in Windows 10, but only the second major update,
+# Threshold 2. Fortunately, everyone (even on LTSB, Long Term Support Branch) should
+# have a version of Windows 10 newer than this. Note that Windows 8 and below are not
+# supported, but are either going out of support, or make up only a few % of the market.
+MINIMUM_WINDOWS_MAJOR_VT100 = 10
+MINIMUM_WINDOWS_BUILD_VT100 = 10586
+
 default_python2_interpreter = \
     ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
 
@@ -475,61 +482,69 @@ class FancyFormatter:
             self.dummy_term = True
             return
         if sys.platform == 'win32':
-            # Windows ANSI escape sequences are only supported on Threshold 2 and above.
-            if sys.getwindowsversion().build < 10586:
-                self.dummy_term = True
-                return
-            self.dummy_term = False
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
-            ENABLE_PROCESSED_OUTPUT = 0x1
-            ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
-            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
-            STD_OUTPUT_HANDLE = -11
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
-                                    ENABLE_PROCESSED_OUTPUT
-                                    | ENABLE_WRAP_AT_EOL_OUTPUT
-                                    | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
-            self.BOLD = '\033[1m'
-            self.UNDER = '\033[4m'
-            self.BLUE = '\033[94m'
-            self.GREEN = '\033[92m'
-            self.RED = '\033[91m'
-            self.YELLOW = '\033[93m'
-            self.NORMAL = '\033[0m'
-            self.DIM = '\033[2m'
+            self.initialize_win_colors()
         else:
-            # We in a human-facing terminal, check if it supports enough styling.
-            if not CURSES_ENABLED:
-                self.dummy_term = True
-                return
-            try:
-                curses.setupterm()
-            except curses.error:
-                # Most likely terminfo not found.
-                self.dummy_term = True
-                return
-            bold = curses.tigetstr('bold')
-            under = curses.tigetstr('smul')
-            set_color = curses.tigetstr('setaf')
-            self.dummy_term = not (bold and under and set_color)
-            if self.dummy_term:
-                return
-
-            self.NORMAL = curses.tigetstr('sgr0').decode()
-            self.BOLD = bold.decode()
-            self.UNDER = under.decode()
-            dim = curses.tigetstr('dim')
-            # TODO: more reliable way to get gray color good for both dark and light schemes.
-            self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
-
-            self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
-            self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
-            self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
-            self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
+            self.initialize_unix_colors()
         self.colors = {'red': self.RED, 'green': self.GREEN,
                        'blue': self.BLUE, 'yellow': self.YELLOW,
                        'none': ''}
+
+    def initialize_win_colors(self) -> None:
+        # Windows ANSI escape sequences are only supported on Threshold 2 and above.
+        winver = sys.getwindowsversion()
+        if (winver.major < MINIMUM_WINDOWS_MAJOR_VT100
+           or winver.build < MINIMUM_WINDOWS_BUILD_VT100):
+            self.dummy_term = True
+            return
+        self.dummy_term = False
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        ENABLE_PROCESSED_OUTPUT = 0x1
+        ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
+        ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
+        STD_OUTPUT_HANDLE = -11
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
+                                ENABLE_PROCESSED_OUTPUT
+                                | ENABLE_WRAP_AT_EOL_OUTPUT
+                                | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+        self.BOLD = '\033[1m'
+        self.UNDER = '\033[4m'
+        self.BLUE = '\033[94m'
+        self.GREEN = '\033[92m'
+        self.RED = '\033[91m'
+        self.YELLOW = '\033[93m'
+        self.NORMAL = '\033[0m'
+        self.DIM = '\033[2m'
+
+    def initialize_unix_colors(self) -> None:
+        # We in a human-facing terminal, check if it supports enough styling.
+        if not CURSES_ENABLED:
+            self.dummy_term = True
+            return
+        try:
+            curses.setupterm()
+        except curses.error:
+            # Most likely terminfo not found.
+            self.dummy_term = True
+            return
+        bold = curses.tigetstr('bold')
+        under = curses.tigetstr('smul')
+        set_color = curses.tigetstr('setaf')
+        self.dummy_term = not (bold and under and set_color)
+        if self.dummy_term:
+            return
+
+        self.NORMAL = curses.tigetstr('sgr0').decode()
+        self.BOLD = bold.decode()
+        self.UNDER = under.decode()
+        dim = curses.tigetstr('dim')
+        # TODO: more reliable way to get gray color good for both dark and light schemes.
+        self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
+
+        self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
+        self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
+        self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
+        self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
 
     def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
               bold: bool = False, underline: bool = False, dim: bool = False) -> str:
