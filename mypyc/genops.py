@@ -115,7 +115,6 @@ F = TypeVar('F', bound=Callable[..., Any])
 strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
 
 
-@strict_optional_dec  # Turn on strict optional for any type manipulations we do
 def build_type_map(modules: List[MypyFile],
                    graph: Graph,
                    types: Dict[Expression, Type],
@@ -146,18 +145,6 @@ def build_type_map(modules: List[MypyFile],
             else:
                 prepare_non_ext_class_def(module.path, module.fullname(), cdef, errors, mapper)
 
-    return mapper
-
-
-@strict_optional_dec  # Turn on strict optional for any type manipulations we do
-def build_ir(modules: List[MypyFile],
-             graph: Graph,
-             types: Dict[Expression, Type],
-             mapper: 'Mapper',
-             options: CompilerOptions,
-             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
-    result = []
-
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
     # is conditionally defined.
@@ -170,6 +157,20 @@ def build_ir(modules: List[MypyFile],
                     and node.fullname == module.fullname() + '.' + name):
                 prepare_func_def(module.fullname(), None, get_func_def(node.node), mapper)
             # TODO: what else?
+
+    return mapper
+
+
+@strict_optional_dec  # Turn on strict optional for any type manipulations we do
+def build_ir(modules: List[MypyFile],
+             graph: Graph,
+             types: Dict[Expression, Type],
+             options: CompilerOptions,
+             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
+
+    mapper = build_type_map(modules, graph, types, errors)
+
+    result = []
 
     # Generate IR for all modules.
     module_names = [mod.fullname() for mod in modules]

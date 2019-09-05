@@ -42,26 +42,19 @@ def parse_and_typecheck(sources: List[BuildSource], options: Options,
     return result
 
 
-def prepare_groups(result: BuildResult,
-                   module_names: List[str],
-                   compiler_options: CompilerOptions,
-                   errors: Errors) -> genops.Mapper:
-    file_nodes = [result.files[name] for name in module_names]
-    return genops.build_type_map(file_nodes, result.graph, result.types, errors)
-
-
-def compile_modules_to_c(result: BuildResult, module_names: List[str],
-                         shared_lib_name: Optional[str],
-                         mapper: genops.Mapper,
-                         compiler_options: CompilerOptions,
-                         errors: Errors,
-                         ops: Optional[List[str]] = None,
-                         groups: Optional[List[Tuple[List[BuildSource], Optional[str]]]] = None,
-) -> List[Tuple[str, str]]:
+def compile_modules_to_c(
+    result: BuildResult,
+    compiler_options: CompilerOptions,
+    errors: Errors,
+    groups: List[Tuple[List[BuildSource], Optional[str]]],
+    ops: Optional[List[str]] = None,
+) -> List[List[Tuple[str, str]]]:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
-    # Generate basic IR, with missing exception and refcount handling.
+    module_names = [source.module for group_sources, _ in groups for source in group_sources]
     file_nodes = [result.files[name] for name in module_names]
-    literals, modules = genops.build_ir(file_nodes, result.graph, result.types, mapper,
+
+    # Generate basic IR, with missing exception and refcount handling.
+    literals, modules = genops.build_ir(file_nodes, result.graph, result.types,
                                         compiler_options, errors)
     if errors.num_errors > 0:
         return []
@@ -86,16 +79,23 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
-    group_map = {}
-    if groups:
-        for group, lib_name in groups:
-            for source in group:
-                group_map[source.module] = lib_name
 
-    generator = ModuleGenerator(literals, modules, source_paths, shared_lib_name,
-                                group_map,
-                                compiler_options.multi_file)
-    return generator.generate_c_for_modules()
+    # Construct a map from modules to what group they belong to
+    group_map = {}
+    for group, lib_name in groups:
+        for source in group:
+            group_map[source.module] = lib_name
+
+    # Generate all the groups
+    ctext = []
+    module_dict = dict(modules)
+    for group_sources, shared_lib_name in groups:
+        modules = [(source.module, module_dict[source.module]) for source in group_sources]
+        generator = ModuleGenerator(literals, modules, source_paths, shared_lib_name,
+                                    group_map,
+                                    compiler_options.multi_file)
+        ctext.append(generator.generate_c_for_modules())
+    return ctext
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
@@ -360,7 +360,8 @@ class ModuleGenerator:
                 'if (!pexports{}) {{'.format(suffix),
                 'goto fail;',
                 '}',
-                'memcpy(&exports{name}, pexports{name}, sizeof(exports{name}));'.format(name=suffix),
+                'memcpy(&exports{name}, pexports{name}, sizeof(exports{name}));'.format(
+                    name=suffix),
                 '',
             )
 

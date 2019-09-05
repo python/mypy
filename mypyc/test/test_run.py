@@ -170,13 +170,12 @@ class TestRun(MypycDataSuite):
                     alt_lib_path='.')
                 errors = Errors()
                 compiler_options = CompilerOptions(multi_file=self.multi_file)
+                groups = [(sources, lib_name)]
                 cfiles = emitmodule.compile_modules_to_c(
                     result,
-                    module_names=module_names,
-                    shared_lib_name=lib_name,
-                    mapper=emitmodule.prepare_groups(result, module_names, compiler_options, errors),
                     compiler_options=compiler_options,
                     errors=errors,
+                    groups=groups,
                 )
                 if errors.num_errors:
                     errors.flush_errors()
@@ -186,7 +185,8 @@ class TestRun(MypycDataSuite):
                     print(line)
                 assert False, 'Compile error'
 
-            for cfile, ctext in cfiles:
+            assert len(cfiles) == 1
+            for cfile, ctext in cfiles[0]:
                 with open(os.path.join(workdir, cfile), 'w', encoding='utf-8') as f:
                     f.write(ctext)
 
@@ -196,7 +196,7 @@ class TestRun(MypycDataSuite):
 
             if not run_setup(setup_file, ['build_ext', '--inplace']):
                 if testcase.config.getoption('--mypyc-showc'):
-                    show_c(cfiles)
+                    show_c(cfiles[0])
                 assert False, "Compilation failed"
 
             # Assert that an output file got created
@@ -229,7 +229,7 @@ class TestRun(MypycDataSuite):
             outlines = output.splitlines()
 
             if testcase.config.getoption('--mypyc-showc'):
-                show_c(cfiles)
+                show_c(cfiles[0])
             if proc.returncode != 0:
                 print()
                 print('*** Exit status: %d' % proc.returncode)

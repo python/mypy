@@ -188,19 +188,11 @@ def generate_c(sources: List[BuildSource], options: Options,
 
     errors = Errors()
 
-    mapper = emitmodule.prepare_groups(result, all_module_names,
-                                       compiler_options=compiler_options,
-                                       errors=errors)
-
     ops = []  # type: List[str]
-    ctext = []  # type: List[List[Tuple[str, str]]]
-    for group_sources, shared_lib_name in groups:
-        module_names = [source.module for source in group_sources]
-        ctext.append(emitmodule.compile_modules_to_c(result, module_names, shared_lib_name,
-                                                     mapper,
-                                                     compiler_options=compiler_options,
-                                                     errors=errors, ops=ops,
-                                                     groups=groups))
+    ctext = emitmodule.compile_modules_to_c(result,
+                                            compiler_options=compiler_options,
+                                            errors=errors, ops=ops,
+                                            groups=groups)
     if errors.num_errors:
         errors.flush_errors()
         sys.exit(1)
@@ -288,14 +280,15 @@ def write_file(path: str, contents: str) -> None:
             f.write(contents)
 
 
-def mypycify(paths: List[str],
-             mypy_options: Optional[List[str]] = None,
-             opt_level: str = '3',
-             multi_file: bool = False,
-             skip_cgen: bool = False,
-             verbose: bool = False,
-             strip_asserts: bool = False,
-             separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
+def mypycify(
+    paths: List[str],
+    mypy_options: Optional[List[str]] = None,
+    opt_level: str = '3',
+    multi_file: bool = False,
+    skip_cgen: bool = False,
+    verbose: bool = False,
+    strip_asserts: bool = False,
+    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
 ) -> List[Extension]:
     """Main entry point to building using mypyc.
 
@@ -336,7 +329,9 @@ def mypycify(paths: List[str],
     use_shared_lib = len(sources) > 1 or any('.' in x.module for x in sources)
 
     if separate is True:
-        groups = [([source], None) for source in sources]  # type: List[Tuple[List[BuildSource], Optional[str]]]
+        groups = [  # type: List[Tuple[List[BuildSource], Optional[str]]]
+            ([source], None) for source in sources
+        ]
     elif isinstance(separate, list):
         groups = []
         for files, name in separate:
