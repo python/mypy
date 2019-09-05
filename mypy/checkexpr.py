@@ -1179,7 +1179,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert context, "Internal error: messages given without context"
         elif context is None:
             # Avoid "is None" checks
-            context = TempNode(AnyType(TypeOfAny.special_form), context=context)
+            context = TempNode(AnyType(TypeOfAny.special_form))
 
         # TODO(jukka): We could return as soon as we find an error if messages is None.
 
