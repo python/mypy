@@ -491,6 +491,7 @@ class FancyFormatter:
 
     def initialize_win_colors(self) -> None:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
+        assert sys.platform == 'win32'
         winver = sys.getwindowsversion()
         if (winver.major < MINIMUM_WINDOWS_MAJOR_VT100
            or winver.build < MINIMUM_WINDOWS_BUILD_VT100):
