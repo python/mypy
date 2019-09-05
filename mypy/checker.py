@@ -1532,10 +1532,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and not is_static(sym.node)):
             if isinstance(sym.node, Decorator):
                 is_class_method = sym.node.func.is_class
-            elif isinstance(sym.node, OverloadedFuncDef):
-                is_class_method = sym.node.is_class
             else:
-                is_class_method = False
+                is_class_method = sym.node.is_class
             bound = bind_self(typ, self.scope.active_self_type(), is_class_method)
         else:
             bound = typ
