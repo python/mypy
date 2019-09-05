@@ -4633,3 +4633,15 @@ with assertRaises(TypeError, "errored formatting real type!"):
 
 with assertRaises(TypeError, "tuple[int, native.A] object expected; got tuple[int, int]"):
     g((20, 30))
+
+[case testComprehensionShadowBinder]
+def foo(x: object) -> object:
+    if isinstance(x, list):
+        return tuple(x for x in x), x
+    return None
+
+[file driver.py]
+from native import foo
+
+assert foo(None) == None
+assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])

@@ -113,7 +113,10 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Star', literal_hash(e.expr))
 
     def visit_name_expr(self, e: NameExpr) -> Key:
-        return ('Var', e.name)
+        # N.B: We use the node itself as the key, and not the name,
+        # because using the name causes issues when there is shadowing
+        # (for example, in list comprehensions).
+        return ('Var', e.node)
 
     def visit_member_expr(self, e: MemberExpr) -> Key:
         return ('Member', literal_hash(e.expr), e.name)
