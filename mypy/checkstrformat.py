@@ -970,8 +970,9 @@ def custom_special_method(typ: Type, name: str,
                 return not method.node.info.fullname().startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
-        check = all if check_all else any
-        return check(custom_special_method(t, name) for t in typ.items)
+        if check_all:
+            return all(custom_special_method(t, name, check_all) for t in typ.items)
+        return any(custom_special_method(t, name) for t in typ.items)
     if isinstance(typ, TupleType):
         return custom_special_method(tuple_fallback(typ), name)
     if isinstance(typ, CallableType) and typ.is_type_obj():
