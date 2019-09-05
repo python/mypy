@@ -168,7 +168,8 @@ def f(x, y): pass
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict
 x: List[int] = [
-    'x']  # E:5: List item 0 has incompatible type "str"; expected "int"
+    'x',  # E:5: List item 0 has incompatible type "str"; expected "int"
+      1.1]  # E:7: List item 1 has incompatible type "float"; expected "int"
 y: Dict[int, int] = {
     'x': 1  # E:5: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
 }
