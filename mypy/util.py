@@ -4,8 +4,11 @@ import pathlib
 import re
 import subprocess
 import sys
+import os
 
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO
+from typing import (
+    TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
+)
 from typing_extensions import Final, Type, Literal
 
 try:
@@ -19,6 +22,21 @@ T = TypeVar('T')
 
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
+
+# This works in most default terminals works (because it is ANSI standard). The problem
+# this tries to solve is that although it is a basic ANSI "feature", terminfo files
+# for most default terminals don't have dim termcap entry, so curses doesn't report it.
+# Potentially, we can choose a grey color that would look good on both white and black
+# background, but it is not easy, and again most default terminals are 8-color, not 256-color,
+# so we can't get the color code from curses.
+PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
+
+DEFAULT_SOURCE_OFFSET = 4  # type: Final
+DEFAULT_COLUMNS = 80   # type: Final
+
+# At least this number of columns will be shown on each side of
+# error location when printing source code snippet.
+MINIMUM_WIDTH = 20
 
 default_python2_interpreter = \
     ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
@@ -92,8 +110,7 @@ class DecodeError(Exception):
 def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
-    Returns:
-      A tuple: the source as a string, and the hash calculated from the binary representation.
+    Returns the source as a string.
     """
     # check for BOM UTF-8 encoding and strip it out if present
     if source.startswith(b'\xef\xbb\xbf'):
@@ -108,6 +125,56 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     except LookupError as lookuperr:
         raise DecodeError(str(lookuperr))
     return source_text
+
+
+def read_py_file(path: str, read: Callable[[str], bytes],
+                 pyversion: Tuple[int, int]) -> Optional[List[str]]:
+    """Try reading a Python file as list of source lines.
+
+    Return None if something goes wrong.
+    """
+    try:
+        source = read(path)
+    except (IOError, OSError):
+        return None
+    else:
+        try:
+            source_lines = decode_python_encoding(source, pyversion).splitlines()
+        except DecodeError:
+            return None
+        return source_lines
+
+
+def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
+    """Trim a line of source code to fit into max_len.
+
+    Show 'min_width' characters on each side of 'col' (an error location). If either
+    start or end is trimmed, this is indicated by adding '...' there.
+    A typical result looks like this:
+        ...some_variable = function_to_call(one_arg, other_arg) or...
+
+    Return the trimmed string and the column offset to to adjust error location.
+    """
+    if max_len < 2 * min_width + 1:
+        # In case the window is too tiny it is better to still show something.
+        max_len = 2 * min_width + 1
+
+    # Trivial case: line already fits in.
+    if len(line) <= max_len:
+        return line, 0
+
+    # If column is not too large so that there is still min_width after it,
+    # the line doesn't need to be trimmed at the start.
+    if col + min_width < max_len:
+        return line[:max_len] + '...', 0
+
+    # Otherwise, if the column is not too close to the end, trim both sides.
+    if col < len(line) - min_width - 1:
+        offset = col - max_len + min_width + 1
+        return '...' + line[offset:col + min_width + 1] + '...', offset - 3
+
+    # Finally, if the column is near the end, just trim the start.
+    return '...' + line[-max_len:], len(line) - max_len - 3
 
 
 def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
@@ -329,13 +396,75 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
     return len(errors), len(files)
 
 
+def split_words(msg: str) -> List[str]:
+    """Split line of text into words (but not within quoted groups)."""
+    next_word = ''
+    res = []  # type: List[str]
+    allow_break = True
+    for c in msg:
+        if c == ' ' and allow_break:
+            res.append(next_word)
+            next_word = ''
+            continue
+        if c == '"':
+            allow_break = not allow_break
+        next_word += c
+    res.append(next_word)
+    return res
+
+
+def get_terminal_width() -> int:
+    """Get current terminal width if possible, otherwise return the default one."""
+    try:
+        cols, _ = os.get_terminal_size()
+        return cols
+    except OSError:
+        return DEFAULT_COLUMNS
+
+
+def soft_wrap(msg: str, max_len: int, first_offset: int,
+              num_indent: int = 0) -> str:
+    """Wrap a long error message into few lines.
+
+    Breaks will only happen between words, and never inside a quoted group
+    (to avoid breaking types such as "Union[int, str]"). The 'first_offset' is
+    the width before the start of first line.
+
+    Pad every next line with 'num_indent' spaces. Every line will be at most 'max_len'
+    characters, except if it is a single word or quoted group.
+
+    For example:
+               first_offset
+        ------------------------
+        path/to/file: error: 58: Some very long error message
+            that needs to be split in separate lines.
+            "Long[Type, Names]" are never split.
+        ^^^^--------------------------------------------------
+        num_indent           max_len
+    """
+    words = split_words(msg)
+    next_line = words.pop(0)
+    lines = []  # type: List[str]
+    while words:
+        next_word = words.pop(0)
+        max_line_len = max_len - num_indent if lines else max_len - first_offset
+        # Add 1 to account for space between words.
+        if len(next_line) + len(next_word) + 1 <= max_line_len:
+            next_line += ' ' + next_word
+        else:
+            lines.append(next_line)
+            next_line = next_word
+    lines.append(next_line)
+    padding = '\n' + ' ' * num_indent
+    return padding.join(lines)
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
     This currently only works on Linux and Mac.
     """
-    def __init__(self, f_out: IO[str], f_err: IO[str],
-                 show_error_codes: bool) -> None:
+    def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
         self.show_error_codes = show_error_codes
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ('linux', 'darwin'):
@@ -363,19 +492,25 @@ class FancyFormatter:
         if self.dummy_term:
             return
 
+        self.NORMAL = curses.tigetstr('sgr0').decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
+        dim = curses.tigetstr('dim')
+        # TODO: more reliable way to get gray color good for both dark and light schemes.
+        self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
+
         self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
         self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
-        self.NORMAL = curses.tigetstr('sgr0').decode()
+
         self.colors = {'red': self.RED, 'green': self.GREEN,
                        'blue': self.BLUE, 'yellow': self.YELLOW,
                        'none': ''}
 
     def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
-              bold: bool = False, underline: bool = False) -> str:
+              bold: bool = False, underline: bool = False, dim: bool = False) -> str:
+        """Apply simple color and style (underlined or bold)."""
         if self.dummy_term:
             return text
         if bold:
@@ -384,10 +519,42 @@ class FancyFormatter:
             start = ''
         if underline:
             start += self.UNDER
+        if dim:
+            start += self.DIM
         return start + self.colors[color] + text + self.NORMAL
 
+    def fit_in_terminal(self, messages: List[str],
+                        fixed_terminal_width: Optional[int] = None) -> List[str]:
+        """Improve readability by wrapping error messages and trimming source code."""
+        width = fixed_terminal_width or get_terminal_width()
+        new_messages = messages.copy()
+        for i, error in enumerate(messages):
+            if ': error:' in error:
+                loc, msg = error.split('error:', maxsplit=1)
+                msg = soft_wrap(msg, width, first_offset=len(loc) + len('error: '))
+                new_messages[i] = loc + 'error:' + msg
+            if error.startswith(' ' * DEFAULT_SOURCE_OFFSET) and '^' not in error:
+                # TODO: detecting source code highlights through an indent can be surprising.
+                # Restore original error message and error location.
+                error = error[DEFAULT_SOURCE_OFFSET:]
+                column = messages[i+1].index('^') - DEFAULT_SOURCE_OFFSET
+
+                # Let source have some space also on the right side, plus 6
+                # to accommodate ... on each side.
+                max_len = width - DEFAULT_SOURCE_OFFSET - 6
+                source_line, offset = trim_source_line(error, max_len, column, MINIMUM_WIDTH)
+
+                new_messages[i] = ' ' * DEFAULT_SOURCE_OFFSET + source_line
+                # Also adjust the error marker position.
+                new_messages[i+1] = ' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + '^'
+        return new_messages
+
     def colorize(self, error: str) -> str:
-        """Colorize an output line by highlighting the status and error code."""
+        """Colorize an output line by highlighting the status and error code.
+
+        If fixed_terminal_width is given, use it instead of calling get_terminal_width()
+        (used by the daemon).
+        """
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
             if not self.show_error_codes:
@@ -401,10 +568,19 @@ class FancyFormatter:
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
             return loc + self.style('note:', 'blue') + self.underline_link(msg)
+        elif error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
+            # TODO: detecting source code highlights through an indent can be surprising.
+            if '^' not in error:
+                return self.style(error, 'none', dim=True)
+            return self.style(error, 'red')
         else:
             return error
 
     def highlight_quote_groups(self, msg: str) -> str:
+        """Make groups quoted with double quotes bold (including quotes).
+
+        This is used to highlight types, attribute names etc.
+        """
         if msg.count('"') % 2:
             # Broken error message, don't do any formatting.
             return msg
@@ -418,6 +594,10 @@ class FancyFormatter:
         return out
 
     def underline_link(self, note: str) -> str:
+        """Underline a link in a note message (if any).
+
+        This assumes there is at most one link in the message.
+        """
         match = re.search(r'https?://\S*', note)
         if not match:
             return note
@@ -428,6 +608,11 @@ class FancyFormatter:
                 note[end:])
 
     def format_success(self, n_sources: int, use_color: bool = True) -> str:
+        """Format short summary in case of success.
+
+        n_sources is total number of files passed directly on command line,
+        i.e. excluding stubs and followed imports.
+        """
         msg = 'Success: no issues found in {}' \
               ' source file{}'.format(n_sources, 's' if n_sources != 1 else '')
         if not use_color:
@@ -436,6 +621,7 @@ class FancyFormatter:
 
     def format_error(self, n_errors: int, n_files: int, n_sources: int,
                      use_color: bool = True) -> str:
+        """Format a short summary in case of errors."""
         msg = 'Found {} error{} in {} file{}' \
               ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
                                                    n_files, 's' if n_files != 1 else '',

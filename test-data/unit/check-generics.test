@@ -2053,3 +2053,12 @@ class C(Generic[T]):
 def func(x: S) -> S:
     return C[S].get()
 [builtins fixtures/classmethod.pyi]
+
+[case testMultipleAssignmentFromAnyIterable]
+from typing import Any
+class A:
+    def __iter__(self) -> Any: ...
+
+x, y = A()
+reveal_type(x)  # N: Revealed type is 'Any'
+reveal_type(y)  # N: Revealed type is 'Any'

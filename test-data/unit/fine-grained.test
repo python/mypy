@@ -81,6 +81,24 @@ class A:
 ==
 main:4: error: Too few arguments for "g" of "A"
 
+[case testReprocessMethodShowSource]
+# flags: --pretty --show-error-codes
+import m
+class B:
+    def f(self, a: m.A) -> None:
+        a.g() # E
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: A) -> None: pass
+[out]
+==
+main:5: error: Too few arguments for "g" of "A"  [call-arg]
+            a.g() # E
+            ^
+
 [case testFunctionMissingModuleAttribute]
 import m
 def h() -> None:

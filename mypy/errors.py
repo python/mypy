@@ -3,7 +3,7 @@ import sys
 import traceback
 from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
 from typing_extensions import Final
 
 from mypy.scope import Scope
@@ -11,6 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
+from mypy.util import DEFAULT_SOURCE_OFFSET
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -156,10 +157,15 @@ class Errors:
     def __init__(self,
                  show_error_context: bool = False,
                  show_column_numbers: bool = False,
-                 show_error_codes: bool = False) -> None:
+                 show_error_codes: bool = False,
+                 pretty: bool = False,
+                 read_source: Optional[Callable[[str], Optional[List[str]]]] = None) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
+        self.pretty = pretty
+        # We use fscache to read source code when showing snippets.
+        self.read_source = read_source
         self.initialize()
 
     def initialize(self) -> None:
@@ -179,7 +185,11 @@ class Errors:
         self.initialize()
 
     def copy(self) -> 'Errors':
-        new = Errors(self.show_error_context, self.show_column_numbers)
+        new = Errors(self.show_error_context,
+                     self.show_column_numbers,
+                     self.show_error_codes,
+                     self.pretty,
+                     self.read_source)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -402,10 +412,13 @@ class Errors:
                            use_stdout=True,
                            module_with_blocker=self.blocker_module())
 
-    def format_messages(self, error_info: List[ErrorInfo]) -> List[str]:
+    def format_messages(self, error_info: List[ErrorInfo],
+                        source_lines: Optional[List[str]]) -> List[str]:
         """Return a string list that represents the error messages.
 
-        Use a form suitable for displaying to the user.
+        Use a form suitable for displaying to the user. If self.pretty
+        is True also append a relevant trimmed source code line (only for
+        severity 'error').
         """
         a = []  # type: List[str]
         errors = self.render_messages(self.sort_messages(error_info))
@@ -427,6 +440,17 @@ class Errors:
                 # displaying duplicate error codes.
                 s = '{}  [{}]'.format(s, code.code)
             a.append(s)
+            if self.pretty:
+                # Add source code fragment and a location marker.
+                if severity == 'error' and source_lines and line > 0:
+                    source_line = source_lines[line - 1]
+                    if column < 0:
+                        # Something went wrong, take first non-empty column.
+                        column = len(source_line) - len(source_line.lstrip())
+                    # Note, currently coloring uses the offset to detect source snippets,
+                    # so these offsets should not be arbitrary.
+                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
+                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
     def file_messages(self, path: str) -> List[str]:
@@ -437,7 +461,11 @@ class Errors:
         if path not in self.error_info_map:
             return []
         self.flushed_files.add(path)
-        return self.format_messages(self.error_info_map[path])
+        source_lines = None
+        if self.pretty:
+            assert self.read_source
+            source_lines = self.read_source(path)
+        return self.format_messages(self.error_info_map[path], source_lines)
 
     def new_messages(self) -> List[str]:
         """Return a string list of new error messages.
