@@ -482,22 +482,21 @@ class FancyFormatter:
             self.dummy_term = True
             return
         if sys.platform == 'win32':
-            self.initialize_win_colors()
+            self.dummy_term = self.initialize_win_colors()
         else:
-            self.initialize_unix_colors()
-        self.colors = {'red': self.RED, 'green': self.GREEN,
-                       'blue': self.BLUE, 'yellow': self.YELLOW,
-                       'none': ''}
+            self.dummy_term = self.initialize_unix_colors()
+        if not self.dummy_term:
+            self.colors = {'red': self.RED, 'green': self.GREEN,
+                           'blue': self.BLUE, 'yellow': self.YELLOW,
+                           'none': ''}
 
-    def initialize_win_colors(self) -> None:
+    def initialize_win_colors(self) -> bool:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         assert sys.platform == 'win32'
         winver = sys.getwindowsversion()
         if (winver.major < MINIMUM_WINDOWS_MAJOR_VT100
            or winver.build < MINIMUM_WINDOWS_BUILD_VT100):
-            self.dummy_term = True
-            return
-        self.dummy_term = False
+            return True
         import ctypes
         kernel32 = ctypes.windll.kernel32
         ENABLE_PROCESSED_OUTPUT = 0x1
@@ -516,24 +515,22 @@ class FancyFormatter:
         self.YELLOW = '\033[93m'
         self.NORMAL = '\033[0m'
         self.DIM = '\033[2m'
+        return False
 
-    def initialize_unix_colors(self) -> None:
+    def initialize_unix_colors(self) -> bool:
         # We in a human-facing terminal, check if it supports enough styling.
         if not CURSES_ENABLED:
-            self.dummy_term = True
-            return
+            return True
         try:
             curses.setupterm()
         except curses.error:
             # Most likely terminfo not found.
-            self.dummy_term = True
-            return
+            return True
         bold = curses.tigetstr('bold')
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
-        self.dummy_term = not (bold and under and set_color)
-        if self.dummy_term:
-            return
+        if not (bold and under and set_color):
+            return True
 
         self.NORMAL = curses.tigetstr('sgr0').decode()
         self.BOLD = bold.decode()
@@ -546,6 +543,7 @@ class FancyFormatter:
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
         self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
+        return False
 
     def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
               bold: bool = False, underline: bool = False, dim: bool = False) -> str:
