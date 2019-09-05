@@ -1194,7 +1194,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 or (isinstance(e, UnaryExpr) and e.op == '-'
                     and isinstance(e.expr, (IntExpr, FloatExpr)))
                 or (isinstance(e, TupleExpr)
-                    and all(self.is_constant(e) for e in e.items))
+                    and all(self.is_constant(e2) for e2 in e.items))
                 or (isinstance(e, RefExpr) and e.kind == GDEF
                     and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
                          or (isinstance(e.node, Var) and e.node.is_final))))
