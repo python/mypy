@@ -2062,3 +2062,52 @@ class A:
 x, y = A()
 reveal_type(x)  # N: Revealed type is 'Any'
 reveal_type(y)  # N: Revealed type is 'Any'
+
+[case testSubclassingGenericSelfClassMethod]
+from typing import TypeVar, Type
+
+AT = TypeVar('AT', bound='A')
+
+class A:
+    @classmethod
+    def from_config(cls: Type[AT]) -> AT:
+        ...
+
+class B(A):
+    @classmethod
+    def from_config(cls: Type[B]) -> B:
+        return B()
+[builtins fixtures/classmethod.pyi]
+
+[case testSubclassingGenericSelfClassMethodOptional]
+# flags: --strict-optional
+from typing import TypeVar, Type, Optional
+
+AT = TypeVar('AT', bound='A')
+
+class A:
+    @classmethod
+    def from_config(cls: Type[AT]) -> Optional[AT]:
+        return None
+
+class B(A):
+    @classmethod
+    def from_config(cls: Type[B]) -> Optional[B]:
+        return B()
+[builtins fixtures/classmethod.pyi]
+
+[case testSubclassingGenericSelfClassMethodNonAnnotated]
+from typing import TypeVar, Type
+
+AT = TypeVar('AT', bound='A')
+
+class A:
+    @classmethod
+    def from_config(cls: Type[AT]) -> AT:
+        ...
+
+class B(A):
+    @classmethod
+    def from_config(cls) -> B:
+        return B()
+[builtins fixtures/classmethod.pyi]
