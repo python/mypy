@@ -1009,7 +1009,12 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast27.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        return self.set_line(e, n)
+        self.set_line(e, n)
+        if isinstance(e.index, SliceExpr):
+            # Slice has no line/column in the raw ast.
+            e.index.line = e.line
+            e.index.column = e.column
+        return e
 
     # Name(identifier id, expr_context ctx)
     def visit_Name(self, n: Name) -> NameExpr:
