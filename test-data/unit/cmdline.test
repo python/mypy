@@ -1405,7 +1405,7 @@ class AnotherCustomClassDefinedBelow:
 [out]
 some_file.py:3: error: Unsupported operand types for + ("int" and "str")
     42 + 'no way'
-    ^
+         ^
 some_file.py:11: error: Incompatible types in assignment (expression has type
 "AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
             self.very_important_attribute_with_long_name: OneCustomClassNa...
@@ -1413,8 +1413,8 @@ some_file.py:11: error: Incompatible types in assignment (expression has type
 some_file.py:11: error: Argument 1 to "some_interesting_method" of
 "OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
 "AnotherCustomClassDefinedBelow"
-    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
-                                                        ^
+    ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
+                                                                         ^
 
 [case testShowSourceCodeSnippetsBlockingError]
 # cmd: mypy --pretty --show-error-codes some_file.py
