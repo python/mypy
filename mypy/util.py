@@ -492,30 +492,30 @@ class FancyFormatter:
 
     def initialize_win_colors(self) -> bool:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
-        assert sys.platform == 'win32'
-        winver = sys.getwindowsversion()
-        if (winver.major < MINIMUM_WINDOWS_MAJOR_VT100
-           or winver.build < MINIMUM_WINDOWS_BUILD_VT100):
-            return True
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
-        ENABLE_PROCESSED_OUTPUT = 0x1
-        ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
-        ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
-        STD_OUTPUT_HANDLE = -11
-        kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
-                                ENABLE_PROCESSED_OUTPUT
-                                | ENABLE_WRAP_AT_EOL_OUTPUT
-                                | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
-        self.BOLD = '\033[1m'
-        self.UNDER = '\033[4m'
-        self.BLUE = '\033[94m'
-        self.GREEN = '\033[92m'
-        self.RED = '\033[91m'
-        self.YELLOW = '\033[93m'
-        self.NORMAL = '\033[0m'
-        self.DIM = '\033[2m'
-        return False
+        if sys.platform == 'win32':
+            winver = sys.getwindowsversion()
+            if (winver.major < MINIMUM_WINDOWS_MAJOR_VT100
+            or winver.build < MINIMUM_WINDOWS_BUILD_VT100):
+                return True
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            ENABLE_PROCESSED_OUTPUT = 0x1
+            ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
+            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
+            STD_OUTPUT_HANDLE = -11
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
+                                    ENABLE_PROCESSED_OUTPUT
+                                    | ENABLE_WRAP_AT_EOL_OUTPUT
+                                    | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+            self.BOLD = '\033[1m'
+            self.UNDER = '\033[4m'
+            self.BLUE = '\033[94m'
+            self.GREEN = '\033[92m'
+            self.RED = '\033[91m'
+            self.YELLOW = '\033[93m'
+            self.NORMAL = '\033[0m'
+            self.DIM = '\033[2m'
+            return False
 
     def initialize_unix_colors(self) -> bool:
         # We in a human-facing terminal, check if it supports enough styling.
