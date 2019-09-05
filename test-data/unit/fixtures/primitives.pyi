@@ -29,7 +29,11 @@ class bytes(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
-class bytearray: pass
+class bytearray(Sequence[int]):
+    def __init__(self, x: bytes) -> None: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __contains__(self, other: object) -> bool: pass
+    def __getitem__(self, item: int) -> int: pass
 class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
