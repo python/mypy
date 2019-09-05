@@ -1333,6 +1333,68 @@ static int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     return 2;
 }
 
+// Support for pickling; reusable getstate and setstate functions
+static PyObject *
+CPyPickle_SetState(PyObject *obj, PyObject *state)
+{
+    Py_ssize_t pos = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(state, &pos, &key, &value)) {
+        if (PyObject_SetAttr(obj, key, value) != 0) {
+            return NULL;
+        }
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+CPyPickle_GetState(PyObject *obj)
+{
+    PyObject *attrs = NULL, *state = NULL;
+
+    attrs = PyObject_GetAttrString((PyObject *)Py_TYPE(obj), "__mypyc_attrs__");
+    if (!attrs) {
+        goto fail;
+    }
+    if (!PyTuple_Check(attrs)) {
+        PyErr_SetString(PyExc_TypeError, "__mypyc_attrs__ is not a tuple");
+        goto fail;
+    }
+    state = PyDict_New();
+    if (!state) {
+        goto fail;
+    }
+
+    // Collect all the values of attributes in __mypyc_attrs__
+    // Attributes that are missing we just ignore
+    int i;
+    for (i = 0; i < PyTuple_GET_SIZE(attrs); i++) {
+        PyObject *key = PyTuple_GET_ITEM(attrs, i);
+        PyObject *value = PyObject_GetAttr(obj, key);
+        if (!value) {
+            if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+                PyErr_Clear();
+                continue;
+            }
+            goto fail;
+        }
+        int result = PyDict_SetItem(state, key, value);
+        Py_DECREF(value);
+        if (result != 0) {
+            goto fail;
+        }
+    }
+
+    Py_DECREF(attrs);
+
+    return state;
+fail:
+    Py_XDECREF(attrs);
+    Py_XDECREF(state);
+    return NULL;
+}
+
+
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
 

@@ -533,7 +533,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
     for name, node in info.names.items():
         if isinstance(node.node, Var):
-            assert node.node.type, "Class member missing type"
+            assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name != '__slots__':
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
@@ -595,6 +595,8 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
                 ir.inherits_python = True
             continue
         base_ir = mapper.type_to_ir[cls]
+        if not base_ir.is_ext_class:
+            ir.inherits_python = True
         if not base_ir.is_trait:
             base_mro.append(base_ir)
         mro.append(base_ir)
@@ -1477,6 +1479,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Set this attribute back to None until the next non-extension class is visited.
             self.non_ext_info = None
 
+    def create_mypyc_attrs_tuple(self, ir: ClassIR, line: int) -> Value:
+        attrs = [name for ancestor in ir.mro for name in ancestor.attributes]
+        if ir.inherits_python:
+            attrs.append('__dict__')
+        return self.primitive_op(new_tuple_op,
+                                 [self.load_static_unicode(attr) for attr in attrs],
+                                 line)
+
     def allocate_class(self, cdef: ClassDef) -> None:
         # OK AND NOW THE FUN PART
         base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
@@ -1496,6 +1506,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             FuncDecl(cdef.name + '_trait_vtable_setup',
                      None, self.module_name,
                      FuncSignature([], bool_rprimitive)), [], -1))
+        # Populate a '__mypyc_attrs__' field containing the list of attrs
+        self.primitive_op(py_setattr_op, [
+            tp, self.load_static_unicode('__mypyc_attrs__'),
+            self.create_mypyc_attrs_tuple(self.mapper.type_to_ir[cdef.info], cdef.line)],
+            cdef.line)
+
         # Save the class
         self.add(InitStatic(tp, cdef.name, self.module_name, NAMESPACE_TYPE))
 

@@ -1031,3 +1031,70 @@ try:
     import native
 except TypeError as e:
     assert(str(e) == "mypyc classes can't have a metaclass")
+
+[case testPickling]
+from mypy_extensions import trait
+from typing import Any
+
+def dec(x: Any) -> Any:
+    return x
+
+class A:
+    x: int
+    y: str
+
+class B(A):
+    z: bool
+
+    def __init__(self, x: int, y: str, z: bool) -> None:
+        self.x = x
+        self.y = y
+        self.z = z
+
+@trait
+class T:
+    a: str
+
+class C(B, T):
+    w: object
+
+    # property shouldn't go in
+    @property
+    def foo(self) -> int:
+        return 0
+
+@dec
+class D:
+    x: int
+
+class E(D):
+    y: int
+
+[file driver.py]
+from native import A, B, T, C, D, E
+
+import copy
+import pickle
+
+assert A.__mypyc_attrs__ == ('x', 'y')
+assert B.__mypyc_attrs__ == ('z', 'x', 'y')
+assert T.__mypyc_attrs__ == ('a',)
+assert C.__mypyc_attrs__ == ('w', 'z', 'x', 'y', 'a')
+assert not hasattr(D, '__mypyc_attrs__')
+assert E.__mypyc_attrs__ == ('y', '__dict__')
+
+b = B(10, '20', False)
+assert b.__getstate__() == {'z': False, 'x': 10, 'y': '20'}
+b2 = copy.copy(b)
+assert b != b2 and b.y == b2.y
+
+b3 = pickle.loads(pickle.dumps(b))
+assert b != b3 and b.y == b3.y
+
+e = E()
+e.x = 10
+e.y = 20
+
+assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
+e2 = pickle.loads(pickle.dumps(e))
+assert e != e2 and e.x == e2.x and e.y == e2.y
