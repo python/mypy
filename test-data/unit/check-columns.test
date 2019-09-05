@@ -167,7 +167,6 @@ def f(x, y): pass
 
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict
-# TODO: Point to the actual item since a list/dict literal can span many lines
 x: List[int] = [
     'x']  # E:5: List item 0 has incompatible type "str"; expected "int"
 y: Dict[int, int] = {
@@ -259,7 +258,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:5: Revealed type is 'builtins.int'
+    reveal_type(1) # N:17: Revealed type is 'builtins.int'
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality

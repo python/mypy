@@ -3100,8 +3100,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 stargs.append(value)
             else:
                 tup = TupleExpr([key, value])
-                tup.line = value.line
-                tup.column = value.column
+                if key.line >= 0:
+                    tup.line = key.line
+                    tup.column = key.column
+                else:
+                    tup.line = value.line
+                    tup.column = value.column
                 args.append(tup)
         # Define type variables (used in constructors below).
         ktdef = TypeVarDef('KT', 'KT', -1, [], self.object_type())

@@ -1479,12 +1479,11 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: note: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
 main:5: note: Possible overload variants:
 main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
 main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
-
+main:5: note: Revealed type is 'Any'
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -4970,8 +4969,8 @@ def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
 @decorate(11)
 class A: pass
 
-@decorate
-class A2: pass  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
+@decorate  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
+class A2: pass
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...

@@ -1847,8 +1847,8 @@ main:4: note:     z: builtins.int
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: note: Revealed type is 'Any'
 main:1: error: Name 'x' is not defined
+main:1: note: Revealed type is 'Any'
 
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass
