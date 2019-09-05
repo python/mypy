@@ -103,6 +103,13 @@ class B(A):
     x = ''  # E:9: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 [builtins fixtures/list.pyi]
 
+[case testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation]
+class A:
+    x: str
+
+class B(A):
+    x: int  # E:5: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+
 [case testColumnsSimpleIsinstance]
 import typing
 def f(x: object, n: int, s: str) -> None:
