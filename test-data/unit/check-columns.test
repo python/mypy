@@ -40,12 +40,12 @@ class A:
     def __lt__(self, other: int) -> str: pass
 
 f(
- y=0, x=0) # E:4: Argument 1 to "f" has incompatible type "int"; expected "str"
+ y=0, x=0) # E:4: Argument "y" to "f" has incompatible type "int"; expected "str"
 f(x=0,
-   y=None) # E:6: Argument 2 to "f" has incompatible type "None"; expected "str"
+   y=None) # E:6: Argument "y" to "f" has incompatible type "None"; expected "str"
 g(1, '', 2) # E:6: Argument 2 to "g" has incompatible type "str"; expected "int"
 aaa: str
-h(x=1, y=aaa, z=2) # E:10: Argument 2 to "h" has incompatible type "str"; expected "int"
+h(x=1, y=aaa, z=2) # E:10: Argument "y" to "h" has incompatible type "str"; expected "int"
 a: A
 ff(a.x) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
 ff([1]) # E:4: Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
@@ -338,7 +338,7 @@ def f(x: T) -> T:
     g(y=x) # E:5: Unexpected keyword argument "y" for "g"
     y: List[int, str] # E:8: "list" expects 1 type argument, but 2 given
     del 1[0] # E:5: "int" has no attribute "__delitem__"
-    bb: List[int] = [''] # E:21: List item 0 has incompatible type "str"; expected "int"
+    bb: List[int] = [''] # E:22: List item 0 has incompatible type "str"; expected "int"
     # XXX: Disabled because the column differs in 3.8
     # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
     cc = (1).bad # E:11: "int" has no attribute "bad"

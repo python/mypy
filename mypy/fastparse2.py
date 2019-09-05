@@ -834,8 +834,8 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         n_body = ast27.Return(n.body)
-        n_body.lineno = n.lineno
-        n_body.col_offset = n.col_offset
+        n_body.lineno = n.body.lineno
+        n_body.col_offset = n.body.col_offset
         body = self.as_required_block([n_body], n.lineno)
         if decompose_stmts:
             body.body = decompose_stmts + body.body

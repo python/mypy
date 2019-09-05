@@ -1178,7 +1178,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if messages:
             assert context, "Internal error: messages given without context"
         elif context is None:
-            context = TempNode(AnyType(TypeOfAny.special_form))  # Avoid "is None" checks
+            # Avoid "is None" checks
+            context = TempNode(AnyType(TypeOfAny.special_form), context=context)
 
         # TODO(jukka): We could return as soon as we find an error if messages is None.
 
@@ -2462,7 +2463,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result, inferred = self.check_op_reversible(
                     op_name=method,
                     left_type=left_possible_type,
-                    left_expr=TempNode(left_possible_type),
+                    left_expr=TempNode(left_possible_type, context=context),
                     right_type=right_type,
                     right_expr=arg,
                     context=context,
@@ -2489,7 +2490,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             right_variants = [(right_type, arg)]
             right_type = get_proper_type(right_type)
             if isinstance(right_type, UnionType):
-                right_variants = [(item, TempNode(item)) for item in right_type.relevant_items()]
+                right_variants = [(item, TempNode(item, context=context))
+                                  for item in right_type.relevant_items()]
 
             msg = self.msg.clean_copy()
             msg.disable_count = 0
@@ -2501,7 +2503,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     result, inferred = self.check_op_reversible(
                         op_name=method,
                         left_type=left_possible_type,
-                        left_expr=TempNode(left_possible_type),
+                        left_expr=TempNode(left_possible_type, context=context),
                         right_type=right_possible_type,
                         right_expr=right_expr,
                         context=context,
@@ -2514,9 +2516,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
                     self.msg.warn_both_operands_are_from_unions(context)
                 elif len(left_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Left", base_type, context)
+                    self.msg.warn_operand_was_from_union("Left", base_type, context=right_expr)
                 elif len(right_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Right", right_type, context)
+                    self.msg.warn_operand_was_from_union("Right", right_type, context=right_expr)
 
             # See the comment in 'check_overload_call' for more details on why
             # we call 'combine_function_signature' instead of just unioning the inferred
@@ -2845,10 +2847,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert expr.expr is not None
             revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
             if not self.chk.current_node_deferred:
-                self.msg.reveal_type(revealed_type, expr)
+                self.msg.reveal_type(revealed_type, expr.expr)
                 if not self.chk.in_checked_function():
                     self.msg.note("'reveal_type' always outputs 'Any' in unchecked functions",
-                                  expr)
+                                  expr.expr)
             return revealed_type
         else:
             # REVEAL_LOCALS
@@ -3098,8 +3100,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 stargs.append(value)
             else:
                 tup = TupleExpr([key, value])
-                tup.line = key.line
-                tup.column = key.column
+                tup.line = value.line
+                tup.column = value.column
                 args.append(tup)
         # Define type variables (used in constructors below).
         ktdef = TypeVarDef('KT', 'KT', -1, [], self.object_type())
