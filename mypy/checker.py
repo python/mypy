@@ -1724,7 +1724,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                  allow_none_return=True,
                                                  always_allow_any=True)
                         # we are only interested in the first Base having __init_subclass__
-                        # all other (highest) bases have already been checked
+                        # all other (highest) bases have already been checked.
                         break
         return
 
