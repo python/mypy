@@ -1679,9 +1679,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_init_subclass(self, defn: ClassDef) -> None:
         """
-        Check that the number of args to __init_subclass__, as well as typing are  both correct
-        In this example:
+        Check that keywords in a class definition are valid arguments for __init_subclass__().
 
+        In this example:
             1   class Base:
             2       def __init_subclass__(cls, thing: int):
             3           pass
@@ -1691,7 +1691,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             7   Child()
 
         Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here.
-        Child.__init_subclass__ is never called
+        Child.__init_subclass__ is never called.
         """
         typ = defn.info
         # At runtime, only Base.__init_subclass__ will be called
