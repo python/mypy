@@ -1690,7 +1690,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             6           pass
             7   Child()
 
-        Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here
+        Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here.
         Child.__init_subclass__ is never called
         """
         typ = defn.info
