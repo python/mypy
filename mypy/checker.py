@@ -1723,7 +1723,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.expr_checker.accept(call_expr,
                                                  allow_none_return=True,
                                                  always_allow_any=True)
-                        # we are only interested in the first Base having __init_subclass__
+                        # We are only interested in the first Base having __init_subclass__
                         # all other (highest) bases have already been checked.
                         break
         return
