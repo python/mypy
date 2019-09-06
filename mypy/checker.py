@@ -1695,7 +1695,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         typ = defn.info
         # At runtime, only Base.__init_subclass__ will be called
-        # we skip the current class itself
+        # we skip the current class itself.
         for base in typ.mro[1:]:
             # 'object.__init_subclass__ is a dummy method with no arguments, always defined
             # there is no use to call it
