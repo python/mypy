@@ -1696,12 +1696,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = defn.info
         # At runtime, only Base.__init_subclass__ will be called
         # we skip the current class itself.
+        found = False
         for base in typ.mro[1:]:
-            # 'object.__init_subclass__ is a dummy method with no arguments, always defined
-            # there is no use to call it
-            if base.name() != 'object' \
-                    and base.defn.info:  # there are "NOT_READY" instances
-                # during the tests, so I filter them out...
+            # there are "NOT_READY" instances
+            # during the tests, so I filter them out...
+            if base.defn.info:
                 for method_name, method_symbol_node in base.defn.info.names.items():
                     if method_name == '__init_subclass__':
                         name_expr = NameExpr(defn.name)
@@ -1723,9 +1722,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.expr_checker.accept(call_expr,
                                                  allow_none_return=True,
                                                  always_allow_any=True)
-                        # We are only interested in the first Base having __init_subclass__
-                        # all other (highest) bases have already been checked.
+                        # there is only one such method method
+                        found = True
                         break
+            # We are only interested in the first Base having __init_subclass__
+            # all other (highest) bases have already been checked.
+            if found:
+                break
         return
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
