@@ -1694,7 +1694,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Child.__init_subclass__ is never called
         """
         typ = defn.info
-        # at runtime, only Base.__init_subclass__ will be called
+        # At runtime, only Base.__init_subclass__ will be called
         # we skip the current class itself
         for base in typ.mro[1:]:
             # 'object.__init_subclass__ is a dummy method with no arguments, always defined
