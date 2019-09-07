@@ -607,3 +607,50 @@ def bar(iany) -> None:
 (int, int) -> int
 (str, int) -> str
 ==
+
+[case testSuggestColonBasic]
+# suggest: tmp/foo.py:1
+# suggest: tmp/bar/baz.py:2
+[file foo.py]
+def func(arg):
+    return 0
+func('test')
+from bar.baz import C
+C().method('test')
+[file bar/__init__.py]
+[file bar/baz.py]
+class C:
+    def method(self, x):
+        return 0
+[out]
+(str) -> int
+(str) -> int
+==
+
+[case testSuggestColonBadLine]
+# suggest:
+[out]
+
+[case testSuggestColonBadFiles]
+# suggest:
+[out]
+
+[case testSuggestColonUnknownLine]
+# suggest:
+[out]
+
+[case testSuggestColonClass]
+# suggest:
+[out]
+
+[case testSuggestColonDecorator]
+# suggest:
+[out]
+
+[case testSuggestColonMethod]
+# suggest:
+[out]
+
+[case testSuggestColonMethodJSON]
+# suggest:
+[out]
