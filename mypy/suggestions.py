@@ -174,19 +174,21 @@ class SuggestionEngine:
 
     def suggest(self, function: str) -> str:
         """Suggest an inferred type for function."""
-        with self.restore_after(function):
+        mod, func_name, node = self.find_node(function)
+
+        with self.restore_after(mod):
             with self.with_export_types():
-                suggestion = self.get_suggestion(function)
+                suggestion = self.get_suggestion(mod, node)
 
         if self.give_json:
-            return self.json_suggestion(function, suggestion)
+            return self.json_suggestion(mod, func_name, node, suggestion)
         else:
             return self.format_signature(suggestion)
 
     def suggest_callsites(self, function: str) -> str:
         """Find a list of call sites of function."""
-        with self.restore_after(function):
-            _, _, node = self.find_node(function)
+        mod, _, node = self.find_node(function)
+        with self.restore_after(mod):
             callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
@@ -195,7 +197,7 @@ class SuggestionEngine:
         ))
 
     @contextmanager
-    def restore_after(self, target: str) -> Iterator[None]:
+    def restore_after(self, module: str) -> Iterator[None]:
         """Context manager that reloads a module after executing the body.
 
         This should undo any damage done to the module state while mucking around.
@@ -203,9 +205,7 @@ class SuggestionEngine:
         try:
             yield
         finally:
-            module = module_prefix(self.graph, target)
-            if module:
-                self.reload(self.graph[module])
+            self.reload(self.graph[module])
 
     @contextmanager
     def with_export_types(self) -> Iterator[None]:
@@ -321,13 +321,12 @@ class SuggestionEngine:
                    key=lambda s: (count_errors(errors[s]), self.score_callable(s)))
         return best, count_errors(errors[best])
 
-    def get_suggestion(self, function: str) -> PyAnnotateSignature:
+    def get_suggestion(self, mod: str, node: FuncDef) -> PyAnnotateSignature:
         """Compute a suggestion for a function.
 
         Return the type and whether the first argument should be ignored.
         """
         graph = self.graph
-        mod, _, node = self.find_node(function)
         callsites, orig_errors = self.get_callsites(node)
 
         if self.no_errors and orig_errors:
@@ -493,9 +492,9 @@ class SuggestionEngine:
     def builtin_type(self, s: str) -> Instance:
         return self.manager.semantic_analyzer.builtin_type(s)
 
-    def json_suggestion(self, function: str, suggestion: PyAnnotateSignature) -> str:
+    def json_suggestion(self, mod: str, func_name: str, node: FuncDef,
+                        suggestion: PyAnnotateSignature) -> str:
         """Produce a json blob for a suggestion suitable for application by pyannotate."""
-        mod, func_name, node = self.find_node(function)
         # pyannotate irritatingly drops class names for class and static methods
         if node.is_class or node.is_static:
             func_name = func_name.split('.', 1)[-1]
