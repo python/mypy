@@ -159,3 +159,10 @@ a_str = " ".join(str(i) for i in range(10))
 wtvr = next(i for i in range(10) if i == 5)
 
 d1 = {1: 2}
+
+# Make sure we can produce an error when we hit the awful None case
+def f(l: List[object]) -> None:
+    x = None  # E: Local variable 'x' has inferred type None; add an annotation
+    for i in l:
+        if x is None:
+            x = i

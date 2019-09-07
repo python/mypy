@@ -2123,7 +2123,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.assign(target, res, res.line)
 
     def get_assignment_target(self, lvalue: Lvalue,
-                              line: Optional[int] = None) -> AssignmentTarget:
+                              line: int = -1) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # If we are visiting a decorator, then the SymbolNode we really want to be looking at
             # is the function that is decorated, not the entire Decorator node itself.
@@ -2168,7 +2168,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
-            star_idx = None
+            star_idx = None  # type: Optional[int]
             lvalues = []
             for idx, item in enumerate(lvalue.items):
                 targ = self.get_assignment_target(item)
@@ -2812,6 +2812,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Except for imports, that currently always happens in the global namespace.
         if expr.kind == LDEF and not (isinstance(expr.node, Var)
                                       and expr.node.is_suppressed_import):
+            # Try to detect and error when we hit the irritating mypy bug
+            # where a local variable is cast to None. (#5423)
+            if (isinstance(expr.node, Var) and is_none_rprimitive(self.node_type(expr))
+                    and expr.node.is_inferred):
+                self.error(
+                    "Local variable '{}' has inferred type None; add an annotation".format(
+                        expr.node.name()),
+                    expr.node.line)
+
             # TODO: Behavior currently only defined for Var and FuncDef node types.
             return self.read(self.get_assignment_target(expr), expr.line)
 

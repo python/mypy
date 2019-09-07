@@ -94,7 +94,6 @@ DeferredNode = NamedTuple(
     'DeferredNode',
     [
         ('node', DeferredNodeType),
-        ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
     ])
@@ -105,7 +104,6 @@ FineGrainedDeferredNode = NamedTuple(
     'FineGrainedDeferredNode',
     [
         ('node', FineGrainedDeferredNodeType),
-        ('context_type_name', Optional[str]),
         ('active_typeinfo', Optional[TypeInfo]),
     ])
 
@@ -329,7 +327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert not self.deferred_nodes
             self.deferred_nodes = []
             done = set()  # type: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]]
-            for node, type_name, active_typeinfo in todo:
+            for node, active_typeinfo in todo:
                 if node in done:
                     continue
                 # This is useful for debugging:
@@ -371,14 +369,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             enclosing_class: for methods, the class where the method is defined
         NOTE: this can't handle nested functions/methods.
         """
-        if self.errors.type_name:
-            type_name = self.errors.type_name[-1]
-        else:
-            type_name = None
         # We don't freeze the entire scope since only top-level functions and methods
         # can be deferred. Only module/class level scope information is needed.
         # Module-level scope information is preserved in the TypeChecker instance.
-        self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
+        self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_non_lambda_function()

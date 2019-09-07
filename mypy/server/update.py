@@ -1028,11 +1028,9 @@ def lookup_target(manager: BuildManager,
     node = modules[module]  # type: Optional[SymbolNode]
     file = None  # type: Optional[MypyFile]
     active_class = None
-    active_class_name = None
     for c in components:
         if isinstance(node, TypeInfo):
             active_class = node
-            active_class_name = node.name()
         if isinstance(node, MypyFile):
             file = node
         if (not isinstance(node, (MypyFile, TypeInfo))
@@ -1057,7 +1055,7 @@ def lookup_target(manager: BuildManager,
             # a deserialized TypeInfo with missing attributes.
             not_found()
             return [], None
-        result = [FineGrainedDeferredNode(file, None, None)]
+        result = [FineGrainedDeferredNode(file, None)]
         stale_info = None  # type: Optional[TypeInfo]
         if node.is_protocol:
             stale_info = node
@@ -1082,7 +1080,7 @@ def lookup_target(manager: BuildManager,
         # context will be wrong and it could be a partially initialized deserialized node.
         not_found()
         return [], None
-    return [FineGrainedDeferredNode(node, active_class_name, active_class)], None
+    return [FineGrainedDeferredNode(node, active_class)], None
 
 
 def is_verbose(manager: BuildManager) -> bool:
