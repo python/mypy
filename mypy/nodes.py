@@ -248,6 +248,7 @@ class MypyFile(SymbolNode):
     # error codes to ignore.
     ignored_lines = None  # type: Dict[int, List[str]]
     # This map allow find quickly a top level function/method by its line number.
+    # Decorators are added both under the first decorator line and the function line.
     line_node_map = None  # type: Dict[int, Union[FuncDef, OverloadedFuncDef, Decorator]]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False

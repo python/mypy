@@ -96,7 +96,7 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
-        a.extend(self.maybe_suggest(step, server, main_src))
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -155,7 +155,7 @@ class FineGrainedSuite(DataSuite):
 
             a.append('==')
             a.extend(new_messages)
-            a.extend(self.maybe_suggest(step, server, main_src))
+            a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         # Normalize paths in test output (for Windows).
         a = [line.replace('\\', '/') for line in a]
@@ -268,7 +268,7 @@ class FineGrainedSuite(DataSuite):
             return [base] + create_source_list([test_temp_dir], options,
                                                allow_empty_dir=True)
 
-    def maybe_suggest(self, step: int, server: Server, src: str) -> List[str]:
+    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
         output = []  # type: List[str]
         targets = self.get_suggest(src, step)
         for flags, target in targets:
@@ -285,6 +285,8 @@ class FineGrainedSuite(DataSuite):
                            try_text=try_text, flex_any=flex_any,
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
+            if json:
+                val = val.replace(tmp_dir + '/', '')
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
 

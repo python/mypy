@@ -251,7 +251,7 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
     until all names have been resolved (ot iteration limit reached).
     """
     assert state.tree is not None
-    state.tree.line_node_map[node.line] = node
+    add_node_to_map(state.tree, node)
     # We need one more iteration after incomplete is False (e.g. to report errors, if any).
     final_iteration = False
     incomplete = True
@@ -388,6 +388,13 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
                     add_type_promotion(node.node, tree.names, graph[module].options)
+
+
+def add_node_to_map(tree: MypyFile,
+                    node: Union[FuncDef, Decorator, OverloadedFuncDef]) -> None:
+    if isinstance(node, Decorator):
+        tree.line_node_map[node.func.line] = node
+    tree.line_node_map[node.line] = node
 
 
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:
