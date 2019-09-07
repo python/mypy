@@ -288,7 +288,7 @@ class FineGrainedSuite(DataSuite):
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             if json:
-                val = val.replace(tmp_dir + '/', '')
+                val = val.replace(tmp_dir + os.path.sep, '')
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
 
