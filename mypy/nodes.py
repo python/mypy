@@ -247,6 +247,8 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines = None  # type: Dict[int, List[str]]
+    # This map allow find quickly a top level function/method by its line number.
+    line_node_map = None  # type: Dict[int, Union[FuncDef, OverloadedFuncDef, Decorator]]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -274,6 +276,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
+        self.line_node_map = {}
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).

@@ -42,7 +42,9 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
-from mypy.util import module_prefix, split_target
+from mypy.util import split_target
+from mypy.find_sources import SourceFinder, InvalidSourceList
+from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.plugin import Plugin, FunctionContext, MethodContext
 from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type
@@ -162,6 +164,7 @@ class SuggestionEngine:
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
         self.graph = fgmanager.graph
+        self.finder = SourceFinder(self.manager.fscache)
 
         self.give_json = json
         self.no_errors = no_errors
@@ -385,15 +388,45 @@ class SuggestionEngine:
         return "(%s)" % (", ".join(args))
 
     def find_node(self, key: str) -> Tuple[str, str, FuncDef]:
-        """From a target name, return module/target names and the func def."""
-        # TODO: Also return OverloadedFuncDef -- currently these are ignored.
-        graph = self.fgmanager.graph
-        target = split_target(graph, key)
-        if not target:
-            raise SuggestionFailure("Cannot find module for %s" % (key,))
-        modname, tail = target
+        """From a target name, return module/target names and the func def.
 
-        tree = self.ensure_loaded(graph[modname])
+        The 'key' argument can be in one of two formats:
+        * As the function full name, e.g., package.module.Cls.method
+        * As the function location as file and line separated by column,
+          e.g., path/to/file.py:42
+        """
+        # TODO: Also return OverloadedFuncDef -- currently these are ignored.
+        node = None  # type: Optional[SymbolNode]
+        if ':' in key:
+            file, line = key.split(':')
+            if not line.isdigit():
+                raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
+            line_number = int(line)
+            modname, node = self.find_node_by_file_and_line(file, line_number)
+            tail = node.fullname()[len(modname) + 1:]  # add one to account for '.'
+        else:
+            target = split_target(self.fgmanager.graph, key)
+            if not target:
+                raise SuggestionFailure("Cannot find module for %s" % (key,))
+            modname, tail = target
+            node = self.find_node_by_module_and_name(modname, tail)
+
+        if isinstance(node, Decorator):
+            node = self.extract_from_decorator(node)
+            if not node:
+                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+
+        if not isinstance(node, FuncDef):
+            raise SuggestionFailure("Object %s is not a function" % key)
+
+        return modname, tail, node
+
+    def find_node_by_module_and_name(self, modname: str, tail: str) -> Optional[SymbolNode]:
+        """Find symbol node by module id and qualified name.
+
+        Raise SuggestionFailure if can't find one.
+        """
+        tree = self.ensure_loaded(self.fgmanager.graph[modname])
 
         # N.B. This is reimplemented from update's lookup_target
         # basically just to produce better error messages.
@@ -415,18 +448,29 @@ class SuggestionEngine:
         # Look for the actual function/method
         funcname = components[-1]
         if funcname not in names:
+            key = modname + '.' + tail
             raise SuggestionFailure("Unknown %s %s" %
                                     ("method" if len(components) > 1 else "function", key))
-        node = names[funcname].node
-        if isinstance(node, Decorator):
-            node = self.extract_from_decorator(node)
-            if not node:
-                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+        return names[funcname].node
 
-        if not isinstance(node, FuncDef):
-            raise SuggestionFailure("Object %s is not a function" % key)
+    def find_node_by_file_and_line(self, file: str, line: int) -> Tuple[str, SymbolNode]:
+        """Find symbol node by path to file and line number.
 
-        return (modname, tail, node)
+        Return module id and the node found. Raise SuggestionFailure if can't find one.
+        """
+        if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
+            raise SuggestionFailure('Source file is not a Python file')
+        try:
+            modname, _ = self.finder.crawl_up(os.path.normpath(file))
+        except InvalidSourceList:
+            raise SuggestionFailure('Invalid source file name: ' + file)
+        if modname not in self.graph:
+            raise SuggestionFailure('Unknown module: ' + modname)
+        tree = self.ensure_loaded(self.fgmanager.graph[modname])
+        if line not in tree.line_node_map:
+            raise SuggestionFailure('Cannot find a function at line {}'.format(line))
+        node = tree.line_node_map[line]
+        return modname, node
 
     def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
         for dec in node.decorators:

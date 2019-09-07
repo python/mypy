@@ -250,6 +250,8 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
     Process the body of the function (including nested functions) again and again,
     until all names have been resolved (ot iteration limit reached).
     """
+    assert state.tree is not None
+    state.tree.line_node_map[node.line] = node
     # We need one more iteration after incomplete is False (e.g. to report errors, if any).
     final_iteration = False
     incomplete = True
@@ -263,7 +265,6 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
         iteration += 1
         if iteration == MAX_ITERATIONS:
             # Just pick some module inside the current SCC for error context.
-            assert state.tree is not None
             with analyzer.file_context(state.tree, state.options):
                 analyzer.report_hang()
             break
