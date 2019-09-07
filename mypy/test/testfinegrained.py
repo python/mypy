@@ -96,6 +96,7 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
+        assert testcase.tmpdir
         a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         if server.fine_grained_manager:
@@ -155,6 +156,7 @@ class FineGrainedSuite(DataSuite):
 
             a.append('==')
             a.extend(new_messages)
+            assert testcase.tmpdir
             a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         # Normalize paths in test output (for Windows).

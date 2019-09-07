@@ -466,7 +466,8 @@ class SuggestionEngine:
             raise SuggestionFailure('Invalid source file name: ' + file)
         if modname not in self.graph:
             raise SuggestionFailure('Unknown module: ' + modname)
-        tree = self.ensure_loaded(self.fgmanager.graph[modname])
+        # We must be sure about any edits in this file as this might affect the line numbers.
+        tree = self.ensure_loaded(self.fgmanager.graph[modname], force=True)
         if line not in tree.line_node_map:
             raise SuggestionFailure('Cannot find a function at line {}'.format(line))
         node = tree.line_node_map[line]
@@ -526,9 +527,9 @@ class SuggestionEngine:
             raise SuggestionFailure("Error while trying to load %s" % state.id)
         return res
 
-    def ensure_loaded(self, state: State) -> MypyFile:
+    def ensure_loaded(self, state: State, force: bool = False) -> MypyFile:
         """Make sure that the module represented by state is fully loaded."""
-        if not state.tree or state.tree.is_cache_skeleton:
+        if not state.tree or state.tree.is_cache_skeleton or force:
             self.reload(state, check_errors=True)
         assert state.tree is not None
         return state.tree
