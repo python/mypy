@@ -288,7 +288,8 @@ class FineGrainedSuite(DataSuite):
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
             if json:
-                print(val, tmp_dir, os.path.sep, os.path.altsep)
+                # JSON contains already escaped \ on Windows, so requires a bit of care.
+                val = val.replace('\\\\', '\\')
                 val = val.replace(tmp_dir + os.path.sep, '')
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
