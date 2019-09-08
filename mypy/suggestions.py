@@ -468,9 +468,17 @@ class SuggestionEngine:
             raise SuggestionFailure('Unknown module: ' + modname)
         # We must be sure about any edits in this file as this might affect the line numbers.
         tree = self.ensure_loaded(self.fgmanager.graph[modname], force=True)
-        if line not in tree.line_node_map:
+        node = None  # type: Optional[SymbolNode]
+        for _, sym, _ in tree.local_definitions():
+            if isinstance(sym.node, FuncDef) and sym.node.line == line:
+                node = sym.node
+                break
+            elif isinstance(sym.node, Decorator) and sym.node.func.line == line:
+                node = sym.node
+                break
+            # TODO: add support for OverloadedFuncDef.
+        if not node:
             raise SuggestionFailure('Cannot find a function at line {}'.format(line))
-        node = tree.line_node_map[line]
         return modname, node
 
     def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
