@@ -94,7 +94,7 @@ def g(a):
     r3 :: None
 L0:
     r0 = 1
-    r1 = unicode_3 :: static  ('hi')
+    r1 = unicode_4 :: static  ('hi')
     r2 = a.f(r0, r1)
     r3 = None
     return r3
@@ -360,31 +360,40 @@ def __top_level__():
     r40 :: str
     r41, r42 :: object
     r43 :: bool
-    r44 :: dict
-    r45 :: str
+    r44 :: str
+    r45 :: tuple
     r46 :: bool
-    r47 :: object
+    r47 :: dict
     r48 :: str
-    r49, r50 :: object
-    r51 :: bool
-    r52 :: dict
-    r53 :: str
+    r49 :: bool
+    r50 :: object
+    r51 :: str
+    r52, r53 :: object
     r54 :: bool
-    r55, r56 :: object
-    r57 :: dict
-    r58 :: str
-    r59 :: object
-    r60 :: dict
-    r61 :: str
-    r62, r63 :: object
-    r64 :: tuple
-    r65 :: str
-    r66, r67 :: object
-    r68 :: bool
-    r69 :: dict
-    r70 :: str
-    r71 :: bool
-    r72 :: None
+    r55 :: str
+    r56 :: tuple
+    r57 :: bool
+    r58 :: dict
+    r59 :: str
+    r60 :: bool
+    r61, r62 :: object
+    r63 :: dict
+    r64 :: str
+    r65 :: object
+    r66 :: dict
+    r67 :: str
+    r68, r69 :: object
+    r70 :: tuple
+    r71 :: str
+    r72, r73 :: object
+    r74 :: bool
+    r75, r76 :: str
+    r77 :: tuple
+    r78 :: bool
+    r79 :: dict
+    r80 :: str
+    r81 :: bool
+    r82 :: None
 L0:
     r0 = builtins.module :: static
     r1 = builtins.None :: object
@@ -442,39 +451,49 @@ L6:
     r41 = __main__.C_template :: type
     r42 = pytype_from_template(r41, r39, r40)
     r43 = C_trait_vtable_setup()
+    r44 = unicode_8 :: static  ('__mypyc_attrs__')
+    r45 = () :: tuple
+    r46 = setattr r42, r44, r45
     __main__.C = r42 :: type
-    r44 = __main__.globals :: static
-    r45 = unicode_8 :: static  ('C')
-    r46 = r44.__setitem__(r45, r42) :: dict
-    r47 = <error> :: object
-    r48 = unicode_7 :: static  ('__main__')
-    r49 = __main__.S_template :: type
-    r50 = pytype_from_template(r49, r47, r48)
-    r51 = S_trait_vtable_setup()
-    __main__.S = r50 :: type
-    r52 = __main__.globals :: static
-    r53 = unicode_9 :: static  ('S')
-    r54 = r52.__setitem__(r53, r50) :: dict
-    r55 = __main__.C :: type
-    r56 = __main__.S :: type
-    r57 = __main__.globals :: static
-    r58 = unicode_3 :: static  ('Generic')
-    r59 = r57[r58] :: dict
-    r60 = __main__.globals :: static
-    r61 = unicode_6 :: static  ('T')
-    r62 = r60[r61] :: dict
-    r63 = r59[r62] :: object
-    r64 = (r55, r56, r63) :: tuple
-    r65 = unicode_7 :: static  ('__main__')
-    r66 = __main__.D_template :: type
-    r67 = pytype_from_template(r66, r64, r65)
-    r68 = D_trait_vtable_setup()
-    __main__.D = r67 :: type
-    r69 = __main__.globals :: static
-    r70 = unicode_10 :: static  ('D')
-    r71 = r69.__setitem__(r70, r67) :: dict
-    r72 = None
-    return r72
+    r47 = __main__.globals :: static
+    r48 = unicode_9 :: static  ('C')
+    r49 = r47.__setitem__(r48, r42) :: dict
+    r50 = <error> :: object
+    r51 = unicode_7 :: static  ('__main__')
+    r52 = __main__.S_template :: type
+    r53 = pytype_from_template(r52, r50, r51)
+    r54 = S_trait_vtable_setup()
+    r55 = unicode_8 :: static  ('__mypyc_attrs__')
+    r56 = () :: tuple
+    r57 = setattr r53, r55, r56
+    __main__.S = r53 :: type
+    r58 = __main__.globals :: static
+    r59 = unicode_10 :: static  ('S')
+    r60 = r58.__setitem__(r59, r53) :: dict
+    r61 = __main__.C :: type
+    r62 = __main__.S :: type
+    r63 = __main__.globals :: static
+    r64 = unicode_3 :: static  ('Generic')
+    r65 = r63[r64] :: dict
+    r66 = __main__.globals :: static
+    r67 = unicode_6 :: static  ('T')
+    r68 = r66[r67] :: dict
+    r69 = r65[r68] :: object
+    r70 = (r61, r62, r69) :: tuple
+    r71 = unicode_7 :: static  ('__main__')
+    r72 = __main__.D_template :: type
+    r73 = pytype_from_template(r72, r70, r71)
+    r74 = D_trait_vtable_setup()
+    r75 = unicode_8 :: static  ('__mypyc_attrs__')
+    r76 = unicode_11 :: static  ('__dict__')
+    r77 = (r76) :: tuple
+    r78 = setattr r73, r75, r77
+    __main__.D = r73 :: type
+    r79 = __main__.globals :: static
+    r80 = unicode_12 :: static  ('D')
+    r81 = r79.__setitem__(r80, r73) :: dict
+    r82 = None
+    return r82
 
 [case testIsInstance]
 class A: pass
@@ -785,11 +804,10 @@ def f():
     r3 :: int
 L0:
     r0 = __main__.A :: type
-    r1 = unicode_5 :: static  ('x')
+    r1 = unicode_6 :: static  ('x')
     r2 = getattr r0, r1
     r3 = unbox(int, r2)
     return r3
-
 
 [case testNoEqDefined]
 class A:
@@ -1014,7 +1032,7 @@ L0:
     r0 = 10
     __mypyc_self__.x = r0; r1 = is_error
     r2 = __main__.globals :: static
-    r3 = unicode_7 :: static  ('LOL')
+    r3 = unicode_9 :: static  ('LOL')
     r4 = r2[r3] :: dict
     r5 = cast(str, r4)
     __mypyc_self__.y = r5; r6 = is_error
