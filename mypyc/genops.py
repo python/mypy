@@ -595,15 +595,12 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
                 ir.inherits_python = True
             continue
         base_ir = mapper.type_to_ir[cls]
-        if not base_ir.is_ext_class:
-            ir.inherits_python = True
         if not base_ir.is_trait:
             base_mro.append(base_ir)
         mro.append(base_ir)
 
-    # Generic and similar are python base classes
-    if cdef.removed_base_type_exprs:
-        ir.inherits_python = True
+        if cls.defn.removed_base_type_exprs or not base_ir.is_ext_class:
+            ir.inherits_python = True
 
     base_idx = 1 if not ir.is_trait else 0
     if len(base_mro) > base_idx:

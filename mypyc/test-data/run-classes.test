@@ -1034,7 +1034,7 @@ except TypeError as e:
 
 [case testPickling]
 from mypy_extensions import trait
-from typing import Any
+from typing import Any, TypeVar, Generic
 
 def dec(x: Any) -> Any:
     return x
@@ -1070,8 +1070,17 @@ class D:
 class E(D):
     y: int
 
+
+U = TypeVar('U')
+
+class F(Generic[U]):
+    y: int
+
+class G(F[int]):
+    pass
+
 [file driver.py]
-from native import A, B, T, C, D, E
+from native import A, B, T, C, D, E, F, G
 
 import copy
 import pickle
@@ -1082,14 +1091,16 @@ assert T.__mypyc_attrs__ == ('a',)
 assert C.__mypyc_attrs__ == ('w', 'z', 'x', 'y', 'a')
 assert not hasattr(D, '__mypyc_attrs__')
 assert E.__mypyc_attrs__ == ('y', '__dict__')
+assert F.__mypyc_attrs__ == ('y', '__dict__')
+assert G.__mypyc_attrs__ == ('y', '__dict__')
 
 b = B(10, '20', False)
 assert b.__getstate__() == {'z': False, 'x': 10, 'y': '20'}
 b2 = copy.copy(b)
-assert b != b2 and b.y == b2.y
+assert b is not b2 and b.y == b2.y
 
 b3 = pickle.loads(pickle.dumps(b))
-assert b != b3 and b.y == b3.y
+assert b is not b3 and b.y == b3.y
 
 e = E()
 e.x = 10
@@ -1097,4 +1108,4 @@ e.y = 20
 
 assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
 e2 = pickle.loads(pickle.dumps(e))
-assert e != e2 and e.x == e2.x and e.y == e2.y
+assert e is not e2 and e.x == e2.x and e.y == e2.y
