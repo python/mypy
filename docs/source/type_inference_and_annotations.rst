@@ -160,7 +160,7 @@ in the following statement:
 .. code-block:: python
 
     def foo(arg: List[int]) -> None:
-        print(Items: ', '.join(arg))
+        print('Items:', ', '.join(arg))
 
     a = []  # Error: Need type annotation for 'a'
     foo(a)
