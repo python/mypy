@@ -172,7 +172,6 @@ class Errors:
         self.error_info_map = OrderedDict()
         self.flushed_files = set()
         self.import_ctx = []
-        self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
@@ -192,7 +191,6 @@ class Errors:
                      self.read_source)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
-        new.type_name = self.type_name[:]
         new.function_or_member = self.function_or_member[:]
         new.target_module = self.target_module
         new.scope = self.scope
