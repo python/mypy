@@ -531,7 +531,8 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    for name, node in info.names.items():
+    # We sort the table for determinism here on Python 3.5
+    for name, node in sorted(info.names.items()):
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name != '__slots__':
