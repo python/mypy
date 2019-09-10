@@ -96,7 +96,8 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
-        a.extend(self.maybe_suggest(step, server, main_src))
+        assert testcase.tmpdir
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -155,7 +156,8 @@ class FineGrainedSuite(DataSuite):
 
             a.append('==')
             a.extend(new_messages)
-            a.extend(self.maybe_suggest(step, server, main_src))
+            assert testcase.tmpdir
+            a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         # Normalize paths in test output (for Windows).
         a = [line.replace('\\', '/') for line in a]
@@ -268,7 +270,7 @@ class FineGrainedSuite(DataSuite):
             return [base] + create_source_list([test_temp_dir], options,
                                                allow_empty_dir=True)
 
-    def maybe_suggest(self, step: int, server: Server, src: str) -> List[str]:
+    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
         output = []  # type: List[str]
         targets = self.get_suggest(src, step)
         for flags, target in targets:
@@ -285,13 +287,17 @@ class FineGrainedSuite(DataSuite):
                            try_text=try_text, flex_any=flex_any,
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
+            if json:
+                # JSON contains already escaped \ on Windows, so requires a bit of care.
+                val = val.replace('\\\\', '\\')
+                val = val.replace(tmp_dir + os.path.sep, '')
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
 
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
+        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'.format(step_bit)
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
