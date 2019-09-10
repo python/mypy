@@ -22,7 +22,8 @@ S = TypeVar('S')
 class list(Iterable[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __getitem__(self, item: int) -> T: pass
-class tuple(Iterable[T]): pass
+class tuple(Iterable[T]):
+    def __iter__(self) -> Iterator[T]: pass
 class dict(Generic[T, S]): pass
 
 class bytearray(Sequence[int]):
