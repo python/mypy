@@ -42,7 +42,9 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.server.update import FineGrainedBuildManager
-from mypy.util import module_prefix, split_target
+from mypy.util import split_target
+from mypy.find_sources import SourceFinder, InvalidSourceList
+from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.plugin import Plugin, FunctionContext, MethodContext
 from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type
@@ -162,6 +164,7 @@ class SuggestionEngine:
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
         self.graph = fgmanager.graph
+        self.finder = SourceFinder(self.manager.fscache)
 
         self.give_json = json
         self.no_errors = no_errors
@@ -174,19 +177,21 @@ class SuggestionEngine:
 
     def suggest(self, function: str) -> str:
         """Suggest an inferred type for function."""
-        with self.restore_after(function):
+        mod, func_name, node = self.find_node(function)
+
+        with self.restore_after(mod):
             with self.with_export_types():
-                suggestion = self.get_suggestion(function)
+                suggestion = self.get_suggestion(mod, node)
 
         if self.give_json:
-            return self.json_suggestion(function, suggestion)
+            return self.json_suggestion(mod, func_name, node, suggestion)
         else:
             return self.format_signature(suggestion)
 
     def suggest_callsites(self, function: str) -> str:
         """Find a list of call sites of function."""
-        with self.restore_after(function):
-            _, _, node = self.find_node(function)
+        mod, _, node = self.find_node(function)
+        with self.restore_after(mod):
             callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
@@ -195,7 +200,7 @@ class SuggestionEngine:
         ))
 
     @contextmanager
-    def restore_after(self, target: str) -> Iterator[None]:
+    def restore_after(self, module: str) -> Iterator[None]:
         """Context manager that reloads a module after executing the body.
 
         This should undo any damage done to the module state while mucking around.
@@ -203,9 +208,7 @@ class SuggestionEngine:
         try:
             yield
         finally:
-            module = module_prefix(self.graph, target)
-            if module:
-                self.reload(self.graph[module])
+            self.reload(self.graph[module])
 
     @contextmanager
     def with_export_types(self) -> Iterator[None]:
@@ -321,13 +324,12 @@ class SuggestionEngine:
                    key=lambda s: (count_errors(errors[s]), self.score_callable(s)))
         return best, count_errors(errors[best])
 
-    def get_suggestion(self, function: str) -> PyAnnotateSignature:
+    def get_suggestion(self, mod: str, node: FuncDef) -> PyAnnotateSignature:
         """Compute a suggestion for a function.
 
         Return the type and whether the first argument should be ignored.
         """
         graph = self.graph
-        mod, _, node = self.find_node(function)
         callsites, orig_errors = self.get_callsites(node)
 
         if self.no_errors and orig_errors:
@@ -386,15 +388,49 @@ class SuggestionEngine:
         return "(%s)" % (", ".join(args))
 
     def find_node(self, key: str) -> Tuple[str, str, FuncDef]:
-        """From a target name, return module/target names and the func def."""
-        # TODO: Also return OverloadedFuncDef -- currently these are ignored.
-        graph = self.fgmanager.graph
-        target = split_target(graph, key)
-        if not target:
-            raise SuggestionFailure("Cannot find module for %s" % (key,))
-        modname, tail = target
+        """From a target name, return module/target names and the func def.
 
-        tree = self.ensure_loaded(graph[modname])
+        The 'key' argument can be in one of two formats:
+        * As the function full name, e.g., package.module.Cls.method
+        * As the function location as file and line separated by column,
+          e.g., path/to/file.py:42
+        """
+        # TODO: Also return OverloadedFuncDef -- currently these are ignored.
+        node = None  # type: Optional[SymbolNode]
+        if ':' in key:
+            if key.count(':') > 1:
+                raise SuggestionFailure(
+                    'Malformed location for function: {}. Must be either'
+                    ' package.module.Class.method or path/to/file.py:line'.format(key))
+            file, line = key.split(':')
+            if not line.isdigit():
+                raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
+            line_number = int(line)
+            modname, node = self.find_node_by_file_and_line(file, line_number)
+            tail = node.fullname()[len(modname) + 1:]  # add one to account for '.'
+        else:
+            target = split_target(self.fgmanager.graph, key)
+            if not target:
+                raise SuggestionFailure("Cannot find module for %s" % (key,))
+            modname, tail = target
+            node = self.find_node_by_module_and_name(modname, tail)
+
+        if isinstance(node, Decorator):
+            node = self.extract_from_decorator(node)
+            if not node:
+                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+
+        if not isinstance(node, FuncDef):
+            raise SuggestionFailure("Object %s is not a function" % key)
+
+        return modname, tail, node
+
+    def find_node_by_module_and_name(self, modname: str, tail: str) -> Optional[SymbolNode]:
+        """Find symbol node by module id and qualified name.
+
+        Raise SuggestionFailure if can't find one.
+        """
+        tree = self.ensure_loaded(self.fgmanager.graph[modname])
 
         # N.B. This is reimplemented from update's lookup_target
         # basically just to produce better error messages.
@@ -416,18 +452,38 @@ class SuggestionEngine:
         # Look for the actual function/method
         funcname = components[-1]
         if funcname not in names:
+            key = modname + '.' + tail
             raise SuggestionFailure("Unknown %s %s" %
                                     ("method" if len(components) > 1 else "function", key))
-        node = names[funcname].node
-        if isinstance(node, Decorator):
-            node = self.extract_from_decorator(node)
-            if not node:
-                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+        return names[funcname].node
 
-        if not isinstance(node, FuncDef):
-            raise SuggestionFailure("Object %s is not a function" % key)
+    def find_node_by_file_and_line(self, file: str, line: int) -> Tuple[str, SymbolNode]:
+        """Find symbol node by path to file and line number.
 
-        return (modname, tail, node)
+        Return module id and the node found. Raise SuggestionFailure if can't find one.
+        """
+        if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
+            raise SuggestionFailure('Source file is not a Python file')
+        try:
+            modname, _ = self.finder.crawl_up(os.path.normpath(file))
+        except InvalidSourceList:
+            raise SuggestionFailure('Invalid source file name: ' + file)
+        if modname not in self.graph:
+            raise SuggestionFailure('Unknown module: ' + modname)
+        # We must be sure about any edits in this file as this might affect the line numbers.
+        tree = self.ensure_loaded(self.fgmanager.graph[modname], force=True)
+        node = None  # type: Optional[SymbolNode]
+        for _, sym, _ in tree.local_definitions():
+            if isinstance(sym.node, FuncDef) and sym.node.line == line:
+                node = sym.node
+                break
+            elif isinstance(sym.node, Decorator) and sym.node.func.line == line:
+                node = sym.node
+                break
+            # TODO: add support for OverloadedFuncDef.
+        if not node:
+            raise SuggestionFailure('Cannot find a function at line {}'.format(line))
+        return modname, node
 
     def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
         for dec in node.decorators:
@@ -483,9 +539,9 @@ class SuggestionEngine:
             raise SuggestionFailure("Error while trying to load %s" % state.id)
         return res
 
-    def ensure_loaded(self, state: State) -> MypyFile:
+    def ensure_loaded(self, state: State, force: bool = False) -> MypyFile:
         """Make sure that the module represented by state is fully loaded."""
-        if not state.tree or state.tree.is_cache_skeleton:
+        if not state.tree or state.tree.is_cache_skeleton or force:
             self.reload(state, check_errors=True)
         assert state.tree is not None
         return state.tree
@@ -493,9 +549,9 @@ class SuggestionEngine:
     def builtin_type(self, s: str) -> Instance:
         return self.manager.semantic_analyzer.builtin_type(s)
 
-    def json_suggestion(self, function: str, suggestion: PyAnnotateSignature) -> str:
+    def json_suggestion(self, mod: str, func_name: str, node: FuncDef,
+                        suggestion: PyAnnotateSignature) -> str:
         """Produce a json blob for a suggestion suitable for application by pyannotate."""
-        mod, func_name, node = self.find_node(function)
         # pyannotate irritatingly drops class names for class and static methods
         if node.is_class or node.is_static:
             func_name = func_name.split('.', 1)[-1]
