@@ -6141,3 +6141,18 @@ class C(B[int, T]):
     def __init__(self) -> None:
         # TODO: error message could be better.
         self.x: Tuple[str, T]  # E: Incompatible types in assignment (expression has type "Tuple[str, T]", base class "A" defined the type as "Tuple[int, T]")
+
+[case testOverrideGenericSelfClassMethod]
+from typing import Generic, TypeVar, Type, List
+
+T = TypeVar('T', bound=A)
+
+class A:
+    @classmethod
+    def meth(cls: Type[T]) -> List[T]: ...
+
+class B(A):
+    @classmethod
+    def meth(cls: Type[T]) -> List[T]: ...
+
+[builtins fixtures/isinstancelist.pyi]
