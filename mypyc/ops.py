@@ -1707,7 +1707,11 @@ class NonExtClassInfo:
         self.anns = non_ext_anns
 
 
-LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
+# A LiteralsMap maps from compilation group name to dicts that map from literals to names
+LiteralsMap = Dict[
+    Optional[str],
+    Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
+]
 
 
 class ModuleIR:

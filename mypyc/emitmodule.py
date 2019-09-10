@@ -53,8 +53,15 @@ def compile_modules_to_c(
     module_names = [source.module for group_sources, _ in groups for source in group_sources]
     file_nodes = [result.files[name] for name in module_names]
 
+    # Construct a map from modules to what group they belong to
+    group_map = {}
+    for group, lib_name in groups:
+        for source in group:
+            group_map[source.module] = lib_name
+
     # Generate basic IR, with missing exception and refcount handling.
     literals, modules = genops.build_ir(file_nodes, result.graph, result.types,
+                                        group_map,
                                         compiler_options, errors)
     if errors.num_errors > 0:
         return []
@@ -79,12 +86,6 @@ def compile_modules_to_c(
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
-
-    # Construct a map from modules to what group they belong to
-    group_map = {}
-    for group, lib_name in groups:
-        for source in group:
-            group_map[source.module] = lib_name
 
     # Generate all the groups
     ctext = []
@@ -138,7 +139,7 @@ class ModuleGenerator:
                  shared_lib_name: Optional[str],
                  group_map: Dict[str, Optional[str]],
                  multi_file: bool) -> None:
-        self.literals = literals
+        self.literals = literals[shared_lib_name]
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext([name for name, _ in modules], group_map, shared_lib_name)
