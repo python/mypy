@@ -94,7 +94,6 @@ DeferredNode = NamedTuple(
     'DeferredNode',
     [
         ('node', DeferredNodeType),
-        ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
     ])
@@ -105,7 +104,6 @@ FineGrainedDeferredNode = NamedTuple(
     'FineGrainedDeferredNode',
     [
         ('node', FineGrainedDeferredNodeType),
-        ('context_type_name', Optional[str]),
         ('active_typeinfo', Optional[TypeInfo]),
     ])
 
@@ -329,7 +327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert not self.deferred_nodes
             self.deferred_nodes = []
             done = set()  # type: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]]
-            for node, type_name, active_typeinfo in todo:
+            for node, active_typeinfo in todo:
                 if node in done:
                     continue
                 # This is useful for debugging:
@@ -371,14 +369,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             enclosing_class: for methods, the class where the method is defined
         NOTE: this can't handle nested functions/methods.
         """
-        if self.errors.type_name:
-            type_name = self.errors.type_name[-1]
-        else:
-            type_name = None
         # We don't freeze the entire scope since only top-level functions and methods
         # can be deferred. Only module/class level scope information is needed.
         # Module-level scope information is preserved in the TypeChecker instance.
-        self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
+        self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_non_lambda_function()
@@ -1460,14 +1454,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(defn, (FuncDef, OverloadedFuncDef)):
                 typ = self.function_type(defn)  # type: Type
                 override_class_or_static = defn.is_class or defn.is_static
+                override_class = defn.is_class
             else:
                 assert defn.var.is_ready
                 assert defn.var.type is not None
                 typ = defn.var.type
                 override_class_or_static = defn.func.is_class or defn.func.is_static
+                override_class = defn.func.is_class
             typ = get_proper_type(typ)
             if isinstance(typ, FunctionLike) and not is_static(context):
-                typ = bind_self(typ, self.scope.active_self_type())
+                typ = bind_self(typ, self.scope.active_self_type(),
+                                is_classmethod=override_class)
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = get_proper_type(base_attr.type)
@@ -1530,7 +1527,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         if (isinstance(sym.node, (FuncDef, OverloadedFuncDef, Decorator))
                 and not is_static(sym.node)):
-            bound = bind_self(typ, self.scope.active_self_type())
+            if isinstance(sym.node, Decorator):
+                is_class_method = sym.node.func.is_class
+            else:
+                is_class_method = sym.node.is_class
+            bound = bind_self(typ, self.scope.active_self_type(), is_class_method)
         else:
             bound = typ
         return cast(FunctionLike, map_type_from_supertype(bound, sub_info, super_info))
@@ -1683,7 +1684,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         continue
 
                     dec = self.expr_checker.accept(decorator)
-                    temp = self.temp_node(sig)
+                    temp = self.temp_node(sig, context=decorator)
                     fullname = None
                     if isinstance(decorator, RefExpr):
                         fullname = decorator.fullname
@@ -2796,15 +2797,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For this we use the rvalue as type context.
         self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), rvalue],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
+            dunder_set_type,
+            [TempNode(instance_type, context=context), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context)
         self.msg.enable_errors()
 
         # And now we type check the call second time, to show errors related
         # to wrong arguments count, etc.
         self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
+            dunder_set_type,
+            [TempNode(instance_type, context=context),
+             TempNode(AnyType(TypeOfAny.special_form), context=context)],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context)
 
         # should be handled by get_method above
         assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
@@ -3307,7 +3313,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig)
+            temp = self.temp_node(sig, context=e)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
@@ -4041,10 +4047,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def temp_node(self, t: Type, context: Optional[Context] = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""
-        temp = TempNode(t)
-        if context:
-            temp.set_line(context.get_line())
-        return temp
+        return TempNode(t, context=context)
 
     def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
@@ -4075,7 +4078,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(ret_type, Instance):
                 iterator = map_instance_to_supertype(ret_type,
                                                      self.lookup_typeinfo('typing.Iterator'))
-            item_type = iterator.args[0]
+                item_type = iterator.args[0]
         return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:

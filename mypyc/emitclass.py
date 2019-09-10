@@ -550,6 +550,14 @@ def generate_methods_table(cl: ClassIR,
             flags.append('METH_CLASS')
 
         emitter.emit_line(' {}, NULL}},'.format(' | '.join(flags)))
+
+    # Provide a default __getstate__ and __setstate__
+    if not cl.has_method('__setstate__') and not cl.has_method('__getstate__'):
+        emitter.emit_lines(
+            '{"__setstate__", (PyCFunction)CPyPickle_SetState, METH_O, NULL},',
+            '{"__getstate__", (PyCFunction)CPyPickle_GetState, METH_NOARGS, NULL},',
+        )
+
     emitter.emit_line('{NULL}  /* Sentinel */')
     emitter.emit_line('};')
 

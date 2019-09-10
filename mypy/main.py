@@ -447,7 +447,7 @@ def process_options(args: List[str],
         title='None and Optional handling',
         description="Adjust how values of type 'None' are handled. For more context on "
                     "how mypy handles values of type 'None', see: "
-                    "mypy.readthedocs.io/en/latest/kinds_of_types.html#no-strict-optional")
+                    "http://mypy.readthedocs.io/en/latest/kinds_of_types.html#no-strict-optional")
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="Don't assume arguments with default values of None are Optional",
                         group=none_group)

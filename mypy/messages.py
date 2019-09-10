@@ -324,8 +324,14 @@ class MessageBuilder:
                   code=codes.NO_UNTYPED_CALL)
         return AnyType(TypeOfAny.from_error)
 
-    def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
-                              arg_kind: int, context: Context) -> Optional[ErrorCode]:
+    def incompatible_argument(self,
+                              n: int,
+                              m: int,
+                              callee: CallableType,
+                              arg_type: Type,
+                              arg_kind: int,
+                              context: Context,
+                              outer_context: Context) -> Optional[ErrorCode]:
         """Report an error about an incompatible argument type.
 
         The argument type is arg_type, argument number is n and the
@@ -456,8 +462,8 @@ class MessageBuilder:
             # For function calls with keyword arguments, display the argument name rather than the
             # number.
             arg_label = str(n)
-            if isinstance(context, CallExpr) and len(context.arg_names) >= n:
-                arg_name = context.arg_names[n - 1]
+            if isinstance(outer_context, CallExpr) and len(outer_context.arg_names) >= n:
+                arg_name = outer_context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
 

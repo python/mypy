@@ -38,6 +38,13 @@ DEFAULT_COLUMNS = 80   # type: Final
 # error location when printing source code snippet.
 MINIMUM_WIDTH = 20
 
+# VT100 color code processing was added in Windows 10, but only the second major update,
+# Threshold 2. Fortunately, everyone (even on LTSB, Long Term Support Branch) should
+# have a version of Windows 10 newer than this. Note that Windows 8 and below are not
+# supported, but are either going out of support, or make up only a few % of the market.
+MINIMUM_WINDOWS_MAJOR_VT100 = 10
+MINIMUM_WINDOWS_BUILD_VT100 = 10586
+
 default_python2_interpreter = \
     ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
 
@@ -467,30 +474,68 @@ class FancyFormatter:
     def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
         self.show_error_codes = show_error_codes
         # Check if we are in a human-facing terminal on a supported platform.
-        if sys.platform not in ('linux', 'darwin'):
+        if sys.platform not in ('linux', 'darwin', 'win32'):
             self.dummy_term = True
             return
         force_color = int(os.getenv('MYPY_FORCE_COLOR', '0'))
         if not force_color and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
+        if sys.platform == 'win32':
+            self.dummy_term = not self.initialize_win_colors()
+        else:
+            self.dummy_term = not self.initialize_unix_colors()
+        if not self.dummy_term:
+            self.colors = {'red': self.RED, 'green': self.GREEN,
+                           'blue': self.BLUE, 'yellow': self.YELLOW,
+                           'none': ''}
 
-        # We in a human-facing terminal, check if it supports enough styling.
+    def initialize_win_colors(self) -> bool:
+        """Return True if initialization was successful and we can use colors, False otherwise"""
+        # Windows ANSI escape sequences are only supported on Threshold 2 and above.
+        # we check with an assert at runtime and an if check for mypy, as asserts do not
+        # yet narrow platform
+        assert sys.platform == 'win32'
+        if sys.platform == 'win32':
+            winver = sys.getwindowsversion()
+            if (winver.major < MINIMUM_WINDOWS_MAJOR_VT100
+            or winver.build < MINIMUM_WINDOWS_BUILD_VT100):
+                return False
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            ENABLE_PROCESSED_OUTPUT = 0x1
+            ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
+            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
+            STD_OUTPUT_HANDLE = -11
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
+                                    ENABLE_PROCESSED_OUTPUT
+                                    | ENABLE_WRAP_AT_EOL_OUTPUT
+                                    | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+            self.BOLD = '\033[1m'
+            self.UNDER = '\033[4m'
+            self.BLUE = '\033[94m'
+            self.GREEN = '\033[92m'
+            self.RED = '\033[91m'
+            self.YELLOW = '\033[93m'
+            self.NORMAL = '\033[0m'
+            self.DIM = '\033[2m'
+            return True
+        return False
+
+    def initialize_unix_colors(self) -> bool:
+        """Return True if initialization was successful and we can use colors, False otherwise"""
         if not CURSES_ENABLED:
-            self.dummy_term = True
-            return
+            return False
         try:
             curses.setupterm()
         except curses.error:
             # Most likely terminfo not found.
-            self.dummy_term = True
-            return
+            return False
         bold = curses.tigetstr('bold')
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
-        self.dummy_term = not (bold and under and set_color)
-        if self.dummy_term:
-            return
+        if not (bold and under and set_color):
+            return False
 
         self.NORMAL = curses.tigetstr('sgr0').decode()
         self.BOLD = bold.decode()
@@ -503,10 +548,7 @@ class FancyFormatter:
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
         self.YELLOW = curses.tparm(set_color, curses.COLOR_YELLOW).decode()
-
-        self.colors = {'red': self.RED, 'green': self.GREEN,
-                       'blue': self.BLUE, 'yellow': self.YELLOW,
-                       'none': ''}
+        return True
 
     def style(self, text: str, color: Literal['red', 'green', 'blue', 'yellow', 'none'],
               bold: bool = False, underline: bool = False, dim: bool = False) -> str:

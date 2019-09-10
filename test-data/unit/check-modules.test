@@ -1860,8 +1860,8 @@ class C:
 import stub
 
 reveal_type(stub.y)  # N: Revealed type is 'builtins.int'
-reveal_type(stub.z)  # N: Revealed type is 'Any' \
-                     # E: Module has no attribute "z"
+reveal_type(stub.z)  # E: Module has no attribute "z" \
+                     # N: Revealed type is 'Any'
 
 [file stub.pyi]
 from substub import y as y
@@ -2028,8 +2028,8 @@ def __getattr__(name): ...
 [case testModuleLevelGetattrNotStub36]
 # flags: --python-version 3.6
 import has_getattr
-reveal_type(has_getattr.any_attribute)  # N: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
-
+reveal_type(has_getattr.any_attribute)  # E: Module has no attribute "any_attribute" \
+                                        # N: Revealed type is 'Any'
 [file has_getattr.py]
 def __getattr__(name) -> str: ...
 
@@ -2093,7 +2093,7 @@ def __getattr__(name: str) -> Any: ...
 
 [case testModuleLevelGetattrImportFromAs]
 from has_attr import name as n
-reveal_type(name)  # N: Revealed type is 'Any'  # E: Name 'name' is not defined
+reveal_type(name)  # E: Name 'name' is not defined  # N: Revealed type is 'Any'
 reveal_type(n)  # N: Revealed type is 'Any'
 
 [file has_attr.pyi]
