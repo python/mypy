@@ -627,6 +627,13 @@ class C:
 (str) -> int
 ==
 
+[case testSuggestColonBadLocation]
+# suggest: tmp/foo.py:7:8:9
+[file foo.py]
+[out]
+Malformed location for function: tmp/foo.py:7:8:9. Must be either package.module.Class.method or path/to/file.py:line
+==
+
 [case testSuggestColonBadLine]
 # suggest: tmp/foo.py:bad
 [file foo.py]

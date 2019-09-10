@@ -398,6 +398,10 @@ class SuggestionEngine:
         # TODO: Also return OverloadedFuncDef -- currently these are ignored.
         node = None  # type: Optional[SymbolNode]
         if ':' in key:
+            if key.count(':') > 1:
+                raise SuggestionFailure(
+                    'Malformed location for function: {}. Must be either'
+                    ' package.module.Class.method or path/to/file.py:line'.format(key))
             file, line = key.split(':')
             if not line.isdigit():
                 raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
