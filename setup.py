@@ -103,7 +103,10 @@ if USE_MYPYC:
         # We don't populate __file__ properly at the top level or something?
         # Also I think there would be problems with how we generate version.py.
         'version.py',
-    ))
+    )) + (
+        # Don't want to grab this accidentally
+        os.path.join('mypyc', 'lib-rt', 'setup.py'),
+    )
 
     everything = (
         [os.path.join('mypy', x) for x in find_package_data('mypy', ['*.py'])] +
