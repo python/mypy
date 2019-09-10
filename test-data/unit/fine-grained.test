@@ -2592,11 +2592,11 @@ class Wrapper:
 [out]
 main:3: note: Revealed type is 'builtins.int'
 ==
-main:3: note: Revealed type is 'Any'
 main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
 main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
 main:3: note:     def foo(cls: Wrapper, x: str) -> str
+main:3: note: Revealed type is 'Any'
 
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic

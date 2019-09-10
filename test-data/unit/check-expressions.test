@@ -1671,8 +1671,8 @@ def f(x: int) -> None:
 [builtins fixtures/for.pyi]
 [out]
 main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
-main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 main:2: error: "f" does not return a value
+main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testYieldExpressionWithNone]
 from typing import Iterator
@@ -1847,8 +1847,8 @@ main:4: note:     z: builtins.int
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: note: Revealed type is 'Any'
 main:1: error: Name 'x' is not defined
+main:1: note: Revealed type is 'Any'
 
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass
@@ -1919,8 +1919,8 @@ from typing import Dict, Callable
 def things() -> int:
     return 42
 
-stuff: Dict[int, Callable[[], str]] = {  # E: Dict entry 0 has incompatible type "int": "Callable[[], int]"; expected "int": "Callable[[], str]"
-    1: things
+stuff: Dict[int, Callable[[], str]] = {
+    1: things  # E: Dict entry 0 has incompatible type "int": "Callable[[], int]"; expected "int": "Callable[[], str]"
 }
 [builtins fixtures/dict.pyi]
 

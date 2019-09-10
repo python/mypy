@@ -1681,7 +1681,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         continue
 
                     dec = self.expr_checker.accept(decorator)
-                    temp = self.temp_node(sig)
+                    temp = self.temp_node(sig, context=decorator)
                     fullname = None
                     if isinstance(decorator, RefExpr):
                         fullname = decorator.fullname
@@ -2794,15 +2794,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For this we use the rvalue as type context.
         self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), rvalue],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
+            dunder_set_type,
+            [TempNode(instance_type, context=context), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context)
         self.msg.enable_errors()
 
         # And now we type check the call second time, to show errors related
         # to wrong arguments count, etc.
         self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
+            dunder_set_type,
+            [TempNode(instance_type, context=context),
+             TempNode(AnyType(TypeOfAny.special_form), context=context)],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context)
 
         # should be handled by get_method above
         assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
@@ -3305,7 +3310,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig)
+            temp = self.temp_node(sig, context=e)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
@@ -4039,10 +4044,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def temp_node(self, t: Type, context: Optional[Context] = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""
-        temp = TempNode(t)
-        if context:
-            temp.set_line(context.get_line())
-        return temp
+        return TempNode(t, context=context)
 
     def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""

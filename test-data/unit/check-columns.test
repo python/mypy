@@ -22,9 +22,58 @@ class A:
         pass
 A().f()
 A().f(1)
-(A().f('')) # E:2: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-( A().f(1, 1)) # E:3: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+A().f('') # E:7: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(1, 1) # E:10: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
 (A().f(1, 'hello', 'hi')) # E:2: Too many arguments for "f" of "A"
+
+[case testColumnsInvalidArgumentType]
+# flags: --strict-optional
+def f(x: int, y: str) -> None: ...
+def g(*x: int) -> None: pass
+def h(**x: int) -> None: pass
+def ff(x: int) -> None: pass
+
+class A:
+    x: str
+    def __neg__(self) -> str: pass
+    def __add__(self, other: int) -> str: pass
+    def __lt__(self, other: int) -> str: pass
+
+f(
+ y=0, x=0) # E:4: Argument "y" to "f" has incompatible type "int"; expected "str"
+f(x=0,
+   y=None) # E:6: Argument "y" to "f" has incompatible type "None"; expected "str"
+g(1, '', 2) # E:6: Argument 2 to "g" has incompatible type "str"; expected "int"
+aaa: str
+h(x=1, y=aaa, z=2) # E:10: Argument "y" to "h" has incompatible type "str"; expected "int"
+a: A
+ff(a.x) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff([1]) # E:4: Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
+# TODO: Different column in Python 3.8+
+#ff([1 for x in [1]]) # Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
+ff({1: 2}) # E:4: Argument 1 to "ff" has incompatible type "Dict[int, int]"; expected "int"
+ff(1.1) # E:4: Argument 1 to "ff" has incompatible type "float"; expected "int"
+# TODO: Different column in Python 3.8+
+#ff( ( 1, 1)) # Argument 1 to "ff" has incompatible type "Tuple[int, int]"; expected "int"
+ff(-a) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff(a + 1) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff(a < 1) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff([''][0]) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+
+class B(A):
+    def f(self) -> None:
+        ff(super().__neg__()) # E:12: Argument 1 to "ff" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testColumnsInvalidArgumentTypeVarArgs]
+def f(*x: int) -> None: pass
+def g(**x: int) -> None: pass
+
+a = ['']
+f(*a)  # E:4: Argument 1 to "f" has incompatible type "*List[str]"; expected "int"
+b = {'x': 'y'}
+g(**b) # E:5: Argument 1 to "g" has incompatible type "**Dict[str, str]"; expected "int"
+[builtins fixtures/dict.pyi]
 
 [case testColumnsMultipleStatementsPerLine]
 x = 15
@@ -33,7 +82,7 @@ if int():
     x = 2; y = x; y += 1
 [out]
 main:4:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:4:19: error: Unsupported operand types for + ("str" and "int")
+main:4:24: error: Unsupported operand types for + ("str" and "int")
 
 [case testColumnsSimpleIsinstance]
 import typing
@@ -130,11 +179,11 @@ def f(x, y): pass
 
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict
-# TODO: Point to the actual item since a list/dict literal can span many lines
-x: List[int] = [  # E:16: List item 0 has incompatible type "str"; expected "int"
-    'x']
-y: Dict[int, int] = {  # E:21: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
-    'x': 1
+x: List[int] = [
+    'x',  # E:5: List item 0 has incompatible type "str"; expected "int"
+      1.1]  # E:7: List item 1 has incompatible type "float"; expected "int"
+y: Dict[int, int] = {
+    'x': 1  # E:5: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
 }
 [builtins fixtures/dict.pyi]
 
@@ -144,7 +193,7 @@ x = None
 
 [case testColumnInvalidIndexing]
 from typing import List
-([1]['']) # E:2: Invalid index type "str" for "List[int]"; expected type "int"
+([1]['']) # E:6: Invalid index type "str" for "List[int]"; expected type "int"
 (1[1]) # E:2: Value of type "int" is not indexable
 def f() -> None:
     1[1] = 1 # E:5: Unsupported target for indexed assignment
@@ -222,7 +271,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:5: Revealed type is 'builtins.int'
+    reveal_type(1) # N:17: Revealed type is 'builtins.int'
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
@@ -301,7 +350,7 @@ def f(x: T) -> T:
     g(y=x) # E:5: Unexpected keyword argument "y" for "g"
     y: List[int, str] # E:8: "list" expects 1 type argument, but 2 given
     del 1[0] # E:5: "int" has no attribute "__delitem__"
-    bb: List[int] = [''] # E:21: List item 0 has incompatible type "str"; expected "int"
+    bb: List[int] = [''] # E:22: List item 0 has incompatible type "str"; expected "int"
     # XXX: Disabled because the column differs in 3.8
     # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
     cc = (1).bad # E:11: "int" has no attribute "bad"
