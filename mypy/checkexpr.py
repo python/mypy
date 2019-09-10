@@ -4184,9 +4184,9 @@ def has_bytes_component(typ: Type, py2: bool = False) -> bool:
     """Is this one of builtin byte types, or a union that contains it?"""
     typ = get_proper_type(typ)
     if py2:
-        byte_types = {'builtins.bytes', 'builtins.bytearray'}
-    else:
         byte_types = {'builtins.str', 'builtins.bytearray'}
+    else:
+        byte_types = {'builtins.bytes', 'builtins.bytearray'}
     if isinstance(typ, UnionType):
         return any(has_bytes_component(t) for t in typ.items)
     if isinstance(typ, Instance) and typ.type.fullname() in byte_types:
