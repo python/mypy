@@ -5071,3 +5071,29 @@ def foo(x: Literal[0]) -> None: ...  # E: Overloaded function signatures 1 and 2
 def foo(x: MyInt) -> int: ...
 def foo(x):
     ...
+
+[case testOverloadedFunctionSignatureFullyQualifiesTypesInUnion]
+from typing import overload, Union
+
+from a import MyType as MyTypeA
+from b import MyType as MyTypeB
+
+@overload
+def f(a: MyTypeA) -> MyTypeB:
+    pass
+
+@overload
+def f(a: MyTypeB) -> MyTypeB:
+    pass
+
+def f(a: Union[MyTypeA, MyTypeB]) -> MyTypeB:
+    return a # E: Incompatible return value type (got "Union[a.MyType, b.MyType]", expected "b.MyType")
+
+def g():
+    f(MyTypeA())
+
+[file a.pyi]
+class MyType: pass
+
+[file b.pyi]
+class MyType: pass
