@@ -4645,3 +4645,18 @@ from native import foo
 
 assert foo(None) == None
 assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
+
+[case testReexport]
+import a
+def f(x: int) -> int:
+    return a.g(x)
+
+[file a.py]
+from b import g
+
+[file b.py]
+def g(x: int) -> int:
+    return x + 1
+
+[file driver.py]
+# I only care that it compiles
