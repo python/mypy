@@ -2136,8 +2136,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
-        if (original_container and has_bytes_component(original_container) and
-                has_bytes_component(left)):
+        py2 = self.chk.options.python_version < (3, 0)
+        if (original_container and has_bytes_component(original_container, py2) and
+                has_bytes_component(left, py2)):
             # We need to special case bytes and bytearray, because 97 in b'abc', b'a' in b'abc',
             # b'a' in bytearray(b'abc') etc. all return True (and we want to show the error only
             # if the check can _never_ be True).
@@ -4179,13 +4180,16 @@ def custom_equality_method(typ: Type) -> bool:
     return False
 
 
-def has_bytes_component(typ: Type) -> bool:
+def has_bytes_component(typ: Type, py2: bool = False) -> bool:
     """Is this one of builtin byte types, or a union that contains it?"""
     typ = get_proper_type(typ)
+    if py2:
+        byte_types = {'builtins.str', 'builtins.bytearray'}
+    else:
+        byte_types = {'builtins.bytes', 'builtins.bytearray'}
     if isinstance(typ, UnionType):
         return any(has_bytes_component(t) for t in typ.items)
-    if isinstance(typ, Instance) and typ.type.fullname() in {'builtins.bytes',
-                                                             'builtins.bytearray'}:
+    if isinstance(typ, Instance) and typ.type.fullname() in byte_types:
         return True
     return False
 

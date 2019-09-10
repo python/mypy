@@ -2066,6 +2066,12 @@ bytearray(b'abc') in b'abcde'  # OK on Python 3
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testBytesVsByteArray_python2]
+# flags: --strict-equality --py2
+b'hi' in bytearray(b'hi')
+[builtins_py2 fixtures/python2.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testStrictEqualityNoPromotePy3]
 # flags: --strict-equality
 'a' == b'a'  # E: Non-overlapping equality check (left operand type: "Literal['a']", right operand type: "Literal[b'a']")
