@@ -1050,8 +1050,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.errors = errors
         self.mapper = mapper
-        # We use an OrderedDict for this so we can maintain insertion order
-        # and do quick lookups
+        # Notionally a list of all of the modules imported by the
+        # module being compiled, but stored as an OrderedDict so we
+        # can also do quick lookups.
         self.imports = OrderedDict()  # type: OrderedDict[str, None]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
