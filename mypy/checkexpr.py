@@ -283,8 +283,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.cannot_use_function_with_type(e.callee.name, "Literal", e)
                     continue
                 if isinstance(node.node.target, AnyType):
-                    self.msg.cannot_use_function_with_type(
-                        e.callee.name, "Any", e)
+                    self.msg.cannot_use_function_with_type(e.callee.name, "Any", e)
                     continue
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
