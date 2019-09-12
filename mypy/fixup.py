@@ -57,12 +57,8 @@ class NodeFixer(NodeVisitor[None]):
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
             if info._mro_refs:
-                # If the class is a "-redefinition", then its
-                # reference to itself might be busted, so just use the
-                # info instead of looking up the first element. Ew.
-                info.mro = [info] + [
-                    lookup_qualified_typeinfo(self.modules, name, self.allow_missing)
-                    for name in info._mro_refs[1:]]
+                info.mro = [lookup_qualified_typeinfo(self.modules, name, self.allow_missing)
+                            for name in info._mro_refs]
                 info._mro_refs = None
         finally:
             self.current_info = save_info
