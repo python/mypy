@@ -5094,3 +5094,16 @@ tmp/a.py:4: error: Cannot determine type of 'foo'
 [out2]
 tmp/a.py:3: error: Cannot determine type of 'foo'
 tmp/a.py:4: error: Cannot determine type of 'foo'
+
+[case testRedefinitionClass]
+import b
+[file a.py]
+from whatever import Foo  # type: ignore
+
+class Foo:  # type: ignore
+    def f(self) -> None:
+        pass
+[file b.py]
+import a
+[file b.py.2]
+import a # a change
