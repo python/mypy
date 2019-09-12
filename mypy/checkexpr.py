@@ -282,13 +282,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if is_expr_literal_type(typ):
                     self.msg.cannot_use_function_with_type(e.callee.name, "Literal", e)
                     continue
+                if (node and isinstance(node.node, TypeAlias)
+                        and isinstance(node.node.target, AnyType)):
+                    self.msg.cannot_use_function_with_type(e.callee.name, "Any", e)
+                    continue
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         or (isinstance(typ, NameExpr) and node and
                             isinstance(node.node, TypeAlias) and not node.node.no_args)):
-                    if node and isinstance(node.node.target, AnyType):
-                        self.msg.cannot_use_function_with_type(e.callee.name, "Any", e)
-                        continue
                     self.msg.type_arguments_not_allowed(e)
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
                     if typ.node.typeddict_type:
