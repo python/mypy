@@ -381,8 +381,8 @@ def load_plugins(options: Options,
 
         try:
             module = importlib.import_module(module_name)
-        except Exception:
-            plugin_error("Error importing plugin '{}'".format(plugin_path))
+        except Exception as exc:
+            plugin_error("Error importing plugin '{}': {}".format(plugin_path, exc))
         finally:
             if plugin_dir is not None:
                 assert sys.path[0] == plugin_dir
