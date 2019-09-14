@@ -3047,7 +3047,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = get_proper_type(self.expr_checker.accept(e))
-        exc_type = self.named_type('builtins.BaseException')  # type: Type
+        exc_type = self.named_type('builtins.BaseException')
         expected_type = UnionType([exc_type, TypeType(exc_type)])
         if optional:
             expected_type.items.append(NoneType())
@@ -3056,8 +3056,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
             any_type = AnyType(TypeOfAny.implementation_artifact)
-            expected_type.items.append(TupleType([any_type, any_type], self.named_type('builtins.tuple')))
-            expected_type.items.append(TupleType([any_type, any_type, any_type], self.named_type('builtins.tuple')))
+            tuple_type = self.named_type('builtins.tuple')
+            expected_type.items.append(TupleType([any_type, any_type], tuple_type))
+            expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
         self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> None:
