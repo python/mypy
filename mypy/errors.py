@@ -399,7 +399,7 @@ class Errors:
         """Are there any errors for the given file?"""
         return file in self.error_info_map
 
-    def raise_error(self) -> None:
+    def raise_error(self, use_stdout: bool = True) -> None:
         """Raise a CompileError with the generated messages.
 
         Render the messages suitable for displaying.
@@ -407,7 +407,7 @@ class Errors:
         # self.new_messages() will format all messages that haven't already
         # been returned from a file_messages() call.
         raise CompileError(self.new_messages(),
-                           use_stdout=True,
+                           use_stdout=use_stdout,
                            module_with_blocker=self.blocker_module())
 
     def format_messages(self, error_info: List[ErrorInfo],

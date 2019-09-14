@@ -352,7 +352,7 @@ def load_plugins(options: Options,
 
     def plugin_error(message: str) -> None:
         errors.report(line, 0, message)
-        errors.raise_error()
+        errors.raise_error(use_stdout=False)
 
     custom_plugins = []  # type: List[Plugin]
     errors.set_file(options.config_file, None)
