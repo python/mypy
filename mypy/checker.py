@@ -1696,39 +1696,31 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = defn.info
         # At runtime, only Base.__init_subclass__ will be called
         # we skip the current class itself.
-        found = False
-        for base in typ.mro[1:]:
-            # there are "NOT_READY" instances
-            # during the tests, so I filter them out...
-            if base.defn.info:
-                for method_name, method_symbol_node in base.defn.info.names.items():
-                    if method_name == '__init_subclass__':
-                        name_expr = NameExpr(defn.name)
-                        name_expr.node = base
-                        callee = MemberExpr(name_expr, '__init_subclass__')
-                        args = list(defn.keywords.values())
-                        arg_names = list(defn.keywords.keys())  # type: List[Optional[str]]
-                        # 'metaclass' keyword is consumed by the rest of the type machinery,
-                        # and is never passed to __init_subclass__ implementations
-                        if 'metaclass' in arg_names:
-                            idx = arg_names.index('metaclass')
-                            arg_names.pop(idx)
-                            args.pop(idx)
-                        arg_kinds = [ARG_NAMED] * len(args)
-                        call_expr = CallExpr(callee, args, arg_kinds, arg_names)
-                        call_expr.line = defn.line
-                        call_expr.column = defn.column
-                        call_expr.end_line = defn.end_line
-                        self.expr_checker.accept(call_expr,
-                                                 allow_none_return=True,
-                                                 always_allow_any=True)
-                        # there is only one such method method
-                        found = True
-                        break
+        for base in defn.info.mro[1:]:
+            if not '__init_subclass__' in base.names:
+                continue
+            name_expr = NameExpr(defn.name)
+            name_expr.node = base
+            callee = MemberExpr(name_expr, '__init_subclass__')
+            args = list(defn.keywords.values())
+            arg_names = list(defn.keywords.keys())  # type: List[Optional[str]]
+            # 'metaclass' keyword is consumed by the rest of the type machinery,
+            # and is never passed to __init_subclass__ implementations
+            if 'metaclass' in arg_names:
+                idx = arg_names.index('metaclass')
+                arg_names.pop(idx)
+                args.pop(idx)
+            arg_kinds = [ARG_NAMED] * len(args)
+            call_expr = CallExpr(callee, args, arg_kinds, arg_names)
+            call_expr.line = defn.line
+            call_expr.column = defn.column
+            call_expr.end_line = defn.end_line
+            self.expr_checker.accept(call_expr,
+                                     allow_none_return=True,
+                                     always_allow_any=True)
             # We are only interested in the first Base having __init_subclass__
             # all other (highest) bases have already been checked.
-            if found:
-                break
+            break
         return
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
