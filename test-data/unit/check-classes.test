@@ -6229,19 +6229,12 @@ class Base:
 [file init_subclass/__init__.py]
 [builtins fixtures/object_with_init_subclass.pyi]
 
-[case testInitSubclassWithNonImportedBaseDoesntCrash]
-class Child(Base, thing=5):
-    pass
+[case testInitSubclassWithImportsOK]
+from init_subclass.a import MidBase
+class Main(MidBase, test=True): pass
 [file init_subclass/a.py]
 class Base:
-    default_name: str
-    thing: int
-
-    def __init_subclass__(cls, default_name: str, thing:int, **kwargs):
-        pass
+    def __init_subclass__(cls, **kwargs) -> None: pass
+class MidBase(Base): pass
 [file init_subclass/__init__.py]
 [builtins fixtures/object_with_init_subclass.pyi]
-[out]
-main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
-main:1: error: Name 'Base' is not defined
-tmp/builtins.pyi:5: note: "__init_subclass__" of "object" defined here
