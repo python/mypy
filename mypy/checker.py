@@ -3808,12 +3808,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
             self.msg.report_protocol_problems(subtype, supertype, context, code=code)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
-            call = find_member('__call__', subtype, subtype)
+            call = find_member('__call__', subtype, subtype, is_operator=True)
             if call:
                 self.msg.note_call(subtype, call, context, code=code)
         if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
             if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
-                call = find_member('__call__', supertype, subtype)
+                call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
                 self.msg.note_call(supertype, call, context, code=code)
         return False
@@ -4072,7 +4072,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # in case there is no explicit base class.
             return item_type
         # Try also structural typing.
-        iter_type = get_proper_type(find_member('__iter__', instance, instance))
+        iter_type = get_proper_type(find_member('__iter__', instance, instance, is_operator=True))
         if iter_type and isinstance(iter_type, CallableType):
             ret_type = get_proper_type(iter_type.ret_type)
             if isinstance(ret_type, Instance):
