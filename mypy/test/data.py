@@ -566,6 +566,8 @@ def pytest_addoption(parser: Any) -> None:
                     help='Copy the temp directories from failing tests to a target directory')
     group.addoption('--mypy-verbose', action='count',
                     help='Set the verbose flag when creating mypy Options')
+    group.addoption('--mypyc-showc', action='store_true', default=False,
+                    help='Display C code on mypyc test failures')
 
 
 # This function name is special to pytest.  See

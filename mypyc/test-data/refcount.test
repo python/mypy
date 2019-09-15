@@ -1,0 +1,852 @@
+-- Test cases for reference count  insertion.
+
+[case testReturnLiteral]
+def f() -> int:
+    return 1
+[out]
+def f():
+    r0 :: short_int
+L0:
+    r0 = 1
+    return r0
+
+[case testReturnLocal]
+def f() -> int:
+    x = 1
+    return x
+[out]
+def f():
+    r0 :: short_int
+    x :: int
+L0:
+    r0 = 1
+    x = r0
+    return x
+
+[case testLocalVars]
+def f() -> int:
+    x = 1
+    y = x
+    x = y
+    return x
+[out]
+def f():
+    r0 :: short_int
+    x, y :: int
+L0:
+    r0 = 1
+    x = r0
+    y = x
+    x = y
+    return x
+
+[case testLocalVars2]
+def f() -> int:
+    x = 1
+    y = x
+    z = x
+    return y + z
+[out]
+def f():
+    r0 :: short_int
+    x, y, z, r1 :: int
+L0:
+    r0 = 1
+    x = r0
+    inc_ref x :: int
+    y = x
+    z = x
+    r1 = y + z :: int
+    dec_ref y :: int
+    dec_ref z :: int
+    return r1
+
+[case testFreeAtReturn]
+def f() -> int:
+    x = 1
+    y = 2
+    if x == 1:
+        return x
+    return y
+[out]
+def f():
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    y :: int
+    r2 :: short_int
+    r3 :: bool
+L0:
+    r0 = 1
+    x = r0
+    r1 = 2
+    y = r1
+    r2 = 1
+    r3 = x == r2 :: int
+    if r3 goto L3 else goto L4 :: bool
+L1:
+    return x
+L2:
+    return y
+L3:
+    dec_ref y :: int
+    goto L1
+L4:
+    dec_ref x :: int
+    goto L2
+
+[case testArgumentsInOps]
+def f(a: int, b: int) -> int:
+    x = a + 1
+    y = x + a
+    return y
+[out]
+def f(a, b):
+    a, b :: int
+    r0 :: short_int
+    r1, x, r2, y :: int
+L0:
+    r0 = 1
+    r1 = a + r0 :: int
+    x = r1
+    r2 = x + a :: int
+    dec_ref x :: int
+    y = r2
+    return y
+
+[case testArgumentsInAssign]
+def f(a: int) -> int:
+    x = a
+    y = a
+    x = 1
+    return x + y
+[out]
+def f(a):
+    a, x, y :: int
+    r0 :: short_int
+    r1 :: int
+L0:
+    inc_ref a :: int
+    x = a
+    dec_ref x :: int
+    inc_ref a :: int
+    y = a
+    r0 = 1
+    x = r0
+    r1 = x + y :: int
+    dec_ref x :: int
+    dec_ref y :: int
+    return r1
+
+[case testAssignToArgument1]
+def f(a: int) -> int:
+    a = 1
+    y = a
+    return y
+[out]
+def f(a):
+    a :: int
+    r0 :: short_int
+    y :: int
+L0:
+    r0 = 1
+    a = r0
+    y = a
+    return y
+
+[case testAssignToArgument2]
+def f(a: int) -> int:
+    a = 1
+    a = 2
+    a = 3
+    return a
+[out]
+def f(a):
+    a :: int
+    r0, r1, r2 :: short_int
+L0:
+    r0 = 1
+    a = r0
+    dec_ref a :: int
+    r1 = 2
+    a = r1
+    dec_ref a :: int
+    r2 = 3
+    a = r2
+    return a
+
+[case testAssignToArgument3]
+def f(a: int) -> int:
+    x = 1
+    a = x
+    y = x
+    return a
+[out]
+def f(a):
+    a :: int
+    r0 :: short_int
+    x, y :: int
+L0:
+    r0 = 1
+    x = r0
+    inc_ref x :: int
+    a = x
+    y = x
+    dec_ref y :: int
+    return a
+
+[case testReturnArgument]
+def f(a: int) -> int:
+    return a
+[out]
+def f(a):
+    a :: int
+L0:
+    inc_ref a :: int
+    return a
+
+[case testConditionalAssignToArgument1]
+def f(a: int) -> int:
+    if a == a:
+        a = 1
+    else:
+        x = 2
+    y = a + 1
+    return y
+[out]
+def f(a):
+    a :: int
+    r0 :: bool
+    r1, r2 :: short_int
+    x :: int
+    r3 :: short_int
+    r4, y :: int
+L0:
+    r0 = a == a :: int
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    a = r1
+    goto L3
+L2:
+    r2 = 2
+    x = r2
+    dec_ref x :: int
+    goto L4
+L3:
+    r3 = 1
+    r4 = a + r3 :: int
+    dec_ref a :: int
+    y = r4
+    return y
+L4:
+    inc_ref a :: int
+    goto L3
+
+[case testConditionalAssignToArgument2]
+def f(a: int) -> int:
+    if a == a:
+        x = 2
+    else:
+        a = 1
+    y = a + 1
+    return y
+[out]
+def f(a):
+    a :: int
+    r0 :: bool
+    r1 :: short_int
+    x :: int
+    r2, r3 :: short_int
+    r4, y :: int
+L0:
+    r0 = a == a :: int
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 2
+    x = r1
+    dec_ref x :: int
+    goto L4
+L2:
+    r2 = 1
+    a = r2
+L3:
+    r3 = 1
+    r4 = a + r3 :: int
+    dec_ref a :: int
+    y = r4
+    return y
+L4:
+    inc_ref a :: int
+    goto L3
+
+[case testConditionalAssignToArgument3]
+def f(a: int) -> int:
+    if a == a:
+        a = 1
+    return a
+[out]
+def f(a):
+    a :: int
+    r0 :: bool
+    r1 :: short_int
+L0:
+    r0 = a == a :: int
+    if r0 goto L1 else goto L3 :: bool
+L1:
+    r1 = 1
+    a = r1
+L2:
+    return a
+L3:
+    inc_ref a :: int
+    goto L2
+
+[case testAssignRegisterToItself]
+def f(a: int) -> int:
+    a = a
+    x = 1
+    x = x
+    return x + a
+-- This is correct but bad code
+[out]
+def f(a):
+    a :: int
+    r0 :: short_int
+    x, r1 :: int
+L0:
+    inc_ref a :: int
+    a = a
+    r0 = 1
+    x = r0
+    inc_ref x :: int
+    dec_ref x :: int
+    x = x
+    r1 = x + a :: int
+    dec_ref x :: int
+    dec_ref a :: int
+    return r1
+
+[case testIncrement1]
+def f(a: int) -> int:
+    a = a + 1
+    x = 1
+    x = x + 1
+    return a + x
+[out]
+def f(a):
+    a :: int
+    r0 :: short_int
+    r1 :: int
+    r2 :: short_int
+    x :: int
+    r3 :: short_int
+    r4, r5 :: int
+L0:
+    r0 = 1
+    r1 = a + r0 :: int
+    a = r1
+    r2 = 1
+    x = r2
+    r3 = 1
+    r4 = x + r3 :: int
+    dec_ref x :: int
+    x = r4
+    r5 = a + x :: int
+    dec_ref a :: int
+    dec_ref x :: int
+    return r5
+
+[case testIncrement2]
+def f() -> None:
+    x = 1
+    x = x + 1
+[out]
+def f():
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    r2 :: int
+    r3 :: None
+L0:
+    r0 = 1
+    x = r0
+    r1 = 1
+    r2 = x + r1 :: int
+    dec_ref x :: int
+    x = r2
+    dec_ref x :: int
+    r3 = None
+    return r3
+
+[case testAdd1]
+def f() -> None:
+    y = 1
+    x = y + 1
+[out]
+def f():
+    r0 :: short_int
+    y :: int
+    r1 :: short_int
+    r2, x :: int
+    r3 :: None
+L0:
+    r0 = 1
+    y = r0
+    r1 = 1
+    r2 = y + r1 :: int
+    dec_ref y :: int
+    x = r2
+    dec_ref x :: int
+    r3 = None
+    return r3
+
+[case testAdd2]
+def f(a: int) -> int:
+    a = a + a
+    x = a
+    x = x + x
+    return x
+[out]
+def f(a):
+    a, r0, x, r1 :: int
+L0:
+    r0 = a + a :: int
+    a = r0
+    x = a
+    r1 = x + x :: int
+    dec_ref x :: int
+    x = r1
+    return x
+
+[case testAdd3]
+def f(a: int) -> int:
+    x = a + a
+    y = x + x
+    return y
+[out]
+def f(a):
+    a, r0, x, r1, y :: int
+L0:
+    r0 = a + a :: int
+    x = r0
+    r1 = x + x :: int
+    dec_ref x :: int
+    y = r1
+    return y
+
+[case testAdd4]
+def f(a: int) -> None:
+    x = a + a
+    y = 1
+    z = y + y
+[out]
+def f(a):
+    a, r0, x :: int
+    r1 :: short_int
+    y, r2, z :: int
+    r3 :: None
+L0:
+    r0 = a + a :: int
+    x = r0
+    dec_ref x :: int
+    r1 = 1
+    y = r1
+    r2 = y + y :: int
+    dec_ref y :: int
+    z = r2
+    dec_ref z :: int
+    r3 = None
+    return r3
+
+[case testAdd5]
+def f(a: int) -> None:
+    a = a + a
+    x = 1
+    x = x + x
+[out]
+def f(a):
+    a, r0 :: int
+    r1 :: short_int
+    x, r2 :: int
+    r3 :: None
+L0:
+    r0 = a + a :: int
+    a = r0
+    dec_ref a :: int
+    r1 = 1
+    x = r1
+    r2 = x + x :: int
+    dec_ref x :: int
+    x = r2
+    dec_ref x :: int
+    r3 = None
+    return r3
+
+[case testReturnInMiddleOfFunction]
+def f() -> int:
+    x = 1
+    y = 2
+    z = 3
+    if z == z:
+        return z
+    a = 1
+    return x + y - a
+[out]
+def f():
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    y :: int
+    r2 :: short_int
+    z :: int
+    r3 :: bool
+    r4 :: short_int
+    a, r5, r6 :: int
+L0:
+    r0 = 1
+    x = r0
+    r1 = 2
+    y = r1
+    r2 = 3
+    z = r2
+    r3 = z == z :: int
+    if r3 goto L3 else goto L4 :: bool
+L1:
+    return z
+L2:
+    r4 = 1
+    a = r4
+    r5 = x + y :: int
+    dec_ref x :: int
+    dec_ref y :: int
+    r6 = r5 - a :: int
+    dec_ref r5 :: int
+    dec_ref a :: int
+    return r6
+L3:
+    dec_ref x :: int
+    dec_ref y :: int
+    goto L1
+L4:
+    dec_ref z :: int
+    goto L2
+
+[case testLoop]
+def f(a: int) -> int:
+    sum = 0
+    i = 0
+    while i <= a:
+        sum = sum + i
+        i = i + 1
+    return sum
+[out]
+def f(a):
+    a :: int
+    r0 :: short_int
+    sum :: int
+    r1 :: short_int
+    i :: int
+    r2 :: bool
+    r3 :: int
+    r4 :: short_int
+    r5 :: int
+L0:
+    r0 = 0
+    sum = r0
+    r1 = 0
+    i = r1
+L1:
+    r2 = i <= a :: int
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = sum + i :: int
+    dec_ref sum :: int
+    sum = r3
+    r4 = 1
+    r5 = i + r4 :: int
+    dec_ref i :: int
+    i = r5
+    goto L1
+L3:
+    return sum
+L4:
+    dec_ref i :: int
+    goto L3
+
+[case testCall]
+def f(a: int) -> int:
+    return f(a + 1)
+[out]
+def f(a):
+    a :: int
+    r0 :: short_int
+    r1, r2 :: int
+L0:
+    r0 = 1
+    r1 = a + r0 :: int
+    r2 = f(r1)
+    dec_ref r1 :: int
+    return r2
+
+[case testError]
+def f(x: List[int]) -> None: pass # E: Name 'List' is not defined \
+                                  # N: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
+
+[case testNewList]
+def f() -> int:
+    a = [0, 1]
+    return 0
+[out]
+def f():
+    r0, r1 :: short_int
+    r2, r3 :: object
+    r4, a :: list
+    r5 :: short_int
+L0:
+    r0 = 0
+    r1 = 1
+    r2 = box(short_int, r0)
+    r3 = box(short_int, r1)
+    r4 = [r2, r3]
+    a = r4
+    dec_ref a
+    r5 = 0
+    return r5
+
+[case testListSet]
+from typing import List
+def f(a: List[int], b: List[int]) -> None:
+    a[0] = b[0]
+[out]
+def f(a, b):
+    a, b :: list
+    r0 :: short_int
+    r1 :: object
+    r2 :: int
+    r3 :: short_int
+    r4 :: object
+    r5 :: bool
+    r6 :: None
+L0:
+    r0 = 0
+    r1 = b[r0] :: list
+    r2 = unbox(int, r1)
+    dec_ref r1
+    r3 = 0
+    r4 = box(int, r2)
+    r5 = a.__setitem__(r3, r4) :: list
+    r6 = None
+    return r6
+
+[case testTupleRefcount]
+from typing import Tuple
+def f(x: Tuple[Tuple[int, bool], bool]) -> int:
+    return x[0][0]
+[out]
+def f(x):
+    x :: tuple[tuple[int, bool], bool]
+    r0 :: tuple[int, bool]
+    r1 :: int
+L0:
+    r0 = x[0]
+    r1 = r0[0]
+    dec_ref r0
+    return r1
+
+[case testUserClassRefCount]
+class C:
+    x: 'C'
+def f() -> None:
+    c = C()
+    c.x = C()
+[out]
+def f():
+    r0, c, r1 :: __main__.C
+    r2 :: bool
+    r3 :: None
+L0:
+    r0 = C()
+    c = r0
+    r1 = C()
+    c.x = r1; r2 = is_error
+    dec_ref c
+    r3 = None
+    return r3
+
+[case testCastRefCount]
+class C: pass
+
+def f() -> None:
+    a = [C()]
+    d = a[0]
+[out]
+def f():
+    r0 :: __main__.C
+    r1, a :: list
+    r2 :: short_int
+    r3 :: object
+    r4, d :: __main__.C
+    r5 :: None
+L0:
+    r0 = C()
+    r1 = [r0]
+    a = r1
+    r2 = 0
+    r3 = a[r2] :: list
+    dec_ref a
+    r4 = cast(__main__.C, r3)
+    d = r4
+    dec_ref d
+    r5 = None
+    return r5
+
+[case testUnaryBranchSpecialCase]
+def f(x: bool) -> int:
+    if x:
+        return 1
+    return 2
+[out]
+def f(x):
+    x :: bool
+    r0, r1 :: short_int
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    r0 = 1
+    return r0
+L2:
+    r1 = 2
+    return r1
+
+[case testUnicodeLiteral]
+def f() -> str:
+    return "some string"
+[out]
+def f():
+    r0 :: str
+L0:
+    r0 = unicode_1 :: static  ('some string')
+    inc_ref r0
+    return r0
+
+[case testPyMethodCall]
+def g(x: str) -> int:
+    return int(x, base=2)
+[out]
+def g(x):
+    x :: str
+    r0 :: short_int
+    r1 :: object
+    r2 :: str
+    r3 :: tuple
+    r4 :: object
+    r5 :: dict
+    r6 :: object
+    r7 :: int
+L0:
+    r0 = 2
+    r1 = int
+    r2 = unicode_1 :: static  ('base')
+    r3 = (x) :: tuple
+    r4 = box(short_int, r0)
+    r5 = {r2: r4}
+    dec_ref r4
+    r6 = py_call_with_kwargs(r1, r3, r5)
+    dec_ref r3
+    dec_ref r5
+    r7 = unbox(int, r6)
+    dec_ref r6
+    return r7
+
+[case testListAppend]
+from typing import List
+def f(a: List[int], x: int) -> None:
+    a.append(x)
+[out]
+def f(a, x):
+    a :: list
+    x :: int
+    r0 :: object
+    r1 :: bool
+    r2, r3 :: None
+L0:
+    inc_ref x :: int
+    r0 = box(int, x)
+    r1 = a.append(r0) :: list
+    dec_ref r0
+    r2 = None
+    r3 = None
+    return r3
+
+[case testForDict]
+from typing import Dict
+
+def f(d: Dict[int, int]) -> None:
+    for key in d:
+        d[key]
+[out]
+def f(d):
+    d :: dict
+    r0, r1 :: object
+    r2, key :: int
+    r3, r4 :: object
+    r5 :: int
+    r6 :: bool
+    r7 :: None
+L0:
+    r0 = iter d :: object
+L1:
+    r1 = next r0 :: object
+    if is_error(r1) goto L5 else goto L2
+L2:
+    r2 = unbox(int, r1)
+    dec_ref r1
+    key = r2
+    r3 = box(int, key)
+    r4 = d[r3] :: dict
+    dec_ref r3
+    r5 = unbox(int, r4)
+    dec_ref r4
+    dec_ref r5 :: int
+    goto L1
+L3:
+    r6 = no_err_occurred
+L4:
+    r7 = None
+    return r7
+L5:
+    dec_ref r0
+    goto L3
+
+[case testBorrowRefs]
+def make_garbage(arg: object) -> None:
+    b = True
+    while b:
+        arg = None
+        b = False
+[out]
+def make_garbage(arg):
+    arg :: object
+    r0, b :: bool
+    r1 :: None
+    r2 :: object
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = True
+    b = r0
+L1:
+    if b goto L2 else goto L3 :: bool
+L2:
+    r1 = None
+    r2 = box(None, r1)
+    inc_ref r2
+    arg = r2
+    dec_ref arg
+    r3 = False
+    b = r3
+    goto L1
+L3:
+    r4 = None
+    return r4

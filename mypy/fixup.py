@@ -76,9 +76,10 @@ class NodeFixer(NodeVisitor[None]):
                     stnode = lookup_qualified_stnode(self.modules, cross_ref,
                                                      self.allow_missing)
                     if stnode is not None:
+                        assert stnode.node is not None
                         value.node = stnode.node
                     elif not self.allow_missing:
-                        assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
+                        assert False, "Could not find cross-ref %s" % (cross_ref,)
                     else:
                         # We have a missing crossref in allow missing mode, need to put something
                         value.node = missing_info(self.modules)
@@ -184,6 +185,10 @@ class TypeFixer(TypeVisitor[None]):
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
             ct.accept(self)
+
+    def visit_erased_type(self, o: Any) -> None:
+        # This type should exist only temporarily during type inference
+        raise RuntimeError("Shouldn't get here", o)
 
     def visit_deleted_type(self, o: Any) -> None:
         pass  # Nothing to descend into.

@@ -31,12 +31,13 @@ from mypy_extensions import TypedDict
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.semanal import SemanticAnalyzer
-from mypy.semanal_main import semantic_analysis_for_scc
+import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
-    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
+    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
+    read_py_file
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -197,9 +198,12 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
+    cached_read = fscache.read
     errors = Errors(options.show_error_context,
                     options.show_column_numbers,
-                    options.show_error_codes)
+                    options.show_error_codes,
+                    options.pretty,
+                    lambda path: read_py_file(path, cached_read, options.python_version))
     plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
@@ -2303,7 +2307,7 @@ def find_module_and_diagnose(manager: BuildManager,
         if (root_source  # Honor top-level modules
                 or (not path.endswith('.py')  # Stubs are always normal
                     and not options.follow_imports_for_stubs)  # except when they aren't
-                or id == 'builtins'):  # Builtins is always normal
+                or id in mypy.semanal_main.core_modules):  # core is always normal
             follow_imports = 'normal'
         if skip_diagnose:
             pass
@@ -2347,7 +2351,7 @@ def find_module_and_diagnose(manager: BuildManager,
 
 
 def exist_added_packages(suppressed: List[str],
-                        manager: BuildManager, options: Options) -> bool:
+                         manager: BuildManager, options: Options) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
     Exclude everything not in build for follow-imports=skip.
@@ -2425,15 +2429,15 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.report(
             line, 0, "No library stub file for standard library module '{}'".format(target),
             code=codes.IMPORT)
-        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+        errors.report(line, 0, stub_msg, severity='note', only_once=True, code=codes.IMPORT)
     elif moduleinfo.is_third_party_module(target):
         errors.report(line, 0, "No library stub file for module '{}'".format(target),
                       code=codes.IMPORT)
-        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+        errors.report(line, 0, stub_msg, severity='note', only_once=True, code=codes.IMPORT)
     else:
         note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         errors.report(line, 0, "Cannot find module named '{}'".format(target), code=codes.IMPORT)
-        errors.report(line, 0, note, severity='note', only_once=True)
+        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     errors.set_import_context(save_import_context)
 
 
@@ -2961,7 +2965,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-    semantic_analysis_for_scc(graph, scc, manager.errors)
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
     # Track what modules aren't yet done so we can finish them as soon
     # as possible, saving memory.

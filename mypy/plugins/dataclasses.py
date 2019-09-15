@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -79,9 +79,16 @@ class DataclassTransformer:
         ctx = self._ctx
         info = self._ctx.cls.info
         attributes = self.collect_attributes()
-        # Check if attribute types are ready.
+        if attributes is None:
+            # Some definitions are not ready, defer() should be already called.
+            return
         for attr in attributes:
-            if info[attr.name].type is None:
+            node = info.get(attr.name)
+            if node is None:
+                # Nodes of superclass InitVars not used in __init__ cannot be reached.
+                assert attr.is_init_var and not attr.is_in_init
+                continue
+            if node.type is None:
                 ctx.api.defer()
                 return
         decorator_arguments = {
@@ -95,7 +102,9 @@ class DataclassTransformer:
         # processed them yet. In order to work around this, we can simply skip generating
         # __init__ if there are no attributes, because if the user truly did not define any,
         # then the object default __init__ with an empty signature will be present anyway.
-        if decorator_arguments['init'] and '__init__' not in info.names and attributes:
+        if (decorator_arguments['init'] and
+                ('__init__' not in info.names or info.names['__init__'].plugin_generated) and
+                attributes):
             add_method(
                 ctx,
                 '__init__',
@@ -180,7 +189,11 @@ class DataclassTransformer:
         """Remove init-only vars from the class and reset init var declarations."""
         for attr in attributes:
             if attr.is_init_var:
-                del info.names[attr.name]
+                if attr.name in info.names:
+                    del info.names[attr.name]
+                else:
+                    # Nodes of superclass InitVars not used in __init__ cannot be reached.
+                    assert attr.is_init_var and not attr.is_in_init
                 for stmt in info.defn.defs.body:
                     if isinstance(stmt, AssignmentStmt) and stmt.unanalyzed_type:
                         lvalue = stmt.lvalues[0]
@@ -189,7 +202,7 @@ class DataclassTransformer:
                             # recreate a symbol node for this attribute.
                             lvalue.node = None
 
-    def collect_attributes(self) -> List[DataclassAttribute]:
+    def collect_attributes(self) -> Optional[List[DataclassAttribute]]:
         """Collect all attributes declared in the dataclass and its parents.
 
         All assignments of the form
@@ -225,7 +238,7 @@ class DataclassTransformer:
             node = sym.node
             if isinstance(node, PlaceholderNode):
                 # This node is not ready yet.
-                continue
+                return None
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.

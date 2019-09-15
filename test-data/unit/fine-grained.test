@@ -81,6 +81,24 @@ class A:
 ==
 main:4: error: Too few arguments for "g" of "A"
 
+[case testReprocessMethodShowSource]
+# flags: --pretty --show-error-codes
+import m
+class B:
+    def f(self, a: m.A) -> None:
+        a.g() # E
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: A) -> None: pass
+[out]
+==
+main:5: error: Too few arguments for "g" of "A"  [call-arg]
+            a.g() # E
+            ^
+
 [case testFunctionMissingModuleAttribute]
 import m
 def h() -> None:
@@ -2574,11 +2592,11 @@ class Wrapper:
 [out]
 main:3: note: Revealed type is 'builtins.int'
 ==
-main:3: note: Revealed type is 'Any'
 main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
 main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
 main:3: note:     def foo(cls: Wrapper, x: str) -> str
+main:3: note: Revealed type is 'Any'
 
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic
@@ -9158,5 +9176,29 @@ Data = Tuple[User, File]
 [delete a.py.2]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+[out]
+==
+
+[case testClassRedef]
+# An issue involved serializing these caused crashes in the past
+
+[file a.py]
+class A:
+    pass
+
+x = 0
+
+[file a.py.2]
+class A:
+    a = A()
+
+x = '0'
+
+[file b.py]
+from a import A, x
+
+class A: # type: ignore
+    pass
+
 [out]
 ==

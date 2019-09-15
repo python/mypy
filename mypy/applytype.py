@@ -1,4 +1,4 @@
-from typing import Dict, Sequence, Optional
+from typing import Dict, Sequence, Optional, Callable
 
 import mypy.subtypes
 import mypy.sametypes
@@ -6,13 +6,14 @@ from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types
 )
-from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
 
-def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
-                            msg: MessageBuilder, context: Context,
-                            skip_unsatisfied: bool = False) -> CallableType:
+def apply_generic_arguments(
+        callable: CallableType, orig_types: Sequence[Optional[Type]],
+        report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
+        context: Context,
+        skip_unsatisfied: bool = False) -> CallableType:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
@@ -57,16 +58,16 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                 if skip_unsatisfied:
                     types[i] = None
                 else:
-                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name,
-                                                   context)
+                    report_incompatible_typevar_value(callable, type, callable.variables[i].name,
+                                                      context)
         else:
             upper_bound = callable.variables[i].upper_bound
             if not mypy.subtypes.is_subtype(type, upper_bound):
                 if skip_unsatisfied:
                     types[i] = None
                 else:
-                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name,
-                                                   context)
+                    report_incompatible_typevar_value(callable, type, callable.variables[i].name,
+                                                      context)
 
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]

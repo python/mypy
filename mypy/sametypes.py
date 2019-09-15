@@ -6,7 +6,7 @@ from mypy.types import (
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
     ProperType, get_proper_type
 )
-from mypy.typeops import tuple_fallback
+from mypy.typeops import tuple_fallback, make_simplified_union
 
 
 def is_same_type(left: Type, right: Type) -> bool:
@@ -35,7 +35,7 @@ def is_same_type(left: Type, right: Type) -> bool:
 def simplify_union(t: Type) -> ProperType:
     t = get_proper_type(t)
     if isinstance(t, UnionType):
-        return UnionType.make_simplified_union(t.items)
+        return make_simplified_union(t.items)
     return t
 
 

@@ -429,8 +429,8 @@ of the above sections.
 ``--no-implicit-reexport``
     By default, imported values to a module are treated as exported and mypy allows
     other modules to import them. This flag changes the behavior to not re-export unless
-    the item is imported using from-as. Note this is always treated as enabled for
-    stub files. For example:
+    the item is imported using from-as or is included in ``__all__``. Note this is
+    always treated as enabled for stub files. For example:
 
     .. code-block:: python
 
@@ -438,6 +438,9 @@ of the above sections.
        from foo import bar
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+       # This will also re-export bar
+       from foo import bar
+       __all__ = ['bar']
 
 
 ``--strict-equality``
@@ -500,6 +503,13 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
+``--no-color-output``
+    This flag will disable color output in error messages, enabled by default.
+
+``--no-error-summary``
+    This flag will disable error summary. By default mypy shows a summary line
+    including total number of errors, number of files with errors, and number
+    of files checked.
 
 .. _incremental:
 
@@ -529,6 +539,9 @@ beyond what incremental mode can offer, try running mypy in
     ``.mypy_cache`` in the current directory. This flag lets you
     change this folder. This flag can also be useful for controlling
     cache use when using :ref:`remote caching <remote-cache>`.
+
+    This setting will override the ``MYPY_CACHE_DIR`` environment
+    variable if it is set.
 
     Mypy will also always write to the cache even when incremental
     mode is disabled so it can "warm up" the cache. To disable

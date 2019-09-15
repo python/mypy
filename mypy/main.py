@@ -63,12 +63,17 @@ def main(script_path: Optional[str],
                                        fscache=fscache)
 
     messages = []
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
+        if options.pretty:
+            new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
         f = stderr if serious else stdout
         try:
             for msg in new_messages:
+                if options.color_output:
+                    msg = formatter.colorize(msg)
                 f.write(msg + '\n')
             f.flush()
         except BrokenPipeError:
@@ -105,6 +110,16 @@ def main(script_path: Optional[str],
     code = 0
     if messages:
         code = 2 if blockers else 1
+    if options.error_summary:
+        if messages:
+            n_errors, n_files = util.count_stats(messages)
+            if n_errors:
+                stdout.write(formatter.format_error(n_errors, n_files, len(sources),
+                                                    options.color_output) + '\n')
+        else:
+            stdout.write(formatter.format_success(len(sources),
+                                                  options.color_output) + '\n')
+        stdout.flush()
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #
@@ -233,7 +248,8 @@ command line flags. For more details, see:
 """  # type: Final
 
 FOOTER = """Environment variables:
-  Define MYPYPATH for additional module search path entries."""  # type: Final
+  Define MYPYPATH for additional module search path entries.
+  Define MYPY_CACHE_DIR to override configuration cache_dir path."""  # type: Final
 
 
 def process_options(args: List[str],
@@ -431,7 +447,7 @@ def process_options(args: List[str],
         title='None and Optional handling',
         description="Adjust how values of type 'None' are handled. For more context on "
                     "how mypy handles values of type 'None', see: "
-                    "mypy.readthedocs.io/en/latest/kinds_of_types.html#no-strict-optional")
+                    "http://mypy.readthedocs.io/en/latest/kinds_of_types.html#no-strict-optional")
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="Don't assume arguments with default values of None are Optional",
                         group=none_group)
@@ -568,6 +584,17 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-codes', default=False,
                         help="Show error codes in error messages",
                         group=error_group)
+    add_invertible_flag('--pretty', default=False,
+                        help="Use visually nicer output in error messages:"
+                             " Use soft word wrap, show source code snippets,"
+                             " and error location markers",
+                        group=error_group)
+    add_invertible_flag('--no-color-output', dest='color_output', default=True,
+                        help="Do not colorize error messages",
+                        group=error_group)
+    add_invertible_flag('--no-error-summary', dest='error_summary', default=True,
+                        help="Do not show error stats summary",
+                        group=error_group)
 
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))
@@ -686,6 +713,11 @@ def process_options(args: List[str],
     if getattr(dummy, 'special-opts:strict'):  # noqa
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
+
+    # Override cache_dir if provided in the environment
+    environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
+    if environ_cache_dir.strip():
+        options.cache_dir = environ_cache_dir
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()

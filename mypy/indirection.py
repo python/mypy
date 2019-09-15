@@ -1,6 +1,6 @@
 from typing import Dict, Iterable, List, Optional, Set, Union
 
-from mypy.types import SyntheticTypeVisitor
+from mypy.types import TypeVisitor
 import mypy.types as types
 from mypy.util import split_module_names
 
@@ -15,7 +15,7 @@ def extract_module_names(type_name: Optional[str]) -> List[str]:
         return []
 
 
-class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
+class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     """Returns all module references within a particular type."""
 
     def __init__(self) -> None:
@@ -38,12 +38,6 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
 
     def visit_unbound_type(self, t: types.UnboundType) -> Set[str]:
         return self._visit(t.args)
-
-    def visit_type_list(self, t: types.TypeList) -> Set[str]:
-        return self._visit(t.items)
-
-    def visit_callable_argument(self, t: types.CallableArgument) -> Set[str]:
-        return self._visit(t.typ)
 
     def visit_any(self, t: types.AnyType) -> Set[str]:
         return set()
@@ -90,22 +84,13 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     def visit_typeddict_type(self, t: types.TypedDictType) -> Set[str]:
         return self._visit(t.items.values()) | self._visit(t.fallback)
 
-    def visit_raw_expression_type(self, t: types.RawExpressionType) -> Set[str]:
-        assert False, "Unexpected RawExpressionType after semantic analysis phase"
-
     def visit_literal_type(self, t: types.LiteralType) -> Set[str]:
         return self._visit(t.fallback)
-
-    def visit_star_type(self, t: types.StarType) -> Set[str]:
-        return set()
 
     def visit_union_type(self, t: types.UnionType) -> Set[str]:
         return self._visit(t.items)
 
     def visit_partial_type(self, t: types.PartialType) -> Set[str]:
-        return set()
-
-    def visit_ellipsis_type(self, t: types.EllipsisType) -> Set[str]:
         return set()
 
     def visit_type_type(self, t: types.TypeType) -> Set[str]:

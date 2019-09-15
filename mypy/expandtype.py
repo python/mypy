@@ -119,7 +119,8 @@ class ExpandTypeVisitor(TypeVisitor[ProperType]):
     def visit_union_type(self, t: UnionType) -> ProperType:
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
-        return UnionType.make_simplified_union(self.expand_types(t.items), t.line, t.column)
+        from mypy.typeops import make_simplified_union  # asdf
+        return make_simplified_union(self.expand_types(t.items), t.line, t.column)
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         return t

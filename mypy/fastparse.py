@@ -5,7 +5,7 @@ import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
     Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
-from typing_extensions import Final, Literal
+from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -103,7 +103,7 @@ try:
         Constant = Any
 except ImportError:
     try:
-        from typed_ast import ast35  # type: ignore  # noqa: F401
+        from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
               'You can install it with `python3 -m pip install typed-ast`.',
@@ -125,18 +125,6 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
 TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(\[[^[#]*\]\s*)?($|#)')
-
-
-# Older versions of typing don't allow using overload outside stubs,
-# so provide a dummy.
-# mypyc doesn't like function declarations nested in if statements
-def _overload(x: Any) -> Any:
-    return x
-
-
-# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-if bool() or sys.version_info < (3, 6):
-    overload = _overload  # noqa
 
 
 def parse(source: Union[str, bytes],
@@ -186,7 +174,7 @@ def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
     # TODO: Implement proper parsing and error checking
     if not tag:
         return []
-    m = re.match(r'\[([^#]*)\]', tag)
+    m = re.match(r'\s*\[([^#]*)\]', tag)
     if m is None:
         return []
     return [code.strip() for code in m.group(1).split(',')]
@@ -287,7 +275,7 @@ class ASTConverter:
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
     def note(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg, severity='note')
+        self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def fail(self,
              msg: str,
@@ -463,7 +451,7 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore
+        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
                              for ti in mod.type_ignores}
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
@@ -555,7 +543,7 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)  # type: ignore
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
                                            for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
@@ -592,7 +580,7 @@ class ASTConverter:
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
                 # In 3.8, it points to the 'def' line, where we want it.
                 lineno += len(n.decorator_list)
-                end_lineno = None
+                end_lineno = None  # type: Optional[int]
             else:
                 # Set end_lineno to the old pre-3.8 lineno, in order to keep
                 # existing "# type: ignore" comments working:
@@ -956,8 +944,8 @@ class ASTConverter:
     # Lambda(arguments args, expr body)
     def visit_Lambda(self, n: ast3.Lambda) -> LambdaExpr:
         body = ast3.Return(n.body)
-        body.lineno = n.lineno
-        body.col_offset = n.col_offset
+        body.lineno = n.body.lineno
+        body.col_offset = n.body.col_offset
 
         e = LambdaExpr(self.transform_args(n.args, n.lineno),
                        self.as_required_block([body], n.lineno))
@@ -1181,7 +1169,12 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        return self.set_line(e, n)
+        self.set_line(e, n)
+        if isinstance(e.index, SliceExpr):
+            # Slice has no line/column in the raw ast.
+            e.index.line = e.line
+            e.index.column = e.column
+        return e
 
     # Starred(expr value, expr_context ctx)
     def visit_Starred(self, n: Starred) -> StarExpr:
@@ -1270,10 +1263,10 @@ class TypeConverter:
     @overload
     def visit(self, node: ast3.expr) -> ProperType: ...
 
-    @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...  # noqa
+    @overload
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...
 
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1300,7 +1293,7 @@ class TypeConverter:
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, severity='note')
+            self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
@@ -1459,9 +1452,11 @@ class TypeConverter:
         # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
 
-        # Do an ignore because the field doesn't exist in 3.8 (where
-        # this method doesn't actually ever run.)
-        kind = n.kind  # type: str
+        # Do a getattr because the field doesn't exist in 3.8 (where
+        # this method doesn't actually ever run.) We can't just do
+        # an attribute access with a `# type: ignore` because it would be
+        # unused on < 3.8.
+        kind = getattr(n, 'kind')  # type: str  # noqa
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,

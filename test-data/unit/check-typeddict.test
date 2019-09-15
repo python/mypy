@@ -670,6 +670,12 @@ p: TaggedPoint
 p['z']  # E: TypedDict "TaggedPoint" has no key 'z'
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithUnicodeName]
+# flags: --python-version 2.7
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict(u'TaggedPoint', {'type': str, 'x': int, 'y': int})
+[builtins fixtures/dict.pyi]
+
 [case testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey]
 from typing import TypeVar
 from mypy_extensions import TypedDict
@@ -1606,8 +1612,8 @@ td: Union[TDA, TDB]
 
 reveal_type(td.get('a'))  # N: Revealed type is 'builtins.int'
 reveal_type(td.get('b'))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(td.get('c'))  # N: Revealed type is 'Union[Any, builtins.int]' \
-                          # E: TypedDict "TDA" has no key 'c'
+reveal_type(td.get('c'))  # E: TypedDict "TDA" has no key 'c' \
+                          # N: Revealed type is 'Union[Any, builtins.int]'
 
 reveal_type(td['a'])  # N: Revealed type is 'builtins.int'
 reveal_type(td['b'])  # N: Revealed type is 'Union[builtins.str, builtins.int]'
@@ -1633,8 +1639,8 @@ td: Union[TDA, TDB]
 
 reveal_type(td.pop('a'))  # N: Revealed type is 'builtins.int'
 reveal_type(td.pop('b'))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(td.pop('c'))  # N: Revealed type is 'Union[Any, builtins.int]' \
-                          # E: TypedDict "TDA" has no key 'c'
+reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key 'c' \
+                          # N: Revealed type is 'Union[Any, builtins.int]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

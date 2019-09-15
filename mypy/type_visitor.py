@@ -34,12 +34,6 @@ class TypeVisitor(Generic[T]):
     The parameter T is the return type of the visit methods.
     """
 
-    def _notimplemented_helper(self, name: str) -> NotImplementedError:
-        return NotImplementedError("Method {}.visit_{}() not implemented\n"
-                                   .format(type(self).__name__, name)
-                                   + "This is a known bug, track development in "
-                                   + "'https://github.com/JukkaL/mypy/issues/730'")
-
     @abstractmethod
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
@@ -56,8 +50,9 @@ class TypeVisitor(Generic[T]):
     def visit_uninhabited_type(self, t: UninhabitedType) -> T:
         pass
 
+    @abstractmethod
     def visit_erased_type(self, t: ErasedType) -> T:
-        raise self._notimplemented_helper('erased_type')
+        pass
 
     @abstractmethod
     def visit_deleted_type(self, t: DeletedType) -> T:
@@ -75,8 +70,9 @@ class TypeVisitor(Generic[T]):
     def visit_callable_type(self, t: CallableType) -> T:
         pass
 
+    @abstractmethod
     def visit_overloaded(self, t: Overloaded) -> T:
-        raise self._notimplemented_helper('overloaded')
+        pass
 
     @abstractmethod
     def visit_tuple_type(self, t: TupleType) -> T:
@@ -105,9 +101,6 @@ class TypeVisitor(Generic[T]):
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
         raise NotImplementedError('TODO')
 
-    def visit_placeholder_type(self, t: PlaceholderType) -> T:
-        raise RuntimeError('Internal error: unresolved placeholder type {}'.format(t.fullname))
-
 
 @trait
 class SyntheticTypeVisitor(TypeVisitor[T]):
@@ -133,6 +126,10 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
 
     @abstractmethod
     def visit_raw_expression_type(self, t: RawExpressionType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_placeholder_type(self, t: PlaceholderType) -> T:
         pass
 
 
@@ -234,9 +231,6 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
-
-    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        return PlaceholderType(t.fullname, self.translate_types(t.args), t.line)
 
 
 @trait
