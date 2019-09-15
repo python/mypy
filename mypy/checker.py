@@ -1716,11 +1716,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here.
         Child.__init_subclass__ is never called.
         """
-        typ = defn.info
         # At runtime, only Base.__init_subclass__ will be called
         # we skip the current class itself.
         for base in defn.info.mro[1:]:
-            if not '__init_subclass__' in base.names:
+            if '__init_subclass__' not in base.names:
                 continue
             name_expr = NameExpr(defn.name)
             name_expr.node = base
