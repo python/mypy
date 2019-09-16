@@ -740,9 +740,9 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int})
 d: object
-if isinstance(d, D):   # E: Cannot use isinstance() with a TypedDict type
+if isinstance(d, D):   # E: Cannot use isinstance() with TypedDict type
     reveal_type(d)     # N: Revealed type is '__main__.D'
-issubclass(object, D)  # E: Cannot use issubclass() with a TypedDict type
+issubclass(object, D)  # E: Cannot use issubclass() with TypedDict type
 [builtins fixtures/isinstancelist.pyi]
 
 

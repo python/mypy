@@ -272,8 +272,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if (isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass')
                 and len(e.args) == 2):
             for typ in mypy.checker.flatten(e.args[1]):
+                node = None
                 if isinstance(typ, NameExpr):
-                    node = None
                     try:
                         node = self.chk.lookup_qualified(typ.name)
                     except KeyError:
@@ -281,6 +281,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         pass
                 if is_expr_literal_type(typ):
                     self.msg.cannot_use_function_with_type(e.callee.name, "Literal", e)
+                    continue
+                if (node and isinstance(node.node, TypeAlias)
+                        and isinstance(get_proper_type(node.node.target), AnyType)):
+                    self.msg.cannot_use_function_with_type(e.callee.name, "Any", e)
                     continue
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))

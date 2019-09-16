@@ -1124,7 +1124,7 @@ class MessageBuilder:
 
     def cannot_use_function_with_type(
             self, method_name: str, type_name: str, context: Context) -> None:
-        self.fail("Cannot use {}() with a {} type".format(method_name, type_name), context)
+        self.fail("Cannot use {}() with {} type".format(method_name, type_name), context)
 
     def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
                                    context: Context) -> None:
