@@ -424,7 +424,7 @@ def parse_test_data(raw_data: str, name: str) -> List[TestItem]:
     while i < len(lines):
         s = lines[i].strip()
 
-        if lines[i].startswith('[') and s.endswith(']') and not s.startswith('[['):
+        if lines[i].startswith('[') and s.endswith(']'):
             if id:
                 data = collapse_line_continuation(data)
                 data = strip_list(data)
@@ -437,7 +437,7 @@ def parse_test_data(raw_data: str, name: str) -> List[TestItem]:
                 arg = id[id.index(' ') + 1:]
                 id = id[:id.index(' ')]
             data = []
-        elif lines[i].startswith('[['):
+        elif lines[i].startswith('\\['):
             data.append(lines[i][1:])
         elif not lines[i].startswith('--'):
             data.append(lines[i])

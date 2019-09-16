@@ -418,9 +418,8 @@ from native import primes
 print(primes(3))
 print(primes(13))
 [out]
-[[0, 0, 1, 1]
-[[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
--- argh ]]
+\[0, 0, 1, 1]
+\[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
 
 
 [case testListPrims]

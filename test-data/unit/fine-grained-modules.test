@@ -2111,7 +2111,7 @@ import other
 [file other.pyi.2]
 x = 1
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports_for_stubs = True
 [stale]
 [rechecked]

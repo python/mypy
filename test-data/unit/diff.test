@@ -1139,7 +1139,7 @@ class Column(Generic[T]): ...
 class Instr(Generic[T]): ...
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 [out]
 __main__.Diff

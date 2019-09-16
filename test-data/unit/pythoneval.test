@@ -21,12 +21,11 @@ print(list(reversed([1,2,3])))
 print(list(reversed('abc')))
 print(list(reversed(A())))
 [out]
--- Duplicate [ at line beginning.
-[[4, 3, 2, 1, 0]
-[[3, 2, 1]
-[['c', 'b', 'a']
-[['f', 'o', 'o']
--- ]]]]]
+-- Escape bracket at line beginning
+\[4, 3, 2, 1, 0]
+\[3, 2, 1]
+\['c', 'b', 'a']
+\['f', 'o', 'o']
 
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
@@ -90,8 +89,7 @@ x2
 import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
-[[1, 2, 3, 4]
--- ]
+\[1, 2, 3, 4]
 
 [case testInheritedClassAttribute]
 import typing
