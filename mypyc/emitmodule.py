@@ -60,8 +60,9 @@ def compile_modules_to_c(
             group_map[source.module] = lib_name
 
     # Generate basic IR, with missing exception and refcount handling.
+    mapper = genops.Mapper(group_map)
     literals, modules = genops.build_ir(file_nodes, result.graph, result.types,
-                                        group_map,
+                                        mapper,
                                         compiler_options, errors)
     if errors.num_errors > 0:
         return []

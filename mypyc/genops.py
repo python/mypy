@@ -115,13 +115,11 @@ F = TypeVar('F', bound=Callable[..., Any])
 strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
 
 
-def build_type_map(modules: List[MypyFile],
+def build_type_map(mapper: 'Mapper',
+                   modules: List[MypyFile],
                    graph: Graph,
                    types: Dict[Expression, Type],
-                   group_map: Dict[str, Optional[str]],
-                   errors: Errors) -> 'Mapper':
-    mapper = Mapper(group_map)
-
+                   errors: Errors) -> None:
     # Collect all classes defined in the compilation unit.
     classes = []
     for module in modules:
@@ -159,18 +157,16 @@ def build_type_map(modules: List[MypyFile],
                 prepare_func_def(module.fullname(), None, get_func_def(node.node), mapper)
             # TODO: what else?
 
-    return mapper
-
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
 def build_ir(modules: List[MypyFile],
              graph: Graph,
              types: Dict[Expression, Type],
-             group_map: Dict[str, Optional[str]],
+             mapper: 'Mapper',
              options: CompilerOptions,
              errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
 
-    mapper = build_type_map(modules, graph, types, group_map, errors)
+    build_type_map(mapper, modules, graph, types, errors)
 
     result = []
 
