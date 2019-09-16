@@ -472,9 +472,9 @@ def incomplete(x) -> int:
 def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
     return 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_incomplete_defs = False
-[[mypy-incomplete]
+\[mypy-incomplete]
 disallow_incomplete_defs = True
 
 
@@ -492,9 +492,9 @@ if int():
     x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 
@@ -519,9 +519,9 @@ f(standard.an_int)  # ints can be used as ints
 f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; expected "int"
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 
@@ -542,9 +542,9 @@ x = 0  # type: Optional[int]
 y = None  # type: None
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 [case testPerFileStrictOptionalListItemImportOptional]
@@ -565,9 +565,9 @@ x = []  # type: List[Optional[int]]
 y = []  # type: List[int]
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 [builtins fixtures/list.pyi]
 
@@ -591,9 +591,9 @@ def f(x: int = None) -> None: pass
 standard.f(None)
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 [case testDisallowImplicitTypesIgnoreMissingTypes]
@@ -1046,7 +1046,7 @@ if not YOLO:
 if BLAH:
     1+()
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_missing_imports = True
 always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
@@ -1129,9 +1129,9 @@ import b
 [file b.py]
 42 == 'no'
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_equality = True
-[[mypy-b]
+\[mypy-b]
 strict_equality = False
 [builtins fixtures/bool.pyi]
 
@@ -1192,9 +1192,9 @@ a = 5
 from other_module_1 import a
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 implicit_reexport = True
-[[mypy-other_module_2]
+\[mypy-other_module_2]
 implicit_reexport = False
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
