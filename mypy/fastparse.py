@@ -1535,4 +1535,4 @@ def bytes_to_human_readable_repr(b: bytes) -> str:
         >>> print(repr(s))
         'foo\\n\\x00'
     """
-    return str(b)[2:-1]
+    return repr(b)[2:-1]
