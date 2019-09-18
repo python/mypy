@@ -497,11 +497,19 @@ in error messages.
         main.py:3: error: Unsupported operand types for + ("int" and "str")
 
 ``--show-column-numbers``
-    This flag will add column offsets to error messages,
-    for example, the following indicates an error in line 12, column 9
+    This flag will add column offsets to error messages.
+    For example, the following indicates an error in line 12, column 9
     (note that column offsets are 0-based)::
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
+
+``--show-error-codes``
+    This flag will add an error code ``[<code>]`` to error messages. The error
+    code is shown after each error message::
+
+        prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
+
+    See :ref:`error-codes` for more information.
 
 ``--no-color-output``
     This flag will disable color output in error messages, enabled by default.
