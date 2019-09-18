@@ -270,6 +270,7 @@ class B(A):
 
 a: A
 a.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
 [case testErrorCodeMissingTypeArg]
 # flags: --disallow-any-generics
 from typing import List, TypeVar
@@ -404,7 +405,8 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-x  # E: Cannot determine type of 'x'  [has-type]
+y = x  # E: Cannot determine type of 'x'  [has-type]
+reveal_type(y)  # N: Revealed type is 'Any'
 x = None
 
 [case testErrorCodeRedundantCast]

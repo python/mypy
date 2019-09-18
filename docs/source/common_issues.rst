@@ -126,6 +126,14 @@ The second line is now fine, since the ignore comment causes the name
 
 .. note::
 
+    You can use the form ``# type: ignore[<code>]`` to only ignore
+    specific errors on the line. This way you are less likely to
+    silence unexpected errors that are not safe to ignore, and this
+    will also document what the purpose of the comment is.  See
+    :ref:`error-codes` for more information.
+
+.. note::
+
     The ``# type: ignore`` comment will only assign the implicit ``Any``
     type if mypy cannot find information about that particular module. So,
     if we did have a stub available for ``frobnicate`` then mypy would
