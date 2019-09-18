@@ -768,8 +768,8 @@ x = ["lol"]
 asdf(x)
 
 [file mypy.ini]
-[[mypy]
-[[mypy-a]
+\[mypy]
+\[mypy-a]
 strict_optional = False
 [out]
 main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected "List[Optional[str]]"

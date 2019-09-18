@@ -64,7 +64,7 @@ def untyped(x) -> None:
     foo(x)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> None
+(Union[str, int, None], Optional[int]) -> None
 ==
 
 [case testSuggestInferFunc2]
@@ -100,7 +100,7 @@ from foo import bar
 bar(None)
 [out]
 (Any) -> Any
-(None) -> None
+(Optional[Any]) -> None
 ==
 
 [case testSuggestInferFuncAny2]
@@ -185,7 +185,7 @@ def foo(s):
 from foo import foo
 foo('lol')
 [out]
-(unicode) -> unicode
+(Text) -> Text
 ==
 
 [case testSuggestInferMethod1]
@@ -211,7 +211,7 @@ def bar() -> None:
     x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> object
+(Union[str, int, None], Optional[int]) -> object
 ==
 
 [case testSuggestInferMethod2]
@@ -238,7 +238,7 @@ def bar() -> None:
     a: Union[str, int] = x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> Union[int, str]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
 ==
 
 [case testSuggestInferMethod3]
@@ -259,7 +259,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, None]) -> None
+(Optional[str]) -> None
 
 [case testSuggestInferFunctionUnreachable]
 # flags: --strict-optional
@@ -304,7 +304,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, int, None], Union[int, None]) -> Union[int, str]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
 
 [case testSuggestInferNestedMethod]
 # flags: --strict-optional
@@ -322,6 +322,53 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (str) -> str
+==
+
+[case testSuggestCallable]
+# flags: --strict-optional
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: --flex-any=0.9 foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+[file foo.py]
+def foo(f):
+    return f(0, "lol")
+def bar(f):
+    return f(0, "lol", 100)
+def baz(f):
+    return f(y=1) + f(x=10, y=1)
+def quux(f):
+    return f(1)
+[file bar.py]
+from typing import Any
+from foo import foo, bar, baz, quux
+
+def whatever(x: int, y: str) -> int:
+    return 0
+
+def starargs(*args: Any) -> int:
+    return 0
+
+def named(*, x: int = 0, y: int) -> str:
+    return '0'
+
+# we don't properly handle default really. we just assume it is
+# actually required.
+def default(x: int = 0) -> str:
+    return '0'
+
+def test() -> None:
+    foo(whatever)
+    bar(starargs)
+    baz(named)
+    quux(default)
+[out]
+(Callable[[int, str], int]) -> int
+(Callable[..., int]) -> int
+No guesses that match criteria!
+(Callable[..., str]) -> str
+(Callable[[int], str]) -> str
 ==
 
 [case testSuggestNewSemanal]
@@ -358,8 +405,8 @@ def baz() -> None:
     foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Union[int, None]) -> object
-(Union[str, int, None], Union[int, None]) -> None
+(Union[str, int, None], Optional[int]) -> object
+(Union[str, int, None], Optional[int]) -> None
 ==
 
 [case testSuggestInferFuncDecorator1]
@@ -559,4 +606,116 @@ def bar(iany) -> None:
 [out]
 (int, int) -> int
 (str, int) -> str
+==
+
+[case testSuggestColonBasic]
+# suggest: tmp/foo.py:1
+# suggest: tmp/bar/baz.py:2
+[file foo.py]
+def func(arg):
+    return 0
+func('test')
+from bar.baz import C
+C().method('test')
+[file bar/__init__.py]
+[file bar/baz.py]
+class C:
+    def method(self, x):
+        return 0
+[out]
+(str) -> int
+(str) -> int
+==
+
+[case testSuggestColonBadLocation]
+# suggest: tmp/foo.py:7:8:9
+[file foo.py]
+[out]
+Malformed location for function: tmp/foo.py:7:8:9. Must be either package.module.Class.method or path/to/file.py:line
+==
+
+[case testSuggestColonBadLine]
+# suggest: tmp/foo.py:bad
+[file foo.py]
+[out]
+Line number must be a number. Got bad
+==
+
+[case testSuggestColonBadFile]
+# suggest: tmp/foo.txt:1
+[file foo.txt]
+def f(): pass
+[out]
+Source file is not a Python file
+==
+
+[case testSuggestColonUnknownLine]
+# suggest: tmp/foo.py:42
+[file foo.py]
+def func(x):
+    return 0
+func('test')
+[out]
+Cannot find a function at line 42
+==
+
+[case testSuggestColonClass]
+# suggest: tmp/foo.py:1
+[file foo.py]
+class C:
+    pass
+[out]
+Cannot find a function at line 1
+==
+
+[case testSuggestColonDecorator]
+# suggest: tmp/foo.py:6
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+def deco(f: F) -> F: ...
+
+@deco
+def func(arg):
+    return 0
+func('test')
+[out]
+(str) -> int
+==
+
+[case testSuggestColonMethod]
+# suggest: tmp/foo.py:3
+[file foo.py]
+class Out:
+    class In:
+        def method(self, x):
+            return Out()
+x: Out.In
+x.method(x)
+[out]
+(foo:Out.In) -> foo.Out
+==
+
+[case testSuggestColonMethodJSON]
+# suggest: --json tmp/foo.py:3
+[file foo.py]
+class Out:
+    class In:
+        def method(self, x):
+            return Out()
+x: Out.In
+x.method(x)
+[out]
+\[{"func_name": "Out.In.method", "line": 3, "path": "tmp/foo.py", "samples": 0, "signature": {"arg_types": ["foo:Out.In"], "return_type": "foo.Out"}}]
+==
+
+[case testSuggestColonNonPackageDir]
+# cmd: mypy foo/bar/baz.py
+# suggest: tmp/foo/bar/baz.py:1
+[file foo/bar/baz.py]
+def func(arg):
+    return 0
+func('test')
+[out]
+(str) -> int
 ==

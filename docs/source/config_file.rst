@@ -444,6 +444,12 @@ section of the command line docs.
 ``show_error_codes`` (bool, default False)
     Shows error codes in error messages. See :ref:`error-codes` for more information.
 
+``color_output`` (bool, default True)
+    Shows error messages with color enabled.
+
+``error_summary`` (bool, default True)
+    Shows a short summary line after error messages.
+
 
 Advanced options
 ----------------

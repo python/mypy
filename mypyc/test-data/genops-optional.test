@@ -384,7 +384,7 @@ def set(o, s):
     r1 :: bool
     r2 :: None
 L0:
-    r0 = unicode_6 :: static  ('a')
+    r0 = unicode_5 :: static  ('a')
     r1 = setattr o, r0, s
     r2 = None
     return r2

@@ -16,9 +16,9 @@ It would be translated to something that conceptually looks like this:
 from typing import (
     TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast
 )
-from typing_extensions import overload, ClassVar, NoReturn
+from typing_extensions import overload, NoReturn
+from collections import OrderedDict
 from abc import abstractmethod
-import sys
 import importlib.util
 import itertools
 
@@ -192,7 +192,7 @@ def build_ir(modules: List[MypyFile],
         builder = IRBuilder(types, graph, errors, mapper, module_names, pbv, options)
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
-            builder.imports,
+            list(builder.imports),
             builder.functions,
             builder.classes,
             builder.final_names
@@ -531,9 +531,10 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    for name, node in info.names.items():
+    # We sort the table for determinism here on Python 3.5
+    for name, node in sorted(info.names.items()):
         if isinstance(node.node, Var):
-            assert node.node.type, "Class member missing type"
+            assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name != '__slots__':
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
@@ -599,9 +600,8 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
             base_mro.append(base_ir)
         mro.append(base_ir)
 
-    # Generic and similar are python base classes
-    if cdef.removed_base_type_exprs:
-        ir.inherits_python = True
+        if cls.defn.removed_base_type_exprs or not base_ir.is_ext_class:
+            ir.inherits_python = True
 
     base_idx = 1 if not ir.is_trait else 0
     if len(base_mro) > base_idx:
@@ -1050,7 +1050,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.errors = errors
         self.mapper = mapper
-        self.imports = []  # type: List[str]
+        # Notionally a list of all of the modules imported by the
+        # module being compiled, but stored as an OrderedDict so we
+        # can also do quick lookups.
+        self.imports = OrderedDict()  # type: OrderedDict[str, None]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
         if mypyfile.fullname() in ('typing', 'abc'):
@@ -1477,6 +1480,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Set this attribute back to None until the next non-extension class is visited.
             self.non_ext_info = None
 
+    def create_mypyc_attrs_tuple(self, ir: ClassIR, line: int) -> Value:
+        attrs = [name for ancestor in ir.mro for name in ancestor.attributes]
+        if ir.inherits_python:
+            attrs.append('__dict__')
+        return self.primitive_op(new_tuple_op,
+                                 [self.load_static_unicode(attr) for attr in attrs],
+                                 line)
+
     def allocate_class(self, cdef: ClassDef) -> None:
         # OK AND NOW THE FUN PART
         base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
@@ -1496,6 +1507,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             FuncDecl(cdef.name + '_trait_vtable_setup',
                      None, self.module_name,
                      FuncSignature([], bool_rprimitive)), [], -1))
+        # Populate a '__mypyc_attrs__' field containing the list of attrs
+        self.primitive_op(py_setattr_op, [
+            tp, self.load_static_unicode('__mypyc_attrs__'),
+            self.create_mypyc_attrs_tuple(self.mapper.type_to_ir[cdef.info], cdef.line)],
+            cdef.line)
+
         # Save the class
         self.add(InitStatic(tp, cdef.name, self.module_name, NAMESPACE_TYPE))
 
@@ -1504,29 +1521,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                           [self.load_globals_dict(), self.load_static_unicode(cdef.name),
                            tp], cdef.line)
 
-    # An unfortunate hack: for some stdlib modules, pull in modules
-    # that the stubs reexport things from. This works around #393
-    # in these cases.
-    import_maps = {
-        'os': tuple(['os.path'] + ([] if sys.platform == 'win32' else ['posix'])),
-        'os.path': ('os',),
-        'tokenize': ('token',),
-        'weakref': ('_weakref',),
-        'asyncio': ('asyncio.events', 'asyncio.tasks',),
-        'click': ('click.core', 'click.termui', 'click.decorators',
-                  'click.exceptions', 'click.types'),
-        'ast': ('_ast',),
-    }  # type: ClassVar[Dict[str, Sequence[str]]]
-
     def gen_import(self, id: str, line: int) -> None:
-        if id in IRBuilder.import_maps:
-            for dep in IRBuilder.import_maps[id]:
-                self._gen_import(dep, line)
-
-        self._gen_import(id, line)
-
-    def _gen_import(self, id: str, line: int) -> None:
-        self.imports.append(id)
+        self.imports[id] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
         first_load = self.add(LoadStatic(object_rprimitive, 'module', id))
@@ -2123,7 +2119,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.assign(target, res, res.line)
 
     def get_assignment_target(self, lvalue: Lvalue,
-                              line: Optional[int] = None) -> AssignmentTarget:
+                              line: int = -1) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # If we are visiting a decorator, then the SymbolNode we really want to be looking at
             # is the function that is decorated, not the entire Decorator node itself.
@@ -2168,7 +2164,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
-            star_idx = None
+            star_idx = None  # type: Optional[int]
             lvalues = []
             for idx, item in enumerate(lvalue.items):
                 targ = self.get_assignment_target(item)
@@ -2803,7 +2799,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if value is not None:
                 return value
 
-        if isinstance(expr.node, MypyFile):
+        if isinstance(expr.node, MypyFile) and expr.node.fullname() in self.imports:
             return self.load_module(expr.node.fullname())
 
         # If the expression is locally defined, then read the result from the corresponding
@@ -2812,6 +2808,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Except for imports, that currently always happens in the global namespace.
         if expr.kind == LDEF and not (isinstance(expr.node, Var)
                                       and expr.node.is_suppressed_import):
+            # Try to detect and error when we hit the irritating mypy bug
+            # where a local variable is cast to None. (#5423)
+            if (isinstance(expr.node, Var) and is_none_rprimitive(self.node_type(expr))
+                    and expr.node.is_inferred):
+                self.error(
+                    "Local variable '{}' has inferred type None; add an annotation".format(
+                        expr.node.name()),
+                    expr.node.line)
+
             # TODO: Behavior currently only defined for Var and FuncDef node types.
             return self.read(self.get_assignment_target(expr), expr.line)
 
@@ -2830,11 +2835,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if value is not None:
                 return value
 
-        if self.is_module_member_expr(expr):
-            return self.load_module_attr(expr)
-        else:
-            obj = self.accept(expr.expr)
-            return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
+        if isinstance(expr.node, MypyFile) and expr.node.fullname() in self.imports:
+            return self.load_module(expr.node.fullname())
+
+        obj = self.accept(expr.expr)
+        return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
 
     def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
@@ -5187,7 +5192,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """
         # If the global is from 'builtins', turn it into a module attr load instead
         if self.is_builtin_ref_expr(expr):
-            return self.load_module_attr(expr)
+            assert expr.node, "RefExpr not resolved"
+            return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
         if (self.is_native_module_ref_expr(expr) and isinstance(expr.node, TypeInfo)
                 and not self.is_synthetic_type(expr.node)):
             assert expr.fullname is not None
@@ -5233,10 +5239,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def load_module(self, name: str) -> Value:
         return self.add(LoadStatic(object_rprimitive, 'module', name))
-
-    def load_module_attr(self, expr: RefExpr) -> Value:
-        assert expr.node, "RefExpr not resolved"
-        return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition('.')

@@ -36,7 +36,8 @@ from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
-    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
+    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
+    read_py_file
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -197,9 +198,12 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
+    cached_read = fscache.read
     errors = Errors(options.show_error_context,
                     options.show_column_numbers,
-                    options.show_error_codes)
+                    options.show_error_codes,
+                    options.pretty,
+                    lambda path: read_py_file(path, cached_read, options.python_version))
     plugin, snapshot = load_plugins(options, errors, stdout)
 
     # Construct a build manager object to hold state during the build.
@@ -2303,7 +2307,7 @@ def find_module_and_diagnose(manager: BuildManager,
         if (root_source  # Honor top-level modules
                 or (not path.endswith('.py')  # Stubs are always normal
                     and not options.follow_imports_for_stubs)  # except when they aren't
-                or id == 'builtins'):  # Builtins is always normal
+                or id in mypy.semanal_main.core_modules):  # core is always normal
             follow_imports = 'normal'
         if skip_diagnose:
             pass

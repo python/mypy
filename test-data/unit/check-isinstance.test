@@ -968,8 +968,8 @@ def foo() -> Union[int, str, A]: pass
 
 def bar() -> None:
     x = foo()
-    x + 1  # E: Unsupported operand types for + ("str" and "int") \
-           # E: Unsupported left operand type for + ("A") \
+    x + 1  # E: Unsupported left operand type for + ("A") \
+           # E: Unsupported operand types for + ("str" and "int") \
            # N: Left operand is of type "Union[int, str, A]"
     if isinstance(x, A):
        x.a
@@ -1752,6 +1752,12 @@ isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used 
 isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testIsinstanceAnyAlias]
+from typing import Any
+A = Any
+isinstance(object(), A)  # E: Cannot use isinstance() with Any type
+[builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceTypeArgsAliases]
 from typing import Iterable, TypeVar

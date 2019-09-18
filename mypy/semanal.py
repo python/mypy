@@ -1227,7 +1227,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if declared_tvars:
                     self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
-                tvars, is_protocol = result
+                tvars = result[0]
+                is_protocol |= result[1]
                 declared_tvars.extend(tvars)
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
@@ -4244,6 +4245,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         redefinitions (such as e.g. variable redefined as a class).
         """
         i = 1
+        # Don't serialize redefined nodes. They are likely to have
+        # busted internal references which can cause problems with
+        # serialization and they can't have any external references to
+        # them.
+        symbol.no_serialize = True
         while True:
             if i == 1:
                 new_name = '{}-redefinition'.format(name)

@@ -834,8 +834,8 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         n_body = ast27.Return(n.body)
-        n_body.lineno = n.lineno
-        n_body.col_offset = n.col_offset
+        n_body.lineno = n.body.lineno
+        n_body.col_offset = n.body.col_offset
         body = self.as_required_block([n_body], n.lineno)
         if decompose_stmts:
             body.body = decompose_stmts + body.body
@@ -1009,7 +1009,12 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast27.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        return self.set_line(e, n)
+        self.set_line(e, n)
+        if isinstance(e.index, SliceExpr):
+            # Slice has no line/column in the raw ast.
+            e.index.line = e.line
+            e.index.column = e.column
+        return e
 
     # Name(identifier id, expr_context ctx)
     def visit_Name(self, n: Name) -> NameExpr:

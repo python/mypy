@@ -1216,8 +1216,8 @@ from typing import Union, Tuple
 tup: Union[Tuple[int, str], Tuple[int, int, str]]
 reveal_type(tup[0])  # N: Revealed type is 'builtins.int'
 reveal_type(tup[1])  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(tup[2])  # N: Revealed type is 'Union[Any, builtins.str]' \
-                     # E: Tuple index out of range
+reveal_type(tup[2])  # E: Tuple index out of range \
+                     # N: Revealed type is 'Union[Any, builtins.str]'
 reveal_type(tup[:])  # N: Revealed type is 'Union[Tuple[builtins.int, builtins.str], Tuple[builtins.int, builtins.int, builtins.str]]'
 
 [builtins fixtures/tuple.pyi]
@@ -1228,8 +1228,8 @@ from typing import Union, Tuple, List
 tup: Union[Tuple[int, str], List[int]]
 reveal_type(tup[0])  # N: Revealed type is 'builtins.int'
 reveal_type(tup[1])  # N: Revealed type is 'Union[builtins.str, builtins.int*]'
-reveal_type(tup[2])  # N: Revealed type is 'Union[Any, builtins.int*]' \
-                     # E: Tuple index out of range
+reveal_type(tup[2])  # E: Tuple index out of range \
+                     # N: Revealed type is 'Union[Any, builtins.int*]'
 reveal_type(tup[:])  # N: Revealed type is 'Union[Tuple[builtins.int, builtins.str], builtins.list[builtins.int*]]'
 
 [builtins fixtures/tuple.pyi]

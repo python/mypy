@@ -616,8 +616,8 @@ main:15:10: error: "list" expects 1 type argument, but 2 given
 main:16:19: error: "list" expects 1 type argument, but 2 given
 main:17:25: error: "Node" expects 2 type arguments, but 1 given
 main:19:5: error: Bad number of arguments for type alias, expected: 1, given: 2
-main:22:1: note: Revealed type is '__main__.Node[builtins.int, builtins.str]'
-main:24:1: note: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+main:22:13: note: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+main:24:13: note: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
 main:26:5: error: Type variable "__main__.T" is invalid as target for type alias
 
 [case testGenericTypeAliasesForAliases]
@@ -2052,4 +2052,62 @@ class C(Generic[T]):
 
 def func(x: S) -> S:
     return C[S].get()
+[builtins fixtures/classmethod.pyi]
+
+[case testMultipleAssignmentFromAnyIterable]
+from typing import Any
+class A:
+    def __iter__(self) -> Any: ...
+
+x, y = A()
+reveal_type(x)  # N: Revealed type is 'Any'
+reveal_type(y)  # N: Revealed type is 'Any'
+
+[case testSubclassingGenericSelfClassMethod]
+from typing import TypeVar, Type
+
+AT = TypeVar('AT', bound='A')
+
+class A:
+    @classmethod
+    def from_config(cls: Type[AT]) -> AT:
+        ...
+
+class B(A):
+    @classmethod
+    def from_config(cls: Type[B]) -> B:
+        return B()
+[builtins fixtures/classmethod.pyi]
+
+[case testSubclassingGenericSelfClassMethodOptional]
+# flags: --strict-optional
+from typing import TypeVar, Type, Optional
+
+AT = TypeVar('AT', bound='A')
+
+class A:
+    @classmethod
+    def from_config(cls: Type[AT]) -> Optional[AT]:
+        return None
+
+class B(A):
+    @classmethod
+    def from_config(cls: Type[B]) -> Optional[B]:
+        return B()
+[builtins fixtures/classmethod.pyi]
+
+[case testSubclassingGenericSelfClassMethodNonAnnotated]
+from typing import TypeVar, Type
+
+AT = TypeVar('AT', bound='A')
+
+class A:
+    @classmethod
+    def from_config(cls: Type[AT]) -> AT:
+        ...
+
+class B(A):
+    @classmethod
+    def from_config(cls) -> B:
+        return B()
 [builtins fixtures/classmethod.pyi]

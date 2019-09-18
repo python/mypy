@@ -1,5 +1,6 @@
 """Classes for representing mypy types."""
 
+import copy
 import sys
 from abc import abstractmethod
 from collections import OrderedDict
@@ -17,7 +18,7 @@ from mypy.nodes import (
     FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
-from mypy.util import IdMapper, replace_object_state
+from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
 
 
@@ -2077,13 +2078,7 @@ def copy_type(t: TP) -> TP:
     """
     Build a copy of the type; used to mutate the copy with truthiness information
     """
-    # We'd like to just do a copy.copy(), but mypyc types aren't
-    # pickleable so we hack around it by manually creating a new type
-    # and copying everything in with replace_object_state.
-    typ = type(t)
-    nt = typ.__new__(typ)
-    replace_object_state(nt, t, copy_dict=True)
-    return nt
+    return copy.copy(t)
 
 
 def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:

@@ -2224,13 +2224,21 @@ class TempNode(Expression):
     # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
     no_rhs = False  # type: bool
 
-    def __init__(self, typ: 'mypy.types.Type', no_rhs: bool = False) -> None:
+    def __init__(self,
+                 typ: 'mypy.types.Type',
+                 no_rhs: bool = False,
+                 *,
+                 context: Optional[Context] = None) -> None:
+        """Construct a dummy node; optionally borrow line/column from context object."""
         super().__init__()
         self.type = typ
         self.no_rhs = no_rhs
+        if context is not None:
+            self.line = context.line
+            self.column = context.column
 
     def __repr__(self) -> str:
-        return 'TempNode(%s)' % str(self.type)
+        return 'TempNode:%d(%s)' % (self.line, str(self.type))
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
@@ -2988,8 +2996,6 @@ class SymbolTableNode:
                 fullname = self.node.fullname()
                 if (fullname is not None and '.' in fullname
                         and fullname != prefix + '.' + name
-                        # If it only doesn't match because of -redefinition, that is OK
-                        and fullname != prefix + '.' + name.split('-redefinition')[0]
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
                     data['cross_ref'] = fullname
