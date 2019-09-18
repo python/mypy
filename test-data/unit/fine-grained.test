@@ -4574,9 +4574,9 @@ main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; e
 [case testPerFileStrictOptionalModule]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-a.*]
+\[mypy-a.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -4604,9 +4604,9 @@ a.py:4: error: Incompatible types in assignment (expression has type "Optional[i
 [case testPerFileStrictOptionalModuleOnly]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-a.*]
+\[mypy-a.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -4650,9 +4650,9 @@ a.py:3: error: Incompatible types in assignment (expression has type "Optional[i
 [case testPerFileStrictOptionalFunction]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-b.*]
+\[mypy-b.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -4686,9 +4686,9 @@ b.py:4: error: Argument 1 to "h" has incompatible type "Optional[int]"; expected
 [case testPerFileStrictOptionalMethod]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-b.*]
+\[mypy-b.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -7705,8 +7705,8 @@ def f() -> str: return '0'
 
 [case testRefreshIgnoreErrors1]
 [file mypy.ini]
-[[mypy]
-[[mypy-b]
+\[mypy]
+\[mypy-b]
 ignore_errors = True
 [file a.py]
 y = '1'
@@ -7722,8 +7722,8 @@ def fu() -> None:
 
 [case testRefreshIgnoreErrors2]
 [file mypy.ini]
-[[mypy]
-[[mypy-b]
+\[mypy]
+\[mypy-b]
 ignore_errors = True
 [file b.py]
 def fu() -> int:
@@ -7738,9 +7738,9 @@ def fu() -> int:
 
 [case testRefreshOptions]
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_any_generics = True
-[[mypy-b]
+\[mypy-b]
 disallow_any_generics = False
 [file a.py]
 y = '1'

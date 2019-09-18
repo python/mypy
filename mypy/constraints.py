@@ -285,7 +285,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 if not any(mypy.sametypes.is_same_type(template, t)
                            for t in template.type.inferring):
                     template.type.inferring.append(template)
-                    call = mypy.subtypes.find_member('__call__', template, actual)
+                    call = mypy.subtypes.find_member('__call__', template, actual,
+                                                     is_operator=True)
                     assert call is not None
                     if mypy.subtypes.is_subtype(actual, erase_typevars(call)):
                         subres = infer_constraints(call, actual, self.direction)
@@ -430,7 +431,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         elif isinstance(self.actual, Instance):
             # Instances with __call__ method defined are considered structural
             # subtypes of Callable with a compatible signature.
-            call = mypy.subtypes.find_member('__call__', self.actual, self.actual)
+            call = mypy.subtypes.find_member('__call__', self.actual, self.actual,
+                                             is_operator=True)
             if call:
                 return infer_constraints(template, call, self.direction)
             else:

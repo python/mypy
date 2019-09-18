@@ -706,7 +706,7 @@ class Out:
 x: Out.In
 x.method(x)
 [out]
-[[{"func_name": "Out.In.method", "line": 3, "path": "tmp/foo.py", "samples": 0, "signature": {"arg_types": ["foo:Out.In"], "return_type": "foo.Out"}}]
+\[{"func_name": "Out.In.method", "line": 3, "path": "tmp/foo.py", "samples": 0, "signature": {"arg_types": ["foo:Out.In"], "return_type": "foo.Out"}}]
 ==
 
 [case testSuggestColonNonPackageDir]

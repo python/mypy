@@ -366,9 +366,9 @@ Any(5)
 from typing import NewType
 T = NewType('T', int)
 d: object
-if isinstance(d, T):   # E: Cannot use isinstance() with a NewType type
+if isinstance(d, T):   # E: Cannot use isinstance() with NewType type
     reveal_type(d)     # N: Revealed type is '__main__.T'
-issubclass(object, T)  # E: Cannot use issubclass() with a NewType type
+issubclass(object, T)  # E: Cannot use issubclass() with NewType type
 [builtins fixtures/isinstancelist.pyi]
 
 [case testInvalidNewTypeCrash]

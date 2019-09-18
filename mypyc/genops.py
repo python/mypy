@@ -16,9 +16,9 @@ It would be translated to something that conceptually looks like this:
 from typing import (
     TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast
 )
-from typing_extensions import overload, ClassVar, NoReturn
+from typing_extensions import overload, NoReturn
+from collections import OrderedDict
 from abc import abstractmethod
-import sys
 import importlib.util
 import itertools
 
@@ -192,7 +192,7 @@ def build_ir(modules: List[MypyFile],
         builder = IRBuilder(types, graph, errors, mapper, module_names, pbv, options)
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
-            builder.imports,
+            list(builder.imports),
             builder.functions,
             builder.classes,
             builder.final_names
@@ -1050,7 +1050,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.errors = errors
         self.mapper = mapper
-        self.imports = []  # type: List[str]
+        # Notionally a list of all of the modules imported by the
+        # module being compiled, but stored as an OrderedDict so we
+        # can also do quick lookups.
+        self.imports = OrderedDict()  # type: OrderedDict[str, None]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
         if mypyfile.fullname() in ('typing', 'abc'):
@@ -1518,29 +1521,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                           [self.load_globals_dict(), self.load_static_unicode(cdef.name),
                            tp], cdef.line)
 
-    # An unfortunate hack: for some stdlib modules, pull in modules
-    # that the stubs reexport things from. This works around #393
-    # in these cases.
-    import_maps = {
-        'os': tuple(['os.path'] + ([] if sys.platform == 'win32' else ['posix'])),
-        'os.path': ('os',),
-        'tokenize': ('token',),
-        'weakref': ('_weakref',),
-        'asyncio': ('asyncio.events', 'asyncio.tasks',),
-        'click': ('click.core', 'click.termui', 'click.decorators',
-                  'click.exceptions', 'click.types'),
-        'ast': ('_ast',),
-    }  # type: ClassVar[Dict[str, Sequence[str]]]
-
     def gen_import(self, id: str, line: int) -> None:
-        if id in IRBuilder.import_maps:
-            for dep in IRBuilder.import_maps[id]:
-                self._gen_import(dep, line)
-
-        self._gen_import(id, line)
-
-    def _gen_import(self, id: str, line: int) -> None:
-        self.imports.append(id)
+        self.imports[id] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
         first_load = self.add(LoadStatic(object_rprimitive, 'module', id))
@@ -2817,7 +2799,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if value is not None:
                 return value
 
-        if isinstance(expr.node, MypyFile):
+        if isinstance(expr.node, MypyFile) and expr.node.fullname() in self.imports:
             return self.load_module(expr.node.fullname())
 
         # If the expression is locally defined, then read the result from the corresponding
@@ -2853,11 +2835,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if value is not None:
                 return value
 
-        if self.is_module_member_expr(expr):
-            return self.load_module_attr(expr)
-        else:
-            obj = self.accept(expr.expr)
-            return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
+        if isinstance(expr.node, MypyFile) and expr.node.fullname() in self.imports:
+            return self.load_module(expr.node.fullname())
+
+        obj = self.accept(expr.expr)
+        return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
 
     def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
@@ -5210,7 +5192,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """
         # If the global is from 'builtins', turn it into a module attr load instead
         if self.is_builtin_ref_expr(expr):
-            return self.load_module_attr(expr)
+            assert expr.node, "RefExpr not resolved"
+            return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
         if (self.is_native_module_ref_expr(expr) and isinstance(expr.node, TypeInfo)
                 and not self.is_synthetic_type(expr.node)):
             assert expr.fullname is not None
@@ -5256,10 +5239,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def load_module(self, name: str) -> Value:
         return self.add(LoadStatic(object_rprimitive, 'module', name))
-
-    def load_module_attr(self, expr: RefExpr) -> Value:
-        assert expr.node, "RefExpr not resolved"
-        return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition('.')

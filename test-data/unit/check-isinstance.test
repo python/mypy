@@ -1753,6 +1753,12 @@ isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot b
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testIsinstanceAnyAlias]
+from typing import Any
+A = Any
+isinstance(object(), A)  # E: Cannot use isinstance() with Any type
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceTypeArgsAliases]
 from typing import Iterable, TypeVar
 x = 1

@@ -1696,12 +1696,10 @@ y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builti
 z: C[int]
 
 [file mypy.ini]
-[[mypy-a]
+\[mypy-a]
 strict_optional = True
-[[mypy-b]
+\[mypy-b]
 strict_optional = False
-
--- ]]
 
 [case testNewAnalyzerProperty]
 class A:

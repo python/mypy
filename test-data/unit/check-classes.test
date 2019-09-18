@@ -2511,6 +2511,28 @@ class A:
 a = A()
 a.y()  # E: "A" not callable
 
+[case testGetattrWithCallable]
+from typing import Callable, Any
+
+class C:
+    def __getattr__(self, attr: str) -> C: ...
+
+def do(cd: Callable[..., Any]) -> None: ...
+
+do(C())  # E: Argument 1 to "do" has incompatible type "C"; expected "Callable[..., Any]"
+
+[case testGetattrWithCallableTypeVar]
+from typing import Callable, Any, TypeVar
+
+class C:
+    def __getattr__(self, attr: str) -> C: ...
+
+T = TypeVar('T', bound=Callable[..., Any])
+
+def do(cd: T) -> T: ...
+
+do(C())  # E: Value of type variable "T" of "do" cannot be "C"
+
 [case testNestedGetattr]
 def foo() -> object:
     def __getattr__() -> None:  # no error because not in a class

@@ -291,10 +291,7 @@ class FineGrainedSuite(DataSuite):
             if json:
                 # JSON contains already escaped \ on Windows, so requires a bit of care.
                 val = val.replace('\\\\', '\\')
-                if sys.platform == 'darwin':
-                    # Mac has also its own quirks.
-                    tmp_dir = '/private' + tmp_dir
-                val = val.replace(tmp_dir + os.path.sep, '')
+                val = val.replace(os.path.realpath(tmp_dir) + os.path.sep, '')
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
 

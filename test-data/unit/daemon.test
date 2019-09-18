@@ -89,7 +89,7 @@ Daemon started
 $ dmypy stop
 Daemon stopped
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = error
 plugins = plug.py
 [file foo.py]

@@ -507,7 +507,8 @@ class MessageBuilder:
             self.report_protocol_problems(original_caller_type, callee_type, context, code=code)
         if (isinstance(callee_type, CallableType) and
                 isinstance(original_caller_type, Instance)):
-            call = find_member('__call__', original_caller_type, original_caller_type)
+            call = find_member('__call__', original_caller_type, original_caller_type,
+                               is_operator=True)
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
 
@@ -1131,7 +1132,7 @@ class MessageBuilder:
 
     def cannot_use_function_with_type(
             self, method_name: str, type_name: str, context: Context) -> None:
-        self.fail("Cannot use {}() with a {} type".format(method_name, type_name), context)
+        self.fail("Cannot use {}() with {} type".format(method_name, type_name), context)
 
     def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
                                    context: Context) -> None:

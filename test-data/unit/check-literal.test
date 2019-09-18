@@ -1767,17 +1767,17 @@ import typing_extensions as indirect
 
 Alias = Literal[3]
 
-isinstance(3, Literal[3])           # E: Cannot use isinstance() with a Literal type
-isinstance(3, Alias)                # E: Cannot use isinstance() with a Literal type \
+isinstance(3, Literal[3])           # E: Cannot use isinstance() with Literal type
+isinstance(3, Alias)                # E: Cannot use isinstance() with Literal type \
                                     # E: The type alias to Literal is invalid in runtime context
-isinstance(3, Renamed[3])           # E: Cannot use isinstance() with a Literal type
-isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with a Literal type
+isinstance(3, Renamed[3])           # E: Cannot use isinstance() with Literal type
+isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with Literal type
 
-issubclass(int, Literal[3])           # E: Cannot use issubclass() with a Literal type
-issubclass(int, Alias)                # E: Cannot use issubclass() with a Literal type \
+issubclass(int, Literal[3])           # E: Cannot use issubclass() with Literal type
+issubclass(int, Alias)                # E: Cannot use issubclass() with Literal type \
                                       # E: The type alias to Literal is invalid in runtime context
-issubclass(int, Renamed[3])           # E: Cannot use issubclass() with a Literal type
-issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Literal type
+issubclass(int, Renamed[3])           # E: Cannot use issubclass() with Literal type
+issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with Literal type
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
