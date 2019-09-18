@@ -10,7 +10,7 @@ from typing import cast, Optional, List, Sequence, Set
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
     TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, NoneType,
-    AnyType, TypeOfAny, ProperType, get_proper_type, get_proper_types, copy_type
+    AnyType, TypeOfAny, TypeType, ProperType, get_proper_type, get_proper_types, copy_type
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2,
@@ -397,8 +397,17 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
 
 def callable_type(fdef: FuncItem, fallback: Instance,
                   ret_type: Optional[Type] = None) -> CallableType:
+    # FIXME? somewhat unfortunate duplication with prepare_method_signature in semanal
+    if fdef.info and not fdef.is_static:
+        self_type = fill_typevars(fdef.info)  # type: Type
+        if fdef.is_class or fdef.name() == '__new__':
+            self_type = TypeType.make_normalized(self_type)
+        args = [self_type] + [AnyType(TypeOfAny.unannotated)] * (len(fdef.arg_names)-1)
+    else:
+        args = [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names)
+
     return CallableType(
-        [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
+        args,
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
         ret_type or AnyType(TypeOfAny.unannotated),

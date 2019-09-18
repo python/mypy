@@ -2610,7 +2610,7 @@ t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (self: Any) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "def (self: __main__.A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -6178,3 +6178,15 @@ class B(A):
     def meth(cls: Type[T]) -> List[T]: ...
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testCheckUntypedDefsSelf]
+# flags: --check-untyped-defs
+class Foo:
+    def foo(self):
+        self.bar()
+        self.baz()  # E: "Foo" has no attribute "baz"
+
+    @classmethod
+    def bar(cls):
+        cls.baz()  # E: "Type[Foo]" has no attribute "baz"
+[builtins fixtures/classmethod.pyi]

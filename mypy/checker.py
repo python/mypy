@@ -535,6 +535,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     impl = impl_type
 
+                # Prevent extra noise from inconsistent use of @classmethod by copying
+                # the first arg from the method being checked against.
+                if sig1.arg_types and defn.info:
+                    impl = impl.copy_modified(arg_types=[sig1.arg_types[0]] + impl.arg_types[1:])
+
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(impl, sig1,
                                               is_compat=is_subtype_no_promote,

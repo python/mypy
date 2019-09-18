@@ -616,11 +616,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Only non-static methods are special.
         functype = func.type
         if not func.is_static:
+            if func.name() == '__init_subclass__':
+                func.is_class = True
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
             elif isinstance(functype, CallableType):
-                if func.name() == '__init_subclass__':
-                    func.is_class = True
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
                     leading_type = fill_typevars(info)  # type: Type
