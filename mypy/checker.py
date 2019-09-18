@@ -34,7 +34,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    function_type, is_named_instance, union_items, TypeQuery, LiteralType,
+    is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type
 )
@@ -50,7 +50,7 @@ from mypy.checkmember import (
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound,
-    true_only, false_only,
+    true_only, false_only, function_type,
 )
 from mypy import message_registry
 from mypy.subtypes import (

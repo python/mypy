@@ -17,7 +17,6 @@ from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
     FuncDef,
 )
-from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
 
@@ -2079,44 +2078,6 @@ def copy_type(t: TP) -> TP:
     Build a copy of the type; used to mutate the copy with truthiness information
     """
     return copy.copy(t)
-
-
-def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
-    if func.type:
-        assert isinstance(func.type, FunctionLike)
-        return func.type
-    else:
-        # Implicit type signature with dynamic types.
-        if isinstance(func, mypy.nodes.FuncItem):
-            return callable_type(func, fallback)
-        else:
-            # Broken overloads can have self.type set to None.
-            # TODO: should we instead always set the type in semantic analyzer?
-            assert isinstance(func, mypy.nodes.OverloadedFuncDef)
-            any_type = AnyType(TypeOfAny.from_error)
-            dummy = CallableType([any_type, any_type],
-                                 [ARG_STAR, ARG_STAR2],
-                                 [None, None], any_type,
-                                 fallback,
-                                 line=func.line, is_ellipsis_args=True)
-            # Return an Overloaded, because some callers may expect that
-            # an OverloadedFuncDef has an Overloaded type.
-            return Overloaded([dummy])
-
-
-def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
-                  ret_type: Optional[Type] = None) -> CallableType:
-    return CallableType(
-        [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
-        fdef.arg_kinds,
-        [None if argument_elide_name(n) else n for n in fdef.arg_names],
-        ret_type or AnyType(TypeOfAny.unannotated),
-        fallback,
-        name=fdef.name(),
-        line=fdef.line,
-        column=fdef.column,
-        implicit=True,
-    )
 
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],

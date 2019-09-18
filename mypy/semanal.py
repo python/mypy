@@ -84,11 +84,12 @@ from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types
 )
+from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (

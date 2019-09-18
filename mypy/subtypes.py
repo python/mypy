@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, c
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType, function_type,
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type
@@ -616,8 +616,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     from mypy.typeops import bind_self
 
     if isinstance(node, FuncBase):
-        typ = function_type(node,
-                            fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
+        typ = mypy.typeops.function_type(
+            node, fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
     else:
         typ = node.type
     typ = get_proper_type(typ)
