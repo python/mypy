@@ -14,7 +14,6 @@ on specified sources.
 
 import os
 import re
-import sys
 
 from typing import List, Dict, Any, Tuple, cast
 
