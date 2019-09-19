@@ -6181,12 +6181,33 @@ class B(A):
 
 [case testCheckUntypedDefsSelf]
 # flags: --check-untyped-defs
+
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Desc:
+    def __get__(self, x, y):
+        # type: (...) -> bool
+        pass
+
 class Foo:
+    y = Desc()
+
+    def __init__(self):
+        self.x = 0
+
     def foo(self):
+        reveal_type(self.x)  # N: Revealed type is 'builtins.int'
+        reveal_type(self.y)  # N: Revealed type is 'builtins.bool'
         self.bar()
         self.baz()  # E: "Foo" has no attribute "baz"
 
     @classmethod
     def bar(cls):
         cls.baz()  # E: "Type[Foo]" has no attribute "baz"
+
+class C(Generic[T]):
+    x: T
+    def meth(self):
+        self.x + 1  # E: Unsupported left operand type for + ("T")
 [builtins fixtures/classmethod.pyi]
