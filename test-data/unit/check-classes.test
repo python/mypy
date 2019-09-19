@@ -6179,7 +6179,7 @@ class B(A):
 
 [builtins fixtures/isinstancelist.pyi]
 
-[case testCheckUntypedDefsSelf]
+[case testCheckUntypedDefsSelf1]
 # flags: --check-untyped-defs
 
 from typing import Generic, TypeVar
@@ -6211,3 +6211,15 @@ class C(Generic[T]):
     def meth(self):
         self.x + 1  # E: Unsupported left operand type for + ("T")
 [builtins fixtures/classmethod.pyi]
+
+[case testCheckUntypedDefsSelf2]
+# flags: --check-untyped-defs
+
+class Foo:
+    def __init__(self):
+        self.x = None
+        self.y = []
+
+reveal_type(Foo().x)  # N: Revealed type is 'Union[Any, None]'
+reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]

@@ -3939,7 +3939,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types.append(PartialTypeScope({}, is_function, is_local))
         yield
 
-        permissive = (self.options.allow_untyped_globals and not is_local)
+        # Don't complain about not being able to infer partials if it is
+        # at the toplevel (with allow_untyped_globals) or if it is in an
+        # untyped function being checked with check_untyped_defs.
+        permissive = (self.options.allow_untyped_globals and not is_local) or (
+            self.options.check_untyped_defs
+            and self.dynamic_funcs
+            and self.dynamic_funcs[-1]
+        )
 
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:
