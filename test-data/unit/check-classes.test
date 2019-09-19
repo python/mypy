@@ -2610,7 +2610,7 @@ t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (self: Any) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "def (self: __main__.A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -6178,3 +6178,48 @@ class B(A):
     def meth(cls: Type[T]) -> List[T]: ...
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testCheckUntypedDefsSelf1]
+# flags: --check-untyped-defs
+
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Desc:
+    def __get__(self, x, y):
+        # type: (...) -> bool
+        pass
+
+class Foo:
+    y = Desc()
+
+    def __init__(self):
+        self.x = 0
+
+    def foo(self):
+        reveal_type(self.x)  # N: Revealed type is 'builtins.int'
+        reveal_type(self.y)  # N: Revealed type is 'builtins.bool'
+        self.bar()
+        self.baz()  # E: "Foo" has no attribute "baz"
+
+    @classmethod
+    def bar(cls):
+        cls.baz()  # E: "Type[Foo]" has no attribute "baz"
+
+class C(Generic[T]):
+    x: T
+    def meth(self):
+        self.x + 1  # E: Unsupported left operand type for + ("T")
+[builtins fixtures/classmethod.pyi]
+
+[case testCheckUntypedDefsSelf2]
+# flags: --check-untyped-defs
+
+class Foo:
+    def __init__(self):
+        self.x = None
+        self.y = []
+
+reveal_type(Foo().x)  # N: Revealed type is 'Union[Any, None]'
+reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]

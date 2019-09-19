@@ -84,11 +84,12 @@ from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types
 )
+from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -615,11 +616,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Only non-static methods are special.
         functype = func.type
         if not func.is_static:
+            if func.name() == '__init_subclass__':
+                func.is_class = True
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
             elif isinstance(functype, CallableType):
-                if func.name() == '__init_subclass__':
-                    func.is_class = True
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
                     leading_type = fill_typevars(info)  # type: Type

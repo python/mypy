@@ -34,7 +34,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    function_type, is_named_instance, union_items, TypeQuery, LiteralType,
+    is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type
 )
@@ -50,7 +50,7 @@ from mypy.checkmember import (
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound,
-    true_only, false_only,
+    true_only, false_only, function_type,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -534,6 +534,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         continue
                 else:
                     impl = impl_type
+
+                # Prevent extra noise from inconsistent use of @classmethod by copying
+                # the first arg from the method being checked against.
+                if sig1.arg_types and defn.info:
+                    impl = impl.copy_modified(arg_types=[sig1.arg_types[0]] + impl.arg_types[1:])
 
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(impl, sig1,
@@ -3934,7 +3939,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types.append(PartialTypeScope({}, is_function, is_local))
         yield
 
-        permissive = (self.options.allow_untyped_globals and not is_local)
+        # Don't complain about not being able to infer partials if it is
+        # at the toplevel (with allow_untyped_globals) or if it is in an
+        # untyped function being checked with check_untyped_defs.
+        permissive = (self.options.allow_untyped_globals and not is_local) or (
+            self.options.check_untyped_defs
+            and self.dynamic_funcs
+            and self.dynamic_funcs[-1]
+        )
 
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:

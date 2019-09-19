@@ -10,13 +10,14 @@ from typing import cast, Optional, List, Sequence, Set
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
     TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, NoneType,
-    ProperType, get_proper_type, get_proper_types, copy_type
+    AnyType, TypeOfAny, TypeType, ProperType, get_proper_type, get_proper_types, copy_type
 )
 from mypy.nodes import (
-    TypeInfo, TypeVar, ARG_STAR,
+    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.sharedparse import argument_elide_name
 
 from mypy.typevars import fill_typevars
 
@@ -369,3 +370,50 @@ def erase_to_union_or_bound(typ: TypeVarType) -> ProperType:
         return make_simplified_union(typ.values)
     else:
         return get_proper_type(typ.upper_bound)
+
+
+def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
+    if func.type:
+        assert isinstance(func.type, FunctionLike)
+        return func.type
+    else:
+        # Implicit type signature with dynamic types.
+        if isinstance(func, FuncItem):
+            return callable_type(func, fallback)
+        else:
+            # Broken overloads can have self.type set to None.
+            # TODO: should we instead always set the type in semantic analyzer?
+            assert isinstance(func, OverloadedFuncDef)
+            any_type = AnyType(TypeOfAny.from_error)
+            dummy = CallableType([any_type, any_type],
+                                 [ARG_STAR, ARG_STAR2],
+                                 [None, None], any_type,
+                                 fallback,
+                                 line=func.line, is_ellipsis_args=True)
+            # Return an Overloaded, because some callers may expect that
+            # an OverloadedFuncDef has an Overloaded type.
+            return Overloaded([dummy])
+
+
+def callable_type(fdef: FuncItem, fallback: Instance,
+                  ret_type: Optional[Type] = None) -> CallableType:
+    # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
+    if fdef.info and not fdef.is_static:
+        self_type = fill_typevars(fdef.info)  # type: Type
+        if fdef.is_class or fdef.name() == '__new__':
+            self_type = TypeType.make_normalized(self_type)
+        args = [self_type] + [AnyType(TypeOfAny.unannotated)] * (len(fdef.arg_names)-1)
+    else:
+        args = [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names)
+
+    return CallableType(
+        args,
+        fdef.arg_kinds,
+        [None if argument_elide_name(n) else n for n in fdef.arg_names],
+        ret_type or AnyType(TypeOfAny.unannotated),
+        fallback,
+        name=fdef.name(),
+        line=fdef.line,
+        column=fdef.column,
+        implicit=True,
+    )

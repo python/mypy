@@ -6,7 +6,7 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, function_type, get_type_vars, get_proper_type, ProperType
+    DeletedType, NoneType, TypeType, get_type_vars, get_proper_type, ProperType
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
@@ -24,7 +24,7 @@ from mypy import subtypes
 from mypy import meet
 from mypy.typeops import (
     tuple_fallback, bind_self, erase_to_bound, class_callable, type_object_type_from_function,
-    make_simplified_union,
+    make_simplified_union, function_type,
 )
 
 if TYPE_CHECKING:  # import for forward declaration only
