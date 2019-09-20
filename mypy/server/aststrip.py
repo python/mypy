@@ -219,7 +219,8 @@ class NodeStripVisitor(TraverserVisitor):
                 # true for a MemberExpr, we know that it must be an assignment through
                 # self, since only those can define new attributes.
                 assert self.type is not None
-                del self.type.names[lvalue.name]
+                if lvalue.name in self.type.names:
+                    del self.type.names[lvalue.name]
                 key = (self.type.defn, lvalue.name)
                 if key in self.saved_class_attrs:
                     del self.saved_class_attrs[key]

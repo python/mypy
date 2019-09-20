@@ -9202,3 +9202,25 @@ class A: # type: ignore
 
 [out]
 ==
+
+[case testAddAttributeThroughNewBaseClass]
+import a
+
+[file a.py]
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+[file a.py.2]
+from b import B
+
+class C(B):
+    def __init__(self) -> None:
+        self.x = 0
+
+[file b.py.2]
+class B:
+    def __init__(self) -> None:
+        self.x = 0
+[out]
+==
