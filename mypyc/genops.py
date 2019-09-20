@@ -4686,8 +4686,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         environment so that the function can be called recursively. Note that this needs to be done
         only for nested functions.
         """
-        assert fdef.type is not None
-
         # First, set the attribute of the environment class so that GetAttr can be called on it.
         prev_env = self.fn_infos[-2].env_class
         prev_env.attributes[fdef.name()] = self.type_to_rtype(fdef.type)
