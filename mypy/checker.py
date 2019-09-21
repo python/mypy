@@ -794,12 +794,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
         with self.enter_partial_types(is_function=True):
+            typ = None
             if not defn.unanalyzed_type \
                     and self.options.inherit_signatures\
                     and self.options.check_untyped_defs:
                 typ = self.find_base_signature(defn)
-            else:
-                typ = self.function_type(defn)
+            typ = typ or self.function_type(defn)
             if type_override:
                 typ = type_override.copy_modified(line=typ.line, column=typ.column)
             if isinstance(typ, CallableType):
