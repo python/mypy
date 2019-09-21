@@ -1701,8 +1701,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
 
     def check_init_subclass(self, defn: ClassDef) -> None:
-        """
-        Check that keywords in a class definition are valid arguments for __init_subclass__().
+        """Check that keywords in a class definition are valid arguments for __init_subclass__().
 
         In this example:
             1   class Base:
