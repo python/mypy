@@ -26,7 +26,7 @@ from mypy.nodes import (
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
-)
+    ARG_NAMED)
 from mypy import nodes
 from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
@@ -1675,6 +1675,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
             self.binder = old_binder
+            self.check_init_subclass(defn)
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
@@ -1703,6 +1704,50 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+
+    def check_init_subclass(self, defn: ClassDef) -> None:
+        """Check that keywords in a class definition are valid arguments for __init_subclass__().
+
+        In this example:
+            1   class Base:
+            2       def __init_subclass__(cls, thing: int):
+            3           pass
+            4   class Child(Base, thing=5):
+            5       def __init_subclass__(cls):
+            6           pass
+            7   Child()
+
+        Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here.
+        Child.__init_subclass__ is never called.
+        """
+        # At runtime, only Base.__init_subclass__ will be called, so
+        # we skip the current class itself.
+        for base in defn.info.mro[1:]:
+            if '__init_subclass__' not in base.names:
+                continue
+            name_expr = NameExpr(defn.name)
+            name_expr.node = base
+            callee = MemberExpr(name_expr, '__init_subclass__')
+            args = list(defn.keywords.values())
+            arg_names = list(defn.keywords.keys())  # type: List[Optional[str]]
+            # 'metaclass' keyword is consumed by the rest of the type machinery,
+            # and is never passed to __init_subclass__ implementations
+            if 'metaclass' in arg_names:
+                idx = arg_names.index('metaclass')
+                arg_names.pop(idx)
+                args.pop(idx)
+            arg_kinds = [ARG_NAMED] * len(args)
+            call_expr = CallExpr(callee, args, arg_kinds, arg_names)
+            call_expr.line = defn.line
+            call_expr.column = defn.column
+            call_expr.end_line = defn.end_line
+            self.expr_checker.accept(call_expr,
+                                     allow_none_return=True,
+                                     always_allow_any=True)
+            # We are only interested in the first Base having __init_subclass__
+            # all other bases have already been checked.
+            break
+        return
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared

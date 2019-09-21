@@ -379,7 +379,7 @@ class B(A):
 [case testOverride__init_subclass__WithDifferentSignature]
 class A:
     def __init_subclass__(cls, x: int) -> None: pass
-class B(A):
+class B(A):  # E: Too few arguments for "__init_subclass__" of "A"
     def __init_subclass__(cls) -> None: pass
 
 [case testOverrideWithDecorator]
@@ -6163,6 +6163,102 @@ class C(B[int, T]):
     def __init__(self) -> None:
         # TODO: error message could be better.
         self.x: Tuple[str, T]  # E: Incompatible types in assignment (expression has type "Tuple[str, T]", base class "A" defined the type as "Tuple[int, T]")
+
+[case testInitSubclassWrongType]
+class Base:
+    default_name: str
+
+    def __init_subclass__(cls, default_name: str):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+
+class Child(Base, default_name=5):  # E: Argument "default_name" to "__init_subclass__" of "Base" has incompatible type "int"; expected "str"
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassTooFewArgs]
+class Base:
+    default_name: str
+
+    def __init_subclass__(cls, default_name: str, **kwargs):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+
+class Child(Base):  # E: Too few arguments for "__init_subclass__" of "Base"
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassTooFewArgs2]
+class Base:
+    default_name: str
+
+    def __init_subclass__(cls, default_name: str, thing: int):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+# TODO implement this, so that no error is raised?
+d = {"default_name": "abc", "thing": 0}
+class Child(Base, **d):  # E: Too few arguments for "__init_subclass__" of "Base"
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassOK]
+class Base:
+    default_name: str
+    thing: int
+
+    def __init_subclass__(cls, default_name: str, thing:int, **kwargs):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+
+class Child(Base, thing=5, default_name=""):
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithMetaclassOK]
+class Base(type):
+    thing: int
+
+    def __init_subclass__(cls, thing: int):
+        cls.thing = thing
+
+class Child(Base, metaclass=Base, thing=0):
+    pass
+
+[case testTooManyArgsForObject]
+class A(thing=5):
+    pass
+[out]
+main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
+tmp/builtins.pyi:5: note: "__init_subclass__" of "object" defined here
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithImports]
+from init_subclass.a import Base
+class Child(Base, thing=5):  # E: Missing positional arguments "default_name", "kwargs" in call to "__init_subclass__" of "Base"
+    pass
+[file init_subclass/a.py]
+class Base:
+    default_name: str
+    thing: int
+
+    def __init_subclass__(cls, default_name: str, thing:int, **kwargs):
+        pass
+[file init_subclass/__init__.py]
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithImportsOK]
+from init_subclass.a import MidBase
+class Main(MidBase, test=True): pass
+[file init_subclass/a.py]
+class Base:
+    def __init_subclass__(cls, **kwargs) -> None: pass
+class MidBase(Base): pass
+[file init_subclass/__init__.py]
+[builtins fixtures/object_with_init_subclass.pyi]
 
 [case testOverrideGenericSelfClassMethod]
 from typing import Generic, TypeVar, Type, List
