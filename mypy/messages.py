@@ -523,7 +523,7 @@ class MessageBuilder:
         if (argument_names is not None and not all(k is None for k in argument_names)
                 and len(argument_names) >= 1):
             num_positional_args = sum(k is None for k in argument_names)
-            arguments_left = callee.arg_names[num_positional_args:]
+            arguments_left = callee.arg_names[num_positional_args:callee.min_args]
             diff = [k for k in arguments_left if k not in argument_names]
             if len(diff) == 1:
                 msg = 'Missing positional argument'
