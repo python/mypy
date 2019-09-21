@@ -769,6 +769,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                        'redefinition with type',
                                        'original type')
 
+    def find_base_signature(self, defn: FuncItem) -> Optional[FunctionLike]:
+        """Given a function definition, try to find its base definition.
+
+        TODO: Cache results ?"""
+        if not defn.info:
+            return None
+        # Skip the current class
+        for base in defn.info.mro[1:]:
+            if defn.name() in base.names:
+                parent = base.names[defn.name()].node
+                assert isinstance(parent, FuncDef)
+                function_type = self.function_type(parent)
+                return function_type
+        return None
+
     def check_func_item(self, defn: FuncItem,
                         type_override: Optional[CallableType] = None,
                         name: Optional[str] = None) -> None:
@@ -779,7 +794,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
         with self.enter_partial_types(is_function=True):
-            typ = self.function_type(defn)
+            if not defn.unanalyzed_type \
+                    and self.options.inherit_signatures\
+                    and self.options.check_untyped_defs:
+                typ = self.find_base_signature(defn)
+            else:
+                typ = self.function_type(defn)
             if type_override:
                 typ = type_override.copy_modified(line=typ.line, column=typ.column)
             if isinstance(typ, CallableType):

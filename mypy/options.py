@@ -39,6 +39,7 @@ PER_MODULE_OPTIONS = {
     "follow_imports_for_stubs",
     "ignore_errors",
     "ignore_missing_imports",
+    "inherit_signatures",
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
@@ -103,6 +104,9 @@ class Options:
 
         # Type check unannotated functions
         self.check_untyped_defs = False
+
+        # Inherit missing signatures from base classes
+        self.inherit_signatures = False
 
         # Disallow decorating typed functions with untyped decorators
         self.disallow_untyped_decorators = False

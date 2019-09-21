@@ -6223,3 +6223,10 @@ class Foo:
 reveal_type(Foo().x)  # N: Revealed type is 'Union[Any, None]'
 reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
+
+[case testSignatureInheritance]
+# flags: --inherit-signatures --check-untyped-defs
+class Base:
+    def foo(self, a: float) -> float: return 2.0
+class BadChild1(Base):
+    def foo(self, a): return ""  # E: Incompatible return value type (got "str", expected "float")

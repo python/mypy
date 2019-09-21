@@ -442,7 +442,9 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
                         help="Disallow decorating typed functions with untyped decorators",
                         group=untyped_group)
-
+    add_invertible_flag('--inherit-signatures', default=False, strict_flag=True,
+                        help="Inherit signautes from base classes to child",
+                        group=untyped_group)
     none_group = parser.add_argument_group(
         title='None and Optional handling',
         description="Adjust how values of type 'None' are handled. For more context on "

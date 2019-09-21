@@ -276,6 +276,11 @@ definitions or calls.
     It will assume all arguments have type ``Any`` and always infer ``Any``
     as the return type.
 
+``--inherit-signatures``
+    This flag must be used along with `--check-untyped-defs` flag. It allows
+    to use base class function signature in derived classes, without explicitly
+    annotating the derived class
+
 ``--disallow-untyped-decorators``
     This flag reports an error whenever a function with type annotations
     is decorated with a decorator without annotations.
