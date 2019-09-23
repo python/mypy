@@ -6238,7 +6238,7 @@ tmp/builtins.pyi:5: note: "__init_subclass__" of "object" defined here
 
 [case testInitSubclassWithImports]
 from init_subclass.a import Base
-class Child(Base, thing=5):  # E: Missing positional arguments "default_name", "kwargs" in call to "__init_subclass__" of "Base"
+class Child(Base, thing=5):  # E: Missing positional argument "default_name" in call to "__init_subclass__" of "Base"
     pass
 [file init_subclass/a.py]
 class Base:
