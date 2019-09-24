@@ -1658,10 +1658,12 @@ class UnionType(ProperType):
 
     @overload
     @staticmethod
-    def make_union(items: List[ProperType], line: int = -1, column: int = -1) -> ProperType: ...
+    def make_union(items: Sequence[ProperType],
+                   line: int = -1, column: int = -1) -> ProperType: ...
+
     @overload
     @staticmethod
-    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type: ...
+    def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type: ...
 
     @staticmethod
     def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:

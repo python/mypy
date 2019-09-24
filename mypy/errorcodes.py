@@ -77,6 +77,12 @@ ABSTRACT = ErrorCode(
     'General')  # type: Final
 VALID_NEWTYPE = ErrorCode(
     'valid-newtype', "Check that argument 2 to NewType is valid", 'General')  # type: Final
+STRING_FORMATTING = ErrorCode(
+    'str-format', "Check that string formatting/interpolation is type-safe",
+    'General')  # type: Final
+STR_BYTES_PY3 = ErrorCode(
+    'str-bytes-safe', "Warn about dangerous coercions related to bytes and string types",
+    'General')  # type: Final
 
 # These error codes aren't enable by default.
 NO_UNTYPED_DEF = ErrorCode(

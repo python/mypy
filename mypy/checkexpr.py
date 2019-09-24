@@ -51,7 +51,7 @@ from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkstrformat import StringFormatterChecker
+from mypy.checkstrformat import StringFormatterChecker, custom_special_method
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
@@ -345,6 +345,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_runtime_protocol_test(e)
             if e.callee.fullname == 'builtins.issubclass':
                 self.check_protocol_issubclass(e)
+        if isinstance(e.callee, MemberExpr) and e.callee.name == 'format':
+            self.check_str_format_call(e)
         ret_type = get_proper_type(ret_type)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
@@ -356,6 +358,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def check_str_format_call(self, e: CallExpr) -> None:
+        """More precise type checking for str.format() calls on literals."""
+        assert isinstance(e.callee, MemberExpr)
+        format_value = None
+        if isinstance(e.callee.expr, (StrExpr, UnicodeExpr)):
+            format_value = e.callee.expr.value
+        elif e.callee.expr in self.chk.type_map:
+            base_typ = try_getting_literal(self.chk.type_map[e.callee.expr])
+            if isinstance(base_typ, LiteralType) and isinstance(base_typ.value, str):
+                format_value = base_typ.value
+        if format_value is not None:
+            self.strfrm_checker.check_str_format_call(e, format_value)
 
     def method_fullname(self, object_type: Type, method_name: str) -> Optional[str]:
         """Convert a method name to a fully qualified name, based on the type of the object that
@@ -2067,8 +2082,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # We suppress the error if there is a custom __eq__() method on either
                     # side. User defined (or even standard library) classes can define this
                     # to return True for comparisons between non-overlapping types.
-                    if (not custom_equality_method(left_type) and
-                            not custom_equality_method(right_type)):
+                    if (not custom_special_method(left_type, '__eq__') and
+                            not custom_special_method(right_type, '__eq__')):
                         # Also flag non-overlapping literals in situations like:
                         #    x: Literal['a', 'b']
                         #    if x == 'c':

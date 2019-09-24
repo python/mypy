@@ -779,25 +779,33 @@ class MessageBuilder:
         self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
-        self.fail('Not enough arguments for format string', context)
+        self.fail('Not enough arguments for format string', context,
+                  code=codes.STRING_FORMATTING)
 
     def too_many_string_formatting_arguments(self, context: Context) -> None:
-        self.fail('Not all arguments converted during string formatting', context)
+        self.fail('Not all arguments converted during string formatting', context,
+                  code=codes.STRING_FORMATTING)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character \'%s\'' % placeholder, context)
+        self.fail('Unsupported format character \'%s\'' % placeholder, context,
+                  code=codes.STRING_FORMATTING)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
-        self.fail('String interpolation contains both stars and mapping keys', context)
+        self.fail('String interpolation contains both stars and mapping keys', context,
+                  code=codes.STRING_FORMATTING)
 
-    def requires_int_or_char(self, context: Context) -> None:
-        self.fail('%c requires int or char', context)
+    def requires_int_or_char(self, context: Context,
+                             format_call: bool = False) -> None:
+        self.fail('"{}c" requires int or char'.format(':' if format_call else '%'),
+                  context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key \'%s\' not found in mapping' % key, context)
+        self.fail('Key \'%s\' not found in mapping' % key, context,
+                  code=codes.STRING_FORMATTING)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
-        self.fail('String interpolation mixes specifier with and without mapping keys', context)
+        self.fail('String interpolation mixes specifier with and without mapping keys', context,
+                  code=codes.STRING_FORMATTING)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context, code=codes.HAS_TYPE)

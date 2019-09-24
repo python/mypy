@@ -555,6 +555,18 @@ def f(): pass
 def g() -> int:
     return f()  # E: Returning Any from function declared to return "int"  [no-any-return]
 
+[case testErrorCodeFormatCall]
+'{:d}'.format('no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")  [str-format]
+'{!x}'.format('Hm...')  # E: Invalid conversion type "x", must be one of "r", "s" or "a"  [str-format]
+'}{'.format()  # E: Invalid conversion specifier in format string: unexpected }  [str-format]
+
+'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
+'%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
+
+'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
+[builtins fixtures/primitives.pyi]
+
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
 
