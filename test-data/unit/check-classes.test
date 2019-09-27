@@ -2973,8 +2973,8 @@ def error(u_c: Type[U]) -> P:
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: note: Revealed type is '__main__.WizUser*'
-main:13: error: Incompatible return value type (got "U", expected "P")
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
+main:13: error: Incompatible return value type (got "U", expected "P")
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar

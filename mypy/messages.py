@@ -1873,8 +1873,10 @@ def append_invariance_notes(notes: List[str], arg_type: Instance,
     return notes
 
 
-def make_inferred_type_note(context: Context, subtype: Type,
-                            supertype: Type, supertype_str: str) -> str:
+def make_inferred_type_note(context: Context,
+                            subtype: Type,
+                            supertype: Type,
+                            supertype_str: str) -> str:
     """Explain that the user may have forgotten to type a variable.
 
     The user does not expect an error if the inferred container type is the same as the return

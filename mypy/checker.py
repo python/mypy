@@ -3008,6 +3008,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype_label='expected',
                         supertype=return_type,
                         context=s.expr,
+                        outer_context=s,
                         msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
                         code=codes.RETURN_VALUE)
             else:
@@ -3824,13 +3825,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Helpers
     #
 
-    def check_subtype(self, subtype: Type, supertype: Type, context: Context,
+    def check_subtype(self,
+                      subtype: Type,
+                      supertype: Type,
+                      context: Context,
                       msg: str = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
-                      supertype_label: Optional[str] = None, *,
-                      code: Optional[ErrorCode] = None) -> bool:
-        """Generate an error if the subtype is not compatible with
-        supertype."""
+                      supertype_label: Optional[str] = None,
+                      *,
+                      code: Optional[ErrorCode] = None,
+                      outer_context: Optional[Context] = None) -> bool:
+        """Generate an error if the subtype is not compatible with supertype."""
         if is_subtype(subtype, supertype):
             return True
 
@@ -3848,7 +3853,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 extra_info.append(subtype_label + ' ' + subtype_str)
             if supertype_label is not None:
                 extra_info.append(supertype_label + ' ' + supertype_str)
-            note_msg = make_inferred_type_note(context, subtype,
+            note_msg = make_inferred_type_note(outer_context or context, subtype,
                                                supertype, supertype_str)
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
