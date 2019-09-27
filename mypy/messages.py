@@ -575,7 +575,7 @@ class MessageBuilder:
             if not fname:  # an alias to function with a different name
                 fname = 'Called function'
             self.note('{} defined here'.format(fname), callee.definition,
-                      file=module.path, origin=context)
+                      file=module.path, origin=context, code=codes.CALL_ARG)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:

@@ -1,4 +1,4 @@
--- Tests for error codes
+-- Tests for error codes and ignoring errors using error codes
 --
 -- These implicitly use --show-error-codes.
 
@@ -607,3 +607,9 @@ class A:
 def g(self: A) -> None: pass
 
 A.f = g  # E: Cannot assign to a method  [assignment]
+
+[case testErrorCodeDefinedHereNoteIgnore]
+import m
+m.f(kw=1)  # type: ignore[call-arg]
+[file m.py]
+def f() -> None: pass
