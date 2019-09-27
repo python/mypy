@@ -1986,7 +1986,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                          new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, lvalue,
+            self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
@@ -2056,9 +2056,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         lvalue.kind is None):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
-                        instance_type, lvalue_type, rvalue, lvalue)
+                        instance_type, lvalue_type, rvalue, context=rvalue)
                 else:
-                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue,
+                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, context=rvalue,
                                                                code=codes.ASSIGNMENT)
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
@@ -2196,7 +2196,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if base_static and compare_static:
                     lvalue_node.is_staticmethod = True
 
-            return self.check_subtype(compare_type, base_type, lvalue,
+            return self.check_subtype(compare_type, base_type, rvalue,
                                       message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
                                       'base class "%s" defined the type as' % base.name(),

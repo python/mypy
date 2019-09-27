@@ -81,18 +81,44 @@ y = 'hello'
 if int():
     x = 2; y = x; y += 1
 [out]
-main:4:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4:16: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:4:24: error: Unsupported operand types for + ("str" and "int")
+
+[case testColumnsAssignment]
+class A:
+    x = 0
+
+A().x = ''  # E:9: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = [0]
+a[0] = ''  # E:8: Incompatible types in assignment (expression has type "str", target has type "int")
+b = 0
+c = 0
+b, c = 0, ''  # E:11: Incompatible types in assignment (expression has type "str", variable has type "int")
+b, c = '', 0  # E:8: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+t = 0, ''
+b, c = t  # E:8: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+class B(A):
+    x = ''  # E:9: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+[builtins fixtures/list.pyi]
+
+[case testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation]
+class A:
+    x: str
+
+class B(A):
+    x: int  # E:5: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
 
 [case testColumnsSimpleIsinstance]
 import typing
 def f(x: object, n: int, s: str) -> None:
     if int():
-        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
+        n = x # E:13: Incompatible types in assignment (expression has type "object", variable has type "int")
         if isinstance(x, int):
             n = x
-            s = x # E:13: Incompatible types in assignment (expression has type "int", variable has type "str")
-        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
+            s = x # E:17: Incompatible types in assignment (expression has type "int", variable has type "str")
+        n = x # E:13: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 
 [case testColumnHasNoAttribute]
@@ -247,9 +273,9 @@ class C:
 
 p: P
 if int():
-    p = C() # E:5: Incompatible types in assignment (expression has type "C", variable has type "P") \
-      # N:5: 'C' is missing following 'P' protocol member: \
-      # N:5:     y
+    p = C() # E:9: Incompatible types in assignment (expression has type "C", variable has type "P") \
+      # N:9: 'C' is missing following 'P' protocol member: \
+      # N:9:     y
 
 [case testColumnRedundantCast]
 # flags: --warn-redundant-casts
@@ -354,6 +380,6 @@ def f(x: T) -> T:
     # XXX: Disabled because the column differs in 3.8
     # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
     cc = (1).bad # E:11: "int" has no attribute "bad"
-    n: int = '' # E:5: Incompatible types in assignment (expression has type "str", variable has type "int")
+    n: int = '' # E:14: Incompatible types in assignment (expression has type "str", variable has type "int")
     return x
 [builtins fixtures/list.pyi]
