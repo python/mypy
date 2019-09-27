@@ -202,7 +202,7 @@ def parse_type_comment(type_comment: str,
     """
     try:
         typ = ast3_parse(type_comment, '<type_comment>', 'eval')
-    except SyntaxError as e:
+    except SyntaxError:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
             err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
