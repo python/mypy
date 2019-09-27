@@ -4563,7 +4563,7 @@ def f(*args):
 x: Union[int, str]
 f(x, x, x, x, x, x, x, x)
 [out]
-main:11: note: Not all union combinations were tried because there are too many unions
+main:11: error: Not all union combinations were tried because there are too many unions
 main:11: error: Argument 1 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 2 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 3 to "f" has incompatible type "Union[int, str]"; expected "int"
