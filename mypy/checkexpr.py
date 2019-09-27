@@ -1472,8 +1472,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                  callable_name=callable_name,
                                  object_type=object_type)
         if union_interrupted:
-            self.chk.msg.note("Not all union combinations were tried"
-                              " because there are too many unions", context)
+            self.chk.fail("Not all union combinations were tried"
+                          " because there are too many unions", context)
         return result
 
     def plausible_overload_call_targets(self,
