@@ -1408,8 +1408,8 @@ some_file.py:3: error: Unsupported operand types for + ("int" and "str")
          ^
 some_file.py:11: error: Incompatible types in assignment (expression has type
 "AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
-            self.very_important_attribute_with_long_name: OneCustomClassNa...
-            ^
+    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
+                                                        ^
 some_file.py:11: error: Argument 1 to "some_interesting_method" of
 "OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
 "AnotherCustomClassDefinedBelow"
