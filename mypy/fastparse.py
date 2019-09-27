@@ -729,11 +729,14 @@ class ASTConverter:
 
     # AnnAssign(expr target, expr annotation, expr? value, int simple)
     def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
+        line = n.lineno
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)  # type: Expression
+            rvalue.line = line
+            rvalue.column = n.col_offset
         else:
             rvalue = self.visit(n.value)
-        typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
+        typ = TypeConverter(self.errors, line=line).visit(n.annotation)
         assert typ is not None
         typ.column = n.annotation.col_offset
         s = AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)

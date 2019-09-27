@@ -2582,8 +2582,9 @@ class Foo:
         self.instancevar3: Final[Literal[False]] = True    # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
 
 # TODO: Fix the order in which these error messages are shown to be more consistent.
-var1 = 10                # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]") \
-                         # E: Cannot assign to final name "var1"
+var1 = 10                # E: Cannot assign to final name "var1" \
+                         # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
+
 
 Foo.classvar1 = 10       # E: Cannot assign to final attribute "classvar1" \
                          # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
