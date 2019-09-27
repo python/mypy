@@ -124,7 +124,9 @@ _dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(\[[^[#]*\]\s*)?($|#)')
+INVALID_TYPE_IGNORE = 'Invalid "type: ignore" comment'  # type: Final
+
+TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -170,13 +172,21 @@ def parse(source: Union[str, bytes],
     return tree
 
 
-def parse_type_ignore_tag(tag: Optional[str]) -> List[str]:
-    # TODO: Implement proper parsing and error checking
-    if not tag:
+def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
+    """Parse optional "[code, ...]" tag after "# type: ignore".
+
+    Return:
+     * [] if no tag was found (ignore all errors)
+     * list of ignored error codes if a tag was found
+     * None if the tag was invalid.
+    """
+    if not tag or tag.strip() == '' or tag.strip().startswith('#'):
+        # No tag -- ignore all errors.
         return []
-    m = re.match(r'\s*\[([^#]*)\]', tag)
+    m = re.match(r'\s*\[([^]#]*)\]\s*(#.*)?$', tag)
     if m is None:
-        return []
+        # Invalid "# type: ignore" comment.
+        return None
     return [code.strip() for code in m.group(1).split(',')]
 
 
@@ -206,6 +216,11 @@ def parse_type_comment(type_comment: str,
             # Typeshed has a non-optional return type for group!
             tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
             ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
+            if ignored is None:
+                if errors is not None:
+                    errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
+                else:
+                    raise SyntaxError
         else:
             ignored = None
         assert isinstance(typ, ast3_Expression)
@@ -451,8 +466,13 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
-                             for ti in mod.type_ignores}
+        self.type_ignores = {}
+        for ti in mod.type_ignores:
+            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            if parsed is not None:
+                self.type_ignores[ti.lineno] = parsed
+            else:
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,

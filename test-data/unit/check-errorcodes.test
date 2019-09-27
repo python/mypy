@@ -163,6 +163,55 @@ from defusedxml import xyz  # type: ignore[import]
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
+[case testErrorCodeBadIgnore]
+import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo]]  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo][bar]  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo] [bar]  # E: Invalid "type: ignore" comment  [syntax]
+
+x = 0  # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+
+def f(x,  # type: int  # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+      ):
+    # type: (...) -> None
+    pass
+
+[case testErrorCodeBadIgnoreNoExtraComment]
+# Omit the E: ... comments, as they affect parsing
+import nostub # type: ignore xyz
+import nostub # type: ignore[xyz
+import nostub # type: ignore[xyz][xyz]
+x = 0  # type: ignore[
+def f(x,  # type: int  # type: ignore[
+      ):
+    # type: (...) -> None
+    pass
+[out]
+main:2: error: Invalid "type: ignore" comment  [syntax]
+main:3: error: Invalid "type: ignore" comment  [syntax]
+main:4: error: Invalid "type: ignore" comment  [syntax]
+main:5: error: Invalid "type: ignore" comment  [syntax]
+main:6: error: Invalid "type: ignore" comment  [syntax]
+
+[case testErrorCodeBadIgnore_python2]
+import nostub # type: ignore xyz
+import nostub # type: ignore[xyz  # Comment [x]
+import nostub # type: ignore[xyz][xyz]
+x = 0  # type: ignore[
+def f(x,  # type: int  # type: ignore[
+      ):
+    # type: (...) -> None
+    pass
+[out]
+main:1: error: Invalid "type: ignore" comment  [syntax]
+main:2: error: Invalid "type: ignore" comment  [syntax]
+main:3: error: Invalid "type: ignore" comment  [syntax]
+main:4: error: Invalid "type: ignore" comment  [syntax]
+main:5: error: Invalid "type: ignore" comment  [syntax]
+
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
 f()  # E: Too few arguments for "f"  [call-arg]
@@ -607,3 +656,19 @@ class A:
 def g(self: A) -> None: pass
 
 A.f = g  # E: Cannot assign to a method  [assignment]
+
+[case testErrorCodeTypeIgnoreMisspelled1]
+x = y  # type: ignored[foo]
+xx = y  # type: ignored [foo]
+[out]
+main:1: error: Name 'ignored' is not defined  [name-defined]
+main:1: error: Name 'y' is not defined  [name-defined]
+main:2: error: Name 'ignored' is not defined  [name-defined]
+main:2: error: Name 'y' is not defined  [name-defined]
+
+[case testErrorCodeTypeIgnoreMisspelled2]
+x = y  # type: int  # type: ignored[foo]
+x = y  # type: int  # type: ignored [foo]
+[out]
+main:1: error: syntax error in type comment 'int'  [syntax]
+main:2: error: syntax error in type comment 'int'  [syntax]
