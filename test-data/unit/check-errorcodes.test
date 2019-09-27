@@ -628,3 +628,5 @@ class Bar:
 a: Union[Foo, Bar]
 
 a + a  # type: ignore[operator]
+a + Foo()  # type: ignore[operator]
+Foo() + a  # type: ignore[operator]
