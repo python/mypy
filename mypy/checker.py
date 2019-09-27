@@ -996,8 +996,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 msg += "tuple argument {}".format(name[12:])
             else:
                 msg += 'argument "{}"'.format(name)
-            self.check_simple_assignment(arg.variable.type, arg.initializer,
-                context=arg, msg=msg, lvalue_name='argument', rvalue_name='default',
+            self.check_simple_assignment(
+                arg.variable.type,
+                arg.initializer,
+                context=arg.initializer,
+                msg=msg,
+                lvalue_name='argument',
+                rvalue_name='default',
                 code=codes.ASSIGNMENT)
 
     def is_forward_op_method(self, method_name: str) -> bool:

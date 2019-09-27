@@ -268,7 +268,7 @@ if int():
 
 [case testColumnIncompatibleDefault]
 if int():
-    def f(x: int = '') -> None: # E:5: Incompatible default for argument "x" (default has type "str", argument has type "int")
+    def f(x: int = '') -> None: # E:20: Incompatible default for argument "x" (default has type "str", argument has type "int")
         pass
 
 [case testColumnMissingProtocolMember]
@@ -399,3 +399,7 @@ def f(x: T) -> T:
     n: int = '' # E:14: Incompatible types in assignment (expression has type "str", variable has type "int")
     return x
 [builtins fixtures/list.pyi]
+
+[case testColumnReturnValueExpected]
+def f() -> int:
+    return  # E:5: Return value expected
