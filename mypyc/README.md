@@ -61,7 +61,7 @@ Quick Start for Contributors
 
 First clone the mypy git repository *and git submodules*:
 
-    $ git clone --recurse-submodules https://github.com/mypyc/mypy.git
+    $ git clone --recurse-submodules https://github.com/python/mypy.git
     $ cd mypy
 
 Optionally create a virtualenv (recommended):
