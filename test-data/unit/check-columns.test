@@ -326,6 +326,12 @@ if int():
 main:2:11: error: Syntax error in type annotation
 main:2:11: note: Suggestion: Is there a spurious trailing comma?
 
+[case testColumnSyntaxErrorInTypeAnnotation2]
+if int():
+        x = 0  # type: x y
+[out]
+main:2:9: error: syntax error in type comment 'x y'
+
 [case testColumnProperty]
 class A:
     @property
