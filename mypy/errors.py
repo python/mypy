@@ -310,7 +310,11 @@ class Errors:
         self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
-        assert file not in self.flushed_files
+        if file in self.flushed_files:
+            self.report(info.line, None,
+                        "Trying to report an error in a file that has already been flushed."
+                        " Skipping...", severity='warning', file=file, only_once=True)
+            return
         if file not in self.error_info_map:
             self.error_info_map[file] = []
         self.error_info_map[file].append(info)
